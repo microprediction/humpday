@@ -1,2 +1,3 @@
 # humpday
-Evaluation and selection of global optimizers
+
+Cute stuff to cheer you up
