@@ -1,3 +1,3 @@
 # humpday
 
-Derivative free optimization
+Derivative free global optimization
