@@ -1,3 +1,3 @@
 # humpday
 
-Derivative free optimization
+Illustrates a pattern for derivative free optimization
