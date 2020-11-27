@@ -8,7 +8,7 @@ README = (HERE / "README.md").read_text()
 setup(
     name="humpday",
     version="0.0.2",
-    description="To cheer you up on humpday. Only cute stuff.",
+    description="To cheer you up on humpday. Global optimization stuff.",
     long_description=README,
     long_description_content_type="text/markdown",
     url="https://github.com/microprediction/humpday",
@@ -24,7 +24,7 @@ setup(
     test_suite='pytest',
     tests_require=['pytest', 'shgo'],
     include_package_data=True,
-    install_requires=["shgo", "wheel", "pathlib"],
+    install_requires=["shgo", "wheel", "pathlib","optuna","sklearn","pymoo","deap","embarrassingly"],
     entry_points={
         "console_scripts": [
             "humpday=humpday.__main__:main",
