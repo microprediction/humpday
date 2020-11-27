@@ -1,3 +1,3 @@
 # humpday
 
-Derivative free optimization
+Stuff related to derivative free optimization
