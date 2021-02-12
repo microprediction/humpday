@@ -1,0 +1,17 @@
+microconventions>0.5.0
+getjson
+ax-platform
+deap
+funcy
+hyperopt
+nevergrad
+numpy>=1.19.5
+optuna
+platypus-opt
+poap
+pySOT
+pymoo
+swarmlib
+sklearn
+tdigest
+landscapes
