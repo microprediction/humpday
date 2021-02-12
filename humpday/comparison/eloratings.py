@@ -5,6 +5,7 @@ import traceback
 from humpday.objectives.classic import CLASSIC_OBJECTIVES
 from humpday.optimizers.alloptimizers import OPTIMIZERS
 from humpday.comparison.eloformulas import elo_update
+from humpday.comparison.naming import optimizer_name, objective_name
 
 N_DIM_CHOICES = [1, 2, 3, 5, 8]
 N_TRIALS_CHOICES = [130, 210, 340]
@@ -127,7 +128,7 @@ def optimizer_game(white, black, n_dim, n_trials, objective, tol=0.001):
 
 
 def random_optimizer_game(optimizers=None, objectives=None, n_dim_choices: [int] = None,
-                          n_trials_choices: [int] = None, tol=0.001):
+                          n_trials_choices: [int] = None, tol=0.001, announce=False):
     if n_dim_choices is None:
         n_dim_choices = N_DIM_CHOICES
 
@@ -140,11 +141,16 @@ def random_optimizer_game(optimizers=None, objectives=None, n_dim_choices: [int]
     if optimizers is None:
         optimizers = OPTIMIZERS
 
-    n_dim = random.choice(n_dim_choices)
-    n_trials = random.choice(n_trials_choices)
-    objective = random.choice(objectives)
     white, black = np.random.choice(optimizers, size=2, replace=False)
-    return optimizer_game(white=white, black=black, n_dim=n_dim, n_trials=n_trials, objective=objective, tol=tol)
+    matchup = {'n_dim':random.choice(n_dim_choices),
+               'n_trials':random.choice(n_trials_choices),
+               'white':white,
+               'black':black,
+               'objective': random.choice(objectives),
+               'tol':tol}
+    if announce:
+        pprint(matchup)
+    return optimizer_game(**matchup)
 
 
 def optimizer_population_elo_update(optimizers, game_result: dict, elo: dict, initial_elo=1600, peg=True):
