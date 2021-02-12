@@ -90,13 +90,17 @@ def pymoo_cube(objective, n_trials, method_name, n_dim, with_count, ref_dirs=Non
     best_x = result.X.tolist()
     return (best_val, best_x, problem.feval_count) if with_count else (best_val, best_x)
 
+
 PYMOO_CANDIDATES = [ pymoo_de_cube, pymoo_nsga2_cube, pymoo_rnsga2_cube,
                      pymoo_nelder_cube, pymoo_ctaea_cube,
                      pymoo_nsga3_cube, pymoo_rnsga3_cube, pymoo_unsga3_cube,
                      pymoo_pattern_cube, pymoo_brkga_cube, pymoo_nsga2_cube ]
 
-PYMOO_OPTMIZERS = [pymoo_nsga2_cube, pymoo_nelder_cube, pymoo_nsga3_cube,
-                   pymoo_unsga3_cube, pymoo_pattern_cube, pymoo_brkga_cube, pymoo_nsga2_cube]
+BAD = [pymoo_brkga_cube, pymoo_nsga2_cube ] # TODO:  investigate
+
+
+PYMOO_OPTMIZERS = [ pymoo_nelder_cube, pymoo_nsga3_cube,
+                   pymoo_unsga3_cube, pymoo_pattern_cube,  pymoo_nsga2_cube]
 
 # TODO: See why ['pymoo_ctaea_cube', 'pymoo_de_cube', 'pymoo_rnsga2_cube', 'pymoo_rnsga3_cube'] are broken sometimes
 

@@ -109,7 +109,9 @@ def platypus_epsmoea_cube(objective, n_trials, n_dim, with_count=False):
                          method='epsmoea')
 
 
-PLATYPUS_OPTIMIZERS = [platypus_genetic_cube, platypus_evolutionary_cube, platypus_nsgaii_cube,
+BAD  = [ platypus_nsgaii_cube ]
+
+PLATYPUS_OPTIMIZERS = [platypus_genetic_cube, platypus_evolutionary_cube,
                        platypus_nsgaii_cube, platypus_cmaes_cube, platypus_gde3_cube,
                        platypus_ibea_cube, platypus_moead_cube, platypus_omopso_cube,
                        platypus_smpso_cube, platypus_spea2_cube, platypus_epsmoea_cube]

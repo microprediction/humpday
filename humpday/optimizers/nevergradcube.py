@@ -98,9 +98,11 @@ def nevergrad_hammersley_cube(objective, n_trials,n_dim, with_count=False):
     return nevergrad_cube(objective=objective, n_trials=n_trials, n_dim=n_dim, with_count=with_count, method='hammersley')
 
 
+BAD = [ nevergrad_cma_cube ] # TODO: fix
+
 NEVERGRAD_OPTIMIZERS = [ nevergrad_ngopt_cube, nevergrad_ngopt4_cube, nevergrad_ngopt8_cube,
                          nevergrad_de_cube, nevergrad_portfolio_cube, nevergrad_oneplus_cube,
-                         nevergrad_cma_cube, nevergrad_hammersley_cube ]
+                         nevergrad_hammersley_cube ]
 
 
 if __name__=='__main__':
