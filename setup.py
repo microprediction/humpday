@@ -7,8 +7,8 @@ README = (HERE / "README.md").read_text()
 
 setup(
     name="humpday",
-    version="0.0.2",
-    description="To cheer you up on humpday. Global optimization stuff.",
+    version="0.0.4",
+    description="Taking the pain out of choosing a Python global optimizer",
     long_description=README,
     long_description_content_type="text/markdown",
     url="https://github.com/microprediction/humpday",
@@ -20,11 +20,13 @@ setup(
         "Programming Language :: Python :: 3",
         "Programming Language :: Python :: 3.7",
     ],
-    packages=["humpday"],
+    packages=["humpday","humpday.objectives","humpday.optimizers","humpday.comparison","humpday.visualization"],
     test_suite='pytest',
-    tests_require=['pytest', 'shgo'],
+    tests_require=['pytest'],
     include_package_data=True,
-    install_requires=["shgo", "wheel", "pathlib","optuna","sklearn","pymoo","deap","embarrassingly"],
+    install_requires=["wheel","pathlib","numpy>=1.19.5","importlib-metadata>=1.7.0","microconventions>0.5.0","getjson",
+                      "hyperopt","scipy","scikit-optimize","poap","pySOT","funcy","optuna","deap","ax-platform","platypus-opt",
+                      "pymoo","nevergrad","swarmlib","landscapes"],
     entry_points={
         "console_scripts": [
             "humpday=humpday.__main__:main",
