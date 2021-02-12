@@ -2,6 +2,8 @@ from pymoo.optimize import minimize
 from pymoo.model.problem import Problem
 import numpy as np
 from pymoo.factory import get_algorithm, get_termination, get_reference_directions
+import logging
+logging.getLogger('pymoo').setLevel(logging.ERROR)
 
 REF_DIRS = get_reference_directions("das-dennis", 1, n_partitions=6)
 

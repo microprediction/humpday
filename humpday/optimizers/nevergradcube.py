@@ -1,5 +1,8 @@
 from humpday.objectives.classic import CLASSIC_OBJECTIVES
 import nevergrad as ng
+import logging
+
+logging.getLogger('nevergrad').setLevel(logging.ERROR)
 
 # Facebook nevergrad https://facebookresearch.github.io/nevergrad/optimization.html
 

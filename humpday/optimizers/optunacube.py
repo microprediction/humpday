@@ -1,7 +1,9 @@
 import optuna
 from optuna.logging import CRITICAL
 from humpday.objectives.classic import CLASSIC_OBJECTIVES
+import logging
 
+logging.getLogger('optuna').setLevel(logging.ERROR)
 
 def optuna_cube_factory(objective, n_trials, n_dim, with_count=False, method=None):
 
