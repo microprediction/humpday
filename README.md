@@ -1,3 +1,3 @@
 # humpday
 
-Stuff related to derivative free optimization
+Taking the pain out of choosing a Python global optimizer
