@@ -2,7 +2,6 @@ from swarmlib.util.problem_base import ProblemBase
 from swarmlib.pso.particle import Particle as PSOParticle
 import numpy as np
 from typing import Iterable, Tuple
-from humpday.objectives.transforms import to_space, from_space
 
 
 # I like to give the little guys a run...but this isn't quite there.
@@ -90,20 +89,18 @@ def swarmlib_cube(objective, n_trials, n_dim, with_count=False, algo=None):
        :return:
     """
     assert algo=='pso'
+    assert n_dim==2,'yeah, sorry'
 
     global feval_count
     feval_count = 0
 
     def cube_objective(us):
-        # PSO only handles 2-dim so we convert to a 2-dim problem
-        # Obviously this might not work so well for 1-dim, 3-dim problems but at least it runs and who knows?
-        assert all( [ 0<=ui<=1 for ui in us]),' expecting value on cube '
-        u1 = from_space(us)
-        un = to_space(u1,dim=n_dim)
+        # PSO only handles 2-dim
+        assert all( [ 0<=ui<=1 for ui in us]),' expecting value on square '
 
         global feval_count
         feval_count +=1
-        return objective(un)
+        return objective(us)
 
     iteration_number = 5 if n_trials < 50 else 10
     particles = max( int( n_trials / iteration_number), 1)
