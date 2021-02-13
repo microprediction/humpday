@@ -12,5 +12,5 @@ This is intended to take the pain out of choosing a Python global optimizer.
 ### Explanation
 
 See:
-- [HumpDay: A Package to Take the Pain Out of Choosing a Python Optimizer](https://www.microprediction.com/blog/humpday) in the microprediction blog. This is the follow-on article to: 
+- [HumpDay: A Package to Take the Pain Out of Choosing a Python Optimizer](https://www.microprediction.com/blog/humpday). This is the follow-on article to: 
 - [Comparing Python Global Optimizers](https://www.microprediction.com/blog/optimize).
