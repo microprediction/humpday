@@ -3,6 +3,9 @@ from humpday.optimizers.scipycube import scipy_dogleg_cube
 import json
 from pprint import pprint
 
+def get_benchmarks():
+    
+
 
 if __name__ == '__main__':
 
