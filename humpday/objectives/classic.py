@@ -5,7 +5,7 @@ import math
 # Some test objective functions to help guide optimizer choices
 # -------------------------------------------------------------
 #
-# We'll use DEAP's set of groovy benchmarks, and landscapes package et al.
+# We'll use DEAP's set of groovy benchmarks, and landscapes, swarmpackagepy also
 #
 # See pretty pictures at https://deap.readthedocs.io/en/master/api/benchmarks.html#deap.benchmarks
 # Some hardness assessment is at https://github.com/nathanrooy/landscapes#available-functions-from-single_objective but we'll do our own
@@ -203,6 +203,44 @@ def ackley_on_cube(u:[float])->float:
     a=20.; b=0.2; c=2.*math.pi
     return (-a*np.exp(-b*np.sqrt(1./ndim*np.sum(x**2)))-np.exp(1./ndim*np.sum(np.cos(c*x)))+a+np.exp(1.))/20.0
 
+
+# Adapted from https://github.com/SISDevelop/SwarmPackagePy/blob/master/SwarmPackagePy/testFunctions.py
+
+def cross_on_cube(u):
+    x = [5 * smoosh(ui) - 2.5 for ui in u]
+    return round(-0.0001*(abs(math.sin(x[0])*math.sin(x[1])*math.exp(abs(100 -
+                            math.sqrt(sum([i**2 for i in x]))/math.pi))) + 1)**0.1, 7)
+
+
+def powers_on_cube(u):
+    x = [5 * smoosh(ui) - 2.5 for ui in u]
+    return sum([abs(x[i])**(i+2) for i in range(len(x))])
+
+
+def booth_on_cube(u):
+    x = [5 * smoosh(ui) - 2.5 for ui in u]
+    return sum([abs(x[i])**(i+2) for i in range(len(x))])
+
+
+def matyas_on_cube(u):
+    x = [3 * smoosh(ui) - 1.5 for ui in u]
+
+    def sphere_function(x):
+        return sum([i ** 2 for i in x])
+
+    return 0.26*sphere_function(x) - 0.48*x[0]*x[1]
+
+
+def drop_wave_on_cube(u):
+    x = [3 * smoosh(ui) - 1.5 for ui in u]
+
+    def sphere_function(x):
+        return sum([i ** 2 for i in x])
+
+    return -(1 + math.cos(12*math.sqrt(sphere_function(x))))/(0.5*sphere_function(x) + 2)
+
+SWARM_OBJECTIVES = [cross_on_cube, powers_on_cube,
+                    booth_on_cube, matyas_on_cube, drop_wave_on_cube]
 
 
 A_CLASSIC_OBJECTIVE = rastrigin_on_cube  # Just pick one for testing

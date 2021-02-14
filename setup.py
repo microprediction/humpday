@@ -26,7 +26,7 @@ setup(
     include_package_data=True,
     install_requires=["wheel","pathlib","numpy>=1.19.5","importlib-metadata>=1.7.0","getjson",
                       "hyperopt","scipy","scikit-optimize","poap","pySOT","funcy","optuna","deap","ax-platform","platypus-opt",
-                      "pymoo","nevergrad","landscapes","ultraopt"],
+                      "pymoo","nevergrad","landscapes","ultraopt","bayesian-optimization"],
     entry_points={
         "console_scripts": [
             "humpday=humpday.__main__:main",
