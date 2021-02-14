@@ -14,3 +14,27 @@
 See:
 - [HumpDay: A Package to Take the Pain Out of Choosing a Python Optimizer](https://www.microprediction.com/blog/humpday). This is the follow-on article to: 
 - [Comparing Python Global Optimizers](https://www.microprediction.com/blog/optimize).
+
+### Install notes
+
+Possibly 
+
+    pip install humpday
+    
+will simply work, or for the bleeding edge
+
+    pip install git+https://github.com/microprediction/humpday
+    
+If you get a CMake error, 
+
+    pip install cmake
+    pip install humpday 
+
+
+#### Optional packages
+
+A few packages are not included in setup as their install isn't quite stable on some operating systems I have tried. So install themm manually:
+
+    pip install ultraopt
+    
+
