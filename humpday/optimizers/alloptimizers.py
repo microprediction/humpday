@@ -14,6 +14,7 @@ from humpday.optimizers.nevergradcube import NEVERGRAD_OPTIMIZERS
 from humpday.objectives.classic import CLASSIC_OBJECTIVES
 from humpday.optimizers.skoptcube import SKOPT_GP_OPTIMIZERS
 from humpday.optimizers.ultraoptcube import ULTRAOPT_OPTIMIZERS
+from humpday.optimizers.bayesoptcube import BAYESOPT_OPTIMIZERS
 
 from datetime import datetime
 import pandas as pd
@@ -27,7 +28,8 @@ CANDIDATES = SCIPY_OPTIMIZERS + SHGO_OPTIMIZERS + HYPEROPT_OPTIMIZERS +\
 # https://github.com/microprediction/humpday-testing/tree/main/data/brownian/dlm_seasonal
 OPTIMIZERS = SHGO_OPTIMIZERS + SCIPY_OPTIMIZERS + PYSOT_OPTIMIZERS + AX_OPTIMIZERS + \
              OPTUNA_OPTIMIZERS + PLATYPUS_OPTIMIZERS + NEVERGRAD_OPTIMIZERS +\
-             SWARMLIB_OPTIZERS + HYPEROPT_OPTIMIZERS + PYMOO_OPTMIZERS + SKOPT_GP_OPTIMIZERS + ULTRAOPT_OPTIMIZERS
+             SWARMLIB_OPTIZERS + HYPEROPT_OPTIMIZERS + PYMOO_OPTMIZERS +\
+             SKOPT_GP_OPTIMIZERS + ULTRAOPT_OPTIMIZERS + BAYESOPT_OPTIMIZERS
 
 
 def optimizer_from_name(name):

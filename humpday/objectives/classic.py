@@ -247,7 +247,7 @@ A_CLASSIC_OBJECTIVE = rastrigin_on_cube  # Just pick one for testing
 
 MISC_OBJECTIVES = [ paviani_on_cube, damavandi_on_cube, rosenbrock_modified_on_cube, ackley_on_cube ]
 
-CLASSIC_OBJECTIVES = DEAP_OBJECTIVES + LANDSCAPES_OBJECTIVES + MISC_OBJECTIVES
+CLASSIC_OBJECTIVES = DEAP_OBJECTIVES + LANDSCAPES_OBJECTIVES + MISC_OBJECTIVES + SWARM_OBJECTIVES
 
 
 if __name__=="__main__":
