@@ -199,8 +199,9 @@ def optimizer_population_elo_update(optimizers, game_result: dict, elo: dict, in
     black_ndx = elo['name'].index(black_name)
     elo['traceback'][white_ndx] = game_result['traceback'][0]
     elo['traceback'][black_ndx] = game_result['traceback'][1]
-    elo['count'][black_ndx] += 1
     if game_result['completed']:
+        elo['count'][white_ndx] += 1
+        elo['count'][black_ndx] += 1
         points = game_result['points']
         print('>>>> ' + game_result['winner'])
         white_elo, black_elo = elo['rating'][white_ndx], elo['rating'][black_ndx]
