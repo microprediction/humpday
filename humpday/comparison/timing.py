@@ -53,14 +53,14 @@ def create_timing(max_elapsed=5*60):
                             traceback.print_tb(tb=exc_traceback)
                             cpu[opt.__name__][n_dim][n_trials] = -1
                             n_failures+=1
-                            if n_failures>=1:
-                                break
+                        if n_failures>=1:
+                            break
                         if elapsed>max_elapsed:
                             break
-                if n_failures >= 1:
-                    break
-                if elapsed > 60 * 10:
-                    break
+            if n_failures >= 1:
+                break
+            if elapsed > 60 * 10:
+                break
 
             with open('timing.json','wt') as fp:
                 json.dump(cpu,fp=fp)
