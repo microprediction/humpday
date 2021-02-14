@@ -1,28 +1,37 @@
-from dlib import find_min_global
-
+import warnings
 
 # http://dlib.net/optimization.html#find_min_global
 # This library also provides global_function_search which is pretty darn cool
 
+try:
+    from dlib import find_min_global
+    using_dlib = True
+except ImportError:
+    warnings.warn('dlib may not be properly supported on this operating system. Maybe try pip install --upgrade cmake')
+    using_dlib = False
 
-def dlib_cube(objective ,n_trials, n_dim, with_count):
-    global feval_count
-    feval_count = 0
+if using_dlib:
 
-    lb = [0. for _ in range(n_dim)]
-    ub = [1. for _ in range(n_dim)]
-
-    def _objective(*args) -> float:
+    def dlib_cube(objective ,n_trials, n_dim, with_count):
         global feval_count
-        feval_count += 1
-        return objective(list(args))
+        feval_count = 0
 
-    best_x, best_val = find_min_global(_objective, lb, ub, n_trials)
+        lb = [0. for _ in range(n_dim)]
+        ub = [1. for _ in range(n_dim)]
 
-    return (best_val, best_x, feval_count) if with_count else (best_val, best_x)
+        def _objective(*args) -> float:
+            global feval_count
+            feval_count += 1
+            return objective(list(args))
+
+        best_x, best_val = find_min_global(_objective, lb, ub, n_trials)
+
+        return (best_val, best_x, feval_count) if with_count else (best_val, best_x)
 
 
-DLIB_OPTIMIZERS = [dlib_cube]
+    DLIB_OPTIMIZERS = [dlib_cube]
+else:
+    DLIB_OPTIMIZERS = []
 
 
 if __name__ == '__main__':
