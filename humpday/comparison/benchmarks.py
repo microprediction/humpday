@@ -1,14 +1,16 @@
 from humpday.objectives.allobjectives import CLASSIC_OBJECTIVES
 from humpday.optimizers.scipycube import scipy_dogleg_cube
 import json
-from pprint import pprint
+from getjson import getjson
+
+
+# Very approximate benchmark minima (found by scipy.dogleg)
 
 def get_benchmarks():
-    
+    return getjson('https://raw.githubusercontent.com/microprediction/humpday/main/humpday/comparison/bencharks.json')
 
 
-if __name__ == '__main__':
-
+def create_benchmarks():
     benchmarks = dict()
     for objective in CLASSIC_OBJECTIVES:
         benchmarks[objective.__name__] = dict()
@@ -21,4 +23,6 @@ if __name__ == '__main__':
             with open('bencharks.json','wt') as fp:
                 json.dump(benchmarks,fp=fp)
 
+if __name__=='__main__':
+    create_benchmarks()
 
