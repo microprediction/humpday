@@ -7,8 +7,9 @@ from copy import deepcopy
 MINIMIZER_KWARGS = {'slqsp': {'method': 'SLQSP'},
                     'powell': {'method': 'Powell'},
                     'nelder': {'method': 'Nelder-Mead'},
-                    'dogleg': {'method': 'dogleg'}
-                    }
+                    'dogleg': {'method': 'dogleg'},
+                    'lbfgsb': {'method': 'L-BFGS-B'},
+}
 
 
 def scipy_cube(objective, n_trials, n_dim, with_count=False, method=None):
@@ -47,7 +48,11 @@ def scipy_dogleg_cube(objective, n_trials, n_dim, with_count=False):
     return scipy_cube(objective=objective, n_trials=n_trials, n_dim=n_dim, with_count=with_count, method='dogleg')
 
 
-SCIPY_OPTIMIZERS = [ scipy_slqsp_cube, scipy_powell_cube, scipy_nelder_cube, scipy_dogleg_cube ]
+def scipy_lbfgsb_cube(objective, n_trials, n_dim, with_count=False):
+    return scipy_cube(objective=objective, n_trials=n_trials, n_dim=n_dim, with_count=with_count, method='lbfgsb')
+
+
+SCIPY_OPTIMIZERS = [ scipy_slqsp_cube, scipy_powell_cube, scipy_nelder_cube, scipy_dogleg_cube, scipy_lbfgsb_cube ]
 
 
 if __name__ == '__main__':
