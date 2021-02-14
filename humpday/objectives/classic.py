@@ -135,8 +135,14 @@ def damavandi2(u1,u2)->float:
 
 def paviani_on_cube(u:[float])->float:
     # http://infinity77.net/global_optimization/test_functions_nd_P.html#go_benchmark.Paviani
-    x = np.array([ 2.0001 + 5.996*smoosh(ui) for ui in u])
-    return float( np.sum(np.log(x-2)**2.0 + np.log(10.0 - x)**2.0) - np.prod(x)**0.2 )/8.6456
+    x = np.array([ 2.001 + 5.996*smoosh(ui) for ui in u])
+
+    def safe_np_log(x):
+        lb = np.array([1e-6]*len(x))
+        xup = np.maximum(x,lb)
+        return np.log(xup)
+
+    return float( np.sum(safe_np_log(x-2)**2.0 + safe_np_log(10.0 - x)**2.0) - np.prod(x)**0.2 )/8.6456
 
 
 # Landscapes

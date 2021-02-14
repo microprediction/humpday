@@ -15,3 +15,7 @@ swarmlib
 sklearn
 tdigest
 landscapes
+cmake
+dlib
+bayesian-optimization
+ultra-opt
