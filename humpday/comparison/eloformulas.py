@@ -1,5 +1,5 @@
 
-# TODO: Move into visualization package to remove this dependency
+# Sooner or later I'll do something using https://github.com/microprediction/winning instead. 
 
 def elo_expected(d :float ,f :float =400 )->float:
     """ Expected points scored in a match by White player
