@@ -5,6 +5,7 @@ import logging
 
 logging.getLogger('optuna').setLevel(logging.ERROR)
 
+
 def optuna_cube_factory(objective, n_trials, n_dim, with_count=False, method=None):
 
     if method.lower()=='random':

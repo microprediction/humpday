@@ -1,1 +1,1 @@
-from humpday.comparison.naming import M
+from humpday.comparison.naming import M  #Silly https://www.linkedin.com/posts/tedpetrou_pythonquiz-activity-6766019617098924033-6jIL
