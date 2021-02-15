@@ -2,7 +2,7 @@
 
 - Assigns [Elo ratings](https://github.com/microprediction/optimizer-elo-ratings/tree/main/results/leaderboards/overall) to global derivative-free Python global optimization "strategies", and 
 - Presents [many different popular optimizers](https://github.com/microprediction/humpday/tree/main/humpday/optimizers) in a common calling syntax. 
-- Thereby, supposedly makes it dead easy to choose a Python global optimizer for your bespoke problem. 
+- Thereby, supposedly makes it dead easy to choose a Python global optimizer for your bespoke problem, assuming a continous domain.   
 
 # Included
 
