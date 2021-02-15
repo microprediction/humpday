@@ -2,7 +2,8 @@
 
 - Assigns [Elo ratings](https://github.com/microprediction/optimizer-elo-ratings/tree/main/results/leaderboards/overall) to global derivative-free Python global optimization "strategies", and 
 - Presents [many different popular optimizers](https://github.com/microprediction/humpday/tree/main/humpday/optimizers) in a common calling syntax. 
-- Supposedly makes it dead easy to choose a Python global optimizer for your bespoke problem. 
+- Thereby, supposedly makes it dead easy to choose a Python global optimizer for your bespoke problem from 
+[Ax-Platform](https://github.com/microprediction/humpday/blob/main/humpday/optimizers/axcube.py) | [bayesian-optimization](https://github.com/microprediction/humpday/blob/main/humpday/optimizers/bayesoptcube.py) | [DLib](https://github.com/microprediction/humpday/blob/main/humpday/optimizers/dlibcube.py) | [HyperOpt](https://github.com/microprediction/humpday/blob/main/humpday/optimizers/hyperoptcube.py) | [NeverGrad](https://github.com/microprediction/humpday/blob/main/humpday/optimizers/nevergradcube.py) | [Optuna](https://github.com/microprediction/humpday/blob/main/humpday/optimizers/optunacube.py) | [Platypus](https://github.com/microprediction/humpday/blob/main/humpday/optimizers/platypuscube.py) | [PyMoo](https://github.com/microprediction/humpday/blob/main/humpday/optimizers/pymoocube.py) | [PySOT](https://github.com/microprediction/humpday/blob/main/humpday/optimizers/pysotcube.py) | [Scipy.Optimize](https://github.com/microprediction/humpday/blob/main/humpday/optimizers/scipycube.py) (classic) | [Scipy.Optimize](https://github.com/microprediction/humpday/blob/main/humpday/optimizers/shgocube.py) (shgo) | [Skopt](https://github.com/microprediction/humpday/blob/main/humpday/optimizers/skoptcube.py) | [UltraOpt](https://github.com/microprediction/humpday/blob/main/humpday/optimizers/ultraoptcube.py)
 
 ### 
 
@@ -14,10 +15,6 @@
 See:
 - [HumpDay: A Package to Take the Pain Out of Choosing a Python Optimizer](https://www.microprediction.com/blog/humpday). This is the follow-on article to: 
 - [Comparing Python Global Optimizers](https://www.microprediction.com/blog/optimize).
-
-### Packages uses thus far
-
-[Ax-Platform](https://github.com/microprediction/humpday/blob/main/humpday/optimizers/axcube.py) | [bayesian-optimization](https://github.com/microprediction/humpday/blob/main/humpday/optimizers/bayesoptcube.py) | [DLib](https://github.com/microprediction/humpday/blob/main/humpday/optimizers/dlibcube.py) | [HyperOpt](https://github.com/microprediction/humpday/blob/main/humpday/optimizers/hyperoptcube.py) | [NeverGrad](https://github.com/microprediction/humpday/blob/main/humpday/optimizers/nevergradcube.py) | [Optuna](https://github.com/microprediction/humpday/blob/main/humpday/optimizers/optunacube.py) | [Platypus](https://github.com/microprediction/humpday/blob/main/humpday/optimizers/platypuscube.py) | [PyMoo](https://github.com/microprediction/humpday/blob/main/humpday/optimizers/pymoocube.py) | [PySOT](https://github.com/microprediction/humpday/blob/main/humpday/optimizers/pysotcube.py) | [Scipy.Optimize](https://github.com/microprediction/humpday/blob/main/humpday/optimizers/scipycube.py) (classic) | [Scipy.Optimize](https://github.com/microprediction/humpday/blob/main/humpday/optimizers/shgocube.py) (shgo) | [Skopt](https://github.com/microprediction/humpday/blob/main/humpday/optimizers/skoptcube.py) | [UltraOpt](https://github.com/microprediction/humpday/blob/main/humpday/optimizers/ultraoptcube.py)
 
 
 ### Install notes
