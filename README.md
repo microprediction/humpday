@@ -39,6 +39,7 @@ If you get a CMake error,
 
 A few packages are not included in setup as their install isn't quite stable on some operating systems I have tried. Please add manually if you wish them to be included. 
 
+    pip install cmake
     pip install ultraopt
     
 
