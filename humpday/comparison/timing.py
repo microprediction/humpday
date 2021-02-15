@@ -75,6 +75,8 @@ def create_timing(max_elapsed=5*60):
             with open('timing.json','wt') as fp:
                 json.dump(cpu,fp=fp)
 
+
 if __name__=='__main__':
-    create_timing()
+    from pprint import pprint
+    pprint(get_timing())
 
