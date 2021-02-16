@@ -4,7 +4,7 @@ A package that helps you choose a Python global optimizer package, and strategy 
  
 ### 
 
-- 50+ strategies are assigned [Elo ratings](https://github.com/microprediction/optimizer-elo-ratings/tree/main/results/leaderboards/overall).
+- 50+ strategies are assigned [Elo ratings](https://github.com/microprediction/optimizer-elo-ratings/tree/main/results/leaderboards) by sister repo [optimizer-elo-ratings](https://github.com/microprediction/optimizer-elo-ratings)
 - All are presented in a common calling syntax. By all means contribute more to [optimizers](https://github.com/microprediction/humpday/tree/main/humpday/optimizers). 
 - Pass the dimensions of the problem, function evaluation budget and time budget to receive [suggestions](https://github.com/microprediction/humpday/blob/main/humpday/comparison/suggestions.py),
 - Or call the [meta](https://github.com/microprediction/humpday/blob/main/humpday/optimizers/meta.py) minimizer, which will choose one and run it.   
