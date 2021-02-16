@@ -3,6 +3,7 @@ from pprint import pprint
 
 TIMING_URL='https://raw.githubusercontent.com/microprediction/humpday/main/humpday/comparison/timing.json'
 
+
 def get_timing():
     return getjson(TIMING_URL)
 
