@@ -1,25 +1,23 @@
 from scipy.optimize import shgo
 
 # Define how SHGO does local search
-MINIMIZER_KWARGS = {'slqsp': {'method': 'SLQSP',
+MINIMIZER_KWARGS = {'slsqp': {'method': 'SLSQP',
                               'max_iter': 5},
                     'powell': {'method': 'Powell',
                                'max_iter': 5},
                     'nelder': {'method': 'Nelder-Mead',
-                               'maxiter': 5},
-                    'dogleg': {'method': 'dogleg',
                                'maxiter': 5}
                     }
 
 
-def shgo_slqsp_sobol_cube(objective, n_trials, n_dim, with_count: bool = False):
+def shgo_slsqp_sobol_cube(objective, n_trials, n_dim, with_count: bool = False):
     return shgo_cube(objective=objective, n_trials=n_trials, n_dim=n_dim, with_count=with_count,
-                     local_method='slqsp', sampling_method='sobol')
+                     local_method='slsqp', sampling_method='sobol')
 
 
-def shgo_slqsp_simplicial_cube(objective, n_trials, n_dim, with_count: bool = False):
+def shgo_slsqp_simplicial_cube(objective, n_trials, n_dim, with_count: bool = False):
     return shgo_cube(objective=objective, n_trials=n_trials, n_dim=n_dim, with_count=with_count,
-                     local_method='slqsp', sampling_method='simplicial')
+                     local_method='slsqp', sampling_method='simplicial')
 
 
 def shgo_powell_sobol_cube(objective, n_trials, n_dim, with_count: bool = False):
@@ -42,19 +40,8 @@ def shgo_nelder_simplicial_cube(objective, n_trials, n_dim, with_count: bool = F
                      local_method='nelder', sampling_method='simplicial')
 
 
-def shgo_dogleg_sobol_cube(objective, n_trials, n_dim, with_count: bool = False):
-    return shgo_cube(objective=objective, n_trials=n_trials, n_dim=n_dim, with_count=with_count,
-                     local_method='dogleg', sampling_method='sobol')
-
-
-def shgo_dogleg_simplicial_cube(objective, n_trials, n_dim, with_count: bool = False):
-    return shgo_cube(objective=objective, n_trials=n_trials, n_dim=n_dim, with_count=with_count,
-                     local_method='dogleg', sampling_method='simplicial')
-
-
-SHGO_OPTIMIZERS_ALL = [shgo_slqsp_sobol_cube, shgo_slqsp_simplicial_cube, shgo_powell_sobol_cube,
-                   shgo_powell_simplicial_cube, shgo_nelder_sobol_cube, shgo_nelder_simplicial_cube,
-                   shgo_dogleg_sobol_cube, shgo_dogleg_simplicial_cube]
+SHGO_OPTIMIZERS_ALL = [shgo_slsqp_sobol_cube, shgo_slsqp_simplicial_cube, shgo_powell_sobol_cube,
+                   shgo_powell_simplicial_cube, shgo_nelder_sobol_cube, shgo_nelder_simplicial_cube]
 
 SHGO_OPTIMIZERS = [ o for o in SHGO_OPTIMIZERS_ALL if 'sobol' in o.__name__]
 

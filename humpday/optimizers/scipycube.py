@@ -4,7 +4,7 @@ global feval_count
 
 # TODO: standardize with SHGO and remove duplicate code
 from copy import deepcopy
-MINIMIZER_KWARGS = {'slqsp': {'method': 'SLQSP'},
+MINIMIZER_KWARGS = {'slsqp': {'method': 'SLSQP'},
                     'powell': {'method': 'Powell'},
                     'nelder': {'method': 'Nelder-Mead'},
                     'dogleg': {'method': 'dogleg'},
@@ -16,7 +16,7 @@ def scipy_cube(objective, n_trials, n_dim, with_count=False, method=None):
     bounds = [(0,1) ]*n_dim
 
     options = deepcopy(MINIMIZER_KWARGS[method])
-    options.update({'maxfev': n_trials})
+    options.update({'maxfev': n_trials,'maxiter':n_trials})
 
     global feval_count
     feval_count = 0
@@ -26,14 +26,14 @@ def scipy_cube(objective, n_trials, n_dim, with_count=False, method=None):
         feval_count +=1
         return objective(list(x))
 
-    result = minimize(_objective, x0=[0]*n_dim, method='powell',bounds=bounds, options=options)
+    result = minimize(_objective, x0=[0]*n_dim, method=options['method'],bounds=bounds, options=options)
     best_x = result.x.tolist()
     best_val = _objective(result.x)
     return (best_val, best_x,  feval_count) if with_count else (best_val, best_x)
 
 
-def scipy_slqsp_cube(objective, n_trials, n_dim, with_count=False ):
-    return scipy_cube(objective=objective, n_trials=n_trials, n_dim=n_dim, with_count=with_count, method='slqsp')
+def scipy_slsqp_cube(objective, n_trials, n_dim, with_count=False ):
+    return scipy_cube(objective=objective, n_trials=n_trials, n_dim=n_dim, with_count=with_count, method='slsqp')
 
 
 def scipy_powell_cube(objective, n_trials, n_dim, with_count=False):
@@ -44,15 +44,11 @@ def scipy_nelder_cube(objective, n_trials, n_dim, with_count=False):
     return scipy_cube(objective=objective, n_trials=n_trials, n_dim=n_dim, with_count=with_count, method='nelder')
 
 
-def scipy_dogleg_cube(objective, n_trials, n_dim, with_count=False):
-    return scipy_cube(objective=objective, n_trials=n_trials, n_dim=n_dim, with_count=with_count, method='dogleg')
-
-
 def scipy_lbfgsb_cube(objective, n_trials, n_dim, with_count=False):
     return scipy_cube(objective=objective, n_trials=n_trials, n_dim=n_dim, with_count=with_count, method='lbfgsb')
 
 
-SCIPY_OPTIMIZERS = [ scipy_slqsp_cube, scipy_powell_cube, scipy_nelder_cube, scipy_dogleg_cube, scipy_lbfgsb_cube ]
+SCIPY_OPTIMIZERS = [ scipy_slsqp_cube, scipy_powell_cube, scipy_nelder_cube, scipy_lbfgsb_cube ]
 
 
 if __name__ == '__main__':

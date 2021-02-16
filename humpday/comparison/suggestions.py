@@ -2,7 +2,7 @@
 from humpday.comparison.timingretrieval import get_timing
 from humpday.comparison.eloretrieval import get_elo_leaderboard
 from typing import List, Tuple
-
+from humpday.optimizers.scipycube import scipy_powell_cube as DEFAULT_OPTIMIZER
 
 FIBONACCI = [ 2, 3, 5, 8, 13, 21, 34, 55, 89, 144, 233, 377, 610, 987, 1597]
 FIBONACCI_X10 = [ k*10 for k in FIBONACCI ]
@@ -50,8 +50,7 @@ def suggest(n_dim:int, n_trials:int, n_seconds:float, category='classic')->List[
                 pass
 
     if not suggestions:
-        from humpday.optimizers.scipycube import scipy_dogleg_cube
-        return [(scipy_dogleg_cube,None,None)]
+        return [(DEFAULT_OPTIMIZER,None,None)]
     else:
         return list(sorted( suggestions, reverse=True))
 
