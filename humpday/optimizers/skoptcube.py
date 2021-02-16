@@ -17,6 +17,8 @@ GP_INTERPRETATIONS.update({  'lcbexplore':{"acq_func": "LCB", "kappa":3.0},
                              'calm':{'noise':1e-8},
                              '':{}
                            })
+# This could be improved I'm sure 
+# https://github.com/scikit-optimize/scikit-optimize/discussions/1002
 
 
 def skopt_gp_method_to_kwargs(method:str)->dict:
