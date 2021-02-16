@@ -1,6 +1,7 @@
 import math
 from humpday.comparison.suggestions import recommend
 
+# The equivalent of the "I'm feeling lucky" button on Google search. 
 
 def minimize(objective,n_dim:int,n_trials:int, category='classic', with_count=False):
     """ Minimize an objective, by first choosing a good optimizer then using it.
