@@ -1,5 +1,6 @@
 from humpday.objectives.allobjectives import A_CLASSIC_OBJECTIVE
 from humpday.optimizers.alloptimizers import OPTIMIZERS
+from humpday.comparison.limitations import max_n_dim
 import json
 from getjson import getjson
 import time
@@ -30,12 +31,14 @@ def create_timing(max_elapsed=5*60):
     except Exception:
         cpu = dict()
 
-    for n_dim in [2, 3, 5, 8, 13,21]:
+    for n_dim in [2, 3, 5, 8]:
         print(' ')
         print('*********** Dimension '+str(n_dim)+' ************')
         print(' ')
         for opt in OPTIMIZERS:
             print(opt.__name__)
+            dim_okay = n_dim <= max_n_dim(opt.__name__)
+
             if not cpu.get(opt.__name__):
                 cpu[opt.__name__] = dict()
             n_failures = 0
@@ -77,6 +80,4 @@ def create_timing(max_elapsed=5*60):
 
 
 if __name__=='__main__':
-    from pprint import pprint
-    pprint(get_timing())
-
+    create_timing()

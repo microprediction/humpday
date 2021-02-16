@@ -11,7 +11,7 @@ def get_name_elo_cpu(n_dim=5, n_trials=130):
     :return:   [names], [elos], [cpus]
     """
     names = [ optimizer_name(o) for o in OPTIMIZERS ]
-    elos  = [ get_elo_rating(o.__name, n_dim=n_dim, n_trials=n_trials ) for o in OPTIMIZERS ]
+    elos  = [ get_elo_rating(o.__name__, n_dim=n_dim, n_trials=n_trials ) for o in OPTIMIZERS ]
     cpus  = [ get_strategy_time(optimizer_name(o), n_dim=n_dim, n_trials=n_trials) for o in OPTIMIZERS ]
     return names, elos, cpus
 
@@ -22,7 +22,7 @@ def get_suggestions(n_dim=5, n_trials=130, n_seconds=5 * 60):
          n_seconds:  Maximum allowed time for entire minimization routine
     """
     names, elos, cpus = get_name_elo_cpu(n_dim=n_dim, n_trials=n_trials)
-    return sorted( [ (elo,cpu,name) for elo, cpu, name in zip(names,elos,cpus) if cpu>-0.5 and cpu<n_seconds ], reverse=True )
+    return sorted( [ (elo,cpu,name) for elo, cpu, name in zip(names,elos,cpus) if cpu is not None and cpu>-0.5 and cpu<n_seconds ], reverse=True )
 
 
 

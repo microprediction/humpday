@@ -15,7 +15,7 @@ def get_strategy_time(optimizer,n_dim:int=5, n_trials:int=130):
     :return:
     """
     if isinstance(optimizer,str):
-        o = optimizer if '_cube' in o else optimizer+'_cube'
+        o = optimizer if '_cube' in optimizer else optimizer+'_cube'
     else:
         o = optimizer.__name__
     cpu = get_timing()
