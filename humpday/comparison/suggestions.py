@@ -40,13 +40,14 @@ def suggest(n_dim:int, n_trials:int, n_seconds:float, category='classic')->List[
 
     lb = get_elo_leaderboard(category=category, n_dim=n_dim, n_trials=n_trials)
     suggestions = list()
-    for opt,t in shortlist:
-        try:
-            ndx = lb['name'].index(opt)
-            elo = lb['rating'][ndx]
-            suggestions.append((elo,t,opt))
-        except ValueError:
-            pass
+    if lb:
+        for opt,t in shortlist:
+            try:
+                ndx = lb['name'].index(opt)
+                elo = lb['rating'][ndx]
+                suggestions.append((elo,t,opt))
+            except ValueError:
+                pass
 
     if not suggestions:
         from humpday.optimizers.scipycube import scipy_dogleg_cube
