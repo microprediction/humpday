@@ -7,7 +7,7 @@ README = (HERE / "README.md").read_text()
 
 setup(
     name="humpday",
-    version="0.1.17",
+    version="0.1.18",
     description="Taking the pain out of choosing a Python global optimizer",
     long_description=README,
     long_description_content_type="text/markdown",
