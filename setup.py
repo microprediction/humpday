@@ -7,7 +7,7 @@ README = (HERE / "README.md").read_text()
 
 setup(
     name="humpday",
-    version="0.1.20",
+    version="0.1.21",
     description="Taking the pain out of choosing a Python global optimizer",
     long_description=README,
     long_description_content_type="text/markdown",
@@ -27,7 +27,7 @@ setup(
     install_requires=["wheel", "pathlib", "numpy>=1.19.5", "importlib-metadata>=1.7.0", "getjson",
                       "scipy", "scikit-optimize", "poap", "pySOT", "funcy", "optuna", "deap", "ax-platform",
                       "platypus-opt",
-                      "pymoo", "nevergrad", "landscapes", "bayesian-optimization", "cmake", "dlib"],
+                      "pymoo", "nevergrad", "landscapes", "bayesian-optimization", "cmake", "dlib","nlopt"],
     entry_points={
         "console_scripts": [
             "humpday=humpday.__main__:main",

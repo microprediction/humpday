@@ -5,6 +5,7 @@ deap
 funcy
 nevergrad
 numpy>=1.19.5
+nlopt
 optuna
 platypus-opt
 poap
