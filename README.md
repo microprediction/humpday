@@ -50,10 +50,11 @@ File an issue if you have problems. If you get a CMake error, try:
 
 #### Optional packages
 
-I removed ultraopt from setup so you'll have to install it manually:
+Install directly if you want them to be included:
 
     pip install cmake
     pip install ultraopt
+    pip install hyperopt
     
 ### Articles 
 

@@ -3,7 +3,6 @@ getjson
 ax-platform
 deap
 funcy
-hyperopt
 nevergrad
 numpy>=1.19.5
 optuna
@@ -18,4 +17,3 @@ landscapes
 cmake
 dlib
 bayesian-optimization
-ultraopt
