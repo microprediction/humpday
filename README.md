@@ -39,6 +39,7 @@ and [UltraOpt](https://github.com/microprediction/humpday/blob/main/humpday/opti
         from humpday import points_race
         points_race(objectives=[my_objective]*2,n_dim=5, n_trials=100)
         
+  Here is a [notebook](https://github.com/microprediction/humpday/blob/main/humpday_points_race.ipynb) you can open in colab and run, illustrating the points race. 
 
 ![](https://i.imgur.com/FCiSrMQ.png)
  
