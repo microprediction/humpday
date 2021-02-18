@@ -22,7 +22,7 @@ def compare(objectives:List=None, n_dim=5, n_trials=100):
                          for optimizer in OPTIMIZERS for objective in objectives])
 
 
-def comparison(objectives:List=None, optimizers=None, n_dim=5, n_trials=100, n_top=3):
+def points_race(objectives:List=None, optimizers=None, n_dim=5, n_trials=100, n_top=3):
     """  Run all optimizers and return ranked list, printing as we go
     :param objectives:  A list of functions taking a single argument representing [0,1]^n_dim
     :param n_trials:    Maximum number of function evaluations
@@ -59,7 +59,7 @@ def comparison(objectives:List=None, optimizers=None, n_dim=5, n_trials=100, n_t
 
 
 if __name__=='__main__':
-    pprint(comparison())
+    pprint(points_race())
 
 
 
