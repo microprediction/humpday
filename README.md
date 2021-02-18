@@ -9,7 +9,7 @@ and [UltraOpt](https://github.com/microprediction/humpday/blob/main/humpday/opti
 - 50+ strategies are assigned [Elo ratings](https://github.com/microprediction/optimizer-elo-ratings/tree/main/results/leaderboards) by sister repo [optimizer-elo-ratings](https://github.com/microprediction/optimizer-elo-ratings). All are presented in a common calling syntax. By all means contribute more to [optimizers](https://github.com/microprediction/humpday/tree/main/humpday/optimizers). 
 - Pass the dimensions of the problem, function evaluation budget and
  time budget to receive [suggestions](https://github.com/microprediction/humpday/blob/main/humpday/comparison/suggestions.py) that are independent of your problem set,
-- Or call [comparison](https://github.com/microprediction/humpday/blob/main/humpday/comparison/idious.py) on a list of objectives to run a points race amongst the best performing optimizers:
+- Or call [comparison](https://github.com/microprediction/humpday/blob/main/humpday/comparison/odious.py) on a list of objectives to run a points race amongst the best performing optimizers:
 
         from humpday import comparison
         comparison(objectives,n_dim=5, n_trials=100)
