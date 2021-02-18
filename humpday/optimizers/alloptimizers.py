@@ -37,6 +37,8 @@ OPTIMIZERS = SHGO_OPTIMIZERS + SCIPY_OPTIMIZERS + PYSOT_OPTIMIZERS + AX_OPTIMIZE
              + DLIB_OPTIMIZERS + NLOPT_OPTIMIZERS
 
 
+
+
 def optimizer_from_name(name):
     valid = [f for f in OPTIMIZERS if f.__name__==name ]
     return valid[0] if len(valid)==1 else None

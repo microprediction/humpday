@@ -14,6 +14,12 @@ and [UltraOpt](https://github.com/microprediction/humpday/blob/main/humpday/opti
         from humpday import minimize
         best_val, best_x = minimize(f, n_dim=13, n_trials=130 )
         
+- Or call [compare](https://github.com/microprediction/humpday/blob/main/humpday/comparison/idious/compare.py) on a list of objectives
+
+        from humpday import compare
+        from pprint import pprint
+        pprint(compare(objectives, n_dim=5, n_trials=100))
+        
 Here *f* is intended to be minimized on the hypercube [0,1]^n_dim.  
 
 ![](https://i.imgur.com/FCiSrMQ.png)
