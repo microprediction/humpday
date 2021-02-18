@@ -20,7 +20,7 @@ setup(
         "Programming Language :: Python :: 3",
         "Programming Language :: Python :: 3.7",
     ],
-    packages=["humpday", "humpday.objectives", "humpday.optimizers", "humpday.compare", "humpday.visualization","humpday.transforms"],
+    packages=["humpday", "humpday.objectives", "humpday.optimizers", "humpday.comparison", "humpday.visualization","humpday.transforms"],
     test_suite='pytest',
     tests_require=['pytest'],
     include_package_data=True,
