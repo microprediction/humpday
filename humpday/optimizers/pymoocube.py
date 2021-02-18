@@ -4,6 +4,7 @@ import numpy as np
 from pymoo.factory import get_algorithm, get_termination, get_reference_directions
 import logging
 logging.getLogger('pymoo').setLevel(logging.ERROR)
+from humpday.transforms.zcurves import curl_factory
 
 REF_DIRS = get_reference_directions("das-dennis", 1, n_partitions=6)
 
@@ -91,16 +92,25 @@ def pymoo_cube(objective, n_trials, method_name, n_dim, with_count, ref_dirs=Non
     return (best_val, best_x, problem.feval_count) if with_count else (best_val, best_x)
 
 
+def pymoo_unsga3_curl2_cube(objective, n_trials, n_dim, with_count=False):
+    # Mostly failed experiment
+    return curl_factory(optimizer=pymoo_unsga3_cube, objective=objective,
+                        n_trials=n_trials, n_dim=n_dim, with_count=with_count, d=2)
+
+
+
 PYMOO_CANDIDATES = [ pymoo_de_cube, pymoo_nsga2_cube, pymoo_rnsga2_cube,
                      pymoo_nelder_cube, pymoo_ctaea_cube,
-                     pymoo_nsga3_cube, pymoo_rnsga3_cube, pymoo_unsga3_cube,
-                     pymoo_pattern_cube, pymoo_brkga_cube, pymoo_nsga2_cube ]
+                     pymoo_nsga3_cube, pymoo_rnsga3_cube,
+                     pymoo_pattern_cube, pymoo_brkga_cube, pymoo_nsga2_cube,
+                     pymoo_unsga3_cube, pymoo_unsga3_curl2_cube]
 
 BAD = [pymoo_brkga_cube, pymoo_nsga2_cube ] # TODO:  investigate
 
 
 PYMOO_OPTMIZERS = [ pymoo_nelder_cube, pymoo_nsga3_cube,
-                   pymoo_unsga3_cube, pymoo_pattern_cube,  pymoo_nsga2_cube]
+                   pymoo_unsga3_cube, pymoo_pattern_cube,  pymoo_nsga2_cube,
+                    pymoo_unsga3_cube ]
 
 # TODO: See why ['pymoo_ctaea_cube', 'pymoo_de_cube', 'pymoo_rnsga2_cube', 'pymoo_rnsga3_cube'] are broken sometimes
 
@@ -113,7 +123,7 @@ if __name__ == '__main__':
         print(objective.__name__)
         for optimizer in PYMOO_CANDIDATES:
             try:
-                print(optimizer(objective, n_trials=250, n_dim=6, with_count=True))
+                print(optimizer(objective, n_trials=250, n_dim=15, with_count=True))
             except Exception as e:
                 print(e)
                 broken.add(optimizer)

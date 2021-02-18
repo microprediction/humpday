@@ -1,5 +1,7 @@
 from humpday.objectives.classic import CLASSIC_OBJECTIVES
 import warnings
+from humpday.transforms.zcurves import curl_factory
+
 # On some systems install is unreliable due to ConfigSpace on some systems,
 # so this is not included in setup.
 
@@ -36,11 +38,55 @@ if using_ultraopt:
         return ultraopt_cube_factory(objective=objective,n_trials=n_trials, n_dim=n_dim, with_count=with_count, method='ETPE')
 
 
+    def ultraopt_forest_cube(objective, n_trials, n_dim, with_count):
+        return ultraopt_cube_factory(objective=objective, n_trials=n_trials, n_dim=n_dim, with_count=with_count,
+                                     method='Forest')
+
+    def ultraopt_gbrt_cube(objective, n_trials, n_dim, with_count):
+        return ultraopt_cube_factory(objective=objective, n_trials=n_trials, n_dim=n_dim, with_count=with_count,
+                                     method='GBRT')
+
+    def ultraopt_etpe_curl2_cube(objective, n_trials, n_dim, with_count):
+        # Experimental !
+        return curl_factory(optimizer=ultraopt_etpe_cube,objective=objective, n_trials=n_trials, n_dim=n_dim, with_count=with_count,d=2)
+
+
+    def ultraopt_etpe_curl3_cube(objective, n_trials, n_dim, with_count):
+        # Experimental !
+        return curl_factory(optimizer=ultraopt_etpe_cube, objective=objective, n_trials=n_trials, n_dim=n_dim, with_count=with_count, d=3)
+
+
+    def ultraopt_forest_curl2_cube(objective, n_trials, n_dim, with_count):
+        # Experimental !
+        return curl_factory(optimizer=ultraopt_forest_cube, objective=objective, n_trials=n_trials, n_dim=n_dim,
+                            with_count=with_count, d=2)
+
+
+    def ultraopt_gbrt_curl2_cube(objective, n_trials, n_dim, with_count):
+        # Experimental !
+        return curl_factory(optimizer=ultraopt_gbrt_cube, objective=objective, n_trials=n_trials, n_dim=n_dim,
+                            with_count=with_count, d=2)
+
     def ultraopt_random_cube(objective, n_trials, n_dim, with_count):
         return ultraopt_cube_factory(objective=objective,n_trials=n_trials, n_dim=n_dim, with_count=with_count, method='Random')
 
 
-    ULTRAOPT_OPTIMIZERS = [ultraopt_random_cube, ultraopt_etpe_cube ]
+    def ultraopt_random_curl2_cube(objective, n_trials, n_dim, with_count):
+        # Experimental !
+        return curl_factory(optimizer=ultraopt_random_cube, objective=objective, n_trials=n_trials, n_dim=n_dim,
+                            with_count=with_count, d=2)
+
+
+    def ultraopt_random_curl3_cube(objective, n_trials, n_dim, with_count):
+        # Experimental !
+        return curl_factory(optimizer=ultraopt_random_cube, objective=objective, n_trials=n_trials, n_dim=n_dim,
+                            with_count=with_count, d=3)
+
+
+    ULTRAOPT_OPTIMIZERS = [ultraopt_random_cube,
+                           ultraopt_forest_cube,
+                           ultraopt_gbrt_cube,
+                           ultraopt_etpe_cube ]  # <-- the only curled up optimizer likely to make real sense, I suspect
 else:
     ULTRAOPT_OPTIMIZERS = []
 

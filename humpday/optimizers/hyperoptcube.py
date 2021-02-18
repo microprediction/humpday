@@ -1,5 +1,6 @@
 import logging
 import warnings
+from humpday.transforms.zcurves import curl_factory
 
 try:
     from hyperopt import fmin, hp, tpe, Trials
@@ -55,7 +56,18 @@ if using_ultraopt:
         return hyperopt_cube(objective=objective, n_trials=n_trials, n_dim=n_dim, with_count=with_count, algo=rand_suggest)
 
 
-    HYPEROPT_OPTIMIZERS = [hyperopt_atpe_cube, hyperopt_rand_cube, hyperopt_tpe_cube]
+    def hyperopt_atpe_curl2_cube(objective, n_trials, n_dim, with_count=False):
+        # Probably not the best idea
+        return curl_factory(optimizer=hyperopt_atpe_cube, objective=objective, n_trials=n_trials, n_dim=n_dim, with_count=with_count,d=2)
+
+
+    def hyperopt_tpe_curl2_cube(objective, n_trials, n_dim, with_count=False):
+        # Probably not the best idea
+        return curl_factory(optimizer=hyperopt_tpe_cube, objective=objective, n_trials=n_trials, n_dim=n_dim,
+                            with_count=with_count, d=2)
+
+
+    HYPEROPT_OPTIMIZERS = [ hyperopt_tpe_cube, hyperopt_atpe_cube, hyperopt_rand_cube ]
 else:
     HYPEROPT_OPTIMIZERS = []
 
@@ -67,4 +79,4 @@ if __name__ == '__main__':
         print(' ')
         print(objective.__name__)
         for optimizer in HYPEROPT_OPTIMIZERS:
-            print(optimizer(objective, n_trials=250, n_dim=6, with_count=True))
+            print(optimizer(objective, n_trials=250, n_dim=12, with_count=True))

@@ -1,4 +1,5 @@
 import warnings
+from humpday.transforms.zcurves import curl_factory
 
 # http://dlib.net/optimization.html#find_min_global
 # This library also provides global_function_search which is pretty darn cool
@@ -12,7 +13,7 @@ except ImportError:
 
 if using_dlib:
 
-    def dlib_cube(objective ,n_trials, n_dim, with_count):
+    def dlib_default_cube(objective ,n_trials, n_dim, with_count):
         global feval_count
         feval_count = 0
 
@@ -28,8 +29,18 @@ if using_dlib:
 
         return (best_val, best_x, feval_count) if with_count else (best_val, best_x)
 
+    dlib_cube = dlib_default_cube  # It is useful to have a clone of one of the better algos
 
-    DLIB_OPTIMIZERS = [dlib_cube]
+    def dlib_curl2_cube(objective ,n_trials, n_dim, with_count):
+        # Meh
+        return curl_factory(optimizer=dlib_default_cube,objective=objective, n_trials=n_trials, n_dim=n_dim, with_count=with_count, d=2)
+
+
+    def dlib_curl3_cube(objective, n_trials, n_dim, with_count):
+        # Meh
+        return curl_factory(optimizer=dlib_default_cube, objective=objective, n_trials=n_trials, n_dim=n_dim, with_count=with_count, d=3)
+
+    DLIB_OPTIMIZERS = [dlib_cube, dlib_default_cube ]
 else:
     DLIB_OPTIMIZERS = []
 

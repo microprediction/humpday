@@ -2,6 +2,7 @@ import optuna
 from optuna.logging import CRITICAL
 from humpday.objectives.classic import CLASSIC_OBJECTIVES
 import logging
+from humpday.transforms.zcurves import curl_factory
 
 logging.getLogger('optuna').setLevel(logging.ERROR)
 
@@ -62,8 +63,19 @@ def optuna_tpe_cube(objective, n_trials, n_dim, with_count=False):
     return optuna_cube_factory(objective=objective, n_trials=n_trials, n_dim=n_dim, with_count=with_count, method='tpe')
 
 
-OPTUNA_OPTIMIZERS = [ optuna_cmaes_cube, optuna_tpe_cube, optuna_random_cube, optuna_random_cube_clone, optuna_random_cube_clone_1,
-                      optuna_random_cube_clone_2 ]
+def optuna_cmaes_curl2_cube(objective, n_trials, n_dim, with_count=False):
+    # Highly experimental
+    return curl_factory(optimizer=optuna_cmaes_cube, objective=objective, n_trials=n_trials, n_dim=n_dim, with_count=with_count,d=2)
+
+
+def optuna_cmaes_curl3_cube(objective, n_trials, n_dim, with_count=False):
+    # Highly experimental
+    return curl_factory(optimizer=optuna_cmaes_cube, objective=objective, n_trials=n_trials, n_dim=n_dim, with_count=with_count,d=3)
+
+
+OPTUNA_OPTIMIZERS = [optuna_cmaes_cube,
+                     optuna_tpe_cube, optuna_random_cube, optuna_random_cube_clone, optuna_random_cube_clone_1,
+                     optuna_random_cube_clone_2]
 
 
 if __name__=='__main__':
@@ -71,4 +83,4 @@ if __name__=='__main__':
         print(' ')
         print(objective.__name__)
         for optimizer in OPTUNA_OPTIMIZERS:
-            print((optimizer(objective, n_trials=250, n_dim=6, with_count=True)))
+            print((optimizer(objective, n_trials=250, n_dim=16, with_count=True)))

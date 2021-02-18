@@ -1,6 +1,7 @@
 from humpday.objectives.classic import CLASSIC_OBJECTIVES
 import nevergrad as ng
 import logging
+from humpday.transforms.zcurves import curl_factory
 
 logging.getLogger('nevergrad').setLevel(logging.ERROR)
 
@@ -98,11 +99,21 @@ def nevergrad_hammersley_cube(objective, n_trials,n_dim, with_count=False):
     return nevergrad_cube(objective=objective, n_trials=n_trials, n_dim=n_dim, with_count=with_count, method='hammersley')
 
 
+def nevergrad_ngopt8_curl2_cube(objective, n_trials,n_dim, with_count=False):
+    # Doesn't seem to be a good idea in low dimensions, if at all
+    return curl_factory(optimizer=nevergrad_ngopt8_cube, objective=objective, n_trials=n_trials, n_dim=n_dim, with_count=with_count, d=2)
+
+
+def nevergrad_ngopt8_curl3_cube(objective, n_trials,n_dim, with_count=False):
+    # Doesn't seem to be a good idea in low dimensions, if at all
+    return curl_factory(optimizer=nevergrad_ngopt8_cube, objective=objective, n_trials=n_trials, n_dim=n_dim, with_count=with_count, d=3)
+
+
 BAD = [ nevergrad_cma_cube ] # TODO: fix
 
-NEVERGRAD_OPTIMIZERS = [ nevergrad_ngopt_cube, nevergrad_ngopt4_cube, nevergrad_ngopt8_cube,
+NEVERGRAD_OPTIMIZERS = [ nevergrad_ngopt_cube, nevergrad_ngopt4_cube,
                          nevergrad_de_cube, nevergrad_portfolio_cube, nevergrad_oneplus_cube,
-                         nevergrad_hammersley_cube ]
+                         nevergrad_hammersley_cube, nevergrad_ngopt8_cube ]
 
 
 if __name__=='__main__':
@@ -110,4 +121,4 @@ if __name__=='__main__':
         print(' ')
         print(objective.__name__)
         for optimizer in NEVERGRAD_OPTIMIZERS:
-            print((optimizer.__name__,optimizer(objective, n_trials=250, n_dim=6, with_count=True)))
+            print((optimizer.__name__,optimizer(objective, n_trials=250, n_dim=14, with_count=True)))
