@@ -12,6 +12,8 @@ from humpday.objectives.classic import CLASSIC_OBJECTIVES
 def ax_cube(objective, n_trials, n_dim, with_count=False, method=None):
     global feval_count
     feval_count = 0
+    rt = get_logger('ax')
+    rt.setLevel(CRITICAL)
 
     def evaluation_func(prms):
         global feval_count

@@ -3,6 +3,7 @@ from typing import List
 import numpy as np
 import math
 
+# A mostly failed experiment, thus far.
 
 ###########################################################
 #                                                         #

@@ -29,16 +29,12 @@ if using_dlib:
 
         return (best_val, best_x, feval_count) if with_count else (best_val, best_x)
 
-    dlib_cube = dlib_default_cube  # It is useful to have a clone of one of the better algos
+    def dlib_cube(objective ,n_trials, n_dim, with_count):
+        return dlib_default_cube(objective=objective, n_trials=n_trials, n_dim=n_dim, with_count=with_count)  # It is useful to have a clone of one of the better algos
 
     def dlib_curl2_cube(objective ,n_trials, n_dim, with_count):
         # Meh
         return curl_factory(optimizer=dlib_default_cube,objective=objective, n_trials=n_trials, n_dim=n_dim, with_count=with_count, d=2)
-
-
-    def dlib_curl3_cube(objective, n_trials, n_dim, with_count):
-        # Meh
-        return curl_factory(optimizer=dlib_default_cube, objective=objective, n_trials=n_trials, n_dim=n_dim, with_count=with_count, d=3)
 
     DLIB_OPTIMIZERS = [dlib_cube, dlib_default_cube ]
 else:
