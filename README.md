@@ -9,6 +9,12 @@ and [UltraOpt](https://github.com/microprediction/humpday/blob/main/humpday/opti
 - 50+ strategies are assigned [Elo ratings](https://github.com/microprediction/optimizer-elo-ratings/tree/main/results/leaderboards) by sister repo [optimizer-elo-ratings](https://github.com/microprediction/optimizer-elo-ratings). All are presented in a common calling syntax. By all means contribute more to [optimizers](https://github.com/microprediction/humpday/tree/main/humpday/optimizers). 
 - Pass the dimensions of the problem, function evaluation budget and
  time budget to receive [suggestions](https://github.com/microprediction/humpday/blob/main/humpday/comparison/suggestions.py) that are independent of your problem set,
+ 
+        from pprint import pprint 
+        from humpday import suggest
+        pprint(suggest(n_dim=5, n_trials=130,n_seconds=5*60))
+        
+ where *n_seconds* is the total computation budget for the optimizer (not the objective function) over all 130 function evaluations.
 
  - Or simply pass your objective function, and it will time it and do something sensible:
      
@@ -35,18 +41,6 @@ Here *f* is intended to be minimized on the hypercube [0,1]^n_dim.
 
 ![](https://i.imgur.com/FCiSrMQ.png)
  
-### Optimizer suggestions
-
-        from pprint import pprint 
-        from humpday import suggest
-        pprint(suggest(n_dim=5, n_trials=130,n_seconds=5*60))
-
-where *n_seconds* is the total computation budget for the optimizer (not the objective function) over all 130 function evaluations. Alternatively you can pass
-an objective function:
-
-
-As this function is very fast, some optimizers will be culled from the list.   
-
 ### Install
 
     pip install humpday
