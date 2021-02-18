@@ -5,5 +5,5 @@ from humpday.objectives.allobjectives import OBJECTIVES
 from humpday.objectives.allobjectives import CLASSIC_OBJECTIVES
 from humpday.comparison.suggestions import suggest, recommend
 from humpday.optimizers.meta import minimize
-from humpday.comparison.odious import compare
+from humpday.comparison.odious import compare, comparison
 

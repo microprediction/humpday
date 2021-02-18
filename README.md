@@ -6,19 +6,19 @@ and [UltraOpt](https://github.com/microprediction/humpday/blob/main/humpday/opti
  
 ### 
 
-- 50+ strategies are assigned [Elo ratings](https://github.com/microprediction/optimizer-elo-ratings/tree/main/results/leaderboards) by sister repo [optimizer-elo-ratings](https://github.com/microprediction/optimizer-elo-ratings)
-- All are presented in a common calling syntax. By all means contribute more to [optimizers](https://github.com/microprediction/humpday/tree/main/humpday/optimizers). 
-- Pass the dimensions of the problem, function evaluation budget and time budget to receive [suggestions](https://github.com/microprediction/humpday/blob/main/humpday/comparison/suggestions.py),
-- Or call the [meta](https://github.com/microprediction/humpday/blob/main/humpday/optimizers/meta.py) minimizer, which will choose one and run it.   
+- 50+ strategies are assigned [Elo ratings](https://github.com/microprediction/optimizer-elo-ratings/tree/main/results/leaderboards) by sister repo [optimizer-elo-ratings](https://github.com/microprediction/optimizer-elo-ratings). All are presented in a common calling syntax. By all means contribute more to [optimizers](https://github.com/microprediction/humpday/tree/main/humpday/optimizers). 
+- Pass the dimensions of the problem, function evaluation budget and
+ time budget to receive [suggestions](https://github.com/microprediction/humpday/blob/main/humpday/comparison/suggestions.py) that are independent of your problem set,
+- Or call [comparison](https://github.com/microprediction/humpday/blob/main/humpday/comparison/idious.py) on a list of objectives to run a points race amongst the best performing optimizers:
+
+        from humpday import comparison
+        comparison(objectives,n_dim=5, n_trials=100)
+        
+- If you are feeling lucky, the [meta](https://github.com/microprediction/humpday/blob/main/humpday/optimizers/meta.py) minimizer which will
+ choose an optimizer based only on dimension and number of function evaluations, then run it:   
 
         from humpday import minimize
         best_val, best_x = minimize(f, n_dim=13, n_trials=130 )
-        
-- Or call [compare](https://github.com/microprediction/humpday/blob/main/humpday/comparison/idious/compare.py) on a list of objectives
-
-        from humpday import compare
-        from pprint import pprint
-        pprint(compare(objectives, n_dim=5, n_trials=100))
         
 Here *f* is intended to be minimized on the hypercube [0,1]^n_dim.  
 
