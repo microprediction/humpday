@@ -35,7 +35,7 @@ and [UltraOpt](https://github.com/microprediction/humpday/blob/main/humpday/opti
 - Better yet, call [points_race](https://github.com/microprediction/humpday/blob/main/humpday/comparison/odious.py) on a list of your own objective functions:
 
         from humpday import points_race
-        points_race(objectives=my_objectives,n_dim=5, n_trials=100)
+        points_race(objectives=[my_objective]*2,n_dim=5, n_trials=100)
         
 Here *f* is intended to be minimized on the hypercube [0,1]^n_dim.  
 
