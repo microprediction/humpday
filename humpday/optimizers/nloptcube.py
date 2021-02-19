@@ -5,6 +5,7 @@ NLOPTIMIZERS = {'gn_direct' :nlopt.GN_DIRECT,
                 'gn_esch':nlopt.GN_ESCH,
                 'gn_isres':nlopt.GN_ISRES,
                 'gn_crs2lm':nlopt.GN_CRS2_LM,
+                'gn_directl':nlopt.GN_DIRECT_L,
                 'gn_directr':nlopt.GN_DIRECT_L_RAND,
                 'gn_directo':nlopt.GN_ORIG_DIRECT}
 
@@ -58,6 +59,10 @@ def nlopt_crs2lm_cube(objective ,n_trials, n_dim, with_count):
     return nlopt_cube_factory(objective=objective,n_trials=n_trials, n_dim=n_dim, with_count=with_count, method='gn_crs2lm')
 
 
+def nlopt_directl_cube(objective ,n_trials, n_dim, with_count):
+    return nlopt_cube_factory(objective=objective,n_trials=n_trials, n_dim=n_dim, with_count=with_count, method='gn_directl')
+
+
 def nlopt_directr_cube(objective ,n_trials, n_dim, with_count):
     return nlopt_cube_factory(objective=objective,n_trials=n_trials, n_dim=n_dim, with_count=with_count, method='gn_directr')
 
@@ -71,7 +76,7 @@ def nlopt_directo_cube(objective ,n_trials, n_dim, with_count):
 
 NLOPT_OPTIMIZERS = [nlopt_direct_cube, nlopt_ags_cube, nlopt_esch_cube,
                     nlopt_isres_cube, nlopt_crs2lm_cube, nlopt_directr_cube,
-                    nlopt_directo_cube]
+                    nlopt_directo_cube, nlopt_directl_cube]
 
 
 if __name__=='__main__':
