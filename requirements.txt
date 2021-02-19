@@ -11,6 +11,7 @@ platypus-opt
 poap
 pySOT
 pymoo
+py-bobyqa
 swarmlib
 sklearn
 tdigest
