@@ -1,3 +1,4 @@
 from humpday.objectives.classic import CLASSIC_OBJECTIVES, A_CLASSIC_OBJECTIVE
+from humpday.objectives.portfolio import PORTFOLIO_OBJECTIVES
 
-OBJECTIVES = CLASSIC_OBJECTIVES  # For now
+OBJECTIVES = CLASSIC_OBJECTIVES + PORTFOLIO_OBJECTIVES  # For now
