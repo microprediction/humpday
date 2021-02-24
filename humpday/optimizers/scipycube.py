@@ -48,7 +48,9 @@ def scipy_lbfgsb_cube(objective, n_trials, n_dim, with_count=False):
     return scipy_cube(objective=objective, n_trials=n_trials, n_dim=n_dim, with_count=with_count, method='lbfgsb')
 
 
-SCIPY_OPTIMIZERS = [ scipy_slsqp_cube, scipy_powell_cube, scipy_nelder_cube, scipy_lbfgsb_cube ]
+SCIPY_NOT_RESPECTING_BOUND = [ scipy_nelder_cube ]
+
+SCIPY_OPTIMIZERS = [ scipy_slsqp_cube, scipy_powell_cube, scipy_lbfgsb_cube ]
 
 
 if __name__ == '__main__':

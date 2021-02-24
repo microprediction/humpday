@@ -59,7 +59,7 @@ def nevergrad_cube(objective, n_trials,n_dim, with_count=False, method=None):
 
     recommendation = optimizer.minimize( cube_objective )
     best_x = recommendation.value
-    best_val = recommendation.loss
+    best_val = cube_objective(best_x) # Don't trust recommendation.loss
 
     if with_count:
         return best_val, best_x, feval_count

@@ -13,7 +13,7 @@ except ImportError:
 
 if using_dlib:
 
-    def dlib_default_cube(objective ,n_trials, n_dim, with_count):
+    def dlib_default_cube(objective ,n_trials, n_dim, with_count=False):
         global feval_count
         feval_count = 0
 

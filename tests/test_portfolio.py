@@ -17,4 +17,6 @@ def test_portfolio():
 
 
 if __name__=='__main__':
-    test_portfolio()
+    from humpday.optimizers.scipycube import scipy_nelder_cube
+    from humpday.objectives.portfolio import markowitz_skew_on_cube
+    v,x = scipy_nelder_cube(markowitz_skew_on_cube,n_dim=4,n_trials=100)
