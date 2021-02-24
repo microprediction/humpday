@@ -1,5 +1,5 @@
 from deap.benchmarks import h1
-from timemachines.common.plotting import mesh2d_
+from humpday.visualization.plotting import mesh2d_
 import numpy as np
 import math
 

@@ -1,6 +1,6 @@
 import numpy as np
-from timemachines.common.plotting import mesh2d
-from timemachines.objectives.planar_h1 import hump_selector
+from humpday.visualization.plotting import mesh2d
+from humpday.objectives.planar_h1 import hump_selector
 from shgo import shgo
 from sklearn.datasets import make_spd_matrix
 
