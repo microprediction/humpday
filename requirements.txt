@@ -14,8 +14,10 @@ pymoo
 py-bobyqa
 swarmlib
 sklearn
+scipy
 tdigest
 landscapes
 cmake
 dlib
 bayesian-optimization
+winning
