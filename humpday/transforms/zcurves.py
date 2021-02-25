@@ -1,4 +1,4 @@
-from microconventions.zcurve_conventions import ZCurveConventions
+from humpday.transforms.zcurvehelper import ZCurveHelper
 from typing import List
 import numpy as np
 import math
@@ -24,7 +24,7 @@ def to_space(p: float, bounds=None, dim: int = None):
         dim = len(bounds)
 
     if dim > 1:
-        us = reversed(ZCurveConventions().to_cube(zpercentile=p, dim=dim))  # 0 < us[i] < 1
+        us = reversed(ZCurveHelper().to_cube(zpercentile=p, dim=dim))  # 0 < us[i] < 1
     else:
         us = [p]
     return [u * (b[1] - b[0]) + b[0] for u, b in zip(us, bounds)]
@@ -38,7 +38,7 @@ def from_space(ps: [float], bounds=None) -> float:
     for u in us:
         assert 0 <= u <= 1, "bounds are inconsistent with p=" + str(ps)
     if len(us) > 1:
-        return ZCurveConventions().from_cube(list(reversed(us)))
+        return ZCurveHelper().from_cube(list(reversed(us)))
     else:
         return us[0]
 
