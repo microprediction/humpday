@@ -53,16 +53,15 @@ Bleeding edge:
   
 File an issue if you have problems. If you get a CMake error, try:
 
-    pip install cmake
-    pip install humpday 
-
 #### Optional packages
 
-Install directly if you want them to be included:
+Install directly if you want them to be included (dlib is strongly recommended, but cmake is broken
+on some operating systems)
 
     pip install cmake
     pip install ultraopt
     pip install hyperopt
+    pip install dlib 
     
 ### Articles 
 
