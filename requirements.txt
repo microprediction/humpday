@@ -15,7 +15,7 @@ py-bobyqa
 swarmlib
 sklearn
 scipy
-tdigest
+pymorton
 landscapes
 bayesian-optimization
 winning

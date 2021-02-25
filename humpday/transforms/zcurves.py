@@ -11,6 +11,7 @@ import math
 #                                                         #
 ###########################################################
 
+
 def to_space(p: float, bounds=None, dim: int = None):
     """ Interprets p as a point in a rectangle in R^2 or R^3
          :param bounds  [ (low,high), (low,high), (low,high) ] defaults to unit cube
