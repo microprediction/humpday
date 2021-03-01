@@ -153,6 +153,8 @@ def random_optimizer_game(optimizers=None, objectives=None, n_dim_choices: [int]
             found = True
 
     if not found:
+        from pprint import pprint
+        pprint(optimizers)
         raise ValueError('No optimizer matches '+pattern)
 
     matchup = {'n_dim':random.choice(n_dim_choices),
