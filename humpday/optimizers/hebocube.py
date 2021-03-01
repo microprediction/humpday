@@ -68,5 +68,5 @@ if __name__=='__main__':
         for optimizer in HEBO_OPTIMIZERS:
             print(optimizer.__name__+'...')
             st = time.time()
-            print((optimizer(objective, n_trials=12, n_dim=2, with_count=True)))
+            print((optimizer(objective, n_trials=12, n_dim=4, with_count=True)))
             print('   ... took '+str(time.time()-st)+' seconds.')

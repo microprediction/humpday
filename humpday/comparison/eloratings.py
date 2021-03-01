@@ -128,7 +128,10 @@ def optimizer_game(white, black, n_dim, n_trials, objective, tol=0.001):
 
 
 def random_optimizer_game(optimizers=None, objectives=None, n_dim_choices: [int] = None,
-                          n_trials_choices: [int] = None, tol=0.001, announce=False):
+                          n_trials_choices: [int] = None, tol=0.001, announce=False, pattern=None):
+    """
+        pattern:   string to match in at least one optimizer name
+    """
     if n_dim_choices is None:
         n_dim_choices = N_DIM_CHOICES
 
@@ -141,7 +144,18 @@ def random_optimizer_game(optimizers=None, objectives=None, n_dim_choices: [int]
     if optimizers is None:
         optimizers = OPTIMIZERS
 
-    white, black = np.random.choice(optimizers, size=2, replace=False)
+    n_attempts_left = 100
+    found = False
+    while n_attempts_left:
+        n_attempts_left -= 1
+        white, black = np.random.choice(optimizers, size=2, replace=False)
+        if pattern is None or pattern in white.__name__ or pattern in black.__name__:
+            found = True
+            break
+
+    if not found:
+        raise ValueError('No optimizer matches '+pattern)
+
     matchup = {'n_dim':random.choice(n_dim_choices),
                'n_trials':random.choice(n_trials_choices),
                'white':white,
