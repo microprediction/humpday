@@ -131,6 +131,7 @@ def random_optimizer_game(optimizers=None, objectives=None, n_dim_choices: [int]
     """
         pattern:   string to match in at least one optimizer name
     """
+    from pprint import pprint
     if n_dim_choices is None:
         n_dim_choices = N_DIM_CHOICES
 
