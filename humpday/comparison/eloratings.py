@@ -5,7 +5,6 @@ import traceback
 from humpday.objectives.classic import CLASSIC_OBJECTIVES
 from humpday.optimizers.alloptimizers import OPTIMIZERS
 from humpday.comparison.eloformulas import elo_update
-from humpday.comparison.naming import optimizer_name, objective_name
 
 N_DIM_CHOICES = [1, 2, 3, 5, 8]
 N_TRIALS_CHOICES = [130, 210, 340]
@@ -149,11 +148,10 @@ def random_optimizer_game(optimizers=None, objectives=None, n_dim_choices: [int]
     while n_attempts_left>0 and not found:
         n_attempts_left -= 1
         white, black = np.random.choice(optimizers, size=2, replace=False)
-        if pattern is None or pattern in white.__name__ or pattern in black.__name__:
+        if pattern is None or (pattern in white.__name__) or (pattern in black.__name__):
             found = True
 
     if not found:
-        from pprint import pprint
         pprint(optimizers)
         raise ValueError('No optimizer matches '+pattern)
 
