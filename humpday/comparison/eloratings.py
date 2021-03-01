@@ -144,7 +144,7 @@ def random_optimizer_game(optimizers=None, objectives=None, n_dim_choices: [int]
     if optimizers is None:
         optimizers = OPTIMIZERS
 
-    n_attempts_left = 100
+    n_attempts_left = 1000
     found = False
     while n_attempts_left:
         n_attempts_left -= 1
