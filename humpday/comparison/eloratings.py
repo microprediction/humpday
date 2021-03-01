@@ -146,12 +146,11 @@ def random_optimizer_game(optimizers=None, objectives=None, n_dim_choices: [int]
 
     n_attempts_left = 1000
     found = False
-    while n_attempts_left:
+    while n_attempts_left>0 and not found:
         n_attempts_left -= 1
         white, black = np.random.choice(optimizers, size=2, replace=False)
         if pattern is None or pattern in white.__name__ or pattern in black.__name__:
             found = True
-            break
 
     if not found:
         raise ValueError('No optimizer matches '+pattern)
