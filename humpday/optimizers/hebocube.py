@@ -48,15 +48,15 @@ if using_hebo:
         return (best_val, best_x, feval_count) if with_count else (best_val, best_x)
 
 
-    def hebo_cube_sequential(objective, n_trials, n_dim, with_count):
+    def hebo_sequential_cube(objective, n_trials, n_dim, with_count):
         return hebo_cube_factory(objective=objective, n_trials=n_trials, n_dim=n_dim, with_count=with_count, n_suggestions=1)
 
 
-    def hebo_cube_batch(objective, n_trials, n_dim, with_count):
+    def hebo_batch_cube(objective, n_trials, n_dim, with_count):
         return hebo_cube_factory(objective=objective, n_trials=n_trials, n_dim=n_dim, with_count=with_count, n_suggestions=10)
 
 
-    HEBO_OPTIMIZERS = [ hebo_cube_sequential, hebo_cube_batch ]
+    HEBO_OPTIMIZERS = [hebo_sequential_cube, hebo_batch_cube]
 else:
     HEBO_OPTIMIZERS = []
 
