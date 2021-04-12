@@ -62,6 +62,8 @@ on some operating systems)
     pip install ultraopt
     pip install hyperopt
     pip install dlib 
+    pip install ax-platform
+    pip install py-bobyqa
     
 ### Articles 
 
