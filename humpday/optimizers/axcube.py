@@ -1,4 +1,4 @@
-
+from funcy import print_durations
 
 try:
     from ax import optimize
@@ -14,7 +14,6 @@ if using_ax:
     rt.setLevel(CRITICAL)
     import warnings
     warnings.filterwarnings("ignore")
-    from funcy import print_durations
     from humpday.objectives.classic import CLASSIC_OBJECTIVES
 
 
