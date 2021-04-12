@@ -53,10 +53,9 @@ Bleeding edge:
   
 File an issue if you have problems. If you get a CMake error, try:
 
-#### Optional packages
+#### Add optimizers not included by default
 
-Install directly if you want them to be included (dlib is strongly recommended, but cmake is broken
-on some operating systems)
+A few are unstable on some systems. 
 
     pip install cmake
     pip install ultraopt
