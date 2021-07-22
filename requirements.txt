@@ -12,7 +12,6 @@ pandas
 poap
 pySOT
 pymoo
-swarmlib
 sklearn
 scipy
 pymorton
