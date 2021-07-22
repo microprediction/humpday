@@ -1,7 +1,9 @@
 import math
 from humpday.comparison.suggestions import recommend
+from humpday.optimizers.alloptimizers import optimizer_from_name
 
 # The equivalent of the "I'm feeling lucky" button on Google search. 
+
 
 def minimize(objective,n_dim:int,n_trials:int, category='classic', with_count=False):
     """ Minimize an objective, by first choosing a good optimizer then using it.
@@ -13,12 +15,14 @@ def minimize(objective,n_dim:int,n_trials:int, category='classic', with_count=Fa
     :return:
     """
     recommendations = recommend(objective=objective, n_dim=n_dim, n_trials=n_trials, category=category )
-    opt = recommendations[0][0]
-    return opt(objective, n_dim=n_dim, n_trials=n_trials, with_count=with_count)
+    opt = recommendations[0][2]
+    optim = optimizer_from_name(opt)
+    return optim(objective, n_dim=n_dim, n_trials=n_trials, with_count=with_count)
 
 
 if __name__=='__main__':
     import time
+    import math
     from pprint import pprint
 
     def my_objective(u):
