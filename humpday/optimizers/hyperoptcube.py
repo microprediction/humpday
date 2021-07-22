@@ -9,7 +9,6 @@ try:
     from hyperopt.atpe import suggest as atpe_suggest
     using_ultraopt = True
 except ImportError:
-    warnings.warn('If you wish to include hyperopt you must pip install hyperopt')
     using_ultraopt = False
 
 if using_ultraopt:

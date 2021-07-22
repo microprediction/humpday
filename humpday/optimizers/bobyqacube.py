@@ -7,7 +7,6 @@ try:
     from pybobyqa import solve
     using_bobyqa = True
 except ImportError:
-    warnings.warn('bobyqa may not be properly supported on this operating system. Maybe try pip install --upgrade cmake')
     using_bobyqa = False
 
 if using_bobyqa:

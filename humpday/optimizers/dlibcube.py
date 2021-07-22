@@ -8,7 +8,6 @@ try:
     from dlib import find_min_global
     using_dlib = True
 except ImportError:
-    warnings.warn('dlib may not be properly supported on this operating system. Maybe try pip install --upgrade cmake')
     using_dlib = False
 
 if using_dlib:

@@ -2,28 +2,24 @@
 # The horse racing problem
 import numpy as np
 import math
-from winning.lattice import skew_normal_density
-from winning.lattice_calibration import implied_ability, ability_implied_dividends
+from winning.std_calibration import std_ability_implied_dividends
 
-global OFFSETS
-OFFSETS = None
+global ABILITIES
+ABILITIES = None
 HORSE_DIM = 500 # Maximum dimension
 global DIVIDENDS
 DIVIDENDS = None
-unit = 0.01
-L = 500
-DENSITY = skew_normal_density(L=500, unit=unit, a=1.5)
 
 
-def make_offsets():
-    global OFFSETS
-    if OFFSETS is None:
+
+def make_abilities():
+    global ABILITIES
+    if ABILITIES is None:
         from datetime import datetime
         day_of_year = datetime.now().timetuple().tm_yday
         np.random.seed(day_of_year)
-        OFFSETS = sorted(np.random.randn(HORSE_DIM)/unit)
-        OFFSETS = [0] + [ o-OFFSETS[0] for o in OFFSETS[1:] ]
-    return OFFSETS
+        ABILITIES = sorted(np.random.randn(HORSE_DIM))
+    return ABILITIES
 
 
 def make_dividends(n_dim):
@@ -31,12 +27,14 @@ def make_dividends(n_dim):
     if DIVIDENDS is None:
         DIVIDENDS = dict()
     if not DIVIDENDS.get(n_dim):
-        DIVIDENDS[n_dim] = ability_implied_dividends(ability=make_offsets()[:n_dim], density=DENSITY)
+        DIVIDENDS[n_dim] = std_ability_implied_dividends(ability=make_abilities()[:n_dim])
     return DIVIDENDS[n_dim]
 
 
-def cube_to_offsets(u:[float])->[float]:
-    return [0] + list(np.arctanh(np.array(np.minimum(u, 1 - 1e-5))) / unit)
+def cube_to_ability(u:[float])->[float]:
+    offsets =  [0] + list(np.arctanh(np.array(np.minimum(u, 1 - 1e-5))))
+    ability = [ min(5,o/100) for o in offsets ]
+    return ability
 
 
 def horse_dividends_on_cube(u:[float])->float:
@@ -46,19 +44,20 @@ def horse_dividends_on_cube(u:[float])->float:
     """
     n_dim = len(u)+1
     dividends = make_dividends(n_dim)
-    offsets = cube_to_offsets(u=u)
-    implied_dividends = ability_implied_dividends(ability=offsets, density=DENSITY)
+    ability = cube_to_ability(u=u)
+    implied_dividends = std_ability_implied_dividends(ability=ability)
     discrepancy = np.mean( [ abs(math.sqrt(d1)-math.sqrt(d2)) for d1,d2 in zip(dividends,implied_dividends)])
     return discrepancy
 
 
-HORSE_OBJECTIVES = [ horse_dividends_on_cube ]
+HORSE_OBJECTIVES = [ horse_dividends_on_cube ] # Seems unstable and needs fixin'
+
 
 
 if __name__=='__main__':
     from humpday.optimizers.nevergradcube import nevergrad_ngopt8_cube
     v, u = nevergrad_ngopt8_cube(horse_dividends_on_cube,n_dim=20, n_trials=25000)
-    o = cube_to_offsets(u)
+    o = cube_to_ability(u)
     print(' ')
     print('Horse ability, and best solution found ')
-    print(list(zip(o,OFFSETS)))
+    print(list(zip(o, ABILITIES)))

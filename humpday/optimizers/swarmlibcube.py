@@ -7,7 +7,6 @@ try:
     from swarmlib.pso.particle import Particle as PSOParticle
     using_swarmlib = True
 except ImportError:
-    warnings.warn('If you wish to include ultraopt you must pip install ultraopt')
     using_swarmlib = False
 
 

@@ -9,7 +9,6 @@ try:
     from ultraopt import fmin
     using_ultraopt = True
 except ImportError:
-    warnings.warn('If you wish to include ultraopt you must pip install ultraopt')
     using_ultraopt = False
 
 
