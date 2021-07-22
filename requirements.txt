@@ -7,6 +7,7 @@ numpy>=1.19.5
 nlopt
 optuna
 platypus-opt
+pandas
 poap
 pySOT
 pymoo
