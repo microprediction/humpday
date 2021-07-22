@@ -8,7 +8,7 @@
 ![optuna](https://github.com/microprediction/humpday/workflows/test-optuna/badge.svg)
 ![platypus](https://github.com/microprediction/humpday/workflows/test-platypus/badge.svg)
 ![pymoo](https://github.com/microprediction/humpday/workflows/test-pymoo/badge.svg)
-![ultraopt](https://github.com/microprediction/humpday/workflows/test-ultraopt/badge.svg
+![ultraopt](https://github.com/microprediction/humpday/workflows/test-ultraopt/badge.svg)
 ![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)
 
 Behold a [colab notebook](https://github.com/microprediction/humpday/blob/main/black_box_optimization_package_recommender.ipynb) that recommends a black-box optimizer for your objective function. 
