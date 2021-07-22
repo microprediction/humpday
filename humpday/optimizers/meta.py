@@ -17,6 +17,7 @@ def minimize(objective,n_dim:int,n_trials:int, category='classic', with_count=Fa
     recommendations = recommend(objective=objective, n_dim=n_dim, n_trials=n_trials, category=category )
     opt = recommendations[0][2]
     optim = optimizer_from_name(opt)
+    print('Using '+opt)
     return optim(objective, n_dim=n_dim, n_trials=n_trials, with_count=with_count)
 
 
