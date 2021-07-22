@@ -28,7 +28,7 @@ Some of these are really good, but not 100% stable on all platforms we've used.
     pip install py-bobyqa
     pip install hebo
 
-### Recommendations
+## Recommendations
 
 Pass the dimensions of the problem, function evaluation budget and
  time budget to receive [suggestions](https://github.com/microprediction/humpday/blob/main/humpday/comparison/suggestions.py) that are independent of your problem set,
@@ -47,7 +47,7 @@ where *n_seconds* is the total computation budget for the optimizer (not the obj
 
         recommendations = recommend(my_objective, n_dim=21, n_trials=130)
 
-# Meta-minimizer
+## Meta-minimizer
 
 If you are feeling lucky, the [meta](https://github.com/microprediction/humpday/blob/main/humpday/optimizers/meta.py) minimizer which will
  choose an optimizer based only on dimension and number of function evaluations, then run it:   
@@ -57,7 +57,7 @@ If you are feeling lucky, the [meta](https://github.com/microprediction/humpday/
         
 Here and elsewhere, *objective* is intended to be minimized on the hypercube [0,1]^n_dim.  
 
-### Points race
+## Points race
         
 If you have more time, call [points_race](https://github.com/microprediction/humpday/blob/main/humpday/comparison/odious.py) on a list of your own objective functions:
 
@@ -66,11 +66,11 @@ If you have more time, call [points_race](https://github.com/microprediction/hum
         
 See the [colab notebook](https://github.com/microprediction/humpday/blob/main/black_box_optimization_package_recommender.ipynb).
 
-### How it works 
+## How it works 
 
 In the background, 50+ strategies are assigned [Elo ratings](https://github.com/microprediction/optimizer-elo-ratings/tree/main/results/leaderboards) by sister repo [optimizer-elo-ratings](https://github.com/microprediction/optimizer-elo-ratings). All are presented in a common calling syntax. 
 
-### Contribute
+## Contribute
 
 By all means contribute more to [optimizers](https://github.com/microprediction/humpday/tree/main/humpday/optimizers). 
 
@@ -80,7 +80,7 @@ By all means contribute more to [optimizers](https://github.com/microprediction/
  
 
     
-### Articles 
+## Articles 
 
 - (most recent) [HumpDay: A Package to Take the Pain Out of Choosing a Python Optimizer](https://www.microprediction.com/blog/humpday). 
 - [Comparing Python Global Optimizers](https://www.microprediction.com/blog/optimize).
