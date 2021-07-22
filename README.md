@@ -30,11 +30,11 @@ Bleeding edge:
 
     pip install git+https://github.com/microprediction/humpday
   
-File an issue if you have problems. If you get a CMake error, try:
+File an issue if you have problems. 
 
 #### Add optimizers not included by default
 
-A few are unstable on some systems. 
+Some of these are really good, but not 100% stable on all platforms we've used. 
 
     pip install cmake
     pip install ultraopt
