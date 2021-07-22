@@ -1,5 +1,4 @@
-# humpday ![tests](https://github.com/microprediction/humpday/workflows/tests/badge.svg)
-![nlopt](https://github.com/microprediction/humpday/workflows/test-nlopt/badge.svg)
+# humpday ![tests](https://github.com/microprediction/humpday/workflows/tests/badge.svg) ![nlopt](https://github.com/microprediction/humpday/workflows/test-nlopt/badge.svg)
 ![ax-platform](https://github.com/microprediction/humpday/workflows/test-ax/badge.svg)
 ![py-bobyqa](https://github.com/microprediction/humpday/workflows/test-bobyqa/badge.svg)
 ![dlib](https://github.com/microprediction/humpday/workflows/test-dlib/badge.svg)
