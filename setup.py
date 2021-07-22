@@ -26,7 +26,7 @@ setup(
     include_package_data=True,
     install_requires=["wheel", "pathlib", "numpy>=1.19.5", "importlib-metadata>=1.7.0", "getjson",
                       "scipy", "scikit-optimize", "poap", "pySOT", "funcy", "optuna", "deap",
-                      "platypus-opt","scipy","winning>=0.1.2","pandas","hyperopt",
+                      "platypus-opt","scipy","winning>=0.1.2","pandas","hyperopt","platypus-opt",
                       "pymoo", "nevergrad", "landscapes", "bayesian-optimization", "nlopt","pymorton"],
     entry_points={
         "console_scripts": [
