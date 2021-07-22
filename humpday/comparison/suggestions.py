@@ -3,6 +3,9 @@ from humpday.comparison.timingretrieval import get_timing
 from humpday.comparison.eloretrieval import get_elo_leaderboard
 from typing import List, Tuple
 from humpday.optimizers.scipycube import scipy_powell_cube as DEFAULT_OPTIMIZER
+import time
+from pprint import pprint
+import math
 
 FIBONACCI = [ 2, 3, 5, 8, 13, 21, 34, 55, 89, 144, 233, 377, 610, 987, 1597]
 FIBONACCI_X10 = [ k*10 for k in FIBONACCI ]
@@ -73,12 +76,9 @@ def recommend(objective, n_dim:int, n_trials:int, category='classic'):
 
 
 if __name__=='__main__':
-    import time
-    from pprint import pprint
-    import math
 
     def my_objective(u):
         time.sleep(0.1)
         return u[0]*math.sin(u[1])
 
-    pprint(recommend(my_objective, n_dim=4, n_trials=120)[:3])
+    pprint(recommend(my_objective, n_dim=4, n_trials=120)[:10])
