@@ -1,7 +1,6 @@
 microconventions>0.5.0
 getjson
 deap
-hebo
 funcy
 nevergrad
 numpy>=1.19.5

@@ -10,7 +10,6 @@ try:
     from hebo.optimizers.hebo import HEBO
     using_hebo = True
 except ImportError:
-    warnings.warn('Maybe try pip install --upgrade hebo if you want it included')
     using_hebo = False
 
 

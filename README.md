@@ -63,6 +63,7 @@ A few are unstable on some systems.
     pip install dlib 
     pip install ax-platform
     pip install py-bobyqa
+    pip install hebo
     
 ### Articles 
 
