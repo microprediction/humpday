@@ -49,7 +49,7 @@ if False:
         res = shgo(mb, bounds, n=100, iters=50)
         print(res.fun)
         return res.x
-    
+
 
     if __name__=='__main__':
 

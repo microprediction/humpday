@@ -1,5 +1,5 @@
 from humpday.objectives.allobjectives import CLASSIC_OBJECTIVES
-from humpday.optimizers.scipycube import scipy_dogleg_cube
+from humpday.optimizers.scipycube import scipy_powell_cube
 import json
 from getjson import getjson
 
@@ -18,7 +18,7 @@ def create_benchmarks():
         for n_dim in [2,3,5,8,13,21,34]:
             benchmarks[objective.__name__][n_dim]=dict()
             for n_trials in [20,30,50,80,130,210,340]:
-                best_val,best_x = scipy_dogleg_cube(objective=objective,n_trials=n_trials,n_dim=n_dim)
+                best_val,best_x = scipy_powell_cube(objective=objective,n_trials=n_trials,n_dim=n_dim)
                 benchmarks[objective.__name__][n_dim][n_trials] = best_val
             with open('bencharks.json','wt') as fp:
                 json.dump(benchmarks,fp=fp)
