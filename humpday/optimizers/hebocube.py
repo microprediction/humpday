@@ -12,7 +12,6 @@ except ImportError:
     using_hebo = False
 
 
-
 if using_hebo:
 
     logging.getLogger('hebo').setLevel(logging.ERROR)
@@ -26,7 +25,7 @@ if using_hebo:
         space = DesignSpace().parse(variables)
         opt = HEBO(space)
 
-        def _objective(params: pd.DataFrame) -> np.ndarray:
+        def _objective(params) -> np.ndarray:
             global feval_count
             feval_count += len(params.index)
             return np.array([ objective(ui) for ui in params.values ])
