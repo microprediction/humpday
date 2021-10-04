@@ -8,7 +8,7 @@ from humpday.optimizers.pysotcube import PYSOT_OPTIMIZERS
 from humpday.optimizers.scipycube import SCIPY_OPTIMIZERS
 from humpday.optimizers.axcube import AX_OPTIMIZERS
 from humpday.optimizers.platypuscube import PLATYPUS_OPTIMIZERS
-from humpday.optimizers.pymoocube import PYMOO_OPTMIZERS
+from humpday.optimizers.pymoocube import PYMOO_OPTIMIZERS
 from humpday.optimizers.swarmlibcube import SWARMLIB_OPTIZERS
 from humpday.optimizers.nevergradcube import NEVERGRAD_OPTIMIZERS
 from humpday.objectives.classic import CLASSIC_OBJECTIVES
@@ -21,12 +21,11 @@ from humpday.optimizers.bobyqacube import BOBYQA_OPTIMIZERS
 from humpday.optimizers.hebocube import HEBO_OPTIMIZERS
 
 from datetime import datetime
-import pandas as pd
 import argparse
 
 CANDIDATES = SCIPY_OPTIMIZERS + SHGO_OPTIMIZERS + HYPEROPT_OPTIMIZERS +\
              PYSOT_OPTIMIZERS + OPTUNA_OPTIMIZERS + AX_OPTIMIZERS +\
-             PLATYPUS_OPTIMIZERS + PYMOO_OPTMIZERS + NEVERGRAD_OPTIMIZERS\
+             PLATYPUS_OPTIMIZERS + PYMOO_OPTIMIZERS + NEVERGRAD_OPTIMIZERS\
              + SWARMLIB_OPTIZERS + SKOPT_GP_OPTIMIZERS + NLOPT_OPTIMIZERS\
              + ULTRAOPT_OPTIMIZERS + BAYESOPT_OPTIMIZERS + \
              DLIB_OPTIMIZERS+NLOPT_OPTIMIZERS+BOBYQA_OPTIMIZERS + HEBO_OPTIMIZERS
@@ -35,7 +34,7 @@ CANDIDATES = SCIPY_OPTIMIZERS + SHGO_OPTIMIZERS + HYPEROPT_OPTIMIZERS +\
 # https://github.com/microprediction/humpday-testing/tree/main/data/brownian/dlm_seasonal
 OPTIMIZERS = SHGO_OPTIMIZERS + SCIPY_OPTIMIZERS + PYSOT_OPTIMIZERS + AX_OPTIMIZERS + \
              OPTUNA_OPTIMIZERS + PLATYPUS_OPTIMIZERS + NEVERGRAD_OPTIMIZERS +\
-             SWARMLIB_OPTIZERS + HYPEROPT_OPTIMIZERS + PYMOO_OPTMIZERS +\
+             SWARMLIB_OPTIZERS + HYPEROPT_OPTIMIZERS + PYMOO_OPTIMIZERS +\
              SKOPT_GP_OPTIMIZERS + ULTRAOPT_OPTIMIZERS + BAYESOPT_OPTIMIZERS\
              + DLIB_OPTIMIZERS + NLOPT_OPTIMIZERS + BOBYQA_OPTIMIZERS + HEBO_OPTIMIZERS
 
@@ -46,7 +45,7 @@ def optimizer_from_name(name):
 
 
 if __name__=='__main__':
-
+    import pandas as pd
     parser = argparse.ArgumentParser(description="Run all optimizers on input size ndim (default 2) requesting ntrials (default 20) iterations and save results (default log.csv")
 
     parser.add_argument("-d", "--ndims", type=int, action="extend", nargs="+",

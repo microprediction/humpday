@@ -1,7 +1,6 @@
 from humpday.objectives.classic import CLASSIC_OBJECTIVES
 import logging
-import pandas as pd
-import numpy  as np
+import numpy as np
 import math
 import warnings
 

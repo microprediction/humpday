@@ -1,6 +1,7 @@
-from deap import benchmarks
 import numpy as np
 import math
+from humpday.objectives.deapobjectives import schwefel, schaffer, bohachevsky, griewank, rastrigin, shekel, rosenbrock
+
 
 # Some test objective functions to help guide optimizer choices
 # -------------------------------------------------------------
@@ -35,7 +36,7 @@ def schwefel_on_cube(u:[float])->float:
     # https://deap.readthedocs.io/en/master/api/benchmarks.html#deap.benchmarks.schwefel
     u_squished = [ 1000*(smoosh(ui)-0.5) for ui in u ]
     try:
-        return 0.001*benchmarks.schwefel(u_squished)[0]/0.71063
+        return 0.001*schwefel(u_squished)[0]/0.71063
     except Exception as e:
         raise Exception(e)
 
@@ -43,31 +44,31 @@ def schwefel_on_cube(u:[float])->float:
 def griewank_on_cube(u:[float])->float:
     # https://deap.readthedocs.io/en/master/api/benchmarks.html#deap.benchmarks.griewank
     u_squished = [ 1200*(ui**1.1-0.5) for ui in u ]
-    return benchmarks.griewank(u_squished)[0]/0.532075
+    return griewank(u_squished)[0]/0.532075
 
 
 def rastrigin_on_cube(u:[float])->float:
     # https://deap.readthedocs.io/en/master/api/benchmarks.html#deap.benchmarks.rastrigin
     u_squished = [ 10.24*(ui**1.1-0.5) for ui in u ]
-    return 0.01*benchmarks.rastrigin(u_squished)[0]/0.059697
+    return 0.01*rastrigin(u_squished)[0]/0.059697
 
 
 def bohachevsky_on_cube(u:[float])->float:
     # https://deap.readthedocs.io/en/master/api/benchmarks.html#deap.benchmarks.bohachevsky
     u_squished = [ 10*(ui**1.1-0.5) for ui in u ]
-    return 1.0+benchmarks.bohachevsky(u_squished)[0]
+    return 1.0+bohachevsky(u_squished)[0]
 
 
 def rosenbrock_on_cube(u:[float])->float:
     # https://deap.readthedocs.io/en/master/api/benchmarks.html#deap.benchmarks.rosenbrock
     u_squished = [ 200*(ui**1.1-0.5) for ui in u ]
-    return 1+0.1*benchmarks.rosenbrock(u_squished)[0]/0.008949
+    return 1+0.1*rosenbrock(u_squished)[0]/0.008949
 
 
 def shaffer_on_cube(u:[float])->float:
     # https://deap.readthedocs.io/en/master/api/benchmarks.html#deap.benchmarks.schaffer
     u_squished = [ 200*(ui**1.1-0.5) for ui in u ]
-    return 0.01*benchmarks.schaffer(u_squished)[0]/(0.1042133*0.71809)
+    return 0.01*schaffer(u_squished)[0]/(0.1042133*0.71809)
 
 
 def shekel_on_cube(u:[float])->float:
@@ -78,7 +79,7 @@ def shekel_on_cube(u:[float])->float:
     A = 10 * np.random.rand(NUMMAX, n_dim)
     C = np.random.rand(NUMMAX)
     u_squished = [ 800*(smoosh(ui)-0.5) for ui in u ]
-    return 1.2298-benchmarks.shekel(u_squished,A,C)[0]
+    return 1.2298-shekel(u_squished,A,C)[0]
 
 
 ## Combinations

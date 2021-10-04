@@ -9,7 +9,7 @@ Hello and welcome to HumpDay, a package that helps you choose a Python global op
 [UltraOpt](https://github.com/microprediction/humpday/blob/main/humpday/optimizers/ultraoptcube.py) and maybe others by the time you read this. It also presents *some* of their functionality in a common calling syntax.  
  
  
-### Install
+### Install base library
 
     pip install humpday
     
@@ -17,9 +17,26 @@ Bleeding edge:
 
     pip install git+https://github.com/microprediction/humpday
   
-File an issue if you have problems. 
+File an issue if you have problems. See [this thread](https://stackoverflow.com/questions/65745683/how-to-install-scipy-on-apple-silicon-arm-m1) if you have 
+issues on mac silicon M1. 
 
-#### Add optimizers not included by default
+#### This might help some of you sometimes
+
+    pip install cython pybind11
+    brew install openblas
+    export OPENBLAS=/opt/homebrew/opt/openblas/lib/
+
+#### Add optimizers 
+
+    pip install scikit-optimize
+    pip install nevergrad
+    pip install optuna
+    pip install platypus-opt
+    pip install poap
+    pip install pysot
+    pip install bayesian-optimization
+    
+    
 
 Some of these are really good, but not 100% stable on all platforms we've used. 
 
@@ -29,6 +46,7 @@ Some of these are really good, but not 100% stable on all platforms we've used.
     pip install ax-platform
     pip install py-bobyqa
     pip install hebo
+    pip install nlopt
 
 ## Recommendations
 

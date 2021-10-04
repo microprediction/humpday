@@ -7,11 +7,11 @@ try:
     from hyperopt.tpe import suggest as tpe_suggest
     from hyperopt.rand import suggest as rand_suggest
     from hyperopt.atpe import suggest as atpe_suggest
-    using_ultraopt = True
+    using_hyperopt = True
 except ImportError:
-    using_ultraopt = False
+    using_hyperopt = False
 
-if using_ultraopt:
+if using_hyperopt:
     logging.getLogger('hyperopt').setLevel(logging.ERROR)
 
     def hyperopt_cube(objective, n_trials, n_dim, with_count=False, algo=None):
@@ -72,6 +72,7 @@ else:
 
 
 if __name__ == '__main__':
+    assert using_hyperopt, 'pip install hyperopt'
     from humpday.objectives.classic import CLASSIC_OBJECTIVES
 
     for objective in CLASSIC_OBJECTIVES:

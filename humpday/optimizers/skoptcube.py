@@ -1,103 +1,112 @@
 from humpday.objectives.classic import CLASSIC_OBJECTIVES
-from skopt import gp_minimize
-global feval_count
-from copy import deepcopy
-import traceback
 
-GP_INTERPRETATIONS = dict([(ipg, {'initial_point_generator':ipg}) for ipg in ["random", "sobol", "hammersly", "lhs"]])
-GP_INTERPRETATIONS.update({  'lcbexplore':{"acq_func": "LCB", "kappa":3.0},
-                             'lcb':{"acq_func":"LCB","kappa":1.96},
-                             'lcbexploit':{"acq_func":"LCB","kappa":1.0},
-                             'pi':{"acq_func":"pi"},
-                             'xi02':{"xi":0.02},
-                             'default':{},
-                             'sampling':{'acq_optimizer':'sampling'},
-                             'lbfgs':{'acq_optimizer':'lbfgs'},
-                             'noisy':{'noise':'gaussian'},
-                             'calm':{'noise':1e-8},
-                             '':{}
-                           })
-# This could be improved I'm sure 
-# https://github.com/scikit-optimize/scikit-optimize/discussions/1002
+try:
+    from skopt import gp_minimize
+    using_gp = True
+except ImportError:
+    using_gp = False
 
-
-def skopt_gp_method_to_kwargs(method:str)->dict:
-    """ Create param list for skopt.gp_minimize from name of strategy
-         e.g.  lcbexplore_sampling_sobol -> {'acq_func':'LCB',... etc}
-    """
-    cues = method.split('_')
-    params = dict()
-    for cue in cues:
-        if cue:
-            if GP_INTERPRETATIONS.get(cue):
-                params.update(deepcopy(GP_INTERPRETATIONS[cue]))
-            else:
-                msg = 'skopt_gp cannot interpret the cue ' + cue
-                raise ValueError(msg)
-    return params
-
-
-def skopt_gp_cube_factory(objective, n_trials, n_dim, with_count=False, method=''):
-    bounds = [(0.,1.,'uniform') ]*n_dim  # <-- Beware: rookie error to accidentally use corners only
-                                         # when the dimension isn't explicitly stated as continuous
-
+if using_gp:
     global feval_count
-    feval_count = 0
+    from copy import deepcopy
+    import traceback
 
-    def _objective(x):
+    GP_INTERPRETATIONS = dict([(ipg, {'initial_point_generator':ipg}) for ipg in ["random", "sobol", "hammersly", "lhs"]])
+    GP_INTERPRETATIONS.update({  'lcbexplore':{"acq_func": "LCB", "kappa":3.0},
+                                 'lcb':{"acq_func":"LCB","kappa":1.96},
+                                 'lcbexploit':{"acq_func":"LCB","kappa":1.0},
+                                 'pi':{"acq_func":"pi"},
+                                 'xi02':{"xi":0.02},
+                                 'default':{},
+                                 'sampling':{'acq_optimizer':'sampling'},
+                                 'lbfgs':{'acq_optimizer':'lbfgs'},
+                                 'noisy':{'noise':'gaussian'},
+                                 'calm':{'noise':1e-8},
+                                 '':{}
+                               })
+    # This could be improved I'm sure
+    # https://github.com/scikit-optimize/scikit-optimize/discussions/1002
+
+
+    def skopt_gp_method_to_kwargs(method:str)->dict:
+        """ Create param list for skopt.gp_minimize from name of strategy
+             e.g.  lcbexplore_sampling_sobol -> {'acq_func':'LCB',... etc}
+        """
+        cues = method.split('_')
+        params = dict()
+        for cue in cues:
+            if cue:
+                if GP_INTERPRETATIONS.get(cue):
+                    params.update(deepcopy(GP_INTERPRETATIONS[cue]))
+                else:
+                    msg = 'skopt_gp cannot interpret the cue ' + cue
+                    raise ValueError(msg)
+        return params
+
+
+    def skopt_gp_cube_factory(objective, n_trials, n_dim, with_count=False, method=''):
+        bounds = [(0.,1.,'uniform') ]*n_dim  # <-- Beware: rookie error to accidentally use corners only
+                                             # when the dimension isn't explicitly stated as continuous
+
         global feval_count
-        feval_count +=1
-        return objective(list(x))
+        feval_count = 0
 
-    gp_params = skopt_gp_method_to_kwargs(method=method)
-    result = gp_minimize(func=_objective,  dimensions=bounds, n_calls=n_trials, n_jobs=1, **gp_params)
-    best_x = list(result.x)
-    best_val = result.fun
-    return (best_val, best_x,  feval_count) if with_count else (best_val, best_x)
+        def _objective(x):
+            global feval_count
+            feval_count +=1
+            return objective(list(x))
 
-
-# We could now create the following functions programmatically, but it is somewhat easier to debug this way
-
-def skopt_gp_default_cube(objective, n_trials, n_dim, with_count=False):
-    return skopt_gp_cube_factory(objective=objective,n_trials=n_trials,n_dim=n_dim, with_count=with_count,
-                                 method='')
+        gp_params = skopt_gp_method_to_kwargs(method=method)
+        result = gp_minimize(func=_objective,  dimensions=bounds, n_calls=n_trials, n_jobs=1, **gp_params)
+        best_x = list(result.x)
+        best_val = result.fun
+        return (best_val, best_x,  feval_count) if with_count else (best_val, best_x)
 
 
-def skopt_gp_sobol_cube(objective, n_trials, n_dim, with_count=False):
+    # We could now create the following functions programmatically, but it is somewhat easier to debug this way
+
+    def skopt_gp_default_cube(objective, n_trials, n_dim, with_count=False):
+        return skopt_gp_cube_factory(objective=objective,n_trials=n_trials,n_dim=n_dim, with_count=with_count,
+                                     method='')
+
+
+    def skopt_gp_sobol_cube(objective, n_trials, n_dim, with_count=False):
+            return skopt_gp_cube_factory(objective=objective, n_trials=n_trials, n_dim=n_dim, with_count=with_count,
+                                         method='sobol')
+
+
+    def skopt_gp_hammersley_cube(objective, n_trials, n_dim, with_count=False):
         return skopt_gp_cube_factory(objective=objective, n_trials=n_trials, n_dim=n_dim, with_count=with_count,
-                                     method='sobol')
+                                     method='hammersly')
 
 
-def skopt_gp_hammersley_cube(objective, n_trials, n_dim, with_count=False):
-    return skopt_gp_cube_factory(objective=objective, n_trials=n_trials, n_dim=n_dim, with_count=with_count,
-                                 method='hammersly')
+    def skopt_gp_lcb_cube(objective, n_trials, n_dim, with_count=False):
+        return skopt_gp_cube_factory(objective=objective, n_trials=n_trials, n_dim=n_dim, with_count=with_count,
+                                     method='lcb')
 
 
-def skopt_gp_lcb_cube(objective, n_trials, n_dim, with_count=False):
-    return skopt_gp_cube_factory(objective=objective, n_trials=n_trials, n_dim=n_dim, with_count=with_count,
-                                 method='lcb')
+    def skopt_gp_lcbexplore_cube(objective, n_trials, n_dim, with_count=False):
+        return skopt_gp_cube_factory(objective=objective, n_trials=n_trials, n_dim=n_dim, with_count=with_count,
+                                     method='lcbexplore')
 
 
-def skopt_gp_lcbexplore_cube(objective, n_trials, n_dim, with_count=False):
-    return skopt_gp_cube_factory(objective=objective, n_trials=n_trials, n_dim=n_dim, with_count=with_count,
-                                 method='lcbexplore')
+    def skopt_gp_lcbexploit_cube(objective, n_trials, n_dim, with_count=False):
+        return skopt_gp_cube_factory(objective=objective, n_trials=n_trials, n_dim=n_dim, with_count=with_count,
+                                     method='lcbexploit')
 
 
-def skopt_gp_lcbexploit_cube(objective, n_trials, n_dim, with_count=False):
-    return skopt_gp_cube_factory(objective=objective, n_trials=n_trials, n_dim=n_dim, with_count=with_count,
-                                 method='lcbexploit')
+    def skopt_gp_sampling_cube(objective, n_trials, n_dim, with_count=False):
+        return skopt_gp_cube_factory(objective=objective, n_trials=n_trials, n_dim=n_dim, with_count=with_count,
+                                     method='sampling')
 
 
-def skopt_gp_sampling_cube(objective, n_trials, n_dim, with_count=False):
-    return skopt_gp_cube_factory(objective=objective, n_trials=n_trials, n_dim=n_dim, with_count=with_count,
-                                 method='sampling')
+    SKOPT_GP_CANDIDATES = [ skopt_gp_default_cube, skopt_gp_sobol_cube, skopt_gp_hammersley_cube,
+                            skopt_gp_lcb_cube, skopt_gp_lcbexplore_cube, skopt_gp_lcbexploit_cube,
+                            skopt_gp_sampling_cube ]
 
-
-SKOPT_GP_CANDIDATES = [ skopt_gp_default_cube, skopt_gp_sobol_cube, skopt_gp_hammersley_cube,
-                        skopt_gp_lcb_cube, skopt_gp_lcbexplore_cube, skopt_gp_lcbexploit_cube,
-                        skopt_gp_sampling_cube ]
-
-SKOPT_GP_OPTIMIZERS = [ skopt_gp_default_cube ]
+    SKOPT_GP_OPTIMIZERS = [ skopt_gp_default_cube ]
+else:
+    SKOPT_GP_OPTIMIZERS = []
 
 if __name__ == '__main__':
     always_working = SKOPT_GP_CANDIDATES[:1]
