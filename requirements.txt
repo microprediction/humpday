@@ -7,3 +7,4 @@ scipy
 pymorton
 landscapes
 winning
+optuna
