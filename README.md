@@ -8,6 +8,8 @@ Hello and welcome to HumpDay, a package that helps you choose a Python global op
 [nlopt](https://github.com/microprediction/humpday/blob/main/humpday/optimizers/nloptcube.py), [Py-Bobyaq](https://github.com/microprediction/humpday/blob/main/humpday/optimizers/bobyqacube.py), 
 [UltraOpt](https://github.com/microprediction/humpday/blob/main/humpday/optimizers/ultraoptcube.py) and maybe others by the time you read this. It also presents *some* of their functionality in a common calling syntax.  
  
+### Cite or be cited
+Pull requests at [CITE.md](https://github.com/microprediction/humpday/blob/main/CITE.md) are welcome. If your package is benchmarked here I'd like to get this bit right.  
  
 ### Install base library
 
@@ -35,7 +37,6 @@ issues on mac silicon M1.
     pip install poap
     pip install pysot
     pip install bayesian-optimization
-    
     
 
 Some of these are really good, but not 100% stable on all platforms we've used. 
