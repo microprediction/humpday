@@ -91,7 +91,18 @@ NLOPT
          issn = {22106502}
      }
 
+Ultraopt
 
+     @misc{Tang_UltraOpt,
+         author       = {Qichun Tang},
+         title        = {UltraOpt : Distributed Asynchronous Hyperparameter Optimization better than HyperOpt},
+         month        = January,
+         year         = 2021,
+         doi          = {10.5281/zenodo.4430148},
+         version      = {v0.1.0},
+         publisher    = {Zenodo},
+         url          = {https://doi.org/10.5281/zenodo.4430148}
+     }
 
 ### Black-box optimizers
 
