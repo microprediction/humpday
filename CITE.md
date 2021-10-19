@@ -18,14 +18,17 @@ If you wish to cite HumpDay, thanks and maybe for now:
           publisher = {MIT Press}
       }
       
- which motivates HumpDay and other packages. I'm trying to collate the best way to cite auto-this-and-that here. If you are the author of a package and would like to add or amend, please do so (PR's welcome)
+which motivates HumpDay and other packages.
+
+## Being cited 
  
- # Optimizers 
+This is how I currently cite auto-this-and-that. PR's welcome 
+
+### Black-box optimizers
+
+Coming soon 
  
- coming
- 
- 
- # Autoframeworks 
+### Autoframeworks 
  
 Auto-Sklearn
  
@@ -95,4 +98,26 @@ AutoXGBoost
               author = {Anton Vakhrushev and Alexander Ryzhkov and Maxim Savchenko and Dmitry Simakov and Richin Damdinov and Alexander Tuzhilin}
               url={https://arxiv.org/pdf/2109.01528.pdf}
           }
+          
+MLJAR
+  
+       @electronic{mljar,
+         title = {{MLJar Supervised}},
+         url={https://github.com/mljar/mljar-supervised}
+     }
+     
+GAMA
+
+        @article{Gijsbers2019GAMA:Assistant,
+              title = {{GAMA: Genetic Automated Machine learning Assistant}},
+              year = {2019},
+              journal = {Journal of Open Source Software},
+              author = {Gijsbers, Pieter and Vanschoren, Joaquin},
+              number = {33},
+              volume = {4},
+              doi = {10.21105/joss.01132},
+              issn = {2475-9066}
+          }
+
+  
 
