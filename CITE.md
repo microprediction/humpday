@@ -24,6 +24,9 @@ which motivates HumpDay and other packages.
  
 This is how I currently cite auto-this-and-that. PR's welcome 
 
+### Deriv-free black-box optimizers
+In no particular order
+
 PySOT
 
         @inproceedings{Wang2019FastApproach,
@@ -107,9 +110,7 @@ Ultraopt
          url          = {https://doi.org/10.5281/zenodo.4430148}
      }
 
-### Black-box optimizers
 
-Coming soon 
  
 ### Autoframeworks 
  
