@@ -119,5 +119,14 @@ GAMA
               issn = {2475-9066}
           }
 
-  
+ HyperOpt-Sklearn
+ 
+ 
+      @inproceedings{Komer2014Hyperopt-Sklearn:Scikit-Learn,
+         title = {{Hyperopt-Sklearn: Automatic Hyperparameter Configuration for Scikit-Learn}},
+         year = {2014},
+         booktitle = {Proceedings of the 13th Python in Science Conference},
+         author = {Komer, Brent and Bergstra, James and Eliasmith, Chris},
+         doi = {10.25080/majora-14bd3278-006}
+     }
 
