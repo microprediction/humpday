@@ -60,10 +60,13 @@ Nevergrad
 
 DLIB:
 
-     @electronic{dlib,
-        title={DLIB Package},
-        author={Davis E. King},
-        url={https://github.com/davisking/dlib}
+       @article{King2009Dlib-ml:Toolkit,
+         title = {{Dlib-ml: A machine learning toolkit}},
+         year = {2009},
+         journal = {Journal of Machine Learning Research},
+         author = {King, Davis E.},
+         volume = {10},
+         issn = {15324435}
      }
 
 Py-BOBYQA
