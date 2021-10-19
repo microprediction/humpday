@@ -52,6 +52,15 @@ AutoGluon
        year={2020}
      }
 
+H20 AutoML
+
+          @Manual{h20_automl,
+              title = {H20 AutoMl},
+              author = {Arno Candel et al},
+              year = {2015},
+              url = {https://github.com/h2oai},
+          }
+
 FLAML
  
       @inproceedings{Liu2021AnModels,
