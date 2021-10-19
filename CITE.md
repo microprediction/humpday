@@ -24,6 +24,75 @@ which motivates HumpDay and other packages.
  
 This is how I currently cite auto-this-and-that. PR's welcome 
 
+PySOT
+
+        @inproceedings{Wang2019FastApproach,
+         title = {{Fast online object tracking and segmentation: A unifying approach}},
+         year = {2019},
+         booktitle = {Proceedings of the IEEE Computer Society Conference on Computer Vision and Pattern Recognition},
+         author = {Wang, Qiang and Zhang, Li and Bertinetto, Luca and Hu, Weiming and Torr, Philip H.S.},
+         volume = {2019-June},
+         doi = {10.1109/CVPR.2019.00142},
+         issn = {10636919}
+     }
+
+Scikit-optimize
+
+     @misc{Timgates422020Scikit-optimize,
+         title = {{scikit-optimize}},
+         year = {2020},
+         booktitle = {GitHub},
+         author = {{Timgates42}}
+     }
+
+
+Nevergrad
+
+     @article{Bennet2021Nevergrad,
+         title = {{Nevergrad}},
+         year = {2021},
+         journal = {ACM SIGEVOlution},
+         author = {Bennet, Pauline and Doerr, Carola and Moreau, Antoine and Rapin, Jeremy and Teytaud, Fabien and Teytaud, Olivier},
+         number = {1},
+         volume = {14},
+         doi = {10.1145/3460310.3460312}
+     }
+
+DLIB:
+
+     @electronic{dlib,
+        title={DLIB Package},
+        author={Davis E. King},
+        url={https://github.com/davisking/dlib}
+     }
+
+Py-BOBYQA
+
+     @article{Cartis2019ImprovingSolvers,
+         title = {{Improving the flexibility and robustness of model-based derivative-free optimization solvers}},
+         year = {2019},
+         journal = {ACM Transactions on Mathematical Software},
+         author = {Cartis, Coralia and Fiala, Jan and Marteau, Benjamin and Roberts, Lindon},
+         number = {3},
+         volume = {45},
+         doi = {10.1145/3338517},
+         issn = {15577295}
+     }
+
+NLOPT
+
+     @article{Kumar2016BenchmarkingIACOR,
+         title = {{Benchmarking NLopt and state-of-the-art algorithms for continuous global optimization via IACOR}},
+         year = {2016},
+         journal = {Swarm and Evolutionary Computation},
+         author = {Kumar, Udit and Soman, Sumit and {Jayadeva}},
+         volume = {27},
+         doi = {10.1016/j.swevo.2015.10.005},
+         issn = {22106502}
+     }
+
+
+
 ### Black-box optimizers
 
 Coming soon 
