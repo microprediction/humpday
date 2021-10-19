@@ -41,17 +41,26 @@ Auto-Sklearn
          url = {http://papers.nips.cc/paper/5872-efficient-and-robust-automated-machine-learning.pdf},
          issn = {10495258}
      }
+     
+Autoxgboost
+
+          @inproceedings{autoxgboost,
+            title={Automatic Gradient Boosting},
+            author={Thomas, Janek and Coors, Stefan and Bischl, Bernd},
+            booktitle={International Workshop on Automatic Machine Learning at ICML},
+            year={2018}
+          }
  
 AutoGluon
 
-     @article{agtabulardistill,
-       title={Fast, Accurate, and Simple Models for Tabular Data via Augmented Distillation},
-       author={Fakoor, Rasool and Mueller, Jonas W and Erickson, Nick and Chaudhari, Pratik and Smola, Alexander J},
-       journal={Advances in Neural Information Processing Systems},
-       volume={33},
+       @article{agtabular,
+       title={AutoGluon-Tabular: Robust and Accurate AutoML for Structured Data},
+       author={Erickson, Nick and Mueller, Jonas and Shirkov, Alexander and Zhang, Hang and Larroy, Pedro and Li, Mu and Smola, Alexander},
+       journal={arXiv preprint arXiv:2003.06505},
        year={2020}
      }
-
+  
+  
 H20 AutoML
 
           @Manual{h20_automl,
@@ -69,6 +78,16 @@ FLAML
           author = {Liu, Xueqing and Wang, Chi},
           doi = {10.18653/v1/2021.acl-long.178}
       }
+
+AutoKeras
+
+     @inproceedings{Jin2019Auto-keras:System,
+         title = {{Auto-keras: An efficient neural architecture search system}},
+         year = {2019},
+         booktitle = {Proceedings of the ACM SIGKDD International Conference on Knowledge Discovery and Data Mining},
+         author = {Jin, Haifeng and Song, Qingquan and Hu, Xia},
+         doi = {10.1145/3292500.3330648}
+     }
 
 AutoXGBoost
 
