@@ -107,6 +107,16 @@ AutoXGBoost
               author = {Anton Vakhrushev and Alexander Ryzhkov and Maxim Savchenko and Dmitry Simakov and Richin Damdinov and Alexander Tuzhilin}
               url={https://arxiv.org/pdf/2109.01528.pdf}
           }
+ 
+ TPOT
+ 
+        @inproceedings{Olson2016EvaluationScience,
+              title = {{Evaluation of a tree-based pipeline optimization tool for automating data science}},
+              year = {2016},
+              booktitle = {GECCO 2016 - Proceedings of the 2016 Genetic and Evolutionary Computation Conference},
+              author = {Olson, Randal S. and Bartley, Nathan and Urbanowicz, Ryan J. and Moore, Jason H.},
+              doi = {10.1145/2908812.2908918}
+          }
           
 MLJAR
   
