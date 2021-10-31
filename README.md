@@ -48,6 +48,7 @@ Some of these are really good, but not 100% stable on all platforms we've used.
     pip install py-bobyqa
     pip install hebo
     pip install nlopt
+    pip install freelunch
 
 ## Recommendations
 
