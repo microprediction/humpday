@@ -104,6 +104,9 @@ def optimizer_game(white, black, n_dim, n_trials, objective, tol=0.001):
             game_result['best_x'][1] = black_best_x
             game_result['n_trials_instructed'][1] = n_black_trials
             game_result['feval_count'][1] = black_feval_count
+    else:
+        print('White failed ')
+        pprint(game_result)
 
     # Now that White and Black have both played...
     if white_success and black_success:

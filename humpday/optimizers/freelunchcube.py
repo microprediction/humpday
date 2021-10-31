@@ -21,7 +21,7 @@ if using_freelunch:
             feval_count += 1
             return objective(x)
 
-        optimizer = getattr(freelunch,method)(obj=_objective, bounds=[[-1, 1]] * n_dim)
+        optimizer = getattr(freelunch,method)(obj=_objective, bounds=[[0, 1]] * n_dim)
 
         if method.lower() in ['de','sade','pso','krillherd']:
             n_gens = int(math.ceil(n_trials / n_pop))
