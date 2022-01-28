@@ -2,7 +2,7 @@
 
 ## TLDR: 
 
-1. There's a [colab notebook](https://github.com/microprediction/humpday/blob/main/black_box_optimization_package_recommender.ipynb) that recommends a black-box optimizer for your objective function. 
+1. There's a [colab notebook](https://github.com/microprediction/humpday/blob/main/black_box_optimization_package_recommender.ipynb) that recommends a black-box derivative-free optimizer for your objective function. 
 
 2. About fifty strategies drawn from various open source packages are assigned [Elo ratings](https://microprediction.github.io/optimizer-elo-ratings/html_leaderboards/overall.html) depending on dimension of the problem and number of function evaluations allowed. 
 
