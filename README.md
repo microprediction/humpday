@@ -83,7 +83,7 @@ See the [colab notebook](https://github.com/microprediction/humpday/blob/main/bl
 
 ## How it works 
 
-In the background, 50+ strategies are assigned [Elo ratings](https://github.com/microprediction/optimizer-elo-ratings/tree/main/results/leaderboards) by sister repo [optimizer-elo-ratings](https://github.com/microprediction/optimizer-elo-ratings).
+In the background, 50+ strategies are assigned [Elo ratings](https://github.com/microprediction/optimizer-elo-ratings/tree/main/results/leaderboards) by sister repo [optimizer-elo-ratings](https://github.com/microprediction/optimizer-elo-ratings). Oh I said that already. Never mind. 
 
 ## Contribute
 
