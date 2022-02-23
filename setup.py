@@ -7,7 +7,7 @@ README = (HERE / "README.md").read_text()
 
 setup(
     name="humpday",
-    version="0.6.2",
+    version="0.6.3",
     description="Taking the pain out of choosing a Python global optimizer",
     long_description=README,
     long_description_content_type="text/markdown",
@@ -24,7 +24,7 @@ setup(
     test_suite='pytest',
     tests_require=['pytest'],
     include_package_data=True,
-    install_requires=["wheel", "pathlib", "numpy>=1.19.5", "importlib-metadata>=1.7.0", "getjson",
+    install_requires=["wheel","numpy>=1.19.5", "importlib-metadata>=1.7.0", "getjson",
                       "scipy", "funcy", "scipy","winning>=0.2.0",
                        "landscapes",  "pymorton","nevergrad","optuna"],
     entry_points={
