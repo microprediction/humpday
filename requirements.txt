@@ -1,5 +1,4 @@
 microconventions>0.5.0
-nevergrad
 getjson
 funcy
 numpy>=1.19.5
@@ -7,3 +6,4 @@ scipy
 pymorton
 landscapes
 winning
+optuna
