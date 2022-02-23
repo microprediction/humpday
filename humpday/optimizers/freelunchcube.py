@@ -32,7 +32,7 @@ if using_freelunch:
             optimizer.hypers['N'] = n_pop  # population size
             optimizer.hypers['K'] = n_gens  # number of generations
 
-        runs = optimizer(nruns=1, full_output=True)  # instance and run
+        runs = optimizer(n_runs=1, full_output=True)  # instance and run
         best_val = runs['scores'][0]  # all obj scores are sorted low to high
         best_x = runs['solutions'][0]  # corresponding inputs
         feval_count_comparison = runs['nfe']  # function evaluations
