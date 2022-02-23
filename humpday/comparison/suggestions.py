@@ -53,7 +53,7 @@ def suggest(n_dim:int, n_trials:int, n_seconds:float, category='classic')->List[
                 pass
 
     if not suggestions:
-        return [(None, None, DEFAULT_OPTIMIZER)]
+        return [(None, None, DEFAULT_OPTIMIZER.__name__)]
     else:
         return list(sorted( suggestions, reverse=True))
 
