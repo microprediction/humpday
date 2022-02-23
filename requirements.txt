@@ -5,5 +5,5 @@ numpy>=1.19.5
 scipy
 pymorton
 landscapes
-winning
+winning>=0.4.6
 optuna
