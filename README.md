@@ -1,4 +1,4 @@
-# humpday [optimizer Elo ratings](https://microprediction.github.io/optimizer-elo-ratings/html_leaderboards/overall.html) ![tests](https://github.com/microprediction/humpday/workflows/tests/badge.svg) ![nlopt](https://github.com/microprediction/humpday/workflows/test-nlopt/badge.svg) ![ax-platform](https://github.com/microprediction/humpday/workflows/test-ax/badge.svg) ![py-bobyqa](https://github.com/microprediction/humpday/workflows/test-bobyqa/badge.svg) ![dlib](https://github.com/microprediction/humpday/workflows/test-dlib/badge.svg) ![hyperopt](https://github.com/microprediction/humpday/workflows/test-hyperopt/badge.svg) ![pySOT](https://github.com/microprediction/humpday/workflows/test-pySOT/badge.svg) ![skopt](https://github.com/microprediction/humpday/workflows/test-skopt/badge.svg)![hebo](https://github.com/microprediction/humpday/workflows/test-hebo/badge.svg) ![nevergrad](https://github.com/microprediction/humpday/workflows/test-nevergrad/badge.svg) ![optuna](https://github.com/microprediction/humpday/workflows/test-optuna/badge.svg) ![bayesopt](https://github.com/microprediction/humpday/workflows/test-bayesopt/badge.svg) ![platypus](https://github.com/microprediction/humpday/workflows/test-platypus/badge.svg) ![pymoo](https://github.com/microprediction/humpday/workflows/test-pymoo/badge.svg) ![ultraopt](https://github.com/microprediction/humpday/workflows/test-ultraopt/badge.svg) ![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)
+# humpday [optimizer Elo ratings](https://microprediction.github.io/optimizer-elo-ratings/html_leaderboards/overall.html) ![tests](https://github.com/microprediction/humpday/workflows/tests/badge.svg) ![nlopt](https://github.com/microprediction/humpday/workflows/test-nlopt/badge.svg) ![ax-platform](https://github.com/microprediction/humpday/workflows/test-ax/badge.svg) ![py-bobyqa](https://github.com/microprediction/humpday/workflows/test-bobyqa/badge.svg) ![dlib](https://github.com/microprediction/humpday/workflows/test-dlib/badge.svg) ![hyperopt](https://github.com/microprediction/humpday/workflows/test-hyperopt/badge.svg) ![pySOT](https://github.com/microprediction/humpday/workflows/test-pySOT/badge.svg) ![skopt](https://github.com/microprediction/humpday/workflows/test-skopt/badge.svg)![hebo](https://github.com/microprediction/humpday/workflows/test-hebo/badge.svg) ![nevergrad](https://github.com/microprediction/humpday/workflows/test-nevergrad/badge.svg) ![nevergrad (GitHub)](https://github.com/microprediction/humpday/workflows/test-nevergrad-github/badge.svg) ![optuna](https://github.com/microprediction/humpday/workflows/test-optuna/badge.svg) ![bayesopt](https://github.com/microprediction/humpday/workflows/test-bayesopt/badge.svg) ![platypus](https://github.com/microprediction/humpday/workflows/test-platypus/badge.svg) ![pymoo](https://github.com/microprediction/humpday/workflows/test-pymoo/badge.svg) ![ultraopt](https://github.com/microprediction/humpday/workflows/test-ultraopt/badge.svg) ![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)
 
 ## TLDR: Deriv-free optimizers from many packages in a common syntax
 
@@ -14,10 +14,14 @@ Hello and welcome to HumpDay, a package that helps you choose a Python global op
 ### Cite or be cited
 Pull requests at [CITE.md](https://github.com/microprediction/humpday/blob/main/CITE.md) are welcome. If your package is benchmarked here I'd like to get this bit right.  
  
-### Install base library
+### Install
+Pick one of:
 
     pip install humpday
-    
+    pip install humpday[full]
+
+The full option will try to install a slew of optim packages. You may prefer to do that piecemeal. See below. 
+
 Bleeding edge:
 
     pip install git+https://github.com/microprediction/humpday
@@ -31,15 +35,15 @@ issues on mac silicon M1.
     brew install openblas
     export OPENBLAS=/opt/homebrew/opt/openblas/lib/
 
-#### Add optimizers 
+#### Installing one optimizer at a time 
 
     pip install scikit-optimize
-    pip install nevergrad
+    pip install nevergrad>=0.4.3
     pip install optuna
     pip install platypus-opt
     pip install poap
     pip install pysot
-    pip install bayesian-optimization
+    pip install bayesian-optimization==1.2.0
     
 
 Some of these are really good, but not 100% stable on all platforms we've used. 
