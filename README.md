@@ -38,12 +38,12 @@ issues on mac silicon M1.
 #### Installing one optimizer at a time 
 
     pip install scikit-optimize
-    pip install nevergrad
+    pip install nevergrad==0.4.2
     pip install optuna
     pip install platypus-opt
     pip install poap
     pip install pysot
-    pip install bayesian-optimization
+    pip install bayesian-optimization==1.2.0
     
 
 Some of these are really good, but not 100% stable on all platforms we've used. 
