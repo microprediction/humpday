@@ -119,7 +119,7 @@ if using_freelunch:
                              freelunch_de_3_cube, freelunch_de_8_cube, freelunch_de_21_cube,
                              freelunch_pso_3_cube, freelunch_pso_8_cube, freelunch_pso_21_cube,
                              freelunch_krillherd_3_cube, freelunch_krillherd_8_cube]
-    FREELUNCH_TOP_OPTIMIZERS = [freelunch_sade_8, freelunch_sa_21]
+    FREELUNCH_TOP_OPTIMIZERS = [freelunch_sade_8_cube, freelunch_sa_21_cube]
 else:
     FREELUNCH_OPTIMIZERS = []
     FREELUNCH_TOP_OPTIMIZERS = []

@@ -40,8 +40,10 @@ if using_bobyqa:
 
 
     BOBYQA_OPTIMIZERS = [ bobyqa_default_cube, bobyqa_noise_cube ]
+    BOBYQA_TOP_OPTIMIZERS = [ bobyqa_default_cube, bobyqa_noise_cube ]
 else:
     BOBYQA_OPTIMIZERS = []
+    BOBYQA_TOP_OPTIMIZERS = []
 
 
 if __name__ == '__main__':

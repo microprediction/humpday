@@ -46,8 +46,10 @@ if using_ax:
 
 
     AX_OPTIMIZERS = [ ax_default_cube ]
+    AX_TOP_OPTIMIZERS = [ax_default_cube]
 else:
     AX_OPTIMIZERS = []
+    AX_TOP_OPTIMIZERS = []
 
 
 if __name__=='__main__':
