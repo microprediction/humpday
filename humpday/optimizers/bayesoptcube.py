@@ -3,6 +3,9 @@ try:
     using_bayesopt = True
 except ImportError:
     using_bayesopt = False
+    
+using_bayesopt = False
+print('Bayesian-Optimization turned off pending https://github.com/fmfn/BayesianOptimization/issues/300')
 
 if using_bayesopt:
     from humpday.objectives.classic import CLASSIC_OBJECTIVES
