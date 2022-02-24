@@ -1,4 +1,5 @@
 import math
+import numpy as np
 
 # http://dlib.net/optimization.html#find_min_global
 # This library also provides global_function_search which is pretty darn cool
@@ -19,7 +20,7 @@ if using_freelunch:
         def _objective(x) -> float:
             global feval_count
             feval_count += 1
-            return objective(x)
+            return objective(np.array(x))
 
         optimizer = getattr(freelunch,method)(obj=_objective, bounds=[[0, 1]] * n_dim)
 
