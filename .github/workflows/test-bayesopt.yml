@@ -12,7 +12,7 @@ jobs:
     runs-on: ubuntu-latest
     strategy:
       matrix:
-        python-version: [3.7, 3.8]
+        python-version: [3.7, 3.8, 3.9]
 
     steps:
     - uses: actions/checkout@v2
@@ -27,7 +27,7 @@ jobs:
         python -m pip install flake8 pytest
         python -m pip install pathlib
         python -m pip install cmake
-        python -m pip install --upgrade bayesian-optimization
+        python -m pip install bayesian-optimization==1.2.0
         if [ -f requirements.txt ]; then pip install -r requirements.txt; fi
     - name: Lint with flake8
       run: |
