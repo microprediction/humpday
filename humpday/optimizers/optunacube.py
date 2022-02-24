@@ -84,8 +84,11 @@ if using_optuna:
     OPTUNA_OPTIMIZERS = [optuna_cmaes_cube,
                          optuna_tpe_cube, optuna_random_cube, optuna_random_cube_clone, optuna_random_cube_clone_1,
                          optuna_random_cube_clone_2]
+    OPTUNA_TOP_OPTIMIZERS = [optuna_cmaes_cube]
 else:
     OPTUNA_OPTIMIZERS = []
+    OPTUNA_TOP_OPTIMIZERS = []
+
 
 
 if __name__=='__main__':

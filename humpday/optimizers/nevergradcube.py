@@ -122,8 +122,10 @@ if using_nevergrad:
     NEVERGRAD_OPTIMIZERS = [ nevergrad_ngopt_cube, nevergrad_ngopt4_cube,
                              nevergrad_de_cube, nevergrad_portfolio_cube, nevergrad_oneplus_cube,
                              nevergrad_hammersley_cube, nevergrad_ngopt8_cube ]
+    NEVERGRAD_TOP_OPTIMIZERS = [nevergrad_ngopt8_cube,nevergrad_ngopt4_cube]
 else:
     NEVERGRAD_OPTIMIZERS = []
+    NEVERGRAD_TOP_OPTIMIZERS = []
 
 
 if __name__=='__main__':

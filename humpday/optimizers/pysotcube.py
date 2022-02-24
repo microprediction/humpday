@@ -138,8 +138,10 @@ if using_pysot:
 
 
     PYSOT_OPTIMIZERS = [ pysot_ei_cube, pysot_lcb_cube, pysot_random_cube, pysot_srbf_cube, pysot_dycors_cube ]
+    PYSOT_TOP_OPTIMIZERS = [ pysot_srbf_cube, pysot_dycors_cube]
 else:
     PYSOT_OPTIMIZERS = []
+    PYSOT_TOP_OPTIMIZERS = []
 
 
 if __name__ == '__main__':

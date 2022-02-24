@@ -36,8 +36,10 @@ if using_dlib:
         return curl_factory(optimizer=dlib_default_cube,objective=objective, n_trials=n_trials, n_dim=n_dim, with_count=with_count, d=2)
 
     DLIB_OPTIMIZERS = [dlib_cube, dlib_default_cube ]
+    DLIB_TOP_OPTIMIZERS = [dlib_cube, dlib_default_cube ]
 else:
     DLIB_OPTIMIZERS = []
+    DLIB_TOP_OPTIMIZERS = []
 
 
 if __name__ == '__main__':

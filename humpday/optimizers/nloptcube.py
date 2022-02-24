@@ -83,6 +83,7 @@ if using_nlopt:
     NLOPT_OPTIMIZERS = [nlopt_direct_cube, nlopt_ags_cube, nlopt_esch_cube,
                         nlopt_isres_cube, nlopt_crs2lm_cube, nlopt_directr_cube,
                         nlopt_directo_cube, nlopt_directl_cube]
+    NLOPT_TOP_OPTIMIZERS = [nlopt_directr_cube]
 else:
     NLOPT_OPTIMIZERS = []
 

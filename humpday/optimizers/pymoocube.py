@@ -120,8 +120,10 @@ if using_pymoo:
     PYMOO_OPTIMIZERS = [ pymoo_nelder_cube, pymoo_nsga3_cube,
                        pymoo_unsga3_cube, pymoo_pattern_cube,  pymoo_nsga2_cube,
                         pymoo_unsga3_cube ]
+    PYMOO_TOP_OPTIMIZERS = [ pymoo_pattern_cube, pymoo_nelder_cube]
 else:
     PYMOO_OPTIMIZERS = []
+    PYMOO_TOP_OPTIMIZERS = []
 
 # TODO: See why ['pymoo_ctaea_cube', 'pymoo_de_cube', 'pymoo_rnsga2_cube', 'pymoo_rnsga3_cube'] are broken sometimes
 
