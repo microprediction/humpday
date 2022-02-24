@@ -26,7 +26,7 @@ setup(
     include_package_data=True,
     install_requires=["wheel","numpy>=1.19.5", "importlib-metadata>=1.7.0", "getjson",
                       "scipy", "funcy", "scipy","winning>=0.4.6","microconventions>=0.5.0",
-                       "landscapes",  "pymorton","nevergrad","optuna"],
+                       "landscapes",  "pymorton"],
     entry_points={
         "console_scripts": [
             "humpday=humpday.__main__:main",

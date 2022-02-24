@@ -6,4 +6,3 @@ scipy
 pymorton
 landscapes
 winning>=0.4.6
-optuna
