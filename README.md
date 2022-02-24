@@ -38,7 +38,7 @@ issues on mac silicon M1.
 #### Installing one optimizer at a time 
 
     pip install scikit-optimize
-    pip install nevergrad==0.4.2
+    pip install nevergrad>=0.4.3
     pip install optuna
     pip install platypus-opt
     pip install poap
