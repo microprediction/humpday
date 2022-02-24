@@ -14,10 +14,14 @@ Hello and welcome to HumpDay, a package that helps you choose a Python global op
 ### Cite or be cited
 Pull requests at [CITE.md](https://github.com/microprediction/humpday/blob/main/CITE.md) are welcome. If your package is benchmarked here I'd like to get this bit right.  
  
-### Install base library
+### Install
+Pick one of:
 
     pip install humpday
-    
+    pip install humpday[full]
+
+The full option will try to install a slew of optim packages. You may prefer to do that piecemeal. See below. 
+
 Bleeding edge:
 
     pip install git+https://github.com/microprediction/humpday
@@ -31,7 +35,7 @@ issues on mac silicon M1.
     brew install openblas
     export OPENBLAS=/opt/homebrew/opt/openblas/lib/
 
-#### Add optimizers 
+#### Installing one optimizer at a time 
 
     pip install scikit-optimize
     pip install nevergrad
