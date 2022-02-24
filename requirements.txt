@@ -1,7 +1,7 @@
 microconventions>0.5.0
 getjson
 funcy
-numpy>=1.19.5
+numpy>=1.21.5
 scipy
 pymorton
 landscapes

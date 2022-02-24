@@ -24,7 +24,7 @@ setup(
     test_suite='pytest',
     tests_require=['pytest'],
     include_package_data=True,
-    install_requires=["wheel","numpy>=1.19.5", "importlib-metadata>=1.7.0", "getjson",
+    install_requires=["wheel","numpy>=1.21.5", "importlib-metadata>=1.7.0", "getjson",
                       "scipy", "funcy", "scipy","winning>=0.4.6","microconventions>=0.5.0",
                        "landscapes",  "pymorton","scikit-learn"],
     entry_points={
