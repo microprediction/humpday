@@ -6,9 +6,10 @@ from humpday.optimizers.nloptcube import NLOPT_TOP_OPTIMIZERS
 from humpday.optimizers.dlibcube import DLIB_TOP_OPTIMIZERS
 from humpday.optimizers.pysotcube import PYSOT_TOP_OPTIMIZERS
 from humpday.optimizers.pymoocube import PYMOO_TOP_OPTIMIZERS
+from humpday.optimizers.freelunchcube import FREELUNCH_TOP_OPTIMIZERS
 
 TOP_OPTIMIZERS = NEVERGRAD_TOP_OPTIMIZERS + OPTUNA_TOP_OPTIMIZERS + NLOPT_TOP_OPTIMIZERS\
-                 + DLIB_TOP_OPTIMIZERS + PYSOT_TOP_OPTIMIZERS + PYMOO_TOP_OPTIMIZERS
+                 + DLIB_TOP_OPTIMIZERS + PYSOT_TOP_OPTIMIZERS + PYMOO_TOP_OPTIMIZERS + FREELUNCH_TOP_OPTIMIZERS
 
 
 

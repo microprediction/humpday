@@ -86,6 +86,7 @@ if using_nlopt:
     NLOPT_TOP_OPTIMIZERS = [nlopt_directr_cube]
 else:
     NLOPT_OPTIMIZERS = []
+    NLOPT_TOP_OPTIMIZERS = []
 
 
 if __name__=='__main__':
