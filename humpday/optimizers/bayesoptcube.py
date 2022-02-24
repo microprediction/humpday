@@ -6,6 +6,7 @@ except ImportError:
 
 if using_bayesopt:
     from humpday.objectives.classic import CLASSIC_OBJECTIVES
+    from humpday.objectives.portfolio import markowitz_realized_on_cube
 
 
     BAYESOPT_METHODS = ['ucb', 'ei', 'poi']
@@ -66,7 +67,7 @@ else:
 
 if __name__=='__main__':
     assert using_bayesopt
-    for objective in CLASSIC_OBJECTIVES:
+    for objective in [markowitz_realized_on_cube] + CLASSIC_OBJECTIVES:
         print(' ')
         print(objective.__name__)
         for optimizer in BAYESOPT_OPTIMIZERS:
