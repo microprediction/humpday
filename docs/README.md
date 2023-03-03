@@ -9,11 +9,13 @@ A package to help you in two main ways:
 Import an optimizer or three, and run them:
 
     from humpday.objectives.classic import CLASSIC_OBJECTIVES
+    from humpday.optimizers.dlibcube import DLIB_OPTIMIZERS
     for objective in CLASSIC_OBJECTIVES:
         print(' ')
         print(objective.__name__)
         for optimizer in DLIB_OPTIMIZERS:
             f_best, x_best, actual_num_trials = optimizer(objective, n_trials=500, n_dim=34, with_count=True)
+            print({optimizer.__name__:f_best})
             
 
 Find what you want in [humpday/optimizers](https://github.com/microprediction/humpday/tree/main/humpday/optimizers), then in every definition file (e.g. [hyperoptcube.py](https://github.com/microprediction/humpday/blob/main/humpday/optimizers/hyperoptcube.py)) you'll find an example of how to run the optimizers. There are 
