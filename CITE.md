@@ -12,7 +12,7 @@ If you wish to cite HumpDay, thanks and maybe for now:
  Although I have a book soonish: 
  
         @electronic{cottonbook,
-          title = {{Microprediction: Why the Right Price for AI is Zero}},
+          title = {{Microprediction: Building an Open AI Network}},
           year = {2022},
           author = {Peter Cotton},
           publisher = {MIT Press}
