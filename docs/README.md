@@ -20,8 +20,6 @@ Find what you want in [humpday/optimizers](https://github.com/microprediction/hu
 more patterns in [basic usage](https://github.com/microprediction/humpday/tree/main/examples/basic_usage) examples, maybe.
 
 ### Packages leveraged
-You get *quickly* test *some* functionality from
-
 [Ax-Platform](https://github.com/microprediction/humpday/blob/main/humpday/optimizers/axcube.py), [bayesian-optimization](https://github.com/microprediction/humpday/blob/main/humpday/optimizers/bayesoptcube.py), [DLib](https://github.com/microprediction/humpday/blob/main/humpday/optimizers/dlibcube.py), [HyperOpt](https://github.com/microprediction/humpday/blob/main/humpday/optimizers/hyperoptcube.py), [NeverGrad](https://github.com/microprediction/humpday/blob/main/humpday/optimizers/nevergradcube.py), [Optuna](https://github.com/microprediction/humpday/blob/main/humpday/optimizers/optunacube.py), [Platypus](https://github.com/microprediction/humpday/blob/main/humpday/optimizers/platypuscube.py), [PyMoo](https://github.com/microprediction/humpday/blob/main/humpday/optimizers/pymoocube.py), [PySOT](https://github.com/microprediction/humpday/blob/main/humpday/optimizers/pysotcube.py), Scipy [classic](https://github.com/microprediction/humpday/blob/main/humpday/optimizers/scipycube.py) and [shgo](https://github.com/microprediction/humpday/blob/main/humpday/optimizers/shgocube.py), [Skopt](https://github.com/microprediction/humpday/blob/main/humpday/optimizers/skoptcube.py),
 [nlopt](https://github.com/microprediction/humpday/blob/main/humpday/optimizers/nloptcube.py), [Py-Bobyaq](https://github.com/microprediction/humpday/blob/main/humpday/optimizers/bobyqacube.py), 
 [UltraOpt](https://github.com/microprediction/humpday/blob/main/humpday/optimizers/ultraoptcube.py), [FreeLunch](https://github.com/MDCHAMP/FreeLunch) and maybe others in a common calling syntax.  
@@ -38,7 +36,6 @@ See [article](https://microprediction.medium.com/interpreting-the-elo-ratings-fo
 
 
 View as [web page](https://microprediction.github.io/humpday/) or [source](https://github.com/microprediction/humpday/blob/main/docs/README.md)
-
 
 
 ![simplex](/humpday/assets/images/simplex_map.png)
