@@ -26,6 +26,9 @@ You get *quickly* test *some* functionality from
 [nlopt](https://github.com/microprediction/humpday/blob/main/humpday/optimizers/nloptcube.py), [Py-Bobyaq](https://github.com/microprediction/humpday/blob/main/humpday/optimizers/bobyqacube.py), 
 [UltraOpt](https://github.com/microprediction/humpday/blob/main/humpday/optimizers/ultraoptcube.py), [FreeLunch](https://github.com/MDCHAMP/FreeLunch) and maybe others in a common calling syntax.  
 
+### Elo ratings
+See [article](https://microprediction.medium.com/interpreting-the-elo-ratings-for-python-global-optimizers-65304573e422).
+
 ### Articles:
 
 - [A New Family of Diffeomorphisms from the Simplex to the Cube](https://medium.com/@microprediction/a-new-family-of-diffeomorphisms-from-the-simplex-to-the-cube-with-application-to-global-6d358714f429)
