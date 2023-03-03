@@ -1,9 +1,6 @@
 import math
 import numpy as np
 
-# http://dlib.net/optimization.html#find_min_global
-# This library also provides global_function_search which is pretty darn cool
-
 
 try:
     import freelunch
@@ -22,7 +19,8 @@ if using_freelunch:
             feval_count += 1
             return objective(np.array(x))
 
-        optimizer = getattr(freelunch,method)(obj=_objective, bounds=[[0, 1]] * n_dim)
+        bounds = np.array( [ np.array([0, 1])] * n_dim )
+        optimizer = getattr(freelunch,method)(obj=_objective, bounds=bounds)
 
         if method.lower() in ['de','sade','pso','krillherd']:
             n_gens = int(math.ceil(n_trials / n_pop))

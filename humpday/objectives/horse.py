@@ -38,8 +38,8 @@ def cube_to_ability(u:[float])->[float]:
 
 
 def horse_dividends_on_cube(u:[float])->float:
-    """ Find relative ability matching market prices
-    :param u:  Determines ability of 2nd through last horse, via arctanh
+    """ Find relative cubetosimplex.py matching market prices
+    :param u:  Determines cubetosimplex.py of 2nd through last horse, via arctanh
     :return: [float] of dividends (return on betting $1)
     """
     n_dim = len(u)+1
@@ -59,5 +59,5 @@ if __name__=='__main__':
     v, u = nevergrad_ngopt8_cube(horse_dividends_on_cube,n_dim=20, n_trials=25000)
     o = cube_to_ability(u)
     print(' ')
-    print('Horse ability, and best solution found ')
+    print('Horse cubetosimplex.py, and best solution found ')
     print(list(zip(o, ABILITIES)))
