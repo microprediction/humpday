@@ -5,6 +5,7 @@ from scipy.stats import norm
 from typing import List
 import numpy as np
 
+# Line by line explanation at https://medium.com/@mike.roweprediger/how-to-change-the-domain-of-a-function-from-a-simplex-to-a-cube-593161ab55aa
 
 def cube_to_simplex(u: List[float]) -> List[float]:
     """
