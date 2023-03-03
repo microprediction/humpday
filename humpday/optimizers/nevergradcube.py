@@ -1,8 +1,4 @@
-try:
-    import nevergrad as ng
-    using_nevergrad = True
-except ImportError:
-    using_nevergrad = False
+from humpday.inclusion.nevergradinclusion import using_nevergrad
 
 if using_nevergrad:
 

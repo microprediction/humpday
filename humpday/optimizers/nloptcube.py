@@ -1,11 +1,7 @@
-try:
-    import nlopt
-    using_nlopt = True
-except ImportError:
-    using_nlopt = False
+from humpday.inclusion.nloptinclusion import using_nlopt
 
 if using_nlopt:
-
+    import nlopt
     NLOPTIMIZERS = {'gn_direct' :nlopt.GN_DIRECT,
                     'gn_ags':nlopt.GN_AGS,
                     'gn_esch':nlopt.GN_ESCH,
@@ -90,10 +86,12 @@ else:
 
 
 if __name__=='__main__':
-    assert using_nlopt
-    from humpday.objectives.classic import CLASSIC_OBJECTIVES
-    for objective in CLASSIC_OBJECTIVES:
-        print(' ')
-        print(objective.__name__)
-        for optimizer in NLOPT_OPTIMIZERS:
-            print((optimizer(objective, n_trials=250, n_dim=6, with_count=True)))
+    if using_nlopt:
+        from humpday.objectives.classic import CLASSIC_OBJECTIVES
+        for objective in CLASSIC_OBJECTIVES:
+            print(' ')
+            print(objective.__name__)
+            for optimizer in NLOPT_OPTIMIZERS:
+                print((optimizer(objective, n_trials=250, n_dim=6, with_count=True)))
+    else:
+        print('pip install nlopt')

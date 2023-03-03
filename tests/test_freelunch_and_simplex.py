@@ -2,6 +2,9 @@
 from humpday.inclusion.winninginclusion import using_winning
 from humpday.inclusion.freelunchinclusion import using_freelunch
 
+# See https://medium.com/@microprediction/a-new-family-of-diffeomorphisms-from-the-simplex-to-the-cube-with-application-to-global-6d358714f429
+
+
 if using_winning and using_freelunch:
 
     from humpday.transforms.cubetosimplex import minimize_optimizer_on_simplex

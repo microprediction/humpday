@@ -1,6 +1,8 @@
-
 from humpday.inclusion.winninginclusion import using_winning
 from humpday.inclusion.heboinclusion import using_hebo
+
+# See https://medium.com/@microprediction/a-new-family-of-diffeomorphisms-from-the-simplex-to-the-cube-with-application-to-global-6d358714f429
+
 
 if using_winning and using_hebo:
 

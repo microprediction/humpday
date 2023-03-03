@@ -1,19 +1,15 @@
 import logging
 import warnings
 from humpday.transforms.zcurves import curl_factory
+from humpday.inclusion.hyperoptinclusion import using_hyperopt
 
-try:
+
+if using_hyperopt:
+    logging.getLogger('hyperopt').setLevel(logging.ERROR)
     from hyperopt import fmin, hp, tpe, Trials
     from hyperopt.tpe import suggest as tpe_suggest
     from hyperopt.rand import suggest as rand_suggest
     from hyperopt.atpe import suggest as atpe_suggest
-    using_hyperopt = True
-except ImportError:
-    using_hyperopt = False
-
-if using_hyperopt:
-    logging.getLogger('hyperopt').setLevel(logging.ERROR)
-
     def hyperopt_cube(objective, n_trials, n_dim, with_count=False, algo=None):
         """ Minimize a function on the cube using HyperOpt, and audit # of function calls
            :param objective:    function on (0,1)^n_dim
