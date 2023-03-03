@@ -1,8 +1,9 @@
 import functools
-from winning.std_calibration import std_ability_implied_state_prices
+from winning.lattice_conventions import STD_UNIT, STD_L
+from winning.std_calibration import std_ability_implied_state_prices, std_state_price_implied_ability
 from scipy.stats import norm
 from typing import List
-from winning.lattice_conventions import STD_UNIT, STD_L
+import numpy as np
 
 
 def cube_to_simplex(u: List[float]) -> List[float]:
@@ -12,8 +13,21 @@ def cube_to_simplex(u: List[float]) -> List[float]:
 
     """
     a = [0] + [-norm.ppf(ui) for ui in u]
-    p = std_ability_implied_state_prices(a, L=5 * STD_L, unit=0.5 * STD_UNIT)
+    p = std_ability_implied_state_prices(a, L=5 * STD_L, unit=STD_UNIT)
     return p
+
+
+def simplex_to_cube(p: List[float]):
+    """ The inverse map
+
+         :param    p in [0,1]^{n+1}  with entries summing to unity
+         :returns  (0,1)^n
+
+    """
+    x_mean_zero = std_state_price_implied_ability(p,L=5 * STD_L, unit=STD_UNIT)
+    offset = x_mean_zero[0]
+    a = [xi - offset for xi in x_mean_zero]
+    return [norm.cdf(ai) for ai in a[1:]]
 
 
 def lift_to_cube(objective, fail_value=100000):
@@ -49,7 +63,9 @@ def lift_to_cube(objective, fail_value=100000):
     return wrapper
 
 
-def minimize_optimizer_on_simplex(optimizer, objective, n_trials, n_dim, with_count=False, fail_value=100000, **kwargs):
+def minimize_optimizer_on_simplex(optimizer, objective, n_trials, n_dim,
+                                  with_count=False, fail_value=100000,
+                                  return_point_on_simplex=False, **kwargs):
     """
            Minimize objective on the (interior of the) n_dim-simplex in n_dim+1 dimensions by
            optimizing an objective function lifted to the n_dim-cube.
@@ -62,10 +78,24 @@ def minimize_optimizer_on_simplex(optimizer, objective, n_trials, n_dim, with_co
       :param n_dim:       The manifold dimension of the simplex (1 less)
       :param with_count:
       :param fail_value:  The value returned if the mapping fails
+      :param return_point_on_simplex: If True, will return point on simplex. Otherwise the image on the cube. 
       :return: Same as any other optimizer
     """
     lifted_objective_on_cube = lift_to_cube(objective=objective, fail_value=fail_value)
-    return optimizer(lifted_objective_on_cube, n_trials=n_trials, n_dim=n_dim, with_count=with_count, **kwargs)
+    f_best, x_best, feval_count = optimizer(lifted_objective_on_cube, n_trials=n_trials, n_dim=n_dim, with_count=True, **kwargs)
+
+    if return_point_on_simplex:
+        try:
+            s_best = cube_to_simplex(x_best)
+        except:
+            print(x_best)
+            raise ValueError('Could not move optimal point back to simplex')
+    else:
+        s_best = np.copy(x_best)
+    if with_count:
+        return f_best, s_best, feval_count
+    else:
+        return f_best, s_best
 
 
 if __name__=='__main__':
