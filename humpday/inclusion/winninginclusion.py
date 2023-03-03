@@ -3,3 +3,6 @@ try:
     using_winning = True
 except ImportError:
     using_winning = False
+
+if __name__=='__main__':
+    print(using_winning)

@@ -1,16 +1,9 @@
-try:
-    from bayes_opt import BayesianOptimization
-    using_bayesopt = True
-except ImportError:
-    using_bayesopt = False
-    
-using_bayesopt = False
-print('Bayesian-Optimization turned off pending https://github.com/fmfn/BayesianOptimization/issues/300')
+from humpday.inclusion.bayesoptinclusion import using_bayesopt
 
 if using_bayesopt:
     from humpday.objectives.classic import CLASSIC_OBJECTIVES
     from humpday.objectives.portfolio import markowitz_realized_on_cube
-
+    from bayes_opt import BayesianOptimization
 
     BAYESOPT_METHODS = ['ucb', 'ei', 'poi']
 
@@ -69,9 +62,11 @@ else:
 
 
 if __name__=='__main__':
-    assert using_bayesopt
-    for objective in [markowitz_realized_on_cube] + CLASSIC_OBJECTIVES:
-        print(' ')
-        print(objective.__name__)
-        for optimizer in BAYESOPT_OPTIMIZERS:
-            print((optimizer(objective, n_trials=25, n_dim=3, with_count=True)))
+    if using_bayesopt:
+        for objective in [markowitz_realized_on_cube] + CLASSIC_OBJECTIVES:
+            print(' ')
+            print(objective.__name__)
+            for optimizer in BAYESOPT_OPTIMIZERS:
+                print((optimizer(objective, n_trials=25, n_dim=3, with_count=True)))
+    else:
+        print('pip install bayesian-optimization')

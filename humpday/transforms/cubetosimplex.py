@@ -70,10 +70,10 @@ def minimize_optimizer_on_simplex(optimizer, objective, n_trials, n_dim, with_co
 
 if __name__=='__main__':
     from humpday.objectives.chatgptobjectives import CHATGPT_OBJECTIVES
-    from humpday.optimizers.freelunchcube import FREELUNCH_OPTIMIZERS
+    from humpday.optimizers.alloptimizers import OPTIMIZERS
     import random
     while True:
-        opt = random.choice(FREELUNCH_OPTIMIZERS)
+        opt = random.choice(OPTIMIZERS)
         objective = random.choice(CHATGPT_OBJECTIVES)
         n_dim = random.choice([3,5,8])
         f_best, x_best = minimize_optimizer_on_simplex(optimizer=opt, objective=objective, n_dim=n_dim, n_trials=100)

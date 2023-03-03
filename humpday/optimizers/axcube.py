@@ -1,13 +1,9 @@
 from funcy import print_durations
+from humpday.inclusion.axplatforminclusion import using_axplatform
 
-try:
+
+if using_axplatform:
     from ax import optimize
-    using_ax = True
-except ImportError:
-    using_ax = False
-
-if using_ax:
-
     from logging import CRITICAL
     from ax.utils.common.logger import get_logger
     rt = get_logger('ax')
@@ -15,6 +11,9 @@ if using_ax:
     import warnings
     warnings.filterwarnings("ignore")
 
+
+
+    # Your code here
 
     def ax_cube(objective, n_trials, n_dim, with_count=False, method=None):
         global feval_count
@@ -53,12 +52,18 @@ else:
 
 
 if __name__=='__main__':
-    from humpday.objectives.classic import CLASSIC_OBJECTIVES
-    @print_durations()
-    def demo():
-        for objective in CLASSIC_OBJECTIVES:
-            print(' ')
-            print(objective.__name__)
-            for optimizer in AX_OPTIMIZERS:
-                print(optimizer(objective, n_trials=250, n_dim=6, with_count=True))
+    if using_axplatform:
+        print(AX_OPTIMIZERS)
+        from humpday.objectives.classic import CLASSIC_OBJECTIVES
+
+
+        def demo():
+            for objective in CLASSIC_OBJECTIVES:
+                print(' ')
+                print(objective.__name__)
+                for optimizer in AX_OPTIMIZERS:
+                    print(optimizer(objective, n_trials=25, n_dim=3, with_count=True))
+        demo()
+    else:
+        print('pip install ax-platform')
 

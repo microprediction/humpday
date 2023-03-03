@@ -3,19 +3,13 @@ import logging
 import numpy as np
 import math
 import warnings
-
-try:
-    from hebo.design_space.design_space import DesignSpace
-    from hebo.optimizers.hebo import HEBO
-    using_hebo = True
-except ImportError:
-    using_hebo = False
-
+from humpday.inclusion.heboinclusion import using_hebo
 
 if using_hebo:
 
+    from hebo.design_space.design_space import DesignSpace
+    from hebo.optimizers.hebo import HEBO
     logging.getLogger('hebo').setLevel(logging.ERROR)
-
 
     def hebo_cube_factory(objective, n_trials, n_dim, with_count,n_suggestions=5):
         global feval_count

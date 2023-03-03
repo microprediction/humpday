@@ -1,15 +1,11 @@
-import warnings
 import numpy as np
+from humpday.inclusion.pybobyqainclusion import using_bobyqa
 
 # https://github.com/numericalalgorithmsgroup/pybobyqa/blob/master/pybobyqa/solver.py
 
-try:
-    from pybobyqa import solve
-    using_bobyqa = True
-except ImportError:
-    using_bobyqa = False
 
 if using_bobyqa:
+    from pybobyqa import solve
 
     def bobyqa_cube_factory(objective, n_trials, n_dim, with_count, **kwargs):
         global feval_count
