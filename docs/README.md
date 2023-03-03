@@ -31,6 +31,7 @@ You get *quickly* test *some* functionality from
 - [A New Family of Diffeomorphisms from the Simplex to the Cube](https://medium.com/@microprediction/a-new-family-of-diffeomorphisms-from-the-simplex-to-the-cube-with-application-to-global-6d358714f429)
 - [The Python Optimizer Form Guide](https://medium.com/geekculture/the-python-optimizer-form-guide-3b8ea3b4d78f)
 - [Comparing Python Global Optimizer Packages](https://www.microprediction.com/blog/optimize)
+- [Interpreting the Python Global Optimizer Elo Ratings](https://microprediction.medium.com/interpreting-the-elo-ratings-for-python-global-optimizers-65304573e422)
 
 
 View as [web page](https://microprediction.github.io/humpday/) or [source](https://github.com/microprediction/humpday/blob/main/docs/README.md)
