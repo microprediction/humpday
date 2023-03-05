@@ -40,9 +40,7 @@ def mesh2d(f,*args):
     import numpy as np
     import matplotlib.pyplot as plt
     from mpl_toolkits.mplot3d import Axes3D
-    import matplotlib as mpl
-    mpl.rcParams['figure.figsize'] = [10.0, 8.0]
-
+  
     # Define the vertices of the triangle in R3
     p3 = np.array([0, 0, 0])
     p1 = np.array([1, 0, 0])
