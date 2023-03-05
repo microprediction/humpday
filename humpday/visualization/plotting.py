@@ -28,11 +28,10 @@ def mesh2d(f,*args):
     ax.set_xlabel('X Label')
     ax.set_ylabel('Y Label')
     ax.set_zlabel('Z Label')
-
     plt.show()
+
     
-    
- def simplex_surf(g):
+def simplex_surf(g):
     """
          g is a function defined on the 2-simplex 
          We change perspective so as to plot it 
@@ -65,9 +64,8 @@ def mesh2d(f,*args):
     fig = plt.figure()
     ax = fig.add_subplot(111, projection='3d')
     from matplotlib import cm
-    surf = ax.plot_trisurf(X, Y, Z, cmap=cm.coolwarm,
+    _surf = ax.plot_trisurf(X, Y, Z, cmap=cm.coolwarm,
                           linewidth=0, antialiased=False)
-    shadow = ax.plot_trisurf(X, Y, np.zeros_like(Z), cmap=cm.coolwarm,
+    _shadow = ax.plot_trisurf(X, Y, np.zeros_like(Z), cmap=cm.coolwarm,
                           linewidth=0, antialiased=False)
-
     plt.show()
