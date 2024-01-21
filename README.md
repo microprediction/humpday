@@ -68,3 +68,6 @@ By all means contribute more to [optimizers](https://github.com/microprediction/
 - (most recent) [HumpDay: A Package to Take the Pain Out of Choosing a Python Optimizer](https://www.microprediction.com/blog/humpday). 
 - [Comparing Python Global Optimizers](https://www.microprediction.com/blog/optimize).
 
+## Other comparison tools
+
+- [FelooPy](https://github.com/ktafakkori/feloopy)
