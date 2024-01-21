@@ -71,3 +71,4 @@ By all means contribute more to [optimizers](https://github.com/microprediction/
 ## Other comparison tools
 
 - [FelooPy](https://github.com/ktafakkori/feloopy)
+- [qpsolvers](https://qpsolvers.github.io/qpsolvers/supported-solvers.html#) for QP
