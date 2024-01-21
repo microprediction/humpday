@@ -4,12 +4,9 @@ from humpday.inclusion.axplatforminclusion import using_axplatform
 
 if using_axplatform:
     from ax import optimize
-    from logging import CRITICAL
-    from ax.utils.common.logger import get_logger
-    rt = get_logger('ax')
-    rt.setLevel(CRITICAL)
-    import warnings
-    warnings.filterwarnings("ignore")
+    import logging
+    from ax.utils.common.logger import ROOT_STREAM_HANDLER
+    ROOT_STREAM_HANDLER.setLevel(logging.WARNING)
 
 
 
