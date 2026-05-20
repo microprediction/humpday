@@ -1,6 +1,9 @@
 import functools
-from winning.lattice_conventions import STD_UNIT, STD_L
-from winning.std_calibration import std_ability_implied_state_prices, std_state_price_implied_ability
+from thurstone.conventions import STD_UNIT, STD_L
+from humpday.transforms.thurstone_transform import (
+    cube_to_simplex_simple as cube_to_simplex_impl,
+    simplex_to_cube_simple as simplex_to_cube_impl
+)
 from scipy.stats import norm
 from typing import List
 import numpy as np
@@ -13,9 +16,7 @@ def cube_to_simplex(u: List[float]) -> List[float]:
        :returns  a point p in (0,1)^{n+1} with sum(p)=1
 
     """
-    a = [0] + [-norm.ppf(ui) for ui in u]
-    p = std_ability_implied_state_prices(a, L=5 * STD_L, unit=STD_UNIT)
-    return p
+    return cube_to_simplex_impl(u)
 
 
 def simplex_to_cube(p: List[float]):
@@ -25,10 +26,7 @@ def simplex_to_cube(p: List[float]):
          :returns  (0,1)^n
 
     """
-    x_mean_zero = std_state_price_implied_ability(p,L=5 * STD_L, unit=STD_UNIT)
-    offset = x_mean_zero[0]
-    a = [xi - offset for xi in x_mean_zero]
-    return [norm.cdf(ai) for ai in a[1:]]
+    return simplex_to_cube_impl(p)
 
 
 def lift_to_cube(objective, fail_value=100000):

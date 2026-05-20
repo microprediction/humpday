@@ -2,7 +2,7 @@
 # The horse racing problem
 import numpy as np
 import math
-from winning.std_calibration import std_ability_implied_dividends
+from humpday.transforms.thurstone_transform import simple_ability_implied_dividends as std_ability_implied_dividends
 
 global ABILITIES
 ABILITIES = None

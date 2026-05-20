@@ -18,6 +18,9 @@ def scipy_cube(objective, n_trials, n_dim, with_count=False, method=None):
     options = deepcopy(MINIMIZER_KWARGS[method])
     options.update({'maxfev': n_trials,'maxiter':n_trials})
 
+    # Extract method from options to avoid warning
+    method_name = options.pop('method', method)
+
     global feval_count
     feval_count = 0
 
@@ -26,7 +29,7 @@ def scipy_cube(objective, n_trials, n_dim, with_count=False, method=None):
         feval_count +=1
         return objective(list(x))
 
-    result = minimize(_objective, x0=[0]*n_dim, method=options['method'],bounds=bounds, options=options)
+    result = minimize(_objective, x0=[0]*n_dim, method=method_name, bounds=bounds, options=options)
     best_x = result.x.tolist()
     best_val = _objective(result.x)
     return (best_val, best_x,  feval_count) if with_count else (best_val, best_x)

@@ -1,0 +1,464 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>HumpDay - Interactive Optimizer Comparison</title>
+    <script src="https://cdn.jsdelivr.net/pyodide/v0.26.4/full/pyodide.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/plotly.js/2.35.2/plotly.min.js"></script>
+    <style>
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            margin: 0;
+            padding: 20px;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            min-height: 100vh;
+        }
+
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+        }
+
+        .header {
+            text-align: center;
+            margin-bottom: 40px;
+        }
+
+        .header h1 {
+            font-size: 3em;
+            margin: 0;
+            text-shadow: 2px 2px 4px rgba(0,0,0,0.5);
+        }
+
+        .subtitle {
+            font-size: 1.2em;
+            opacity: 0.9;
+            margin-top: 10px;
+        }
+
+        .demo-area {
+            background: rgba(255, 255, 255, 0.1);
+            border-radius: 15px;
+            padding: 30px;
+            backdrop-filter: blur(10px);
+            margin-bottom: 30px;
+        }
+
+        .controls {
+            display: flex;
+            gap: 20px;
+            margin-bottom: 20px;
+            flex-wrap: wrap;
+        }
+
+        .control-group {
+            display: flex;
+            flex-direction: column;
+            gap: 5px;
+        }
+
+        .control-group label {
+            font-weight: 600;
+            font-size: 0.9em;
+        }
+
+        select, button {
+            padding: 10px 15px;
+            border: none;
+            border-radius: 8px;
+            font-size: 1em;
+        }
+
+        select {
+            background: white;
+            color: #333;
+        }
+
+        button {
+            background: #4CAF50;
+            color: white;
+            cursor: pointer;
+            font-weight: 600;
+            transition: all 0.3s ease;
+        }
+
+        button:hover {
+            background: #45a049;
+            transform: translateY(-2px);
+        }
+
+        button:disabled {
+            background: #ccc;
+            cursor: not-allowed;
+            transform: none;
+        }
+
+        .race-container {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 20px;
+            margin-top: 20px;
+        }
+
+        .optimizer-card {
+            background: rgba(255, 255, 255, 0.15);
+            border-radius: 10px;
+            padding: 20px;
+            text-align: center;
+        }
+
+        .optimizer-name {
+            font-size: 1.2em;
+            font-weight: 600;
+            margin-bottom: 10px;
+        }
+
+        .optimizer-score {
+            font-size: 2em;
+            font-weight: bold;
+            color: #4CAF50;
+        }
+
+        .winner {
+            background: rgba(76, 175, 80, 0.3) !important;
+            border: 2px solid #4CAF50;
+        }
+
+        .progress-bar {
+            width: 100%;
+            height: 20px;
+            background: rgba(255, 255, 255, 0.3);
+            border-radius: 10px;
+            overflow: hidden;
+            margin: 10px 0;
+        }
+
+        .progress-fill {
+            height: 100%;
+            background: #4CAF50;
+            transition: width 0.3s ease;
+            width: 0%;
+        }
+
+        .loading {
+            text-align: center;
+            padding: 40px;
+            font-size: 1.2em;
+        }
+
+        .plot-container {
+            background: white;
+            border-radius: 10px;
+            margin-top: 20px;
+            min-height: 400px;
+        }
+
+        @media (max-width: 768px) {
+            .race-container {
+                grid-template-columns: 1fr;
+            }
+
+            .controls {
+                flex-direction: column;
+            }
+
+            .header h1 {
+                font-size: 2em;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <h1>🏁 HumpDay</h1>
+            <div class="subtitle">Interactive Optimizer Racing - No Installation Required!</div>
+        </div>
+
+        <div class="demo-area">
+            <h2>🚀 Live Optimizer Race</h2>
+
+            <div class="controls">
+                <div class="control-group">
+                    <label for="objective">Objective Function:</label>
+                    <select id="objective">
+                        <option value="sphere">Sphere (Easy)</option>
+                        <option value="rosenbrock">Rosenbrock (Medium)</option>
+                        <option value="rastrigin">Rastrigin (Hard)</option>
+                        <option value="ackley">Ackley (Very Hard)</option>
+                    </select>
+                </div>
+
+                <div class="control-group">
+                    <label for="dimensions">Dimensions:</label>
+                    <select id="dimensions">
+                        <option value="2">2D</option>
+                        <option value="3">3D</option>
+                        <option value="5">5D</option>
+                        <option value="8">8D</option>
+                    </select>
+                </div>
+
+                <div class="control-group">
+                    <label for="trials">Function Evaluations:</label>
+                    <select id="trials">
+                        <option value="50">50 (Quick)</option>
+                        <option value="100">100 (Standard)</option>
+                        <option value="200">200 (Thorough)</option>
+                    </select>
+                </div>
+
+                <div class="control-group">
+                    <label>&nbsp;</label>
+                    <button id="raceBtn" onclick="startRace()">🏁 Start Race!</button>
+                </div>
+            </div>
+
+            <div id="loading" class="loading" style="display: none;">
+                <div>🐍 Loading Python environment...</div>
+                <div style="margin-top: 10px; font-size: 0.9em; opacity: 0.8;">This may take a moment on first load</div>
+            </div>
+
+            <div id="race-results" class="race-container" style="display: none;"></div>
+
+            <div id="convergence-plot" class="plot-container" style="display: none;"></div>
+        </div>
+    </div>
+
+    <script>
+        let pyodide = null;
+        let isLoading = false;
+
+        // Initialize Pyodide when page loads
+        async function initializePyodide() {
+            if (pyodide) return pyodide;
+
+            console.log('Loading Pyodide...');
+            pyodide = await loadPyodide({
+                indexURL: "https://cdn.jsdelivr.net/pyodide/v0.26.4/full/"
+            });
+
+            // Install required packages
+            await pyodide.loadPackage(['numpy', 'scipy']);
+
+            // Define objective functions in Python
+            pyodide.runPython(`
+import numpy as np
+from scipy.optimize import minimize
+import json
+
+def sphere(x):
+    return np.sum(x**2)
+
+def rosenbrock(x):
+    return np.sum(100.0*(x[1:] - x[:-1]**2)**2 + (1 - x[:-1])**2)
+
+def rastrigin(x):
+    A = 10
+    n = len(x)
+    return A * n + np.sum(x**2 - A * np.cos(2 * np.pi * x))
+
+def ackley(x):
+    a = 20
+    b = 0.2
+    c = 2 * np.pi
+    d = len(x)
+    return -a * np.exp(-b * np.sqrt(np.sum(x**2) / d)) - np.exp(np.sum(np.cos(c * x)) / d) + a + np.exp(1)
+
+objectives = {
+    'sphere': sphere,
+    'rosenbrock': rosenbrock,
+    'rastrigin': rastrigin,
+    'ackley': ackley
+}
+
+def run_optimizer_race(objective_name, dimensions, trials):
+    """Run a race between different scipy optimizers"""
+
+    obj_func = objectives[objective_name]
+    bounds = [(-5, 5) for _ in range(dimensions)]
+
+    # Different scipy optimizers to race
+    optimizers = [
+        {'name': 'Powell', 'method': 'Powell'},
+        {'name': 'Nelder-Mead', 'method': 'Nelder-Mead'},
+        {'name': 'L-BFGS-B', 'method': 'L-BFGS-B'},
+        {'name': 'TNC', 'method': 'TNC'}
+    ]
+
+    results = []
+    histories = {}
+
+    for opt in optimizers:
+        x0 = np.random.uniform(-2, 2, dimensions)
+
+        # Track convergence history
+        history = []
+
+        def callback(xk):
+            if len(history) < trials:
+                history.append(obj_func(xk))
+
+        try:
+            if opt['method'] in ['L-BFGS-B', 'TNC']:
+                res = minimize(obj_func, x0, method=opt['method'],
+                             bounds=bounds, callback=callback,
+                             options={'maxfun': trials})
+            else:
+                res = minimize(obj_func, x0, method=opt['method'],
+                             callback=callback,
+                             options={'maxfev': trials})
+
+            results.append({
+                'name': opt['name'],
+                'score': float(res.fun),
+                'success': bool(res.success),
+                'nfev': int(res.nfev)
+            })
+
+            histories[opt['name']] = history[:trials]
+
+        except Exception as e:
+            print(f"Error with {opt['name']}: {e}")
+            results.append({
+                'name': opt['name'],
+                'score': float('inf'),
+                'success': False,
+                'nfev': trials
+            })
+            histories[opt['name']] = []
+
+    return results, histories
+            `);
+
+            console.log('Pyodide loaded successfully');
+            return pyodide;
+        }
+
+        async function startRace() {
+            if (isLoading) return;
+
+            isLoading = true;
+            const raceBtn = document.getElementById('raceBtn');
+            const loading = document.getElementById('loading');
+            const results = document.getElementById('race-results');
+            const plotContainer = document.getElementById('convergence-plot');
+
+            raceBtn.disabled = true;
+            raceBtn.textContent = 'Racing...';
+            loading.style.display = 'block';
+            results.style.display = 'none';
+            plotContainer.style.display = 'none';
+
+            try {
+                // Initialize Pyodide if needed
+                if (!pyodide) {
+                    await initializePyodide();
+                }
+
+                // Get user selections
+                const objective = document.getElementById('objective').value;
+                const dimensions = parseInt(document.getElementById('dimensions').value);
+                const trials = parseInt(document.getElementById('trials').value);
+
+                loading.innerHTML = `<div>🏁 Racing ${objective} optimization in ${dimensions}D...</div>`;
+
+                // Run the race
+                pyodide.globals.set('obj_name', objective);
+                pyodide.globals.set('dims', dimensions);
+                pyodide.globals.set('n_trials', trials);
+
+                const raceCode = `
+race_results, convergence_histories = run_optimizer_race(obj_name, dims, n_trials)
+race_results_json = json.dumps(race_results)
+histories_json = json.dumps(convergence_histories)
+                `;
+
+                pyodide.runPython(raceCode);
+
+                const raceResults = JSON.parse(pyodide.globals.get('race_results_json'));
+                const histories = JSON.parse(pyodide.globals.get('histories_json'));
+
+                displayResults(raceResults, histories);
+
+            } catch (error) {
+                console.error('Race error:', error);
+                loading.innerHTML = `<div style="color: #ff6b6b">Error: ${error.message}</div>`;
+            } finally {
+                isLoading = false;
+                raceBtn.disabled = false;
+                raceBtn.textContent = '🏁 Start Race!';
+                loading.style.display = 'none';
+            }
+        }
+
+        function displayResults(results, histories) {
+            const container = document.getElementById('race-results');
+            const plotContainer = document.getElementById('convergence-plot');
+
+            // Sort by score (lower is better)
+            results.sort((a, b) => a.score - b.score);
+
+            // Display results cards
+            let html = '';
+            results.forEach((result, index) => {
+                const isWinner = index === 0;
+                const scoreDisplay = result.score === Infinity ? 'Failed' : result.score.toExponential(3);
+
+                html += `
+                    <div class="optimizer-card ${isWinner ? 'winner' : ''}">
+                        <div class="optimizer-name">
+                            ${isWinner ? '🏆 ' : ''}${result.name}
+                        </div>
+                        <div class="optimizer-score">${scoreDisplay}</div>
+                        <div style="font-size: 0.9em; opacity: 0.8; margin-top: 10px;">
+                            ${result.nfev} evaluations • ${result.success ? 'Success' : 'Failed'}
+                        </div>
+                    </div>
+                `;
+            });
+
+            container.innerHTML = html;
+            container.style.display = 'grid';
+
+            // Plot convergence curves
+            plotConvergence(histories, results.map(r => r.name));
+            plotContainer.style.display = 'block';
+        }
+
+        function plotConvergence(histories, optimizerNames) {
+            const traces = [];
+
+            optimizerNames.forEach((name, index) => {
+                if (histories[name] && histories[name].length > 0) {
+                    traces.push({
+                        x: Array.from({length: histories[name].length}, (_, i) => i + 1),
+                        y: histories[name],
+                        mode: 'lines',
+                        name: name,
+                        line: { width: 3 }
+                    });
+                }
+            });
+
+            const layout = {
+                title: 'Convergence Curves',
+                xaxis: { title: 'Function Evaluations' },
+                yaxis: { title: 'Objective Value', type: 'log' },
+                showlegend: true,
+                margin: { l: 60, r: 60, t: 60, b: 60 }
+            };
+
+            Plotly.newPlot('convergence-plot', traces, layout, {responsive: true});
+        }
+
+        // Auto-initialize on load
+        window.addEventListener('load', () => {
+            // Don't auto-initialize to keep page load fast
+            console.log('Page loaded. Click "Start Race" to begin!');
+        });
+    </script>
+</body>
+</html>
