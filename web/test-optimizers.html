@@ -1,0 +1,326 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Optimizer JavaScript Implementation Tests</title>
+    <style>
+        body {
+            font-family: 'Monaco', 'Courier New', monospace;
+            margin: 20px;
+            background: #f8f9fa;
+            color: #2c3e50;
+        }
+
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+            background: white;
+            border-radius: 10px;
+            padding: 30px;
+            box-shadow: 0 4px 8px rgba(0,0,0,0.1);
+        }
+
+        .test-section {
+            margin: 20px 0;
+            padding: 20px;
+            border-left: 4px solid #3498db;
+            background: #f8f9fa;
+        }
+
+        .test-results {
+            background: #fff;
+            border: 1px solid #ddd;
+            border-radius: 5px;
+            padding: 15px;
+            margin: 10px 0;
+            font-size: 0.9em;
+        }
+
+        .test-pass { border-left: 4px solid #27ae60; }
+        .test-fail { border-left: 4px solid #e74c3c; }
+        .test-warn { border-left: 4px solid #f39c12; }
+
+        .run-tests-btn {
+            background: #3498db;
+            color: white;
+            border: none;
+            padding: 12px 24px;
+            font-size: 1.1em;
+            border-radius: 4px;
+            cursor: pointer;
+            margin: 10px 5px;
+        }
+
+        .run-tests-btn:hover {
+            background: #2980b9;
+        }
+
+        .benchmark-table {
+            width: 100%;
+            border-collapse: collapse;
+            margin: 15px 0;
+        }
+
+        .benchmark-table th,
+        .benchmark-table td {
+            padding: 8px 12px;
+            border: 1px solid #ddd;
+            text-align: left;
+        }
+
+        .benchmark-table th {
+            background: #34495e;
+            color: white;
+        }
+
+        .progress-bar {
+            width: 100%;
+            height: 20px;
+            background: #ecf0f1;
+            border-radius: 10px;
+            overflow: hidden;
+            margin: 10px 0;
+        }
+
+        .progress-fill {
+            height: 100%;
+            background: #3498db;
+            transition: width 0.3s ease;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>🧪 Optimizer JavaScript Implementation Tests</h1>
+        <p>Validates that JavaScript implementations behave like reference algorithms</p>
+
+        <div class="test-section">
+            <h3>Test Suite Controls</h3>
+            <button class="run-tests-btn" onclick="runAllTests()">🚀 Run All Tests</button>
+            <button class="run-tests-btn" onclick="runBasicTests()">⚡ Basic Tests Only</button>
+            <button class="run-tests-btn" onclick="runBenchmarkTests()">📊 Benchmark Tests</button>
+            <button class="run-tests-btn" onclick="clearResults()">🧹 Clear Results</button>
+        </div>
+
+        <div id="progress-section" style="display: none;">
+            <h4>Test Progress</h4>
+            <div class="progress-bar">
+                <div id="progress-fill" class="progress-fill" style="width: 0%;"></div>
+            </div>
+            <div id="progress-text">Starting tests...</div>
+        </div>
+
+        <div id="test-results">
+            <!-- Test results will appear here -->
+        </div>
+
+        <div class="test-section">
+            <h3>📋 Test Coverage</h3>
+            <ul>
+                <li><strong>Convergence Tests:</strong> Verify algorithms find known optima</li>
+                <li><strong>Consistency Tests:</strong> Ensure reproducible results with same seed</li>
+                <li><strong>Benchmark Tests:</strong> Compare against expected performance on standard functions</li>
+                <li><strong>Boundary Tests:</strong> Validate behavior at domain boundaries [0,1]</li>
+                <li><strong>Dimension Tests:</strong> Test scalability across different dimensions</li>
+            </ul>
+        </div>
+    </div>
+
+    <!-- Include optimizer implementations -->
+    <script src="js/optimizers.js"></script>
+    <script src="js/stochastic_surfaces.js"></script>
+
+    <script>
+        // Test framework
+        let testResults = [];
+        let currentTestIndex = 0;
+        let totalTests = 0;
+
+        // Standard test functions with known optima
+        const testFunctions = {
+            sphere2D: {
+                name: "2D Sphere",
+                func: (x) => x[0]*x[0] + x[1]*x[1],
+                optimum: [0, 0],
+                optimumValue: 0,
+                tolerance: 1e-3
+            },
+
+            rosenbrock2D: {
+                name: "2D Rosenbrock",
+                func: (x) => {
+                    const a = 1, b = 100;
+                    return (a - x[0])**2 + b * (x[1] - x[0]**2)**2;
+                },
+                optimum: [1, 1],
+                optimumValue: 0,
+                tolerance: 1e-2
+            },
+
+            sphere3D: {
+                name: "3D Sphere",
+                func: (x) => x[0]*x[0] + x[1]*x[1] + x[2]*x[2],
+                optimum: [0, 0, 0],
+                optimumValue: 0,
+                tolerance: 1e-3
+            },
+
+            quadratic5D: {
+                name: "5D Quadratic",
+                func: (x) => x.reduce((sum, xi) => sum + xi*xi, 0),
+                optimum: [0, 0, 0, 0, 0],
+                optimumValue: 0,
+                tolerance: 1e-2
+            }
+        };
+
+        // Algorithms to test
+        const algorithmsToTest = [
+            'PRIMA_UOBYQA',
+            'PRIMA_NEWUOA',
+            'PRIMA_BOBYQA',
+            'SciPy_NelderMead',
+            'SciPy_Powell',
+            'DifferentialEvolution',
+            'RandomSearch'
+        ];
+
+        function updateProgress(completed, total, message) {
+            const progressSection = document.getElementById('progress-section');
+            const progressFill = document.getElementById('progress-fill');
+            const progressText = document.getElementById('progress-text');
+
+            progressSection.style.display = 'block';
+            const percentage = (completed / total) * 100;
+            progressFill.style.width = percentage + '%';
+            progressText.textContent = `${message} (${completed}/${total} - ${percentage.toFixed(1)}%)`;
+        }
+
+        function addTestResult(testName, algorithmName, functionName, result) {
+            const resultsDiv = document.getElementById('test-results');
+            const resultDiv = document.createElement('div');
+
+            const status = result.passed ? 'test-pass' : 'test-fail';
+            const statusIcon = result.passed ? '✅' : '❌';
+
+            resultDiv.className = `test-results ${status}`;
+            resultDiv.innerHTML = `
+                <div><strong>${statusIcon} ${testName}</strong></div>
+                <div><strong>Algorithm:</strong> ${algorithmName}</div>
+                <div><strong>Function:</strong> ${functionName}</div>
+                <div><strong>Final Value:</strong> ${result.finalValue.toFixed(6)} (Expected: ${result.expectedValue.toFixed(6)})</div>
+                <div><strong>Distance to Optimum:</strong> ${result.distanceToOptimum.toFixed(6)}</div>
+                <div><strong>Evaluations:</strong> ${result.evaluations}</div>
+                <div><strong>Status:</strong> ${result.message}</div>
+            `;
+
+            resultsDiv.appendChild(resultDiv);
+        }
+
+        async function testAlgorithm(algorithmName, testFunction, trials = 200) {
+            try {
+                const optimizer = OptimizerFactory.create(
+                    algorithmName,
+                    testFunction.func,
+                    trials,
+                    testFunction.optimum.length
+                );
+
+                const result = optimizer.optimize();
+
+                // Calculate distance to known optimum
+                const distanceToOptimum = Math.sqrt(
+                    testFunction.optimum.reduce((sum, opt, i) =>
+                        sum + (result.bestX[i] - opt) ** 2, 0)
+                );
+
+                const passed = result.bestValue <= testFunction.optimumValue + testFunction.tolerance &&
+                              distanceToOptimum <= testFunction.tolerance;
+
+                return {
+                    passed,
+                    finalValue: result.bestValue,
+                    expectedValue: testFunction.optimumValue,
+                    distanceToOptimum,
+                    evaluations: result.evaluations,
+                    message: passed ? 'Test passed' : `Failed: too far from optimum (tol=${testFunction.tolerance})`
+                };
+            } catch (error) {
+                return {
+                    passed: false,
+                    finalValue: Infinity,
+                    expectedValue: testFunction.optimumValue,
+                    distanceToOptimum: Infinity,
+                    evaluations: 0,
+                    message: `Error: ${error.message}`
+                };
+            }
+        }
+
+        async function runBasicTests() {
+            clearResults();
+
+            const basicFunctions = ['sphere2D', 'rosenbrock2D'];
+            const basicAlgorithms = ['PRIMA_UOBYQA', 'SciPy_NelderMead', 'RandomSearch'];
+
+            totalTests = basicFunctions.length * basicAlgorithms.length;
+            currentTestIndex = 0;
+
+            for (const funcName of basicFunctions) {
+                for (const algName of basicAlgorithms) {
+                    currentTestIndex++;
+                    updateProgress(currentTestIndex, totalTests, `Testing ${algName} on ${funcName}`);
+
+                    const result = await testAlgorithm(algName, testFunctions[funcName]);
+                    addTestResult('Basic Convergence Test', algName, testFunctions[funcName].name, result);
+
+                    // Small delay to prevent UI freezing
+                    await new Promise(resolve => setTimeout(resolve, 10));
+                }
+            }
+
+            updateProgress(totalTests, totalTests, 'Basic tests complete!');
+        }
+
+        async function runBenchmarkTests() {
+            clearResults();
+
+            totalTests = Object.keys(testFunctions).length * algorithmsToTest.length;
+            currentTestIndex = 0;
+
+            for (const [funcName, testFunc] of Object.entries(testFunctions)) {
+                for (const algName of algorithmsToTest) {
+                    currentTestIndex++;
+                    updateProgress(currentTestIndex, totalTests, `Benchmarking ${algName} on ${funcName}`);
+
+                    const result = await testAlgorithm(algName, testFunc, 500); // More trials for benchmarks
+                    addTestResult('Benchmark Test', algName, testFunc.name, result);
+
+                    await new Promise(resolve => setTimeout(resolve, 50));
+                }
+            }
+
+            updateProgress(totalTests, totalTests, 'Benchmark tests complete!');
+        }
+
+        async function runAllTests() {
+            await runBasicTests();
+            await new Promise(resolve => setTimeout(resolve, 1000));
+            await runBenchmarkTests();
+        }
+
+        function clearResults() {
+            document.getElementById('test-results').innerHTML = '';
+            document.getElementById('progress-section').style.display = 'none';
+        }
+
+        // Initialize page
+        document.addEventListener('DOMContentLoaded', () => {
+            console.log('Optimizer test framework loaded');
+            console.log('Available algorithms:', algorithmsToTest);
+            console.log('Test functions:', Object.keys(testFunctions));
+        });
+    </script>
+</body>
+</html>

@@ -1,0 +1,808 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>HumpDay Optimization Benchmark</title>
+    <style>
+        body {
+            font-family: Georgia, serif;
+            margin: 0;
+            padding: 20px;
+            background: #f8f9fa;
+            color: #2c3e50;
+        }
+
+        .container {
+            max-width: 1000px;
+            margin: 0 auto;
+            background: white;
+            border-radius: 10px;
+            box-shadow: 0 4px 6px rgba(0,0,0,0.1);
+            overflow: hidden;
+        }
+
+        .header {
+            background: #2c3e50;
+            color: white;
+            padding: 30px;
+            text-align: center;
+        }
+
+        .main-content {
+            padding: 30px;
+        }
+
+        .problem-input {
+            background: #f8f9fa;
+            padding: 25px;
+            border-radius: 10px;
+            margin-bottom: 30px;
+        }
+
+        textarea {
+            width: 100%;
+            padding: 15px;
+            border: 2px solid #dee2e6;
+            border-radius: 8px;
+            font-size: 1.1em;
+            min-height: 80px;
+            resize: vertical;
+        }
+
+        button {
+            background: #3498db;
+            color: white;
+            border: none;
+            padding: 15px 30px;
+            font-size: 1.1em;
+            border-radius: 8px;
+            cursor: pointer;
+            margin-top: 15px;
+        }
+
+        button:hover {
+            background: #2980b9;
+        }
+
+        button:disabled {
+            background: #ccc;
+            cursor: not-allowed;
+        }
+
+        .results {
+            margin-top: 30px;
+            display: none;
+        }
+
+        .surface {
+            border: 1px solid #ddd;
+            border-radius: 8px;
+            margin: 15px 0;
+            padding: 20px;
+            background: #fafafa;
+        }
+
+        .surface h3 {
+            margin-top: 0;
+            color: #2c3e50;
+        }
+
+        .result-row {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 10px;
+            margin: 5px 0;
+            background: white;
+            border-radius: 5px;
+            border: 1px solid #eee;
+        }
+
+        .leaderboard {
+            background: white;
+            border: 1px solid #dee2e6;
+            border-radius: 10px;
+            margin-top: 30px;
+        }
+
+        .leaderboard-header {
+            background: #34495e;
+            color: white;
+            padding: 20px;
+            text-align: center;
+        }
+
+        .leaderboard table {
+            width: 100%;
+            border-collapse: collapse;
+        }
+
+        .leaderboard th,
+        .leaderboard td {
+            padding: 15px;
+            text-align: left;
+            border-bottom: 1px solid #eee;
+        }
+
+        .leaderboard th {
+            background: #f8f9fa;
+            font-weight: 600;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <h1>Optimization Algorithm Benchmark</h1>
+            <p>Compare optimization methods on test problems</p>
+        </div>
+
+        <div class="main-content">
+            <div class="problem-input">
+                <h3>Problem Description</h3>
+                <textarea id="problemDescription" placeholder="Example: Find minimum of smooth 5D function"></textarea>
+
+                <div style="margin: 15px 0; font-size: 0.9em; color: #666;">
+                    <strong>Quick examples:</strong><br>
+                    <span onclick="fillExample(this)" style="background: #e9ecef; padding: 4px 8px; border-radius: 4px; margin-right: 10px; margin-bottom: 5px; display: inline-block; cursor: pointer;">Find minimum of smooth 2D function</span>
+                    <span onclick="fillExample(this)" style="background: #e9ecef; padding: 4px 8px; border-radius: 4px; margin-right: 10px; margin-bottom: 5px; display: inline-block; cursor: pointer;">Optimize 8-dimensional problem</span>
+                    <span onclick="fillExample(this)" style="background: #e9ecef; padding: 4px 8px; border-radius: 4px; margin-right: 10px; margin-bottom: 5px; display: inline-block; cursor: pointer;">Find minimum of 15D function</span>
+                </div>
+
+                <button onclick="runBenchmark()">Run Benchmark</button>
+            </div>
+
+            <div id="results" class="results">
+                <div class="leaderboard">
+                    <div class="leaderboard-header">
+                        <h3>Results</h3>
+                    </div>
+                    <table>
+                        <thead>
+                            <tr>
+                                <th>Rank</th>
+                                <th>Optimizer</th>
+                                <th>Average Score</th>
+                                <th>Evaluations</th>
+                            </tr>
+                        </thead>
+                        <tbody id="leaderboard">
+                        </tbody>
+                    </table>
+                </div>
+
+                <div id="surfaceResults"></div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // Simple test functions
+        function sphere(x) {
+            return x.reduce((sum, xi) => sum + (xi - 0.5) * (xi - 0.5), 0);
+        }
+
+        function rosenbrock(x) {
+            if (x.length < 2) return (x[0] - 1) * (x[0] - 1);
+            let sum = 0;
+            for (let i = 0; i < x.length - 1; i++) {
+                sum += 100 * Math.pow(x[i + 1] - x[i] * x[i], 2) + Math.pow(1 - x[i], 2);
+            }
+            return sum;
+        }
+
+        function rastrigin(x) {
+            const A = 10;
+            let sum = A * x.length;
+            for (let i = 0; i < x.length; i++) {
+                const xi = (x[i] - 0.5) * 10.24; // Scale to [-5.12, 5.12]
+                sum += xi * xi - A * Math.cos(2 * Math.PI * xi);
+            }
+            return sum;
+        }
+
+        // Simple optimizers
+        function randomSearch(func, trials, dim) {
+            let bestX = Array(dim).fill(0).map(() => Math.random());
+            let bestVal = func(bestX);
+
+            for (let i = 1; i < trials; i++) {
+                const x = Array(dim).fill(0).map(() => Math.random());
+                const val = func(x);
+                if (val < bestVal) {
+                    bestVal = val;
+                    bestX = x;
+                }
+            }
+
+            return { value: bestVal, x: bestX, evals: trials };
+        }
+
+        function nelderMead(func, trials, dim) {
+            // Simple Nelder-Mead implementation
+            const alpha = 1.0, gamma = 2.0, rho = 0.5, sigma = 0.5;
+
+            // Initialize simplex
+            const simplex = [];
+            for (let i = 0; i <= dim; i++) {
+                const x = Array(dim).fill(0).map(() => Math.random());
+                simplex.push({ x: x, f: func(x) });
+            }
+
+            let evals = dim + 1;
+            let bestVal = Math.min(...simplex.map(s => s.f));
+
+            while (evals < trials) {
+                // Sort simplex
+                simplex.sort((a, b) => a.f - b.f);
+
+                if (simplex[dim].f - simplex[0].f < 1e-8) break;
+
+                // Centroid
+                const centroid = Array(dim).fill(0);
+                for (let i = 0; i < dim; i++) {
+                    for (let j = 0; j < dim; j++) {
+                        centroid[j] += simplex[i].x[j] / dim;
+                    }
+                }
+
+                // Reflect
+                const reflected = centroid.map((c, j) =>
+                    Math.max(0, Math.min(1, c + alpha * (c - simplex[dim].x[j])))
+                );
+                const fReflected = func(reflected);
+                evals++;
+
+                if (fReflected < simplex[0].f) {
+                    // Expand
+                    const expanded = centroid.map((c, j) =>
+                        Math.max(0, Math.min(1, c + gamma * (reflected[j] - c)))
+                    );
+                    const fExpanded = func(expanded);
+                    evals++;
+
+                    if (fExpanded < fReflected) {
+                        simplex[dim] = { x: expanded, f: fExpanded };
+                    } else {
+                        simplex[dim] = { x: reflected, f: fReflected };
+                    }
+                } else if (fReflected < simplex[dim - 1].f) {
+                    simplex[dim] = { x: reflected, f: fReflected };
+                } else {
+                    // Contract
+                    const contracted = centroid.map((c, j) =>
+                        Math.max(0, Math.min(1, c + rho * (simplex[dim].x[j] - c)))
+                    );
+                    const fContracted = func(contracted);
+                    evals++;
+
+                    if (fContracted < simplex[dim].f) {
+                        simplex[dim] = { x: contracted, f: fContracted };
+                    } else {
+                        // Shrink
+                        for (let i = 1; i <= dim && evals < trials; i++) {
+                            simplex[i].x = simplex[i].x.map((xi, j) =>
+                                Math.max(0, Math.min(1, simplex[0].x[j] + sigma * (xi - simplex[0].x[j])))
+                            );
+                            simplex[i].f = func(simplex[i].x);
+                            evals++;
+                        }
+                    }
+                }
+
+                bestVal = Math.min(bestVal, Math.min(...simplex.map(s => s.f)));
+            }
+
+            const best = simplex.reduce((a, b) => a.f < b.f ? a : b);
+            return { value: best.f, x: best.x, evals: evals };
+        }
+
+        function gradientDescent(func, trials, dim) {
+            let x = Array(dim).fill(0).map(() => Math.random());
+            let fx = func(x);
+            let evals = 1;
+
+            const stepSize = 0.01;
+            const h = 1e-5;
+
+            while (evals < trials - dim) {
+                // Estimate gradient
+                const grad = [];
+                for (let i = 0; i < dim; i++) {
+                    const xPlus = [...x];
+                    const xMinus = [...x];
+                    xPlus[i] = Math.min(1, x[i] + h);
+                    xMinus[i] = Math.max(0, x[i] - h);
+
+                    const fPlus = func(xPlus);
+                    const fMinus = func(xMinus);
+                    evals += 2;
+
+                    grad[i] = (fPlus - fMinus) / (2 * h);
+                }
+
+                // Update x
+                for (let i = 0; i < dim; i++) {
+                    x[i] = Math.max(0, Math.min(1, x[i] - stepSize * grad[i]));
+                }
+
+                fx = func(x);
+                evals++;
+            }
+
+            return { value: fx, x: x, evals: evals };
+        }
+
+        // Add more sophisticated optimizers
+        function differentialEvolution(func, trials, dim) {
+            const popSize = Math.min(20, Math.max(8, dim * 3));
+            const F = 0.5, CR = 0.7;
+
+            // Initialize population
+            let population = [];
+            for (let i = 0; i < popSize; i++) {
+                const x = Array(dim).fill(0).map(() => Math.random());
+                population.push({ x: x, f: func(x) });
+            }
+
+            let evals = popSize;
+            let best = population.reduce((a, b) => a.f < b.f ? a : b);
+
+            while (evals < trials) {
+                for (let i = 0; i < popSize && evals < trials; i++) {
+                    // Select three random different individuals
+                    let indices = Array.from({length: popSize}, (_, idx) => idx).filter(idx => idx !== i);
+                    const [a, b, c] = [0, 1, 2].map(() => indices.splice(Math.floor(Math.random() * indices.length), 1)[0]);
+
+                    // Mutation and crossover
+                    const trial = population[i].x.map((xi, j) =>
+                        Math.random() < CR ?
+                        Math.max(0, Math.min(1, population[a].x[j] + F * (population[b].x[j] - population[c].x[j]))) : xi
+                    );
+
+                    const trialF = func(trial);
+                    evals++;
+
+                    if (trialF < population[i].f) {
+                        population[i] = { x: trial, f: trialF };
+                        if (trialF < best.f) best = { x: [...trial], f: trialF };
+                    }
+                }
+            }
+
+            return { value: best.f, x: best.x, evals: evals };
+        }
+
+        function particleSwarm(func, trials, dim) {
+            const swarmSize = Math.min(30, Math.max(10, dim * 2));
+            const w = 0.7, c1 = 1.5, c2 = 1.5;
+
+            let particles = [];
+            let globalBest = { x: null, f: Infinity };
+
+            // Initialize swarm
+            for (let i = 0; i < swarmSize; i++) {
+                const pos = Array(dim).fill(0).map(() => Math.random());
+                const vel = Array(dim).fill(0).map(() => (Math.random() - 0.5) * 0.1);
+                const f = func(pos);
+
+                if (f < globalBest.f) {
+                    globalBest = { x: [...pos], f: f };
+                }
+
+                particles.push({
+                    pos: [...pos], vel: [...vel],
+                    bestPos: [...pos], bestF: f
+                });
+            }
+
+            let evals = swarmSize;
+
+            while (evals < trials) {
+                for (let i = 0; i < particles.length && evals < trials; i++) {
+                    const p = particles[i];
+
+                    // Update velocity and position
+                    for (let j = 0; j < dim; j++) {
+                        p.vel[j] = w * p.vel[j] +
+                            c1 * Math.random() * (p.bestPos[j] - p.pos[j]) +
+                            c2 * Math.random() * (globalBest.x[j] - p.pos[j]);
+                        p.pos[j] = Math.max(0, Math.min(1, p.pos[j] + p.vel[j]));
+                    }
+
+                    const f = func(p.pos);
+                    evals++;
+
+                    if (f < p.bestF) {
+                        p.bestF = f;
+                        p.bestPos = [...p.pos];
+                        if (f < globalBest.f) {
+                            globalBest = { x: [...p.pos], f: f };
+                        }
+                    }
+                }
+            }
+
+            return { value: globalBest.f, x: globalBest.x, evals: evals };
+        }
+
+        function simulatedAnnealing(func, trials, dim) {
+            let x = Array(dim).fill(0).map(() => Math.random());
+            let fx = func(x);
+            let best = { x: [...x], f: fx };
+
+            const T0 = 10.0, Tf = 0.01;
+            const alpha = Math.pow(Tf / T0, 1 / trials);
+            let T = T0;
+
+            for (let i = 1; i < trials; i++) {
+                const newX = x.map(xi => Math.max(0, Math.min(1, xi + (Math.random() - 0.5) * 0.1 * T / T0)));
+                const newFx = func(newX);
+
+                if (newFx < best.f) {
+                    best = { x: [...newX], f: newFx };
+                }
+
+                const delta = newFx - fx;
+                if (delta < 0 || Math.random() < Math.exp(-delta / T)) {
+                    x = newX;
+                    fx = newFx;
+                }
+                T *= alpha;
+            }
+
+            return { value: best.f, x: best.x, evals: trials };
+        }
+
+        function geneticAlgorithm(func, trials, dim) {
+            const popSize = Math.min(50, Math.max(20, dim * 4));
+            const mutRate = 0.1, crossRate = 0.8;
+
+            let population = [];
+            for (let i = 0; i < popSize; i++) {
+                const x = Array(dim).fill(0).map(() => Math.random());
+                population.push({ x: x, f: func(x) });
+            }
+
+            let evals = popSize;
+            let best = population.reduce((a, b) => a.f < b.f ? a : b);
+
+            while (evals < trials) {
+                const newPop = [];
+                for (let i = 0; i < popSize && evals < trials; i++) {
+                    // Tournament selection
+                    const parent1 = tournamentSelect(population);
+                    const parent2 = tournamentSelect(population);
+
+                    let child = [...parent1.x];
+
+                    // Crossover
+                    if (Math.random() < crossRate) {
+                        const crossPoint = Math.floor(Math.random() * dim);
+                        for (let j = crossPoint; j < dim; j++) {
+                            child[j] = parent2.x[j];
+                        }
+                    }
+
+                    // Mutation
+                    for (let j = 0; j < dim; j++) {
+                        if (Math.random() < mutRate) {
+                            child[j] = Math.max(0, Math.min(1, child[j] + (Math.random() - 0.5) * 0.2));
+                        }
+                    }
+
+                    const f = func(child);
+                    evals++;
+
+                    if (f < best.f) {
+                        best = { x: [...child], f: f };
+                    }
+
+                    newPop.push({ x: child, f: f });
+                }
+                population = newPop;
+            }
+
+            return { value: best.f, x: best.x, evals: evals };
+
+            function tournamentSelect(pop) {
+                let best = pop[Math.floor(Math.random() * pop.length)];
+                for (let i = 1; i < 3; i++) {
+                    const competitor = pop[Math.floor(Math.random() * pop.length)];
+                    if (competitor.f < best.f) best = competitor;
+                }
+                return best;
+            }
+        }
+
+        function cmaEvolutionStrategy(func, trials, dim) {
+            const lambda = Math.min(20, 4 + Math.floor(3 * Math.log(dim)));
+            const mu = Math.floor(lambda / 2);
+
+            let mean = Array(dim).fill(0.5);
+            let sigma = 0.3;
+            let best = { x: [...mean], f: func(mean) };
+            let evals = 1;
+
+            const weights = Array(mu).fill(0).map((_, i) => Math.log(mu + 0.5) - Math.log(i + 1));
+            const sumW = weights.reduce((a, b) => a + b, 0);
+            const normW = weights.map(w => w / sumW);
+
+            while (evals < trials) {
+                const offspring = [];
+                for (let i = 0; i < lambda && evals < trials; i++) {
+                    const individual = mean.map(m => Math.max(0, Math.min(1, m + sigma * (Math.random() - 0.5) * 2)));
+                    const f = func(individual);
+                    evals++;
+
+                    if (f < best.f) {
+                        best = { x: [...individual], f: f };
+                    }
+
+                    offspring.push({ x: individual, f: f });
+                }
+
+                offspring.sort((a, b) => a.f - b.f);
+                const selected = offspring.slice(0, mu);
+
+                // Update mean
+                mean = Array(dim).fill(0);
+                for (let i = 0; i < mu; i++) {
+                    for (let j = 0; j < dim; j++) {
+                        mean[j] += normW[i] * selected[i].x[j];
+                    }
+                }
+
+                // Adapt step size
+                sigma *= selected.length > 0 && offspring[lambda - 1] ?
+                    (offspring[lambda - 1].f > selected[0].f ? 0.95 : 1.05) : 1.0;
+                sigma = Math.max(0.01, Math.min(1.0, sigma));
+            }
+
+            return { value: best.f, x: best.x, evals: evals };
+        }
+
+        function powell(func, trials, dim) {
+            let x = Array(dim).fill(0).map(() => Math.random());
+            let fx = func(x);
+            let evals = 1;
+
+            const directions = [];
+            for (let i = 0; i < dim; i++) {
+                const dir = Array(dim).fill(0);
+                dir[i] = 1;
+                directions.push(dir);
+            }
+
+            const maxIter = Math.max(5, Math.floor(trials / (dim * 6)));
+
+            for (let iter = 0; iter < maxIter && evals < trials; iter++) {
+                const x0 = [...x];
+
+                for (let i = 0; i < dim && evals < trials - 10; i++) {
+                    const result = lineSearch(x, directions[i], fx, 0.05, func, Math.min(10, trials - evals));
+                    x = result.x;
+                    fx = result.fx;
+                    evals += result.evals;
+                }
+
+                if (evals >= trials) break;
+
+                const improvement = x0.reduce((sum, xi, i) => sum + (xi - x[i]) ** 2, 0);
+                if (improvement < 1e-8) break;
+            }
+
+            return { value: fx, x: x, evals: evals };
+
+            function lineSearch(x, dir, currentFx, step, func, maxEvals) {
+                let bestX = [...x];
+                let bestFx = currentFx;
+                let evals = 0;
+
+                for (let i = 0; i < 5 && evals < maxEvals; i++) {
+                    const newX = x.map((xi, j) => Math.max(0, Math.min(1, xi + step * dir[j])));
+                    const newFx = func(newX);
+                    evals++;
+
+                    if (newFx < bestFx) {
+                        bestX = [...newX];
+                        bestFx = newFx;
+                        step *= 1.5;
+                    } else {
+                        step *= -0.5;
+                    }
+                }
+
+                return { x: bestX, fx: bestFx, evals: evals };
+            }
+        }
+
+        function bayesianOptimization(func, trials, dim) {
+            const observations = [];
+            let best = { x: null, f: Infinity };
+
+            // Initial random samples
+            const nInitial = Math.min(10, Math.floor(trials * 0.3));
+            for (let i = 0; i < nInitial; i++) {
+                const x = Array(dim).fill(0).map(() => Math.random());
+                const y = func(x);
+                observations.push({ x: [...x], y: y });
+
+                if (y < best.f) {
+                    best = { x: [...x], f: y };
+                }
+            }
+
+            // Acquisition-based sampling
+            for (let i = nInitial; i < trials; i++) {
+                let bestAcq = -Infinity;
+                let nextX = Array(dim).fill(0).map(() => Math.random());
+
+                // Sample candidates
+                for (let j = 0; j < 50; j++) {
+                    const candidate = Array(dim).fill(0).map(() => Math.random());
+                    const acq = acquisitionFunction(candidate, observations);
+
+                    if (acq > bestAcq) {
+                        bestAcq = acq;
+                        nextX = candidate;
+                    }
+                }
+
+                const y = func(nextX);
+                observations.push({ x: [...nextX], y: y });
+
+                if (y < best.f) {
+                    best = { x: [...nextX], f: y };
+                }
+            }
+
+            return { value: best.f, x: best.x, evals: trials };
+
+            function acquisitionFunction(x, obs) {
+                if (obs.length === 0) return Math.random();
+
+                const distances = obs.map(o => ({
+                    dist: Math.sqrt(x.reduce((sum, xi, i) => sum + (xi - o.x[i]) ** 2, 0)),
+                    y: o.y
+                }));
+
+                distances.sort((a, b) => a.dist - b.dist);
+                const nearest = distances.slice(0, Math.min(5, distances.length));
+
+                if (nearest.length === 0) return Math.random();
+
+                const meanY = nearest.reduce((sum, item) => sum + item.y, 0) / nearest.length;
+                const uncertainty = 1.0 / (1.0 + nearest[0].dist);
+                const bestY = Math.min(...obs.map(o => o.y));
+                const improvement = Math.max(0, bestY - meanY);
+
+                return improvement + 0.2 * uncertainty;
+            }
+        }
+
+        const optimizers = {
+            'Random Search': randomSearch,
+            'Nelder-Mead': nelderMead,
+            'Gradient Descent': gradientDescent,
+            'Differential Evolution': differentialEvolution,
+            'Particle Swarm': particleSwarm,
+            'Simulated Annealing': simulatedAnnealing,
+            'Genetic Algorithm': geneticAlgorithm,
+            'CMA-ES': cmaEvolutionStrategy,
+            'Powell Method': powell,
+            'Bayesian Optimization': bayesianOptimization
+        };
+
+        const testFunctions = {
+            'Sphere': sphere,
+            'Rosenbrock': rosenbrock,
+            'Rastrigin': rastrigin
+        };
+
+        function fillExample(element) {
+            document.getElementById('problemDescription').value = element.textContent;
+        }
+
+        function interpretProblem(description) {
+            const lower = description.toLowerCase();
+
+            // Extract dimensions
+            let dimensions = 5;
+            const dimMatch = lower.match(/(\d+)(?:d|dimension|dim)/);
+            if (dimMatch) {
+                dimensions = parseInt(dimMatch[1]);
+            }
+
+            const budget = dimensions <= 5 ? 60 : dimensions <= 10 ? 100 : 150;
+
+            return { dimensions, budget };
+        }
+
+        async function runBenchmark() {
+            const description = document.getElementById('problemDescription').value || 'Find minimum of 5D function';
+            const config = interpretProblem(description);
+
+            document.getElementById('results').style.display = 'block';
+            document.getElementById('leaderboard').innerHTML = '';
+            document.getElementById('surfaceResults').innerHTML = '';
+
+            const results = {};
+            const allResults = [];
+
+            // Initialize results
+            for (const optName of Object.keys(optimizers)) {
+                results[optName] = { scores: [], evals: [] };
+            }
+
+            // Run on each test function
+            for (const [funcName, func] of Object.entries(testFunctions)) {
+                const surfaceDiv = document.createElement('div');
+                surfaceDiv.className = 'surface';
+                surfaceDiv.innerHTML = `<h3>Surface: ${funcName}</h3>`;
+
+                const surfaceResults = [];
+
+                for (const [optName, optimizer] of Object.entries(optimizers)) {
+                    try {
+                        const result = optimizer(func, config.budget, config.dimensions);
+                        results[optName].scores.push(result.value);
+                        results[optName].evals.push(result.evals);
+
+                        surfaceResults.push({
+                            name: optName,
+                            score: result.value,
+                            evals: result.evals
+                        });
+                    } catch (error) {
+                        console.error(`Error with ${optName}:`, error);
+                        results[optName].scores.push(Infinity);
+                        results[optName].evals.push(config.budget);
+                    }
+
+                    // Small delay to keep UI responsive
+                    await new Promise(resolve => setTimeout(resolve, 100));
+                }
+
+                // Sort and display surface results
+                surfaceResults.sort((a, b) => a.score - b.score);
+                surfaceResults.forEach((result, index) => {
+                    const resultDiv = document.createElement('div');
+                    resultDiv.className = 'result-row';
+                    resultDiv.innerHTML = `
+                        <span>${index + 1}. ${result.name}</span>
+                        <span>${result.score.toFixed(6)} (${result.evals} evals)</span>
+                    `;
+                    surfaceDiv.appendChild(resultDiv);
+                });
+
+                document.getElementById('surfaceResults').appendChild(surfaceDiv);
+            }
+
+            // Calculate and display overall leaderboard
+            const leaderboard = [];
+            for (const [optName, data] of Object.entries(results)) {
+                const avgScore = data.scores.reduce((a, b) => a + b, 0) / data.scores.length;
+                const avgEvals = data.evals.reduce((a, b) => a + b, 0) / data.evals.length;
+                leaderboard.push({ name: optName, avgScore, avgEvals });
+            }
+
+            leaderboard.sort((a, b) => a.avgScore - b.avgScore);
+
+            const tbody = document.getElementById('leaderboard');
+            tbody.innerHTML = '';
+            leaderboard.forEach((entry, index) => {
+                const row = document.createElement('tr');
+                row.innerHTML = `
+                    <td>${index + 1}</td>
+                    <td><strong>${entry.name}</strong></td>
+                    <td>${entry.avgScore.toFixed(6)}</td>
+                    <td>${Math.round(entry.avgEvals)}</td>
+                `;
+                tbody.appendChild(row);
+            });
+        }
+    </script>
+</body>
+</html>
