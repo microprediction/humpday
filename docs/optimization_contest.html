@@ -795,7 +795,7 @@
                     'https://optimization.mccormick.northwestern.edu/index.php/Differential_evolution'
                 ]
             },
-            'CMA-ES (Humpday)': {
+            'CMA-ES': {
                 displayName: 'CMA-ES (pycma)',
                 explanation: 'https://en.wikipedia.org/wiki/CMA-ES',
                 paper: 'https://arxiv.org/abs/1604.00772',
@@ -807,7 +807,7 @@
                     'https://blog.otoro.net/2017/10/29/visual-evolution-strategies/'
                 ]
             },
-            'Genetic Algorithm (Humpday)': {
+            'Genetic Algorithm': {
                 displayName: 'Genetic Algorithm (DEAP)',
                 explanation: 'https://en.wikipedia.org/wiki/Genetic_algorithm',
                 paper: 'https://doi.org/10.1145/29482.29492',
@@ -819,7 +819,7 @@
                     'https://optimization.mccormick.northwestern.edu/index.php/Genetic_algorithm'
                 ]
             },
-            'Particle Swarm (Humpday)': {
+            'Particle Swarm': {
                 displayName: 'Particle Swarm (PySwarm)',
                 explanation: 'https://en.wikipedia.org/wiki/Particle_swarm_optimization',
                 paper: 'https://doi.org/10.1109/ICNN.1995.488968',
@@ -831,7 +831,7 @@
                     'https://optimization.mccormick.northwestern.edu/index.php/Particle_swarm_optimization'
                 ]
             },
-            'Simulated Annealing (Humpday)': {
+            'Simulated Annealing': {
                 displayName: 'Simulated Annealing (SciPy)',
                 explanation: 'https://en.wikipedia.org/wiki/Simulated_annealing',
                 paper: 'https://doi.org/10.1126/science.220.4598.671',
@@ -843,7 +843,7 @@
                     'https://towardsdatascience.com/optimization-techniques-simulated-annealing-d6a4785a1de7'
                 ]
             },
-            'Bayesian Optimization (Humpday)': {
+            'Bayesian Optimization': {
                 displayName: 'Bayesian Optimization (scikit-optimize)',
                 explanation: 'https://en.wikipedia.org/wiki/Bayesian_optimization',
                 paper: 'https://arxiv.org/abs/1012.2599',
@@ -855,7 +855,7 @@
                     'https://optimization.mccormick.northwestern.edu/index.php/Bayesian_optimization'
                 ]
             },
-            'Random Search (Humpday)': {
+            'Random Search': {
                 displayName: 'Random Search (scikit-learn)',
                 explanation: 'https://en.wikipedia.org/wiki/Random_search',
                 paper: 'https://jmlr.org/papers/v13/bergstra12a.html',
@@ -880,7 +880,7 @@
                 ]
             },
             'Coordinate Descent': {
-                displayName: 'Coordinate Descent (Humpday)',
+                displayName: 'Coordinate Descent (scikit-learn)',
                 explanation: 'https://en.wikipedia.org/wiki/Coordinate_descent',
                 paper: 'https://doi.org/10.1007/s10107-014-0824-2',
                 referenceImpl: 'https://scikit-learn.org/stable/modules/generated/sklearn.linear_model.coordinate_descent.html',
@@ -892,7 +892,7 @@
                 ]
             },
             'Pattern Search': {
-                displayName: 'Pattern Search (Humpday)',
+                displayName: 'Pattern Search (MATLAB)',
                 explanation: 'https://en.wikipedia.org/wiki/Pattern_search_(optimization)',
                 paper: 'https://doi.org/10.1137/S1052623496303470',
                 referenceImpl: 'https://www.mathworks.com/help/gads/pattern-search.html',
@@ -1135,31 +1135,31 @@
 
             // Evolutionary algorithms
             { name: 'Differential Evolution (SciPy)', internalName: 'DifferentialEvolution', elo: 1500, status: 'waiting' },
-            { name: 'CMA-ES (Humpday)', internalName: 'CMAEvolutionStrategy', elo: 1500, status: 'waiting' },
-            { name: 'Genetic Algorithm (Humpday)', internalName: 'GeneticAlgorithm', elo: 1500, status: 'waiting' },
+            { name: 'CMA-ES', internalName: 'CMAEvolutionStrategy', elo: 1500, status: 'waiting' },
+            { name: 'Genetic Algorithm', internalName: 'GeneticAlgorithm', elo: 1500, status: 'waiting' },
 
             // Swarm intelligence
-            { name: 'Particle Swarm (Humpday)', internalName: 'ParticleSwarm', elo: 1500, status: 'waiting' },
+            { name: 'Particle Swarm', internalName: 'ParticleSwarm', elo: 1500, status: 'waiting' },
 
             // Metaheuristics
-            { name: 'Simulated Annealing (Humpday)', internalName: 'SimulatedAnnealing', elo: 1500, status: 'waiting' },
+            { name: 'Simulated Annealing', internalName: 'SimulatedAnnealing', elo: 1500, status: 'waiting' },
 
             // Modern Bayesian methods
-            { name: 'Bayesian Optimization (Humpday)', internalName: 'BayesianOpt', elo: 1500, status: 'waiting' },
+            { name: 'Bayesian Optimization', internalName: 'BayesianOpt', elo: 1500, status: 'waiting' },
 
             // Baseline methods
-            { name: 'Random Search (Humpday)', internalName: 'RandomSearch', elo: 1500, status: 'waiting' },
+            { name: 'Random Search', internalName: 'RandomSearch', elo: 1500, status: 'waiting' },
 
             // Additional gradient-free methods (to be implemented)
-            { name: 'Adaptive Random Search (Humpday)', internalName: 'AdaptiveRandomSearch', elo: 1500, status: 'waiting' },
-            { name: 'Coordinate Descent (Humpday)', internalName: 'CoordinateDescent', elo: 1500, status: 'waiting' },
-            { name: 'Pattern Search (Humpday)', internalName: 'PatternSearch', elo: 1500, status: 'waiting' },
-            { name: 'Hill Climbing (Humpday)', internalName: 'HillClimbing', elo: 1500, status: 'waiting' },
-            { name: 'Tabu Search (Humpday)', internalName: 'TabuSearch', elo: 1500, status: 'waiting' },
-            { name: 'Firefly Algorithm (Humpday)', internalName: 'FireflyAlgorithm', elo: 1500, status: 'waiting' },
-            { name: 'Ant Colony Optimization (Humpday)', internalName: 'AntColonyOpt', elo: 1500, status: 'waiting' },
-            { name: 'Harmony Search (Humpday)', internalName: 'HarmonySearch', elo: 1500, status: 'waiting' },
-            { name: 'Evolution Strategy (Humpday)', internalName: 'EvolutionStrategy', elo: 1500, status: 'waiting' }
+            { name: 'Adaptive Random Search', internalName: 'AdaptiveRandomSearch', elo: 1500, status: 'waiting' },
+            { name: 'Coordinate Descent', internalName: 'CoordinateDescent', elo: 1500, status: 'waiting' },
+            { name: 'Pattern Search', internalName: 'PatternSearch', elo: 1500, status: 'waiting' },
+            { name: 'Hill Climbing', internalName: 'HillClimbing', elo: 1500, status: 'waiting' },
+            { name: 'Tabu Search', internalName: 'TabuSearch', elo: 1500, status: 'waiting' },
+            { name: 'Firefly Algorithm', internalName: 'FireflyAlgorithm', elo: 1500, status: 'waiting' },
+            { name: 'Ant Colony Optimization', internalName: 'AntColonyOpt', elo: 1500, status: 'waiting' },
+            { name: 'Harmony Search', internalName: 'HarmonySearch', elo: 1500, status: 'waiting' },
+            { name: 'EvolutionStrategy', internalName: 'EvolutionStrategy', elo: 1500, status: 'waiting' }
         ];
 
         let selectedProblemConfig = null;
