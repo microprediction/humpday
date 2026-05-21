@@ -1526,8 +1526,11 @@
                 const tbody = document.getElementById('leaderboardBody');
                 optimizers.sort((a, b) => b.elo - a.elo);
 
+                // Check if any ratings have been updated from initial 1500
+                const ratingsUpdated = optimizers.some(opt => opt.elo !== 1500);
+
                 tbody.innerHTML = optimizers.map((opt, index) => `
-                    <tr class="${index < 3 ? `rank-${index + 1}` : ''}">
+                    <tr class="${ratingsUpdated && index < 3 ? `rank-${index + 1}` : ''}">
                         <td>
                             <span class="rank-badge">
                                 ${index + 1}
