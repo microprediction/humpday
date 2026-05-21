@@ -73,82 +73,296 @@ class PRIMA_UOBYQA extends Optimizer {
     constructor(objective, nTrials, nDim) {
         super(objective, nTrials, nDim);
         this.name = 'PRIMA_UOBYQA';
+        // UOBYQA uses up to (n+1)(n+2)/2 interpolation points for full quadratic model
+        this.maxInterpolationPoints = Math.min((nDim + 1) * (nDim + 2) / 2, Math.max(2 * nDim + 1, nTrials / 4));
     }
 
     optimize() {
-        // Simplified quadratic approximation method
-        let x = Array(this.nDim).fill(0).map(() => Math.random());
-        let fx = this.evaluate(x);
+        const n = this.nDim;
 
-        const rhoBeg = 0.1;
-        let rho = rhoBeg;
-        const rhoEnd = 1e-6;
+        // Initialize starting point (away from boundaries)
+        let xBase = Array(n).fill(0).map(() => 0.2 + 0.6 * Math.random());
+        let fBase = this.evaluate(xBase);
 
-        while (this.evaluations < this.nTrials && rho > rhoEnd) {
-            let improved = false;
+        // Trust region parameters (matching PDFO defaults)
+        let rho = Math.min(0.5, 0.1 * Math.sqrt(n)); // Initial trust region radius
+        const rhoEnd = 1e-6; // Final trust region radius
+        const eta1 = 0.1; // Threshold for rejecting steps
+        const eta2 = 0.7; // Threshold for expanding trust region
+        const gamma1 = 0.5; // Trust region contraction factor
+        const gamma2 = 2.0; // Trust region expansion factor
 
-            // Try coordinate directions with trust region
-            for (let i = 0; i < this.nDim; i++) {
-                if (this.evaluations >= this.nTrials) break;
+        // Interpolation set: points and function values
+        let interpolationPoints = [xBase.slice()];
+        let interpolationValues = [fBase];
 
-                // Forward step
-                const xForward = [...x];
-                xForward[i] = Math.min(1, Math.max(0, x[i] + rho));
-                const fxForward = this.evaluate(xForward);
+        // Build initial interpolation set
+        this.buildInitialInterpolationSet(interpolationPoints, interpolationValues, xBase, rho);
 
-                if (fxForward < fx) {
-                    x = xForward;
-                    fx = fxForward;
-                    improved = true;
-                    continue;
-                }
+        let xOpt = xBase.slice();
+        let fOpt = fBase;
+        let kOpt = 0; // Index of best point
 
-                if (this.evaluations >= this.nTrials) break;
-
-                // Backward step
-                const xBackward = [...x];
-                xBackward[i] = Math.min(1, Math.max(0, x[i] - rho));
-                const fxBackward = this.evaluate(xBackward);
-
-                if (fxBackward < fx) {
-                    x = xBackward;
-                    fx = fxBackward;
-                    improved = true;
-                }
-            }
-
-            // Try diagonal moves
-            if (!improved && this.evaluations < this.nTrials) {
-                const direction = Array(this.nDim).fill(0).map(() => (Math.random() - 0.5) * 2);
-                const norm = MathUtils.norm(direction);
-                const normalizedDir = MathUtils.scale(direction, rho / norm);
-
-                const xNew = MathUtils.add(x, normalizedDir);
-                const clippedX = MathUtils.clipArray(xNew, 0, 1);
-                const fxNew = this.evaluate(clippedX);
-
-                if (fxNew < fx) {
-                    x = clippedX;
-                    fx = fxNew;
-                    improved = true;
-                }
-            }
-
-            // Update trust region
-            if (improved) {
-                rho = Math.min(rhoBeg, rho * 2); // Expand if improving
-            } else {
-                rho *= 0.5; // Contract if no improvement
+        // Find current best point
+        for (let k = 0; k < interpolationValues.length; k++) {
+            if (interpolationValues[k] < fOpt) {
+                fOpt = interpolationValues[k];
+                xOpt = interpolationPoints[k].slice();
+                kOpt = k;
             }
         }
 
+        // Main UOBYQA loop
+        while (this.evaluations < this.nTrials && rho > rhoEnd) {
+            // Build quadratic model around xOpt
+            const model = this.buildQuadraticModel(interpolationPoints, interpolationValues, xOpt);
+
+            // Solve trust region subproblem to get step
+            const step = this.solveTrustRegionSubproblem(model, xOpt, rho);
+
+            if (this.evaluations >= this.nTrials) break;
+
+            // Compute trial point
+            const xTrial = MathUtils.add(xOpt, step);
+            // Enforce bounds [0,1]
+            const xTrialBounded = xTrial.map(x => Math.min(1, Math.max(0, x)));
+            const fTrial = this.evaluate(xTrialBounded);
+
+            // Compute predicted reduction and actual reduction
+            const predReduction = this.computePredictedReduction(model, step);
+            const actualReduction = fOpt - fTrial;
+
+            // Ratio of actual to predicted reduction
+            const ratio = predReduction > 0 ? actualReduction / predReduction : -1;
+
+            // Update trust region radius
+            let rho_new = rho;
+            if (ratio <= eta1) {
+                // Poor model agreement - shrink trust region
+                rho_new = gamma1 * rho;
+            } else if (ratio >= eta2 && MathUtils.norm(step) > 0.8 * rho) {
+                // Good model agreement and step at boundary - expand
+                rho_new = Math.min(gamma2 * rho, 10.0);
+            }
+
+            // Accept or reject the step
+            if (ratio > eta1) {
+                // Accept step
+                xOpt = xTrialBounded.slice();
+                fOpt = fTrial;
+
+                // Add new point to interpolation set
+                this.updateInterpolationSet(interpolationPoints, interpolationValues, xOpt, fOpt);
+            }
+
+            rho = Math.max(rho_new, rhoEnd);
+        }
+
         return {
-            bestValue: this.bestValue,
-            bestX: this.bestX,
+            bestValue: fOpt,
+            bestX: xOpt,
             evaluations: this.evaluations,
             success: true,
             path: this.trackPath ? this.path : null
         };
+    }
+
+    buildInitialInterpolationSet(points, values, xBase, rho) {
+        const n = this.nDim;
+
+        // Add coordinate direction points
+        for (let i = 0; i < n && points.length < this.maxInterpolationPoints && this.evaluations < this.nTrials; i++) {
+            // Positive direction
+            const xPlus = xBase.slice();
+            const step = Math.min(rho, 1 - xBase[i]);
+            xPlus[i] += step;
+            points.push(xPlus);
+            values.push(this.evaluate(xPlus));
+
+            if (points.length >= this.maxInterpolationPoints || this.evaluations >= this.nTrials) break;
+
+            // Negative direction
+            const xMinus = xBase.slice();
+            const stepMinus = Math.min(rho, xBase[i]);
+            xMinus[i] -= stepMinus;
+            points.push(xMinus);
+            values.push(this.evaluate(xMinus));
+        }
+
+        // Add some diagonal points if budget allows
+        while (points.length < this.maxInterpolationPoints && this.evaluations < this.nTrials) {
+            const xDiag = xBase.slice();
+            for (let i = 0; i < n; i++) {
+                const perturbation = (Math.random() - 0.5) * 2 * rho * 0.5;
+                xDiag[i] = Math.min(1, Math.max(0, xBase[i] + perturbation));
+            }
+            points.push(xDiag);
+            values.push(this.evaluate(xDiag));
+        }
+    }
+
+    buildQuadraticModel(points, values, xOpt) {
+        const n = this.nDim;
+        const nPts = points.length;
+
+        // Simple quadratic model: f(s) = c + g'*s + 0.5*s'*H*s where s = x - xOpt
+        const model = {
+            c: 0,
+            g: new Array(n).fill(0),
+            H: Array(n).fill().map(() => new Array(n).fill(0))
+        };
+
+        // Find base point closest to xOpt
+        let baseIdx = 0;
+        let minDist = Infinity;
+        for (let i = 0; i < nPts; i++) {
+            const dist = MathUtils.norm(MathUtils.subtract(points[i], xOpt));
+            if (dist < minDist) {
+                minDist = dist;
+                baseIdx = i;
+            }
+        }
+
+        model.c = values[baseIdx];
+
+        // Build model using finite differences
+        // Estimate gradient
+        for (let i = 0; i < n; i++) {
+            let forwardIdx = -1, backwardIdx = -1;
+            let forwardDist = Infinity, backwardDist = Infinity;
+
+            for (let j = 0; j < nPts; j++) {
+                const diff = MathUtils.subtract(points[j], xOpt);
+
+                // Look for points along coordinate i
+                if (this.isAlmostCoordinateDirection(diff, i, 0.1)) {
+                    const coordDiff = diff[i];
+                    const dist = Math.abs(coordDiff);
+
+                    if (coordDiff > 0 && dist < forwardDist) {
+                        forwardIdx = j;
+                        forwardDist = dist;
+                    } else if (coordDiff < 0 && dist < backwardDist) {
+                        backwardIdx = j;
+                        backwardDist = dist;
+                    }
+                }
+            }
+
+            // Compute finite difference approximations
+            if (forwardIdx >= 0 && backwardIdx >= 0) {
+                // Central difference
+                const h = points[forwardIdx][i] - points[backwardIdx][i];
+                model.g[i] = (values[forwardIdx] - values[backwardIdx]) / h;
+
+                // Second derivative approximation
+                const h_half = h / 2;
+                model.H[i][i] = (values[forwardIdx] - 2 * model.c + values[backwardIdx]) / (h_half * h_half);
+            } else if (forwardIdx >= 0) {
+                // Forward difference
+                const h = points[forwardIdx][i] - xOpt[i];
+                model.g[i] = (values[forwardIdx] - model.c) / h;
+            } else if (backwardIdx >= 0) {
+                // Backward difference
+                const h = xOpt[i] - points[backwardIdx][i];
+                model.g[i] = (model.c - values[backwardIdx]) / h;
+            }
+        }
+
+        return model;
+    }
+
+    solveTrustRegionSubproblem(model, xOpt, rho) {
+        const n = this.nDim;
+
+        // Simplified trust region solve: Cauchy point method with bound constraints
+
+        // Compute steepest descent direction
+        let step = model.g.map(gi => -gi);
+        let stepNorm = MathUtils.norm(step);
+
+        if (stepNorm < 1e-12) {
+            // Zero gradient - try random direction
+            step = Array(n).fill(0).map(() => (Math.random() - 0.5) * 2);
+            stepNorm = MathUtils.norm(step);
+        }
+
+        // Scale to trust region boundary if necessary
+        if (stepNorm > rho) {
+            step = MathUtils.scale(step, rho / stepNorm);
+        }
+
+        // Apply bound constraints
+        for (let i = 0; i < n; i++) {
+            const newPos = xOpt[i] + step[i];
+            if (newPos < 0) {
+                step[i] = -xOpt[i];
+            } else if (newPos > 1) {
+                step[i] = 1 - xOpt[i];
+            }
+        }
+
+        // If step violates trust region after bound projection, rescale
+        const finalNorm = MathUtils.norm(step);
+        if (finalNorm > rho * 1.01) { // Small tolerance
+            step = MathUtils.scale(step, rho / finalNorm);
+        }
+
+        return step;
+    }
+
+    computePredictedReduction(model, step) {
+        const n = this.nDim;
+
+        // Predicted reduction = -(g'*step + 0.5*step'*H*step)
+        let pred = 0;
+
+        // Linear term
+        for (let i = 0; i < n; i++) {
+            pred -= model.g[i] * step[i];
+        }
+
+        // Quadratic term
+        for (let i = 0; i < n; i++) {
+            for (let j = 0; j < n; j++) {
+                pred -= 0.5 * step[i] * model.H[i][j] * step[j];
+            }
+        }
+
+        return pred;
+    }
+
+    updateInterpolationSet(points, values, xNew, fNew) {
+        // Simple replacement strategy: replace worst point if new point is better
+        let worstIdx = 0;
+        let worstValue = values[0];
+
+        for (let i = 1; i < values.length; i++) {
+            if (values[i] > worstValue) {
+                worstIdx = i;
+                worstValue = values[i];
+            }
+        }
+
+        if (fNew < worstValue && points.length < this.maxInterpolationPoints) {
+            points.push(xNew.slice());
+            values.push(fNew);
+        } else if (fNew < worstValue) {
+            points[worstIdx] = xNew.slice();
+            values[worstIdx] = fNew;
+        }
+    }
+
+    isAlmostCoordinateDirection(diff, coordIndex, tolerance = 0.1) {
+        const coordValue = Math.abs(diff[coordIndex]);
+        if (coordValue < 1e-8) return false;
+
+        for (let i = 0; i < diff.length; i++) {
+            if (i !== coordIndex && Math.abs(diff[i]) > tolerance * coordValue) {
+                return false;
+            }
+        }
+        return true;
     }
 }
 
@@ -157,82 +371,325 @@ class PRIMA_NEWUOA extends Optimizer {
     constructor(objective, nTrials, nDim) {
         super(objective, nTrials, nDim);
         this.name = 'PRIMA_NEWUOA';
+        // NEWUOA typically uses 2n+1 interpolation points (underdetermined quadratic model)
+        this.nPts = Math.min(2 * nDim + 1, Math.max(nDim + 2, Math.floor(nTrials / 3)));
     }
 
     optimize() {
-        // Simplified iterative quadratic approximation
-        let x = Array(this.nDim).fill(0).map(() => Math.random());
-        let fx = this.evaluate(x);
+        const n = this.nDim;
 
-        const rhoBeg = 0.1;
-        let rho = rhoBeg;
+        // Initialize starting point (unconstrained, so we use full [0,1] range)
+        let xBase = Array(n).fill(0).map(() => 0.1 + 0.8 * Math.random());
+        let fBase = this.evaluate(xBase);
+
+        // NEWUOA trust region parameters
+        let rho = Math.min(0.5, 1.0 / Math.sqrt(n)); // Initial trust region radius
         const rhoEnd = 1e-6;
+        const eta1 = 0.1;  // Threshold for step acceptance
+        const eta2 = 0.7;  // Threshold for trust region expansion
+        const gamma1 = 0.5; // Trust region contraction
+        const gamma2 = 2.0; // Trust region expansion
 
-        // Simple gradient estimation
-        while (this.evaluations < this.nTrials && rho > rhoEnd) {
-            let improved = false;
+        // Initialize interpolation set
+        let xPts = [xBase.slice()];  // Interpolation points
+        let fVals = [fBase];         // Function values at interpolation points
 
-            // Estimate gradient using finite differences
-            const gradient = [];
-            const delta = rho * 0.1;
+        // Build initial interpolation set with 2n+1 points
+        this.buildInitialInterpolationSetNEWUOA(xPts, fVals, xBase, rho);
 
-            for (let i = 0; i < this.nDim && this.evaluations < this.nTrials - 1; i++) {
-                const xPlus = [...x];
-                const xMinus = [...x];
-                xPlus[i] = Math.min(1, x[i] + delta);
-                xMinus[i] = Math.max(0, x[i] - delta);
-
-                const fPlus = this.evaluate(xPlus);
-                const fMinus = this.evaluate(xMinus);
-
-                gradient[i] = (fPlus - fMinus) / (2 * delta);
+        // Find best point
+        let kOpt = 0;
+        let fOpt = fVals[0];
+        for (let k = 0; k < fVals.length; k++) {
+            if (fVals[k] < fOpt) {
+                fOpt = fVals[k];
+                kOpt = k;
             }
+        }
+        let xOpt = xPts[kOpt].slice();
+
+        // Main NEWUOA loop
+        while (this.evaluations < this.nTrials && rho > rhoEnd) {
+            // Build quadratic model around current best point
+            const model = this.buildNEWUOAQuadraticModel(xPts, fVals, xOpt);
+
+            // Solve trust region subproblem
+            const step = this.solveNEWUOATrustRegion(model, xOpt, rho);
 
             if (this.evaluations >= this.nTrials) break;
 
-            // Take a step in negative gradient direction
-            const stepSize = rho;
-            const xNew = x.map((xi, i) => {
-                const step = xi - stepSize * (gradient[i] || 0);
-                return MathUtils.clip(step, 0, 1);
-            });
+            // Compute trial point (no bounds in NEWUOA, but we'll apply [0,1] bounds)
+            const xTrial = MathUtils.add(xOpt, step);
+            const xTrialBounded = xTrial.map(x => Math.min(1, Math.max(0, x)));
+            const fTrial = this.evaluate(xTrialBounded);
 
-            const fxNew = this.evaluate(xNew);
+            // Compute model prediction and actual reduction
+            const predRed = this.computeNEWUOAPrediction(model, step);
+            const actualRed = fOpt - fTrial;
 
-            if (fxNew < fx) {
-                x = xNew;
-                fx = fxNew;
-                improved = true;
-                rho = Math.min(rhoBeg, rho * 1.5);
-            } else {
-                rho *= 0.7;
+            // Ratio test
+            const ratio = predRed > 0 ? actualRed / predRed : -1;
+
+            // Update trust region radius
+            let rhoNew = rho;
+            if (ratio <= eta1) {
+                rhoNew = gamma1 * rho;
+            } else if (ratio >= eta2 && MathUtils.norm(step) > 0.8 * rho) {
+                rhoNew = Math.min(gamma2 * rho, 10.0);
             }
 
-            // Random perturbation if stuck
-            if (!improved && rho > rhoEnd * 10) {
-                const perturbation = Array(this.nDim).fill(0).map(() =>
-                    (Math.random() - 0.5) * rho * 2
-                );
-                const xPerturb = x.map((xi, i) =>
-                    MathUtils.clip(xi + perturbation[i], 0, 1)
-                );
+            // Accept step if ratio is good enough
+            if (ratio > eta1) {
+                xOpt = xTrialBounded.slice();
+                fOpt = fTrial;
+                kOpt = this.updateNEWUOAInterpolationSet(xPts, fVals, xOpt, fOpt);
+            }
 
-                const fxPerturb = this.evaluate(xPerturb);
-                if (fxPerturb < fx) {
-                    x = xPerturb;
-                    fx = fxPerturb;
-                    improved = true;
-                }
+            rho = Math.max(rhoNew, rhoEnd);
+
+            // Geometry improvement step (simplified)
+            if (Math.random() < 0.1 && this.evaluations < this.nTrials - 5) {
+                this.improveGeometry(xPts, fVals, xOpt, rho);
             }
         }
 
         return {
-            bestValue: this.bestValue,
-            bestX: this.bestX,
+            bestValue: fOpt,
+            bestX: xOpt,
             evaluations: this.evaluations,
             success: true,
             path: this.trackPath ? this.path : null
         };
+    }
+
+    buildInitialInterpolationSetNEWUOA(xPts, fVals, xBase, rho) {
+        const n = this.nDim;
+
+        // Add coordinate directions (both positive and negative if budget allows)
+        for (let i = 0; i < n && xPts.length < this.nPts && this.evaluations < this.nTrials; i++) {
+            // Positive direction
+            const xNew = xBase.slice();
+            const stepSize = Math.min(rho, Math.min(1 - xBase[i], rho));
+            xNew[i] = Math.min(1, xBase[i] + stepSize);
+            xPts.push(xNew);
+            fVals.push(this.evaluate(xNew));
+
+            if (xPts.length >= this.nPts || this.evaluations >= this.nTrials) break;
+
+            // Negative direction
+            const xNew2 = xBase.slice();
+            const stepSize2 = Math.min(rho, Math.min(xBase[i], rho));
+            xNew2[i] = Math.max(0, xBase[i] - stepSize2);
+            xPts.push(xNew2);
+            fVals.push(this.evaluate(xNew2));
+        }
+
+        // Add additional points to reach 2n+1 if needed
+        while (xPts.length < this.nPts && this.evaluations < this.nTrials) {
+            const xNew = xBase.slice();
+            // Add random perturbation
+            for (let i = 0; i < n; i++) {
+                const pert = (Math.random() - 0.5) * 2 * rho * 0.7;
+                xNew[i] = Math.min(1, Math.max(0, xBase[i] + pert));
+            }
+            xPts.push(xNew);
+            fVals.push(this.evaluate(xNew));
+        }
+    }
+
+    buildNEWUOAQuadraticModel(xPts, fVals, xOpt) {
+        const n = this.nDim;
+        const nPts = xPts.length;
+
+        // Model: m(s) = c + g^T s + 0.5 s^T H s, where s = x - xOpt
+        const model = {
+            c: 0,
+            g: new Array(n).fill(0),
+            H: Array(n).fill().map(() => new Array(n).fill(0))
+        };
+
+        // Find point closest to xOpt for constant term
+        let kBase = 0;
+        let minDist = Infinity;
+        for (let k = 0; k < nPts; k++) {
+            const dist = MathUtils.norm(MathUtils.subtract(xPts[k], xOpt));
+            if (dist < minDist) {
+                minDist = dist;
+                kBase = k;
+            }
+        }
+        model.c = fVals[kBase];
+
+        // Compute model coefficients using Lagrange interpolation principles
+        // Simplified approach: use finite differences where possible
+
+        // Estimate gradient
+        for (let i = 0; i < n; i++) {
+            let forwardK = -1, backwardK = -1;
+            let minForwardDist = Infinity, minBackwardDist = Infinity;
+
+            for (let k = 0; k < nPts; k++) {
+                const s = MathUtils.subtract(xPts[k], xOpt);
+
+                // Check if this is approximately a coordinate direction
+                let isCoordDir = true;
+                let maxNonCoord = 0;
+                for (let j = 0; j < n; j++) {
+                    if (j !== i && Math.abs(s[j]) > maxNonCoord) {
+                        maxNonCoord = Math.abs(s[j]);
+                    }
+                }
+
+                if (maxNonCoord < 0.1 * Math.abs(s[i]) && Math.abs(s[i]) > 1e-8) {
+                    const dist = Math.abs(s[i]);
+                    if (s[i] > 0 && dist < minForwardDist) {
+                        forwardK = k;
+                        minForwardDist = dist;
+                    } else if (s[i] < 0 && dist < minBackwardDist) {
+                        backwardK = k;
+                        minBackwardDist = dist;
+                    }
+                }
+            }
+
+            // Compute gradient estimate
+            if (forwardK >= 0 && backwardK >= 0) {
+                const h = xPts[forwardK][i] - xPts[backwardK][i];
+                model.g[i] = (fVals[forwardK] - fVals[backwardK]) / h;
+
+                // Estimate diagonal Hessian
+                const hHalf = h / 2;
+                model.H[i][i] = (fVals[forwardK] - 2 * model.c + fVals[backwardK]) / (hHalf * hHalf);
+            } else if (forwardK >= 0) {
+                const h = xPts[forwardK][i] - xOpt[i];
+                model.g[i] = (fVals[forwardK] - model.c) / h;
+            } else if (backwardK >= 0) {
+                const h = xOpt[i] - xPts[backwardK][i];
+                model.g[i] = (model.c - fVals[backwardK]) / h;
+            }
+        }
+
+        return model;
+    }
+
+    solveNEWUOATrustRegion(model, xOpt, rho) {
+        const n = this.nDim;
+
+        // Simplified trust region solve: dogleg method approximation
+
+        // Cauchy point: steepest descent step
+        let gNorm = MathUtils.norm(model.g);
+        if (gNorm < 1e-12) {
+            // Zero gradient - return small random step
+            const randomStep = Array(n).fill(0).map(() => (Math.random() - 0.5) * 2 * rho * 0.1);
+            return this.projectToBounds(randomStep, xOpt);
+        }
+
+        let cauchyStep = MathUtils.scale(model.g, -1);
+
+        // Compute Hg for curvature
+        let Hg = Array(n).fill(0);
+        for (let i = 0; i < n; i++) {
+            for (let j = 0; j < n; j++) {
+                Hg[i] += model.H[i][j] * model.g[j];
+            }
+        }
+
+        let gHg = MathUtils.dot(model.g, Hg);
+
+        // Compute optimal step length along gradient
+        let alpha = gHg > 0 ? (gNorm * gNorm) / gHg : 1.0;
+
+        // Scale Cauchy step
+        cauchyStep = MathUtils.scale(cauchyStep, alpha);
+
+        // Truncate to trust region
+        let stepNorm = MathUtils.norm(cauchyStep);
+        if (stepNorm > rho) {
+            cauchyStep = MathUtils.scale(cauchyStep, rho / stepNorm);
+        }
+
+        // Apply bound constraints
+        return this.projectToBounds(cauchyStep, xOpt);
+    }
+
+    projectToBounds(step, xOpt) {
+        const n = this.nDim;
+        for (let i = 0; i < n; i++) {
+            const newPos = xOpt[i] + step[i];
+            if (newPos < 0) {
+                step[i] = -xOpt[i];
+            } else if (newPos > 1) {
+                step[i] = 1 - xOpt[i];
+            }
+        }
+        return step;
+    }
+
+    computeNEWUOAPrediction(model, step) {
+        const n = this.nDim;
+
+        // Predicted reduction: -(g^T s + 0.5 s^T H s)
+        let pred = 0;
+
+        // Linear term
+        pred -= MathUtils.dot(model.g, step);
+
+        // Quadratic term
+        for (let i = 0; i < n; i++) {
+            for (let j = 0; j < n; j++) {
+                pred -= 0.5 * step[i] * model.H[i][j] * step[j];
+            }
+        }
+
+        return pred;
+    }
+
+    updateNEWUOAInterpolationSet(xPts, fVals, xNew, fNew) {
+        // Replace worst point with new point
+        let worstK = 0;
+        for (let k = 1; k < fVals.length; k++) {
+            if (fVals[k] > fVals[worstK]) {
+                worstK = k;
+            }
+        }
+
+        if (fNew < fVals[worstK]) {
+            xPts[worstK] = xNew.slice();
+            fVals[worstK] = fNew;
+            return worstK;
+        }
+
+        return 0;
+    }
+
+    improveGeometry(xPts, fVals, xOpt, rho) {
+        // Simple geometry improvement: add a point that improves interpolation matrix conditioning
+        // This is a simplified version - real NEWUOA has complex geometry management
+        const n = this.nDim;
+
+        if (this.evaluations >= this.nTrials) return;
+
+        // Find direction with largest model uncertainty
+        let bestDir = Array(n).fill(0).map(() => Math.random() - 0.5);
+        bestDir = MathUtils.scale(bestDir, rho / MathUtils.norm(bestDir));
+
+        const xTest = MathUtils.add(xOpt, bestDir);
+        const xBounded = xTest.map(x => Math.min(1, Math.max(0, x)));
+        const fTest = this.evaluate(xBounded);
+
+        // Replace worst point if new point is better
+        let worstK = 0;
+        for (let k = 1; k < fVals.length; k++) {
+            if (fVals[k] > fVals[worstK]) {
+                worstK = k;
+            }
+        }
+
+        if (fTest < fVals[worstK]) {
+            xPts[worstK] = xBounded.slice();
+            fVals[worstK] = fTest;
+        }
     }
 }
 
@@ -241,89 +698,319 @@ class PRIMA_BOBYQA extends Optimizer {
     constructor(objective, nTrials, nDim) {
         super(objective, nTrials, nDim);
         this.name = 'PRIMA_BOBYQA';
+        // BOBYQA for bound constraints, typically uses 2n+1 points like NEWUOA
+        this.nPts = Math.min(2 * nDim + 1, Math.max(nDim + 2, Math.floor(nTrials / 3)));
+        this.lowerBounds = new Array(nDim).fill(0);  // Lower bounds [0,0,...,0]
+        this.upperBounds = new Array(nDim).fill(1);  // Upper bounds [1,1,...,1]
     }
 
     optimize() {
-        // Simplified bound-constrained trust region method
-        let x = Array(this.nDim).fill(0).map(() => Math.random());
-        let fx = this.evaluate(x);
+        const n = this.nDim;
 
-        const rhoBeg = 0.5;  // Start with larger trust region for bounded problems
-        let rho = rhoBeg;
+        // Initialize starting point away from boundaries
+        let xBase = Array(n).fill(0).map(() => 0.2 + 0.6 * Math.random());
+        let fBase = this.evaluate(xBase);
+
+        // BOBYQA trust region parameters
+        let rho = 0.1; // Initial trust region radius
         const rhoEnd = 1e-6;
+        const eta1 = 0.1;  // Threshold for step rejection
+        const eta2 = 0.7;  // Threshold for trust region expansion
+        const gamma1 = 0.5; // Trust region contraction factor
+        const gamma2 = 2.0; // Trust region expansion factor
 
-        // Sample points for quadratic model (simplified)
+        // Initialize interpolation set with bound-respecting points
+        let xPts = [xBase.slice()];
+        let fVals = [fBase];
+
+        this.buildBoundedInterpolationSet(xPts, fVals, xBase, rho);
+
+        // Find best point
+        let kOpt = 0;
+        let fOpt = fVals[0];
+        for (let k = 0; k < fVals.length; k++) {
+            if (fVals[k] < fOpt) {
+                fOpt = fVals[k];
+                kOpt = k;
+            }
+        }
+        let xOpt = xPts[kOpt].slice();
+
+        // Main BOBYQA loop
         while (this.evaluations < this.nTrials && rho > rhoEnd) {
-            let improved = false;
+            // Build quadratic model around current best point
+            const model = this.buildBOBYQAQuadraticModel(xPts, fVals, xOpt);
 
-            // Try multiple bound-aware directions
-            const directions = [];
+            // Solve bound-constrained trust region subproblem
+            const step = this.solveBoundedTrustRegion(model, xOpt, rho);
 
-            // Add coordinate directions that respect bounds
-            for (let i = 0; i < this.nDim; i++) {
-                const pos = [...x];
-                const neg = [...x];
+            if (this.evaluations >= this.nTrials) break;
 
-                // Move toward feasible regions
-                const distToBounds = Math.min(x[i], 1 - x[i]);
-                const stepSize = Math.min(rho, distToBounds * 0.8);
+            // Trial point automatically satisfies bounds due to trust region solve
+            const xTrial = MathUtils.add(xOpt, step);
+            const fTrial = this.evaluate(xTrial);
 
-                if (x[i] + stepSize <= 1) pos[i] = x[i] + stepSize;
-                if (x[i] - stepSize >= 0) neg[i] = x[i] - stepSize;
+            // Compute predicted and actual reduction
+            const predRed = this.computeBOBYQAPrediction(model, step);
+            const actualRed = fOpt - fTrial;
 
-                directions.push(pos, neg);
+            // Ratio test for trust region management
+            const ratio = predRed > 0 ? actualRed / predRed : -1;
+
+            // Update trust region radius
+            let rhoNew = rho;
+            if (ratio <= eta1) {
+                rhoNew = gamma1 * rho;
+            } else if (ratio >= eta2 && MathUtils.norm(step) > 0.8 * rho) {
+                rhoNew = Math.min(gamma2 * rho, 1.0); // Cap at problem scale
             }
 
-            // Add diagonal directions for better exploration
-            for (let trial = 0; trial < Math.min(5, this.nDim); trial++) {
-                const diag = x.map((xi, i) => {
-                    const perturbation = (Math.random() - 0.5) * rho * 2;
-                    return MathUtils.clip(xi + perturbation, 0, 1);
-                });
-                directions.push(diag);
+            // Accept step if good enough
+            if (ratio > eta1) {
+                xOpt = xTrial.slice();
+                fOpt = fTrial;
+                this.updateBOBYQAInterpolationSet(xPts, fVals, xOpt, fOpt);
             }
 
-            // Evaluate all candidate points
-            for (let candidate of directions) {
-                if (this.evaluations >= this.nTrials) break;
+            rho = Math.max(rhoNew, rhoEnd);
 
-                const fCandidate = this.evaluate(candidate);
-                if (fCandidate < fx) {
-                    x = candidate;
-                    fx = fCandidate;
-                    improved = true;
-                    break; // Take first improvement (greedy)
-                }
-            }
-
-            // Adjust trust region
-            if (improved) {
-                rho = Math.min(rhoBeg, rho * 1.2); // Expand if successful
-            } else {
-                rho *= 0.6; // Contract if no improvement
-            }
-
-            // Smart restart if trust region gets too small but we have evaluations left
-            if (rho < rhoEnd * 100 && this.evaluations < this.nTrials * 0.7) {
-                // Jump to a completely new region
-                const newX = Array(this.nDim).fill(0).map(() => Math.random());
-                const newFx = this.evaluate(newX);
-
-                if (newFx < fx * 1.1) { // Accept if reasonably good
-                    x = newX;
-                    fx = newFx;
-                    rho = rhoBeg * 0.5; // Restart with smaller trust region
-                }
+            // Periodic geometry improvement for bound-constrained problems
+            if (Math.random() < 0.1 && this.evaluations < this.nTrials - 3) {
+                this.improveBoundedGeometry(xPts, fVals, xOpt, rho);
             }
         }
 
         return {
-            bestValue: this.bestValue,
-            bestX: this.bestX,
+            bestValue: fOpt,
+            bestX: xOpt,
             evaluations: this.evaluations,
             success: true,
             path: this.trackPath ? this.path : null
         };
+    }
+
+    buildBoundedInterpolationSet(xPts, fVals, xBase, rho) {
+        const n = this.nDim;
+
+        // Add bound-respecting coordinate directions
+        for (let i = 0; i < n && xPts.length < this.nPts && this.evaluations < this.nTrials; i++) {
+            // Positive direction - respect upper bound
+            const distToUpper = this.upperBounds[i] - xBase[i];
+            const stepUp = Math.min(rho, distToUpper * 0.9);
+            if (stepUp > 1e-8) {
+                const xUp = xBase.slice();
+                xUp[i] = xBase[i] + stepUp;
+                xPts.push(xUp);
+                fVals.push(this.evaluate(xUp));
+            }
+
+            if (xPts.length >= this.nPts || this.evaluations >= this.nTrials) break;
+
+            // Negative direction - respect lower bound
+            const distToLower = xBase[i] - this.lowerBounds[i];
+            const stepDown = Math.min(rho, distToLower * 0.9);
+            if (stepDown > 1e-8) {
+                const xDown = xBase.slice();
+                xDown[i] = xBase[i] - stepDown;
+                xPts.push(xDown);
+                fVals.push(this.evaluate(xDown));
+            }
+        }
+
+        // Add additional points that respect bounds
+        while (xPts.length < this.nPts && this.evaluations < this.nTrials) {
+            const xNew = xBase.slice();
+            for (let i = 0; i < n; i++) {
+                const range = this.upperBounds[i] - this.lowerBounds[i];
+                const maxPert = Math.min(rho, range * 0.3);
+                const pert = (Math.random() - 0.5) * 2 * maxPert;
+                xNew[i] = Math.min(this.upperBounds[i],
+                          Math.max(this.lowerBounds[i], xBase[i] + pert));
+            }
+            xPts.push(xNew);
+            fVals.push(this.evaluate(xNew));
+        }
+    }
+
+    buildBOBYQAQuadraticModel(xPts, fVals, xOpt) {
+        const n = this.nDim;
+        const nPts = xPts.length;
+
+        // Quadratic model: m(s) = c + g^T s + 0.5 s^T H s where s = x - xOpt
+        const model = {
+            c: 0,
+            g: new Array(n).fill(0),
+            H: Array(n).fill().map(() => new Array(n).fill(0))
+        };
+
+        // Find base point closest to xOpt
+        let kBase = 0;
+        let minDist = Infinity;
+        for (let k = 0; k < nPts; k++) {
+            const dist = MathUtils.norm(MathUtils.subtract(xPts[k], xOpt));
+            if (dist < minDist) {
+                minDist = dist;
+                kBase = k;
+            }
+        }
+        model.c = fVals[kBase];
+
+        // Build model using finite differences with bound awareness
+        for (let i = 0; i < n; i++) {
+            let forwardK = -1, backwardK = -1;
+            let minForwardDist = Infinity, minBackwardDist = Infinity;
+
+            for (let k = 0; k < nPts; k++) {
+                const s = MathUtils.subtract(xPts[k], xOpt);
+
+                // Check if point is along coordinate direction i
+                let isCoordDir = true;
+                for (let j = 0; j < n; j++) {
+                    if (j !== i && Math.abs(s[j]) > 0.1 * Math.abs(s[i])) {
+                        isCoordDir = false;
+                        break;
+                    }
+                }
+
+                if (isCoordDir && Math.abs(s[i]) > 1e-8) {
+                    const dist = Math.abs(s[i]);
+                    if (s[i] > 0 && dist < minForwardDist) {
+                        forwardK = k;
+                        minForwardDist = dist;
+                    } else if (s[i] < 0 && dist < minBackwardDist) {
+                        backwardK = k;
+                        minBackwardDist = dist;
+                    }
+                }
+            }
+
+            // Compute derivatives
+            if (forwardK >= 0 && backwardK >= 0) {
+                // Central difference
+                const h = xPts[forwardK][i] - xPts[backwardK][i];
+                model.g[i] = (fVals[forwardK] - fVals[backwardK]) / h;
+
+                // Second derivative
+                const hHalf = h / 2;
+                model.H[i][i] = (fVals[forwardK] - 2 * model.c + fVals[backwardK]) / (hHalf * hHalf);
+            } else if (forwardK >= 0) {
+                const h = xPts[forwardK][i] - xOpt[i];
+                model.g[i] = (fVals[forwardK] - model.c) / h;
+            } else if (backwardK >= 0) {
+                const h = xOpt[i] - xPts[backwardK][i];
+                model.g[i] = (model.c - fVals[backwardK]) / h;
+            }
+        }
+
+        return model;
+    }
+
+    solveBoundedTrustRegion(model, xOpt, rho) {
+        const n = this.nDim;
+
+        // Bound-constrained trust region solve using projected gradient method
+        let step = model.g.map(gi => -gi); // Steepest descent direction
+        let stepNorm = MathUtils.norm(step);
+
+        // Handle zero gradient
+        if (stepNorm < 1e-12) {
+            // Try to move away from any nearby bounds
+            step = Array(n).fill(0);
+            for (let i = 0; i < n; i++) {
+                const distToLower = xOpt[i] - this.lowerBounds[i];
+                const distToUpper = this.upperBounds[i] - xOpt[i];
+                const minDist = Math.min(distToLower, distToUpper);
+
+                if (minDist < rho * 0.5) {
+                    // Move away from closer bound
+                    step[i] = distToLower < distToUpper ? rho * 0.3 : -rho * 0.3;
+                } else {
+                    step[i] = (Math.random() - 0.5) * 2 * rho * 0.1;
+                }
+            }
+            stepNorm = MathUtils.norm(step);
+        }
+
+        // Scale to trust region
+        if (stepNorm > rho) {
+            step = MathUtils.scale(step, rho / stepNorm);
+        }
+
+        // Project to satisfy bounds [0,1]
+        for (let i = 0; i < n; i++) {
+            const newPos = xOpt[i] + step[i];
+            if (newPos < this.lowerBounds[i]) {
+                step[i] = this.lowerBounds[i] - xOpt[i];
+            } else if (newPos > this.upperBounds[i]) {
+                step[i] = this.upperBounds[i] - xOpt[i];
+            }
+        }
+
+        // Re-scale if bound projection violated trust region
+        const finalNorm = MathUtils.norm(step);
+        if (finalNorm > rho * 1.01) {
+            step = MathUtils.scale(step, rho / finalNorm);
+        }
+
+        return step;
+    }
+
+    computeBOBYQAPrediction(model, step) {
+        // Same as other PRIMA methods
+        let pred = -MathUtils.dot(model.g, step);
+
+        for (let i = 0; i < step.length; i++) {
+            for (let j = 0; j < step.length; j++) {
+                pred -= 0.5 * step[i] * model.H[i][j] * step[j];
+            }
+        }
+
+        return pred;
+    }
+
+    updateBOBYQAInterpolationSet(xPts, fVals, xNew, fNew) {
+        // Replace worst point
+        let worstK = 0;
+        for (let k = 1; k < fVals.length; k++) {
+            if (fVals[k] > fVals[worstK]) {
+                worstK = k;
+            }
+        }
+
+        if (fNew < fVals[worstK]) {
+            xPts[worstK] = xNew.slice();
+            fVals[worstK] = fNew;
+        }
+    }
+
+    improveBoundedGeometry(xPts, fVals, xOpt, rho) {
+        // Add a geometry-improving point that respects bounds
+        const n = this.nDim;
+
+        if (this.evaluations >= this.nTrials) return;
+
+        // Find direction that improves interpolation set geometry
+        let bestDir = Array(n).fill(0);
+        for (let i = 0; i < n; i++) {
+            // Bias toward center of feasible region
+            const center = (this.lowerBounds[i] + this.upperBounds[i]) / 2;
+            bestDir[i] = (center - xOpt[i]) + (Math.random() - 0.5) * rho;
+        }
+
+        // Normalize and scale
+        const dirNorm = MathUtils.norm(bestDir);
+        if (dirNorm > 1e-8) {
+            bestDir = MathUtils.scale(bestDir, rho / dirNorm);
+        }
+
+        // Apply bounds
+        const xTest = MathUtils.add(xOpt, bestDir);
+        for (let i = 0; i < n; i++) {
+            xTest[i] = Math.min(this.upperBounds[i], Math.max(this.lowerBounds[i], xTest[i]));
+        }
+
+        const fTest = this.evaluate(xTest);
+        this.updateBOBYQAInterpolationSet(xPts, fVals, xTest, fTest);
     }
 }
 
