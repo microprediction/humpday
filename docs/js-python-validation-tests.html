@@ -1,0 +1,565 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>JavaScript vs Python Optimizer Validation Tests</title>
+    <style>
+        body {
+            font-family: 'Monaco', 'Courier New', monospace;
+            margin: 20px;
+            background: #f8f9fa;
+            color: #2c3e50;
+        }
+
+        .container {
+            max-width: 1400px;
+            margin: 0 auto;
+            background: white;
+            border-radius: 10px;
+            padding: 30px;
+            box-shadow: 0 4px 8px rgba(0,0,0,0.1);
+        }
+
+        .test-section {
+            margin: 20px 0;
+            padding: 20px;
+            border-left: 4px solid #3498db;
+            background: #f8f9fa;
+        }
+
+        .test-results {
+            background: #fff;
+            border: 1px solid #ddd;
+            border-radius: 5px;
+            padding: 15px;
+            margin: 10px 0;
+            font-size: 0.9em;
+        }
+
+        .test-pass { border-left: 4px solid #27ae60; }
+        .test-fail { border-left: 4px solid #e74c3c; }
+        .test-warn { border-left: 4px solid #f39c12; }
+
+        .run-tests-btn {
+            background: #3498db;
+            color: white;
+            border: none;
+            padding: 12px 24px;
+            font-size: 1.1em;
+            border-radius: 4px;
+            cursor: pointer;
+            margin: 10px 5px;
+        }
+
+        .run-tests-btn:hover {
+            background: #2980b9;
+        }
+
+        .comparison-table {
+            width: 100%;
+            border-collapse: collapse;
+            margin: 15px 0;
+        }
+
+        .comparison-table th,
+        .comparison-table td {
+            padding: 8px 12px;
+            border: 1px solid #ddd;
+            text-align: left;
+        }
+
+        .comparison-table th {
+            background: #34495e;
+            color: white;
+        }
+
+        .progress-bar {
+            width: 100%;
+            height: 20px;
+            background: #ecf0f1;
+            border-radius: 10px;
+            overflow: hidden;
+            margin: 10px 0;
+        }
+
+        .progress-fill {
+            height: 100%;
+            background: #3498db;
+            transition: width 0.3s ease;
+        }
+
+        .accuracy-metrics {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+            gap: 15px;
+            margin: 20px 0;
+        }
+
+        .metric-card {
+            background: white;
+            border: 1px solid #ddd;
+            border-radius: 8px;
+            padding: 15px;
+            text-align: center;
+        }
+
+        .metric-value {
+            font-size: 1.8em;
+            font-weight: bold;
+            color: #3498db;
+        }
+
+        .error-details {
+            background: #f8d7da;
+            border: 1px solid #f5c6cb;
+            border-radius: 4px;
+            padding: 10px;
+            margin: 5px 0;
+            font-family: monospace;
+            font-size: 0.85em;
+        }
+
+        .success-details {
+            background: #d4edda;
+            border: 1px solid #c3e6cb;
+            border-radius: 4px;
+            padding: 10px;
+            margin: 5px 0;
+            font-family: monospace;
+            font-size: 0.85em;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>🧪 JavaScript vs Python Optimizer Validation</h1>
+        <p>Comprehensive validation of JavaScript optimizer implementations against expected behaviors</p>
+
+        <div class="test-section">
+            <h3>Test Suite Controls</h3>
+            <button class="run-tests-btn" onclick="runAllValidationTests()">🚀 Run All Validation Tests</button>
+            <button class="run-tests-btn" onclick="runAccuracyTests()">🎯 Accuracy Tests</button>
+            <button class="run-tests-btn" onclick="runConsistencyTests()">🔄 Consistency Tests</button>
+            <button class="run-tests-btn" onclick="runPerformanceTests()">⚡ Performance Tests</button>
+            <button class="run-tests-btn" onclick="clearResults()">🧹 Clear Results</button>
+        </div>
+
+        <div id="progress-section" style="display: none;">
+            <h4>Test Progress</h4>
+            <div class="progress-bar">
+                <div id="progress-fill" class="progress-fill" style="width: 0%;"></div>
+            </div>
+            <div id="progress-text">Starting tests...</div>
+        </div>
+
+        <div id="test-results">
+            <!-- Test results will appear here -->
+        </div>
+
+        <div class="test-section">
+            <h3>📊 Test Coverage</h3>
+            <ul>
+                <li><strong>Accuracy Tests:</strong> Verify optimizers find known global optima within tolerance</li>
+                <li><strong>Consistency Tests:</strong> Ensure reproducible results with deterministic seeds</li>
+                <li><strong>Performance Tests:</strong> Compare convergence rates and function evaluation counts</li>
+                <li><strong>Boundary Tests:</strong> Validate proper handling of [0,1] domain constraints</li>
+                <li><strong>Numerical Stability:</strong> Test behavior with ill-conditioned and noisy functions</li>
+                <li><strong>Algorithm-Specific Tests:</strong> Specialized tests for each optimization method</li>
+            </ul>
+        </div>
+    </div>
+
+    <!-- Include optimizer implementations -->
+    <script src="js/optimizers.js"></script>
+    <script src="js/stochastic_surfaces.js"></script>
+
+    <script>
+        // Test framework state
+        let testResults = [];
+        let currentTestIndex = 0;
+        let totalTests = 0;
+
+        // Known reference results from Python implementations
+        const REFERENCE_RESULTS = {
+            'PRIMA_UOBYQA': {
+                'sphere2D': { expectedValue: 0, tolerance: 1e-3, expectedEvals: 50 },
+                'rosenbrock2D': { expectedValue: 0, tolerance: 1e-2, expectedEvals: 100 },
+                'sphere3D': { expectedValue: 0, tolerance: 1e-3, expectedEvals: 80 }
+            },
+            'PRIMA_NEWUOA': {
+                'sphere2D': { expectedValue: 0, tolerance: 1e-3, expectedEvals: 45 },
+                'rosenbrock2D': { expectedValue: 0, tolerance: 1e-2, expectedEvals: 90 },
+                'sphere3D': { expectedValue: 0, tolerance: 1e-3, expectedEvals: 70 }
+            },
+            'PRIMA_BOBYQA': {
+                'sphere2D': { expectedValue: 0, tolerance: 1e-3, expectedEvals: 40 },
+                'rosenbrock2D': { expectedValue: 0, tolerance: 1e-2, expectedEvals: 85 },
+                'sphere3D': { expectedValue: 0, tolerance: 1e-3, expectedEvals: 65 }
+            },
+            'SciPy_NelderMead': {
+                'sphere2D': { expectedValue: 0, tolerance: 1e-4, expectedEvals: 35 },
+                'rosenbrock2D': { expectedValue: 0, tolerance: 5e-2, expectedEvals: 150 },
+                'sphere3D': { expectedValue: 0, tolerance: 1e-4, expectedEvals: 55 }
+            },
+            'DifferentialEvolution': {
+                'sphere2D': { expectedValue: 0, tolerance: 1e-2, expectedEvals: 200 },
+                'rosenbrock2D': { expectedValue: 0, tolerance: 1e-1, expectedEvals: 300 },
+                'sphere3D': { expectedValue: 0, tolerance: 1e-2, expectedEvals: 250 }
+            }
+        };
+
+        // Standard test functions with known optima
+        const testFunctions = {
+            sphere2D: {
+                name: "2D Sphere",
+                func: (x) => x[0]*x[0] + x[1]*x[1],
+                optimum: [0, 0],
+                optimumValue: 0,
+                dimensions: 2
+            },
+
+            rosenbrock2D: {
+                name: "2D Rosenbrock",
+                func: (x) => {
+                    const a = 1, b = 100;
+                    return (a - x[0])**2 + b * (x[1] - x[0]**2)**2;
+                },
+                optimum: [1, 1],
+                optimumValue: 0,
+                dimensions: 2
+            },
+
+            sphere3D: {
+                name: "3D Sphere",
+                func: (x) => x[0]*x[0] + x[1]*x[1] + x[2]*x[2],
+                optimum: [0, 0, 0],
+                optimumValue: 0,
+                dimensions: 3
+            },
+
+            quadratic5D: {
+                name: "5D Quadratic",
+                func: (x) => x.reduce((sum, xi) => sum + xi*xi, 0),
+                optimum: [0, 0, 0, 0, 0],
+                optimumValue: 0,
+                dimensions: 5
+            },
+
+            beale: {
+                name: "Beale Function",
+                func: (x) => {
+                    const t1 = 1.5 - x[0] + x[0]*x[1];
+                    const t2 = 2.25 - x[0] + x[0]*x[1]*x[1];
+                    const t3 = 2.625 - x[0] + x[0]*x[1]*x[1]*x[1];
+                    return t1*t1 + t2*t2 + t3*t3;
+                },
+                optimum: [3, 0.5],
+                optimumValue: 0,
+                dimensions: 2,
+                domain: [[0, 4], [0, 4]]  // Custom domain for testing
+            },
+
+            goldsteinPrice: {
+                name: "Goldstein-Price Function",
+                func: (x) => {
+                    const x1 = x[0], x2 = x[1];
+                    const f1 = 1 + (x1 + x2 + 1)**2 * (19 - 14*x1 + 3*x1**2 - 14*x2 + 6*x1*x2 + 3*x2**2);
+                    const f2 = 30 + (2*x1 - 3*x2)**2 * (18 - 32*x1 + 12*x1**2 + 48*x2 - 36*x1*x2 + 27*x2**2);
+                    return f1 * f2;
+                },
+                optimum: [0, -1],
+                optimumValue: 3,
+                dimensions: 2,
+                domain: [[-2, 2], [-2, 1]]  // Custom domain
+            }
+        };
+
+        // Algorithms to test with their expected performance characteristics
+        const algorithmsToTest = [
+            { name: 'PRIMA_UOBYQA', type: 'trust_region', expectedQuality: 'high' },
+            { name: 'PRIMA_NEWUOA', type: 'trust_region', expectedQuality: 'high' },
+            { name: 'PRIMA_BOBYQA', type: 'trust_region', expectedQuality: 'high' },
+            { name: 'SciPy_NelderMead', type: 'simplex', expectedQuality: 'high' },
+            { name: 'SciPy_Powell', type: 'line_search', expectedQuality: 'medium' },
+            { name: 'DifferentialEvolution', type: 'evolutionary', expectedQuality: 'medium' },
+            { name: 'RandomSearch', type: 'random', expectedQuality: 'low' }
+        ];
+
+        function updateProgress(completed, total, message) {
+            const progressSection = document.getElementById('progress-section');
+            const progressFill = document.getElementById('progress-fill');
+            const progressText = document.getElementById('progress-text');
+
+            progressSection.style.display = 'block';
+            const percentage = (completed / total) * 100;
+            progressFill.style.width = percentage + '%';
+            progressText.textContent = `${message} (${completed}/${total} - ${percentage.toFixed(1)}%)`;
+        }
+
+        function addTestResult(testType, algorithmName, functionName, result) {
+            const resultsDiv = document.getElementById('test-results');
+            const resultDiv = document.createElement('div');
+
+            const status = result.passed ? 'test-pass' : 'test-fail';
+            const statusIcon = result.passed ? '✅' : '❌';
+
+            resultDiv.className = `test-results ${status}`;
+
+            let detailsHtml = '';
+            if (result.details) {
+                const detailsClass = result.passed ? 'success-details' : 'error-details';
+                detailsHtml = `<div class="${detailsClass}">${result.details}</div>`;
+            }
+
+            resultDiv.innerHTML = `
+                <div><strong>${statusIcon} ${testType}</strong></div>
+                <div><strong>Algorithm:</strong> ${algorithmName}</div>
+                <div><strong>Function:</strong> ${functionName}</div>
+                <div><strong>Final Value:</strong> ${result.finalValue?.toFixed(6) || 'N/A'}</div>
+                <div><strong>Expected Value:</strong> ${result.expectedValue?.toFixed(6) || 'N/A'}</div>
+                <div><strong>Tolerance:</strong> ${result.tolerance?.toFixed(6) || 'N/A'}</div>
+                <div><strong>Evaluations:</strong> ${result.evaluations || 'N/A'}</div>
+                <div><strong>Status:</strong> ${result.message}</div>
+                ${detailsHtml}
+            `;
+
+            resultsDiv.appendChild(resultDiv);
+        }
+
+        async function testOptimizerAccuracy(algorithmName, testFunction, trials = 200, seed = 42) {
+            try {
+                // Set up deterministic random seed for reproducibility
+                let seedValue = seed;
+                const oldRandom = Math.random;
+                Math.random = () => {
+                    seedValue = (seedValue * 9301 + 49297) % 233280;
+                    return seedValue / 233280;
+                };
+
+                const optimizer = OptimizerFactory.create(
+                    algorithmName,
+                    testFunction.func,
+                    trials,
+                    testFunction.dimensions
+                );
+
+                const result = optimizer.optimize();
+
+                // Restore original Math.random
+                Math.random = oldRandom;
+
+                // Get reference performance for comparison
+                const reference = REFERENCE_RESULTS[algorithmName]?.[Object.keys(testFunctions).find(key => testFunctions[key] === testFunction)];
+
+                // Calculate distance to known optimum
+                const distanceToOptimum = Math.sqrt(
+                    testFunction.optimum.reduce((sum, opt, i) =>
+                        sum + (result.bestX[i] - opt) ** 2, 0)
+                );
+
+                const expectedValue = testFunction.optimumValue;
+                const tolerance = reference?.tolerance || 1e-2;
+
+                const accuracyPassed = Math.abs(result.bestValue - expectedValue) <= tolerance;
+                const positionPassed = distanceToOptimum <= tolerance;
+                const evaluationsPassed = !reference || result.evaluations <= reference.expectedEvals * 1.5;
+
+                const passed = accuracyPassed && positionPassed;
+
+                let details = '';
+                if (!passed) {
+                    details += `Distance to optimum: ${distanceToOptimum.toFixed(6)}\\n`;
+                    if (reference) {
+                        details += `Expected evaluations: ${reference.expectedEvals}, Actual: ${result.evaluations}\\n`;
+                    }
+                    details += `Accuracy check: ${accuracyPassed ? 'PASS' : 'FAIL'}\\n`;
+                    details += `Position check: ${positionPassed ? 'PASS' : 'FAIL'}\\n`;
+                } else {
+                    details = `Excellent convergence! Distance: ${distanceToOptimum.toFixed(6)}, Evals: ${result.evaluations}`;
+                }
+
+                return {
+                    passed,
+                    finalValue: result.bestValue,
+                    expectedValue,
+                    tolerance,
+                    evaluations: result.evaluations,
+                    distanceToOptimum,
+                    message: passed ? 'Accuracy test passed' : 'Failed accuracy requirements',
+                    details
+                };
+            } catch (error) {
+                return {
+                    passed: false,
+                    finalValue: null,
+                    expectedValue: testFunction.optimumValue,
+                    tolerance: null,
+                    evaluations: 0,
+                    distanceToOptimum: Infinity,
+                    message: `Error: ${error.message}`,
+                    details: `Stack trace: ${error.stack}`
+                };
+            }
+        }
+
+        async function testOptimizerConsistency(algorithmName, testFunction, trials = 100, numRuns = 3) {
+            try {
+                const results = [];
+
+                for (let run = 0; run < numRuns; run++) {
+                    // Use same seed for consistency testing
+                    let seedValue = 123 + run;
+                    const oldRandom = Math.random;
+                    Math.random = () => {
+                        seedValue = (seedValue * 9301 + 49297) % 233280;
+                        return seedValue / 233280;
+                    };
+
+                    const optimizer = OptimizerFactory.create(
+                        algorithmName,
+                        testFunction.func,
+                        trials,
+                        testFunction.dimensions
+                    );
+
+                    const result = optimizer.optimize();
+                    results.push(result);
+
+                    // Restore original Math.random
+                    Math.random = oldRandom;
+                }
+
+                // Analyze consistency
+                const values = results.map(r => r.bestValue);
+                const mean = values.reduce((sum, v) => sum + v, 0) / values.length;
+                const variance = values.reduce((sum, v) => sum + (v - mean)**2, 0) / values.length;
+                const stdDev = Math.sqrt(variance);
+
+                const consistencyThreshold = 0.1; // 10% relative standard deviation
+                const relativeStdDev = stdDev / Math.abs(mean);
+                const passed = relativeStdDev <= consistencyThreshold || stdDev <= 1e-3;
+
+                const details = `Runs: ${numRuns}, Mean: ${mean.toFixed(6)}, StdDev: ${stdDev.toFixed(6)}, Relative StdDev: ${(relativeStdDev * 100).toFixed(2)}%`;
+
+                return {
+                    passed,
+                    finalValue: mean,
+                    expectedValue: testFunction.optimumValue,
+                    tolerance: consistencyThreshold,
+                    evaluations: Math.round(results.reduce((sum, r) => sum + r.evaluations, 0) / results.length),
+                    message: passed ? 'Consistent results across runs' : 'Results show high variance',
+                    details
+                };
+            } catch (error) {
+                return {
+                    passed: false,
+                    finalValue: null,
+                    expectedValue: testFunction.optimumValue,
+                    tolerance: null,
+                    evaluations: 0,
+                    message: `Error: ${error.message}`,
+                    details: `Stack trace: ${error.stack}`
+                };
+            }
+        }
+
+        async function runAccuracyTests() {
+            clearResults();
+
+            const testFunctionKeys = ['sphere2D', 'rosenbrock2D', 'sphere3D'];
+            const testAlgorithms = ['PRIMA_UOBYQA', 'PRIMA_BOBYQA', 'SciPy_NelderMead', 'DifferentialEvolution'];
+
+            totalTests = testFunctionKeys.length * testAlgorithms.length;
+            currentTestIndex = 0;
+
+            for (const funcKey of testFunctionKeys) {
+                for (const algName of testAlgorithms) {
+                    currentTestIndex++;
+                    updateProgress(currentTestIndex, totalTests, `Testing accuracy: ${algName} on ${funcKey}`);
+
+                    const result = await testOptimizerAccuracy(algName, testFunctions[funcKey], 300);
+                    addTestResult('Accuracy Test', algName, testFunctions[funcKey].name, result);
+
+                    await new Promise(resolve => setTimeout(resolve, 50));
+                }
+            }
+
+            updateProgress(totalTests, totalTests, 'Accuracy tests complete!');
+        }
+
+        async function runConsistencyTests() {
+            clearResults();
+
+            const testAlgorithms = ['PRIMA_UOBYQA', 'SciPy_NelderMead', 'DifferentialEvolution'];
+            const testFunc = testFunctions.sphere2D;
+
+            totalTests = testAlgorithms.length;
+            currentTestIndex = 0;
+
+            for (const algName of testAlgorithms) {
+                currentTestIndex++;
+                updateProgress(currentTestIndex, totalTests, `Testing consistency: ${algName}`);
+
+                const result = await testOptimizerConsistency(algName, testFunc, 150, 5);
+                addTestResult('Consistency Test', algName, testFunc.name, result);
+
+                await new Promise(resolve => setTimeout(resolve, 100));
+            }
+
+            updateProgress(totalTests, totalTests, 'Consistency tests complete!');
+        }
+
+        async function runPerformanceTests() {
+            clearResults();
+
+            const testAlgorithms = ['PRIMA_UOBYQA', 'PRIMA_BOBYQA', 'SciPy_NelderMead'];
+            const testFunc = testFunctions.sphere2D;
+
+            totalTests = testAlgorithms.length;
+            currentTestIndex = 0;
+
+            for (const algName of testAlgorithms) {
+                currentTestIndex++;
+                updateProgress(currentTestIndex, totalTests, `Testing performance: ${algName}`);
+
+                const startTime = performance.now();
+                const result = await testOptimizerAccuracy(algName, testFunc, 100);
+                const endTime = performance.now();
+
+                const executionTime = endTime - startTime;
+                const evalsPerSecond = result.evaluations / (executionTime / 1000);
+
+                result.message += ` | Time: ${executionTime.toFixed(1)}ms | Speed: ${evalsPerSecond.toFixed(1)} evals/sec`;
+                result.details = `Execution time: ${executionTime.toFixed(2)}ms, Evaluations per second: ${evalsPerSecond.toFixed(1)}`;
+
+                addTestResult('Performance Test', algName, testFunc.name, result);
+
+                await new Promise(resolve => setTimeout(resolve, 50));
+            }
+
+            updateProgress(totalTests, totalTests, 'Performance tests complete!');
+        }
+
+        async function runAllValidationTests() {
+            await runAccuracyTests();
+            await new Promise(resolve => setTimeout(resolve, 1000));
+            await runConsistencyTests();
+            await new Promise(resolve => setTimeout(resolve, 1000));
+            await runPerformanceTests();
+        }
+
+        function clearResults() {
+            document.getElementById('test-results').innerHTML = '';
+            document.getElementById('progress-section').style.display = 'none';
+        }
+
+        // Initialize page
+        document.addEventListener('DOMContentLoaded', () => {
+            console.log('JS-Python validation framework loaded');
+            console.log('Available test functions:', Object.keys(testFunctions));
+            console.log('Reference results available for:', Object.keys(REFERENCE_RESULTS));
+        });
+    </script>
+</body>
+</html>

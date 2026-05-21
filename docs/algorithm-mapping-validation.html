@@ -1,0 +1,538 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Algorithm Mapping Validation</title>
+    <style>
+        body {
+            font-family: 'Monaco', 'Courier New', monospace;
+            margin: 20px;
+            background: #f8f9fa;
+            color: #2c3e50;
+        }
+
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+            background: white;
+            border-radius: 10px;
+            padding: 30px;
+            box-shadow: 0 4px 8px rgba(0,0,0,0.1);
+        }
+
+        .test-results {
+            background: #fff;
+            border: 1px solid #ddd;
+            border-radius: 5px;
+            padding: 15px;
+            margin: 10px 0;
+            font-size: 0.9em;
+        }
+
+        .test-pass { border-left: 4px solid #27ae60; }
+        .test-fail { border-left: 4px solid #e74c3c; }
+        .test-warn { border-left: 4px solid #f39c12; }
+
+        .validation-table {
+            width: 100%;
+            border-collapse: collapse;
+            margin: 15px 0;
+        }
+
+        .validation-table th,
+        .validation-table td {
+            padding: 8px 12px;
+            border: 1px solid #ddd;
+            text-align: left;
+            font-size: 0.85em;
+        }
+
+        .validation-table th {
+            background: #34495e;
+            color: white;
+        }
+
+        .status-ok { background: #d4edda; }
+        .status-error { background: #f8d7da; }
+        .status-warning { background: #fff3cd; }
+
+        .run-tests-btn {
+            background: #3498db;
+            color: white;
+            border: none;
+            padding: 12px 24px;
+            font-size: 1.1em;
+            border-radius: 4px;
+            cursor: pointer;
+            margin: 10px 5px;
+        }
+
+        .run-tests-btn:hover {
+            background: #2980b9;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>🔍 Algorithm Mapping Validation</h1>
+        <p>Validates that all optimizer configurations are consistent and complete</p>
+
+        <button class="run-tests-btn" onclick="runMappingValidation()">🚀 Run Mapping Validation</button>
+        <button class="run-tests-btn" onclick="clearResults()">🧹 Clear Results</button>
+
+        <div id="test-results">
+            <!-- Results will appear here -->
+        </div>
+    </div>
+
+    <script src="js/optimizers.js"></script>
+    <script>
+        // Import optimizer configuration from the main contest file
+        // Note: This would normally be imported, but for testing we'll inline it
+        const optimizers = [
+            { name: 'UOBYQA (Prima)', internalName: 'PRIMA_UOBYQA', elo: 1500, status: 'waiting' },
+            { name: 'NEWUOA (Prima)', internalName: 'PRIMA_NEWUOA', elo: 1500, status: 'waiting' },
+            { name: 'BOBYQA (Prima)', internalName: 'PRIMA_BOBYQA', elo: 1500, status: 'waiting' },
+            { name: 'Nelder-Mead (SciPy)', internalName: 'SciPy_NelderMead', elo: 1500, status: 'waiting' },
+            { name: 'Powell (SciPy)', internalName: 'SciPy_Powell', elo: 1500, status: 'waiting' },
+            { name: 'Differential Evolution (SciPy)', internalName: 'DifferentialEvolution', elo: 1500, status: 'waiting' },
+            { name: 'CMA-ES (Humpday)', internalName: 'CMAEvolutionStrategy', elo: 1500, status: 'waiting' },
+            { name: 'Genetic Algorithm (Humpday)', internalName: 'GeneticAlgorithm', elo: 1500, status: 'waiting' },
+            { name: 'Particle Swarm (Humpday)', internalName: 'ParticleSwarm', elo: 1500, status: 'waiting' },
+            { name: 'Simulated Annealing (Humpday)', internalName: 'SimulatedAnnealing', elo: 1500, status: 'waiting' },
+            { name: 'Bayesian Optimization (Humpday)', internalName: 'BayesianOpt', elo: 1500, status: 'waiting' },
+            { name: 'Random Search (Humpday)', internalName: 'RandomSearch', elo: 1500, status: 'waiting' },
+            { name: 'Adaptive Random Search (Humpday)', internalName: 'AdaptiveRandomSearch', elo: 1500, status: 'waiting' },
+            { name: 'Coordinate Descent (Humpday)', internalName: 'CoordinateDescent', elo: 1500, status: 'waiting' },
+            { name: 'Pattern Search (Humpday)', internalName: 'PatternSearch', elo: 1500, status: 'waiting' },
+            { name: 'Hill Climbing (Humpday)', internalName: 'HillClimbing', elo: 1500, status: 'waiting' },
+            { name: 'Tabu Search (Humpday)', internalName: 'TabuSearch', elo: 1500, status: 'waiting' },
+            { name: 'Firefly Algorithm (Humpday)', internalName: 'FireflyAlgorithm', elo: 1500, status: 'waiting' },
+            { name: 'Ant Colony Optimization (Humpday)', internalName: 'AntColonyOpt', elo: 1500, status: 'waiting' },
+            { name: 'Harmony Search (Humpday)', internalName: 'HarmonySearch', elo: 1500, status: 'waiting' },
+            { name: 'Evolution Strategy (Humpday)', internalName: 'EvolutionStrategy', elo: 1500, status: 'waiting' }
+        ];
+
+        const algorithmInfo = {
+            'UOBYQA (Prima)': {
+                displayName: 'UOBYQA (PDFO)',
+                explanation: 'https://en.wikipedia.org/wiki/NEWUOA',
+                paper: 'https://www.optimization-online.org/DB_HTML/2009/12/2490.html',
+                referenceImpl: 'https://www.pdfo.net/',
+                humpdayPython: 'https://github.com/microprediction/humpday/blob/main/humpday/optimizers/primacube.py',
+                humpdayJS: 'js/optimizers.js'
+            },
+            'NEWUOA (Prima)': {
+                displayName: 'NEWUOA (PDFO)',
+                explanation: 'https://en.wikipedia.org/wiki/NEWUOA',
+                paper: 'https://doi.org/10.1080/10556780410001709778',
+                referenceImpl: 'https://www.pdfo.net/',
+                humpdayPython: 'https://github.com/microprediction/humpday/blob/main/humpday/optimizers/primacube.py',
+                humpdayJS: 'js/optimizers.js'
+            },
+            'BOBYQA (Prima)': {
+                displayName: 'BOBYQA (PDFO)',
+                explanation: 'https://en.wikipedia.org/wiki/BOBYQA',
+                paper: 'https://doi.org/10.1145/1132973.1132979',
+                referenceImpl: 'https://www.pdfo.net/',
+                humpdayPython: 'https://github.com/microprediction/humpday/blob/main/humpday/optimizers/primacube.py',
+                humpdayJS: 'js/optimizers.js'
+            },
+            'Nelder-Mead (SciPy)': {
+                displayName: 'Nelder-Mead (SciPy)',
+                explanation: 'https://en.wikipedia.org/wiki/Nelder%E2%80%93Mead_method',
+                paper: 'https://doi.org/10.1093/comjnl/7.4.308',
+                referenceImpl: 'https://docs.scipy.org/doc/scipy/reference/optimize.minimize-neldermead.html',
+                humpdayPython: 'https://github.com/microprediction/humpday/blob/main/humpday/optimizers/scipycube.py',
+                humpdayJS: 'js/optimizers.js'
+            },
+            'Powell (SciPy)': {
+                displayName: 'Powell (SciPy)',
+                explanation: 'https://en.wikipedia.org/wiki/Powell%27s_method',
+                paper: 'https://doi.org/10.1093/comjnl/7.2.155',
+                referenceImpl: 'https://docs.scipy.org/doc/scipy/reference/optimize.minimize-powell.html',
+                humpdayPython: 'https://github.com/microprediction/humpday/blob/main/humpday/optimizers/scipycube.py',
+                humpdayJS: 'js/optimizers.js'
+            },
+            'Differential Evolution (SciPy)': {
+                displayName: 'Differential Evolution (SciPy)',
+                explanation: 'https://en.wikipedia.org/wiki/Differential_evolution',
+                paper: 'https://doi.org/10.1023/A:1008202821328',
+                referenceImpl: 'https://docs.scipy.org/doc/scipy/reference/generated/scipy.optimize.differential_evolution.html',
+                humpdayPython: 'https://github.com/microprediction/humpday/blob/main/humpday/optimizers/scipycube.py',
+                humpdayJS: 'js/optimizers.js'
+            },
+            'CMA-ES (Humpday)': {
+                displayName: 'CMA-ES (Humpday)',
+                explanation: 'https://en.wikipedia.org/wiki/CMA-ES',
+                paper: 'https://arxiv.org/abs/1604.00772',
+                referenceImpl: 'https://cma-es.github.io/',
+                humpdayPython: 'https://github.com/microprediction/humpday/blob/main/humpday/optimizers/comprehensive_derivative_free.py',
+                humpdayJS: 'js/optimizers.js'
+            },
+            'Genetic Algorithm (Humpday)': {
+                displayName: 'Genetic Algorithm (Humpday)',
+                explanation: 'https://en.wikipedia.org/wiki/Genetic_algorithm',
+                paper: 'https://doi.org/10.1145/29482.29492',
+                referenceImpl: 'https://en.wikipedia.org/wiki/Genetic_algorithm',
+                humpdayPython: 'https://github.com/microprediction/humpday/blob/main/humpday/optimizers/comprehensive_derivative_free.py',
+                humpdayJS: 'js/optimizers.js'
+            },
+            'Particle Swarm (Humpday)': {
+                displayName: 'Particle Swarm (Humpday)',
+                explanation: 'https://en.wikipedia.org/wiki/Particle_swarm_optimization',
+                paper: 'https://doi.org/10.1109/ICNN.1995.488968',
+                referenceImpl: 'https://pypi.org/project/pyswarm/',
+                humpdayPython: 'https://github.com/microprediction/humpday/blob/main/humpday/optimizers/comprehensive_derivative_free.py',
+                humpdayJS: 'js/optimizers.js'
+            },
+            'Simulated Annealing (Humpday)': {
+                displayName: 'Simulated Annealing (Humpday)',
+                explanation: 'https://en.wikipedia.org/wiki/Simulated_annealing',
+                paper: 'https://doi.org/10.1126/science.220.4598.671',
+                referenceImpl: 'https://docs.scipy.org/doc/scipy/reference/generated/scipy.optimize.dual_annealing.html',
+                humpdayPython: 'https://github.com/microprediction/humpday/blob/main/humpday/optimizers/comprehensive_derivative_free.py',
+                humpdayJS: 'js/optimizers.js'
+            },
+            'Bayesian Optimization (Humpday)': {
+                displayName: 'Bayesian Optimization (Humpday)',
+                explanation: 'https://en.wikipedia.org/wiki/Bayesian_optimization',
+                paper: 'https://arxiv.org/abs/1012.2599',
+                referenceImpl: 'https://scikit-optimize.github.io/stable/',
+                humpdayPython: 'https://github.com/microprediction/humpday/blob/main/humpday/optimizers/bayesoptcube.py',
+                humpdayJS: 'js/optimizers.js'
+            },
+            'Random Search (Humpday)': {
+                displayName: 'Random Search (Humpday)',
+                explanation: 'https://en.wikipedia.org/wiki/Random_search',
+                paper: 'https://jmlr.org/papers/v13/bergstra12a.html',
+                referenceImpl: 'https://scikit-learn.org/stable/modules/generated/sklearn.model_selection.RandomizedSearchCV.html',
+                humpdayPython: 'https://github.com/microprediction/humpday/blob/main/humpday/optimizers/comprehensive_derivative_free.py',
+                humpdayJS: 'js/optimizers.js'
+            },
+            'Adaptive Random Search': {
+                displayName: 'Adaptive Random Search (Humpday)',
+                explanation: 'https://optimization.mccormick.northwestern.edu/index.php/Random_search',
+                paper: 'https://doi.org/10.1007/BF01581033',
+                referenceImpl: 'https://en.wikipedia.org/wiki/Random_search',
+                humpdayPython: 'https://github.com/microprediction/humpday/blob/main/humpday/optimizers/allcube.py',
+                humpdayJS: 'js/optimizers.js'
+            },
+            'Coordinate Descent': {
+                displayName: 'Coordinate Descent (Humpday)',
+                explanation: 'https://en.wikipedia.org/wiki/Coordinate_descent',
+                paper: 'https://doi.org/10.1007/s10107-014-0824-2',
+                referenceImpl: 'https://scikit-learn.org/stable/modules/generated/sklearn.linear_model.coordinate_descent.html',
+                humpdayPython: 'https://github.com/microprediction/humpday/blob/main/humpday/optimizers/allcube.py',
+                humpdayJS: 'js/optimizers.js'
+            },
+            'Pattern Search': {
+                displayName: 'Pattern Search (Humpday)',
+                explanation: 'https://en.wikipedia.org/wiki/Pattern_search_(optimization)',
+                paper: 'https://doi.org/10.1137/S1052623496303470',
+                referenceImpl: 'https://www.mathworks.com/help/gads/pattern-search.html',
+                humpdayPython: 'https://github.com/microprediction/humpday/blob/main/humpday/optimizers/allcube.py',
+                humpdayJS: 'js/optimizers.js'
+            },
+            'Hill Climbing': {
+                displayName: 'Hill Climbing (Humpday)',
+                explanation: 'https://en.wikipedia.org/wiki/Hill_climbing',
+                paper: 'https://doi.org/10.1016/0004-3702(81)90024-2',
+                referenceImpl: 'https://en.wikipedia.org/wiki/Hill_climbing',
+                humpdayPython: 'https://github.com/microprediction/humpday/blob/main/humpday/optimizers/allcube.py',
+                humpdayJS: 'js/optimizers.js'
+            },
+            'Tabu Search': {
+                displayName: 'Tabu Search (Humpday)',
+                explanation: 'https://en.wikipedia.org/wiki/Tabu_search',
+                paper: 'https://doi.org/10.1287/ijoc.1.3.190',
+                referenceImpl: 'https://en.wikipedia.org/wiki/Tabu_search',
+                humpdayPython: 'https://github.com/microprediction/humpday/blob/main/humpday/optimizers/allcube.py',
+                humpdayJS: 'js/optimizers.js'
+            },
+            'Firefly Algorithm': {
+                displayName: 'Firefly Algorithm (Humpday)',
+                explanation: 'https://en.wikipedia.org/wiki/Firefly_algorithm',
+                paper: 'https://doi.org/10.1007/978-3-642-04944-6_14',
+                referenceImpl: 'https://pypi.org/project/firefly-python/',
+                humpdayPython: 'https://github.com/microprediction/humpday/blob/main/humpday/optimizers/allcube.py',
+                humpdayJS: 'js/optimizers.js'
+            },
+            'Ant Colony Optimization': {
+                displayName: 'Ant Colony Optimization (Humpday)',
+                explanation: 'https://en.wikipedia.org/wiki/Ant_colony_optimization_algorithms',
+                paper: 'https://doi.org/10.1016/S0304-3975(99)00120-7',
+                referenceImpl: 'https://pypi.org/project/acopy/',
+                humpdayPython: 'https://github.com/microprediction/humpday/blob/main/humpday/optimizers/allcube.py',
+                humpdayJS: 'js/optimizers.js'
+            },
+            'Harmony Search': {
+                displayName: 'Harmony Search (Humpday)',
+                explanation: 'https://en.wikipedia.org/wiki/Harmony_search',
+                paper: 'https://doi.org/10.1177/003754970107600201',
+                referenceImpl: 'https://pypi.org/project/harmony-search/',
+                humpdayPython: 'https://github.com/microprediction/humpday/blob/main/humpday/optimizers/allcube.py',
+                humpdayJS: 'js/optimizers.js'
+            },
+            'EvolutionStrategy': {
+                displayName: 'Evolution Strategy (Humpday)',
+                explanation: 'https://en.wikipedia.org/wiki/Evolution_strategy',
+                paper: 'https://doi.org/10.1007/978-3-662-43505-2_44',
+                referenceImpl: 'https://deap.readthedocs.io/en/master/api/algo.html#evolution-strategies',
+                humpdayPython: 'https://github.com/microprediction/humpday/blob/main/humpday/optimizers/allcube.py',
+                humpdayJS: 'js/optimizers.js'
+            }
+        };
+
+        function addValidationResult(testName, status, message, details = '') {
+            const resultsDiv = document.getElementById('test-results');
+            const resultDiv = document.createElement('div');
+
+            const statusClass = status === 'pass' ? 'test-pass' : status === 'fail' ? 'test-fail' : 'test-warn';
+            const statusIcon = status === 'pass' ? '✅' : status === 'fail' ? '❌' : '⚠️';
+
+            resultDiv.className = `test-results ${statusClass}`;
+            resultDiv.innerHTML = `
+                <div><strong>${statusIcon} ${testName}</strong></div>
+                <div><strong>Status:</strong> ${message}</div>
+                ${details ? `<div style="margin-top: 10px; font-family: monospace; font-size: 0.8em; background: #f8f9fa; padding: 8px; border-radius: 4px;">${details}</div>` : ''}
+            `;
+
+            resultsDiv.appendChild(resultDiv);
+        }
+
+        function createValidationTable(data, title) {
+            const resultsDiv = document.getElementById('test-results');
+            const sectionDiv = document.createElement('div');
+            sectionDiv.className = 'test-results';
+
+            let tableHtml = `<h4>${title}</h4><table class="validation-table">`;
+
+            if (data.length > 0) {
+                const headers = Object.keys(data[0]);
+                tableHtml += '<thead><tr>';
+                headers.forEach(header => {
+                    tableHtml += `<th>${header}</th>`;
+                });
+                tableHtml += '</tr></thead><tbody>';
+
+                data.forEach(row => {
+                    tableHtml += '<tr>';
+                    headers.forEach(header => {
+                        const cellClass = row.Status === 'OK' ? 'status-ok' :
+                                         row.Status === 'ERROR' ? 'status-error' :
+                                         row.Status === 'WARNING' ? 'status-warning' : '';
+                        tableHtml += `<td class="${cellClass}">${row[header] || ''}</td>`;
+                    });
+                    tableHtml += '</tr>';
+                });
+            } else {
+                tableHtml += '<tbody><tr><td colspan="100%">No data</td></tr>';
+            }
+
+            tableHtml += '</tbody></table>';
+            sectionDiv.innerHTML = tableHtml;
+            resultsDiv.appendChild(sectionDiv);
+        }
+
+        function runMappingValidation() {
+            clearResults();
+
+            console.log('Running algorithm mapping validation...');
+
+            // Test 1: Validate optimizer configuration completeness
+            const optimizerValidation = [];
+            let optimizerErrors = 0;
+
+            for (const optimizer of optimizers) {
+                const validation = {
+                    'Algorithm Name': optimizer.name,
+                    'Internal Name': optimizer.internalName || 'MISSING',
+                    'Status': 'OK',
+                    'Issues': ''
+                };
+
+                const issues = [];
+
+                if (!optimizer.name) {
+                    issues.push('Missing display name');
+                    validation.Status = 'ERROR';
+                }
+
+                if (!optimizer.internalName) {
+                    issues.push('Missing internal name');
+                    validation.Status = 'ERROR';
+                }
+
+                if (!optimizer.elo) {
+                    issues.push('Missing ELO rating');
+                    validation.Status = 'WARNING';
+                }
+
+                if (issues.length > 0) {
+                    validation.Issues = issues.join('; ');
+                    if (validation.Status === 'ERROR') optimizerErrors++;
+                }
+
+                optimizerValidation.push(validation);
+            }
+
+            createValidationTable(optimizerValidation, '📋 Optimizer Configuration Validation');
+
+            if (optimizerErrors === 0) {
+                addValidationResult('Optimizer Configuration', 'pass', 'All optimizers have complete configuration');
+            } else {
+                addValidationResult('Optimizer Configuration', 'fail', `${optimizerErrors} optimizers have configuration errors`);
+            }
+
+            // Test 2: Validate OptimizerFactory compatibility
+            const factoryValidation = [];
+            let factoryErrors = 0;
+
+            for (const optimizer of optimizers) {
+                if (!optimizer.internalName) continue;
+
+                const validation = {
+                    'Internal Name': optimizer.internalName,
+                    'Factory Support': 'OK',
+                    'Class Exists': 'OK',
+                    'Status': 'OK',
+                    'Issues': ''
+                };
+
+                const issues = [];
+
+                try {
+                    // Test if OptimizerFactory can create the optimizer
+                    const testFunc = (x) => x[0] * x[0];
+                    const opt = OptimizerFactory.create(optimizer.internalName, testFunc, 10, 1);
+                    if (!opt) {
+                        issues.push('Factory returned null');
+                        validation['Factory Support'] = 'ERROR';
+                        validation.Status = 'ERROR';
+                    }
+                } catch (error) {
+                    issues.push(`Factory error: ${error.message}`);
+                    validation['Factory Support'] = 'ERROR';
+                    validation.Status = 'ERROR';
+                    factoryErrors++;
+                }
+
+                if (issues.length > 0) {
+                    validation.Issues = issues.join('; ');
+                }
+
+                factoryValidation.push(validation);
+            }
+
+            createValidationTable(factoryValidation, '🏭 OptimizerFactory Compatibility');
+
+            if (factoryErrors === 0) {
+                addValidationResult('OptimizerFactory Compatibility', 'pass', 'All optimizers can be created by factory');
+            } else {
+                addValidationResult('OptimizerFactory Compatibility', 'fail', `${factoryErrors} optimizers cannot be created by factory`);
+            }
+
+            // Test 3: Validate algorithmInfo mapping
+            const infoValidation = [];
+            let infoErrors = 0;
+
+            for (const optimizer of optimizers) {
+                const validation = {
+                    'Algorithm Name': optimizer.name,
+                    'Has Info': 'OK',
+                    'Has Paper': 'OK',
+                    'Has Reference': 'OK',
+                    'Has Python': 'OK',
+                    'Has JS': 'OK',
+                    'Status': 'OK',
+                    'Issues': ''
+                };
+
+                const issues = [];
+                const info = algorithmInfo[optimizer.name];
+
+                if (!info) {
+                    issues.push('No algorithmInfo entry');
+                    validation['Has Info'] = 'ERROR';
+                    validation.Status = 'ERROR';
+                    infoErrors++;
+                } else {
+                    if (!info.paper) {
+                        issues.push('Missing paper link');
+                        validation['Has Paper'] = 'WARNING';
+                    }
+
+                    if (!info.referenceImpl) {
+                        issues.push('Missing reference implementation');
+                        validation['Has Reference'] = 'WARNING';
+                    }
+
+                    if (!info.humpdayPython) {
+                        issues.push('Missing Python wrapper link');
+                        validation['Has Python'] = 'WARNING';
+                    }
+
+                    if (!info.humpdayJS) {
+                        issues.push('Missing JS implementation link');
+                        validation['Has JS'] = 'WARNING';
+                    }
+                }
+
+                if (issues.length > 0) {
+                    validation.Issues = issues.join('; ');
+                    if (validation.Status === 'OK') validation.Status = 'WARNING';
+                }
+
+                infoValidation.push(validation);
+            }
+
+            createValidationTable(infoValidation, '📖 Algorithm Info Mapping');
+
+            if (infoErrors === 0) {
+                addValidationResult('Algorithm Info Mapping', 'pass', 'All optimizers have algorithmInfo entries');
+            } else {
+                addValidationResult('Algorithm Info Mapping', 'fail', `${infoErrors} optimizers missing algorithmInfo`);
+            }
+
+            // Test 4: Check for orphaned algorithmInfo entries
+            const infoKeys = Object.keys(algorithmInfo);
+            const optimizerNames = optimizers.map(opt => opt.name);
+            const orphanedEntries = infoKeys.filter(key => !optimizerNames.includes(key));
+
+            if (orphanedEntries.length > 0) {
+                addValidationResult('Orphaned Info Entries', 'warn',
+                    `${orphanedEntries.length} algorithmInfo entries have no matching optimizer`,
+                    `Orphaned entries: ${orphanedEntries.join(', ')}`);
+            } else {
+                addValidationResult('Orphaned Info Entries', 'pass', 'No orphaned algorithmInfo entries found');
+            }
+
+            // Summary
+            const totalOptimizers = optimizers.length;
+            const totalErrors = optimizerErrors + factoryErrors + infoErrors;
+
+            if (totalErrors === 0) {
+                addValidationResult('Overall Validation', 'pass',
+                    `All ${totalOptimizers} optimizers passed validation checks`);
+            } else {
+                addValidationResult('Overall Validation', 'fail',
+                    `${totalErrors} critical errors found across ${totalOptimizers} optimizers`);
+            }
+
+            console.log('Validation complete');
+        }
+
+        function clearResults() {
+            document.getElementById('test-results').innerHTML = '';
+        }
+
+        // Auto-run validation when page loads
+        document.addEventListener('DOMContentLoaded', () => {
+            console.log('Algorithm mapping validation framework loaded');
+            // Don't auto-run, let user trigger it
+        });
+    </script>
+</body>
+</html>
