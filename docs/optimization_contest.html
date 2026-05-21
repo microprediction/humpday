@@ -693,7 +693,7 @@
                         <thead>
                             <tr>
                                 <th>Rank</th>
-                                <th>Optimizer (External Package)</th>
+                                <th>Optimizer (Reference Implementation)</th>
                                 <th>Elo Rating</th>
                                 <th>Status</th>
                             </tr>
@@ -796,10 +796,10 @@
                 ]
             },
             'CMA-ES (Humpday)': {
-                displayName: 'CMA-ES (Humpday)',
+                displayName: 'CMA-ES (pycma)',
                 explanation: 'https://en.wikipedia.org/wiki/CMA-ES',
                 paper: 'https://arxiv.org/abs/1604.00772',
-                referenceImpl: 'https://cma-es.github.io/',
+                referenceImpl: 'https://pypi.org/project/cma/',
                 humpdayPython: 'https://github.com/microprediction/humpday/blob/main/humpday/optimizers/comprehensive_derivative_free.py',
                 humpdayJS: 'js/optimizers.js',
                 resources: [
@@ -808,10 +808,10 @@
                 ]
             },
             'Genetic Algorithm (Humpday)': {
-                displayName: 'Genetic Algorithm (Humpday)',
+                displayName: 'Genetic Algorithm (DEAP)',
                 explanation: 'https://en.wikipedia.org/wiki/Genetic_algorithm',
                 paper: 'https://doi.org/10.1145/29482.29492',
-                referenceImpl: 'https://en.wikipedia.org/wiki/Genetic_algorithm',
+                referenceImpl: 'https://deap.readthedocs.io/en/master/',
                 humpdayPython: 'https://github.com/microprediction/humpday/blob/main/humpday/optimizers/comprehensive_derivative_free.py',
                 humpdayJS: 'js/optimizers.js',
                 resources: [
@@ -820,7 +820,7 @@
                 ]
             },
             'Particle Swarm (Humpday)': {
-                displayName: 'Particle Swarm (Humpday)',
+                displayName: 'Particle Swarm (PySwarm)',
                 explanation: 'https://en.wikipedia.org/wiki/Particle_swarm_optimization',
                 paper: 'https://doi.org/10.1109/ICNN.1995.488968',
                 referenceImpl: 'https://pypi.org/project/pyswarm/',
@@ -832,7 +832,7 @@
                 ]
             },
             'Simulated Annealing (Humpday)': {
-                displayName: 'Simulated Annealing (Humpday)',
+                displayName: 'Simulated Annealing (SciPy)',
                 explanation: 'https://en.wikipedia.org/wiki/Simulated_annealing',
                 paper: 'https://doi.org/10.1126/science.220.4598.671',
                 referenceImpl: 'https://docs.scipy.org/doc/scipy/reference/generated/scipy.optimize.dual_annealing.html',
@@ -844,7 +844,7 @@
                 ]
             },
             'Bayesian Optimization (Humpday)': {
-                displayName: 'Bayesian Optimization (Humpday)',
+                displayName: 'Bayesian Optimization (scikit-optimize)',
                 explanation: 'https://en.wikipedia.org/wiki/Bayesian_optimization',
                 paper: 'https://arxiv.org/abs/1012.2599',
                 referenceImpl: 'https://scikit-optimize.github.io/stable/',
@@ -856,7 +856,7 @@
                 ]
             },
             'Random Search (Humpday)': {
-                displayName: 'Random Search (Humpday)',
+                displayName: 'Random Search (scikit-learn)',
                 explanation: 'https://en.wikipedia.org/wiki/Random_search',
                 paper: 'https://jmlr.org/papers/v13/bergstra12a.html',
                 referenceImpl: 'https://scikit-learn.org/stable/modules/generated/sklearn.model_selection.RandomizedSearchCV.html',
@@ -868,10 +868,10 @@
                 ]
             },
             'Adaptive Random Search': {
-                displayName: 'Adaptive Random Search (Humpday)',
+                displayName: 'Adaptive Random Search (NLopt)',
                 explanation: 'https://optimization.mccormick.northwestern.edu/index.php/Random_search',
                 paper: 'https://doi.org/10.1007/BF01581033',
-                referenceImpl: 'https://en.wikipedia.org/wiki/Random_search',
+                referenceImpl: 'https://nlopt.readthedocs.io/en/latest/NLopt_Algorithms/#stochastic-search-algorithms',
                 humpdayPython: 'https://github.com/microprediction/humpday/blob/main/humpday/optimizers/allcube.py',
                 humpdayJS: 'js/optimizers.js',
                 resources: [
@@ -904,10 +904,10 @@
                 ]
             },
             'Hill Climbing': {
-                displayName: 'Hill Climbing (Humpday)',
+                displayName: 'Hill Climbing (scikit-optimize)',
                 explanation: 'https://en.wikipedia.org/wiki/Hill_climbing',
                 paper: 'https://doi.org/10.1016/0004-3702(81)90024-2',
-                referenceImpl: 'https://en.wikipedia.org/wiki/Hill_climbing',
+                referenceImpl: 'https://scikit-optimize.github.io/stable/',
                 humpdayPython: 'https://github.com/microprediction/humpday/blob/main/humpday/optimizers/allcube.py',
                 humpdayJS: 'js/optimizers.js',
                 resources: [
@@ -916,10 +916,10 @@
                 ]
             },
             'Tabu Search': {
-                displayName: 'Tabu Search (Humpday)',
+                displayName: 'Tabu Search (MATLAB)',
                 explanation: 'https://en.wikipedia.org/wiki/Tabu_search',
                 paper: 'https://doi.org/10.1287/ijoc.1.3.190',
-                referenceImpl: 'https://en.wikipedia.org/wiki/Tabu_search',
+                referenceImpl: 'https://www.mathworks.com/matlabcentral/fileexchange/25773-tabu-search',
                 humpdayPython: 'https://github.com/microprediction/humpday/blob/main/humpday/optimizers/allcube.py',
                 humpdayJS: 'js/optimizers.js',
                 resources: [
@@ -928,7 +928,7 @@
                 ]
             },
             'Firefly Algorithm': {
-                displayName: 'Firefly Algorithm (Humpday)',
+                displayName: 'Firefly Algorithm (firefly-python)',
                 explanation: 'https://en.wikipedia.org/wiki/Firefly_algorithm',
                 paper: 'https://doi.org/10.1007/978-3-642-04944-6_14',
                 referenceImpl: 'https://pypi.org/project/firefly-python/',
@@ -940,7 +940,7 @@
                 ]
             },
             'Ant Colony Optimization': {
-                displayName: 'Ant Colony Optimization (Humpday)',
+                displayName: 'Ant Colony Optimization (ACO-Py)',
                 explanation: 'https://en.wikipedia.org/wiki/Ant_colony_optimization_algorithms',
                 paper: 'https://doi.org/10.1016/S0304-3975(99)00120-7',
                 referenceImpl: 'https://pypi.org/project/acopy/',
@@ -952,7 +952,7 @@
                 ]
             },
             'Harmony Search': {
-                displayName: 'Harmony Search (Humpday)',
+                displayName: 'Harmony Search (harmony-search)',
                 explanation: 'https://en.wikipedia.org/wiki/Harmony_search',
                 paper: 'https://doi.org/10.1177/003754970107600201',
                 referenceImpl: 'https://pypi.org/project/harmony-search/',
@@ -964,7 +964,7 @@
                 ]
             },
             'EvolutionStrategy': {
-                displayName: 'Evolution Strategy (Humpday)',
+                displayName: 'Evolution Strategy (DEAP)',
                 explanation: 'https://en.wikipedia.org/wiki/Evolution_strategy',
                 paper: 'https://doi.org/10.1007/978-3-662-43505-2_44',
                 referenceImpl: 'https://deap.readthedocs.io/en/master/api/algo.html#evolution-strategies',
