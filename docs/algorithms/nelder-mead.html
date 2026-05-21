@@ -3,6 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' 'unsafe-inline' https://cdnjs.cloudflare.com https://cdn.jsdelivr.net; style-src 'self' 'unsafe-inline';">
     <title>Nelder-Mead (SciPy) - Implementation Details</title>
     <style>
         body {
@@ -167,12 +168,29 @@
 
         <div class="content">
             <div class="back-nav">
-                <a href="../optimization_contest.html">← Back to Optimizer Competition</a>
+                <a href="../contest.html">← Back to Optimizer Competition</a>
             </div>
 
             <div class="algorithm-description">
                 <strong>Nelder-Mead</strong> is a classic derivative-free optimization method that uses a simplex (n+1 vertices in n dimensions) to search the parameter space. It's remarkably robust and intuitive, using geometric operations like reflection, expansion, and contraction to navigate toward the optimum.
             </div>
+            <div class="visualization-section">
+                <h3>Interactive 3D Visualization</h3>
+                <p>See Nelder-Mead in action on 3D optimization surfaces:</p>
+                <div id="algorithmDemo" style="width: 100%; height: 600px; border: 1px solid #ddd; border-radius: 4px; margin: 15px 0; position: relative; background: #fafafa;">
+                    <div id="loadingMessage" style="position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%); text-align: center; color: #666; z-index: 10; background: rgba(255,255,255,0.9); padding: 20px; border-radius: 4px;">
+                        <p>Loading 3D visualization...</p>
+                        <p style="font-size: 0.9em;">Requires WebGL support</p>
+                    </div>
+                </div>
+                <div id="visualizationControls" style="background: #f8f9fa; padding: 15px; border: 1px solid #ddd; border-radius: 4px; margin-top: 10px;">
+                    <!-- Controls will be inserted here by the visualizer -->
+                </div>
+                <p style="font-size: 0.9em; color: #666; margin-top: 10px;">
+                    <strong>Instructions:</strong> Choose a test function and algorithm, then click Start to watch the step-by-step optimization process.
+                </p>
+            </div>
+
 
             <h2>Implementation Details</h2>
             <table class="implementation-table">
@@ -280,7 +298,54 @@
                 content.style.display = 'none';
                 button.textContent = '📚 More Resources';
             }
-        }
+        // Initialize 3D visualization when page loads
+        document.addEventListener('DOMContentLoaded', function() {
+            // Load optimizers first, then visualizer
+            const optimizersScript = document.createElement('script');
+            optimizersScript.src = '../js/optimizers.js';
+            optimizersScript.onload = function() {
+                // Load algorithm visualizer after optimizers are loaded
+                const script = document.createElement('script');
+                script.src = '../js/algorithm-visualizer.js';
+                script.onload = function() {
+                    // Check for WebGL support
+                    function webglAvailable() {
+                        try {
+                            const canvas = document.createElement('canvas');
+                            return !!(window.WebGLRenderingContext && canvas.getContext('webgl'));
+                        } catch (e) {
+                            return false;
+                        }
+                    }
+
+                    if (webglAvailable()) {
+                        const visualizer = new AlgorithmVisualizer('algorithmDemo', {
+                            onReady: () => {
+                                // Clear loading message once visualization is ready
+                                const loadingMsg = document.getElementById('loadingMessage');
+                                if (loadingMsg) {
+                                    loadingMsg.style.display = 'none';
+                                }
+                            }
+                        });
+                    } else {
+                        document.getElementById('loadingMessage').innerHTML =
+                            '<h4>WebGL Not Supported</h4>' +
+                            '<p>Your browser does not support WebGL for 3D visualization.</p>' +
+                            '<p>Try a modern browser like Chrome, Firefox, or Safari.</p>';
+                    }
+                };
+                script.onerror = function() {
+                    document.getElementById('algorithmDemo').innerHTML =
+                        '<div style="position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%); text-align: center;">' +
+                        '<h4>Visualization Unavailable</h4>' +
+                        '<p>Could not load 3D visualization component.</p>' +
+                        '</div>';
+                };
+                document.head.appendChild(script);
+            };
+            document.head.appendChild(optimizersScript);
+        });
     </script>
 </body>
 </html>

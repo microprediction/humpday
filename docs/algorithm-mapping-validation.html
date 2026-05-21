@@ -91,27 +91,27 @@
         // Import optimizer configuration from the main contest file
         // Note: This would normally be imported, but for testing we'll inline it
         const optimizers = [
-            { name: 'UOBYQA (Prima)', internalName: 'PRIMA_UOBYQA', elo: 1500, status: 'waiting' },
-            { name: 'NEWUOA (Prima)', internalName: 'PRIMA_NEWUOA', elo: 1500, status: 'waiting' },
-            { name: 'BOBYQA (Prima)', internalName: 'PRIMA_BOBYQA', elo: 1500, status: 'waiting' },
+            { name: 'UOBYQA (PDFO)', internalName: 'PRIMA_UOBYQA', elo: 1500, status: 'waiting' },
+            { name: 'NEWUOA (PDFO)', internalName: 'PRIMA_NEWUOA', elo: 1500, status: 'waiting' },
+            { name: 'BOBYQA (PDFO)', internalName: 'PRIMA_BOBYQA', elo: 1500, status: 'waiting' },
             { name: 'Nelder-Mead (SciPy)', internalName: 'SciPy_NelderMead', elo: 1500, status: 'waiting' },
             { name: 'Powell (SciPy)', internalName: 'SciPy_Powell', elo: 1500, status: 'waiting' },
             { name: 'Differential Evolution (SciPy)', internalName: 'DifferentialEvolution', elo: 1500, status: 'waiting' },
-            { name: 'CMA-ES (Humpday)', internalName: 'CMAEvolutionStrategy', elo: 1500, status: 'waiting' },
-            { name: 'Genetic Algorithm (Humpday)', internalName: 'GeneticAlgorithm', elo: 1500, status: 'waiting' },
-            { name: 'Particle Swarm (Humpday)', internalName: 'ParticleSwarm', elo: 1500, status: 'waiting' },
-            { name: 'Simulated Annealing (Humpday)', internalName: 'SimulatedAnnealing', elo: 1500, status: 'waiting' },
-            { name: 'Bayesian Optimization (Humpday)', internalName: 'BayesianOpt', elo: 1500, status: 'waiting' },
-            { name: 'Random Search (Humpday)', internalName: 'RandomSearch', elo: 1500, status: 'waiting' },
-            { name: 'Adaptive Random Search (Humpday)', internalName: 'AdaptiveRandomSearch', elo: 1500, status: 'waiting' },
-            { name: 'Coordinate Descent (Humpday)', internalName: 'CoordinateDescent', elo: 1500, status: 'waiting' },
-            { name: 'Pattern Search (Humpday)', internalName: 'PatternSearch', elo: 1500, status: 'waiting' },
-            { name: 'Hill Climbing (Humpday)', internalName: 'HillClimbing', elo: 1500, status: 'waiting' },
-            { name: 'Tabu Search (Humpday)', internalName: 'TabuSearch', elo: 1500, status: 'waiting' },
-            { name: 'Firefly Algorithm (Humpday)', internalName: 'FireflyAlgorithm', elo: 1500, status: 'waiting' },
-            { name: 'Ant Colony Optimization (Humpday)', internalName: 'AntColonyOpt', elo: 1500, status: 'waiting' },
-            { name: 'Harmony Search (Humpday)', internalName: 'HarmonySearch', elo: 1500, status: 'waiting' },
-            { name: 'Evolution Strategy (Humpday)', internalName: 'EvolutionStrategy', elo: 1500, status: 'waiting' }
+            { name: 'CMA-ES (pycma)', internalName: 'CMAEvolutionStrategy', elo: 1500, status: 'waiting' },
+            { name: 'Genetic Algorithm (DEAP)', internalName: 'GeneticAlgorithm', elo: 1500, status: 'waiting' },
+            { name: 'Particle Swarm (PySwarm)', internalName: 'ParticleSwarm', elo: 1500, status: 'waiting' },
+            { name: 'Simulated Annealing (SciPy)', internalName: 'SimulatedAnnealing', elo: 1500, status: 'waiting' },
+            { name: 'Bayesian Optimization (scikit-optimize)', internalName: 'BayesianOpt', elo: 1500, status: 'waiting' },
+            { name: 'Random Search (scikit-learn)', internalName: 'RandomSearch', elo: 1500, status: 'waiting' },
+            { name: 'Adaptive Random Search (Custom)', internalName: 'AdaptiveRandomSearch', elo: 1500, status: 'waiting' },
+            { name: 'Coordinate Descent (Custom)', internalName: 'CoordinateDescent', elo: 1500, status: 'waiting' },
+            { name: 'Pattern Search (Custom)', internalName: 'PatternSearch', elo: 1500, status: 'waiting' },
+            { name: 'Hill Climbing (Custom)', internalName: 'HillClimbing', elo: 1500, status: 'waiting' },
+            { name: 'Tabu Search (Custom)', internalName: 'TabuSearch', elo: 1500, status: 'waiting' },
+            { name: 'Firefly Algorithm (Custom)', internalName: 'FireflyAlgorithm', elo: 1500, status: 'waiting' },
+            { name: 'Ant Colony Optimization (Custom)', internalName: 'AntColonyOpt', elo: 1500, status: 'waiting' },
+            { name: 'Harmony Search (Custom)', internalName: 'HarmonySearch', elo: 1500, status: 'waiting' },
+            { name: 'Evolution Strategy (DEAP)', internalName: 'EvolutionStrategy', elo: 1500, status: 'waiting' }
         ];
 
         const algorithmInfo = {
@@ -163,8 +163,8 @@
                 humpdayPython: 'https://github.com/microprediction/humpday/blob/main/humpday/optimizers/scipycube.py',
                 humpdayJS: 'js/optimizers.js'
             },
-            'CMA-ES (Humpday)': {
-                displayName: 'CMA-ES (Humpday)',
+            'CMA-ES (pycma)': {
+                displayName: 'CMA-ES (pycma)',
                 explanation: 'https://en.wikipedia.org/wiki/CMA-ES',
                 paper: 'https://arxiv.org/abs/1604.00772',
                 referenceImpl: 'https://cma-es.github.io/',
@@ -187,16 +187,16 @@
                 humpdayPython: 'https://github.com/microprediction/humpday/blob/main/humpday/optimizers/comprehensive_derivative_free.py',
                 humpdayJS: 'js/optimizers.js'
             },
-            'Simulated Annealing (Humpday)': {
-                displayName: 'Simulated Annealing (Humpday)',
+            'Simulated Annealing (SciPy)': {
+                displayName: 'Simulated Annealing (SciPy)',
                 explanation: 'https://en.wikipedia.org/wiki/Simulated_annealing',
                 paper: 'https://doi.org/10.1126/science.220.4598.671',
                 referenceImpl: 'https://docs.scipy.org/doc/scipy/reference/generated/scipy.optimize.dual_annealing.html',
                 humpdayPython: 'https://github.com/microprediction/humpday/blob/main/humpday/optimizers/comprehensive_derivative_free.py',
                 humpdayJS: 'js/optimizers.js'
             },
-            'Bayesian Optimization (Humpday)': {
-                displayName: 'Bayesian Optimization (Humpday)',
+            'Bayesian Optimization (scikit-optimize)': {
+                displayName: 'Bayesian Optimization (scikit-optimize)',
                 explanation: 'https://en.wikipedia.org/wiki/Bayesian_optimization',
                 paper: 'https://arxiv.org/abs/1012.2599',
                 referenceImpl: 'https://scikit-optimize.github.io/stable/',
@@ -220,7 +220,7 @@
                 humpdayJS: 'js/optimizers.js'
             },
             'Coordinate Descent': {
-                displayName: 'Coordinate Descent (Humpday)',
+                displayName: 'Coordinate Descent (Custom)',
                 explanation: 'https://en.wikipedia.org/wiki/Coordinate_descent',
                 paper: 'https://doi.org/10.1007/s10107-014-0824-2',
                 referenceImpl: 'https://scikit-learn.org/stable/modules/generated/sklearn.linear_model.coordinate_descent.html',
@@ -252,7 +252,7 @@
                 humpdayJS: 'js/optimizers.js'
             },
             'Firefly Algorithm': {
-                displayName: 'Firefly Algorithm (Humpday)',
+                displayName: 'Firefly Algorithm (Custom)',
                 explanation: 'https://en.wikipedia.org/wiki/Firefly_algorithm',
                 paper: 'https://doi.org/10.1007/978-3-642-04944-6_14',
                 referenceImpl: 'https://pypi.org/project/firefly-python/',

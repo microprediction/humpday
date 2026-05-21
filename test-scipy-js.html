@@ -1,0 +1,164 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>JavaScript SciPy Algorithm Test</title>
+    <style>
+        body {
+            font-family: 'Monaco', 'Consolas', monospace;
+            background: #1e1e1e;
+            color: #d4d4d4;
+            padding: 20px;
+            margin: 0;
+        }
+        .result {
+            background: #2d2d2d;
+            padding: 10px;
+            margin: 10px 0;
+            border-left: 4px solid #007acc;
+            border-radius: 4px;
+        }
+        .success { border-left-color: #28a745; }
+        .warning { border-left-color: #ffc107; }
+        .error { border-left-color: #dc3545; }
+        button {
+            background: #007acc;
+            color: white;
+            border: none;
+            padding: 10px 20px;
+            border-radius: 4px;
+            cursor: pointer;
+            margin: 5px;
+            font-family: inherit;
+        }
+        button:hover { background: #005a9e; }
+        h2 { color: #569cd6; }
+    </style>
+</head>
+<body>
+    <h1>🧪 JavaScript SciPy Algorithm Validation</h1>
+    <p>Testing JavaScript implementations of SciPy optimization algorithms</p>
+
+    <button onclick="testNelderMead()">Test Nelder-Mead</button>
+    <button onclick="testDifferentialEvolution()">Test Differential Evolution</button>
+    <button onclick="testAllSciPy()">Test All SciPy Algorithms</button>
+
+    <div id="results"></div>
+
+    <script src="docs/js/optimizers.js"></script>
+    <script>
+        // Test functions
+        function sphere2D(x) {
+            return x[0] * x[0] + x[1] * x[1];
+        }
+
+        function rosenbrock2D(x) {
+            return 100 * (x[1] - x[0] * x[0]) ** 2 + (1 - x[0]) ** 2;
+        }
+
+        function sphere3D(x) {
+            return x[0] * x[0] + x[1] * x[1] + x[2] * x[2];
+        }
+
+        function addResult(html, className = 'result') {
+            const div = document.createElement('div');
+            div.className = `result ${className}`;
+            div.innerHTML = html;
+            document.getElementById('results').appendChild(div);
+        }
+
+        function testNelderMead() {
+            addResult('<h3>🔬 Testing NelderMead Algorithm</h3>');
+
+            try {
+                // Test on 2D Sphere
+                const nm1 = new NelderMead(sphere2D, 100, 2);
+                const result1 = nm1.optimize();
+
+                addResult(
+                    `<strong>2D Sphere:</strong> f = ${result1.bestValue.toFixed(6)}, ` +
+                    `x = [${result1.bestX.map(x => x.toFixed(4)).join(', ')}], ` +
+                    `evals = ${result1.evaluations}`,
+                    result1.bestValue < 1e-3 ? 'success' : 'warning'
+                );
+
+                // Test on 2D Rosenbrock
+                const nm2 = new NelderMead(rosenbrock2D, 200, 2);
+                const result2 = nm2.optimize();
+
+                addResult(
+                    `<strong>2D Rosenbrock:</strong> f = ${result2.bestValue.toFixed(6)}, ` +
+                    `x = [${result2.bestX.map(x => x.toFixed(4)).join(', ')}], ` +
+                    `evals = ${result2.evaluations}`,
+                    result2.bestValue < 1e-2 ? 'success' : 'warning'
+                );
+
+                // Test on 3D Sphere
+                const nm3 = new NelderMead(sphere3D, 150, 3);
+                const result3 = nm3.optimize();
+
+                addResult(
+                    `<strong>3D Sphere:</strong> f = ${result3.bestValue.toFixed(6)}, ` +
+                    `x = [${result3.bestX.map(x => x.toFixed(4)).join(', ')}], ` +
+                    `evals = ${result3.evaluations}`,
+                    result3.bestValue < 1e-3 ? 'success' : 'warning'
+                );
+
+            } catch (error) {
+                addResult(`<strong>❌ NelderMead Error:</strong> ${error.message}`, 'error');
+                console.error('NelderMead error:', error);
+            }
+        }
+
+        function testDifferentialEvolution() {
+            addResult('<h3>🔬 Testing DifferentialEvolution Algorithm</h3>');
+
+            try {
+                // Test on 2D Sphere
+                const de1 = new DifferentialEvolution(sphere2D, 200, 2);
+                const result1 = de1.optimize();
+
+                addResult(
+                    `<strong>2D Sphere:</strong> f = ${result1.bestValue.toFixed(6)}, ` +
+                    `x = [${result1.bestX.map(x => x.toFixed(4)).join(', ')}], ` +
+                    `evals = ${result1.evaluations}`,
+                    result1.bestValue < 1e-3 ? 'success' : 'warning'
+                );
+
+                // Test on 2D Rosenbrock
+                const de2 = new DifferentialEvolution(rosenbrock2D, 300, 2);
+                const result2 = de2.optimize();
+
+                addResult(
+                    `<strong>2D Rosenbrock:</strong> f = ${result2.bestValue.toFixed(6)}, ` +
+                    `x = [${result2.bestX.map(x => x.toFixed(4)).join(', ')}], ` +
+                    `evals = ${result2.evaluations}`,
+                    result2.bestValue < 1e-2 ? 'success' : 'warning'
+                );
+
+            } catch (error) {
+                addResult(`<strong>❌ DifferentialEvolution Error:</strong> ${error.message}`, 'error');
+                console.error('DifferentialEvolution error:', error);
+            }
+        }
+
+        function testAllSciPy() {
+            document.getElementById('results').innerHTML = '';
+            addResult('<h2>🚀 Running Complete SciPy Algorithm Validation</h2>');
+
+            setTimeout(() => testNelderMead(), 100);
+            setTimeout(() => testDifferentialEvolution(), 500);
+            setTimeout(() => {
+                addResult('<h3>✅ SciPy Algorithm Testing Complete!</h3>', 'success');
+            }, 1000);
+        }
+
+        // Auto-run test on page load
+        window.onload = function() {
+            addResult('<h2>🎯 JavaScript Algorithm Test Environment Ready</h2>');
+            addResult('Click buttons above to test individual algorithms, or run all tests.');
+        };
+    </script>
+</body>
+</html>

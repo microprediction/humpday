@@ -1,0 +1,463 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' 'unsafe-inline' https://cdnjs.cloudflare.com https://cdn.jsdelivr.net; style-src 'self' 'unsafe-inline';">
+    <title>L-BFGS-B - Implementation Details</title>
+    <style>
+        body {
+            font-family: 'Georgia', 'Times New Roman', serif;
+            margin: 0;
+            padding: 20px;
+            background: #f8f9fa;
+            color: #2c3e50;
+        }
+
+        .container {
+            max-width: 1000px;
+            margin: 0 auto;
+            background: white;
+            border-radius: 15px;
+            box-shadow: 0 20px 40px rgba(0,0,0,0.1);
+            overflow: hidden;
+        }
+
+        .header {
+            background: #9b59b6;
+            color: white;
+            padding: 30px;
+            text-align: center;
+        }
+
+        .header h1 {
+            margin: 0 0 10px 0;
+            font-size: 2.2em;
+        }
+
+        .header p {
+            margin: 0;
+            font-size: 1.1em;
+            opacity: 0.9;
+        }
+
+        .content {
+            padding: 40px;
+        }
+
+        .implementation-table {
+            width: 100%;
+            border-collapse: collapse;
+            margin: 30px 0;
+            border-radius: 10px;
+            overflow: hidden;
+            box-shadow: 0 4px 8px rgba(0,0,0,0.1);
+        }
+
+        .implementation-table th {
+            background: #34495e;
+            color: white;
+            padding: 15px;
+            text-align: left;
+            font-weight: 600;
+        }
+
+        .implementation-table td {
+            padding: 15px;
+            border-bottom: 1px solid #eee;
+            vertical-align: top;
+        }
+
+        .implementation-table tr:hover {
+            background: #f8f9fa;
+        }
+
+        .implementation-table .category {
+            font-weight: 600;
+            color: #34495e;
+            background: #ecf0f1;
+        }
+
+        .link-button {
+            display: inline-block;
+            padding: 8px 16px;
+            background: #3498db;
+            color: white;
+            text-decoration: none;
+            border-radius: 4px;
+            font-size: 0.9em;
+            margin: 2px 4px;
+            transition: background 0.2s;
+        }
+
+        .link-button:hover {
+            background: #2980b9;
+        }
+
+        .link-button.paper { background: #e74c3c; }
+        .link-button.python { background: #27ae60; }
+        .link-button.javascript { background: #f39c12; }
+        .link-button.info { background: #9b59b6; }
+
+        .algorithm-description {
+            background: #f4f1ff;
+            border-left: 4px solid #9b59b6;
+            padding: 20px;
+            border-radius: 5px;
+            margin: 20px 0;
+        }
+
+        .back-nav {
+            margin-bottom: 20px;
+        }
+
+        .back-nav a {
+            color: #3498db;
+            text-decoration: none;
+            font-size: 1.1em;
+        }
+
+        .back-nav a:hover {
+            text-decoration: underline;
+        }
+
+        .performance-notes {
+            background: #fff3cd;
+            border: 1px solid #ffc107;
+            border-radius: 8px;
+            padding: 15px;
+            margin: 20px 0;
+        }
+
+        .performance-notes h3 {
+            margin-top: 0;
+            color: #856404;
+        }
+
+        .more-section {
+            margin-top: 30px;
+            border-top: 2px solid #ecf0f1;
+            padding-top: 20px;
+        }
+
+        .more-toggle {
+            background: #3498db;
+            color: white;
+            border: none;
+            padding: 10px 20px;
+            border-radius: 4px;
+            cursor: pointer;
+            font-size: 1em;
+        }
+
+        .more-toggle:hover {
+            background: #2980b9;
+        }
+
+        .more-content {
+            display: none;
+            margin-top: 20px;
+        }
+
+        .validation-pending {
+            background: #ffeaa7;
+            border: 1px solid #fdcb6e;
+            border-radius: 8px;
+            padding: 15px;
+            margin: 20px 0;
+        }
+
+        .validation-pending h3 {
+            margin-top: 0;
+            color: #d63031;
+        }
+
+        .gradient-note {
+            background: #fff5f5;
+            border: 1px solid #fed7d7;
+            border-radius: 8px;
+            padding: 15px;
+            margin: 20px 0;
+        }
+
+        .gradient-note h3 {
+            margin-top: 0;
+            color: #c53030;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <h1>L-BFGS-B (SciPy)</h1>
+            <p>Limited-memory BFGS with Box Constraints</p>
+        </div>
+
+        <div class="content">
+            <div class="back-nav">
+                <a href="../contest.html">← Back to Optimizer Competition</a>
+            </div>
+
+            <div class="algorithm-description">
+                <strong>L-BFGS-B</strong> is a limited-memory quasi-Newton method for bound-constrained optimization. Developed by Byrd, Lu, Nocedal, and Zhu, it extends the popular L-BFGS algorithm to handle simple bounds on variables. The algorithm is widely used for large-scale optimization problems where gradient information is available or can be approximated.
+            </div>
+
+            <div class="gradient-note">
+                <h3>⚠️ Gradient-Based Algorithm Notice</h3>
+                <p><strong>L-BFGS-B requires gradient information:</strong></p>
+                <ul>
+                    <li>🔍 <strong>Analytical Gradients:</strong> Best performance with exact gradients</li>
+                    <li>📊 <strong>Finite Differences:</strong> Can approximate gradients automatically</li>
+                    <li>⚡ <strong>Optimization Context:</strong> May not be suitable for black-box problems without gradients</li>
+                    <li>🎯 <strong>Humpday Usage:</strong> Likely uses finite difference approximation in [0,1]ⁿ hypercube</li>
+                </ul>
+            </div>
+            <div class="visualization-section">
+                <h3>Interactive 3D Visualization</h3>
+                <p>See L-BFGS-B in action on 3D optimization surfaces:</p>
+                <div id="algorithmDemo" style="width: 100%; height: 600px; border: 1px solid #ddd; border-radius: 4px; margin: 15px 0; position: relative; background: #fafafa;">
+                    <div id="loadingMessage" style="position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%); text-align: center; color: #666; z-index: 10; background: rgba(255,255,255,0.9); padding: 20px; border-radius: 4px;">
+                        <p>Loading 3D visualization...</p>
+                        <p style="font-size: 0.9em;">Requires WebGL support</p>
+                    </div>
+                </div>
+                <div id="visualizationControls" style="background: #f8f9fa; padding: 15px; border: 1px solid #ddd; border-radius: 4px; margin-top: 10px;">
+                    <!-- Controls will be inserted here by the visualizer -->
+                </div>
+                <p style="font-size: 0.9em; color: #666; margin-top: 10px;">
+                    <strong>Instructions:</strong> Choose a test function and algorithm, then click Start to watch the step-by-step optimization process.
+                </p>
+            </div>
+
+
+            <h2>Implementation Details</h2>
+            <table class="implementation-table">
+                <thead>
+                    <tr>
+                        <th>Component</th>
+                        <th>Details</th>
+                        <th>Links</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    <tr>
+                        <td class="category">Original Algorithm</td>
+                        <td>
+                            <strong>Byrd, Lu, Nocedal & Zhu</strong><br>
+                            Limited-memory BFGS with bound constraints<br>
+                            Quasi-Newton method for large-scale problems<br>
+                            <em>Published: 1995</em>
+                        </td>
+                        <td>
+                            <a href="https://dl.acm.org/doi/10.1145/279232.279236" target="_blank" class="link-button paper">📄 Original Paper</a>
+                        </td>
+                    </tr>
+                    <tr>
+                        <td class="category">Reference Implementation</td>
+                        <td>
+                            <strong>SciPy optimize.minimize</strong><br>
+                            Method: 'L-BFGS-B'<br>
+                            scipy.optimize.minimize(method='L-BFGS-B')<br>
+                            <em>Package: scipy</em>
+                        </td>
+                        <td>
+                            <a href="https://docs.scipy.org/doc/scipy/reference/optimize.minimize-lbfgsb.html" target="_blank" class="link-button python">🐍 SciPy Docs</a>
+                            <a href="https://github.com/scipy/scipy/tree/main/scipy/optimize/_lbfgsb_py" target="_blank" class="link-button python">🔍 Source</a>
+                        </td>
+                    </tr>
+                    <tr>
+                        <td class="category">Humpday Python Wrapper</td>
+                        <td>
+                            <strong>Humpday Integration</strong><br>
+                            Calls scipy.optimize.minimize(method='L-BFGS-B')<br>
+                            Automatic finite difference gradients<br>
+                            <em>File: humpday/optimizers/scipyopt.py</em>
+                        </td>
+                        <td>
+                            <a href="https://github.com/microprediction/humpday/blob/main/humpday/optimizers/scipyopt.py" target="_blank" class="link-button python">🐍 Wrapper Code</a>
+                        </td>
+                    </tr>
+                    <tr>
+                        <td class="category">Humpday JavaScript Port</td>
+                        <td>
+                            <strong>Browser Implementation</strong><br>
+                            JavaScript L-BFGS-B with finite difference gradients<br>
+                            Limited-memory Hessian approximation<br>
+                            <em>Class: LBFGSB</em>
+                        </td>
+                        <td>
+                            <a href="https://github.com/microprediction/humpday/blob/main/docs/js/optimizers.js" target="_blank" class="link-button javascript">🌐 JS Port</a>
+                        </td>
+                    </tr>
+                    <tr>
+                        <td class="category">Dependencies</td>
+                        <td>
+                            <strong>Reference:</strong> scipy.optimize<br>
+                            <strong>Humpday Python:</strong> scipy, numpy<br>
+                            <strong>Humpday JS:</strong> None (standalone port)
+                        </td>
+                        <td>
+                            <a href="https://pypi.org/project/scipy/" target="_blank" class="link-button python">📦 PyPI</a>
+                        </td>
+                    </tr>
+                </tbody>
+            </table>
+
+            <div class="performance-notes">
+                <h3>🏁 Performance Characteristics</h3>
+                <ul>
+                    <li><strong>Best for:</strong> Large-scale smooth optimization with bound constraints</li>
+                    <li><strong>Dimensions:</strong> Excellent for high dimensions (hundreds to thousands)</li>
+                    <li><strong>Function evaluations:</strong> Very efficient, typically O(n) per iteration</li>
+                    <li><strong>Convergence:</strong> Superlinear convergence on smooth problems</li>
+                    <li><strong>Memory:</strong> Limited memory - only stores recent gradient information</li>
+                </ul>
+            </div>
+
+            <div class="validation-pending">
+                <h3>⏳ Validation Status: PENDING</h3>
+                <p><strong>Validation against SciPy L-BFGS-B reference implementation in progress.</strong></p>
+                <ul>
+                    <li>📋 Test framework: Comparing JavaScript vs scipy.optimize.minimize(method='L-BFGS-B')</li>
+                    <li>🎯 Target: Similar convergence with automatic gradient approximation</li>
+                    <li>📊 Metrics: Final objective values, convergence speed, gradient norm</li>
+                    <li>🔧 Challenge: Implementing limited-memory updates and bound projection correctly</li>
+                </ul>
+                <p><em>Full validation results will be displayed here once testing is complete.</em></p>
+            </div>
+
+            <div class="more-section">
+                <button class="more-toggle" onclick="toggleMore()">📚 More Resources</button>
+                <div id="moreContent" class="more-content">
+                    <h3>📚 Educational Resources</h3>
+                    <ul>
+                        <li><a href="https://en.wikipedia.org/wiki/Limited-memory_BFGS" target="_blank">L-BFGS Wikipedia</a></li>
+                        <li><a href="https://docs.scipy.org/doc/scipy/reference/generated/scipy.optimize.minimize.html" target="_blank">SciPy minimize Documentation</a></li>
+                        <li><a href="https://dl.acm.org/doi/10.1145/279232.279236" target="_blank">L-BFGS-B Original Paper</a></li>
+                        <li><a href="https://users.iems.northwestern.edu/~nocedal/lbfgsb.html" target="_blank">L-BFGS-B Software Page</a></li>
+                        <li><a href="https://optimization.mccormick.northwestern.edu/index.php/Limited-memory_BFGS" target="_blank">L-BFGS Tutorial</a></li>
+                    </ul>
+
+                    <h3>🔬 Algorithm Components</h3>
+                    <ul>
+                        <li><strong>Limited Memory:</strong> Store only m recent (s,y) pairs instead of full Hessian</li>
+                        <li><strong>BFGS Update:</strong> Quasi-Newton Hessian approximation using gradients</li>
+                        <li><strong>Two-Loop Recursion:</strong> Efficient computation of search direction</li>
+                        <li><strong>Bound Constraints:</strong> Active set method for box constraints</li>
+                        <li><strong>Line Search:</strong> Wolfe conditions for step length selection</li>
+                    </ul>
+
+                    <h3>📐 Mathematical Foundation</h3>
+                    <ul>
+                        <li><strong>BFGS Formula:</strong> H_{k+1} = H_k + (1 + (y^T H_k y)/(s^T y)) * (s s^T)/(s^T y) - (s y^T H_k + H_k y s^T)/(s^T y)</li>
+                        <li><strong>Two-Loop:</strong> q = ∇f_k, then backwards and forwards loops over stored vectors</li>
+                        <li><strong>Initial Hessian:</strong> H_0 = γI where γ = (s^T y)/(y^T y)</li>
+                        <li><strong>Bound Projection:</strong> Project gradient onto feasible cone</li>
+                        <li><strong>Cauchy Point:</strong> Piecewise linear minimizer along projected gradient</li>
+                    </ul>
+
+                    <h3>⚙️ Key Parameters</h3>
+                    <ul>
+                        <li><strong>Memory Size (m):</strong> Usually 5-20 (s,y) pairs stored</li>
+                        <li><strong>Line Search:</strong> Wolfe conditions c1=1e-4, c2=0.9</li>
+                        <li><strong>Gradient Tolerance:</strong> ||∇f|| < gtol (typically 1e-5)</li>
+                        <li><strong>Function Tolerance:</strong> Relative change in f < ftol</li>
+                        <li><strong>Max Iterations:</strong> Prevent infinite loops</li>
+                    </ul>
+
+                    <h3>🎯 L-BFGS vs L-BFGS-B</h3>
+                    <ul>
+                        <li><strong>L-BFGS:</strong> Unconstrained optimization only</li>
+                        <li><strong>L-BFGS-B:</strong> Extends to simple bound constraints</li>
+                        <li><strong>Active Set:</strong> L-BFGS-B identifies and handles active bounds</li>
+                        <li><strong>Subspace:</strong> Optimization in subspace of free variables</li>
+                        <li><strong>Complexity:</strong> Similar O(mn) complexity per iteration</li>
+                    </ul>
+
+                    <h3>🚀 Applications</h3>
+                    <ul>
+                        <li><strong>Machine Learning:</strong> Training large neural networks</li>
+                        <li><strong>Parameter Estimation:</strong> Maximum likelihood estimation</li>
+                        <li><strong>Signal Processing:</strong> Sparse signal reconstruction</li>
+                        <li><strong>Engineering Design:</strong> Structural optimization with bounds</li>
+                        <li><strong>Portfolio Optimization:</strong> Asset allocation with constraints</li>
+                        <li><strong>Image Processing:</strong> Image restoration and deconvolution</li>
+                    </ul>
+
+                    <h3>⚡ Why L-BFGS-B is Popular</h3>
+                    <ul>
+                        <li><strong>Memory Efficient:</strong> O(mn) storage vs O(n²) for full Newton</li>
+                        <li><strong>Fast Convergence:</strong> Superlinear on smooth problems</li>
+                        <li><strong>Handles Bounds:</strong> Natural box constraint support</li>
+                        <li><strong>Robust Implementation:</strong> Well-tested in SciPy</li>
+                        <li><strong>Scalable:</strong> Works well on high-dimensional problems</li>
+                        <li><strong>Default Choice:</strong> Often first choice for smooth bounded optimization</li>
+                    </ul>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        function toggleMore() {
+            const content = document.getElementById('moreContent');
+            const button = document.querySelector('.more-toggle');
+
+            if (content.style.display === 'none' || content.style.display === '') {
+                content.style.display = 'block';
+                button.textContent = '📚 Less Resources';
+            } else {
+                content.style.display = 'none';
+                button.textContent = '📚 More Resources';
+            }
+        // Initialize 3D visualization when page loads
+        document.addEventListener('DOMContentLoaded', function() {
+            // Load optimizers first, then visualizer
+            const optimizersScript = document.createElement('script');
+            optimizersScript.src = '../js/optimizers.js';
+            optimizersScript.onload = function() {
+                // Load algorithm visualizer after optimizers are loaded
+                const script = document.createElement('script');
+                script.src = '../js/algorithm-visualizer.js';
+                script.onload = function() {
+                    // Check for WebGL support
+                    function webglAvailable() {
+                        try {
+                            const canvas = document.createElement('canvas');
+                            return !!(window.WebGLRenderingContext && canvas.getContext('webgl'));
+                        } catch (e) {
+                            return false;
+                        }
+                    }
+
+                    if (webglAvailable()) {
+                        const visualizer = new AlgorithmVisualizer('algorithmDemo', {
+                            onReady: () => {
+                                // Clear loading message once visualization is ready
+                                const loadingMsg = document.getElementById('loadingMessage');
+                                if (loadingMsg) {
+                                    loadingMsg.style.display = 'none';
+                                }
+                            }
+                        });
+                    } else {
+                        document.getElementById('loadingMessage').innerHTML =
+                            '<h4>WebGL Not Supported</h4>' +
+                            '<p>Your browser does not support WebGL for 3D visualization.</p>' +
+                            '<p>Try a modern browser like Chrome, Firefox, or Safari.</p>';
+                    }
+                };
+                script.onerror = function() {
+                    document.getElementById('algorithmDemo').innerHTML =
+                        '<div style="position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%); text-align: center;">' +
+                        '<h4>Visualization Unavailable</h4>' +
+                        '<p>Could not load 3D visualization component.</p>' +
+                        '</div>';
+                };
+                document.head.appendChild(script);
+            };
+            document.head.appendChild(optimizersScript);
+        });
+    </script>
+</body>
+</html>

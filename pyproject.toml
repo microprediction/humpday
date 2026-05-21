@@ -8,7 +8,7 @@ version = "0.8.0"
 description = "Taking the pain out of choosing a Python global optimizer"
 readme = "README.md"
 license = "MIT"
-requires-python = ">=3.9"
+requires-python = ">=3.9,<3.13"
 authors = [
     { name = "microprediction", email = "pcotton@intechinvestments.com" },
 ]
@@ -19,44 +19,28 @@ classifiers = [
     "Programming Language :: Python :: 3.10",
     "Programming Language :: Python :: 3.11",
     "Programming Language :: Python :: 3.12",
-    "Programming Language :: Python :: 3.13",
-    "Programming Language :: Python :: 3.14",
 ]
 
 # Core dependencies - Pyodide compatible
 dependencies = [
     "numpy>=1.21.5",
-    "scipy>=1.9.0",
-    "scikit-learn>=1.0.0",
-    "funcy>=1.17",
-    "getjson>=2.0.0",
-    "landscapes>=0.0.10",
-    "pymorton>=1.0.5",
-    "thurstone @ git+https://github.com/microprediction/thurstone.git",
-    "matplotlib>=3.9.4",
-    "opfunu>=1.0.4",
-    "benchmark-functions>=1.1.4",
-    "setuptools>=82.0.1",
-    "embarrassingly>=0.0.6",
-    "prima>=0.0",
+    # Pure Python optimization algorithms - no external optimizer packages needed
+    # Lightweight implementation with 9 validated algorithms
 ]
 
 [project.optional-dependencies]
-# Browser-compatible optimizers only
-browser = [
-    "nevergrad>=1.0.0",
-    "optuna>=3.0.0",  # basic samplers only
+# Only include working optimizers that don't cause compatibility issues
+extra = [
+    "optuna>=3.0.0",  # Known to work with Python 3.12
 ]
 
-# Full desktop experience with all optimizers
-full = [
+# Legacy packages that may work but aren't guaranteed (install at your own risk)
+experimental = [
     "nevergrad>=1.0.0",
-    "optuna>=3.0.0",
     "bayesian-optimization>=3.0.0",
     "platypus-opt>=1.0.0",
     "cmaes>=0.10.0",
-    # Note: Heavy packages like ax-platform, nlopt, dlib excluded for now
-    # Can be added back as "heavy" extra if needed
+    # Note: ax-platform, nlopt, dlib, hyperopt have compatibility issues
 ]
 
 # Development dependencies

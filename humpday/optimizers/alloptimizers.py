@@ -1,120 +1,70 @@
-#!/usr/bin/env python
+"""
+All optimizers - pure Python implementations of the 22 validated algorithms.
+No external dependencies beyond numpy. Lightweight and reliable.
+"""
 
-# add command line args, clean up output a little, add timings, collect results into table
-from humpday.optimizers.hyperoptcube import HYPEROPT_OPTIMIZERS
-from humpday.optimizers.shgocube import SHGO_OPTIMIZERS
-from humpday.optimizers.optunacube import OPTUNA_OPTIMIZERS
-from humpday.optimizers.pysotcube import PYSOT_OPTIMIZERS
-from humpday.optimizers.scipycube import SCIPY_OPTIMIZERS
-from humpday.optimizers.axcube import AX_OPTIMIZERS
-from humpday.optimizers.platypuscube import PLATYPUS_OPTIMIZERS
-from humpday.optimizers.pymoocube import PYMOO_OPTIMIZERS
-from humpday.optimizers.swarmlibcube import SWARMLIB_OPTIZERS
-from humpday.optimizers.nevergradcube import NEVERGRAD_OPTIMIZERS
-from humpday.objectives.classic import CLASSIC_OBJECTIVES
-from humpday.optimizers.skoptcube import SKOPT_GP_OPTIMIZERS
-from humpday.optimizers.ultraoptcube import ULTRAOPT_OPTIMIZERS
-from humpday.optimizers.bayesoptcube import BAYESOPT_OPTIMIZERS
-from humpday.optimizers.dlibcube import DLIB_OPTIMIZERS
-from humpday.optimizers.nloptcube import NLOPT_OPTIMIZERS
-from humpday.optimizers.bobyqacube import BOBYQA_OPTIMIZERS
-from humpday.optimizers.hebocube import HEBO_OPTIMIZERS
-from humpday.optimizers.freelunchcube import FREELUNCH_OPTIMIZERS
-from humpday.optimizers.primacube import PRIMA_OPTIMIZERS
+from .optimizers import (
+    PURE_OPTIMIZERS,
+    pure_optimize,
+    suggest_pure,
+    PRIMA_UOBYQA,
+    NelderMead,
+    DifferentialEvolution,
+    ParticleSwarm,
+    RandomSearch,
+    HillClimbing,
+    SimulatedAnnealing,
+    HarmonySearch,
+    GeneticAlgorithm
+)
 
-from datetime import datetime
-import argparse
+# Create optimizer function wrappers for backward compatibility
+def create_optimizer_wrapper(optimizer_class):
+    """Create a function wrapper for an optimizer class."""
+    def optimizer_function(objective, n_dim, n_trials=100):
+        optimizer = optimizer_class(objective, n_trials, n_dim)
+        return optimizer.optimize()
 
-CANDIDATES = SCIPY_OPTIMIZERS + SHGO_OPTIMIZERS + HYPEROPT_OPTIMIZERS +\
-             PYSOT_OPTIMIZERS + OPTUNA_OPTIMIZERS + AX_OPTIMIZERS +\
-             PLATYPUS_OPTIMIZERS + PYMOO_OPTIMIZERS + NEVERGRAD_OPTIMIZERS\
-             + SWARMLIB_OPTIZERS + SKOPT_GP_OPTIMIZERS + NLOPT_OPTIMIZERS\
-             + ULTRAOPT_OPTIMIZERS + BAYESOPT_OPTIMIZERS + \
-             DLIB_OPTIMIZERS+NLOPT_OPTIMIZERS+BOBYQA_OPTIMIZERS + HEBO_OPTIMIZERS + FREELUNCH_OPTIMIZERS + PRIMA_OPTIMIZERS
+    optimizer_function.__name__ = optimizer_class.__name__
+    return optimizer_function
 
-# To see what might be working, or not, refer regression testing results in directories such as:
-# https://github.com/microprediction/humpday-testing/tree/main/data/brownian/dlm_seasonal
-OPTIMIZERS = SHGO_OPTIMIZERS + SCIPY_OPTIMIZERS + PYSOT_OPTIMIZERS + AX_OPTIMIZERS + \
-             OPTUNA_OPTIMIZERS + PLATYPUS_OPTIMIZERS + NEVERGRAD_OPTIMIZERS +\
-             SWARMLIB_OPTIZERS + HYPEROPT_OPTIMIZERS + PYMOO_OPTIMIZERS +\
-             SKOPT_GP_OPTIMIZERS + ULTRAOPT_OPTIMIZERS + BAYESOPT_OPTIMIZERS\
-             + DLIB_OPTIMIZERS + NLOPT_OPTIMIZERS + BOBYQA_OPTIMIZERS + HEBO_OPTIMIZERS + FREELUNCH_OPTIMIZERS + PRIMA_OPTIMIZERS
+# Create all optimizer functions
+OPTIMIZERS = [create_optimizer_wrapper(cls) for cls in PURE_OPTIMIZERS.values()]
 
+# Named optimizer functions for direct access
+prima_uobyqa = create_optimizer_wrapper(PRIMA_UOBYQA)
+nelder_mead = create_optimizer_wrapper(NelderMead)
+differential_evolution = create_optimizer_wrapper(DifferentialEvolution)
+particle_swarm = create_optimizer_wrapper(ParticleSwarm)
+random_search = create_optimizer_wrapper(RandomSearch)
+hill_climbing = create_optimizer_wrapper(HillClimbing)
+simulated_annealing = create_optimizer_wrapper(SimulatedAnnealing)
+harmony_search = create_optimizer_wrapper(HarmonySearch)
+genetic_algorithm = create_optimizer_wrapper(GeneticAlgorithm)
 
-def optimizer_from_name(name):
-    valid = [f for f in OPTIMIZERS if f.__name__==name ]
-    return valid[0] if len(valid)==1 else None
+# Algorithm names for easy reference
+ALGORITHM_NAMES = list(PURE_OPTIMIZERS.keys())
 
+def get_optimizer(name: str):
+    """Get optimizer by name."""
+    if name in PURE_OPTIMIZERS:
+        return create_optimizer_wrapper(PURE_OPTIMIZERS[name])
+    return None
 
-if __name__=='__main__':
-    import pandas as pd
-    parser = argparse.ArgumentParser(description="Run all optimizers on input size ndim (default 2) requesting ntrials (default 20) iterations and save results (default log.csv")
-
-    parser.add_argument("-d", "--ndims", type=int, action="extend", nargs="+",
-                        help="Number of input dimensions to objective function (default 2)")
-    parser.add_argument("-t", "--ntrials", type=int, action="extend", nargs="+",
-                        help="Number of trial iterations in optimization (default 20)")
-    parser.add_argument("-v", "--verbose", help="Increase output verbosity",
-                        action="store_true")
-    parser.add_argument("-o", "--logfile", help="Specify outputfile (default log.csv)")
-    args = parser.parse_args()
-    # print(args)
-    LOGFILE = 'log.csv'
-    if args.logfile is not None:
-        LOGFILE = args.logfile
-
-    NDIMS = [2]
-    if args.ndims is not None:
-        NDIMS = args.ndims
-        
-    NTRIALS = [20]
-    if args.ntrials is not None:
-        NTRIALS = args.ntrials
-
-    print(' ')
-    print('Full list of optimizer strategies .. ')
-    print(' ')
-    print([ o.__name__.replace('_cube','') for o in OPTIMIZERS])
-    print(' ')
-    print('Full list of objective functions .. ')
-    print(' ')
-    print([o.__name__ for o in CLASSIC_OBJECTIVES])
-    print(' ')
-
-    print(datetime.now(), str(len(OPTIMIZERS)) + ' optimization strategies will be compared.')
-    print(datetime.now(), str(len(CLASSIC_OBJECTIVES)) + ' objective functions will be employed.')
-    print(datetime.now(), 'objective input dimensions: ', str(NDIMS))
-    print(datetime.now(), 'number of trials: ', str(NTRIALS))
-    print(datetime.now(), 'logfile: ', LOGFILE)
-
-    log_array = []
-    for objective in CLASSIC_OBJECTIVES:
-        print(' ')
-        for n_dim in NDIMS:
-            for n_trials in NTRIALS:
-                print(datetime.now(), 'Now testing against '+objective.__name__+' in '+str(n_dim)+' dimensions requesting '+str(n_trials)+' trials.')
-                for optimizer in OPTIMIZERS:
-                    try:
-                        start_time = datetime.now()
-                        result = optimizer(objective, n_trials=n_trials, n_dim=n_dim, with_count=True)
-                        best_value, best_params, reported_trials = result
-                        end_time = datetime.now()
-                        time_elapsed = datetime.now() - start_time
-                        print(datetime.now(), "Finished", reported_trials, "trials in ", time_elapsed)
-                        print(datetime.now(), optimizer.__name__, result)
-                        log_array.append([start_time, end_time, time_elapsed,
-                                          objective.__name__, optimizer.__name__,
-                                          n_dim, n_trials, reported_trials,
-                                          best_value, best_params, ])
-                    except:
-                        import warnings
-                        print(' ')
-                        warnings.warn(' WARNING : '+optimizer.__name__+' fails on '+ objective.__name__+ ' in '+str(n_dim)+' dimensions with '+str(n_trials)+' trials.')
-
-    log_df = pd.DataFrame(log_array)
-    log_df.columns = ["start_time", "end_time", "time_elapsed",
-                      "objective", "optimizer",
-                      "n_dim", "n_trials", "reported_trials",
-                      "best_value", "best_params", ]
-    print(log_df)
-    log_df.to_csv(LOGFILE, index=False)
+__all__ = [
+    'OPTIMIZERS',
+    'PURE_OPTIMIZERS',
+    'pure_optimize',
+    'suggest_pure',
+    'get_optimizer',
+    'ALGORITHM_NAMES',
+    'prima_uobyqa',
+    'nelder_mead',
+    'differential_evolution',
+    'particle_swarm',
+    'random_search',
+    'hill_climbing',
+    'simulated_annealing',
+    'harmony_search',
+    'genetic_algorithm'
+]

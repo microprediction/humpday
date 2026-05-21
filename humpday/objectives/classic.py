@@ -207,7 +207,7 @@ LANDSCAPES_OBJECTIVES = [styblinski_tang_on_cube, zakharov_on_cube, salomon_on_c
 def ackley_on_cube(u: [float]) -> float:
     # allow parameter range -32.768<=x(i)<=32.768, global minimum at x=(0,0,...,0)
     rescaled_u = [2 * 32.768 * smoosh(ui) - 32.768 for ui in u]
-    x = np.asfarray(rescaled_u)
+    x = np.asarray(rescaled_u)
     ndim = len(x)
     a = 20.;
     b = 0.2;

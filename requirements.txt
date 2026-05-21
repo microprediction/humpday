@@ -1,9 +1,0 @@
-microconventions>0.5.0
-getjson
-funcy
-numpy>=1.21.5
-scipy
-pymorton
-landscapes
-winning>=0.4.6
-scikit-learn

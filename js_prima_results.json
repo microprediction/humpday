@@ -1,0 +1,197 @@
+{
+  "uobyqa": [
+    {
+      "function": "2D Sphere",
+      "prima_success": "True",
+      "js_success": true,
+      "prima_error": null,
+      "js_error": null,
+      "prima_final_value": 1.5453615487573688e-33,
+      "js_final_value": 8.251099686559888e-26,
+      "prima_evaluations": 17,
+      "js_evaluations": 12,
+      "prima_distance_to_optimum": 3.931108684273902e-17,
+      "js_distance_to_optimum": 2.872864636158602e-13,
+      "prima_fval_error": 1.5453615487573688e-33,
+      "js_fval_error": 8.251099686559888e-26,
+      "solution_similarity": 2.8731705125707335e-13,
+      "js_matches_prima": {
+        "converged_to_same_region": "True",
+        "similar_function_value": true,
+        "reasonable_evaluations": true
+      }
+    },
+    {
+      "function": "2D Rosenbrock",
+      "prima_success": "True",
+      "js_success": true,
+      "prima_error": null,
+      "js_error": null,
+      "prima_final_value": 5.025290315723719e-19,
+      "js_final_value": 0.10685185863286041,
+      "prima_evaluations": 60,
+      "js_evaluations": 39,
+      "prima_distance_to_optimum": 1.5709180779673113e-09,
+      "js_distance_to_optimum": 0.5812571782858809,
+      "prima_fval_error": 5.025290315723719e-19,
+      "js_fval_error": 0.10685185863286041,
+      "solution_similarity": 0.5812571767172854,
+      "js_matches_prima": {
+        "converged_to_same_region": "False",
+        "similar_function_value": false,
+        "reasonable_evaluations": true
+      }
+    },
+    {
+      "function": "3D Sphere",
+      "prima_success": "True",
+      "js_success": true,
+      "prima_error": null,
+      "js_error": null,
+      "prima_final_value": 8.45529491859213e-32,
+      "js_final_value": 0,
+      "prima_evaluations": 21,
+      "js_evaluations": 17,
+      "prima_distance_to_optimum": 2.9077989818060205e-16,
+      "js_distance_to_optimum": 0.0,
+      "prima_fval_error": 8.45529491859213e-32,
+      "js_fval_error": 0,
+      "solution_similarity": 2.9077989818060205e-16,
+      "js_matches_prima": {
+        "converged_to_same_region": "True",
+        "similar_function_value": true,
+        "reasonable_evaluations": true
+      }
+    }
+  ],
+  "newuoa": [
+    {
+      "function": "2D Sphere",
+      "prima_success": "True",
+      "js_success": true,
+      "prima_error": null,
+      "js_error": null,
+      "prima_final_value": 1.0477876557919564e-45,
+      "js_final_value": 0.051045646641648415,
+      "prima_evaluations": 28,
+      "js_evaluations": 36,
+      "prima_distance_to_optimum": 3.23695482790841e-23,
+      "js_distance_to_optimum": 0.2259328365723947,
+      "prima_fval_error": 1.0477876557919564e-45,
+      "js_fval_error": 0.051045646641648415,
+      "solution_similarity": 0.2259328365723947,
+      "js_matches_prima": {
+        "converged_to_same_region": "False",
+        "similar_function_value": false,
+        "reasonable_evaluations": true
+      }
+    },
+    {
+      "function": "2D Rosenbrock",
+      "prima_success": "True",
+      "js_success": true,
+      "prima_error": null,
+      "js_error": null,
+      "prima_final_value": 4.891172099843041e-16,
+      "js_final_value": 0.15751207151081315,
+      "prima_evaluations": 100,
+      "js_evaluations": 36,
+      "prima_distance_to_optimum": 4.909825930741827e-08,
+      "js_distance_to_optimum": 0.5814573706829685,
+      "prima_fval_error": 4.891172099843041e-16,
+      "js_fval_error": 0.15751207151081315,
+      "solution_similarity": 0.5814573217838014,
+      "js_matches_prima": {
+        "converged_to_same_region": "False",
+        "similar_function_value": false,
+        "reasonable_evaluations": false
+      }
+    },
+    {
+      "function": "3D Sphere",
+      "prima_success": "True",
+      "js_success": true,
+      "prima_error": null,
+      "js_error": null,
+      "prima_final_value": 7.615048636539772e-45,
+      "js_final_value": 0,
+      "prima_evaluations": 30,
+      "js_evaluations": 41,
+      "prima_distance_to_optimum": 8.726424603776608e-23,
+      "js_distance_to_optimum": 0.0,
+      "prima_fval_error": 7.615048636539772e-45,
+      "js_fval_error": 0,
+      "solution_similarity": 8.726424603776608e-23,
+      "js_matches_prima": {
+        "converged_to_same_region": "True",
+        "similar_function_value": true,
+        "reasonable_evaluations": true
+      }
+    }
+  ],
+  "bobyqa": [
+    {
+      "function": "2D Sphere",
+      "prima_success": "True",
+      "js_success": true,
+      "prima_error": null,
+      "js_error": null,
+      "prima_final_value": 9.022569753746198e-47,
+      "js_final_value": 0.3834449764438251,
+      "prima_evaluations": 25,
+      "js_evaluations": 29,
+      "prima_distance_to_optimum": 9.49872083690546e-24,
+      "js_distance_to_optimum": 0.6192293407485026,
+      "prima_fval_error": 9.022569753746198e-47,
+      "js_fval_error": 0.3834449764438251,
+      "solution_similarity": 0.6192293407485026,
+      "js_matches_prima": {
+        "converged_to_same_region": "False",
+        "similar_function_value": false,
+        "reasonable_evaluations": true
+      }
+    },
+    {
+      "function": "2D Rosenbrock",
+      "prima_success": "True",
+      "js_success": true,
+      "prima_error": null,
+      "js_error": null,
+      "prima_final_value": 0.0,
+      "js_final_value": 0.20579382754913428,
+      "prima_evaluations": 101,
+      "js_evaluations": 28,
+      "prima_distance_to_optimum": 0.0,
+      "js_distance_to_optimum": 0.5442255249662787,
+      "prima_fval_error": 0.0,
+      "js_fval_error": 0.20579382754913428,
+      "solution_similarity": 0.5442255249662787,
+      "js_matches_prima": {
+        "converged_to_same_region": "False",
+        "similar_function_value": false,
+        "reasonable_evaluations": false
+      }
+    },
+    {
+      "function": "3D Sphere",
+      "prima_success": "True",
+      "js_success": true,
+      "prima_error": null,
+      "js_error": null,
+      "prima_final_value": 2.067551498874021e-44,
+      "js_final_value": 0.7600236622186638,
+      "prima_evaluations": 30,
+      "js_evaluations": 33,
+      "prima_distance_to_optimum": 1.437898292256452e-22,
+      "js_distance_to_optimum": 0.8717933598156525,
+      "prima_fval_error": 2.067551498874021e-44,
+      "js_fval_error": 0.7600236622186638,
+      "solution_similarity": 0.8717933598156525,
+      "js_matches_prima": {
+        "converged_to_same_region": "False",
+        "similar_function_value": false,
+        "reasonable_evaluations": true
+      }
+    }
+  ]
+}
