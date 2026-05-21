@@ -775,15 +775,21 @@
                 displayName: 'Powell (SciPy)',
                 explanation: 'https://en.wikipedia.org/wiki/Powell%27s_method',
                 paper: 'https://doi.org/10.1093/comjnl/7.2.155',
-                pythonImpl: 'https://github.com/microprediction/humpday/blob/main/humpday/optimizers/scipycube.py',
-                jsImpl: 'https://github.com/microprediction/humpday/blob/main/web/js/optimizers.js#L450'
+                referenceImpl: 'https://docs.scipy.org/doc/scipy/reference/optimize.minimize-powell.html',
+                humpdayPython: 'https://github.com/microprediction/humpday/blob/main/humpday/optimizers/scipycube.py',
+                humpdayJS: 'js/optimizers.js',
+                resources: [
+                    'https://github.com/scipy/scipy',
+                    'https://optimization.mccormick.northwestern.edu/index.php/Powell%27s_method'
+                ]
             },
             'Differential Evolution (SciPy)': {
                 displayName: 'Differential Evolution (SciPy)',
                 explanation: 'https://en.wikipedia.org/wiki/Differential_evolution',
                 paper: 'https://doi.org/10.1023/A:1008202821328',
-                pythonImpl: 'https://github.com/microprediction/humpday/blob/main/humpday/optimizers/scipycube.py',
-                jsImpl: 'https://github.com/microprediction/humpday/blob/main/web/js/optimizers.js#L550',
+                referenceImpl: 'https://docs.scipy.org/doc/scipy/reference/generated/scipy.optimize.differential_evolution.html',
+                humpdayPython: 'https://github.com/microprediction/humpday/blob/main/humpday/optimizers/scipycube.py',
+                humpdayJS: 'js/optimizers.js',
                 resources: [
                     'https://pablormier.github.io/2017/09/05/a-tutorial-on-differential-evolution-with-python/',
                     'https://optimization.mccormick.northwestern.edu/index.php/Differential_evolution'
@@ -793,8 +799,9 @@
                 displayName: 'CMA-ES (Humpday)',
                 explanation: 'https://en.wikipedia.org/wiki/CMA-ES',
                 paper: 'https://arxiv.org/abs/1604.00772',
-                pythonImpl: 'https://github.com/microprediction/humpday/blob/main/humpday/optimizers/comprehensive_derivative_free.py',
-                jsImpl: 'https://github.com/microprediction/humpday/blob/main/web/js/optimizers.js#L700',
+                referenceImpl: 'https://cma-es.github.io/',
+                humpdayPython: 'https://github.com/microprediction/humpday/blob/main/humpday/optimizers/comprehensive_derivative_free.py',
+                humpdayJS: 'js/optimizers.js',
                 resources: [
                     'https://cma-es.github.io/',
                     'https://blog.otoro.net/2017/10/29/visual-evolution-strategies/'
@@ -804,90 +811,169 @@
                 displayName: 'Genetic Algorithm (Humpday)',
                 explanation: 'https://en.wikipedia.org/wiki/Genetic_algorithm',
                 paper: 'https://doi.org/10.1145/29482.29492',
-                pythonImpl: 'https://github.com/microprediction/humpday/blob/main/humpday/optimizers/comprehensive_derivative_free.py',
-                jsImpl: 'https://github.com/microprediction/humpday/blob/main/web/js/optimizers.js#L800'
+                referenceImpl: 'https://en.wikipedia.org/wiki/Genetic_algorithm',
+                humpdayPython: 'https://github.com/microprediction/humpday/blob/main/humpday/optimizers/comprehensive_derivative_free.py',
+                humpdayJS: 'js/optimizers.js',
+                resources: [
+                    'https://towardsdatascience.com/introduction-to-genetic-algorithms-including-example-code-e396e98d8bf3',
+                    'https://optimization.mccormick.northwestern.edu/index.php/Genetic_algorithm'
+                ]
             },
             'Particle Swarm (Humpday)': {
                 displayName: 'Particle Swarm (Humpday)',
                 explanation: 'https://en.wikipedia.org/wiki/Particle_swarm_optimization',
                 paper: 'https://doi.org/10.1109/ICNN.1995.488968',
-                pythonImpl: 'https://github.com/microprediction/humpday/blob/main/humpday/optimizers/comprehensive_derivative_free.py',
-                jsImpl: 'https://github.com/microprediction/humpday/blob/main/web/js/optimizers.js#L900'
+                referenceImpl: 'https://pypi.org/project/pyswarm/',
+                humpdayPython: 'https://github.com/microprediction/humpday/blob/main/humpday/optimizers/comprehensive_derivative_free.py',
+                humpdayJS: 'js/optimizers.js',
+                resources: [
+                    'https://nathanrooy.github.io/posts/2016-08-17/simple-particle-swarm-optimization-with-python/',
+                    'https://optimization.mccormick.northwestern.edu/index.php/Particle_swarm_optimization'
+                ]
             },
             'Simulated Annealing (Humpday)': {
                 displayName: 'Simulated Annealing (Humpday)',
                 explanation: 'https://en.wikipedia.org/wiki/Simulated_annealing',
                 paper: 'https://doi.org/10.1126/science.220.4598.671',
-                pythonImpl: 'https://github.com/microprediction/humpday/blob/main/humpday/optimizers/comprehensive_derivative_free.py',
-                jsImpl: 'https://github.com/microprediction/humpday/blob/main/web/js/optimizers.js#L1000'
+                referenceImpl: 'https://docs.scipy.org/doc/scipy/reference/generated/scipy.optimize.dual_annealing.html',
+                humpdayPython: 'https://github.com/microprediction/humpday/blob/main/humpday/optimizers/comprehensive_derivative_free.py',
+                humpdayJS: 'js/optimizers.js',
+                resources: [
+                    'https://optimization.mccormick.northwestern.edu/index.php/Simulated_annealing',
+                    'https://towardsdatascience.com/optimization-techniques-simulated-annealing-d6a4785a1de7'
+                ]
             },
             'Bayesian Optimization (Humpday)': {
                 displayName: 'Bayesian Optimization (Humpday)',
                 explanation: 'https://en.wikipedia.org/wiki/Bayesian_optimization',
                 paper: 'https://arxiv.org/abs/1012.2599',
-                pythonImpl: 'https://github.com/microprediction/humpday/blob/main/humpday/optimizers/bayesoptcube.py',
-                jsImpl: 'https://github.com/microprediction/humpday/blob/main/web/js/optimizers.js#L1100'
+                referenceImpl: 'https://scikit-optimize.github.io/stable/',
+                humpdayPython: 'https://github.com/microprediction/humpday/blob/main/humpday/optimizers/bayesoptcube.py',
+                humpdayJS: 'js/optimizers.js',
+                resources: [
+                    'https://distill.pub/2020/bayesian-optimization/',
+                    'https://optimization.mccormick.northwestern.edu/index.php/Bayesian_optimization'
+                ]
             },
             'Random Search (Humpday)': {
                 displayName: 'Random Search (Humpday)',
                 explanation: 'https://en.wikipedia.org/wiki/Random_search',
                 paper: 'https://jmlr.org/papers/v13/bergstra12a.html',
-                pythonImpl: 'https://github.com/microprediction/humpday/blob/main/humpday/optimizers/comprehensive_derivative_free.py',
-                jsImpl: 'https://github.com/microprediction/humpday/blob/main/web/js/optimizers.js#L1200'
+                referenceImpl: 'https://scikit-learn.org/stable/modules/generated/sklearn.model_selection.RandomizedSearchCV.html',
+                humpdayPython: 'https://github.com/microprediction/humpday/blob/main/humpday/optimizers/comprehensive_derivative_free.py',
+                humpdayJS: 'js/optimizers.js',
+                resources: [
+                    'https://optimization.mccormick.northwestern.edu/index.php/Random_search',
+                    'https://towardsdatascience.com/hyperparameter-tuning-c5619e7e6624'
+                ]
             },
             'Adaptive Random Search': {
-                displayName: 'Adaptive Random Search',
+                displayName: 'Adaptive Random Search (Humpday)',
                 explanation: 'https://optimization.mccormick.northwestern.edu/index.php/Random_search',
                 paper: 'https://doi.org/10.1007/BF01581033',
-                github: 'https://github.com/microprediction/humpday/blob/main/humpday/optimizers/allcube.py'
+                referenceImpl: 'https://en.wikipedia.org/wiki/Random_search',
+                humpdayPython: 'https://github.com/microprediction/humpday/blob/main/humpday/optimizers/allcube.py',
+                humpdayJS: 'js/optimizers.js',
+                resources: [
+                    'https://optimization.mccormick.northwestern.edu/index.php/Random_search',
+                    'https://link.springer.com/article/10.1007/BF01581033'
+                ]
             },
             'Coordinate Descent': {
-                displayName: 'Coordinate Descent',
+                displayName: 'Coordinate Descent (Humpday)',
                 explanation: 'https://en.wikipedia.org/wiki/Coordinate_descent',
                 paper: 'https://doi.org/10.1007/s10107-014-0824-2',
-                github: 'https://github.com/microprediction/humpday/blob/main/humpday/optimizers/allcube.py'
+                referenceImpl: 'https://scikit-learn.org/stable/modules/generated/sklearn.linear_model.coordinate_descent.html',
+                humpdayPython: 'https://github.com/microprediction/humpday/blob/main/humpday/optimizers/allcube.py',
+                humpdayJS: 'js/optimizers.js',
+                resources: [
+                    'https://optimization.mccormick.northwestern.edu/index.php/Coordinate_descent',
+                    'https://web.stanford.edu/~boyd/papers/prox_algs.html'
+                ]
             },
             'Pattern Search': {
-                displayName: 'Pattern Search',
+                displayName: 'Pattern Search (Humpday)',
                 explanation: 'https://en.wikipedia.org/wiki/Pattern_search_(optimization)',
                 paper: 'https://doi.org/10.1137/S1052623496303470',
-                github: 'https://github.com/microprediction/humpday/blob/main/humpday/optimizers/allcube.py'
+                referenceImpl: 'https://www.mathworks.com/help/gads/pattern-search.html',
+                humpdayPython: 'https://github.com/microprediction/humpday/blob/main/humpday/optimizers/allcube.py',
+                humpdayJS: 'js/optimizers.js',
+                resources: [
+                    'https://optimization.mccormick.northwestern.edu/index.php/Pattern_search',
+                    'https://epubs.siam.org/doi/10.1137/S1052623496303470'
+                ]
             },
             'Hill Climbing': {
-                displayName: 'Hill Climbing',
+                displayName: 'Hill Climbing (Humpday)',
                 explanation: 'https://en.wikipedia.org/wiki/Hill_climbing',
                 paper: 'https://doi.org/10.1016/0004-3702(81)90024-2',
-                github: 'https://github.com/microprediction/humpday/blob/main/humpday/optimizers/allcube.py'
+                referenceImpl: 'https://en.wikipedia.org/wiki/Hill_climbing',
+                humpdayPython: 'https://github.com/microprediction/humpday/blob/main/humpday/optimizers/allcube.py',
+                humpdayJS: 'js/optimizers.js',
+                resources: [
+                    'https://towardsdatascience.com/hill-climbing-optimization-algorithm-8ddd2d8d6b6d',
+                    'https://www.geeksforgeeks.org/introduction-hill-climbing-artificial-intelligence/'
+                ]
             },
             'Tabu Search': {
-                displayName: 'Tabu Search',
+                displayName: 'Tabu Search (Humpday)',
                 explanation: 'https://en.wikipedia.org/wiki/Tabu_search',
                 paper: 'https://doi.org/10.1287/ijoc.1.3.190',
-                github: 'https://github.com/microprediction/humpday/blob/main/humpday/optimizers/allcube.py'
+                referenceImpl: 'https://en.wikipedia.org/wiki/Tabu_search',
+                humpdayPython: 'https://github.com/microprediction/humpday/blob/main/humpday/optimizers/allcube.py',
+                humpdayJS: 'js/optimizers.js',
+                resources: [
+                    'https://optimization.mccormick.northwestern.edu/index.php/Tabu_search',
+                    'https://www.researchgate.net/publication/227061666_Tabu_Search_A_Tutorial'
+                ]
             },
             'Firefly Algorithm': {
-                displayName: 'Firefly Algorithm',
+                displayName: 'Firefly Algorithm (Humpday)',
                 explanation: 'https://en.wikipedia.org/wiki/Firefly_algorithm',
                 paper: 'https://doi.org/10.1007/978-3-642-04944-6_14',
-                github: 'https://github.com/microprediction/humpday/blob/main/humpday/optimizers/allcube.py'
+                referenceImpl: 'https://pypi.org/project/firefly-python/',
+                humpdayPython: 'https://github.com/microprediction/humpday/blob/main/humpday/optimizers/allcube.py',
+                humpdayJS: 'js/optimizers.js',
+                resources: [
+                    'https://www.mathworks.com/matlabcentral/fileexchange/29693-firefly-algorithm',
+                    'https://towardsdatascience.com/firefly-algorithm-an-overview-e2de0b7c4a75'
+                ]
             },
             'Ant Colony Optimization': {
-                displayName: 'Ant Colony Optimization',
+                displayName: 'Ant Colony Optimization (Humpday)',
                 explanation: 'https://en.wikipedia.org/wiki/Ant_colony_optimization_algorithms',
                 paper: 'https://doi.org/10.1016/S0304-3975(99)00120-7',
-                github: 'https://github.com/microprediction/humpday/blob/main/humpday/optimizers/allcube.py'
+                referenceImpl: 'https://pypi.org/project/acopy/',
+                humpdayPython: 'https://github.com/microprediction/humpday/blob/main/humpday/optimizers/allcube.py',
+                humpdayJS: 'js/optimizers.js',
+                resources: [
+                    'https://optimization.mccormick.northwestern.edu/index.php/Ant_colony_optimization',
+                    'https://towardsdatascience.com/ant-colony-optimization-aco-8c0d9de52e1b'
+                ]
             },
             'Harmony Search': {
-                displayName: 'Harmony Search',
+                displayName: 'Harmony Search (Humpday)',
                 explanation: 'https://en.wikipedia.org/wiki/Harmony_search',
                 paper: 'https://doi.org/10.1177/003754970107600201',
-                github: 'https://github.com/microprediction/humpday/blob/main/humpday/optimizers/allcube.py'
+                referenceImpl: 'https://pypi.org/project/harmony-search/',
+                humpdayPython: 'https://github.com/microprediction/humpday/blob/main/humpday/optimizers/allcube.py',
+                humpdayJS: 'js/optimizers.js',
+                resources: [
+                    'https://optimization.mccormick.northwestern.edu/index.php/Harmony_search',
+                    'https://towardsdatascience.com/harmony-search-optimization-algorithm-b8e8e8d0a2d2'
+                ]
             },
             'EvolutionStrategy': {
-                displayName: 'Evolution Strategy',
+                displayName: 'Evolution Strategy (Humpday)',
                 explanation: 'https://en.wikipedia.org/wiki/Evolution_strategy',
                 paper: 'https://doi.org/10.1007/978-3-662-43505-2_44',
-                github: 'https://github.com/microprediction/humpday/blob/main/humpday/optimizers/allcube.py'
+                referenceImpl: 'https://deap.readthedocs.io/en/master/api/algo.html#evolution-strategies',
+                humpdayPython: 'https://github.com/microprediction/humpday/blob/main/humpday/optimizers/allcube.py',
+                humpdayJS: 'js/optimizers.js',
+                resources: [
+                    'https://optimization.mccormick.northwestern.edu/index.php/Evolution_strategy',
+                    'https://towardsdatascience.com/evolution-strategies-an-alternative-to-neural-networks-6af3f5b72ac9'
+                ]
             }
         };
 

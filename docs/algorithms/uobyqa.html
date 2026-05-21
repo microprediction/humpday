@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>BOBYQA (Prima) - Implementation Details</title>
+    <title>UOBYQA (Prima) - Implementation Details</title>
     <style>
         body {
             font-family: 'Georgia', 'Times New Roman', serif;
@@ -96,6 +96,7 @@
         .link-button.paper { background: #e74c3c; }
         .link-button.python { background: #27ae60; }
         .link-button.javascript { background: #f39c12; }
+        .link-button.info { background: #9b59b6; }
 
         .algorithm-description {
             background: #e8f6f3;
@@ -161,17 +162,17 @@
 <body>
     <div class="container">
         <div class="header">
-            <h1>BOBYQA (PDFO)</h1>
-            <p>Bound constrained Optimization BY Quadratic Approximation</p>
+            <h1>UOBYQA (PDFO)</h1>
+            <p>Unconstrained Optimization BY Quadratic Approximation</p>
         </div>
 
         <div class="content">
             <div class="back-nav">
-                <a href="optimization_contest.html">← Back to Optimizer Competition</a>
+                <a href="../optimization_contest.html">← Back to Optimizer Competition</a>
             </div>
 
             <div class="algorithm-description">
-                <strong>BOBYQA</strong> is Powell's trust-region method specifically designed for bound-constrained optimization. It builds quadratic models while respecting variable bounds, making it ideal for optimization problems with simple constraints like the unit hypercube [0,1]ⁿ used in our competition.
+                <strong>UOBYQA</strong> is a trust-region method for derivative-free optimization that builds quadratic models using function values only. Developed by M.J.D. Powell, it's one of the foundational algorithms in the Prima library. UOBYQA is particularly effective for smooth, unimodal functions and forms the basis for more advanced methods like NEWUOA and BOBYQA.
             </div>
 
             <h2>Implementation Details</h2>
@@ -188,20 +189,20 @@
                         <td class="category">Original Algorithm</td>
                         <td>
                             <strong>M.J.D. Powell</strong><br>
-                            Trust-region method for bound-constrained problems<br>
-                            Extends NEWUOA with explicit bound handling<br>
-                            <em>Published: 2009</em>
+                            Trust-region method using quadratic interpolation models<br>
+                            Derivative-free optimization for unconstrained problems<br>
+                            <em>Published: 2002</em>
                         </td>
                         <td>
-                            <a href="https://doi.org/10.1145/1132973.1132979" target="_blank" class="link-button paper">📄 Paper</a>
+                            <a href="https://www.optimization-online.org/DB_HTML/2009/12/2490.html" target="_blank" class="link-button paper">📄 Paper</a>
                         </td>
                     </tr>
                     <tr>
                         <td class="category">Reference Package</td>
                         <td>
                             <strong>PDFO (Python Derivative-Free Optimization)</strong><br>
-                            Wraps Powell's original Fortran BOBYQA implementation<br>
-                            Handles bound constraints with numerical precision<br>
+                            Wraps Powell's original Fortran implementation<br>
+                            Authoritative implementation with numerical robustness<br>
                             <em>Package: pdfo</em>
                         </td>
                         <td>
@@ -213,7 +214,7 @@
                         <td class="category">Humpday Python Wrapper</td>
                         <td>
                             <strong>Humpday Integration</strong><br>
-                            Calls PDFO's BOBYQA implementation<br>
+                            Calls PDFO's UOBYQA implementation<br>
                             Standardized interface for optimization contests<br>
                             <em>File: humpday/optimizers/primacube.py</em>
                         </td>
@@ -225,12 +226,23 @@
                         <td class="category">Humpday JavaScript Port</td>
                         <td>
                             <strong>Browser Implementation</strong><br>
-                            Bound-aware trust region implementation<br>
-                            Optimized for unit hypercube constraints<br>
-                            <em>Class: PRIMA_BOBYQA</em>
+                            Pure JavaScript port maintaining core trust-region logic<br>
+                            Simplified quadratic model building for web performance<br>
+                            <em>Class: PRIMA_UOBYQA</em>
                         </td>
                         <td>
-                            <a href="https://github.com/microprediction/humpday/blob/main/web/js/optimizers.js#L240" target="_blank" class="link-button javascript">🌐 JS Port</a>
+                            <a href="https://github.com/microprediction/humpday/blob/main/web/js/optimizers.js#L72" target="_blank" class="link-button javascript">🌐 JS Port</a>
+                        </td>
+                    </tr>
+                    <tr>
+                        <td class="category">Dependencies</td>
+                        <td>
+                            <strong>Reference:</strong> PDFO package (wraps Powell's Fortran)<br>
+                            <strong>Humpday Python:</strong> pdfo, numpy<br>
+                            <strong>Humpday JS:</strong> None (standalone port)
+                        </td>
+                        <td>
+                            <a href="https://pypi.org/project/pdfo/" target="_blank" class="link-button python">📦 PyPI</a>
                         </td>
                     </tr>
                 </tbody>
@@ -239,11 +251,11 @@
             <div class="performance-notes">
                 <h3>🏁 Performance Characteristics</h3>
                 <ul>
-                    <li><strong>Best for:</strong> Bound-constrained optimization problems, especially [0,1]ⁿ</li>
-                    <li><strong>Dimensions:</strong> Excellent performance up to 100+ dimensions</li>
-                    <li><strong>Function evaluations:</strong> Very efficient with bounds guidance</li>
-                    <li><strong>Convergence:</strong> Superior to UOBYQA/NEWUOA on bounded problems</li>
-                    <li><strong>Robustness:</strong> Handles boundary conditions elegantly</li>
+                    <li><strong>Best for:</strong> Smooth, unimodal functions with moderate noise tolerance</li>
+                    <li><strong>Dimensions:</strong> Works well up to ~50 dimensions</li>
+                    <li><strong>Function evaluations:</strong> Typically requires O(n²) evaluations for n dimensions</li>
+                    <li><strong>Convergence:</strong> Fast local convergence on quadratic-like functions</li>
+                    <li><strong>Robustness:</strong> Handles discontinuous derivatives but sensitive to high noise</li>
                 </ul>
             </div>
 
@@ -252,10 +264,11 @@
                 <div id="moreContent" class="more-content">
                     <h3>📚 Educational Resources</h3>
                     <ul>
-                        <li><a href="https://en.wikipedia.org/wiki/BOBYQA" target="_blank">BOBYQA Wikipedia</a></li>
+                        <li><a href="https://en.wikipedia.org/wiki/NEWUOA" target="_blank">UOBYQA/NEWUOA Wikipedia</a></li>
+                        <li><a href="https://optimization.mccormick.northwestern.edu/index.php/Trust_region_methods" target="_blank">Trust Region Methods Overview</a></li>
                         <li><a href="https://www.pdfo.net/docs/" target="_blank">PDFO Documentation</a></li>
-                        <li><a href="https://optimization.mccormick.northwestern.edu/index.php/Trust_region_methods" target="_blank">Trust Region Methods</a></li>
-                        <li><a href="https://citeseerx.ist.psu.edu/document?repid=rep1&type=pdf&doi=a08b2a15b27d8a5b27d4b3b6d3e4f5e6d7f8e9f0" target="_blank">Bound Constrained Optimization Overview</a></li>
+                        <li><a href="https://citeseerx.ist.psu.edu/document?repid=rep1&type=pdf&doi=10a1f4f7eb2b46c09bdc3e97b3a17a6b0a47b3b8" target="_blank">Powell's Original UOBYQA Paper</a></li>
+                        <li><a href="https://ccom.ucsd.edu/~pcoleman/powellopt.pdf" target="_blank">Powell's Optimization Methods Tutorial</a></li>
                     </ul>
                 </div>
             </div>

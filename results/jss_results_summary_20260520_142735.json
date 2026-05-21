@@ -1,0 +1,44 @@
+{
+  "overall_rankings": {
+    "scipy_powell": 0.6492332175925926,
+    "scipy_lbfgsb": 0.5619574652777778,
+    "scipy_slsqp": 0.5388093171296295
+  },
+  "context_leaders": {
+    "Smooth Functions (Low Complexity)": [
+      "scipy_lbfgsb",
+      0.6666666666666666
+    ],
+    "Multimodal Functions (High Complexity)": [
+      "scipy_powell",
+      0.7777777777777778
+    ],
+    "Low Dimensional (2D)": [
+      "scipy_powell",
+      0.71875
+    ],
+    "High Dimensional (5D)": [
+      "scipy_lbfgsb",
+      0.625
+    ],
+    "Low Budget": [
+      "scipy_lbfgsb",
+      0.6015625
+    ],
+    "High Budget": [
+      "scipy_powell",
+      0.7916666666666667
+    ]
+  },
+  "stability_rankings": {
+    "scipy_slsqp": 0.043109247044332805,
+    "scipy_lbfgsb": 0.07664905627532313,
+    "scipy_powell": 0.10358100604576236
+  },
+  "experiment_stats": {
+    "n_optimizers": 3,
+    "n_problems": 48,
+    "n_comparisons": 288,
+    "success_rate": 1.0
+  }
+}
