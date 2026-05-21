@@ -1,0 +1,474 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Meet Powell - The Ridge Walker | HumpDay Learning</title>
+    <script src="https://cdn.jsdelivr.net/pyodide/v0.26.4/full/pyodide.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/plotly.js/2.35.2/plotly.min.js"></script>
+    <style>
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            margin: 0;
+            padding: 20px;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            min-height: 100vh;
+            line-height: 1.6;
+        }
+
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+        }
+
+        .header {
+            text-align: center;
+            margin-bottom: 40px;
+        }
+
+        .header h1 {
+            font-size: 2.5em;
+            margin: 0;
+            text-shadow: 2px 2px 4px rgba(0,0,0,0.5);
+        }
+
+        .character-intro {
+            background: rgba(255, 255, 255, 0.15);
+            border-radius: 15px;
+            padding: 30px;
+            margin: 30px 0;
+            backdrop-filter: blur(10px);
+            text-align: center;
+        }
+
+        .character-avatar {
+            font-size: 4em;
+            margin-bottom: 20px;
+        }
+
+        .lesson-section {
+            background: rgba(255, 255, 255, 0.1);
+            border-radius: 15px;
+            padding: 30px;
+            margin: 30px 0;
+            backdrop-filter: blur(10px);
+        }
+
+        .interactive-demo {
+            background: white;
+            color: #333;
+            border-radius: 15px;
+            padding: 30px;
+            margin: 30px 0;
+        }
+
+        .step-controls {
+            display: flex;
+            gap: 15px;
+            margin: 20px 0;
+            justify-content: center;
+            flex-wrap: wrap;
+        }
+
+        .step-btn {
+            padding: 12px 24px;
+            border: none;
+            border-radius: 8px;
+            background: #4CAF50;
+            color: white;
+            cursor: pointer;
+            font-size: 1em;
+            font-weight: 600;
+            transition: all 0.3s ease;
+        }
+
+        .step-btn:hover {
+            background: #45a049;
+            transform: translateY(-2px);
+        }
+
+        .step-btn:disabled {
+            background: #ccc;
+            cursor: not-allowed;
+            transform: none;
+        }
+
+        .explanation-box {
+            background: rgba(76, 175, 80, 0.1);
+            border-left: 4px solid #4CAF50;
+            padding: 20px;
+            margin: 20px 0;
+            border-radius: 0 8px 8px 0;
+        }
+
+        .plot-container {
+            background: white;
+            border-radius: 10px;
+            margin: 20px 0;
+            min-height: 400px;
+        }
+
+        .navigation {
+            text-align: center;
+            margin: 40px 0;
+        }
+
+        .nav-btn {
+            display: inline-block;
+            padding: 15px 30px;
+            background: rgba(255, 255, 255, 0.2);
+            color: white;
+            text-decoration: none;
+            border-radius: 8px;
+            margin: 0 10px;
+            transition: all 0.3s ease;
+            border: 2px solid rgba(255, 255, 255, 0.3);
+        }
+
+        .nav-btn:hover {
+            background: rgba(255, 255, 255, 0.3);
+            transform: translateY(-2px);
+        }
+
+        .personality-trait {
+            background: rgba(255, 255, 255, 0.1);
+            border-radius: 10px;
+            padding: 20px;
+            margin: 15px 0;
+            border-left: 4px solid #FFD700;
+        }
+
+        @media (max-width: 768px) {
+            .step-controls {
+                flex-direction: column;
+                align-items: center;
+            }
+
+            .header h1 {
+                font-size: 2em;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <h1>🎯 Meet Powell: The Ridge Walker</h1>
+            <p>Learn how one of optimization's most elegant algorithms thinks and moves</p>
+        </div>
+
+        <div class="character-intro">
+            <div class="character-avatar">🎯</div>
+            <h2>Powell's Method</h2>
+            <p style="font-size: 1.2em; font-style: italic;">
+                "I may not be the fastest, but I know how to follow a good lead.
+                Give me a ridge or valley, and I'll walk it like a tightrope artist!"
+            </p>
+        </div>
+
+        <div class="lesson-section">
+            <h2>🧠 How Powell Thinks</h2>
+
+            <div class="personality-trait">
+                <h3>🚶‍♂️ The Methodical Explorer</h3>
+                <p>Powell doesn't rush around randomly. Instead, it maintains a set of <strong>search directions</strong>
+                and methodically explores along each one. Think of it as having a compass with multiple needles,
+                each pointing in a promising direction.</p>
+            </div>
+
+            <div class="personality-trait">
+                <h3>📚 The Pattern Learner</h3>
+                <p>After each complete cycle, Powell <strong>learns from its journey</strong>. It notices which
+                direction led to the biggest improvement and updates its search directions accordingly.
+                This is why it's so good at following ridges and valleys!</p>
+            </div>
+
+            <div class="personality-trait">
+                <h3>🎯 The Precision Seeker</h3>
+                <p>Powell doesn't just approximate - it finds the <strong>exact minimum</strong> along each
+                search direction using line search. This makes it very accurate, though sometimes slower
+                than more aggressive methods.</p>
+            </div>
+        </div>
+
+        <div class="interactive-demo">
+            <h2>🎮 Watch Powell in Action</h2>
+            <p>Let's see how Powell tackles the famous Rosenbrock "banana" function.
+            This function has a narrow, curved valley that's perfect for demonstrating Powell's ridge-walking skills.</p>
+
+            <div class="step-controls">
+                <button class="step-btn" onclick="resetDemo()">🔄 Reset</button>
+                <button class="step-btn" onclick="stepForward()" id="stepBtn">▶️ Next Step</button>
+                <button class="step-btn" onclick="runToEnd()">⏭️ Run to End</button>
+                <button class="step-btn" onclick="toggleAutoPlay()" id="autoBtn">🔄 Auto Play</button>
+            </div>
+
+            <div id="powell-plot" class="plot-container"></div>
+
+            <div id="step-explanation" class="explanation-box" style="display: none;">
+                <h3 id="step-title">Step 1: Initial Setup</h3>
+                <p id="step-description">Powell starts with an initial guess and a set of search directions...</p>
+            </div>
+        </div>
+
+        <div class="lesson-section">
+            <h2>💡 Key Insights</h2>
+
+            <div class="explanation-box">
+                <h3>🏔️ Why Powell Excels on Ridges</h3>
+                <p>Powell's ability to update its search directions makes it incredibly effective on functions
+                with ridges or valleys. Once it discovers the main direction of a ridge, it adapts its search
+                directions to follow it efficiently.</p>
+            </div>
+
+            <div class="explanation-box">
+                <h3>⚠️ Powell's Achilles Heel</h3>
+                <p>Powell can struggle with highly multimodal functions (many peaks and valleys) because it's
+                a local optimizer. It will find the nearest peak very efficiently, but might miss a higher
+                peak elsewhere. For global optimization, consider combining Powell with multiple random starts.</p>
+            </div>
+
+            <div class="explanation-box">
+                <h3>🎯 When to Choose Powell</h3>
+                <p><strong>Perfect for:</strong> Smooth functions, functions with ridges/valleys, when you need high precision<br>
+                <strong>Avoid for:</strong> Highly multimodal functions, noisy functions, discrete parameters</p>
+            </div>
+        </div>
+
+        <div class="navigation">
+            <a href="index.html" class="nav-btn">🏠 Back to Demo</a>
+            <a href="learn-nelder-mead.html" class="nav-btn">🔺 Next: Meet Nelder-Mead</a>
+        </div>
+    </div>
+
+    <script>
+        let pyodide = null;
+        let currentStep = 0;
+        let optimizationSteps = [];
+        let isAutoPlaying = false;
+        let autoPlayInterval = null;
+
+        async function initializePyodide() {
+            if (pyodide) return pyodide;
+
+            console.log('Loading Pyodide for Powell demo...');
+            pyodide = await loadPyodide({
+                indexURL: "https://cdn.jsdelivr.net/pyodide/v0.26.4/full/"
+            });
+
+            await pyodide.loadPackage(['numpy', 'scipy']);
+
+            pyodide.runPython(`
+import numpy as np
+from scipy.optimize import minimize
+import json
+
+def rosenbrock(x):
+    return 100.0*(x[1] - x[0]**2)**2 + (1 - x[0])**2
+
+def powell_with_steps(func, x0, maxiter=50):
+    """Run Powell method and capture each step"""
+    steps = []
+
+    def callback(xk):
+        steps.append({
+            'x': xk.tolist(),
+            'f': float(func(xk)),
+            'step': len(steps)
+        })
+
+    result = minimize(func, x0, method='Powell', callback=callback,
+                     options={'maxiter': maxiter})
+
+    return steps, result
+
+# Run the optimization
+x0 = np.array([-1.2, 1.0])  # Classic starting point
+steps, result = powell_with_steps(rosenbrock, x0)
+
+# Create contour data for visualization
+x = np.linspace(-1.5, 1.5, 100)
+y = np.linspace(-0.5, 1.5, 100)
+X, Y = np.meshgrid(x, y)
+Z = 100.0*(Y - X**2)**2 + (1 - X)**2
+
+optimization_data = {
+    'steps': steps,
+    'contour_x': x.tolist(),
+    'contour_y': y.tolist(),
+    'contour_z': Z.tolist(),
+    'final_result': {
+        'x': result.x.tolist(),
+        'fun': float(result.fun),
+        'nfev': int(result.nfev)
+    }
+}
+            `);
+
+            const data = JSON.parse(pyodide.runPython(`json.dumps(optimization_data)`));
+            optimizationSteps = data.steps;
+
+            plotPowellDemo(data);
+            updateStepExplanation(0);
+
+            return pyodide;
+        }
+
+        function plotPowellDemo(data) {
+            const traces = [];
+
+            // Contour plot
+            traces.push({
+                x: data.contour_x,
+                y: data.contour_y,
+                z: data.contour_z,
+                type: 'contour',
+                colorscale: 'Viridis',
+                showscale: false,
+                opacity: 0.7,
+                contours: {
+                    coloring: 'lines'
+                }
+            });
+
+            // Optimization path (initially empty)
+            traces.push({
+                x: [],
+                y: [],
+                mode: 'lines+markers',
+                name: 'Powell Path',
+                line: {color: 'red', width: 3},
+                marker: {size: 8, color: 'red'}
+            });
+
+            // Current position (initially at start)
+            traces.push({
+                x: [data.steps[0].x[0]],
+                y: [data.steps[0].x[1]],
+                mode: 'markers',
+                name: 'Current Position',
+                marker: {size: 15, color: 'yellow', symbol: 'star'}
+            });
+
+            const layout = {
+                title: 'Powell Method on Rosenbrock Function',
+                xaxis: {title: 'x₁'},
+                yaxis: {title: 'x₂'},
+                showlegend: true,
+                width: null,
+                height: 500
+            };
+
+            Plotly.newPlot('powell-plot', traces, layout, {responsive: true});
+        }
+
+        function updatePlot() {
+            if (currentStep >= optimizationSteps.length) return;
+
+            const pathSteps = optimizationSteps.slice(0, currentStep + 1);
+            const pathX = pathSteps.map(s => s.x[0]);
+            const pathY = pathSteps.map(s => s.x[1]);
+
+            const currentPos = optimizationSteps[currentStep];
+
+            Plotly.restyle('powell-plot', {
+                x: [null, pathX, [currentPos.x[0]]],
+                y: [null, pathY, [currentPos.x[1]]]
+            }, [0, 1, 2]);
+        }
+
+        function updateStepExplanation(step) {
+            const explanationBox = document.getElementById('step-explanation');
+            const title = document.getElementById('step-title');
+            const description = document.getElementById('step-description');
+
+            if (step >= optimizationSteps.length) {
+                title.textContent = 'Optimization Complete!';
+                description.textContent = `Powell found the minimum after ${optimizationSteps.length} steps. Notice how it efficiently navigated the curved valley of the Rosenbrock function by adapting its search directions.`;
+                explanationBox.style.display = 'block';
+                return;
+            }
+
+            const currentPoint = optimizationSteps[step];
+            let explanation = '';
+
+            if (step === 0) {
+                explanation = `Powell starts at position (${currentPoint.x[0].toFixed(3)}, ${currentPoint.x[1].toFixed(3)}) with function value ${currentPoint.f.toFixed(3)}. It begins with the standard coordinate directions.`;
+            } else if (step < 5) {
+                explanation = `Step ${step}: Powell is exploring along its current search directions. Position: (${currentPoint.x[0].toFixed(3)}, ${currentPoint.x[1].toFixed(3)}), Value: ${currentPoint.f.toFixed(3)}. Notice how it's starting to discover the valley structure.`;
+            } else if (step < optimizationSteps.length - 5) {
+                explanation = `Step ${step}: Powell has adapted its search directions to follow the valley! Position: (${currentPoint.x[0].toFixed(3)}, ${currentPoint.x[1].toFixed(3)}), Value: ${currentPoint.f.toFixed(3)}. See how efficiently it's moving along the curved ridge.`;
+            } else {
+                explanation = `Step ${step}: Powell is converging to the minimum. Position: (${currentPoint.x[0].toFixed(3)}, ${currentPoint.x[1].toFixed(3)}), Value: ${currentPoint.f.toFixed(3)}. The improvements are getting smaller as it approaches the optimum at (1,1).`;
+            }
+
+            title.textContent = `Step ${step + 1} of ${optimizationSteps.length}`;
+            description.textContent = explanation;
+            explanationBox.style.display = 'block';
+        }
+
+        async function resetDemo() {
+            if (!pyodide) await initializePyodide();
+
+            currentStep = 0;
+            updatePlot();
+            updateStepExplanation(0);
+
+            document.getElementById('stepBtn').textContent = '▶️ Next Step';
+            document.getElementById('stepBtn').disabled = false;
+        }
+
+        async function stepForward() {
+            if (!pyodide) await initializePyodide();
+
+            if (currentStep < optimizationSteps.length - 1) {
+                currentStep++;
+                updatePlot();
+                updateStepExplanation(currentStep);
+            }
+
+            if (currentStep >= optimizationSteps.length - 1) {
+                document.getElementById('stepBtn').textContent = '✅ Complete';
+                document.getElementById('stepBtn').disabled = true;
+                updateStepExplanation(optimizationSteps.length);
+            }
+        }
+
+        async function runToEnd() {
+            if (!pyodide) await initializePyodide();
+
+            currentStep = optimizationSteps.length - 1;
+            updatePlot();
+            updateStepExplanation(optimizationSteps.length);
+
+            document.getElementById('stepBtn').textContent = '✅ Complete';
+            document.getElementById('stepBtn').disabled = true;
+        }
+
+        function toggleAutoPlay() {
+            if (isAutoPlaying) {
+                clearInterval(autoPlayInterval);
+                isAutoPlaying = false;
+                document.getElementById('autoBtn').textContent = '🔄 Auto Play';
+            } else {
+                isAutoPlaying = true;
+                document.getElementById('autoBtn').textContent = '⏸️ Pause';
+
+                autoPlayInterval = setInterval(async () => {
+                    if (currentStep < optimizationSteps.length - 1) {
+                        await stepForward();
+                    } else {
+                        toggleAutoPlay();
+                    }
+                }, 1000);
+            }
+        }
+
+        // Initialize when page loads
+        window.addEventListener('load', () => {
+            console.log('Powell learning module loaded');
+        });
+    </script>
+</body>
+</html>
