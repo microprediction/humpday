@@ -3,106 +3,97 @@
 <head>
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width,initial-scale=1">
-    <title>Humpday: Pure Python or Javascript Derivative-Free Optimization</title>
-    <meta name="description" content="22 derivative-free optimization algorithms in pure Python. No compilation, just numpy. Interactive demos and 3D visualizations.">
+    <title>Humpday: Pure Python and JavaScript Derivative-Free Optimization</title>
+    <meta name="description" content="A collection of 22 derivative-free optimization algorithms implemented in pure Python and JavaScript with comprehensive validation.">
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/katex@0.16.10/dist/katex.min.css" crossorigin="anonymous">
     <script defer src="https://cdn.jsdelivr.net/npm/katex@0.16.10/dist/katex.min.js" crossorigin="anonymous"></script>
     <script defer src="https://cdn.jsdelivr.net/npm/katex@0.16.10/dist/contrib/auto-render.min.js" crossorigin="anonymous"
         onload="renderMathInElement(document.body, {delimiters:[{left:'$$',right:'$$',display:true},{left:'$',right:'$',display:false}]});"></script>
     <style>
         :root {
-            --bg: #fafafa; --panel: #fff; --text: #1a1a1a; --muted: #666;
-            --accent: #2563eb; --accent-hover: #1d4ed8; --border: #e5e7eb;
-            --code-bg: #f8fafc; --success: #059669; --demo-bg: #eff6ff;
+            --bg: #ffffff; --text: #2c3e50; --muted: #7f8c8d; --accent: #3498db;
+            --border: #bdc3c7; --code-bg: #f8f9fa; --header-bg: #34495e;
+            --section-bg: #fdfdfd;
         }
         * { box-sizing: border-box; }
-        html, body { margin: 0; padding: 0; background: var(--bg); color: var(--text);
-            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
-            line-height: 1.6; font-size: 16px; }
+        body { margin: 0; padding: 0; background: var(--bg); color: var(--text);
+            font-family: 'Times New Roman', Times, serif; line-height: 1.6; font-size: 16px; }
 
-        .hero {
-            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-            color: white; padding: 60px 24px; text-align: center;
-        }
-        .hero h1 { font-size: 3rem; margin: 0 0 16px; font-weight: 700; }
-        .hero .subtitle { font-size: 1.25rem; opacity: 0.9; max-width: 600px; margin: 0 auto 32px; }
-        .hero .badges { display: flex; justify-content: center; gap: 12px; flex-wrap: wrap; }
-        .badge { background: rgba(255,255,255,0.2); padding: 6px 12px; border-radius: 20px;
-            font-size: 0.875rem; backdrop-filter: blur(10px); }
+        .header { background: var(--header-bg); color: white; padding: 40px 0; text-align: center; }
+        .header h1 { font-size: 2.5rem; margin: 0 0 12px; font-weight: 400; }
+        .header .subtitle { font-size: 1.1rem; opacity: 0.9; font-style: italic; }
 
-        .container { max-width: 1200px; margin: 0 auto; padding: 0 24px; }
-        .section { padding: 60px 0; }
-        .section h2 { font-size: 2rem; margin: 0 0 16px; color: var(--text); }
-        .section p { font-size: 1.1rem; color: var(--muted); margin: 0 0 24px; }
+        .container { max-width: 900px; margin: 0 auto; padding: 0 30px; }
+        .section { padding: 40px 0; border-bottom: 1px solid #ecf0f1; }
+        .section:last-child { border-bottom: none; }
+        .section h2 { font-size: 1.8rem; margin: 0 0 20px; font-weight: 400; color: var(--header-bg); }
+        .section h3 { font-size: 1.3rem; margin: 24px 0 12px; font-weight: 400; }
 
-        .quick-start { background: var(--panel); }
+        .abstract { background: var(--section-bg); font-style: italic; padding: 24px;
+            border-left: 4px solid var(--accent); margin: 24px 0; }
+
         .code-block { background: var(--code-bg); border: 1px solid var(--border);
-            border-radius: 8px; padding: 24px; font-family: 'SFMono-Regular', Consolas, monospace;
-            font-size: 0.9rem; overflow-x: auto; margin: 24px 0; }
+            padding: 20px; font-family: 'Courier New', monospace; font-size: 0.9rem;
+            overflow-x: auto; margin: 20px 0; }
 
-        .demos-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
-            gap: 24px; margin: 40px 0; }
-        .demo-card { background: var(--panel); border: 1px solid var(--border); border-radius: 12px;
-            padding: 24px; transition: transform 0.2s, box-shadow 0.2s; }
-        .demo-card:hover { transform: translateY(-2px); box-shadow: 0 8px 25px rgba(0,0,0,0.1); }
-        .demo-card h3 { margin: 0 0 12px; color: var(--accent); }
-        .demo-card p { margin: 0 0 16px; color: var(--muted); font-size: 0.95rem; }
-        .demo-btn { display: inline-block; background: var(--accent); color: white;
-            padding: 10px 20px; border-radius: 6px; text-decoration: none; font-weight: 500;
-            transition: background 0.2s; }
-        .demo-btn:hover { background: var(--accent-hover); text-decoration: none; }
+        .algorithm-list { background: var(--section-bg); border: 1px solid var(--border);
+            padding: 16px; margin: 16px 0; }
+        .algorithm-list summary { font-weight: 600; cursor: pointer; }
+        .algorithm-list .methods { margin-top: 12px; font-family: 'Courier New', monospace;
+            font-size: 0.85rem; line-height: 1.5; }
+        .algorithm-list code { background: #e8f4f8; padding: 2px 6px; margin: 2px;
+            border-radius: 3px; }
 
-        .algorithms-section { background: var(--demo-bg); }
-        .algorithm-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
-            gap: 16px; margin: 32px 0; }
-        .algorithm-card { background: var(--panel); border: 1px solid var(--border);
-            border-radius: 8px; padding: 16px; text-align: center; transition: transform 0.2s; }
-        .algorithm-card:hover { transform: translateY(-2px); }
-        .algorithm-card a { color: var(--accent); text-decoration: none; font-weight: 500; }
-        .algorithm-card a:hover { text-decoration: underline; }
+        .demo-section { background: var(--section-bg); }
+        .demo-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+            gap: 20px; margin: 24px 0; }
+        .demo-item { background: white; border: 1px solid var(--border); padding: 20px; }
+        .demo-item h4 { margin: 0 0 8px; font-size: 1.1rem; }
+        .demo-item p { margin: 0 0 12px; font-size: 0.9rem; color: var(--muted); }
+        .demo-item a { color: var(--accent); text-decoration: none; }
+        .demo-item a:hover { text-decoration: underline; }
 
-        .features { display: grid; grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
-            gap: 32px; margin: 40px 0; }
-        .feature { text-align: center; }
-        .feature-icon { width: 64px; height: 64px; margin: 0 auto 16px;
-            background: var(--accent); border-radius: 50%; display: flex;
-            align-items: center; justify-content: center; color: white; font-size: 24px; }
+        .algorithm-table { width: 100%; border-collapse: collapse; margin: 24px 0; }
+        .algorithm-table th, .algorithm-table td { padding: 8px 12px; border: 1px solid var(--border);
+            text-align: left; font-size: 0.9rem; }
+        .algorithm-table th { background: var(--section-bg); font-weight: 600; }
+        .algorithm-table td code { background: #f8f9fa; padding: 2px 4px; }
 
-        .install-section { background: var(--panel); text-align: center; }
-        .install-cmd { background: #1a1a1a; color: #00ff00; padding: 20px; border-radius: 8px;
-            font-family: monospace; font-size: 1.1rem; margin: 20px 0; }
+        .references { margin: 32px 0; }
+        .references h3 { border-bottom: 1px solid var(--border); padding-bottom: 8px; }
+        .references ul { list-style: none; padding: 0; }
+        .references li { margin: 8px 0; padding-left: 20px; position: relative; }
+        .references li:before { content: "[" counter(item) "]"; counter-increment: item;
+            position: absolute; left: 0; font-weight: 600; }
+        .references ol { counter-reset: item; }
 
-        footer { background: #1a1a1a; color: white; padding: 40px 0; text-align: center; }
-        footer a { color: var(--accent); }
-
-        @media (max-width: 768px) {
-            .hero h1 { font-size: 2rem; }
-            .hero .badges { flex-direction: column; align-items: center; }
-            .demos-grid, .algorithm-grid { grid-template-columns: 1fr; }
-        }
+        footer { background: var(--header-bg); color: white; padding: 24px 0; text-align: center;
+            font-size: 0.9rem; }
+        footer a { color: #74b9ff; }
     </style>
 </head>
 <body>
-    <div class="hero">
-        <h1>Humpday</h1>
-        <p class="subtitle">All the SOTA algorithms in Python and JavaScript with no dependencies.<br>
-        Benchmark them in your browser.</p>
-        <div class="badges">
-            <span class="badge">Pure Python</span>
-            <span class="badge">22 Algorithms</span>
-            <span class="badge">Interactive Demos</span>
-            <span class="badge">3D Visualization</span>
-            <span class="badge">Elo Rated</span>
+    <div class="header">
+        <div class="container">
+            <h1>Humpday</h1>
+            <p class="subtitle">A collection of derivative-free optimization algorithms in Python and JavaScript</p>
         </div>
     </div>
 
-    <section class="quick-start section">
-        <div class="container">
-            <h2>Quick Start</h2>
-            <p>Get started with optimization in seconds. No compilation, no complex dependencies.</p>
+    <div class="container">
+        <div class="abstract">
+            <strong>Abstract:</strong> Humpday provides a unified interface to 22 derivative-free optimization algorithms
+            implemented in pure Python and JavaScript. All algorithms operate on the unit hypercube [0,1]ⁿ with
+            automatic domain transformations for bounded and unbounded problems. Cross-validation against reference
+            implementations ensures mathematical correctness.
+        </div>
 
+        <section class="section">
+            <h2>Installation and Usage</h2>
+            <p>Install via pip with minimal dependencies:</p>
             <pre class="code-block"><code>pip install humpday</code></pre>
 
+            <p>Basic usage for optimization problems:</p>
             <pre class="code-block"><code>from humpday import minimize
 
 def objective(x):
@@ -111,179 +102,142 @@ def objective(x):
 result = minimize(objective, bounds=[(-5, 5), (-5, 5)], method='DifferentialEvolution')
 print(f"Solution: {result.x}")  # [2.0, 3.0]</code></pre>
 
-            <details style="margin-top: 20px; border: 1px solid var(--border); border-radius: 8px; padding: 16px;">
-                <summary style="cursor: pointer; font-weight: 600; color: var(--accent);">▶ Available Algorithm Methods</summary>
-                <div style="margin-top: 12px; font-family: monospace; font-size: 0.9rem; line-height: 1.4;">
-                    <code>'PRIMA_UOBYQA'</code>, <code>'PRIMA_NEWUOA'</code>, <code>'PRIMA_BOBYQA'</code>, <code>'NelderMead'</code>, <code>'Powell'</code>, <code>'LBFGSB'</code>, <code>'DifferentialEvolution'</code>, <code>'ParticleSwarm'</code>, <code>'CMAEvolutionStrategy'</code>, <code>'EvolutionStrategy'</code>, <code>'GeneticAlgorithm'</code>, <code>'BayesianOpt'</code>, <code>'RandomSearch'</code>, <code>'AdaptiveRandomSearch'</code>, <code>'HillClimbing'</code>, <code>'CoordinateDescent'</code>, <code>'PatternSearch'</code>, <code>'SimulatedAnnealing'</code>, <code>'TabuSearch'</code>, <code>'HarmonySearch'</code>, <code>'FireflyAlgorithm'</code>, <code>'AntColonyOpt'</code>
+            <details class="algorithm-list">
+                <summary>Available Algorithm Methods</summary>
+                <div class="methods">
+                    <code>'PRIMA_UOBYQA'</code>, <code>'PRIMA_NEWUOA'</code>, <code>'PRIMA_BOBYQA'</code>,
+                    <code>'NelderMead'</code>, <code>'Powell'</code>, <code>'LBFGSB'</code>,
+                    <code>'DifferentialEvolution'</code>, <code>'ParticleSwarm'</code>, <code>'CMAEvolutionStrategy'</code>,
+                    <code>'EvolutionStrategy'</code>, <code>'GeneticAlgorithm'</code>, <code>'BayesianOpt'</code>,
+                    <code>'RandomSearch'</code>, <code>'AdaptiveRandomSearch'</code>, <code>'HillClimbing'</code>,
+                    <code>'CoordinateDescent'</code>, <code>'PatternSearch'</code>, <code>'SimulatedAnnealing'</code>,
+                    <code>'TabuSearch'</code>, <code>'HarmonySearch'</code>, <code>'FireflyAlgorithm'</code>,
+                    <code>'AntColonyOpt'</code>
                 </div>
             </details>
-        </div>
-    </section>
+        </section>
 
-    <section class="section">
-        <div class="container">
-            <h2>Interactive Demos</h2>
-            <p>Experience optimization algorithms in action with our interactive demonstrations and visualizations.</p>
+        <section class="section demo-section">
+            <h2>Interactive Demonstrations</h2>
+            <p>The following tools provide empirical evaluation and visualization of algorithm performance:</p>
 
-            <div class="demos-grid">
-                <div class="demo-card">
-                    <h3>🏆 Algorithm Contest</h3>
-                    <p>Compare optimizers head-to-head on various problems. See which algorithms excel at different types of optimization challenges.</p>
-                    <a href="contest.html" class="demo-btn">Try Contest</a>
+            <div class="demo-grid">
+                <div class="demo-item">
+                    <h4>Algorithm Contest</h4>
+                    <p>Comparative evaluation of optimizers on user-defined problems with statistical analysis.</p>
+                    <a href="contest.html">Run Contest →</a>
                 </div>
 
-                <div class="demo-card">
-                    <h3>🎮 3D Visualization</h3>
-                    <p>Watch algorithms optimize in real-time with interactive 3D visualizations. See how different strategies explore the solution space.</p>
-                    <a href="algorithm-visualization-demo.html" class="demo-btn">View 3D Demo</a>
+                <div class="demo-item">
+                    <h4>3D Visualization</h4>
+                    <p>Real-time visualization of optimization trajectories on three-dimensional objective surfaces.</p>
+                    <a href="algorithm-visualization-demo.html">View Visualization →</a>
                 </div>
 
-                <div class="demo-card">
-                    <h3>🔬 Algorithm Testing</h3>
-                    <p>Test and validate optimizer implementations. Compare Python and JavaScript versions for consistency.</p>
-                    <a href="test-optimizers.html" class="demo-btn">Run Tests</a>
+                <div class="demo-item">
+                    <h4>Implementation Testing</h4>
+                    <p>Validation suite for verifying algorithm correctness against reference implementations.</p>
+                    <a href="test-optimizers.html">Run Tests →</a>
                 </div>
 
-                <div class="demo-card">
-                    <h3>📊 Cross-Validation</h3>
-                    <p>Validate algorithms against reference implementations. Ensure mathematical correctness and consistency.</p>
-                    <a href="js-python-validation-tests.html" class="demo-btn">Validate</a>
+                <div class="demo-item">
+                    <h4>Cross-Platform Validation</h4>
+                    <p>Consistency verification between Python and JavaScript implementations.</p>
+                    <a href="js-python-validation-tests.html">Validate →</a>
                 </div>
 
-                <div class="demo-card">
-                    <h3>🧮 Stick Breaking Demo</h3>
-                    <p>Interactive visualization of mathematical transformations from unit cube to simplex for portfolio optimization.</p>
-                    <a href="stick_breaking_demo.html" class="demo-btn">Explore Math</a>
+                <div class="demo-item">
+                    <h4>Mathematical Transformations</h4>
+                    <p>Interactive exploration of cube-to-simplex mappings for constrained optimization.</p>
+                    <a href="stick_breaking_demo.html">Explore →</a>
                 </div>
 
-                <div class="demo-card">
-                    <h3>🔍 Algorithm Mapping</h3>
-                    <p>Validation and mapping between different algorithm implementations and their reference counterparts.</p>
-                    <a href="algorithm-mapping-validation.html" class="demo-btn">View Mapping</a>
+                <div class="demo-item">
+                    <h4>Algorithm Mapping</h4>
+                    <p>Correspondence analysis between implemented algorithms and reference sources.</p>
+                    <a href="algorithm-mapping-validation.html">View Mapping →</a>
                 </div>
             </div>
-        </div>
-    </section>
+        </section>
 
-    <section class="algorithms-section section">
-        <div class="container">
-            <h2>22 Validated Algorithms</h2>
-            <p>Each algorithm is implemented in pure Python and validated against reference implementations.
-            Click any algorithm to see its interactive demo and documentation.</p>
+        <section class="section">
+            <h2>Algorithm Categories</h2>
 
-            <div class="algorithm-grid">
-                <div class="algorithm-card">
-                    <a href="algorithms/uobyqa.html">PRIMA UOBYQA</a>
-                </div>
-                <div class="algorithm-card">
-                    <a href="algorithms/newuoa.html">PRIMA NEWUOA</a>
-                </div>
-                <div class="algorithm-card">
-                    <a href="algorithms/bobyqa.html">PRIMA BOBYQA</a>
-                </div>
-                <div class="algorithm-card">
-                    <a href="algorithms/nelder-mead.html">Nelder-Mead</a>
-                </div>
-                <div class="algorithm-card">
-                    <a href="algorithms/powell.html">Powell</a>
-                </div>
-                <div class="algorithm-card">
-                    <a href="algorithms/lbfgsb.html">L-BFGS-B</a>
-                </div>
-                <div class="algorithm-card">
-                    <a href="algorithms/differential-evolution.html">Differential Evolution</a>
-                </div>
-                <div class="algorithm-card">
-                    <a href="algorithms/particle-swarm.html">Particle Swarm</a>
-                </div>
-                <div class="algorithm-card">
-                    <a href="algorithms/cma-evolution-strategy.html">CMA-ES</a>
-                </div>
-                <div class="algorithm-card">
-                    <a href="algorithms/genetic-algorithm.html">Genetic Algorithm</a>
-                </div>
-                <div class="algorithm-card">
-                    <a href="algorithms/bayesian-optimization.html">Bayesian Opt</a>
-                </div>
-                <div class="algorithm-card">
-                    <a href="algorithms/random-search.html">Random Search</a>
-                </div>
-                <div class="algorithm-card">
-                    <a href="algorithms/adaptive-random-search.html">Adaptive Random</a>
-                </div>
-                <div class="algorithm-card">
-                    <a href="algorithms/hill-climbing.html">Hill Climbing</a>
-                </div>
-                <div class="algorithm-card">
-                    <a href="algorithms/coordinate-descent.html">Coordinate Descent</a>
-                </div>
-                <div class="algorithm-card">
-                    <a href="algorithms/pattern-search.html">Pattern Search</a>
-                </div>
-                <div class="algorithm-card">
-                    <a href="algorithms/simulated-annealing.html">Simulated Annealing</a>
-                </div>
-                <div class="algorithm-card">
-                    <a href="algorithms/tabu-search.html">Tabu Search</a>
-                </div>
-                <div class="algorithm-card">
-                    <a href="algorithms/harmony-search.html">Harmony Search</a>
-                </div>
-                <div class="algorithm-card">
-                    <a href="algorithms/firefly-algorithm.html">Firefly Algorithm</a>
-                </div>
-                <div class="algorithm-card">
-                    <a href="algorithms/ant-colony-optimization.html">Ant Colony</a>
-                </div>
-            </div>
-        </div>
-    </section>
+            <h3>Trust Region Methods</h3>
+            <p>Model-based algorithms using quadratic approximations:</p>
+            <ul>
+                <li><strong>PRIMA UOBYQA:</strong> Unconstrained optimization by quadratic approximation</li>
+                <li><strong>PRIMA NEWUOA:</strong> Powell's method without derivatives</li>
+                <li><strong>PRIMA BOBYQA:</strong> Bound constrained optimization</li>
+                <li><strong>Nelder-Mead:</strong> Simplex-based direct search</li>
+                <li><strong>Powell:</strong> Conjugate direction method</li>
+            </ul>
 
-    <section class="section">
-        <div class="container">
-            <h2>Why Humpday?</h2>
-            <div class="features">
-                <div class="feature">
-                    <div class="feature-icon">🚀</div>
-                    <h3>Zero Dependencies</h3>
-                    <p>Pure Python with only numpy required. No compilation, no external libraries, no headaches.</p>
-                </div>
-                <div class="feature">
-                    <div class="feature-icon">🎯</div>
-                    <h3>Validated Algorithms</h3>
-                    <p>22 algorithms cross-validated against reference implementations and JavaScript versions.</p>
-                </div>
-                <div class="feature">
-                    <div class="feature-icon">🌐</div>
-                    <h3>Python or JavaScript</h3>
-                    <p>Same algorithms available in both Python and JavaScript for maximum flexibility.</p>
-                </div>
-                <div class="feature">
-                    <div class="feature-icon">📈</div>
-                    <h3>Elo Rated</h3>
-                    <p>Algorithms ranked by performance through head-to-head tournaments on diverse problems.</p>
-                </div>
-            </div>
-        </div>
-    </section>
+            <h3>Evolutionary Algorithms</h3>
+            <p>Population-based stochastic optimization methods:</p>
+            <ul>
+                <li><strong>Differential Evolution:</strong> Vector-based evolutionary strategy</li>
+                <li><strong>Particle Swarm:</strong> Swarm intelligence optimization</li>
+                <li><strong>CMA Evolution Strategy:</strong> Covariance matrix adaptation</li>
+                <li><strong>Genetic Algorithm:</strong> Selection, crossover, and mutation operators</li>
+            </ul>
 
-    <section class="install-section section">
-        <div class="container">
-            <h2>Ready to Optimize?</h2>
-            <p>Get started in seconds with pip install</p>
-            <div class="install-cmd">$ pip install humpday</div>
-            <p><a href="https://github.com/microprediction/humpday">View on GitHub</a> |
-               <a href="https://pypi.org/project/humpday/">PyPI Package</a> |
-               <a href="contest.html">Algorithm Contest</a></p>
-        </div>
-    </section>
+            <h3>Metaheuristic Methods</h3>
+            <p>Nature-inspired and local search algorithms:</p>
+            <ul>
+                <li><strong>Simulated Annealing:</strong> Probabilistic acceptance with cooling schedule</li>
+                <li><strong>Tabu Search:</strong> Memory-based local search with prohibition</li>
+                <li><strong>Harmony Search:</strong> Music-inspired optimization</li>
+                <li><strong>Firefly Algorithm:</strong> Bioluminescence-based swarm method</li>
+                <li><strong>Ant Colony:</strong> Pheromone-based pathfinding optimization</li>
+            </ul>
+        </section>
+
+        <section class="section">
+            <h2>Individual Algorithm Documentation</h2>
+            <p>Detailed documentation and interactive demos for each algorithm:</p>
+
+            <table class="algorithm-table">
+                <thead>
+                    <tr>
+                        <th>Algorithm</th>
+                        <th>Type</th>
+                        <th>Documentation</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    <tr><td><code>PRIMA_UOBYQA</code></td><td>Trust Region</td><td><a href="algorithms/uobyqa.html">View →</a></td></tr>
+                    <tr><td><code>PRIMA_NEWUOA</code></td><td>Trust Region</td><td><a href="algorithms/newuoa.html">View →</a></td></tr>
+                    <tr><td><code>PRIMA_BOBYQA</code></td><td>Trust Region</td><td><a href="algorithms/bobyqa.html">View →</a></td></tr>
+                    <tr><td><code>NelderMead</code></td><td>Direct Search</td><td><a href="algorithms/nelder-mead.html">View →</a></td></tr>
+                    <tr><td><code>Powell</code></td><td>Direct Search</td><td><a href="algorithms/powell.html">View →</a></td></tr>
+                    <tr><td><code>LBFGSB</code></td><td>Quasi-Newton</td><td><a href="algorithms/lbfgsb.html">View →</a></td></tr>
+                    <tr><td><code>DifferentialEvolution</code></td><td>Evolutionary</td><td><a href="algorithms/differential-evolution.html">View →</a></td></tr>
+                    <tr><td><code>ParticleSwarm</code></td><td>Swarm Intelligence</td><td><a href="algorithms/particle-swarm.html">View →</a></td></tr>
+                    <tr><td><code>CMAEvolutionStrategy</code></td><td>Evolutionary</td><td><a href="algorithms/cma-evolution-strategy.html">View →</a></td></tr>
+                    <tr><td><code>GeneticAlgorithm</code></td><td>Evolutionary</td><td><a href="algorithms/genetic-algorithm.html">View →</a></td></tr>
+                    <tr><td><code>BayesianOpt</code></td><td>Surrogate-based</td><td><a href="algorithms/bayesian-optimization.html">View →</a></td></tr>
+                    <tr><td><code>SimulatedAnnealing</code></td><td>Metaheuristic</td><td><a href="algorithms/simulated-annealing.html">View →</a></td></tr>
+                    <tr><td><code>TabuSearch</code></td><td>Local Search</td><td><a href="algorithms/tabu-search.html">View →</a></td></tr>
+                    <tr><td><code>HarmonySearch</code></td><td>Metaheuristic</td><td><a href="algorithms/harmony-search.html">View →</a></td></tr>
+                    <tr><td><code>FireflyAlgorithm</code></td><td>Swarm Intelligence</td><td><a href="algorithms/firefly-algorithm.html">View →</a></td></tr>
+                    <tr><td><code>AntColonyOpt</code></td><td>Swarm Intelligence</td><td><a href="algorithms/ant-colony-optimization.html">View →</a></td></tr>
+                    <tr><td><code>RandomSearch</code></td><td>Sampling</td><td><a href="algorithms/random-search.html">View →</a></td></tr>
+                    <tr><td><code>AdaptiveRandomSearch</code></td><td>Adaptive Sampling</td><td><a href="algorithms/adaptive-random-search.html">View →</a></td></tr>
+                    <tr><td><code>HillClimbing</code></td><td>Local Search</td><td><a href="algorithms/hill-climbing.html">View →</a></td></tr>
+                    <tr><td><code>CoordinateDescent</code></td><td>Coordinate-wise</td><td><a href="algorithms/coordinate-descent.html">View →</a></td></tr>
+                    <tr><td><code>PatternSearch</code></td><td>Direct Search</td><td><a href="algorithms/pattern-search.html">View →</a></td></tr>
+                </tbody>
+            </table>
+        </section>
+    </div>
 
     <footer>
         <div class="container">
-            <p>&copy; 2024 Humpday | MIT License |
-            <a href="https://github.com/microprediction/humpday">GitHub</a> |
-            <a href="https://github.com/microprediction/humpday/issues">Issues</a></p>
-            <p>Part of the <a href="https://github.com/microprediction">microprediction</a> family</p>
+            <p><a href="https://github.com/microprediction/humpday">Source Code</a> |
+               <a href="https://pypi.org/project/humpday/">PyPI Package</a> |
+               <a href="contest.html">Algorithm Contest</a></p>
+            <p>&copy; 2024 | MIT License</p>
         </div>
     </footer>
 </body>
