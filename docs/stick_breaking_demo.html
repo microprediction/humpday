@@ -1,0 +1,617 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Stick Breaking Transform Visualization</title>
+    <style>
+        body {
+            font-family: 'Arial', sans-serif;
+            margin: 20px;
+            background: linear-gradient(135deg, #f5f7fa 0%, #c3cfe2 100%);
+        }
+
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+            background: white;
+            padding: 30px;
+            border-radius: 15px;
+            box-shadow: 0 10px 30px rgba(0,0,0,0.1);
+        }
+
+        h1 {
+            text-align: center;
+            color: #2c3e50;
+            margin-bottom: 10px;
+        }
+
+        .subtitle {
+            text-align: center;
+            color: #7f8c8d;
+            margin-bottom: 30px;
+            font-style: italic;
+        }
+
+        .controls {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 30px;
+            margin-bottom: 30px;
+        }
+
+        .control-panel {
+            background: #f8f9fa;
+            padding: 20px;
+            border-radius: 10px;
+            border-left: 4px solid #3498db;
+        }
+
+        .slider-container {
+            margin-bottom: 20px;
+        }
+
+        .slider-label {
+            display: flex;
+            justify-content: space-between;
+            margin-bottom: 5px;
+            font-weight: bold;
+            color: #2c3e50;
+        }
+
+        .slider {
+            width: 100%;
+            height: 8px;
+            border-radius: 4px;
+            background: #ddd;
+            outline: none;
+            -webkit-appearance: none;
+        }
+
+        .slider::-webkit-slider-thumb {
+            -webkit-appearance: none;
+            appearance: none;
+            width: 20px;
+            height: 20px;
+            border-radius: 50%;
+            background: #3498db;
+            cursor: pointer;
+            box-shadow: 0 2px 6px rgba(0,0,0,0.2);
+        }
+
+        .visualization {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 30px;
+            margin-bottom: 30px;
+        }
+
+        .viz-panel {
+            background: #f8f9fa;
+            padding: 20px;
+            border-radius: 10px;
+            text-align: center;
+        }
+
+        .viz-title {
+            font-weight: bold;
+            color: #2c3e50;
+            margin-bottom: 15px;
+            font-size: 18px;
+        }
+
+        .cube-viz, .simplex-viz {
+            width: 300px;
+            height: 250px;
+            margin: 0 auto;
+            border: 2px solid #bdc3c7;
+            border-radius: 8px;
+            position: relative;
+            background: white;
+        }
+
+        .weight-display {
+            display: flex;
+            justify-content: space-around;
+            margin-top: 15px;
+        }
+
+        .weight-bar {
+            width: 60px;
+            background: #ecf0f1;
+            border-radius: 5px;
+            position: relative;
+            height: 100px;
+            border: 1px solid #bdc3c7;
+        }
+
+        .weight-fill {
+            position: absolute;
+            bottom: 0;
+            width: 100%;
+            border-radius: 0 0 4px 4px;
+            transition: all 0.3s ease;
+        }
+
+        .weight-label {
+            text-align: center;
+            margin-top: 5px;
+            font-size: 12px;
+            font-weight: bold;
+        }
+
+        .math-explanation {
+            background: #e8f4fd;
+            padding: 20px;
+            border-radius: 10px;
+            margin-bottom: 20px;
+            border-left: 4px solid #3498db;
+        }
+
+        .math-title {
+            font-weight: bold;
+            color: #2c3e50;
+            margin-bottom: 10px;
+        }
+
+        .formula {
+            font-family: 'Courier New', monospace;
+            background: white;
+            padding: 10px;
+            border-radius: 5px;
+            margin: 5px 0;
+            border-left: 3px solid #3498db;
+        }
+
+        .grid-demo {
+            margin-top: 30px;
+            background: #f8f9fa;
+            padding: 20px;
+            border-radius: 10px;
+        }
+
+        .grid-viz {
+            display: grid;
+            grid-template-columns: repeat(10, 1fr);
+            gap: 2px;
+            margin-top: 15px;
+        }
+
+        .grid-point {
+            width: 30px;
+            height: 30px;
+            border-radius: 3px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 10px;
+            color: white;
+            cursor: pointer;
+            transition: all 0.2s ease;
+        }
+
+        .grid-point:hover {
+            transform: scale(1.1);
+            box-shadow: 0 2px 8px rgba(0,0,0,0.3);
+        }
+
+        .button {
+            background: #3498db;
+            color: white;
+            border: none;
+            padding: 10px 20px;
+            border-radius: 5px;
+            cursor: pointer;
+            font-weight: bold;
+            transition: background 0.3s ease;
+        }
+
+        .button:hover {
+            background: #2980b9;
+        }
+
+        #temperatureValue {
+            color: #e74c3c;
+            font-weight: bold;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>🥖 Stick Breaking Transform</h1>
+        <p class="subtitle">Interactive Visualization: Cube [0,1]² → Simplex (3 weights)</p>
+
+        <div class="controls">
+            <div class="control-panel">
+                <h3>📐 Cube Coordinates</h3>
+                <div class="slider-container">
+                    <div class="slider-label">
+                        <span>z₁ (First Parameter)</span>
+                        <span id="z1Value">0.50</span>
+                    </div>
+                    <input type="range" id="z1Slider" class="slider" min="0" max="1" step="0.01" value="0.5">
+                </div>
+
+                <div class="slider-container">
+                    <div class="slider-label">
+                        <span>z₂ (Second Parameter)</span>
+                        <span id="z2Value">0.50</span>
+                    </div>
+                    <input type="range" id="z2Slider" class="slider" min="0" max="1" step="0.01" value="0.5">
+                </div>
+
+                <div class="slider-container">
+                    <div class="slider-label">
+                        <span>🌡️ Temperature</span>
+                        <span id="temperatureValue">1.00</span>
+                    </div>
+                    <input type="range" id="temperatureSlider" class="slider" min="0.1" max="3" step="0.1" value="1.0">
+                </div>
+            </div>
+
+            <div class="control-panel">
+                <h3>🎯 Simplex Weights</h3>
+                <div class="weight-display">
+                    <div class="weight-bar">
+                        <div class="weight-fill" id="weight1" style="background: #e74c3c;"></div>
+                        <div class="weight-label">w₁</div>
+                        <div id="weight1Value">0.333</div>
+                    </div>
+                    <div class="weight-bar">
+                        <div class="weight-fill" id="weight2" style="background: #2ecc71;"></div>
+                        <div class="weight-label">w₂</div>
+                        <div id="weight2Value">0.333</div>
+                    </div>
+                    <div class="weight-bar">
+                        <div class="weight-fill" id="weight3" style="background: #3498db;"></div>
+                        <div class="weight-label">w₃</div>
+                        <div id="weight3Value">0.333</div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div class="visualization">
+            <div class="viz-panel">
+                <div class="viz-title">📦 Unit Cube [0,1]²</div>
+                <canvas id="cubeCanvas" class="cube-viz" width="300" height="250"></canvas>
+                <p style="font-size: 12px; color: #7f8c8d; margin-top: 10px;">
+                    Red dot shows current (z₁, z₂) position
+                </p>
+            </div>
+
+            <div class="viz-panel">
+                <div class="viz-title">🔺 Probability Simplex</div>
+                <canvas id="simplexCanvas" class="simplex-viz" width="300" height="250"></canvas>
+                <p style="font-size: 12px; color: #7f8c8d; margin-top: 10px;">
+                    Triangle shows valid probability space
+                </p>
+            </div>
+        </div>
+
+        <div class="math-explanation">
+            <div class="math-title">📊 How Stick Breaking Works:</div>
+            <div class="formula" id="mathFormula">
+                θ₁ = sigmoid(z₁/T) = 1/(1 + e^(-z₁/T))<br>
+                θ₂ = sigmoid(z₂/T) = 1/(1 + e^(-z₂/T))<br><br>
+                w₁ = θ₁<br>
+                w₂ = (1 - θ₁) × θ₂<br>
+                w₃ = (1 - θ₁) × (1 - θ₂)
+            </div>
+            <p>Each parameter controls how much of the "remaining stick" gets allocated to the next weight.</p>
+        </div>
+
+        <div class="grid-demo">
+            <h3>🌐 Grid Sampling: How Cube Points Map to Simplex</h3>
+            <button class="button" onclick="generateGrid()">Generate 10×10 Grid Sample</button>
+            <div id="gridViz" class="grid-viz"></div>
+            <p style="font-size: 12px; color: #7f8c8d; margin-top: 10px;">
+                Each colored square represents a point in the cube. Color shows the dominant simplex weight.
+                Click any square to jump to that point!
+            </p>
+        </div>
+    </div>
+
+    <script>
+        // JavaScript Implementation of Stick Breaking Transform
+        class StickBreaking {
+            constructor(temperature = 1.0) {
+                this.temperature = temperature;
+            }
+
+            // Sigmoid function
+            sigmoid(x) {
+                return 1.0 / (1.0 + Math.exp(-x));
+            }
+
+            // Forward transform: cube coordinates [0,1]^{n-1} → simplex weights
+            toSimplex(cubeCoords) {
+                const temp = this.temperature;
+
+                // Convert cube coordinates to break probabilities
+                const theta = cubeCoords.map(z => {
+                    // Map [0,1] to R for sigmoid input
+                    const x = (z - 0.5) * 6; // Scale to reasonable range
+                    return this.sigmoid(x / temp);
+                });
+
+                // Stick breaking process
+                const weights = [];
+                let remaining = 1.0;
+
+                for (let i = 0; i < theta.length; i++) {
+                    const weight = remaining * theta[i];
+                    weights.push(weight);
+                    remaining *= (1 - theta[i]);
+                }
+
+                // Last weight gets remainder
+                weights.push(remaining);
+
+                return weights;
+            }
+
+            // Approximate inverse transform: simplex weights → cube coordinates
+            fromSimplex(weights) {
+                const temp = this.temperature;
+                const n = weights.length;
+                const cubeCoords = [];
+
+                let remaining = 1.0;
+                for (let i = 0; i < n - 1; i++) {
+                    if (remaining > 1e-10) {
+                        const theta = weights[i] / remaining;
+                        const x = Math.log(theta / (1 - theta + 1e-10)) * temp;
+                        // Map R back to [0,1]
+                        const z = Math.max(0, Math.min(1, (x / 6) + 0.5));
+                        cubeCoords.push(z);
+                        remaining -= weights[i];
+                    } else {
+                        cubeCoords.push(0.5);
+                    }
+                }
+
+                return cubeCoords;
+            }
+        }
+
+        // Global state
+        let stickBreaking = new StickBreaking(1.0);
+        let currentZ1 = 0.5;
+        let currentZ2 = 0.5;
+
+        // Canvas contexts
+        const cubeCanvas = document.getElementById('cubeCanvas');
+        const cubeCtx = cubeCanvas.getContext('2d');
+        const simplexCanvas = document.getElementById('simplexCanvas');
+        const simplexCtx = simplexCanvas.getContext('2d');
+
+        // Event listeners
+        document.getElementById('z1Slider').addEventListener('input', updateVisualization);
+        document.getElementById('z2Slider').addEventListener('input', updateVisualization);
+        document.getElementById('temperatureSlider').addEventListener('input', updateVisualization);
+
+        // Update visualization
+        function updateVisualization() {
+            currentZ1 = parseFloat(document.getElementById('z1Slider').value);
+            currentZ2 = parseFloat(document.getElementById('z2Slider').value);
+            const temperature = parseFloat(document.getElementById('temperatureSlider').value);
+
+            // Update temperature
+            stickBreaking.temperature = temperature;
+
+            // Update displays
+            document.getElementById('z1Value').textContent = currentZ1.toFixed(2);
+            document.getElementById('z2Value').textContent = currentZ2.toFixed(2);
+            document.getElementById('temperatureValue').textContent = temperature.toFixed(2);
+
+            // Transform to simplex
+            const weights = stickBreaking.toSimplex([currentZ1, currentZ2]);
+
+            // Update weight displays
+            for (let i = 0; i < 3; i++) {
+                const weightElement = document.getElementById(`weight${i+1}`);
+                const valueElement = document.getElementById(`weight${i+1}Value`);
+                const height = (weights[i] * 90); // 90px max height
+
+                weightElement.style.height = height + 'px';
+                valueElement.textContent = weights[i].toFixed(3);
+            }
+
+            // Update math formula
+            const theta1 = stickBreaking.sigmoid((currentZ1 - 0.5) * 6 / temperature);
+            const theta2 = stickBreaking.sigmoid((currentZ2 - 0.5) * 6 / temperature);
+
+            document.getElementById('mathFormula').innerHTML = `
+                θ₁ = sigmoid((z₁-0.5)×6/T) = ${theta1.toFixed(3)}<br>
+                θ₂ = sigmoid((z₂-0.5)×6/T) = ${theta2.toFixed(3)}<br><br>
+                w₁ = θ₁ = ${weights[0].toFixed(3)}<br>
+                w₂ = (1-θ₁)×θ₂ = ${((1-theta1)*theta2).toFixed(3)}<br>
+                w₃ = (1-θ₁)×(1-θ₂) = ${((1-theta1)*(1-theta2)).toFixed(3)}
+            `;
+
+            // Redraw canvases
+            drawCube();
+            drawSimplex(weights);
+        }
+
+        // Draw cube visualization
+        function drawCube() {
+            const ctx = cubeCtx;
+            const width = cubeCanvas.width;
+            const height = cubeCanvas.height;
+
+            // Clear canvas
+            ctx.clearRect(0, 0, width, height);
+
+            // Draw grid
+            ctx.strokeStyle = '#ecf0f1';
+            ctx.lineWidth = 1;
+            for (let i = 0; i <= 10; i++) {
+                const x = (i / 10) * (width - 40) + 20;
+                const y = (i / 10) * (height - 40) + 20;
+
+                ctx.beginPath();
+                ctx.moveTo(20, y);
+                ctx.lineTo(width - 20, y);
+                ctx.stroke();
+
+                ctx.beginPath();
+                ctx.moveTo(x, 20);
+                ctx.lineTo(x, height - 20);
+                ctx.stroke();
+            }
+
+            // Draw axes
+            ctx.strokeStyle = '#34495e';
+            ctx.lineWidth = 2;
+            ctx.beginPath();
+            ctx.moveTo(20, height - 20);
+            ctx.lineTo(width - 20, height - 20);
+            ctx.moveTo(20, height - 20);
+            ctx.lineTo(20, 20);
+            ctx.stroke();
+
+            // Labels
+            ctx.fillStyle = '#2c3e50';
+            ctx.font = '12px Arial';
+            ctx.fillText('z₁', width - 15, height - 5);
+            ctx.fillText('z₂', 5, 15);
+            ctx.fillText('0', 15, height - 5);
+            ctx.fillText('1', width - 25, height - 5);
+            ctx.fillText('1', 5, 25);
+
+            // Draw current point
+            const x = currentZ1 * (width - 40) + 20;
+            const y = (1 - currentZ2) * (height - 40) + 20; // Flip y-axis
+
+            ctx.fillStyle = '#e74c3c';
+            ctx.beginPath();
+            ctx.arc(x, y, 8, 0, 2 * Math.PI);
+            ctx.fill();
+
+            // Add white border to point
+            ctx.strokeStyle = '#fff';
+            ctx.lineWidth = 2;
+            ctx.stroke();
+        }
+
+        // Draw simplex visualization (equilateral triangle)
+        function drawSimplex(weights) {
+            const ctx = simplexCtx;
+            const width = simplexCanvas.width;
+            const height = simplexCanvas.height;
+
+            // Clear canvas
+            ctx.clearRect(0, 0, width, height);
+
+            // Triangle vertices (equilateral triangle)
+            const centerX = width / 2;
+            const centerY = height / 2;
+            const radius = 80;
+
+            const vertices = [
+                [centerX, centerY - radius],                    // Top vertex (w₁)
+                [centerX - radius * Math.cos(Math.PI/6), centerY + radius/2],  // Bottom left (w₂)
+                [centerX + radius * Math.cos(Math.PI/6), centerY + radius/2]   // Bottom right (w₃)
+            ];
+
+            // Draw triangle
+            ctx.strokeStyle = '#34495e';
+            ctx.lineWidth = 2;
+            ctx.beginPath();
+            ctx.moveTo(vertices[0][0], vertices[0][1]);
+            ctx.lineTo(vertices[1][0], vertices[1][1]);
+            ctx.lineTo(vertices[2][0], vertices[2][1]);
+            ctx.closePath();
+            ctx.stroke();
+
+            // Fill triangle lightly
+            ctx.fillStyle = 'rgba(52, 152, 219, 0.1)';
+            ctx.fill();
+
+            // Labels for vertices
+            ctx.fillStyle = '#2c3e50';
+            ctx.font = '14px Arial';
+            ctx.fillText('w₁', vertices[0][0] - 10, vertices[0][1] - 10);
+            ctx.fillText('w₂', vertices[1][0] - 20, vertices[1][1] + 15);
+            ctx.fillText('w₃', vertices[2][0] + 10, vertices[2][1] + 15);
+
+            // Convert barycentric coordinates to Cartesian
+            const pointX = weights[0] * vertices[0][0] + weights[1] * vertices[1][0] + weights[2] * vertices[2][0];
+            const pointY = weights[0] * vertices[0][1] + weights[1] * vertices[1][1] + weights[2] * vertices[2][1];
+
+            // Draw current point
+            ctx.fillStyle = '#e74c3c';
+            ctx.beginPath();
+            ctx.arc(pointX, pointY, 8, 0, 2 * Math.PI);
+            ctx.fill();
+
+            // Add white border
+            ctx.strokeStyle = '#fff';
+            ctx.lineWidth = 2;
+            ctx.stroke();
+
+            // Draw weight lines
+            ctx.strokeStyle = 'rgba(231, 76, 60, 0.5)';
+            ctx.lineWidth = 1;
+            ctx.setLineDash([2, 2]);
+
+            // Lines to show weight proportions
+            for (let i = 0; i < 3; i++) {
+                ctx.beginPath();
+                ctx.moveTo(pointX, pointY);
+                ctx.lineTo(vertices[i][0], vertices[i][1]);
+                ctx.stroke();
+            }
+
+            ctx.setLineDash([]);
+        }
+
+        // Generate grid sampling
+        function generateGrid() {
+            const gridElement = document.getElementById('gridViz');
+            gridElement.innerHTML = '';
+
+            const gridSize = 10;
+
+            for (let i = 0; i < gridSize; i++) {
+                for (let j = 0; j < gridSize; j++) {
+                    const z1 = i / (gridSize - 1);
+                    const z2 = j / (gridSize - 1);
+
+                    const weights = stickBreaking.toSimplex([z1, z2]);
+
+                    // Find dominant weight
+                    const maxWeight = Math.max(...weights);
+                    const dominantIndex = weights.indexOf(maxWeight);
+
+                    const colors = ['#e74c3c', '#2ecc71', '#3498db'];
+                    const color = colors[dominantIndex];
+
+                    // Create grid point
+                    const gridPoint = document.createElement('div');
+                    gridPoint.className = 'grid-point';
+                    gridPoint.style.backgroundColor = color;
+                    gridPoint.style.opacity = 0.7 + 0.3 * maxWeight; // Opacity based on dominance
+                    gridPoint.textContent = `${dominantIndex + 1}`;
+                    gridPoint.title = `z₁=${z1.toFixed(2)}, z₂=${z2.toFixed(2)} → w=[${weights.map(w=>w.toFixed(2)).join(',')}]`;
+
+                    // Click to jump to this point
+                    gridPoint.addEventListener('click', () => {
+                        document.getElementById('z1Slider').value = z1;
+                        document.getElementById('z2Slider').value = z2;
+                        updateVisualization();
+                    });
+
+                    gridElement.appendChild(gridPoint);
+                }
+            }
+        }
+
+        // Initialize
+        updateVisualization();
+        generateGrid();
+    </script>
+</body>
+</html>
