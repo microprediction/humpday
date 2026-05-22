@@ -162,6 +162,13 @@
             transform: translate(-50%, -50%);
             border: 2px solid white;
             box-shadow: 0 2px 4px rgba(0,0,0,0.2);
+            animation: subtle-pulse 3s infinite;
+        }
+
+        @keyframes subtle-pulse {
+            0% { box-shadow: 0 2px 4px rgba(0,0,0,0.2), 0 0 0 0 rgba(52, 152, 219, 0.4); }
+            50% { box-shadow: 0 2px 4px rgba(0,0,0,0.2), 0 0 0 6px rgba(52, 152, 219, 0); }
+            100% { box-shadow: 0 2px 4px rgba(0,0,0,0.2), 0 0 0 0 rgba(52, 152, 219, 0); }
         }
 
         .challenge-point:hover {
@@ -525,6 +532,10 @@
     <div class="container">
         <div class="main-content">
             <div class="problem-input">
+                <p style="text-align: center; margin-bottom: 20px; font-size: 1.1em; color: var(--header-bg);">
+                    <strong>👆 Click any dot below to select an optimization challenge</strong><br>
+                    <small style="color: var(--muted); font-size: 0.9em;">Each dot represents a different problem difficulty and dimension</small>
+                </p>
 
                 <!-- Problem Customization Panel (hidden initially) -->
                 <div id="customizationPanel" style="background: var(--section-bg); border: 1px solid var(--border); border-radius: 8px; padding: 20px; margin-bottom: 20px; display: none;">
