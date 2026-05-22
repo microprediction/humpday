@@ -20,7 +20,7 @@ from humpday import minimize
 def objective(x):
     return (x[0] - 2)**2 + (x[1] - 3)**2
 
-result = minimize(objective, bounds=[(-5, 5), (-5, 5)])
+result = minimize(objective, bounds=[(-5, 5), (-5, 5)], method='DifferentialEvolution')
 print(f"Solution: {result.x}")  # [2.0, 3.0]
 ```
 
