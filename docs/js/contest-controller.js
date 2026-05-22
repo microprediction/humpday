@@ -828,7 +828,7 @@
                         <td><span class="elo-rating">${Math.round(opt.elo)}</span></td>
                         <td>
                             <span class="status-indicator status-${opt.status}"></span>
-                            ${opt.testsCompleted}/${currentContest ? currentContest.challengeSurfaces.length : '?'} tests
+                            ${currentContest ? `${opt.testsCompleted}/${currentContest.challengeSurfaces.length} tests` : 'pending'}
                         </td>
                     </tr>
                 `).join('');
