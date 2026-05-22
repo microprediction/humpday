@@ -4,14 +4,45 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' 'unsafe-inline' https://cdnjs.cloudflare.com https://cdn.jsdelivr.net; style-src 'self' 'unsafe-inline';">
-    <title>3D Algorithm Visualization Demo</title>
+    <title>3D Algorithm Visualization - Humpday</title>
     <style>
+        :root {
+            --bg: #ffffff; --text: #2c3e50; --muted: #7f8c8d; --accent: #3498db;
+            --border: #bdc3c7; --code-bg: #f8f9fa; --header-bg: #34495e;
+            --section-bg: #fdfdfd;
+        }
+        * { box-sizing: border-box; }
         body {
-            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+            font-family: 'Times New Roman', Times, serif;
             margin: 0;
-            padding: 20px;
-            background: #f8f9fa;
-            color: #333;
+            padding: 0;
+            background: var(--bg);
+            color: var(--text);
+            line-height: 1.6;
+        }
+
+        .header {
+            background: var(--header-bg);
+            color: white;
+            padding: 30px 0;
+            text-align: center;
+        }
+        .header h1 {
+            font-size: 2.2rem;
+            margin: 0 0 8px;
+            font-weight: 400;
+        }
+        .header .subtitle {
+            font-size: 1.1rem;
+            opacity: 0.9;
+            font-style: italic;
+        }
+        .header a {
+            color: #74b9ff;
+            text-decoration: none;
+        }
+        .header a:hover {
+            text-decoration: underline;
         }
 
         .container {
