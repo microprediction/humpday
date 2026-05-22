@@ -101,15 +101,15 @@
             <h2>Quick Start</h2>
             <p>Get started with optimization in seconds. No compilation, no complex dependencies.</p>
 
-            <div class="code-block">pip install humpday</div>
+            <pre class="code-block"><code>pip install humpday</code></pre>
 
-            <div class="code-block">from humpday import minimize
+            <pre class="code-block"><code>from humpday import minimize
 
 def objective(x):
     return (x[0] - 2)**2 + (x[1] - 3)**2
 
 result = minimize(objective, bounds=[(-5, 5), (-5, 5)], method='DifferentialEvolution')
-print(f"Solution: {result.x}")  # [2.0, 3.0]</div>
+print(f"Solution: {result.x}")  # [2.0, 3.0]</code></pre>
         </div>
     </section>
 
