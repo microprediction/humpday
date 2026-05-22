@@ -8,6 +8,11 @@ import time
 from typing import Callable, Dict
 
 import numpy as np
+import pytest
+
+# Skip entire module if dependencies not available
+embarrassingly = pytest.importorskip("embarrassingly")
+
 from embarrassingly.shy import Shy
 from humpday.optimizers.scipycube import (
     scipy_lbfgsb_cube,

@@ -6,14 +6,14 @@
 
 > **Pure Python optimization algorithms with no external dependencies (beyond numpy)**
 
-## 📖 Documentation & Interactive Demos
+## Documentation & Interactive Demos
 
-**👉 [Complete Documentation & Live Demos](https://humpday.microprediction.org) 👈**
+**[Complete Documentation & Live Demos](https://humpday.microprediction.org)**
 
-- 🎮 **Interactive Algorithm Contest** - Compare optimizers in real-time
-- 📊 **3D Visualizations** - Watch algorithms optimize in your browser  
-- 🏆 **Elo Leaderboards** - See which algorithms perform best
-- 📚 **Algorithm References** - Links to academic papers and implementations
+- **Interactive Algorithm Contest** - Compare optimizers in real-time
+- **3D Visualizations** - Watch algorithms optimize in your browser  
+- **Elo Leaderboards** - See which algorithms perform best
+- **Algorithm References** - Links to academic papers and implementations
 
 Humpday provides 22 validated optimization algorithms in pure Python, making derivative-free optimization accessible anywhere without complex dependencies or compilation requirements.
 

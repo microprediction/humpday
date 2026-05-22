@@ -3,11 +3,12 @@
 Test PRIMA constraint handling - ensure methods stay within [0,1]^n.
 """
 
-import sys
-
 import numpy as np
+import pytest
 
-sys.path.append("/Users/petercotton/github/humpday/humpday/optimizers")
+# Skip entire module if dependencies not available
+primacube = pytest.importorskip("primacube")
+
 from primacube import prima_newuoa_cube, prima_uobyqa_cube
 
 

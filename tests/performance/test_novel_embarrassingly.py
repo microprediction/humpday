@@ -12,6 +12,13 @@ import warnings
 from typing import Callable, Dict, List
 
 import numpy as np
+import pytest
+
+# Skip entire module if dependencies not available
+pandas = pytest.importorskip("pandas")
+embarrassingly = pytest.importorskip("embarrassingly")
+scipy = pytest.importorskip("scipy")
+
 import pandas as pd
 from embarrassingly.shy import Shy
 from embarrassingly.underpromoted import Underpromoted2d

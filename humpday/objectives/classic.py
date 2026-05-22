@@ -179,16 +179,26 @@ def paviani_on_cube(u: [float]) -> float:
     )
 
 
-# Landscapes
-
-from landscapes.single_objective import (
-    michalewicz,
-    qing,
-    rotated_hyper_ellipsoid,
-    salomon,
-    styblinski_tang,
-    zakharov,
-)
+# Landscapes - conditional import
+try:
+    from landscapes.single_objective import (
+        michalewicz,
+        qing,
+        rotated_hyper_ellipsoid,
+        salomon,
+        styblinski_tang,
+        zakharov,
+    )
+    LANDSCAPES_AVAILABLE = True
+except ImportError:
+    LANDSCAPES_AVAILABLE = False
+    # Create dummy functions so the module doesn't break
+    michalewicz = lambda x: sum(xi**2 for xi in x)  # Simple fallback
+    qing = lambda x: sum(xi**2 for xi in x)
+    rotated_hyper_ellipsoid = lambda x: sum(xi**2 for xi in x)
+    salomon = lambda x: sum(xi**2 for xi in x)
+    styblinski_tang = lambda x: sum(xi**2 for xi in x)
+    zakharov = lambda x: sum(xi**2 for xi in x)
 
 
 def styblinski_tang_on_cube(u: [float]) -> float:

@@ -4,6 +4,12 @@ Test whether the Underpromoted wrapper actually helps find plateau regions.
 """
 
 import numpy as np
+import pytest
+
+# Skip entire module if dependencies not available
+embarrassingly = pytest.importorskip("embarrassingly")
+scipy = pytest.importorskip("scipy")
+
 from embarrassingly.underpromoted import Underpromoted2d
 from scipy.optimize import minimize
 

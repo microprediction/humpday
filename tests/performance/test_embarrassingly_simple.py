@@ -6,6 +6,12 @@ Simple test of embarrassingly library techniques without full HumpDay imports.
 import time
 
 import numpy as np
+import pytest
+
+# Skip entire module if dependencies not available
+embarrassingly = pytest.importorskip("embarrassingly")
+scipy = pytest.importorskip("scipy")
+
 from embarrassingly.shy import Shy
 from scipy.optimize import minimize
 

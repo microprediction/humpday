@@ -1,5 +1,12 @@
-from humpday.inclusion.pybobyqainclusion import using_bobyqa
-from humpday.inclusion.winninginclusion import using_winning
+import pytest
+
+# Skip entire module if dependencies not available
+try:
+    from humpday.inclusion.pybobyqainclusion import using_bobyqa
+    from humpday.inclusion.winninginclusion import using_winning
+except ImportError:
+    # If inclusion modules don't exist, skip this test module
+    pytest.skip("inclusion modules not available", allow_module_level=True)
 
 # See https://medium.com/@microprediction/a-new-family-of-diffeomorphisms-from-the-simplex-to-the-cube-with-application-to-global-6d358714f429
 

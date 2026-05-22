@@ -3,13 +3,15 @@
 Quick test to confirm PRIMA fix is working properly.
 """
 
-import sys
 import time
-
 import numpy as np
-from scipy.optimize import minimize
+import pytest
 
-sys.path.append("/Users/petercotton/github/humpday/humpday/optimizers")
+# Skip entire module if dependencies not available
+scipy = pytest.importorskip("scipy")
+primacube = pytest.importorskip("primacube")
+
+from scipy.optimize import minimize
 from primacube import prima_newuoa_cube, prima_uobyqa_cube
 
 
