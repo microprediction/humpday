@@ -4,6 +4,7 @@ Quick test to confirm PRIMA fix is working properly.
 """
 
 import time
+
 import numpy as np
 import pytest
 
@@ -11,8 +12,8 @@ import pytest
 scipy = pytest.importorskip("scipy")
 primacube = pytest.importorskip("primacube")
 
-from scipy.optimize import minimize
 from primacube import prima_newuoa_cube, prima_uobyqa_cube
+from scipy.optimize import minimize
 
 
 def test_prima_fix():
