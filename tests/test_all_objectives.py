@@ -2,7 +2,6 @@
 Comprehensive tests for all objective functions to achieve 100% coverage.
 """
 
-
 import numpy as np
 import pytest
 

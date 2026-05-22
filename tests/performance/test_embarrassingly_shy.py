@@ -202,9 +202,7 @@ def test_shy_vs_standard():
     elif avg_time_improvement > 0.05 or avg_value_improvement > 0.05:
         print("\n🤔 VERDICT: Shy wrapper shows modest benefits")
     else:
-        print(
-            "\n❌ VERDICT: Shy wrapper doesn't provide clear benefits on these tests"
-        )
+        print("\n❌ VERDICT: Shy wrapper doesn't provide clear benefits on these tests")
 
     return results
 

@@ -2,7 +2,6 @@
 Tests to hit specific missing lines and edge cases for 100% coverage.
 """
 
-
 import numpy as np
 import pytest
 

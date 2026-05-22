@@ -9,8 +9,6 @@ def chat_0(u):
     return np.sum(s * q)
 
 
-
-
 # Chat Function 1
 def chat_1(u):
     """
@@ -186,8 +184,6 @@ def chat_12(u):
     term1 = a * (u[1] - b * u[0] ** 2 + c * u[0] - r) ** 2
     term2 = s * (1 - t) * np.cos(u[0]) + s
     return term1 + term2
-
-
 
 
 # Modified Sphere Function

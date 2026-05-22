@@ -1,4 +1,3 @@
-
 from humpday.optimizers.adaptive_optimizer import (
     EloRatingSystem,
     pure_optimize,
