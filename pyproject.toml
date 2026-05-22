@@ -8,7 +8,7 @@ version = "0.8.0"
 description = "Taking the pain out of choosing a Python global optimizer"
 readme = "README.md"
 license = "MIT"
-requires-python = ">=3.9,<3.13"
+requires-python = ">=3.9,<3.15"
 authors = [
     { name = "microprediction", email = "pcotton@intechinvestments.com" },
 ]
@@ -19,13 +19,14 @@ classifiers = [
     "Programming Language :: Python :: 3.10",
     "Programming Language :: Python :: 3.11",
     "Programming Language :: Python :: 3.12",
+    "Programming Language :: Python :: 3.13",
 ]
 
 # Core dependencies - Pyodide compatible
 dependencies = [
     "numpy>=1.21.5",
     # Pure Python optimization algorithms - no external optimizer packages needed
-    # Lightweight implementation with 9 validated algorithms
+    # Lightweight implementation with 22+ validated algorithms
 ]
 
 [project.optional-dependencies]
@@ -50,6 +51,8 @@ dev = [
     "black>=23.0.0",
     "ruff>=0.1.0",
     "mypy>=1.0.0",
+    "build>=0.10.0",
+    "twine>=4.0.0",
 ]
 
 # Documentation
