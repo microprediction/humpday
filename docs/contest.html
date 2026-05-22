@@ -4,48 +4,79 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' 'unsafe-inline' https://cdnjs.cloudflare.com https://cdn.jsdelivr.net; style-src 'self' 'unsafe-inline';">
-    <title>Horses for Courses - Interactive Derivative-free Optimizer Comparisons</title>
+    <title>Algorithm Contest - Humpday</title>
     <style>
-        body {
-            font-family: 'Georgia', 'Times New Roman', serif;
-            margin: 0;
-            padding: 20px;
-            background: #f8f9fa;
-            min-height: 100vh;
-            color: #2c3e50;
+        :root {
+            --bg: #ffffff; --text: #2c3e50; --muted: #7f8c8d; --accent: #3498db;
+            --border: #bdc3c7; --code-bg: #f8f9fa; --header-bg: #34495e;
+            --section-bg: #fdfdfd;
         }
-
-        .container {
-            max-width: 1200px;
-            margin: 0 auto;
-            background: white;
-            border-radius: 15px;
-            box-shadow: 0 20px 40px rgba(0,0,0,0.1);
-            overflow: hidden;
+        * { box-sizing: border-box; }
+        body {
+            font-family: 'Times New Roman', Times, serif;
+            margin: 0;
+            padding: 0;
+            background: var(--bg);
+            min-height: 100vh;
+            color: var(--text);
+            line-height: 1.6;
         }
 
         .header {
-            background: #2c3e50;
+            background: var(--header-bg);
             color: white;
-            padding: 30px;
+            padding: 30px 0;
             text-align: center;
-            border-bottom: 3px solid #34495e;
         }
-
         .header h1 {
-            margin: 0;
-            font-size: 2.5em;
-            font-weight: 700;
+            font-size: 2.2rem;
+            margin: 0 0 8px;
+            font-weight: 400;
+        }
+        .header .subtitle {
+            font-size: 1.1rem;
+            opacity: 0.9;
+            font-style: italic;
+        }
+        .header a {
+            color: #74b9ff;
+            text-decoration: none;
+        }
+        .header a:hover {
+            text-decoration: underline;
         }
 
-        .header p {
-            margin: 10px 0 0 0;
-            font-size: 1.2em;
-            opacity: 0.9;
+        .container {
+            max-width: 900px;
+            margin: 0 auto;
+            padding: 0 30px;
         }
 
         .main-content {
-            padding: 30px;
+            padding: 40px 0;
+        }
+
+        .section {
+            margin: 30px 0;
+            padding: 0 0 30px 0;
+            border-bottom: 1px solid #ecf0f1;
+        }
+
+        .section:last-child {
+            border-bottom: none;
+        }
+
+        .section h2 {
+            font-size: 1.6rem;
+            margin: 0 0 16px;
+            font-weight: 400;
+            color: var(--header-bg);
+        }
+
+        .section h3 {
+            font-size: 1.3rem;
+            margin: 20px 0 12px;
+            font-weight: 400;
         }
 
         .problem-input {
@@ -496,10 +527,15 @@
     </style>
 </head>
 <body>
+    <div class="header">
+        <div class="container">
+            <h1>Algorithm Contest</h1>
+            <p class="subtitle">Interactive Performance Comparison Tool</p>
+            <p><a href="index.html">← Back to Documentation</a></p>
+        </div>
+    </div>
+
     <div class="container">
-        <div class="header">
-            <h1>Horses for Courses</h1>
-            <p>Interactive Derivative-free Optimizer Comparisons</p>
             <p style="margin-top: 15px; font-size: 1.1em;">
                 <a href="https://github.com/microprediction/humpday" target="_blank"
                    style="color: #fff; text-decoration: none; background: #333; padding: 8px 16px; border-radius: 6px; display: inline-block;">
