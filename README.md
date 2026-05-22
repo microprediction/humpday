@@ -1,4 +1,4 @@
-# Humpday: Pure Python Optimization
+# Humpday: Pure Python or Javascript Derivative-Free Optimization
 
 [![Tests](https://github.com/microprediction/humpday/workflows/tests/badge.svg)](https://github.com/microprediction/humpday/actions)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
