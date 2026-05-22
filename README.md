@@ -8,7 +8,7 @@
 
 Humpday provides 22 validated optimization algorithms in pure Python, making derivative-free optimization accessible anywhere without complex dependencies or compilation requirements.
 
-## 🚀 **Quick Start**
+## Quick Start
 
 ```python
 from humpday import minimize
@@ -32,17 +32,17 @@ result = minimize(large_scale_objective, x0=[0, 0], scale=1000)  # Expect soluti
 print(f"Solution: {result.x}")  # [1000.0, -500.0]
 ```
 
-## ✨ **Key Features**
+## Key Features
 
-- **🔬 22 Validated Algorithms**: Pure Python implementations of PRIMA, SciPy, evolutionary, and metaheuristic methods
-- **📦 Zero Dependencies**: Only requires numpy - no compilation, no external libraries
-- **🎯 Three Interface Levels**: From simple `minimize()` to explicit `cube_minimize()` to research-level `minimize_unit_cube()`
-- **🌍 Unbounded Optimization**: Automatic mapping from R^n to unit hypercube using `tan(π(x-0.5))` with optional scale hints
-- **🏆 Adaptive Selection**: Elo rating system learns which algorithms work best for your problems
-- **✅ Fully Validated**: Cross-validated against SciPy references and JavaScript implementations
-- **🌐 Web Integration**: Interactive 3D visualization demos with embeddable components
+- **22 Validated Algorithms**: Pure Python implementations of PRIMA, SciPy, evolutionary, and metaheuristic methods
+- **Zero Dependencies**: Only requires numpy - no compilation, no external libraries
+- **Three Interface Levels**: From simple `minimize()` to explicit `cube_minimize()` to research-level `minimize_unit_cube()`
+- **Unbounded Optimization**: Automatic mapping from R^n to unit hypercube using `tan(π(x-0.5))` with optional scale hints
+- **Adaptive Selection**: Elo rating system learns which algorithms work best for your problems
+- **Fully Validated**: Cross-validated against SciPy references and JavaScript implementations
+- **Web Integration**: Interactive 3D visualization demos with embeddable components
 
-## 📋 **Installation**
+## Installation
 
 ```bash
 pip install humpday
@@ -50,7 +50,7 @@ pip install humpday
 
 That's it! No compilation, no complex dependencies.
 
-## 🎮 **Three Ways to Optimize**
+## Three Ways to Optimize
 
 ### 1. **Clean Interface** - `minimize()` (Recommended)
 ```python
@@ -88,7 +88,7 @@ def unit_objective(x):
 best_val, best_x = minimize_unit_cube(unit_objective, n_dim=2, n_trials=100)
 ```
 
-## 🧬 **Available Algorithms**
+## Available Algorithms
 
 ### **Trust Region & Derivative-Free**
 - `PRIMA_UOBYQA` - Unconstrained optimization by quadratic approximation  
@@ -120,7 +120,7 @@ best_val, best_x = minimize_unit_cube(unit_objective, n_dim=2, n_trials=100)
 - `FireflyAlgorithm` - Swarm intelligence via firefly behavior
 - `AntColonyOpt` - Ant colony optimization
 
-## 🎯 **Adaptive Algorithm Selection**
+## Adaptive Algorithm Selection
 
 Let Humpday learn which algorithms work best for your problem type:
 
@@ -146,7 +146,7 @@ top_algorithms = results['top_algorithms'][:3]
 print("Best algorithms for your problems:", [alg for alg, rating in top_algorithms])
 ```
 
-## 📊 **Domain Transformations**
+## Domain Transformations
 
 Humpday automatically handles domain transformations:
 
@@ -175,7 +175,7 @@ unit_scaled = unbounded_to_unit_cube(real_large, scale=100)  # Better mapping fo
 recovered_scaled = unit_cube_to_unbounded(unit_scaled, scale=100)  # [0, 100, -500]
 ```
 
-## 🌐 **Interactive Visualization**
+## Interactive Visualization
 
 Try the web interface with 3D visualization of algorithms in action:
 
@@ -183,19 +183,32 @@ Try the web interface with 3D visualization of algorithms in action:
 - **[Contest Interface](docs/contest.html)** - Compare algorithms on test problems
 - **Embeddable Components** - Add interactive demos to your own website
 
-## 📈 **Performance Comparison**
+## Competitive Positioning
 
-| Feature | Humpday | SciPy | Optuna | Nevergrad |
-|---------|---------|--------|--------|-----------|
-| **Dependencies** | numpy only | C/Fortran libs | Many | Many |
-| **Install Size** | ~1MB | ~50MB+ | ~100MB+ | ~200MB+ |
-| **Compile Time** | None | Minutes | Minutes | Minutes |
-| **Pure Python** | ✅ | ❌ | ❌ | ❌ |
-| **Global Optimizers** | 22 | 3 | Many | Many |
-| **Adaptive Selection** | ✅ Elo system | ❌ | ❌ | ❌ |
-| **Unbounded Search** | ✅ Built-in | Manual | Manual | Manual |
+| Metric | Humpday | SciPy | Optuna | Nevergrad | JavaScript |
+|--------|---------|--------|--------|-----------|------------|
+| **Setup Complexity** | Very Simple | Moderate | Complex | Complex | Very Simple |
+| **Pure Python** | ✅ | ❌ | ❌ | ❌ | ❌ Pure JS |
+| **Install Size** | ~1MB | ~50MB+ | ~100MB+ | ~200MB+ | ~50KB |
+| **Dependencies** | numpy only | C/Fortran libs | Many | Many | None |
+| **Global Optimizers** | 22 validated | 3 | 100+ | 200+ | 22 (same algorithms) |
+| **Adaptive Selection** | ✅ Elo system | ❌ | ✅ Advanced | ✅ Advanced | ✅ Elo system |
+| **Unbounded Search** | ✅ Built-in | Manual setup | Manual setup | Manual setup | ✅ Built-in |
+| **Multi-objective** | ❌ | ❌ | ✅ | ✅ | ❌ |
+| **Hyperparameter Tuning** | ❌ | ❌ | ✅ | ✅ | ❌ |
+| **Distributed Computing** | ❌ | ❌ | ✅ | ✅ | ❌ |
+| **Constraints** | Rectangular bounds only | Linear + nonlinear | Linear + nonlinear | Linear + nonlinear | Rectangular bounds only |
+| **Variable Types** | Continuous only | Continuous only | Mixed integer | Mixed integer | Continuous only |
+| **Browser/Web** | ❌ Server-side only | ❌ Server-side only | ❌ Server-side only | ❌ Server-side only | ✅ Native |
 
-## 💡 **Examples**
+**Humpday's Niche**: Pure Python simplicity for single-objective derivative-free optimization. Choose Humpday when you need lightweight, dependency-free optimization that "just works" anywhere Python runs.
+
+**Try Before You Decide**: 
+- **[Interactive Algorithm Contest](docs/contest.html)** - Compare Humpday vs other optimizers on your problem type
+- **[3D Algorithm Demo](docs/algorithm-visualization-demo.html)** - See algorithms in action with real-time visualization
+- **[Recommendation Tool](examples/recommendation_example.py)** - Get data-driven algorithm suggestions for your domain
+
+## Examples
 
 ### **Portfolio Optimization**
 ```python
@@ -304,7 +317,7 @@ All components are validated against reference implementations and work on the u
 
 MIT License - Use freely in commercial and research projects.
 
-## 🎯 **Why Humpday?**
+## Why Humpday?
 
 **"It's Wednesday afternoon, you have a problem to solve, and you need an optimizer that just works."**
 
