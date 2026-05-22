@@ -177,13 +177,16 @@
             box-shadow: 0 4px 8px rgba(0,0,0,0.3);
         }
 
-        .challenge-point.easy { background: #28a745; }
-        .challenge-point.medium { background: #ffc107; }
-        .challenge-point.hard { background: #fd7e14; }
-        .challenge-point.extreme { background: #dc3545; }
+        /* Color coding by objective function type */
+        .challenge-point.sphere { background: #28a745; }
+        .challenge-point.rosenbrock { background: #007bff; }
+        .challenge-point.ackley { background: #ffc107; }
+        .challenge-point.rastrigin { background: #fd7e14; }
+        .challenge-point.griewank { background: #dc3545; }
+        .challenge-point.noisy { background: #6f42c1; }
+        .challenge-point.mixed { background: #20c997; }
 
         .challenge-point.special {
-            background: #6f42c1;
             border-radius: 0;
             transform: translate(-50%, -50%) rotate(45deg);
         }
@@ -592,110 +595,208 @@
 
                     <!-- Challenge points -->
                     <!-- 2D Problems -->
-                    <div class="challenge-point easy" style="left: 10%; top: 80%" onclick="selectProblem(this)" data-config='{"dimensions":2,"budget":200,"surfaceType":"sphere","difficulty":"easy"}'>
-                        <div class="challenge-tooltip">2D Smooth Bowl (Easy)</div>
+                    <div class="challenge-point sphere" style="left: 10%; top: 80%" onclick="selectProblem(this)" data-config='{"dimensions":2,"budget":200,"surfaceType":"sphere","difficulty":"easy"}'>
+                        <div class="challenge-tooltip">2D Sphere (Easy)</div>
                     </div>
-                    <div class="challenge-point medium" style="left: 10%; top: 60%" onclick="selectProblem(this)" data-config='{"dimensions":2,"budget":200,"surfaceType":"rosenbrock","difficulty":"medium"}'>
-                        <div class="challenge-tooltip">2D Rosenbrock Valley (Medium)</div>
+                    <div class="challenge-point rosenbrock" style="left: 10%; top: 60%" onclick="selectProblem(this)" data-config='{"dimensions":2,"budget":200,"surfaceType":"rosenbrock","difficulty":"medium"}'>
+                        <div class="challenge-tooltip">2D Rosenbrock Valley</div>
                     </div>
-                    <div class="challenge-point medium" style="left: 12%; top: 60%" onclick="selectProblem(this)" data-config='{"dimensions":2,"budget":200,"surfaceType":"ackley","difficulty":"medium"}'>
-                        <div class="challenge-tooltip">2D Ackley Function (Medium)</div>
+                    <div class="challenge-point ackley" style="left: 12%; top: 60%" onclick="selectProblem(this)" data-config='{"dimensions":2,"budget":200,"surfaceType":"ackley","difficulty":"medium"}'>
+                        <div class="challenge-tooltip">2D Ackley Function</div>
                     </div>
-                    <div class="challenge-point hard" style="left: 10%; top: 40%" onclick="selectProblem(this)" data-config='{"dimensions":2,"budget":250,"surfaceType":"rastrigin","difficulty":"hard"}'>
-                        <div class="challenge-tooltip">2D Multimodal Peaks (Hard)</div>
+                    <div class="challenge-point rastrigin" style="left: 10%; top: 40%" onclick="selectProblem(this)" data-config='{"dimensions":2,"budget":250,"surfaceType":"rastrigin","difficulty":"hard"}'>
+                        <div class="challenge-tooltip">2D Rastrigin Peaks</div>
                     </div>
-                    <div class="challenge-point hard" style="left: 8%; top: 20%" onclick="selectProblem(this)" data-config='{"dimensions":2,"budget":200,"surfaceType":"sphere","difficulty":"hard"}'>
-                        <div class="challenge-tooltip">2D Sphere Function (Hard)</div>
+                    <div class="challenge-point sphere" style="left: 8%; top: 20%" onclick="selectProblem(this)" data-config='{"dimensions":2,"budget":200,"surfaceType":"sphere","difficulty":"hard"}'>
+                        <div class="challenge-tooltip">2D Sphere (Hard)</div>
+                    </div>
+                    <div class="challenge-point griewank" style="left: 14%; top: 75%" onclick="selectProblem(this)" data-config='{"dimensions":2,"budget":300,"surfaceType":"griewank","difficulty":"medium"}'>
+                        <div class="challenge-tooltip">2D Griewank Function</div>
+                    </div>
+                    <div class="challenge-point ackley" style="left: 8%; top: 65%" onclick="selectProblem(this)" data-config='{"dimensions":2,"budget":250,"surfaceType":"ackley","difficulty":"hard"}'>
+                        <div class="challenge-tooltip">2D Ackley (Hard)</div>
+                    </div>
+                    <div class="challenge-point rosenbrock" style="left: 6%; top: 45%" onclick="selectProblem(this)" data-config='{"dimensions":2,"budget":300,"surfaceType":"rosenbrock","difficulty":"hard"}'>
+                        <div class="challenge-tooltip">2D Rosenbrock (Hard)</div>
                     </div>
 
                     <!-- 3D Problems -->
-                    <div class="challenge-point easy" style="left: 20%; top: 80%" onclick="selectProblem(this)" data-config='{"dimensions":3,"budget":300,"surfaceType":"sphere","difficulty":"easy"}'>
-                        <div class="challenge-tooltip">3D Smooth Surface</div>
+                    <div class="challenge-point sphere" style="left: 20%; top: 80%" onclick="selectProblem(this)" data-config='{"dimensions":3,"budget":300,"surfaceType":"sphere","difficulty":"easy"}'>
+                        <div class="challenge-tooltip">3D Sphere</div>
                     </div>
-                    <div class="challenge-point medium" style="left: 20%; top: 60%" onclick="selectProblem(this)" data-config='{"dimensions":3,"budget":350,"surfaceType":"rosenbrock","difficulty":"medium"}'>
-                        <div class="challenge-tooltip">3D Rosenbrock Challenge</div>
+                    <div class="challenge-point rosenbrock" style="left: 20%; top: 60%" onclick="selectProblem(this)" data-config='{"dimensions":3,"budget":350,"surfaceType":"rosenbrock","difficulty":"medium"}'>
+                        <div class="challenge-tooltip">3D Rosenbrock</div>
                     </div>
-                    <div class="challenge-point hard" style="left: 20%; top: 40%" onclick="selectProblem(this)" data-config='{"dimensions":3,"budget":400,"surfaceType":"griewank","difficulty":"hard"}'>
-                        <div class="challenge-tooltip">3D Griewank Maze</div>
+                    <div class="challenge-point griewank" style="left: 20%; top: 40%" onclick="selectProblem(this)" data-config='{"dimensions":3,"budget":400,"surfaceType":"griewank","difficulty":"hard"}'>
+                        <div class="challenge-tooltip">3D Griewank</div>
                     </div>
-                    <div class="challenge-point extreme" style="left: 18%; top: 20%" onclick="selectProblem(this)" data-config='{"dimensions":3,"budget":300,"surfaceType":"rosenbrock","difficulty":"extreme"}'>
-                        <div class="challenge-tooltip">3D Rosenbrock Valley (Extreme)</div>
+                    <div class="challenge-point rosenbrock" style="left: 18%; top: 20%" onclick="selectProblem(this)" data-config='{"dimensions":3,"budget":300,"surfaceType":"rosenbrock","difficulty":"extreme"}'>
+                        <div class="challenge-tooltip">3D Rosenbrock (Extreme)</div>
+                    </div>
+                    <div class="challenge-point ackley" style="left: 22%; top: 75%" onclick="selectProblem(this)" data-config='{"dimensions":3,"budget":320,"surfaceType":"ackley","difficulty":"medium"}'>
+                        <div class="challenge-tooltip">3D Ackley</div>
+                    </div>
+                    <div class="challenge-point rastrigin" style="left: 24%; top: 50%" onclick="selectProblem(this)" data-config='{"dimensions":3,"budget":400,"surfaceType":"rastrigin","difficulty":"hard"}'>
+                        <div class="challenge-tooltip">3D Rastrigin</div>
+                    </div>
+                    <div class="challenge-point sphere" style="left: 22%; top: 25%" onclick="selectProblem(this)" data-config='{"dimensions":3,"budget":250,"surfaceType":"sphere","difficulty":"hard"}'>
+                        <div class="challenge-tooltip">3D Sphere (Hard)</div>
+                    </div>
+
+                    <!-- 4D Problems -->
+                    <div class="challenge-point sphere" style="left: 26%; top: 85%" onclick="selectProblem(this)" data-config='{"dimensions":4,"budget":400,"surfaceType":"sphere","difficulty":"easy"}'>
+                        <div class="challenge-tooltip">4D Sphere</div>
+                    </div>
+                    <div class="challenge-point ackley" style="left: 28%; top: 70%" onclick="selectProblem(this)" data-config='{"dimensions":4,"budget":450,"surfaceType":"ackley","difficulty":"medium"}'>
+                        <div class="challenge-tooltip">4D Ackley</div>
+                    </div>
+                    <div class="challenge-point rosenbrock" style="left: 26%; top: 35%" onclick="selectProblem(this)" data-config='{"dimensions":4,"budget":500,"surfaceType":"rosenbrock","difficulty":"hard"}'>
+                        <div class="challenge-tooltip">4D Rosenbrock</div>
                     </div>
 
                     <!-- 5D Problems -->
-                    <div class="challenge-point medium" style="left: 30%; top: 60%" onclick="selectProblem(this)" data-config='{"dimensions":5,"budget":500,"surfaceType":"rastrigin","difficulty":"medium"}'>
-                        <div class="challenge-tooltip">5D Multimodal Landscape</div>
+                    <div class="challenge-point rastrigin" style="left: 30%; top: 60%" onclick="selectProblem(this)" data-config='{"dimensions":5,"budget":500,"surfaceType":"rastrigin","difficulty":"medium"}'>
+                        <div class="challenge-tooltip">5D Rastrigin</div>
                     </div>
-                    <div class="challenge-point extreme" style="left: 28%; top: 20%" onclick="selectProblem(this)" data-config='{"dimensions":5,"budget":500,"surfaceType":"rastrigin","difficulty":"extreme"}'>
-                        <div class="challenge-tooltip">5D Rastrigin Function (Extreme)</div>
+                    <div class="challenge-point rastrigin" style="left: 28%; top: 20%" onclick="selectProblem(this)" data-config='{"dimensions":5,"budget":500,"surfaceType":"rastrigin","difficulty":"extreme"}'>
+                        <div class="challenge-tooltip">5D Rastrigin (Extreme)</div>
+                    </div>
+                    <div class="challenge-point sphere" style="left: 32%; top: 80%" onclick="selectProblem(this)" data-config='{"dimensions":5,"budget":450,"surfaceType":"sphere","difficulty":"medium"}'>
+                        <div class="challenge-tooltip">5D Sphere</div>
+                    </div>
+                    <div class="challenge-point griewank" style="left: 34%; top: 45%" onclick="selectProblem(this)" data-config='{"dimensions":5,"budget":600,"surfaceType":"griewank","difficulty":"hard"}'>
+                        <div class="challenge-tooltip">5D Griewank</div>
+                    </div>
+                    <div class="challenge-point ackley" style="left: 30%; top: 30%" onclick="selectProblem(this)" data-config='{"dimensions":5,"budget":550,"surfaceType":"ackley","difficulty":"hard"}'>
+                        <div class="challenge-tooltip">5D Ackley</div>
+                    </div>
+
+                    <!-- 6D Problems -->
+                    <div class="challenge-point sphere" style="left: 36%; top: 75%" onclick="selectProblem(this)" data-config='{"dimensions":6,"budget":600,"surfaceType":"sphere","difficulty":"medium"}'>
+                        <div class="challenge-tooltip">6D Sphere</div>
+                    </div>
+                    <div class="challenge-point rosenbrock" style="left: 38%; top: 55%" onclick="selectProblem(this)" data-config='{"dimensions":6,"budget":700,"surfaceType":"rosenbrock","difficulty":"hard"}'>
+                        <div class="challenge-tooltip">6D Rosenbrock</div>
+                    </div>
+                    <div class="challenge-point ackley" style="left: 36%; top: 25%" onclick="selectProblem(this)" data-config='{"dimensions":6,"budget":650,"surfaceType":"ackley","difficulty":"hard"}'>
+                        <div class="challenge-tooltip">6D Ackley</div>
                     </div>
 
                     <!-- 8D Problems -->
-                    <div class="challenge-point medium" style="left: 40%; top: 60%" onclick="selectProblem(this)" data-config='{"dimensions":8,"budget":800,"surfaceType":"sphere","difficulty":"medium"}'>
-                        <div class="challenge-tooltip">8D Parameter Tuning</div>
+                    <div class="challenge-point sphere" style="left: 40%; top: 60%" onclick="selectProblem(this)" data-config='{"dimensions":8,"budget":800,"surfaceType":"sphere","difficulty":"medium"}'>
+                        <div class="challenge-tooltip">8D Sphere</div>
                     </div>
-                    <div class="challenge-point extreme" style="left: 38%; top: 20%" onclick="selectProblem(this)" data-config='{"dimensions":8,"budget":800,"surfaceType":"ackley","difficulty":"extreme"}'>
-                        <div class="challenge-tooltip">8D Ackley Function (Extreme)</div>
+                    <div class="challenge-point ackley" style="left: 38%; top: 20%" onclick="selectProblem(this)" data-config='{"dimensions":8,"budget":800,"surfaceType":"ackley","difficulty":"extreme"}'>
+                        <div class="challenge-tooltip">8D Ackley (Extreme)</div>
+                    </div>
+                    <div class="challenge-point rastrigin" style="left: 42%; top: 40%" onclick="selectProblem(this)" data-config='{"dimensions":8,"budget":900,"surfaceType":"rastrigin","difficulty":"hard"}'>
+                        <div class="challenge-tooltip">8D Rastrigin</div>
+                    </div>
+                    <div class="challenge-point griewank" style="left: 44%; top: 70%" onclick="selectProblem(this)" data-config='{"dimensions":8,"budget":850,"surfaceType":"griewank","difficulty":"medium"}'>
+                        <div class="challenge-tooltip">8D Griewank</div>
                     </div>
 
                     <!-- 10D Problems -->
-                    <div class="challenge-point hard" style="left: 50%; top: 40%" onclick="selectProblem(this)" data-config='{"dimensions":10,"budget":1000,"surfaceType":"ackley","difficulty":"hard"}'>
-                        <div class="challenge-tooltip">10D Complex Optimization</div>
+                    <div class="challenge-point ackley" style="left: 50%; top: 40%" onclick="selectProblem(this)" data-config='{"dimensions":10,"budget":1000,"surfaceType":"ackley","difficulty":"hard"}'>
+                        <div class="challenge-tooltip">10D Ackley</div>
+                    </div>
+                    <div class="challenge-point sphere" style="left: 48%; top: 65%" onclick="selectProblem(this)" data-config='{"dimensions":10,"budget":900,"surfaceType":"sphere","difficulty":"medium"}'>
+                        <div class="challenge-tooltip">10D Sphere</div>
+                    </div>
+                    <div class="challenge-point rosenbrock" style="left: 52%; top: 25%" onclick="selectProblem(this)" data-config='{"dimensions":10,"budget":1200,"surfaceType":"rosenbrock","difficulty":"hard"}'>
+                        <div class="challenge-tooltip">10D Rosenbrock</div>
+                    </div>
+
+                    <!-- 12D Problems -->
+                    <div class="challenge-point griewank" style="left: 54%; top: 50%" onclick="selectProblem(this)" data-config='{"dimensions":12,"budget":1200,"surfaceType":"griewank","difficulty":"hard"}'>
+                        <div class="challenge-tooltip">12D Griewank</div>
+                    </div>
+                    <div class="challenge-point rastrigin" style="left: 56%; top: 35%" onclick="selectProblem(this)" data-config='{"dimensions":12,"budget":1300,"surfaceType":"rastrigin","difficulty":"hard"}'>
+                        <div class="challenge-tooltip">12D Rastrigin</div>
                     </div>
 
                     <!-- 15D Problems -->
-                    <div class="challenge-point medium" style="left: 60%; top: 60%" onclick="selectProblem(this)" data-config='{"dimensions":15,"budget":1500,"surfaceType":"sphere","difficulty":"medium"}'>
-                        <div class="challenge-tooltip">15D High-Dimensional Bowl</div>
+                    <div class="challenge-point sphere" style="left: 60%; top: 60%" onclick="selectProblem(this)" data-config='{"dimensions":15,"budget":1500,"surfaceType":"sphere","difficulty":"medium"}'>
+                        <div class="challenge-tooltip">15D Sphere</div>
+                    </div>
+                    <div class="challenge-point ackley" style="left: 58%; top: 45%" onclick="selectProblem(this)" data-config='{"dimensions":15,"budget":1600,"surfaceType":"ackley","difficulty":"hard"}'>
+                        <div class="challenge-tooltip">15D Ackley</div>
                     </div>
 
                     <!-- 20D Problems -->
-                    <div class="challenge-point hard" style="left: 70%; top: 40%" onclick="selectProblem(this)" data-config='{"dimensions":20,"budget":2000,"surfaceType":"rosenbrock","difficulty":"hard"}'>
-                        <div class="challenge-tooltip">20D Extreme Challenge</div>
+                    <div class="challenge-point rosenbrock" style="left: 70%; top: 40%" onclick="selectProblem(this)" data-config='{"dimensions":20,"budget":2000,"surfaceType":"rosenbrock","difficulty":"hard"}'>
+                        <div class="challenge-tooltip">20D Rosenbrock</div>
+                    </div>
+                    <div class="challenge-point sphere" style="left: 68%; top: 65%" onclick="selectProblem(this)" data-config='{"dimensions":20,"budget":1800,"surfaceType":"sphere","difficulty":"medium"}'>
+                        <div class="challenge-tooltip">20D Sphere</div>
+                    </div>
+                    <div class="challenge-point griewank" style="left: 72%; top: 55%" onclick="selectProblem(this)" data-config='{"dimensions":20,"budget":2200,"surfaceType":"griewank","difficulty":"hard"}'>
+                        <div class="challenge-tooltip">20D Griewank</div>
                     </div>
 
                     <!-- 30D+ Problems -->
-                    <div class="challenge-point extreme" style="left: 80%; top: 20%" onclick="selectProblem(this)" data-config='{"dimensions":30,"budget":3000,"surfaceType":"sphere","difficulty":"extreme"}'>
-                        <div class="challenge-tooltip">30D Massive Scale</div>
+                    <div class="challenge-point sphere" style="left: 80%; top: 20%" onclick="selectProblem(this)" data-config='{"dimensions":30,"budget":3000,"surfaceType":"sphere","difficulty":"extreme"}'>
+                        <div class="challenge-tooltip">30D Sphere</div>
                     </div>
-                    <div class="challenge-point extreme" style="left: 85%; top: 15%" onclick="selectProblem(this)" data-config='{"dimensions":50,"budget":5000,"surfaceType":"sphere","difficulty":"extreme"}'>
-                        <div class="challenge-tooltip">50D Ultra High-Dimensional</div>
+                    <div class="challenge-point sphere" style="left: 85%; top: 15%" onclick="selectProblem(this)" data-config='{"dimensions":50,"budget":5000,"surfaceType":"sphere","difficulty":"extreme"}'>
+                        <div class="challenge-tooltip">50D Sphere</div>
                     </div>
-                    <div class="challenge-point extreme" style="left: 90%; top: 10%" onclick="selectProblem(this)" data-config='{"dimensions":100,"budget":10000,"surfaceType":"sphere","difficulty":"extreme"}'>
-                        <div class="challenge-tooltip">100D Extreme Challenge</div>
+                    <div class="challenge-point sphere" style="left: 90%; top: 10%" onclick="selectProblem(this)" data-config='{"dimensions":100,"budget":10000,"surfaceType":"sphere","difficulty":"extreme"}'>
+                        <div class="challenge-tooltip">100D Sphere</div>
                     </div>
-                    <div class="challenge-point extreme" style="left: 82%; top: 25%" onclick="selectProblem(this)" data-config='{"dimensions":40,"budget":4000,"surfaceType":"rastrigin","difficulty":"extreme"}'>
-                        <div class="challenge-tooltip">40D Multimodal Nightmare</div>
+                    <div class="challenge-point rastrigin" style="left: 82%; top: 25%" onclick="selectProblem(this)" data-config='{"dimensions":40,"budget":4000,"surfaceType":"rastrigin","difficulty":"extreme"}'>
+                        <div class="challenge-tooltip">40D Rastrigin</div>
+                    </div>
+                    <div class="challenge-point rosenbrock" style="left: 78%; top: 35%" onclick="selectProblem(this)" data-config='{"dimensions":25,"budget":2500,"surfaceType":"rosenbrock","difficulty":"extreme"}'>
+                        <div class="challenge-tooltip">25D Rosenbrock</div>
+                    </div>
+                    <div class="challenge-point ackley" style="left: 88%; top: 30%" onclick="selectProblem(this)" data-config='{"dimensions":60,"budget":6000,"surfaceType":"ackley","difficulty":"extreme"}'>
+                        <div class="challenge-tooltip">60D Ackley</div>
                     </div>
 
                     <!-- Special Cases -->
-                    <div class="challenge-point special hard" style="left: 25%; top: 50%" onclick="selectProblem(this)" data-config='{"dimensions":4,"budget":400,"surfaceType":"noisy","difficulty":"hard"}'>
-                        <div class="challenge-tooltip">4D Noisy Measurements</div>
+                    <div class="challenge-point special noisy" style="left: 25%; top: 50%" onclick="selectProblem(this)" data-config='{"dimensions":4,"budget":400,"surfaceType":"noisy","difficulty":"hard"}'>
+                        <div class="challenge-tooltip">4D Noisy Surface</div>
                     </div>
-                    <div class="challenge-point special hard" style="left: 35%; top: 50%" onclick="selectProblem(this)" data-config='{"dimensions":6,"budget":600,"surfaceType":"mixed","difficulty":"hard"}'>
-                        <div class="challenge-tooltip">6D Mixed Surface Types</div>
+                    <div class="challenge-point special mixed" style="left: 35%; top: 50%" onclick="selectProblem(this)" data-config='{"dimensions":6,"budget":600,"surfaceType":"mixed","difficulty":"hard"}'>
+                        <div class="challenge-tooltip">6D Mixed Functions</div>
+                    </div>
+                    <div class="challenge-point special noisy" style="left: 45%; top: 55%" onclick="selectProblem(this)" data-config='{"dimensions":8,"budget":800,"surfaceType":"noisy","difficulty":"hard"}'>
+                        <div class="challenge-tooltip">8D Noisy Surface</div>
+                    </div>
+                    <div class="challenge-point special mixed" style="left: 65%; top: 50%" onclick="selectProblem(this)" data-config='{"dimensions":12,"budget":1200,"surfaceType":"mixed","difficulty":"hard"}'>
+                        <div class="challenge-tooltip">12D Mixed Functions</div>
                     </div>
 
                     <!-- Legend -->
                     <div class="legend">
                         <div class="legend-item">
-                            <div class="legend-color easy"></div>
-                            <span>Easy</span>
+                            <div class="legend-color" style="background: #28a745;"></div>
+                            <span>Sphere</span>
                         </div>
                         <div class="legend-item">
-                            <div class="legend-color medium"></div>
-                            <span>Medium</span>
+                            <div class="legend-color" style="background: #007bff;"></div>
+                            <span>Rosenbrock</span>
                         </div>
                         <div class="legend-item">
-                            <div class="legend-color hard"></div>
-                            <span>Hard</span>
+                            <div class="legend-color" style="background: #ffc107;"></div>
+                            <span>Ackley</span>
                         </div>
                         <div class="legend-item">
-                            <div class="legend-color extreme"></div>
-                            <span>Extreme</span>
+                            <div class="legend-color" style="background: #fd7e14;"></div>
+                            <span>Rastrigin</span>
                         </div>
                         <div class="legend-item">
-                            <div class="legend-color special"></div>
-                            <span>Special</span>
+                            <div class="legend-color" style="background: #dc3545;"></div>
+                            <span>Griewank</span>
+                        </div>
+                        <div class="legend-item">
+                            <div class="legend-color" style="background: #6f42c1;"></div>
+                            <span>Noisy</span>
+                        </div>
+                        <div class="legend-item">
+                            <div class="legend-color" style="background: #20c997;"></div>
+                            <span>Mixed</span>
                         </div>
                     </div>
                 </div>
