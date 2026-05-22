@@ -1,0 +1,206 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <title>humpday — derivative-free optimizers in a common syntax</title>
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/katex@0.16.10/dist/katex.min.css" crossorigin="anonymous">
+  <script defer src="https://cdn.jsdelivr.net/npm/katex@0.16.10/dist/katex.min.js" crossorigin="anonymous"></script>
+  <script defer src="https://cdn.jsdelivr.net/npm/katex@0.16.10/dist/contrib/auto-render.min.js" crossorigin="anonymous"
+    onload="renderMathInElement(document.body, {delimiters:[{left:'$$',right:'$$',display:true},{left:'$',right:'$',display:false}]});"></script>
+  <style>
+    :root {
+      --bg: #fafafa; --panel: #fff; --text: #1a1a1a; --muted: #5a5a5a;
+      --accent: #4a3aff; --border: #e2e2e2; --code-bg: #f3f3f7;
+    }
+    * { box-sizing: border-box; }
+    html, body { margin: 0; padding: 0; background: var(--bg); color: var(--text); font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif; line-height: 1.55; font-size: 17px; }
+    a { color: var(--accent); text-decoration: none; }
+    a:hover { text-decoration: underline; }
+    header.site-header { background: #1f1d3d; color: #fff; padding: 14px 24px; border-bottom: 1px solid #15132a; }
+    header.site-header .nav-inner { max-width: 860px; margin: 0 auto; display: flex; gap: 18px; align-items: center; flex-wrap: wrap; }
+    header.site-header .brand { font-weight: 600; font-size: 1.1rem; color: #fff; }
+    header.site-header nav { display: flex; flex-wrap: wrap; gap: 0 18px; }
+    header.site-header nav a { color: #fff; opacity: 0.85; font-size: 0.95rem; }
+    header.site-header nav a:hover { opacity: 1; }
+    main { max-width: 860px; margin: 32px auto; padding: 0 24px 60px; }
+    h1 { font-size: 2.1rem; margin: 0 0 4px; line-height: 1.2; }
+    .subtitle { color: var(--muted); font-size: 1.1rem; margin: 0 0 28px; }
+    h2 { font-size: 1.35rem; margin: 2.2em 0 0.6em; border-bottom: 1px solid var(--border); padding-bottom: 4px; }
+    h3 { font-size: 1.08rem; margin: 1.6em 0 0.4em; }
+    code { background: var(--code-bg); padding: 1px 5px; border-radius: 3px; font-size: 0.92em; font-family: "SFMono-Regular", Menlo, Consolas, monospace; }
+    pre { background: var(--code-bg); padding: 12px 14px; border-radius: 6px; overflow-x: auto; font-size: 0.88em; }
+    pre code { background: none; padding: 0; }
+    ul, ol { padding-left: 1.4em; }
+    li { margin-bottom: 6px; }
+    .callout { background: #f1f0fb; border-left: 3px solid var(--accent); padding: 12px 18px; border-radius: 4px; margin: 18px 0; }
+    .tag-row { display: flex; flex-wrap: wrap; gap: 6px; margin: 12px 0; }
+    .tag { background: #ece9ff; color: var(--accent); border-radius: 3px; padding: 2px 8px; font-size: 0.8rem; }
+    .packages { display: grid; grid-template-columns: repeat(auto-fit, minmax(180px, 1fr)); gap: 6px 10px; margin: 14px 0; font-size: 0.93rem; }
+    .packages a { display: block; padding: 4px 8px; background: var(--panel); border: 1px solid var(--border); border-radius: 4px; }
+    .packages a:hover { background: #ece9ff; text-decoration: none; }
+    blockquote { margin: 18px 0; padding: 10px 18px; border-left: 3px solid #ddd; color: var(--muted); }
+    footer { max-width: 860px; margin: 40px auto 24px; padding: 16px 24px; font-size: 0.85rem; color: var(--muted); border-top: 1px solid var(--border); }
+  </style>
+</head>
+<body>
+  <header class="site-header">
+    <div class="nav-inner">
+      <a class="brand" href="./">humpday</a>
+      <nav>
+        <a href="https://github.com/microprediction/humpday">GitHub</a>
+        <a href="https://pypi.org/project/humpday/">PyPI</a>
+        <a href="https://microprediction.github.io/optimizer-elo-ratings/html_leaderboards/overall.html">Elo leaderboard</a>
+        <a href="https://github.com/microprediction/humpday/blob/main/black_box_optimization_package_recommender.ipynb">Recommender</a>
+      </nav>
+    </div>
+  </header>
+
+  <main>
+    <h1>humpday</h1>
+    <p class="subtitle">A unified interface to fifty-plus derivative-free Python optimizers &mdash; plus Elo ratings so you can pick the right one.</p>
+
+    <div class="tag-row">
+      <span class="tag">global optimization</span>
+      <span class="tag">derivative-free</span>
+      <span class="tag">benchmarked</span>
+      <span class="tag">Elo-rated</span>
+      <span class="tag">15+ packages</span>
+    </div>
+
+    <p>
+      Choosing a Python global optimizer means picking from a dozen packages, each with its own
+      quirky calling convention. <strong>humpday</strong> wraps fifty-plus optimization strategies
+      from <a href="https://github.com/facebook/Ax">Ax-Platform</a>, BayesianOptimization, DLib,
+      HyperOpt, NeverGrad, Optuna, Platypus, PyMoo, PySOT, SciPy, Skopt, NLopt, BOBYQA, UltraOpt,
+      FreeLunch and friends in a single calling syntax &mdash; and assigns each an
+      <a href="https://microprediction.github.io/optimizer-elo-ratings/html_leaderboards/overall.html">Elo
+      rating</a> from head-to-head tournaments parameterised by problem dimension and function-eval
+      budget. Pass your problem; get a defensible recommendation back.
+    </p>
+
+    <h2>Install</h2>
+<pre><code>pip install humpday
+pip install humpday[full]   # bring in every optional backend</code></pre>
+
+    <h2>Recommend an optimizer for your problem</h2>
+    <p>
+      Pass the dimension, an evaluation budget, and a time budget. <code>suggest()</code> returns
+      a ranked list of strategies that should perform well for that profile, independent of any
+      specific objective function:
+    </p>
+<pre><code>from pprint import pprint
+from humpday import suggest
+
+pprint(suggest(n_dim=5, n_trials=130, n_seconds=5*60))
+# n_seconds is the *total* wall-clock budget the optimizer has,
+# not per-evaluation. Set this near your real constraint.</code></pre>
+    <p>
+      Or pass the objective itself and let humpday time it for you:
+    </p>
+<pre><code>import math, time
+from humpday import recommend
+
+def my_objective(u):
+    time.sleep(0.01)
+    return u[0] * math.sin(u[1])
+
+recommendations = recommend(my_objective, n_dim=21, n_trials=130)</code></pre>
+
+    <h2>Run a points race on your own benchmark</h2>
+    <p>
+      Got a list of objective functions you actually care about? Run a tournament locally and
+      get rankings specific to your domain:
+    </p>
+<pre><code>from humpday import points_race
+
+points_race(objectives=[my_objective] * 2, n_dim=5, n_trials=100)</code></pre>
+    <p>
+      Walkthrough in the
+      <a href="https://github.com/microprediction/humpday/blob/main/black_box_optimization_package_recommender.ipynb">
+      Colab notebook</a>.
+    </p>
+
+    <h2>Optimize on a simplex</h2>
+    <p>
+      Several humpday transforms map the unit cube to the unit simplex (and back), so any
+      cube-based optimizer can be applied to simplex-constrained problems &mdash; portfolio
+      weights, mixture components, probability vectors. See
+      <a href="https://github.com/microprediction/humpday/blob/main/humpday/transforms/cubetosimplex.py">
+      <code>cubetosimplex.py</code></a> for the variants.
+    </p>
+
+    <h2>Packages wrapped</h2>
+    <div class="packages">
+      <a href="https://github.com/microprediction/humpday/blob/main/humpday/optimizers/axcube.py">Ax-Platform</a>
+      <a href="https://github.com/microprediction/humpday/blob/main/humpday/optimizers/bayesoptcube.py">bayesian-optimization</a>
+      <a href="https://github.com/microprediction/humpday/blob/main/humpday/optimizers/dlibcube.py">DLib</a>
+      <a href="https://github.com/microprediction/humpday/blob/main/humpday/optimizers/hyperoptcube.py">HyperOpt</a>
+      <a href="https://github.com/microprediction/humpday/blob/main/humpday/optimizers/nevergradcube.py">NeverGrad</a>
+      <a href="https://github.com/microprediction/humpday/blob/main/humpday/optimizers/optunacube.py">Optuna</a>
+      <a href="https://github.com/microprediction/humpday/blob/main/humpday/optimizers/platypuscube.py">Platypus</a>
+      <a href="https://github.com/microprediction/humpday/blob/main/humpday/optimizers/pymoocube.py">PyMoo</a>
+      <a href="https://github.com/microprediction/humpday/blob/main/humpday/optimizers/pysotcube.py">PySOT</a>
+      <a href="https://github.com/microprediction/humpday/blob/main/humpday/optimizers/scipycube.py">SciPy classic</a>
+      <a href="https://github.com/microprediction/humpday/blob/main/humpday/optimizers/shgocube.py">SciPy SHGO</a>
+      <a href="https://github.com/microprediction/humpday/blob/main/humpday/optimizers/skoptcube.py">Skopt</a>
+      <a href="https://github.com/microprediction/humpday/blob/main/humpday/optimizers/nloptcube.py">NLopt</a>
+      <a href="https://github.com/microprediction/humpday/blob/main/humpday/optimizers/bobyqacube.py">Py-BOBYQA</a>
+      <a href="https://github.com/microprediction/humpday/blob/main/humpday/optimizers/ultraoptcube.py">UltraOpt</a>
+      <a href="https://github.com/MDCHAMP/FreeLunch">FreeLunch</a>
+    </div>
+
+    <h2>How the Elo ratings work</h2>
+    <p>
+      The sister repo
+      <a href="https://github.com/microprediction/optimizer-elo-ratings"><code>optimizer-elo-ratings</code></a>
+      runs ongoing head-to-head tournaments between every wrapped strategy across a battery of
+      synthetic objectives. Each match awards Elo points the same way chess does, parameterised
+      by problem dimension and trial budget. The
+      <a href="https://microprediction.github.io/optimizer-elo-ratings/html_leaderboards/overall.html">
+      leaderboard</a> is the live ranking; <code>suggest()</code> looks up the top strategies
+      for your specific $(d, n_{\text{trials}})$ corner of that grid.
+    </p>
+
+    <h2>Articles</h2>
+    <ul>
+      <li>
+        <a href="https://www.microprediction.com/blog/humpday">
+          <em>HumpDay: A Package to Take the Pain Out of Choosing a Python Optimizer</em></a>
+      </li>
+      <li>
+        <a href="https://www.microprediction.com/blog/optimize">
+          <em>Comparing Python Global Optimizers</em></a>
+      </li>
+      <li>
+        <a href="https://microprediction.medium.com/interpreting-the-elo-ratings-for-python-global-optimizers-65304573e422">
+          <em>Interpreting the Elo Ratings for Python Global Optimizers</em></a>
+      </li>
+    </ul>
+
+    <h2>Cite or be cited</h2>
+    <p>
+      Pull requests at
+      <a href="https://github.com/microprediction/humpday/blob/main/CITE.md"><code>CITE.md</code></a>
+      are welcome &mdash; if your package is benchmarked here we want to credit you correctly.
+    </p>
+
+    <h2>Contribute</h2>
+    <p>
+      Adding a new optimizer is small: implement the common-syntax wrapper in
+      <a href="https://github.com/microprediction/humpday/tree/main/humpday/optimizers">
+      <code>humpday/optimizers/</code></a>, register it, and the Elo machinery will pick it up
+      on the next tournament.
+    </p>
+  </main>
+
+  <footer>
+    <a href="https://github.com/microprediction/humpday">Source</a> &middot;
+    Part of the <a href="https://github.com/microprediction">microprediction</a> family
+    (see also
+    <a href="http://thurstone.microprediction.org">thurstone</a>,
+    <a href="http://schur.microprediction.org">schur</a>,
+    <a href="http://skaters.microprediction.org">skaters</a>).
+  </footer>
+</body>
+</html>
