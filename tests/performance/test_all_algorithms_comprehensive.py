@@ -600,7 +600,7 @@ class ComprehensiveAlgorithmValidator:
 
             generation = 0
             total_evals = 0
-            prev_best = float('inf')  # Initialize prev_best
+            prev_best = float("inf")  # Initialize prev_best
 
             while total_evals < max_evals:
                 # Generate population

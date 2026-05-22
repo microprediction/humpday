@@ -189,6 +189,7 @@ try:
         styblinski_tang,
         zakharov,
     )
+
     LANDSCAPES_AVAILABLE = True
 except ImportError:
     LANDSCAPES_AVAILABLE = False

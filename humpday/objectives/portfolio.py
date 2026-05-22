@@ -6,19 +6,24 @@ import numpy as np
 # Conditional imports for optional dependencies
 try:
     from scipy.stats import skew
+
     SCIPY_AVAILABLE = True
 except ImportError:
     SCIPY_AVAILABLE = False
+
     # Simple fallback for skew
     def skew(x):
         x = np.asarray(x)
-        return np.mean(((x - np.mean(x)) / np.std(x))**3)
+        return np.mean(((x - np.mean(x)) / np.std(x)) ** 3)
+
 
 try:
     from sklearn.datasets import make_spd_matrix
+
     SKLEARN_AVAILABLE = True
 except ImportError:
     SKLEARN_AVAILABLE = False
+
     # Simple fallback for SPD matrix generation
     def make_spd_matrix(n_dim, random_state=None):
         if random_state is not None:
