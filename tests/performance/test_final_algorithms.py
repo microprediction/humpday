@@ -2,20 +2,23 @@
 """
 Quick test of the final problematic algorithms
 """
-import subprocess
+
 import json
-import tempfile
 import os
+import subprocess
+import tempfile
+
 import numpy as np
 
 # Test functions
 TEST_FUNCTIONS = {
-    'sphere2d': {
-        'name': '2D Sphere',
-        'js_func': 'x => x[0]*x[0] + x[1]*x[1]',
-        'target': 0.0
+    "sphere2d": {
+        "name": "2D Sphere",
+        "js_func": "x => x[0]*x[0] + x[1]*x[1]",
+        "target": 0.0,
     }
 }
+
 
 def test_algorithm_multiple_runs(algorithm_name, num_runs=5):
     """Test algorithm multiple times for statistical validation"""
@@ -58,16 +61,18 @@ try {{
 }}
 """
 
-        with tempfile.NamedTemporaryFile(mode='w', suffix='.js', delete=False) as f:
+        with tempfile.NamedTemporaryFile(mode="w", suffix=".js", delete=False) as f:
             f.write(js_code)
             temp_file = f.name
 
         try:
-            result = subprocess.run(['node', temp_file], capture_output=True, text=True, timeout=10)
+            result = subprocess.run(
+                ["node", temp_file], capture_output=True, text=True, timeout=10
+            )
             if result.returncode == 0:
                 run_result = json.loads(result.stdout.strip())
-                if not run_result.get('error'):
-                    results.append(run_result['bestValue'])
+                if not run_result.get("error"):
+                    results.append(run_result["bestValue"])
                 else:
                     print(f"   Run {run}: ERROR - {run_result.get('error')}")
             else:
@@ -79,11 +84,12 @@ try {{
 
     return results
 
+
 def main():
     print("🧪 FINAL ALGORITHMS PERFORMANCE CHECK")
     print("=" * 50)
 
-    algorithms = ['SimulatedAnnealing', 'BayesianOpt']
+    algorithms = ["SimulatedAnnealing", "BayesianOpt"]
 
     for algorithm in algorithms:
         print(f"\n🔧 Testing {algorithm} (5 runs)...")
@@ -113,8 +119,9 @@ def main():
         else:
             print("   ❌ ALL RUNS FAILED")
 
-    print(f"\n🎯 SUMMARY:")
+    print("\n🎯 SUMMARY:")
     print("Both algorithms should now be much more competitive!")
 
-if __name__ == '__main__':
+
+if __name__ == "__main__":
     main()

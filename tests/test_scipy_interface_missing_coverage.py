@@ -40,43 +40,63 @@ class TestSciPyInterfaceMissingCoverage:
         from humpday import minimize
 
         def objective(x):
-            return sum((xi - 1.5)**2 for xi in x)
+            return sum((xi - 1.5) ** 2 for xi in x)
 
         # Test with very large scale
         result = minimize(objective, x0=[0, 0], scale=1e6)
-        assert hasattr(result, 'x')
+        assert hasattr(result, "x")
 
         # Test with very small scale
         result = minimize(objective, x0=[0, 0], scale=1e-6)
-        assert hasattr(result, 'x')
+        assert hasattr(result, "x")
 
     def test_algorithm_specific_cube_functions(self):
         """Test algorithm-specific cube functions (lines 176, 179, 182, 185-191, 197-198, 203-209)."""
         from humpday import (
-            cube_nelder_mead, cube_differential_evolution, cube_particle_swarm,
-            cube_cma_es, cube_prima_uobyqa, cube_bayesian_opt, cube_hill_climbing,
-            cube_simulated_annealing, cube_adaptive_random_search, cube_pattern_search,
-            cube_evolution_strategy, cube_harmony_search, cube_firefly_algorithm,
-            cube_tabu_search, cube_genetic_algorithm
+            cube_adaptive_random_search,
+            cube_bayesian_opt,
+            cube_cma_es,
+            cube_differential_evolution,
+            cube_evolution_strategy,
+            cube_firefly_algorithm,
+            cube_genetic_algorithm,
+            cube_harmony_search,
+            cube_hill_climbing,
+            cube_nelder_mead,
+            cube_particle_swarm,
+            cube_pattern_search,
+            cube_prima_uobyqa,
+            cube_simulated_annealing,
+            cube_tabu_search,
         )
 
         def simple_objective(x):
-            return sum((xi - 0.3)**2 for xi in x)
+            return sum((xi - 0.3) ** 2 for xi in x)
 
         # Test all specific cube functions to hit their lines
         cube_functions = [
-            cube_nelder_mead, cube_differential_evolution, cube_particle_swarm,
-            cube_cma_es, cube_prima_uobyqa, cube_bayesian_opt, cube_hill_climbing,
-            cube_simulated_annealing, cube_adaptive_random_search, cube_pattern_search,
-            cube_evolution_strategy, cube_harmony_search, cube_firefly_algorithm,
-            cube_tabu_search, cube_genetic_algorithm
+            cube_nelder_mead,
+            cube_differential_evolution,
+            cube_particle_swarm,
+            cube_cma_es,
+            cube_prima_uobyqa,
+            cube_bayesian_opt,
+            cube_hill_climbing,
+            cube_simulated_annealing,
+            cube_adaptive_random_search,
+            cube_pattern_search,
+            cube_evolution_strategy,
+            cube_harmony_search,
+            cube_firefly_algorithm,
+            cube_tabu_search,
+            cube_genetic_algorithm,
         ]
 
         for cube_func in cube_functions:
             try:
                 result = cube_func(simple_objective, n_dim=2, n_trials=5)
-                assert hasattr(result, 'x')
-                assert hasattr(result, 'fun')
+                assert hasattr(result, "x")
+                assert hasattr(result, "fun")
             except Exception:
                 # Some functions might not be fully implemented or have issues
                 pass
@@ -86,19 +106,25 @@ class TestSciPyInterfaceMissingCoverage:
         from humpday import minimize
 
         def objective(x):
-            return sum((xi - 0.4)**2 for xi in x)
+            return sum((xi - 0.4) ** 2 for xi in x)
 
         # Test with various method names that should trigger specific paths
         methods = [
-            'NelderMead', 'DifferentialEvolution', 'ParticleSwarm',
-            'CMAEvolutionStrategy', 'PRIMA_UOBYQA', 'BayesianOpt',
-            'HillClimbing', 'SimulatedAnnealing', 'RandomSearch'
+            "NelderMead",
+            "DifferentialEvolution",
+            "ParticleSwarm",
+            "CMAEvolutionStrategy",
+            "PRIMA_UOBYQA",
+            "BayesianOpt",
+            "HillClimbing",
+            "SimulatedAnnealing",
+            "RandomSearch",
         ]
 
         for method in methods:
             try:
                 result = minimize(objective, bounds=[(0, 1), (0, 1)], method=method)
-                assert hasattr(result, 'x')
+                assert hasattr(result, "x")
             except Exception:
                 # Some methods might have specific requirements
                 pass
@@ -111,9 +137,11 @@ class TestSciPyInterfaceMissingCoverage:
             return sum(x**2)
 
         try:
-            result = cube_ant_colony_optimization(simple_objective, n_dim=2, n_trials=10)
-            assert hasattr(result, 'x')
-            assert hasattr(result, 'fun')
+            result = cube_ant_colony_optimization(
+                simple_objective, n_dim=2, n_trials=10
+            )
+            assert hasattr(result, "x")
+            assert hasattr(result, "fun")
         except Exception:
             # AntColonyOptimization might have specific implementation issues
             pass
@@ -121,8 +149,10 @@ class TestSciPyInterfaceMissingCoverage:
     def test_domain_transformation_edge_cases(self):
         """Test domain transformation functions with edge cases."""
         from humpday import (
-            transform_to_unit_cube, transform_from_unit_cube,
-            unbounded_to_unit_cube, unit_cube_to_unbounded
+            transform_from_unit_cube,
+            transform_to_unit_cube,
+            unbounded_to_unit_cube,
+            unit_cube_to_unbounded,
         )
 
         # Test with extreme bounds
@@ -155,12 +185,12 @@ class TestSciPyInterfaceMissingCoverage:
         from humpday import minimize_scalar
 
         def scalar_objective(x):
-            return (x - 0.7)**2
+            return (x - 0.7) ** 2
 
         # Test with very tight bounds
         try:
             result = minimize_scalar(scalar_objective, bounds=(0.69, 0.71))
-            assert hasattr(result, 'x')
+            assert hasattr(result, "x")
         except:
             pass
 

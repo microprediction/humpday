@@ -7,19 +7,22 @@ generator and trials budget, runs comparisons, updates Elos, and gives
 running suggestions for which algorithm to use.
 """
 
+from collections.abc import Generator
+from typing import Callable
+
 import numpy as np
-from typing import Callable, Generator
+
 from humpday import (
-    adaptive_optimize,
     EloRatingSystem,
+    adaptive_optimize,
+    pure_optimize,
     suggest_algorithm_from_elo,
-    sphere_variants_generator,
-    rosenbrock_variants_generator,
-    pure_optimize
 )
 
 
-def mixed_function_generator(n_dim: int = 2) -> Generator[Callable[[np.ndarray], float], None, None]:
+def mixed_function_generator(
+    n_dim: int = 2,
+) -> Generator[Callable[[np.ndarray], float], None, None]:
     """Generator yielding a mix of different optimization problems - pure lightweight implementations."""
 
     def sphere(x):
@@ -30,7 +33,7 @@ def mixed_function_generator(n_dim: int = 2) -> Generator[Callable[[np.ndarray],
     def rosenbrock(x):
         """Rosenbrock function: sum(100*(x[i+1] - x[i]^2)^2 + (1 - x[i])^2)"""
         x = np.asarray(x)
-        return np.sum(100.0 * (x[1:] - x[:-1]**2)**2 + (1 - x[:-1])**2)
+        return np.sum(100.0 * (x[1:] - x[:-1] ** 2) ** 2 + (1 - x[:-1]) ** 2)
 
     def ackley(x):
         """Ackley function - multimodal with global minimum at origin"""
@@ -113,7 +116,7 @@ def demonstrate_adaptive_optimization():
         n_warmup_problems=8,  # Test all algorithms on 8 diverse problems
         trials_per_warmup=60,  # 60 evaluations per algorithm per problem
         elo_ratings_file=elo_file,
-        verbose=True
+        verbose=True,
     )
 
     print("\n" + "=" * 60)
@@ -123,28 +126,28 @@ def demonstrate_adaptive_optimization():
     print(f"\nTotal problems solved: {results['total_problems_solved']}")
     print(f"Total algorithm matches: {results['total_matches']}")
 
-    print(f"\nTop 10 algorithms by Elo rating:")
-    for i, (alg, rating) in enumerate(results['top_algorithms'][:10], 1):
+    print("\nTop 10 algorithms by Elo rating:")
+    for i, (alg, rating) in enumerate(results["top_algorithms"][:10], 1):
         print(f"{i:2d}. {alg:20s}: {rating:8.1f}")
 
-    print(f"\nAlgorithm recommendations by problem type:")
-    for problem_type, algs in results['recommendations'].items():
+    print("\nAlgorithm recommendations by problem type:")
+    for problem_type, algs in results["recommendations"].items():
         print(f"{problem_type:20s}: {', '.join(algs[:3])}")
 
     # Demonstrate algorithm suggestion
-    elo_system = results['elo_system']
+    elo_system = results["elo_system"]
 
-    print(f"\n" + "=" * 60)
+    print("\n" + "=" * 60)
     print("ALGORITHM SUGGESTIONS")
     print("=" * 60)
 
-    problem_types = ['smooth', 'multimodal', 'noisy', 'general']
+    problem_types = ["smooth", "multimodal", "noisy", "general"]
     for problem_type in problem_types:
         suggested = suggest_algorithm_from_elo(elo_system, n_dim, problem_type)
         rating = elo_system.get_rating(suggested)
         print(f"{problem_type:12s} problems: {suggested:20s} (Elo: {rating:.1f})")
 
-    print(f"\n" + "=" * 60)
+    print("\n" + "=" * 60)
     print("LIVE OPTIMIZATION EXAMPLE")
     print("=" * 60)
 
@@ -153,9 +156,13 @@ def demonstrate_adaptive_optimization():
         # Shifted Rosenbrock
         shift = np.array([0.1, 0.2, 0.3])
         x_shifted = x + shift
-        return sum(100.0 * (x_shifted[i+1] - x_shifted[i]**2)**2 + (1 - x_shifted[i])**2 for i in range(len(x_shifted)-1))
+        return sum(
+            100.0 * (x_shifted[i + 1] - x_shifted[i] ** 2) ** 2
+            + (1 - x_shifted[i]) ** 2
+            for i in range(len(x_shifted) - 1)
+        )
 
-    suggested_alg = suggest_algorithm_from_elo(elo_system, n_dim, 'smooth')
+    suggested_alg = suggest_algorithm_from_elo(elo_system, n_dim, "smooth")
     print(f"\nOptimizing shifted Rosenbrock with suggested algorithm: {suggested_alg}")
 
     best_val, best_x = pure_optimize(test_problem, suggested_alg, 100, n_dim)
@@ -164,7 +171,9 @@ def demonstrate_adaptive_optimization():
 
     # Compare with random algorithm
     import random
+
     from humpday import PURE_OPTIMIZERS
+
     random_alg = random.choice(list(PURE_OPTIMIZERS.keys()))
     best_val_random, _ = pure_optimize(test_problem, random_alg, 100, n_dim)
     print(f"\nComparison with random algorithm ({random_alg}):")
@@ -183,7 +192,12 @@ def demonstrate_elo_tracking():
     elo_system = EloRatingSystem()
 
     # Simulate some algorithm battles
-    algorithms = ['NelderMead', 'DifferentialEvolution', 'ParticleSwarm', 'CMAEvolutionStrategy']
+    algorithms = [
+        "NelderMead",
+        "DifferentialEvolution",
+        "ParticleSwarm",
+        "CMAEvolutionStrategy",
+    ]
 
     print("Initial ratings:")
     for alg in algorithms:
@@ -193,8 +207,10 @@ def demonstrate_elo_tracking():
     print("\nSimulating DifferentialEvolution winning against others...")
     for _ in range(10):
         for other in algorithms:
-            if other != 'DifferentialEvolution':
-                elo_system.update_ratings('DifferentialEvolution', other, 1.0)  # DE wins
+            if other != "DifferentialEvolution":
+                elo_system.update_ratings(
+                    "DifferentialEvolution", other, 1.0
+                )  # DE wins
 
     print("\nRatings after DE winning streak:")
     for alg in algorithms:
@@ -203,7 +219,7 @@ def demonstrate_elo_tracking():
     # Now simulate some losses for DE
     print("\nSimulating CMAEvolutionStrategy beating DifferentialEvolution...")
     for _ in range(5):
-        elo_system.update_ratings('CMAEvolutionStrategy', 'DifferentialEvolution', 1.0)
+        elo_system.update_ratings("CMAEvolutionStrategy", "DifferentialEvolution", 1.0)
 
     print("\nFinal ratings:")
     for alg in algorithms:

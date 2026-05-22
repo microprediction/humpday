@@ -18,17 +18,17 @@ class TestSciPyInterface:
 
         # Simple quadratic with minimum at x=2, y=3
         def objective(x):
-            return (x[0] - 2)**2 + (x[1] - 3)**2
+            return (x[0] - 2) ** 2 + (x[1] - 3) ** 2
 
         # Optimize with bounds
         bounds = [(0, 5), (0, 6)]
-        result = cube_minimize(objective, bounds=bounds, method='NelderMead')
+        result = cube_minimize(objective, bounds=bounds, method="NelderMead")
 
         # Check result structure
-        assert hasattr(result, 'x')
-        assert hasattr(result, 'fun')
-        assert hasattr(result, 'success')
-        assert hasattr(result, 'nfev')
+        assert hasattr(result, "x")
+        assert hasattr(result, "fun")
+        assert hasattr(result, "success")
+        assert hasattr(result, "nfev")
 
         # Check solution quality
         assert len(result.x) == 2
@@ -49,10 +49,10 @@ class TestSciPyInterface:
 
         # Simple 1D quadratic with minimum at x=3
         def objective(x):
-            return (x - 3)**2
+            return (x - 3) ** 2
 
         # Optimize with bounds
-        result = cube_minimize_scalar(objective, bounds=(0, 5), method='NelderMead')
+        result = cube_minimize_scalar(objective, bounds=(0, 5), method="NelderMead")
 
         # Check result
         assert isinstance(result.x, (int, float, np.number))
@@ -64,19 +64,23 @@ class TestSciPyInterface:
 
     def test_different_algorithms(self):
         """Test that different algorithms work with bounds."""
-        from humpday import (cube_nelder_mead, cube_differential_evolution,
-                           cube_particle_swarm, cube_cma_es)
+        from humpday import (
+            cube_cma_es,
+            cube_differential_evolution,
+            cube_nelder_mead,
+            cube_particle_swarm,
+        )
 
         # Simple test function
         def objective(x):
-            return np.sum((x - 1.5)**2)
+            return np.sum((x - 1.5) ** 2)
 
         bounds = [(0, 3), (0, 3)]
         algorithms = [
             cube_nelder_mead,
             cube_differential_evolution,
             cube_particle_swarm,
-            cube_cma_es
+            cube_cma_es,
         ]
 
         for algorithm in algorithms:
@@ -116,7 +120,7 @@ class TestSciPyInterface:
 
     def test_domain_transformations(self):
         """Test domain transformation utilities."""
-        from humpday import transform_to_unit_cube, transform_from_unit_cube
+        from humpday import transform_from_unit_cube, transform_to_unit_cube
 
         # Test transformation to unit cube
         bounds = [(0, 10), (-5, 5)]
@@ -139,31 +143,34 @@ class TestSciPyInterface:
 
     def test_vs_unit_cube_version(self):
         """Test that bounded version gives same result as unit cube version."""
-        from humpday import pure_optimize, cube_minimize
+        from humpday import cube_minimize, pure_optimize
 
         # Define function on [-2, 3] x [-1, 4] with minimum at (1, 2)
         def objective_bounded(x):
-            return (x[0] - 1)**2 + (x[1] - 2)**2
+            return (x[0] - 1) ** 2 + (x[1] - 2) ** 2
 
         # Same function mapped to unit cube
         def objective_unit(x):
             # Map from [0,1]^2 to [-2,3] x [-1,4]
             x_real = np.array([-2, -1]) + x * np.array([5, 5])
-            return (x_real[0] - 1)**2 + (x_real[1] - 2)**2
+            return (x_real[0] - 1) ** 2 + (x_real[1] - 2) ** 2
 
         # Optimize both versions
         bounds = [(-2, 3), (-1, 4)]
-        result_bounded = cube_minimize(objective_bounded, bounds=bounds, method='NelderMead')
+        result_bounded = cube_minimize(
+            objective_bounded, bounds=bounds, method="NelderMead"
+        )
 
-        result_unit = pure_optimize(objective_unit, 'NelderMead', 1000, 2)
+        result_unit = pure_optimize(objective_unit, "NelderMead", 1000, 2)
 
         # Transform unit cube result to bounded domain
         x_unit_solution = np.array(result_unit[1])
         x_bounded_from_unit = np.array([-2, -1]) + x_unit_solution * np.array([5, 5])
 
         # Both should find similar solutions
-        assert abs(result_bounded.fun - result_unit[0]) < 0.1, \
+        assert abs(result_bounded.fun - result_unit[0]) < 0.1, (
             f"Function values differ: bounded={result_bounded.fun}, unit={result_unit[0]}"
+        )
 
         # Solutions should be close (allowing for randomness)
         solution_diff = np.linalg.norm(result_bounded.x - x_bounded_from_unit)
@@ -175,11 +182,11 @@ class TestSciPyInterface:
 
         def rosenbrock(x):
             """Rosenbrock function with minimum at (1, 1)."""
-            return 100 * (x[1] - x[0]**2)**2 + (1 - x[0])**2
+            return 100 * (x[1] - x[0] ** 2) ** 2 + (1 - x[0]) ** 2
 
         # Optimize on [-2, 2]^2
         bounds = [(-2, 2), (-2, 2)]
-        result = cube_minimize(rosenbrock, bounds=bounds, method='NelderMead')
+        result = cube_minimize(rosenbrock, bounds=bounds, method="NelderMead")
 
         # Should find the minimum at (1, 1)
         assert result.fun < 0.1, f"Didn't solve Rosenbrock: {result.fun}"
@@ -196,10 +203,10 @@ class TestSciPyInterface:
         target = np.random.random(n_dim) * 4 - 2  # Random target in [-2, 2]
 
         def objective(x):
-            return np.sum((x - target)**2)
+            return np.sum((x - target) ** 2)
 
         bounds = [(-3, 3)] * n_dim
-        result = cube_minimize(objective, bounds=bounds, method='ParticleSwarm')
+        result = cube_minimize(objective, bounds=bounds, method="ParticleSwarm")
 
         # Should find the target
         assert result.fun < 1.0, f"High-dim optimization failed: {result.fun}"
@@ -213,18 +220,20 @@ class TestSciPyInterface:
         from humpday import cube_minimize
 
         def objective(x):
-            return x[0]**2
+            return x[0] ** 2
 
         # Test unknown method
         with pytest.raises(ValueError, match="Unknown method"):
-            cube_minimize(objective, bounds=[(0, 1)], method='UnknownMethod')
+            cube_minimize(objective, bounds=[(0, 1)], method="UnknownMethod")
 
         # Test dimension mismatch - objective that requires specific dimension
         def objective_3d_strict(x):
-            return x[0]**2 + x[1]**2 + x[2]**2  # Requires exactly 3 dimensions
+            return x[0] ** 2 + x[1] ** 2 + x[2] ** 2  # Requires exactly 3 dimensions
 
         with pytest.raises(IndexError):
-            cube_minimize(objective_3d_strict, bounds=[(0, 1)])  # Only 1D bounds for 3D function
+            cube_minimize(
+                objective_3d_strict, bounds=[(0, 1)]
+            )  # Only 1D bounds for 3D function
 
         # Test missing dimension info
         with pytest.raises(ValueError):
@@ -236,7 +245,7 @@ def run_scipy_interface_tests():
     print("🔧 Testing SciPy-style interface with rectangular bounds...")
 
     test = TestSciPyInterface()
-    test_methods = [m for m in dir(test) if m.startswith('test_')]
+    test_methods = [m for m in dir(test) if m.startswith("test_")]
 
     passed = 0
     total = len(test_methods)

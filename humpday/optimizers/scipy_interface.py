@@ -5,12 +5,16 @@ This module provides thin wrappers that allow our unit hypercube [0,1]^n optimiz
 to work with arbitrary rectangular bounds, following SciPy conventions.
 """
 
+from typing import Callable, List, Optional, Tuple, Union
+
 import numpy as np
-from typing import Callable, List, Tuple, Union, Optional
+
 from .optimizers import PURE_OPTIMIZERS, pure_optimize
 
 
-def unbounded_to_unit_cube(x_real: np.ndarray, scale: Union[float, np.ndarray] = 1.0) -> np.ndarray:
+def unbounded_to_unit_cube(
+    x_real: np.ndarray, scale: Union[float, np.ndarray] = 1.0
+) -> np.ndarray:
     """
     Map from unbounded real space R^n to unit hypercube [0,1]^n.
 
@@ -28,7 +32,9 @@ def unbounded_to_unit_cube(x_real: np.ndarray, scale: Union[float, np.ndarray] =
     return (np.arctan(x_real / scale) / np.pi) + 0.5
 
 
-def unit_cube_to_unbounded(x_unit: np.ndarray, scale: Union[float, np.ndarray] = 1.0) -> np.ndarray:
+def unit_cube_to_unbounded(
+    x_unit: np.ndarray, scale: Union[float, np.ndarray] = 1.0
+) -> np.ndarray:
     """
     Map from unit hypercube [0,1]^n to unbounded real space R^n.
 
@@ -48,7 +54,9 @@ def unit_cube_to_unbounded(x_unit: np.ndarray, scale: Union[float, np.ndarray] =
     return scale * np.tan(np.pi * (x_safe - 0.5))
 
 
-def create_unbounded_objective(objective: Callable, scale: Union[float, np.ndarray] = 1.0) -> Callable:
+def create_unbounded_objective(
+    objective: Callable, scale: Union[float, np.ndarray] = 1.0
+) -> Callable:
     """
     Create objective function that maps from [0,1]^n to unbounded domain R^n.
 
@@ -60,6 +68,7 @@ def create_unbounded_objective(objective: Callable, scale: Union[float, np.ndarr
         Scaling factor for the transformation. Should match the expected
         scale of the problem. Default is 1.0.
     """
+
     def unbounded_objective(x_unit):
         # Transform from unit cube to unbounded space
         x_unit = np.asarray(x_unit)
@@ -96,8 +105,11 @@ def parse_bounds(bounds, n_dim: int) -> Tuple[np.ndarray, np.ndarray]:
     return lower, upper
 
 
-def create_bounded_objective(objective: Callable, lower: np.ndarray, upper: np.ndarray) -> Callable:
+def create_bounded_objective(
+    objective: Callable, lower: np.ndarray, upper: np.ndarray
+) -> Callable:
     """Create objective function that maps from [0,1]^n to rectangular domain."""
+
     def bounded_objective(x_unit):
         # Transform from unit hypercube to rectangular domain
         x_unit = np.asarray(x_unit)
@@ -107,18 +119,22 @@ def create_bounded_objective(objective: Callable, lower: np.ndarray, upper: np.n
     return bounded_objective
 
 
-def transform_solution(x_unit: np.ndarray, lower: np.ndarray, upper: np.ndarray) -> np.ndarray:
+def transform_solution(
+    x_unit: np.ndarray, lower: np.ndarray, upper: np.ndarray
+) -> np.ndarray:
     """Transform solution from unit hypercube back to rectangular domain."""
     return lower + x_unit * (upper - lower)
 
 
-def cube_minimize(fun: Callable,
-                 x0: Optional[np.ndarray] = None,
-                 args: Tuple = (),
-                 method: str = 'NelderMead',
-                 bounds: Optional[Union[List[Tuple[float, float]], Tuple[float, float]]] = None,
-                 scale: Optional[Union[float, np.ndarray]] = None,
-                 options: Optional[dict] = None) -> object:
+def cube_minimize(
+    fun: Callable,
+    x0: Optional[np.ndarray] = None,
+    args: Tuple = (),
+    method: str = "NelderMead",
+    bounds: Optional[Union[List[Tuple[float, float]], Tuple[float, float]]] = None,
+    scale: Optional[Union[float, np.ndarray]] = None,
+    options: Optional[dict] = None,
+) -> object:
     """
     Cube-based minimization interface for Humpday optimizers.
 
@@ -164,16 +180,20 @@ def cube_minimize(fun: Callable,
 
     # Handle arguments
     if args:
-        raise NotImplementedError("Extra arguments to objective function not yet supported")
+        raise NotImplementedError(
+            "Extra arguments to objective function not yet supported"
+        )
 
     # Parse options
     if options is None:
         options = {}
-    maxiter = options.get('maxiter', 1000)
+    maxiter = options.get("maxiter", 1000)
 
     # Determine problem dimension
     if bounds is None and x0 is None:
-        raise ValueError("Must specify either bounds or x0 to determine problem dimension")
+        raise ValueError(
+            "Must specify either bounds or x0 to determine problem dimension"
+        )
 
     if x0 is not None:
         n_dim = len(x0)
@@ -185,7 +205,9 @@ def cube_minimize(fun: Callable,
             if isinstance(bounds[0], (int, float)):
                 # Single bound pair - need to infer dimension from x0 or raise error
                 if x0 is None:
-                    raise ValueError("Cannot infer dimension from single bound pair without x0")
+                    raise ValueError(
+                        "Cannot infer dimension from single bound pair without x0"
+                    )
                 n_dim = len(x0)
             else:
                 n_dim = len(bounds)
@@ -194,7 +216,7 @@ def cube_minimize(fun: Callable,
 
     # Validate method
     if method not in PURE_OPTIMIZERS:
-        available = ', '.join(list(PURE_OPTIMIZERS.keys())[:10])
+        available = ", ".join(list(PURE_OPTIMIZERS.keys())[:10])
         raise ValueError(f"Unknown method '{method}'. Available: {available}...")
 
     # Handle bounded vs unbounded optimization
@@ -222,7 +244,7 @@ def cube_minimize(fun: Callable,
         fun=best_value,
         nfev=maxiter,  # Our optimizers don't currently track exact evaluations
         success=True,  # We always return the best found solution
-        message="Optimization completed successfully"
+        message="Optimization completed successfully",
     )
 
     return result
@@ -239,15 +261,19 @@ class OptimizeResult:
         self.message = message
 
     def __repr__(self):
-        return (f"OptimizeResult(x={self.x}, fun={self.fun:.6e}, "
-                f"nfev={self.nfev}, success={self.success})")
+        return (
+            f"OptimizeResult(x={self.x}, fun={self.fun:.6e}, "
+            f"nfev={self.nfev}, success={self.success})"
+        )
 
 
-def cube_minimize_scalar(fun: Callable,
-                        bounds: Optional[Tuple[float, float]] = None,
-                        args: Tuple = (),
-                        method: str = 'NelderMead',
-                        options: Optional[dict] = None) -> object:
+def cube_minimize_scalar(
+    fun: Callable,
+    bounds: Optional[Tuple[float, float]] = None,
+    args: Tuple = (),
+    method: str = "NelderMead",
+    options: Optional[dict] = None,
+) -> object:
     """
     Cube-based scalar minimization (1D problems).
 
@@ -289,12 +315,14 @@ def cube_minimize_scalar(fun: Callable,
     return result
 
 
-def minimize(fun: Callable,
-            x0: Optional[np.ndarray] = None,
-            method: str = 'NelderMead',
-            bounds: Optional[Union[List[Tuple[float, float]], Tuple[float, float]]] = None,
-            scale: Optional[Union[float, np.ndarray]] = None,
-            options: Optional[dict] = None) -> object:
+def minimize(
+    fun: Callable,
+    x0: Optional[np.ndarray] = None,
+    method: str = "NelderMead",
+    bounds: Optional[Union[List[Tuple[float, float]], Tuple[float, float]]] = None,
+    scale: Optional[Union[float, np.ndarray]] = None,
+    options: Optional[dict] = None,
+) -> object:
     """
     Clean minimization interface with rectangular bounds.
 
@@ -333,13 +361,17 @@ def minimize(fun: Callable,
     >>> result = minimize(objective, x0=[0, 0], scale=10.0)  # Expect solution around scale 10
     >>> print(result.x)  # Should be close to [1, 2]
     """
-    return cube_minimize(fun=fun, x0=x0, method=method, bounds=bounds, scale=scale, options=options)
+    return cube_minimize(
+        fun=fun, x0=x0, method=method, bounds=bounds, scale=scale, options=options
+    )
 
 
-def minimize_scalar(fun: Callable,
-                   bounds: Optional[Tuple[float, float]] = None,
-                   method: str = 'NelderMead',
-                   options: Optional[dict] = None) -> object:
+def minimize_scalar(
+    fun: Callable,
+    bounds: Optional[Tuple[float, float]] = None,
+    method: str = "NelderMead",
+    options: Optional[dict] = None,
+) -> object:
     """
     Clean scalar minimization interface.
 
@@ -367,31 +399,37 @@ def minimize_scalar(fun: Callable,
 # Convenience functions for specific algorithms
 def cube_nelder_mead(fun: Callable, bounds=None, options=None) -> object:
     """Minimize using Nelder-Mead algorithm with cube transformation."""
-    return cube_minimize(fun, method='NelderMead', bounds=bounds, options=options)
+    return cube_minimize(fun, method="NelderMead", bounds=bounds, options=options)
 
 
 def cube_differential_evolution(fun: Callable, bounds=None, options=None) -> object:
     """Minimize using Differential Evolution with cube transformation."""
-    return cube_minimize(fun, method='DifferentialEvolution', bounds=bounds, options=options)
+    return cube_minimize(
+        fun, method="DifferentialEvolution", bounds=bounds, options=options
+    )
 
 
 def cube_particle_swarm(fun: Callable, bounds=None, options=None) -> object:
     """Minimize using Particle Swarm Optimization with cube transformation."""
-    return cube_minimize(fun, method='ParticleSwarm', bounds=bounds, options=options)
+    return cube_minimize(fun, method="ParticleSwarm", bounds=bounds, options=options)
 
 
 def cube_cma_es(fun: Callable, bounds=None, options=None) -> object:
     """Minimize using CMA Evolution Strategy with cube transformation."""
-    return cube_minimize(fun, method='CMAEvolutionStrategy', bounds=bounds, options=options)
+    return cube_minimize(
+        fun, method="CMAEvolutionStrategy", bounds=bounds, options=options
+    )
 
 
 def cube_prima_uobyqa(fun: Callable, bounds=None, options=None) -> object:
     """Minimize using PRIMA UOBYQA algorithm with cube transformation."""
-    return cube_minimize(fun, method='PRIMA_UOBYQA', bounds=bounds, options=options)
+    return cube_minimize(fun, method="PRIMA_UOBYQA", bounds=bounds, options=options)
 
 
 # Domain transformation utilities for advanced users
-def transform_to_unit_cube(x: np.ndarray, bounds: List[Tuple[float, float]]) -> np.ndarray:
+def transform_to_unit_cube(
+    x: np.ndarray, bounds: List[Tuple[float, float]]
+) -> np.ndarray:
     """
     Transform point from rectangular domain to unit hypercube.
 
@@ -412,7 +450,9 @@ def transform_to_unit_cube(x: np.ndarray, bounds: List[Tuple[float, float]]) -> 
     return (x - lower) / (upper - lower)
 
 
-def transform_from_unit_cube(x_unit: np.ndarray, bounds: List[Tuple[float, float]]) -> np.ndarray:
+def transform_from_unit_cube(
+    x_unit: np.ndarray, bounds: List[Tuple[float, float]]
+) -> np.ndarray:
     """
     Transform point from unit hypercube to rectangular domain.
 
@@ -435,22 +475,20 @@ def transform_from_unit_cube(x_unit: np.ndarray, bounds: List[Tuple[float, float
 
 __all__ = [
     # Clean everyday interface
-    'minimize',
-    'minimize_scalar',
-
+    "minimize",
+    "minimize_scalar",
     # Explicit cube-based interface
-    'cube_minimize',
-    'cube_minimize_scalar',
-    'cube_nelder_mead',
-    'cube_differential_evolution',
-    'cube_particle_swarm',
-    'cube_cma_es',
-    'cube_prima_uobyqa',
-
+    "cube_minimize",
+    "cube_minimize_scalar",
+    "cube_nelder_mead",
+    "cube_differential_evolution",
+    "cube_particle_swarm",
+    "cube_cma_es",
+    "cube_prima_uobyqa",
     # Utilities
-    'OptimizeResult',
-    'transform_to_unit_cube',
-    'transform_from_unit_cube',
-    'unbounded_to_unit_cube',
-    'unit_cube_to_unbounded'
+    "OptimizeResult",
+    "transform_to_unit_cube",
+    "transform_from_unit_cube",
+    "unbounded_to_unit_cube",
+    "unit_cube_to_unbounded",
 ]

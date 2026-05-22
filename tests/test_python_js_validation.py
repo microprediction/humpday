@@ -10,12 +10,13 @@ This test suite ensures that:
 Usage: python -m pytest tests/test_python_js_validation.py -v
 """
 
-import numpy as np
 import json
+import os
 import subprocess
 import tempfile
-import os
 from pathlib import Path
+
+import numpy as np
 import pytest
 
 # Test configuration
@@ -34,13 +35,14 @@ class JavaScriptRunner:
     @staticmethod
     def run_js_function_test(js_code):
         """Run JavaScript code and return the result."""
-        with tempfile.NamedTemporaryFile(mode='w', suffix='.js', delete=False) as f:
+        with tempfile.NamedTemporaryFile(mode="w", suffix=".js", delete=False) as f:
             f.write(js_code)
             temp_file = f.name
 
         try:
-            result = subprocess.run(['node', temp_file],
-                                  capture_output=True, text=True, timeout=10)
+            result = subprocess.run(
+                ["node", temp_file], capture_output=True, text=True, timeout=10
+            )
             if result.returncode != 0:
                 raise RuntimeError(f"JavaScript execution failed: {result.stderr}")
             return result.stdout.strip()
@@ -100,6 +102,7 @@ class TestObjectiveFunctions:
 
     def test_sphere_function(self):
         """Test sphere function Python vs JavaScript."""
+
         # Python implementation
         def python_sphere(x):
             x = np.asarray(x)
@@ -111,11 +114,11 @@ class TestObjectiveFunctions:
             [1.0, 1.0],
             [0.5, 0.5],
             [0.1, 0.2, 0.3],
-            [0.7, 0.8, 0.9, 0.1]
+            [0.7, 0.8, 0.9, 0.1],
         ]
 
         # Get JavaScript results
-        js_code = create_js_function_test('sphere', test_points)
+        js_code = create_js_function_test("sphere", test_points)
         js_results_str = JavaScriptRunner.run_js_function_test(js_code)
         js_results = json.loads(js_results_str)
 
@@ -124,29 +127,31 @@ class TestObjectiveFunctions:
             python_result = python_sphere(point)
             js_result = js_results[i]
 
-            assert abs(python_result - js_result) < FUNCTION_TOLERANCE, \
+            assert abs(python_result - js_result) < FUNCTION_TOLERANCE, (
                 f"Sphere function mismatch at {point}: Python={python_result}, JS={js_result}"
+            )
 
     def test_rosenbrock_function(self):
         """Test Rosenbrock function Python vs JavaScript."""
+
         # Python implementation
         def python_rosenbrock(x):
             x = np.asarray(x)
             if len(x) < 2:
-                return (x[0] - 1.0)**2
-            return np.sum(100.0 * (x[1:] - x[:-1]**2)**2 + (1 - x[:-1])**2)
+                return (x[0] - 1.0) ** 2
+            return np.sum(100.0 * (x[1:] - x[:-1] ** 2) ** 2 + (1 - x[:-1]) ** 2)
 
         # Test points
         test_points = [
-            [1.0, 1.0],      # Global minimum
-            [0.0, 0.0],      # Origin
-            [0.5, 0.5],      # Middle
-            [0.1, 0.9],      # Off-diagonal
-            [0.3, 0.7, 0.2]  # 3D case
+            [1.0, 1.0],  # Global minimum
+            [0.0, 0.0],  # Origin
+            [0.5, 0.5],  # Middle
+            [0.1, 0.9],  # Off-diagonal
+            [0.3, 0.7, 0.2],  # 3D case
         ]
 
         # Get JavaScript results
-        js_code = create_js_function_test('rosenbrock', test_points)
+        js_code = create_js_function_test("rosenbrock", test_points)
         js_results_str = JavaScriptRunner.run_js_function_test(js_code)
         js_results = json.loads(js_results_str)
 
@@ -155,11 +160,13 @@ class TestObjectiveFunctions:
             python_result = python_rosenbrock(point)
             js_result = js_results[i]
 
-            assert abs(python_result - js_result) < FUNCTION_TOLERANCE, \
+            assert abs(python_result - js_result) < FUNCTION_TOLERANCE, (
                 f"Rosenbrock function mismatch at {point}: Python={python_result}, JS={js_result}"
+            )
 
     def test_rastrigin_function(self):
         """Test Rastrigin function Python vs JavaScript."""
+
         # Python implementation (with domain transformation)
         def python_rastrigin(x):
             x = np.asarray(x)
@@ -167,19 +174,21 @@ class TestObjectiveFunctions:
             x_transformed = (x - 0.5) * 10.24
             A = 10.0
             n = len(x_transformed)
-            return A * n + np.sum(x_transformed**2 - A * np.cos(2 * np.pi * x_transformed))
+            return A * n + np.sum(
+                x_transformed**2 - A * np.cos(2 * np.pi * x_transformed)
+            )
 
         # Test points
         test_points = [
-            [0.5, 0.5],      # Center (should be global minimum)
-            [0.0, 0.0],      # Corner
-            [1.0, 1.0],      # Opposite corner
-            [0.25, 0.75],    # Asymmetric
-            [0.1, 0.3, 0.7]  # 3D case
+            [0.5, 0.5],  # Center (should be global minimum)
+            [0.0, 0.0],  # Corner
+            [1.0, 1.0],  # Opposite corner
+            [0.25, 0.75],  # Asymmetric
+            [0.1, 0.3, 0.7],  # 3D case
         ]
 
         # Get JavaScript results
-        js_code = create_js_function_test('rastrigin', test_points)
+        js_code = create_js_function_test("rastrigin", test_points)
         js_results_str = JavaScriptRunner.run_js_function_test(js_code)
         js_results = json.loads(js_results_str)
 
@@ -188,8 +197,9 @@ class TestObjectiveFunctions:
             python_result = python_rastrigin(point)
             js_result = js_results[i]
 
-            assert abs(python_result - js_result) < FUNCTION_TOLERANCE, \
+            assert abs(python_result - js_result) < FUNCTION_TOLERANCE, (
                 f"Rastrigin function mismatch at {point}: Python={python_result}, JS={js_result}"
+            )
 
 
 class TestOptimizerValidation:
@@ -208,7 +218,9 @@ class TestOptimizerValidation:
         n_dim = 2
 
         # JavaScript objective code
-        js_objective_code = "const objective = (x) => x.reduce((sum, xi) => sum + xi*xi, 0);"
+        js_objective_code = (
+            "const objective = (x) => x.reduce((sum, xi) => sum + xi*xi, 0);"
+        )
 
         # Run Python optimizer multiple times for statistical comparison
         python_results = []
@@ -219,20 +231,24 @@ class TestOptimizerValidation:
             python_results.append(best_val)
 
         # Run JavaScript optimizer
-        js_code = create_js_optimizer_test('RandomSearch', js_objective_code, n_trials, n_dim)
+        js_code = create_js_optimizer_test(
+            "RandomSearch", js_objective_code, n_trials, n_dim
+        )
         js_result_str = JavaScriptRunner.run_js_function_test(js_code)
         js_result = json.loads(js_result_str)
 
         # Both should find reasonable solutions (not exact match due to randomness)
         python_best = min(python_results)
-        js_best = js_result['bestValue']
+        js_best = js_result["bestValue"]
 
         # Both should be reasonably good (for sphere function, expect values < 1.0 with 50 trials)
-        assert python_best < 1.0, f"Python RandomSearch found poor solution: {python_best}"
+        assert python_best < 1.0, (
+            f"Python RandomSearch found poor solution: {python_best}"
+        )
         assert js_best < 1.0, f"JavaScript RandomSearch found poor solution: {js_best}"
 
         # Both should have used all evaluations
-        assert js_result['evaluations'] == n_trials
+        assert js_result["evaluations"] == n_trials
 
     def test_nelder_mead_deterministic(self):
         """Test Nelder-Mead with deterministic initialization."""
@@ -241,7 +257,7 @@ class TestOptimizerValidation:
         # Simple quadratic function
         def objective(x):
             x = np.asarray(x)
-            return np.sum((x - 0.3)**2)  # Minimum at x=[0.3, 0.3]
+            return np.sum((x - 0.3) ** 2)  # Minimum at x=[0.3, 0.3]
 
         n_trials = 100
         n_dim = 2
@@ -254,21 +270,29 @@ class TestOptimizerValidation:
         python_best_val, python_best_x = python_optimizer.optimize()
 
         # JavaScript version
-        js_code = create_js_optimizer_test('NelderMead', js_objective_code, n_trials, n_dim)
+        js_code = create_js_optimizer_test(
+            "NelderMead", js_objective_code, n_trials, n_dim
+        )
         js_result_str = JavaScriptRunner.run_js_function_test(js_code)
         js_result = json.loads(js_result_str)
 
         # Both should find the optimum reasonably well
-        assert python_best_val < 0.01, f"Python Nelder-Mead didn't converge: {python_best_val}"
-        assert js_result['bestValue'] < 0.01, f"JavaScript Nelder-Mead didn't converge: {js_result['bestValue']}"
+        assert python_best_val < 0.01, (
+            f"Python Nelder-Mead didn't converge: {python_best_val}"
+        )
+        assert js_result["bestValue"] < 0.01, (
+            f"JavaScript Nelder-Mead didn't converge: {js_result['bestValue']}"
+        )
 
         # Check that best points are close to [0.3, 0.3]
         expected = np.array([0.3, 0.3])
         python_error = np.linalg.norm(np.array(python_best_x) - expected)
-        js_error = np.linalg.norm(np.array(js_result['bestX']) - expected)
+        js_error = np.linalg.norm(np.array(js_result["bestX"]) - expected)
 
         assert python_error < 0.1, f"Python solution far from optimum: {python_best_x}"
-        assert js_error < 0.1, f"JavaScript solution far from optimum: {js_result['bestX']}"
+        assert js_error < 0.1, (
+            f"JavaScript solution far from optimum: {js_result['bestX']}"
+        )
 
 
 class TestReferenceValidation:
@@ -291,7 +315,7 @@ class TestReferenceValidation:
                 [1.0, 1.0],
                 [0.5, 0.5],
                 [-0.3, 0.7],
-                [0.1, 0.2, 0.3, 0.4]
+                [0.1, 0.2, 0.3, 0.4],
             ]
 
             for point in test_points:
@@ -310,21 +334,22 @@ class TestReferenceValidation:
             # Our implementation
             def our_rosenbrock(x):
                 x = np.asarray(x)
-                return np.sum(100.0 * (x[1:] - x[:-1]**2)**2 + (1 - x[:-1])**2)
+                return np.sum(100.0 * (x[1:] - x[:-1] ** 2) ** 2 + (1 - x[:-1]) ** 2)
 
             test_points = [
                 np.array([1.0, 1.0]),
                 np.array([0.0, 0.0]),
                 np.array([0.5, 0.8]),
                 np.array([0.1, 0.3, 0.7]),
-                np.array([-0.5, 1.2, 0.3])
+                np.array([-0.5, 1.2, 0.3]),
             ]
 
             for point in test_points:
                 our_result = our_rosenbrock(point)
                 scipy_result = rosen(point)
-                assert abs(our_result - scipy_result) < 1e-12, \
+                assert abs(our_result - scipy_result) < 1e-12, (
                     f"Rosenbrock mismatch at {point}: ours={our_result}, scipy={scipy_result}"
+                )
 
         except ImportError:
             pytest.skip("SciPy not available for reference comparison")
@@ -335,7 +360,10 @@ class TestDomainTransformations:
 
     def test_unit_hypercube_bounds(self):
         """Test that all functions accept inputs in [0,1]^n."""
-        from humpday.optimizers.adaptive_optimizer import sphere_variants_generator, rosenbrock_variants_generator
+        from humpday.optimizers.adaptive_optimizer import (
+            rosenbrock_variants_generator,
+            sphere_variants_generator,
+        )
 
         # Test various dimensions
         for n_dim in [1, 2, 3, 5, 10]:
@@ -345,10 +373,10 @@ class TestDomainTransformations:
 
             # Test at boundaries
             test_points = [
-                np.zeros(n_dim),           # All zeros
-                np.ones(n_dim),            # All ones
-                np.full(n_dim, 0.5),       # Center
-                np.random.random(n_dim)    # Random point
+                np.zeros(n_dim),  # All zeros
+                np.ones(n_dim),  # All ones
+                np.full(n_dim, 0.5),  # Center
+                np.random.random(n_dim),  # Random point
             ]
 
             for point in test_points:
@@ -373,12 +401,12 @@ class TestDomainTransformations:
         """Test that JavaScript functions handle domain transformations correctly."""
         # Test Rastrigin domain transformation
         test_points = [
-            [0.5],    # Center should map to 0 in Rastrigin domain
-            [0.0],    # Boundary should map to -5.12
-            [1.0],    # Boundary should map to +5.12
+            [0.5],  # Center should map to 0 in Rastrigin domain
+            [0.0],  # Boundary should map to -5.12
+            [1.0],  # Boundary should map to +5.12
         ]
 
-        js_code = create_js_function_test('rastrigin', test_points)
+        js_code = create_js_function_test("rastrigin", test_points)
         js_results_str = JavaScriptRunner.run_js_function_test(js_code)
         js_results = json.loads(js_results_str)
 
@@ -387,8 +415,9 @@ class TestDomainTransformations:
         boundary_results = js_results[1:3]
 
         # Center should be better than boundaries for Rastrigin
-        assert center_result < min(boundary_results), \
+        assert center_result < min(boundary_results), (
             f"Center point not optimal: center={center_result}, boundaries={boundary_results}"
+        )
 
 
 # Integration test
@@ -400,28 +429,30 @@ def test_end_to_end_optimization():
     def test_objective(x):
         # Simple quadratic with known minimum at [0.3, 0.7]
         x = np.asarray(x)
-        return (x[0] - 0.3)**2 + (x[1] - 0.7)**2
+        return (x[0] - 0.3) ** 2 + (x[1] - 0.7) ** 2
 
     # Test parameters
     n_trials = 100
     n_dim = 2
 
     # Run Python optimization
-    python_result = pure_optimize(test_objective, 'NelderMead', n_trials, n_dim)
+    python_result = pure_optimize(test_objective, "NelderMead", n_trials, n_dim)
 
     # JavaScript equivalent
     js_objective_code = "const objective = (x) => (x[0] - 0.3)*(x[0] - 0.3) + (x[1] - 0.7)*(x[1] - 0.7);"
-    js_code = create_js_optimizer_test('NelderMead', js_objective_code, n_trials, n_dim)
+    js_code = create_js_optimizer_test("NelderMead", js_objective_code, n_trials, n_dim)
     js_result_str = JavaScriptRunner.run_js_function_test(js_code)
     js_result = json.loads(js_result_str)
 
     # Both should find the minimum
     assert python_result[0] < 0.01, f"Python didn't find minimum: {python_result[0]}"
-    assert js_result['bestValue'] < 0.01, f"JavaScript didn't find minimum: {js_result['bestValue']}"
+    assert js_result["bestValue"] < 0.01, (
+        f"JavaScript didn't find minimum: {js_result['bestValue']}"
+    )
 
     # Solutions should be close
     python_point = np.array(python_result[1])
-    js_point = np.array(js_result['bestX'])
+    js_point = np.array(js_result["bestX"])
     expected = np.array([0.3, 0.7])
 
     python_error = np.linalg.norm(python_point - expected)
@@ -454,7 +485,7 @@ if __name__ == "__main__":
 
     # Optimizer tests require Node.js, so only run if available
     try:
-        subprocess.run(['node', '--version'], check=True, capture_output=True)
+        subprocess.run(["node", "--version"], check=True, capture_output=True)
 
         test_opt = TestOptimizerValidation()
         test_opt.test_random_search_optimizer()
@@ -467,4 +498,6 @@ if __name__ == "__main__":
     except (subprocess.CalledProcessError, FileNotFoundError):
         print("⚠ Optimizer tests skipped (Node.js not available)")
 
-    print("\n🎉 All available tests passed! Python and JavaScript implementations are consistent.")
+    print(
+        "\n🎉 All available tests passed! Python and JavaScript implementations are consistent."
+    )

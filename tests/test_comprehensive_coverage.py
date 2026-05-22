@@ -3,9 +3,10 @@ Comprehensive test to achieve high coverage across humpday modules.
 Combines all coverage improvements into one file.
 """
 
-import pytest
-import tempfile
 import os
+import tempfile
+
+import pytest
 
 
 class TestComprehensiveCoverage:
@@ -13,7 +14,7 @@ class TestComprehensiveCoverage:
 
     def test_main_api_functions(self):
         """Test main humpday API functions."""
-        from humpday import suggest, minimize_unit_cube, recommend
+        from humpday import minimize_unit_cube, recommend, suggest
 
         # Test suggest function
         suggestions = suggest(n_dim=2, n_trials=20)
@@ -22,7 +23,7 @@ class TestComprehensiveCoverage:
 
         # Test minimize_unit_cube
         def simple_objective(x):
-            return sum((xi - 0.3)**2 for xi in x)
+            return sum((xi - 0.3) ** 2 for xi in x)
 
         result = minimize_unit_cube(simple_objective, n_dim=2, n_trials=15)
         assert len(result) == 2
@@ -34,14 +35,24 @@ class TestComprehensiveCoverage:
     def test_optimizer_classes_basic(self):
         """Test basic optimizer class functionality."""
         from humpday.optimizers.optimizers import (
-            RandomSearch, NelderMead, DifferentialEvolution,
-            HillClimbing, SimulatedAnnealing, ParticleSwarm
+            DifferentialEvolution,
+            HillClimbing,
+            NelderMead,
+            ParticleSwarm,
+            RandomSearch,
+            SimulatedAnnealing,
         )
 
         def test_objective(x):
             return sum(x**2)
 
-        optimizers = [RandomSearch, NelderMead, HillClimbing, SimulatedAnnealing, ParticleSwarm]
+        optimizers = [
+            RandomSearch,
+            NelderMead,
+            HillClimbing,
+            SimulatedAnnealing,
+            ParticleSwarm,
+        ]
 
         for opt_class in optimizers:
             optimizer = opt_class(test_objective, n_trials=10, n_dim=2)
@@ -58,15 +69,17 @@ class TestComprehensiveCoverage:
     def test_alloptimizers_functions(self):
         """Test alloptimizers module functions."""
         from humpday.optimizers.alloptimizers import (
-            get_optimizer, OPTIMIZERS, ALGORITHM_NAMES
+            ALGORITHM_NAMES,
+            OPTIMIZERS,
+            get_optimizer,
         )
 
         # Test get_optimizer with valid name
-        optimizer = get_optimizer('RandomSearch')
+        optimizer = get_optimizer("RandomSearch")
         assert callable(optimizer)
 
         # Test get_optimizer with invalid name
-        invalid_optimizer = get_optimizer('NonExistentOptimizer')
+        invalid_optimizer = get_optimizer("NonExistentOptimizer")
         assert invalid_optimizer is None
 
         # Test OPTIMIZERS list
@@ -84,17 +97,17 @@ class TestComprehensiveCoverage:
         elo = EloRatingSystem()
 
         # Test get_rating for new algorithm
-        rating = elo.get_rating('RandomSearch')
+        rating = elo.get_rating("RandomSearch")
         assert rating == elo.initial_rating
 
         # Test update_ratings
-        elo.update_ratings('RandomSearch', 'NelderMead', 0.7)
-        elo.update_ratings('RandomSearch', 'NelderMead', 0.0)  # Complete loss
-        elo.update_ratings('RandomSearch', 'NelderMead', 1.0)  # Complete win
-        elo.update_ratings('RandomSearch', 'NelderMead', 0.5)  # Tie
+        elo.update_ratings("RandomSearch", "NelderMead", 0.7)
+        elo.update_ratings("RandomSearch", "NelderMead", 0.0)  # Complete loss
+        elo.update_ratings("RandomSearch", "NelderMead", 1.0)  # Complete win
+        elo.update_ratings("RandomSearch", "NelderMead", 0.5)  # Tie
 
         # Test file operations
-        with tempfile.NamedTemporaryFile(mode='w', suffix='.json', delete=False) as f:
+        with tempfile.NamedTemporaryFile(mode="w", suffix=".json", delete=False) as f:
             temp_path = f.name
 
         try:
@@ -141,26 +154,27 @@ class TestComprehensiveCoverage:
         """Test scipy interface functions."""
         from humpday import minimize, minimize_scalar
         from humpday.optimizers.scipy_interface import (
-            transform_to_unit_cube, transform_from_unit_cube
+            transform_from_unit_cube,
+            transform_to_unit_cube,
         )
 
         def objective(x):
-            return sum((xi - 0.5)**2 for xi in x)
+            return sum((xi - 0.5) ** 2 for xi in x)
 
         # Test minimize with bounds
         result = minimize(objective, bounds=[(0, 1), (0, 1)])
-        assert hasattr(result, 'x')
+        assert hasattr(result, "x")
 
         # Test minimize without bounds
         result = minimize(objective, x0=[0.3, 0.7])
-        assert hasattr(result, 'x')
+        assert hasattr(result, "x")
 
         # Test minimize_scalar
         def scalar_objective(x):
-            return (x - 0.5)**2
+            return (x - 0.5) ** 2
 
         result_scalar = minimize_scalar(scalar_objective, bounds=(-1, 2))
-        assert hasattr(result_scalar, 'x')
+        assert hasattr(result_scalar, "x")
 
         # Test domain transformations
         bounds = [(0, 2), (-1, 1)]
@@ -169,22 +183,30 @@ class TestComprehensiveCoverage:
         unit_point = transform_to_unit_cube(point, bounds)
         recovered = transform_from_unit_cube(unit_point, bounds)
 
-        assert hasattr(unit_point, '__len__')
-        assert hasattr(recovered, '__len__')
+        assert hasattr(unit_point, "__len__")
+        assert hasattr(recovered, "__len__")
 
     def test_various_optimizer_edge_cases(self):
         """Test various optimizer edge cases."""
         from humpday.optimizers.optimizers import (
-            PRIMA_UOBYQA, PatternSearch, HarmonySearch,
-            FireflyAlgorithm, TabuSearch, GeneticAlgorithm
+            PRIMA_UOBYQA,
+            FireflyAlgorithm,
+            GeneticAlgorithm,
+            HarmonySearch,
+            PatternSearch,
+            TabuSearch,
         )
 
         def edge_objective(x):
-            return sum((xi - 0.2)**2 for xi in x) + 0.01 * sum(xi**4 for xi in x)
+            return sum((xi - 0.2) ** 2 for xi in x) + 0.01 * sum(xi**4 for xi in x)
 
         optimizers = [
-            PRIMA_UOBYQA, PatternSearch, HarmonySearch,
-            FireflyAlgorithm, TabuSearch, GeneticAlgorithm
+            PRIMA_UOBYQA,
+            PatternSearch,
+            HarmonySearch,
+            FireflyAlgorithm,
+            TabuSearch,
+            GeneticAlgorithm,
         ]
 
         for opt_class in optimizers:
@@ -202,7 +224,7 @@ class TestComprehensiveCoverage:
         # Test with edge case parameters
         try:
             result = minimize(objective, bounds=[(0, 1e-10)])
-            assert hasattr(result, 'x')
+            assert hasattr(result, "x")
         except:
             pass  # May trigger error handling
 
@@ -214,21 +236,25 @@ class TestComprehensiveCoverage:
     def test_cube_optimizer_functions(self):
         """Test cube optimizer wrapper functions."""
         from humpday import (
-            cube_nelder_mead, cube_differential_evolution, cube_particle_swarm
+            cube_differential_evolution,
+            cube_nelder_mead,
+            cube_particle_swarm,
         )
 
         def cube_objective(x):
-            return sum((xi - 0.4)**2 for xi in x)
+            return sum((xi - 0.4) ** 2 for xi in x)
 
         cube_functions = [
-            cube_nelder_mead, cube_differential_evolution, cube_particle_swarm
+            cube_nelder_mead,
+            cube_differential_evolution,
+            cube_particle_swarm,
         ]
 
         for cube_func in cube_functions:
             try:
                 result = cube_func(cube_objective, n_dim=2, n_trials=8)
-                assert hasattr(result, 'x')
-                assert hasattr(result, 'fun')
+                assert hasattr(result, "x")
+                assert hasattr(result, "fun")
             except Exception:
                 pass  # Some might have implementation issues
 
@@ -237,9 +263,9 @@ class TestComprehensiveCoverage:
         from humpday import pure_optimize
 
         def objective(x):
-            return sum((xi - 0.6)**2 for xi in x)
+            return sum((xi - 0.6) ** 2 for xi in x)
 
-        result = pure_optimize(objective, 'RandomSearch', n_trials=10, n_dim=2)
+        result = pure_optimize(objective, "RandomSearch", n_trials=10, n_dim=2)
         assert len(result) == 2
 
 

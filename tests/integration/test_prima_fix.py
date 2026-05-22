@@ -3,13 +3,15 @@
 Quick test to confirm PRIMA fix is working properly.
 """
 
-import numpy as np
 import sys
 import time
+
+import numpy as np
 from scipy.optimize import minimize
 
-sys.path.append('/Users/petercotton/github/humpday/humpday/optimizers')
-from primacube import prima_uobyqa_cube, prima_newuoa_cube
+sys.path.append("/Users/petercotton/github/humpday/humpday/optimizers")
+from primacube import prima_newuoa_cube, prima_uobyqa_cube
+
 
 def test_prima_fix():
     """Test the fixed PRIMA methods against L-BFGS-B."""
@@ -29,11 +31,13 @@ def test_prima_fix():
             return 1000.0
         scaled_x = 2 * x - 1
         result = 0
-        for i in range(len(scaled_x)-1):
-            result += 100*(scaled_x[i+1] - scaled_x[i]**2)**2 + (1 - scaled_x[i])**2
+        for i in range(len(scaled_x) - 1):
+            result += (
+                100 * (scaled_x[i + 1] - scaled_x[i] ** 2) ** 2 + (1 - scaled_x[i]) ** 2
+            )
         return result
 
-    functions = {'sphere': sphere, 'rosenbrock': rosenbrock}
+    functions = {"sphere": sphere, "rosenbrock": rosenbrock}
     dimensions = [2, 5]
 
     for dim in dimensions:
@@ -44,7 +48,7 @@ def test_prima_fix():
             print(f"\n{func_name.upper()}:")
 
             # Test each optimizer 3 times
-            for opt_name in ['PRIMA_UOBYQA', 'PRIMA_NEWUOA', 'SciPy_BFGS']:
+            for opt_name in ["PRIMA_UOBYQA", "PRIMA_NEWUOA", "SciPy_BFGS"]:
                 print(f"  {opt_name:12}: ", end="")
 
                 results = []
@@ -54,35 +58,44 @@ def test_prima_fix():
 
                     start_time = time.time()
 
-                    if opt_name == 'PRIMA_UOBYQA':
-                        val, x, evals = prima_uobyqa_cube(func, 50, dim, with_count=True)
-                    elif opt_name == 'PRIMA_NEWUOA':
-                        val, x, evals = prima_newuoa_cube(func, 50, dim, with_count=True)
+                    if opt_name == "PRIMA_UOBYQA":
+                        val, x, evals = prima_uobyqa_cube(
+                            func, 50, dim, with_count=True
+                        )
+                    elif opt_name == "PRIMA_NEWUOA":
+                        val, x, evals = prima_newuoa_cube(
+                            func, 50, dim, with_count=True
+                        )
                     else:  # SciPy L-BFGS-B
                         x0 = np.random.rand(dim)
-                        result = minimize(func, x0, method='L-BFGS-B',
-                                        bounds=[(0.001, 0.999)] * dim,
-                                        options={'maxfev': 50})
-                        val = result.fun if result.success else float('inf')
-                        evals = result.nfev if hasattr(result, 'nfev') else 50
+                        result = minimize(
+                            func,
+                            x0,
+                            method="L-BFGS-B",
+                            bounds=[(0.001, 0.999)] * dim,
+                            options={"maxfev": 50},
+                        )
+                        val = result.fun if result.success else float("inf")
+                        evals = result.nfev if hasattr(result, "nfev") else 50
 
                     elapsed = time.time() - start_time
-                    results.append({'val': val, 'evals': evals, 'time': elapsed})
+                    results.append({"val": val, "evals": evals, "time": elapsed})
 
                 # Summary
                 if results:
-                    avg_val = np.mean([r['val'] for r in results])
-                    avg_evals = np.mean([r['evals'] for r in results])
-                    avg_time = np.mean([r['time'] for r in results])
+                    avg_val = np.mean([r["val"] for r in results])
+                    avg_evals = np.mean([r["evals"] for r in results])
+                    avg_time = np.mean([r["time"] for r in results])
 
                     print(f"{avg_val:8.4f} ({avg_evals:4.1f} evals, {avg_time:.3f}s)")
 
-    print(f"\n🎯 PRIMA Fix Validation:")
+    print("\n🎯 PRIMA Fix Validation:")
     print("=" * 30)
     print("✅ PRIMA methods now use full evaluation budgets")
     print("✅ Finding optimal/near-optimal solutions")
     print("✅ Competitive with established methods")
     print("✅ Integration bug completely resolved")
+
 
 if __name__ == "__main__":
     test_prima_fix()

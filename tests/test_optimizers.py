@@ -1,19 +1,20 @@
-from humpday.optimizers.alloptimizers import OPTIMIZERS
-from humpday.objectives.classic import CLASSIC_OBJECTIVES
 import random
+
+from humpday.objectives.classic import CLASSIC_OBJECTIVES
+from humpday.optimizers.alloptimizers import OPTIMIZERS
 
 
 def test_compendium():
     n_trials = 10
-    for n_dim in [2,3]:
+    for n_dim in [2, 3]:
         for optimizer in OPTIMIZERS:
             objective = random.choice(CLASSIC_OBJECTIVES)
             try:
-                optimizer(objective, n_trials=n_trials,n_dim=n_dim,with_count=True)
+                optimizer(objective, n_trials=n_trials, n_dim=n_dim, with_count=True)
             except Exception as e:
                 print(e)
-                raise Exception(optimizer.__name__ + ' fails on ' + objective.__name__)
+                raise Exception(optimizer.__name__ + " fails on " + objective.__name__)
 
 
-if __name__=='__main__':
+if __name__ == "__main__":
     test_compendium()

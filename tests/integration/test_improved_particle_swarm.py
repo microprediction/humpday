@@ -2,11 +2,14 @@
 """
 Test improved ParticleSwarm on Rosenbrock function
 """
-import subprocess
+
 import json
-import tempfile
 import os
+import subprocess
+import tempfile
+
 import numpy as np
+
 
 def test_particle_swarm_rosenbrock():
     """Test ParticleSwarm on challenging Rosenbrock function"""
@@ -57,20 +60,23 @@ for (let run = 0; run < 5; run++) {{
 console.log(JSON.stringify(results));
 """
 
-    with tempfile.NamedTemporaryFile(mode='w', suffix='.js', delete=False) as f:
+    with tempfile.NamedTemporaryFile(mode="w", suffix=".js", delete=False) as f:
         f.write(js_code)
         temp_file = f.name
 
     try:
-        result = subprocess.run(['node', temp_file], capture_output=True, text=True, timeout=30)
+        result = subprocess.run(
+            ["node", temp_file], capture_output=True, text=True, timeout=30
+        )
         if result.returncode == 0:
             return json.loads(result.stdout.strip())
         else:
-            return {'error': f"Execution failed: {result.stderr}"}
+            return {"error": f"Execution failed: {result.stderr}"}
     except Exception as e:
-        return {'error': str(e)}
+        return {"error": str(e)}
     finally:
         os.unlink(temp_file)
+
 
 def main():
     print("🧪 IMPROVED PARTICLESWARM ROSENBROCK TEST")
@@ -79,10 +85,10 @@ def main():
     results = test_particle_swarm_rosenbrock()
 
     if isinstance(results, list):
-        successful_runs = [r for r in results if not r.get('error')]
+        successful_runs = [r for r in results if not r.get("error")]
 
         if successful_runs:
-            values = [r['bestValue'] for r in successful_runs]
+            values = [r["bestValue"] for r in successful_runs]
             best_value = min(values)
             mean_value = np.mean(values)
 
@@ -107,12 +113,13 @@ def main():
                 print("   📈 IMPROVED - Better than before")
 
             # Show best solution
-            best_run = min(successful_runs, key=lambda r: r['bestValue'])
+            best_run = min(successful_runs, key=lambda r: r["bestValue"])
             print(f"   Best X: {best_run['bestX']} (target: [1.0, 1.0])")
         else:
             print("❌ All runs failed!")
     else:
         print(f"❌ Test failed: {results.get('error')}")
 
-if __name__ == '__main__':
+
+if __name__ == "__main__":
     main()

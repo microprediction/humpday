@@ -3,18 +3,23 @@
 Simple test of embarrassingly library techniques without full HumpDay imports.
 """
 
-import numpy as np
 import time
-from scipy.optimize import minimize
+
+import numpy as np
 from embarrassingly.shy import Shy
+from scipy.optimize import minimize
+
 
 def create_expensive_sphere(time_scale: float = 0.05) -> callable:
     """Create sphere function with variable computation time."""
+
     def expensive_sphere(x):
         x = np.array(x)
         # More expensive computation near boundaries
         boundary_dist = min(np.min(x), np.min(1 - x))  # Distance to nearest boundary
-        compute_time = max(0.001, time_scale * (0.1 - boundary_dist) if boundary_dist < 0.1 else 0.001)
+        compute_time = max(
+            0.001, time_scale * (0.1 - boundary_dist) if boundary_dist < 0.1 else 0.001
+        )
         time.sleep(compute_time)
 
         # Standard sphere function: minimize sum of squares
@@ -23,7 +28,8 @@ def create_expensive_sphere(time_scale: float = 0.05) -> callable:
 
     return expensive_sphere
 
-def run_scipy_optimizer(objective_func, method='Powell', max_evals=30):
+
+def run_scipy_optimizer(objective_func, method="Powell", max_evals=30):
     """Run scipy optimizer and measure performance."""
     eval_count = [0]  # Mutable counter
 
@@ -42,26 +48,27 @@ def run_scipy_optimizer(objective_func, method='Powell', max_evals=30):
             x0,
             method=method,
             bounds=[(0, 1), (0, 1)],
-            options={'maxfev': max_evals}
+            options={"maxfev": max_evals},
         )
 
         elapsed = time.time() - start_time
 
         return {
-            'best_value': float(result.fun),
-            'elapsed_time': elapsed,
-            'evaluations': eval_count[0],
-            'success': result.success,
-            'evals_per_sec': eval_count[0] / elapsed if elapsed > 0 else 0
+            "best_value": float(result.fun),
+            "elapsed_time": elapsed,
+            "evaluations": eval_count[0],
+            "success": result.success,
+            "evals_per_sec": eval_count[0] / elapsed if elapsed > 0 else 0,
         }
     except Exception as e:
         return {
-            'best_value': float('inf'),
-            'elapsed_time': time.time() - start_time,
-            'evaluations': eval_count[0],
-            'success': False,
-            'error': str(e)
+            "best_value": float("inf"),
+            "elapsed_time": time.time() - start_time,
+            "evaluations": eval_count[0],
+            "success": False,
+            "error": str(e),
         }
+
 
 def test_shy_effectiveness():
     """Test whether Shy wrapper actually improves optimization on expensive functions."""
@@ -73,7 +80,7 @@ def test_shy_effectiveness():
     expensive_func = create_expensive_sphere(time_scale=0.02)
     bounds = [[0, 1], [0, 1]]
 
-    methods = ['Powell', 'Nelder-Mead', 'SLSQP']
+    methods = ["Powell", "Nelder-Mead", "SLSQP"]
     max_evals = 25
 
     results = []
@@ -98,19 +105,27 @@ def test_shy_effectiveness():
             shy_results.append(shy_result)
 
         # Calculate averages
-        avg_standard_time = np.mean([r['elapsed_time'] for r in standard_results])
-        avg_standard_value = np.mean([r['best_value'] for r in standard_results])
-        avg_standard_evals = np.mean([r['evaluations'] for r in standard_results])
+        avg_standard_time = np.mean([r["elapsed_time"] for r in standard_results])
+        avg_standard_value = np.mean([r["best_value"] for r in standard_results])
+        avg_standard_evals = np.mean([r["evaluations"] for r in standard_results])
 
-        avg_shy_time = np.mean([r['elapsed_time'] for r in shy_results])
-        avg_shy_value = np.mean([r['best_value'] for r in shy_results])
-        avg_shy_evals = np.mean([r['evaluations'] for r in shy_results])
+        avg_shy_time = np.mean([r["elapsed_time"] for r in shy_results])
+        avg_shy_value = np.mean([r["best_value"] for r in shy_results])
+        avg_shy_evals = np.mean([r["evaluations"] for r in shy_results])
 
         time_improvement = (avg_standard_time - avg_shy_time) / avg_standard_time * 100
-        value_improvement = (avg_standard_value - avg_shy_value) / avg_standard_value * 100 if avg_standard_value != 0 else 0
+        value_improvement = (
+            (avg_standard_value - avg_shy_value) / avg_standard_value * 100
+            if avg_standard_value != 0
+            else 0
+        )
 
-        print(f"  Standard: {avg_standard_value:.4f} in {avg_standard_time:.2f}s ({avg_standard_evals:.0f} evals)")
-        print(f"  Shy:      {avg_shy_value:.4f} in {avg_shy_time:.2f}s ({avg_shy_evals:.0f} evals)")
+        print(
+            f"  Standard: {avg_standard_value:.4f} in {avg_standard_time:.2f}s ({avg_standard_evals:.0f} evals)"
+        )
+        print(
+            f"  Shy:      {avg_shy_value:.4f} in {avg_shy_time:.2f}s ({avg_shy_evals:.0f} evals)"
+        )
 
         if abs(time_improvement) > 5:
             if time_improvement > 0:
@@ -128,35 +143,37 @@ def test_shy_effectiveness():
         else:
             print(f"  ≈ Similar solution quality ({value_improvement:+.1f}%)")
 
-        results.append({
-            'method': method,
-            'time_improvement': time_improvement,
-            'value_improvement': value_improvement,
-            'standard_time': avg_standard_time,
-            'shy_time': avg_shy_time,
-            'standard_value': avg_standard_value,
-            'shy_value': avg_shy_value
-        })
+        results.append(
+            {
+                "method": method,
+                "time_improvement": time_improvement,
+                "value_improvement": value_improvement,
+                "standard_time": avg_standard_time,
+                "shy_time": avg_shy_time,
+                "standard_value": avg_standard_value,
+                "shy_value": avg_shy_value,
+            }
+        )
 
     # Overall analysis
-    print(f"\n📈 OVERALL ANALYSIS")
+    print("\n📈 OVERALL ANALYSIS")
     print("-" * 30)
 
-    avg_time_improvement = np.mean([r['time_improvement'] for r in results])
-    avg_value_improvement = np.mean([r['value_improvement'] for r in results])
+    avg_time_improvement = np.mean([r["time_improvement"] for r in results])
+    avg_value_improvement = np.mean([r["value_improvement"] for r in results])
 
     print(f"Average time improvement: {avg_time_improvement:+.1f}%")
     print(f"Average solution quality improvement: {avg_value_improvement:+.1f}%")
 
     # Count significant improvements
-    time_wins = sum(1 for r in results if r['time_improvement'] > 5)
-    value_wins = sum(1 for r in results if r['value_improvement'] > 5)
+    time_wins = sum(1 for r in results if r["time_improvement"] > 5)
+    value_wins = sum(1 for r in results if r["value_improvement"] > 5)
 
     print(f"Methods with >5% time improvement: {time_wins}/{len(results)}")
     print(f"Methods with >5% solution improvement: {value_wins}/{len(results)}")
 
     # Verdict
-    print(f"\n🏆 VERDICT:")
+    print("\n🏆 VERDICT:")
     if avg_time_improvement > 10 or avg_value_improvement > 10:
         print("Shy wrapper shows STRONG benefits! 🚀")
     elif avg_time_improvement > 5 or avg_value_improvement > 5:
@@ -168,10 +185,11 @@ def test_shy_effectiveness():
 
     return results
 
+
 def test_parallel_benefit():
     """Test whether Parallel wrapper helps with evaluation efficiency."""
 
-    print(f"\n\n🔄 Testing Embarrassingly Parallel Wrapper")
+    print("\n\n🔄 Testing Embarrassingly Parallel Wrapper")
     print("=" * 50)
 
     try:
@@ -195,12 +213,15 @@ def test_parallel_benefit():
         sequential_time = time.time() - start_time
 
         print(f"Sequential-style calls through Parallel: {sequential_time:.2f}s")
-        print("✅ Parallel wrapper works (but doesn't show benefits without true parallel optimization)")
+        print(
+            "✅ Parallel wrapper works (but doesn't show benefits without true parallel optimization)"
+        )
 
     except ImportError:
         print("❌ Parallel not available")
     except Exception as e:
         print(f"❌ Parallel test failed: {e}")
+
 
 if __name__ == "__main__":
     print("🚀 Testing Embarrassingly Library Techniques (Simple Version)")
@@ -212,5 +233,5 @@ if __name__ == "__main__":
     # Test Parallel wrapper (basic functionality)
     test_parallel_benefit()
 
-    print(f"\n🏁 TESTING COMPLETE!")
+    print("\n🏁 TESTING COMPLETE!")
     print("Results show whether embarrassingly techniques provide real benefits.")

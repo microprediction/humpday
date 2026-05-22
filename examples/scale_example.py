@@ -6,9 +6,11 @@ This shows how providing a scale hint can improve optimization performance
 when you know roughly what magnitude the solution should have.
 """
 
-import numpy as np
-from humpday import minimize
 import time
+
+import numpy as np
+
+from humpday import minimize
 
 
 def test_scale_effectiveness():
@@ -20,13 +22,13 @@ def test_scale_effectiveness():
 
     # Test function with known minimum at [100, -50]
     def objective(x):
-        return (x[0] - 100)**2 + (x[1] + 50)**2
+        return (x[0] - 100) ** 2 + (x[1] + 50) ** 2
 
     true_minimum = np.array([100, -50])
 
-    print(f"Objective: minimize (x[0] - 100)² + (x[1] + 50)²")
+    print("Objective: minimize (x[0] - 100)² + (x[1] + 50)²")
     print(f"True minimum: {true_minimum}")
-    print(f"Expected function value: 0.0")
+    print("Expected function value: 0.0")
     print()
 
     # Test different scale values
@@ -35,10 +37,12 @@ def test_scale_effectiveness():
         (1.0, "scale=1.0"),
         (10.0, "scale=10.0"),
         (100.0, "scale=100.0 (optimal)"),
-        ([100.0, 50.0], "scale=[100.0, 50.0] (optimal per-dimension)")
+        ([100.0, 50.0], "scale=[100.0, 50.0] (optimal per-dimension)"),
     ]
 
-    print(f"{'Scale':<25} {'Final Value':<12} {'Solution':<25} {'Error':<10} {'Time (s)'}")
+    print(
+        f"{'Scale':<25} {'Final Value':<12} {'Solution':<25} {'Error':<10} {'Time (s)'}"
+    )
     print("-" * 80)
 
     for scale, description in scales_to_test:
@@ -46,15 +50,21 @@ def test_scale_effectiveness():
 
         try:
             # Run optimization with different scales
-            result = minimize(objective, x0=[0, 0], scale=scale,
-                            method='DifferentialEvolution',
-                            options={'maxiter': 500})
+            result = minimize(
+                objective,
+                x0=[0, 0],
+                scale=scale,
+                method="DifferentialEvolution",
+                options={"maxiter": 500},
+            )
 
             elapsed = time.time() - start_time
             error = np.linalg.norm(result.x - true_minimum)
 
-            print(f"{description:<25} {result.fun:<12.2e} "
-                  f"[{result.x[0]:6.1f}, {result.x[1]:6.1f}] {error:>8.2f} {elapsed:>8.2f}")
+            print(
+                f"{description:<25} {result.fun:<12.2e} "
+                f"[{result.x[0]:6.1f}, {result.x[1]:6.1f}] {error:>8.2f} {elapsed:>8.2f}"
+            )
 
         except Exception as e:
             print(f"{description:<25} {'FAILED':<12} {str(e)[:40]}")
@@ -70,7 +80,7 @@ def test_high_magnitude_problem():
     # Problem with solution at very high magnitude
     def high_mag_objective(x):
         target = np.array([1000, -2000, 500])
-        return np.sum((x - target)**2)
+        return np.sum((x - target) ** 2)
 
     true_minimum = np.array([1000, -2000, 500])
 
@@ -81,20 +91,27 @@ def test_high_magnitude_problem():
     test_cases = [
         (None, "No scale hint"),
         (1500.0, "scale=1500 (appropriate magnitude)"),
-        ([1000.0, 2000.0, 500.0], "Per-dimension scales")
+        ([1000.0, 2000.0, 500.0], "Per-dimension scales"),
     ]
 
     for scale, description in test_cases:
         start_time = time.time()
 
-        result = minimize(high_mag_objective, x0=[0, 0, 0], scale=scale,
-                         method='ParticleSwarm', options={'maxiter': 800})
+        result = minimize(
+            high_mag_objective,
+            x0=[0, 0, 0],
+            scale=scale,
+            method="ParticleSwarm",
+            options={"maxiter": 800},
+        )
 
         elapsed = time.time() - start_time
         error = np.linalg.norm(result.x - true_minimum)
 
-        print(f"{description:30}: error={error:8.2f}, "
-              f"time={elapsed:5.2f}s, value={result.fun:.2e}")
+        print(
+            f"{description:30}: error={error:8.2f}, "
+            f"time={elapsed:5.2f}s, value={result.fun:.2e}"
+        )
         print(f"{'':30}  solution={result.x}")
 
 
@@ -107,7 +124,7 @@ def test_mixed_scale_problem():
 
     def mixed_scale_objective(x):
         # Different scales: x[0] around 0.1, x[1] around 1000
-        return (x[0] - 0.1)**2 + ((x[1] - 1000) / 1000)**2
+        return (x[0] - 0.1) ** 2 + ((x[1] - 1000) / 1000) ** 2
 
     true_minimum = np.array([0.1, 1000])
 
@@ -119,12 +136,17 @@ def test_mixed_scale_problem():
     test_cases = [
         (None, "No scale hint"),
         (100.0, "Uniform scale=100"),
-        ([0.5, 1000.0], "Per-dimension: [0.5, 1000]")
+        ([0.5, 1000.0], "Per-dimension: [0.5, 1000]"),
     ]
 
     for scale, description in test_cases:
-        result = minimize(mixed_scale_objective, x0=[1, 1], scale=scale,
-                         method='CMAEvolutionStrategy', options={'maxiter': 400})
+        result = minimize(
+            mixed_scale_objective,
+            x0=[1, 1],
+            scale=scale,
+            method="CMAEvolutionStrategy",
+            options={"maxiter": 400},
+        )
 
         error = np.linalg.norm(result.x - true_minimum)
 
@@ -158,6 +180,7 @@ def main():
     except Exception as e:
         print(f"\n❌ Example failed with error: {e}")
         import traceback
+
         traceback.print_exc()
 
 

@@ -6,10 +6,13 @@ runs algorithm comparisons, updates Elo ratings, and provides running suggestion
 for which algorithms to use based on their performance.
 """
 
-import numpy as np
 import json
 import os
-from typing import Callable, Generator, List, Tuple, Dict, Any, Optional
+from collections.abc import Generator
+from typing import Any, Callable, Dict, List, Optional, Tuple
+
+import numpy as np
+
 from .optimizers import PURE_OPTIMIZERS, pure_optimize
 
 
@@ -19,7 +22,7 @@ class EloRatingSystem:
     def __init__(self, initial_rating: float = 1500.0, k_factor: float = 32.0):
         self.initial_rating = initial_rating
         self.k_factor = k_factor
-        self.ratings = {name: initial_rating for name in PURE_OPTIMIZERS.keys()}
+        self.ratings = dict.fromkeys(PURE_OPTIMIZERS.keys(), initial_rating)
         self.match_history = []
 
     def get_rating(self, algorithm: str) -> float:
@@ -28,7 +31,7 @@ class EloRatingSystem:
 
     def expected_score(self, rating_a: float, rating_b: float) -> float:
         """Calculate expected score for algorithm A vs algorithm B."""
-        return 1.0 / (1.0 + 10**((rating_b - rating_a) / 400.0))
+        return 1.0 / (1.0 + 10 ** ((rating_b - rating_a) / 400.0))
 
     def update_ratings(self, algorithm_a: str, algorithm_b: str, score_a: float):
         """
@@ -52,15 +55,17 @@ class EloRatingSystem:
         self.ratings[algorithm_b] = new_rating_b
 
         # Record match
-        self.match_history.append({
-            'algorithm_a': algorithm_a,
-            'algorithm_b': algorithm_b,
-            'score_a': score_a,
-            'rating_a_before': rating_a,
-            'rating_b_before': rating_b,
-            'rating_a_after': new_rating_a,
-            'rating_b_after': new_rating_b
-        })
+        self.match_history.append(
+            {
+                "algorithm_a": algorithm_a,
+                "algorithm_b": algorithm_b,
+                "score_a": score_a,
+                "rating_a_before": rating_a,
+                "rating_b_before": rating_b,
+                "rating_a_after": new_rating_a,
+                "rating_b_after": new_rating_b,
+            }
+        )
 
     def get_top_algorithms(self, n: int = 5) -> List[Tuple[str, float]]:
         """Get top N algorithms by Elo rating."""
@@ -70,26 +75,26 @@ class EloRatingSystem:
     def save_ratings(self, filepath: str):
         """Save ratings and history to file."""
         data = {
-            'ratings': self.ratings,
-            'match_history': self.match_history,
-            'initial_rating': self.initial_rating,
-            'k_factor': self.k_factor
+            "ratings": self.ratings,
+            "match_history": self.match_history,
+            "initial_rating": self.initial_rating,
+            "k_factor": self.k_factor,
         }
         os.makedirs(os.path.dirname(filepath), exist_ok=True)
-        with open(filepath, 'w') as f:
+        with open(filepath, "w") as f:
             json.dump(data, f, indent=2)
 
     def load_ratings(self, filepath: str) -> bool:
         """Load ratings and history from file. Returns True if successful."""
         try:
             if os.path.exists(filepath):
-                with open(filepath, 'r') as f:
+                with open(filepath) as f:
                     data = json.load(f)
 
-                self.ratings = data.get('ratings', {})
-                self.match_history = data.get('match_history', [])
-                self.initial_rating = data.get('initial_rating', 1500.0)
-                self.k_factor = data.get('k_factor', 32.0)
+                self.ratings = data.get("ratings", {})
+                self.match_history = data.get("match_history", [])
+                self.initial_rating = data.get("initial_rating", 1500.0)
+                self.k_factor = data.get("k_factor", 32.0)
 
                 # Ensure all algorithms have ratings
                 for alg in PURE_OPTIMIZERS.keys():
@@ -123,7 +128,7 @@ def run_algorithm_tournament(
     n_problems: int,
     n_dim: int,
     elo_system: Optional[EloRatingSystem] = None,
-    algorithms_to_test: Optional[List[str]] = None
+    algorithms_to_test: Optional[List[str]] = None,
 ) -> EloRatingSystem:
     """
     Run a tournament between algorithms on multiple problems.
@@ -145,7 +150,9 @@ def run_algorithm_tournament(
     if algorithms_to_test is None:
         algorithms_to_test = list(PURE_OPTIMIZERS.keys())
 
-    print(f"Running tournament with {len(algorithms_to_test)} algorithms on {n_problems} problems...")
+    print(
+        f"Running tournament with {len(algorithms_to_test)} algorithms on {n_problems} problems..."
+    )
 
     for problem_idx in range(n_problems):
         try:
@@ -160,11 +167,13 @@ def run_algorithm_tournament(
         results = {}
         for alg_name in algorithms_to_test:
             try:
-                best_value, _ = pure_optimize(objective, alg_name, trials_per_problem, n_dim)
+                best_value, _ = pure_optimize(
+                    objective, alg_name, trials_per_problem, n_dim
+                )
                 results[alg_name] = best_value
             except Exception as e:
                 print(f"Algorithm {alg_name} failed: {e}")
-                results[alg_name] = float('inf')
+                results[alg_name] = float("inf")
 
         # Convert to normalized scores
         performance_values = list(results.values())
@@ -200,7 +209,7 @@ def adaptive_optimize(
     n_warmup_problems: int = 5,
     trials_per_warmup: int = 50,
     elo_ratings_file: Optional[str] = None,
-    verbose: bool = True
+    verbose: bool = True,
 ) -> Dict[str, Any]:
     """
     Adaptive optimization that learns which algorithms work best.
@@ -244,28 +253,34 @@ def adaptive_optimize(
         trials_per_problem=trials_per_warmup,
         n_problems=n_warmup_problems,
         n_dim=n_dim,
-        elo_system=elo_system
+        elo_system=elo_system,
     )
 
     # Get current top algorithms
     top_algorithms = elo_system.get_top_algorithms(10)
     if verbose:
-        print(f"\nTop algorithms after warmup:")
+        print("\nTop algorithms after warmup:")
         for i, (alg, rating) in enumerate(top_algorithms[:5], 1):
             print(f"{i}. {alg}: {rating:.1f}")
 
     # Adaptive phase: focus on top algorithms
-    remaining_budget = trials_budget - (n_warmup_problems * len(PURE_OPTIMIZERS) * trials_per_warmup)
+    remaining_budget = trials_budget - (
+        n_warmup_problems * len(PURE_OPTIMIZERS) * trials_per_warmup
+    )
     if remaining_budget > 0:
         # Select top algorithms for continued testing
         top_algorithm_names = [alg for alg, _ in top_algorithms[:8]]
 
         if verbose:
-            print(f"\nAdaptive phase: focusing on top {len(top_algorithm_names)} algorithms")
+            print(
+                f"\nAdaptive phase: focusing on top {len(top_algorithm_names)} algorithms"
+            )
             print(f"Remaining budget: {remaining_budget} trials")
 
         # Continue testing with adaptive strategy
-        adaptive_problems = max(1, remaining_budget // (len(top_algorithm_names) * trials_per_warmup))
+        adaptive_problems = max(
+            1, remaining_budget // (len(top_algorithm_names) * trials_per_warmup)
+        )
 
         elo_system = run_algorithm_tournament(
             objective_generator=objective_generator,
@@ -273,7 +288,7 @@ def adaptive_optimize(
             n_problems=adaptive_problems,
             n_dim=n_dim,
             elo_system=elo_system,
-            algorithms_to_test=top_algorithm_names
+            algorithms_to_test=top_algorithm_names,
         )
 
     # Final results
@@ -281,10 +296,23 @@ def adaptive_optimize(
 
     # Create recommendations by problem characteristics
     recommendations = {
-        'low_dim_smooth': [alg for alg, _ in final_top_algorithms if alg in ['NelderMead', 'PRIMA_UOBYQA', 'Powell', 'LBFGSB']][:3],
-        'medium_dim_multimodal': [alg for alg, _ in final_top_algorithms if alg in ['DifferentialEvolution', 'CMAEvolutionStrategy', 'ParticleSwarm']][:3],
-        'high_dim_complex': [alg for alg, _ in final_top_algorithms if alg in ['CMAEvolutionStrategy', 'AdaptiveRandomSearch', 'EvolutionStrategy']][:3],
-        'general_purpose': [alg for alg, _ in final_top_algorithms[:5]]
+        "low_dim_smooth": [
+            alg
+            for alg, _ in final_top_algorithms
+            if alg in ["NelderMead", "PRIMA_UOBYQA", "Powell", "LBFGSB"]
+        ][:3],
+        "medium_dim_multimodal": [
+            alg
+            for alg, _ in final_top_algorithms
+            if alg in ["DifferentialEvolution", "CMAEvolutionStrategy", "ParticleSwarm"]
+        ][:3],
+        "high_dim_complex": [
+            alg
+            for alg, _ in final_top_algorithms
+            if alg
+            in ["CMAEvolutionStrategy", "AdaptiveRandomSearch", "EvolutionStrategy"]
+        ][:3],
+        "general_purpose": [alg for alg, _ in final_top_algorithms[:5]],
     }
 
     # Save updated ratings
@@ -294,23 +322,23 @@ def adaptive_optimize(
             print(f"\nSaved updated Elo ratings to {elo_ratings_file}")
 
     if verbose:
-        print(f"\nFinal top algorithms:")
+        print("\nFinal top algorithms:")
         for i, (alg, rating) in enumerate(final_top_algorithms[:5], 1):
             print(f"{i}. {alg}: {rating:.1f}")
 
     return {
-        'elo_system': elo_system,
-        'top_algorithms': final_top_algorithms,
-        'recommendations': recommendations,
-        'total_problems_solved': n_warmup_problems + adaptive_problems if remaining_budget > 0 else n_warmup_problems,
-        'total_matches': len(elo_system.match_history)
+        "elo_system": elo_system,
+        "top_algorithms": final_top_algorithms,
+        "recommendations": recommendations,
+        "total_problems_solved": n_warmup_problems + adaptive_problems
+        if remaining_budget > 0
+        else n_warmup_problems,
+        "total_matches": len(elo_system.match_history),
     }
 
 
 def suggest_algorithm_from_elo(
-    elo_system: EloRatingSystem,
-    n_dim: int,
-    problem_type: str = 'general'
+    elo_system: EloRatingSystem, n_dim: int, problem_type: str = "general"
 ) -> str:
     """
     Suggest best algorithm based on Elo ratings and problem characteristics.
@@ -326,12 +354,17 @@ def suggest_algorithm_from_elo(
     top_algorithms = elo_system.get_top_algorithms(20)
 
     # Filter by problem characteristics
-    if problem_type == 'smooth' and n_dim <= 10:
-        candidates = ['NelderMead', 'PRIMA_UOBYQA', 'Powell', 'LBFGSB']
-    elif problem_type == 'multimodal':
-        candidates = ['DifferentialEvolution', 'CMAEvolutionStrategy', 'ParticleSwarm', 'GeneticAlgorithm']
-    elif problem_type == 'noisy':
-        candidates = ['CMAEvolutionStrategy', 'AdaptiveRandomSearch', 'ParticleSwarm']
+    if problem_type == "smooth" and n_dim <= 10:
+        candidates = ["NelderMead", "PRIMA_UOBYQA", "Powell", "LBFGSB"]
+    elif problem_type == "multimodal":
+        candidates = [
+            "DifferentialEvolution",
+            "CMAEvolutionStrategy",
+            "ParticleSwarm",
+            "GeneticAlgorithm",
+        ]
+    elif problem_type == "noisy":
+        candidates = ["CMAEvolutionStrategy", "AdaptiveRandomSearch", "ParticleSwarm"]
     else:  # general
         candidates = [alg for alg, _ in top_algorithms[:10]]
 
@@ -341,7 +374,7 @@ def suggest_algorithm_from_elo(
             return alg
 
     # Fallback to highest-rated overall
-    return top_algorithms[0][0] if top_algorithms else 'NelderMead'
+    return top_algorithms[0][0] if top_algorithms else "NelderMead"
 
 
 # Lightweight self-contained objective functions - no 3rd party dependencies!
@@ -349,7 +382,9 @@ def suggest_algorithm_from_elo(
 
 
 # Pure lightweight implementations
-def sphere_variants_generator(n_dim: int = 2) -> Generator[Callable[[np.ndarray], float], None, None]:
+def sphere_variants_generator(
+    n_dim: int = 2,
+) -> Generator[Callable[[np.ndarray], float], None, None]:
     """Generator yielding variants of the sphere function - pure lightweight implementation."""
 
     def sphere_pure(x):
@@ -377,26 +412,31 @@ def sphere_variants_generator(n_dim: int = 2) -> Generator[Callable[[np.ndarray]
         yield np.random.choice(variants)
 
 
-def rosenbrock_variants_generator(n_dim: int = 2) -> Generator[Callable[[np.ndarray], float], None, None]:
+def rosenbrock_variants_generator(
+    n_dim: int = 2,
+) -> Generator[Callable[[np.ndarray], float], None, None]:
     """Generator yielding variants of the Rosenbrock function - pure lightweight implementation."""
 
     def rosenbrock_pure(x):
         """Pure Rosenbrock function: sum(100*(x[i+1] - x[i]^2)^2 + (1 - x[i])^2)"""
         x = np.asarray(x)
-        return np.sum(100.0 * (x[1:] - x[:-1]**2)**2 + (1 - x[:-1])**2)
+        return np.sum(100.0 * (x[1:] - x[:-1] ** 2) ** 2 + (1 - x[:-1]) ** 2)
 
     def scaled_rosenbrock(x):
         """Rosenbrock with random scaling"""
         x = np.asarray(x)
         scale = np.random.uniform(0.1, 5.0)
-        return scale * np.sum(100.0 * (x[1:] - x[:-1]**2)**2 + (1 - x[:-1])**2)
+        return scale * np.sum(100.0 * (x[1:] - x[:-1] ** 2) ** 2 + (1 - x[:-1]) ** 2)
 
     def shifted_rosenbrock(x):
         """Rosenbrock with random shift"""
         x = np.asarray(x)
         shift = np.random.uniform(-0.2, 0.2, len(x))
         x_shifted = x + shift
-        return np.sum(100.0 * (x_shifted[1:] - x_shifted[:-1]**2)**2 + (1 - x_shifted[:-1])**2)
+        return np.sum(
+            100.0 * (x_shifted[1:] - x_shifted[:-1] ** 2) ** 2
+            + (1 - x_shifted[:-1]) ** 2
+        )
 
     variants = [rosenbrock_pure, scaled_rosenbrock, shifted_rosenbrock]
 

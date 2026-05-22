@@ -30,7 +30,7 @@ class TestMainInit:
 
         # Test with simple objective
         def simple_objective(x):
-            return sum((xi - 0.5)**2 for xi in x)
+            return sum((xi - 0.5) ** 2 for xi in x)
 
         # Test without algorithm specification (auto-select)
         result = minimize_unit_cube(simple_objective, n_dim=2, n_trials=20)
@@ -39,7 +39,9 @@ class TestMainInit:
         assert len(result[1]) == 2
 
         # Test with specific algorithm
-        result_specific = minimize_unit_cube(simple_objective, n_dim=2, n_trials=20, algorithm='NelderMead')
+        result_specific = minimize_unit_cube(
+            simple_objective, n_dim=2, n_trials=20, algorithm="NelderMead"
+        )
         assert len(result_specific) == 2
 
     def test_recommend_alias(self):
@@ -58,8 +60,9 @@ class TestOptimizersCoverage:
     def test_optimizer_edge_cases(self):
         """Test edge cases and error conditions in optimizers."""
         from humpday.optimizers.optimizers import (
-            PRIMA_UOBYQA, NelderMead, DifferentialEvolution,
-            RandomSearch, SimulatedAnnealing
+            PRIMA_UOBYQA,
+            NelderMead,
+            RandomSearch,
         )
 
         # Test with very simple objective
@@ -80,28 +83,37 @@ class TestOptimizersCoverage:
         from humpday.optimizers.optimizers import RandomSearch
 
         def objective(x):
-            return sum((xi - 0.5)**2 for xi in x)
+            return sum((xi - 0.5) ** 2 for xi in x)
 
         optimizer = RandomSearch(objective, n_trials=10, n_dim=2)
         optimizer.track_path = True  # Enable path tracking
         result = optimizer.optimize()
 
         # Should have recorded some path points
-        assert hasattr(optimizer, 'path')
+        assert hasattr(optimizer, "path")
         assert len(optimizer.path) > 0
 
     def test_algorithm_specific_branches(self):
         """Test algorithm-specific code branches."""
         from humpday.optimizers.optimizers import (
-            HillClimbing, SimulatedAnnealing, HarmonySearch,
-            FireflyAlgorithm, TabuSearch
+            FireflyAlgorithm,
+            HarmonySearch,
+            HillClimbing,
+            SimulatedAnnealing,
+            TabuSearch,
         )
 
         def objective(x):
             return sum(x**2)
 
         # Test algorithms that have special conditions
-        algorithms = [HillClimbing, SimulatedAnnealing, HarmonySearch, FireflyAlgorithm, TabuSearch]
+        algorithms = [
+            HillClimbing,
+            SimulatedAnnealing,
+            HarmonySearch,
+            FireflyAlgorithm,
+            TabuSearch,
+        ]
 
         for alg_class in algorithms:
             optimizer = alg_class(objective, n_trials=10, n_dim=2)
@@ -118,11 +130,11 @@ class TestSciPyInterfaceCoverage:
 
         # Test 1D optimization
         def objective_1d(x):
-            return (x - 2)**2
+            return (x - 2) ** 2
 
         result = minimize_scalar(objective_1d, bounds=(-5, 5))
-        assert hasattr(result, 'x')
-        assert hasattr(result, 'fun')
+        assert hasattr(result, "x")
+        assert hasattr(result, "fun")
 
     def test_cube_minimize_scalar(self):
         """Test cube_minimize_scalar function."""
@@ -131,30 +143,36 @@ class TestSciPyInterfaceCoverage:
         def objective_1d(x):
             return x**2
 
-        result = cube_minimize_scalar(objective_1d, method='NelderMead')
-        assert hasattr(result, 'x')
-        assert hasattr(result, 'fun')
+        result = cube_minimize_scalar(objective_1d, method="NelderMead")
+        assert hasattr(result, "x")
+        assert hasattr(result, "fun")
 
     def test_specific_cube_optimizers(self):
         """Test specific cube optimizer functions."""
         from humpday import (
-            cube_nelder_mead, cube_differential_evolution,
-            cube_particle_swarm, cube_cma_es, cube_prima_uobyqa
+            cube_cma_es,
+            cube_differential_evolution,
+            cube_nelder_mead,
+            cube_particle_swarm,
+            cube_prima_uobyqa,
         )
 
         def simple_objective(x):
-            return sum((xi - 0.3)**2 for xi in x)
+            return sum((xi - 0.3) ** 2 for xi in x)
 
         optimizers = [
-            cube_nelder_mead, cube_differential_evolution,
-            cube_particle_swarm, cube_cma_es, cube_prima_uobyqa
+            cube_nelder_mead,
+            cube_differential_evolution,
+            cube_particle_swarm,
+            cube_cma_es,
+            cube_prima_uobyqa,
         ]
 
         for optimizer_func in optimizers:
             try:
                 result = optimizer_func(simple_objective, n_dim=2, n_trials=10)
-                assert hasattr(result, 'x')
-                assert hasattr(result, 'fun')
+                assert hasattr(result, "x")
+                assert hasattr(result, "fun")
             except Exception:
                 # Some optimizers might not be available or might fail
                 pass
@@ -176,8 +194,10 @@ class TestSciPyInterfaceCoverage:
     def test_domain_transformation_edge_cases(self):
         """Test edge cases in domain transformations."""
         from humpday import (
-            transform_to_unit_cube, transform_from_unit_cube,
-            unbounded_to_unit_cube, unit_cube_to_unbounded
+            transform_from_unit_cube,
+            transform_to_unit_cube,
+            unbounded_to_unit_cube,
+            unit_cube_to_unbounded,
         )
 
         # Test edge cases
@@ -204,10 +224,10 @@ class TestAdaptiveOptimizerCoverage:
         elo = EloRatingSystem()
 
         # Test save/load functionality
-        import tempfile
         import os
+        import tempfile
 
-        with tempfile.NamedTemporaryFile(mode='w', suffix='.json', delete=False) as f:
+        with tempfile.NamedTemporaryFile(mode="w", suffix=".json", delete=False) as f:
             temp_file = f.name
 
         try:
@@ -234,7 +254,10 @@ class TestAdaptiveOptimizerCoverage:
 
     def test_adaptive_optimize_complete(self):
         """Test complete adaptive_optimize functionality."""
-        from humpday.optimizers.adaptive_optimizer import adaptive_optimize, sphere_variants_generator
+        from humpday.optimizers.adaptive_optimizer import (
+            adaptive_optimize,
+            sphere_variants_generator,
+        )
 
         # Test with very minimal parameters
         generator = sphere_variants_generator(n_dim=2)
@@ -245,18 +268,22 @@ class TestAdaptiveOptimizerCoverage:
             n_dim=2,
             n_warmup_problems=2,  # Minimal warmup
             trials_per_warmup=10,
-            verbose=False  # Test non-verbose mode
+            verbose=False,  # Test non-verbose mode
         )
 
         # Check all expected keys are present
-        expected_keys = ['elo_system', 'top_algorithms', 'recommendations',
-                        'total_problems_solved']
+        expected_keys = [
+            "elo_system",
+            "top_algorithms",
+            "recommendations",
+            "total_problems_solved",
+        ]
         for key in expected_keys:
             assert key in results
 
         # Check that we got some results
-        assert len(results['top_algorithms']) > 0
-        assert 'total_problems_solved' in results
+        assert len(results["top_algorithms"]) > 0
+        assert "total_problems_solved" in results
 
     def test_elo_expected_score_edge_cases(self):
         """Test edge cases in Elo expected score calculation."""
@@ -278,7 +305,8 @@ class TestAdaptiveOptimizerCoverage:
     def test_objective_generators(self):
         """Test objective generators completely."""
         from humpday.optimizers.adaptive_optimizer import (
-            sphere_variants_generator, rosenbrock_variants_generator
+            rosenbrock_variants_generator,
+            sphere_variants_generator,
         )
 
         # Test sphere generator
@@ -307,12 +335,12 @@ class TestAllOptimizersCoverage:
         from humpday import get_optimizer
 
         # Test getting valid optimizer
-        optimizer_func = get_optimizer('NelderMead')
+        optimizer_func = get_optimizer("NelderMead")
         assert callable(optimizer_func)
 
         # Test getting invalid optimizer
         try:
-            invalid_optimizer = get_optimizer('NonExistentOptimizer')
+            invalid_optimizer = get_optimizer("NonExistentOptimizer")
             # Should either return None or raise an error
         except (KeyError, ValueError):
             pass
@@ -322,10 +350,10 @@ class TestAllOptimizersCoverage:
         from humpday import pure_optimize
 
         def objective(x):
-            return sum((xi - 0.2)**2 for xi in x)
+            return sum((xi - 0.2) ** 2 for xi in x)
 
         # Test with different algorithms
-        algorithms = ['RandomSearch', 'NelderMead', 'HillClimbing']
+        algorithms = ["RandomSearch", "NelderMead", "HillClimbing"]
 
         for alg in algorithms:
             try:

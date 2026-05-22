@@ -2,10 +2,10 @@
 Tests specifically designed to hit missing lines in adaptive_optimizer.py for 100% coverage.
 """
 
-import numpy as np
-import pytest
-import tempfile
 import os
+import tempfile
+
+import pytest
 
 
 class TestAdaptiveOptimizerMissingCoverage:
@@ -42,19 +42,19 @@ class TestAdaptiveOptimizerMissingCoverage:
         elo = EloRatingSystem()
 
         # Test get_rating for non-existent algorithm
-        rating = elo.get_rating('NonExistentAlgorithm')
+        rating = elo.get_rating("NonExistentAlgorithm")
         assert rating == elo.initial_rating
 
         # Test update_ratings with tie (score = 0.5)
-        elo.update_ratings('RandomSearch', 'NelderMead', 0.5)
+        elo.update_ratings("RandomSearch", "NelderMead", 0.5)
 
         # Test update_ratings with complete win/loss
-        elo.update_ratings('RandomSearch', 'NelderMead', 1.0)
-        elo.update_ratings('RandomSearch', 'NelderMead', 0.0)
+        elo.update_ratings("RandomSearch", "NelderMead", 1.0)
+        elo.update_ratings("RandomSearch", "NelderMead", 0.0)
 
         # Test save to invalid path (should trigger error handling)
         try:
-            success = elo.save_ratings('/invalid/nonexistent/path/ratings.json')
+            success = elo.save_ratings("/invalid/nonexistent/path/ratings.json")
             assert success is False
         except (OSError, PermissionError, FileNotFoundError):
             pass  # Expected error
@@ -66,11 +66,11 @@ class TestAdaptiveOptimizerMissingCoverage:
         elo = EloRatingSystem()
 
         # Add some ratings
-        elo.update_ratings('RandomSearch', 'NelderMead', 0.7)
-        elo.update_ratings('HillClimbing', 'SimulatedAnnealing', 0.3)
+        elo.update_ratings("RandomSearch", "NelderMead", 0.7)
+        elo.update_ratings("HillClimbing", "SimulatedAnnealing", 0.3)
 
         # Test save to a valid temporary file
-        with tempfile.NamedTemporaryFile(mode='w', suffix='.json', delete=False) as f:
+        with tempfile.NamedTemporaryFile(mode="w", suffix=".json", delete=False) as f:
             temp_path = f.name
 
         try:
@@ -84,8 +84,8 @@ class TestAdaptiveOptimizerMissingCoverage:
             assert success is True
 
             # Verify ratings were loaded
-            assert 'RandomSearch' in new_elo.ratings
-            assert 'NelderMead' in new_elo.ratings
+            assert "RandomSearch" in new_elo.ratings
+            assert "NelderMead" in new_elo.ratings
 
         finally:
             if os.path.exists(temp_path):
@@ -99,7 +99,8 @@ class TestAdaptiveOptimizerMissingCoverage:
     def test_adaptive_optimize_edge_parameters(self):
         """Test adaptive_optimize with edge parameters (lines 232-233, 236, 240)."""
         from humpday.optimizers.adaptive_optimizer import (
-            adaptive_optimize, sphere_variants_generator
+            adaptive_optimize,
+            sphere_variants_generator,
         )
 
         generator = sphere_variants_generator(n_dim=2)
@@ -111,16 +112,18 @@ class TestAdaptiveOptimizerMissingCoverage:
             n_dim=2,
             n_warmup_problems=1,  # Minimal warmup
             trials_per_warmup=3,  # Very small trials per warmup
-            verbose=True  # Test verbose mode
+            verbose=True,  # Test verbose mode
         )
 
-        assert 'elo_system' in results
-        assert 'top_algorithms' in results
+        assert "elo_system" in results
+        assert "top_algorithms" in results
 
     def test_run_algorithm_tournament_edge_cases(self):
         """Test run_algorithm_tournament edge cases (lines 253-255, 261-270)."""
         from humpday.optimizers.adaptive_optimizer import (
-            run_algorithm_tournament, EloRatingSystem, sphere_variants_generator
+            EloRatingSystem,
+            run_algorithm_tournament,
+            sphere_variants_generator,
         )
 
         elo_system = EloRatingSystem()
@@ -132,7 +135,7 @@ class TestAdaptiveOptimizerMissingCoverage:
             trials_per_problem=3,  # Very small
             n_problems=1,  # Single problem
             n_dim=2,
-            elo_system=elo_system
+            elo_system=elo_system,
         )
 
         assert isinstance(updated_elo, EloRatingSystem)
@@ -140,7 +143,8 @@ class TestAdaptiveOptimizerMissingCoverage:
     def test_run_single_tournament_specific_conditions(self):
         """Test run_single_tournament with specific conditions (lines 292-294, 297-299)."""
         from humpday.optimizers.adaptive_optimizer import (
-            run_single_tournament, EloRatingSystem
+            EloRatingSystem,
+            run_single_tournament,
         )
 
         elo_system = EloRatingSystem()
@@ -153,7 +157,7 @@ class TestAdaptiveOptimizerMissingCoverage:
             objective=tournament_objective,
             elo_system=elo_system,
             trials_per_algorithm=2,  # Very small
-            n_dim=2
+            n_dim=2,
         )
 
         assert isinstance(updated_elo, EloRatingSystem)
@@ -169,14 +173,15 @@ class TestAdaptiveOptimizerMissingCoverage:
 
         # Test with more algorithms requested than exist
         elo_few = EloRatingSystem()
-        elo_few.update_ratings('RandomSearch', 'NelderMead', 0.8)
+        elo_few.update_ratings("RandomSearch", "NelderMead", 0.8)
         top_many = elo_few.get_top_algorithms(n=50)  # More than available
         assert isinstance(top_many, list)
 
     def test_objective_generators_edge_cases(self):
         """Test objective generators with edge cases (lines 369-372)."""
         from humpday.optimizers.adaptive_optimizer import (
-            sphere_variants_generator, rosenbrock_variants_generator
+            rosenbrock_variants_generator,
+            sphere_variants_generator,
         )
 
         # Test sphere generator with 1D (edge case)

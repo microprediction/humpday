@@ -4,9 +4,10 @@ Integrates Opfunu, benchmark-functions, and COCO-inspired approaches.
 Focus: Single-objective continuous optimization on hypercube [0,1]^n
 """
 
-import numpy as np
-from typing import List, Callable, Dict, Any
 import warnings
+from typing import Any, Callable, Dict
+
+import numpy as np
 
 # Try to import the advanced surface generation packages
 HAS_OPFUNU = False
@@ -14,6 +15,7 @@ HAS_BENCHMARK_FUNCS = False
 
 try:
     import opfunu
+
     HAS_OPFUNU = True
     print("✓ Opfunu available - comprehensive optimization functions")
 except ImportError:
@@ -21,10 +23,13 @@ except ImportError:
 
 try:
     import benchmark_functions as bf
+
     HAS_BENCHMARK_FUNCS = True
     print("✓ benchmark-functions available - lightweight test functions")
 except ImportError:
-    print("⚠ benchmark-functions not available - install with: pip install benchmark-functions")
+    print(
+        "⚠ benchmark-functions not available - install with: pip install benchmark-functions"
+    )
 
 
 class EnhancedSurfaceGenerator:
@@ -35,12 +40,12 @@ class EnhancedSurfaceGenerator:
 
     def __init__(self):
         self.available_categories = {
-            'unimodal': ['sphere', 'ellipsoid', 'zakharov', 'rosenbrock'],
-            'multimodal': ['rastrigin', 'griewank', 'ackley', 'schwefel'],
-            'composite': ['hybrid_composition', 'shifted_rotated'],
-            'deceptive': ['step_function', 'quartic_noise'],
-            'separable': ['sphere', 'zakharov'],
-            'non_separable': ['rosenbrock', 'ellipsoid_rotated']
+            "unimodal": ["sphere", "ellipsoid", "zakharov", "rosenbrock"],
+            "multimodal": ["rastrigin", "griewank", "ackley", "schwefel"],
+            "composite": ["hybrid_composition", "shifted_rotated"],
+            "deceptive": ["step_function", "quartic_noise"],
+            "separable": ["sphere", "zakharov"],
+            "non_separable": ["rosenbrock", "ellipsoid_rotated"],
         }
 
     def get_function_on_cube(self, function_name: str, n_dim: int) -> Callable:
@@ -58,18 +63,18 @@ class EnhancedSurfaceGenerator:
 
         # Map common names to Opfunu classes
         opfunu_mapping = {
-            'sphere': 'SphereFunction',
-            'ellipsoid': 'EllipticFunction',
-            'rastrigin': 'RastriginFunction',
-            'griewank': 'GriewankFunction',
-            'ackley': 'AckleyFunction',
-            'schwefel': 'SchwefelFunction',
-            'rosenbrock': 'RosenbrockFunction',
-            'zakharov': 'ZakharovFunction'
+            "sphere": "SphereFunction",
+            "ellipsoid": "EllipticFunction",
+            "rastrigin": "RastriginFunction",
+            "griewank": "GriewankFunction",
+            "ackley": "AckleyFunction",
+            "schwefel": "SchwefelFunction",
+            "rosenbrock": "RosenbrockFunction",
+            "zakharov": "ZakharovFunction",
         }
 
         if function_name not in opfunu_mapping:
-            function_name = 'rastrigin'  # Default fallback
+            function_name = "rastrigin"  # Default fallback
 
         try:
             # Get the function class from opfunu
@@ -77,7 +82,7 @@ class EnhancedSurfaceGenerator:
 
             # Try different opfunu module structures
             func_class = None
-            for module_path in ['cec_based', 'classical', 'physics_based']:
+            for module_path in ["cec_based", "classical", "physics_based"]:
                 try:
                     module = getattr(opfunu, module_path)
                     if hasattr(module, func_class_name):
@@ -113,21 +118,23 @@ class EnhancedSurfaceGenerator:
             warnings.warn(f"Opfunu function {function_name} failed: {e}")
             return self._get_fallback_function_on_cube(function_name, n_dim)
 
-    def _get_benchmark_function_on_cube(self, function_name: str, n_dim: int) -> Callable:
+    def _get_benchmark_function_on_cube(
+        self, function_name: str, n_dim: int
+    ) -> Callable:
         """Create benchmark-functions based function on hypercube."""
 
         # Map to benchmark-functions classes
         bf_mapping = {
-            'sphere': bf.Sphere,
-            'rastrigin': bf.Rastrigin,
-            'griewank': bf.Griewank,
-            'ackley': bf.Ackley,
-            'rosenbrock': bf.Rosenbrock,
-            'zakharov': bf.Zakharov
+            "sphere": bf.Sphere,
+            "rastrigin": bf.Rastrigin,
+            "griewank": bf.Griewank,
+            "ackley": bf.Ackley,
+            "rosenbrock": bf.Rosenbrock,
+            "zakharov": bf.Zakharov,
         }
 
         if function_name not in bf_mapping:
-            function_name = 'rastrigin'
+            function_name = "rastrigin"
 
         try:
             # Create function instance
@@ -150,7 +157,9 @@ class EnhancedSurfaceGenerator:
             warnings.warn(f"Benchmark function {function_name} failed: {e}")
             return self._get_fallback_function_on_cube(function_name, n_dim)
 
-    def _get_fallback_function_on_cube(self, function_name: str, n_dim: int) -> Callable:
+    def _get_fallback_function_on_cube(
+        self, function_name: str, n_dim: int
+    ) -> Callable:
         """Fallback implementations when external packages unavailable."""
 
         def sphere(x):
@@ -163,14 +172,18 @@ class EnhancedSurfaceGenerator:
             x = np.array(x)
             # Transform [0,1]^n to [-5.12,5.12]^n
             scaled_x = 10.24 * x - 5.12
-            return 10 * len(scaled_x) + np.sum(scaled_x**2 - 10 * np.cos(2 * np.pi * scaled_x))
+            return 10 * len(scaled_x) + np.sum(
+                scaled_x**2 - 10 * np.cos(2 * np.pi * scaled_x)
+            )
 
         def griewank(x):
             x = np.array(x)
             # Transform [0,1]^n to [-600,600]^n
             scaled_x = 1200 * x - 600
             sum_sq = np.sum(scaled_x**2) / 4000
-            prod_cos = np.prod(np.cos(scaled_x / np.sqrt(np.arange(1, len(scaled_x) + 1))))
+            prod_cos = np.prod(
+                np.cos(scaled_x / np.sqrt(np.arange(1, len(scaled_x) + 1)))
+            )
             return sum_sq - prod_cos + 1
 
         def ackley(x):
@@ -187,20 +200,25 @@ class EnhancedSurfaceGenerator:
             x = np.array(x)
             # Transform [0,1]^n to [-2.048,2.048]^n
             scaled_x = 4.096 * x - 2.048
-            return np.sum(100 * (scaled_x[1:] - scaled_x[:-1]**2)**2 + (1 - scaled_x[:-1])**2)
+            return np.sum(
+                100 * (scaled_x[1:] - scaled_x[:-1] ** 2) ** 2
+                + (1 - scaled_x[:-1]) ** 2
+            )
 
         fallback_functions = {
-            'sphere': sphere,
-            'rastrigin': rastrigin,
-            'griewank': griewank,
-            'ackley': ackley,
-            'rosenbrock': rosenbrock,
-            'zakharov': lambda x: sphere(x) + np.sum(np.array(x)**4)  # Simplified
+            "sphere": sphere,
+            "rastrigin": rastrigin,
+            "griewank": griewank,
+            "ackley": ackley,
+            "rosenbrock": rosenbrock,
+            "zakharov": lambda x: sphere(x) + np.sum(np.array(x) ** 4),  # Simplified
         }
 
         return fallback_functions.get(function_name, rastrigin)
 
-    def generate_bbob_inspired_surface(self, size: int, function_type: str, **kwargs) -> np.ndarray:
+    def generate_bbob_inspired_surface(
+        self, size: int, function_type: str, **kwargs
+    ) -> np.ndarray:
         """
         Generate 2D surface visualization inspired by BBOB methodology.
         For use in browser-based demos and educational visualization.
@@ -226,50 +244,53 @@ class EnhancedSurfaceGenerator:
         """Get metadata about a test function for categorization."""
 
         metadata = {
-            'sphere': {
-                'landscape_type': 'smooth',
-                'modality': 'unimodal',
-                'separable': True,
-                'conditioning': 'well_conditioned',
-                'global_structure': 'strong'
+            "sphere": {
+                "landscape_type": "smooth",
+                "modality": "unimodal",
+                "separable": True,
+                "conditioning": "well_conditioned",
+                "global_structure": "strong",
             },
-            'rastrigin': {
-                'landscape_type': 'multimodal',
-                'modality': 'highly_multimodal',
-                'separable': True,
-                'conditioning': 'well_conditioned',
-                'global_structure': 'weak'
+            "rastrigin": {
+                "landscape_type": "multimodal",
+                "modality": "highly_multimodal",
+                "separable": True,
+                "conditioning": "well_conditioned",
+                "global_structure": "weak",
             },
-            'griewank': {
-                'landscape_type': 'multimodal',
-                'modality': 'multimodal',
-                'separable': False,
-                'conditioning': 'moderate',
-                'global_structure': 'moderate'
+            "griewank": {
+                "landscape_type": "multimodal",
+                "modality": "multimodal",
+                "separable": False,
+                "conditioning": "moderate",
+                "global_structure": "moderate",
             },
-            'ackley': {
-                'landscape_type': 'multimodal',
-                'modality': 'highly_multimodal',
-                'separable': False,
-                'conditioning': 'moderate',
-                'global_structure': 'weak'
+            "ackley": {
+                "landscape_type": "multimodal",
+                "modality": "highly_multimodal",
+                "separable": False,
+                "conditioning": "moderate",
+                "global_structure": "weak",
             },
-            'rosenbrock': {
-                'landscape_type': 'smooth',
-                'modality': 'unimodal',
-                'separable': False,
-                'conditioning': 'ill_conditioned',
-                'global_structure': 'moderate'
-            }
+            "rosenbrock": {
+                "landscape_type": "smooth",
+                "modality": "unimodal",
+                "separable": False,
+                "conditioning": "ill_conditioned",
+                "global_structure": "moderate",
+            },
         }
 
-        return metadata.get(function_name, {
-            'landscape_type': 'multimodal',
-            'modality': 'multimodal',
-            'separable': False,
-            'conditioning': 'moderate',
-            'global_structure': 'moderate'
-        })
+        return metadata.get(
+            function_name,
+            {
+                "landscape_type": "multimodal",
+                "modality": "multimodal",
+                "separable": False,
+                "conditioning": "moderate",
+                "global_structure": "moderate",
+            },
+        )
 
 
 def get_enhanced_test_functions(n_dim: int = 2) -> Dict[str, Callable]:
@@ -278,7 +299,14 @@ def get_enhanced_test_functions(n_dim: int = 2) -> Dict[str, Callable]:
     generator = EnhancedSurfaceGenerator()
 
     functions = {}
-    function_names = ['sphere', 'rastrigin', 'griewank', 'ackley', 'rosenbrock', 'zakharov']
+    function_names = [
+        "sphere",
+        "rastrigin",
+        "griewank",
+        "ackley",
+        "rosenbrock",
+        "zakharov",
+    ]
 
     for name in function_names:
         try:
@@ -297,7 +325,7 @@ if __name__ == "__main__":
     print("\n=== Enhanced Surface Generation Test ===")
 
     # Test different functions
-    test_functions = ['sphere', 'rastrigin', 'griewank', 'ackley', 'rosenbrock']
+    test_functions = ["sphere", "rastrigin", "griewank", "ackley", "rosenbrock"]
 
     for func_name in test_functions:
         print(f"\nTesting {func_name}:")
@@ -321,7 +349,7 @@ if __name__ == "__main__":
         except Exception as e:
             print(f"  ✗ {func_name}: {e}")
 
-    print(f"\n=== Package Status ===")
+    print("\n=== Package Status ===")
     print(f"Opfunu available: {HAS_OPFUNU}")
     print(f"benchmark-functions available: {HAS_BENCHMARK_FUNCS}")
 

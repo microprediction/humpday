@@ -9,7 +9,6 @@ def chat_0(u):
     return np.sum(s * q)
 
 
-import numpy as np
 
 
 # Chat Function 1
@@ -36,7 +35,7 @@ def chat_2(u):
     """
     n_dim = len(u)
     u = np.array(u)
-    term1 = np.sum(u ** 2)
+    term1 = np.sum(u**2)
     term2 = np.sum(((u - 0.1 * np.roll(u, 1)) ** 2)[:-1])
     return term1 + term2
 
@@ -99,7 +98,7 @@ def chat_6(u):
     """
     n_dim = len(u)
     u = np.array(u)
-    term1 = np.sum(u ** 2) / 4000
+    term1 = np.sum(u**2) / 4000
     term2 = np.prod(np.cos(u / np.sqrt(np.arange(1, n_dim + 1))))
     term3 = 0
     for i in range(n_dim - 1):
@@ -140,7 +139,7 @@ def chat_8(u):
 # Sum of Squares Function
 def chat_9(u):
     u = np.array(u)
-    return np.sum(u ** 2) + 0.1*np.sum((u-0.1)**4)
+    return np.sum(u**2) + 0.1 * np.sum((u - 0.1) ** 4)
 
 
 # Egg Holder Function
@@ -179,7 +178,7 @@ def chat_12(u):
     """
     u = np.array(u)
     a = 1
-    b = 5.1 / (4 * np.pi ** 2)
+    b = 5.1 / (4 * np.pi**2)
     c = 5 / np.pi
     r = 6
     s = 10
@@ -189,34 +188,33 @@ def chat_12(u):
     return term1 + term2
 
 
-import numpy as np
 
 
 # Modified Sphere Function
 def chat_13(u):
     """
-    An optimization problem that involves minimizing a modified version of 
-    the classic Sphere function. The modification involves multiplying each 
-    coordinate of the input vector by a function of its index, which adds 
+    An optimization problem that involves minimizing a modified version of
+    the classic Sphere function. The modification involves multiplying each
+    coordinate of the input vector by a function of its index, which adds
     nonlinearity and complexity to the landscape.
     """
     n_dim = len(u)
     u = np.array(u)
     f = np.arange(1, n_dim + 1)
-    return np.sum(f * u ** 2)
+    return np.sum(f * u**2)
 
 
 # Griewank Function with Sinusoidal Perturbation
 def chat_14(u):
     """
-    An optimization problem that involves minimizing the Griewank function 
-    with a sinusoidal perturbation added to one coordinate of the input 
-    vector. The perturbation adds complexity to the landscape and can make 
+    An optimization problem that involves minimizing the Griewank function
+    with a sinusoidal perturbation added to one coordinate of the input
+    vector. The perturbation adds complexity to the landscape and can make
     it more chat to optimize.
     """
     n_dim = len(u)
     u = np.array(u)
-    term1 = np.sum(u ** 2) / 4000
+    term1 = np.sum(u**2) / 4000
     term2 = np.prod(np.cos(u / np.sqrt(np.arange(1, n_dim + 1))))
     perturb = np.sin(10 * u[0])
     return term1 - term2 + perturb
@@ -225,10 +223,10 @@ def chat_14(u):
 # Modified Rastrigin Function
 def chat_15(u):
     """
-    A modified version of the Rastrigin function that introduces a 
-    non-linear transformation of the input vector. This transformation 
-    involves taking the absolute value of each coordinate and then 
-    raising it to a power that increases with the index. This adds 
+    A modified version of the Rastrigin function that introduces a
+    non-linear transformation of the input vector. This transformation
+    involves taking the absolute value of each coordinate and then
+    raising it to a power that increases with the index. This adds
     complexity and nonlinearity to the landscape.
     """
     n_dim = len(u)
@@ -240,15 +238,18 @@ def chat_15(u):
 # Zakharov Function with Sine Perturbation
 def chat_16(u):
     """
-    An optimization problem that involves minimizing the Zakharov function 
-    with a sine perturbation added to one coordinate of the input vector. 
-    The perturbation adds complexity to the landscape and can make it more 
+    An optimization problem that involves minimizing the Zakharov function
+    with a sine perturbation added to one coordinate of the input vector.
+    The perturbation adds complexity to the landscape and can make it more
     chat to optimize.
     """
     n_dim = len(u)
     u = np.array(u)
-    term1 = np.sum(u ** 2) + np.sum(0.5 * np.arange(1, n_dim + 1) * u) ** 2 + \
-            np.sum(0.5 * np.arange(1, n_dim + 1) * u) ** 4
+    term1 = (
+        np.sum(u**2)
+        + np.sum(0.5 * np.arange(1, n_dim + 1) * u) ** 2
+        + np.sum(0.5 * np.arange(1, n_dim + 1) * u) ** 4
+    )
     perturb = np.sin(10 * u[0])
     return term1 + perturb
 
@@ -256,25 +257,42 @@ def chat_16(u):
 # Modified Ackley Function
 def chat_17(u):
     """
-    A modified version of the Ackley function that introduces a non-linear 
-    transformation of the input vector. This transformation involves taking 
-    the square of each coordinate and then adding it to the product of 
-    adjacent coordinates. This adds complexity and nonlinearity to the 
+    A modified version of the Ackley function that introduces a non-linear
+    transformation of the input vector. This transformation involves taking
+    the square of each coordinate and then adding it to the product of
+    adjacent coordinates. This adds complexity and nonlinearity to the
     landscape.
     """
     n_dim = len(u)
     u = np.array(u)
-    v = u ** 2 + np.roll(u, -1) * np.roll(u, 1)
+    v = u**2 + np.roll(u, -1) * np.roll(u, 1)
     term1 = -20 * np.exp(-0.2 * np.sqrt(np.sum(v) / n_dim))
     term2 = -np.exp(np.sum(np.cos(2 * np.pi * v)) / n_dim)
     return term1 + term2 + 20 + np.exp(1)
 
 
-CHATGPT_OBJECTIVES = [chat_0, chat_1, chat_2, chat_3, chat_4,chat_5, chat_6, chat_7,
-                     chat_8, chat_9, chat_10, chat_11, chat_12, chat_13, chat_14,
-                     chat_15, chat_16, chat_17]
+CHATGPT_OBJECTIVES = [
+    chat_0,
+    chat_1,
+    chat_2,
+    chat_3,
+    chat_4,
+    chat_5,
+    chat_6,
+    chat_7,
+    chat_8,
+    chat_9,
+    chat_10,
+    chat_11,
+    chat_12,
+    chat_13,
+    chat_14,
+    chat_15,
+    chat_16,
+    chat_17,
+]
 
-if __name__=='__main__':
+if __name__ == "__main__":
     for obj in CHATGPT_OBJECTIVES:
-        for u in [ [1,2], [1.0,0,0,0,0,0]]:
+        for u in [[1, 2], [1.0, 0, 0, 0, 0, 0]]:
             obj(u)

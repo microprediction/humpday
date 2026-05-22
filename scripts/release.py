@@ -22,10 +22,7 @@ def update_version_in_pyproject(version: str) -> None:
 
     # Update version line
     new_content = re.sub(
-        r'^version = "[^"]*"',
-        f'version = "{version}"',
-        content,
-        flags=re.MULTILINE
+        r'^version = "[^"]*"', f'version = "{version}"', content, flags=re.MULTILINE
     )
 
     pyproject_path.write_text(new_content)
@@ -44,24 +41,24 @@ def update_version_in_init(version: str) -> None:
                 r'^__version__ = "[^"]*"',
                 f'__version__ = "{version}"',
                 content,
-                flags=re.MULTILINE
+                flags=re.MULTILINE,
             )
         else:
             # Add version if it doesn't exist
-            lines = content.split('\n')
+            lines = content.split("\n")
             # Insert after docstring or at beginning
             insert_pos = 0
             for i, line in enumerate(lines):
                 if '"""' in line:
                     # Find end of docstring
-                    for j in range(i+1, len(lines)):
+                    for j in range(i + 1, len(lines)):
                         if '"""' in lines[j]:
                             insert_pos = j + 1
                             break
                     break
 
             lines.insert(insert_pos, f'__version__ = "{version}"')
-            new_content = '\n'.join(lines)
+            new_content = "\n".join(lines)
 
         init_path.write_text(new_content)
         print(f"Updated version to {version} in __init__.py")
@@ -81,10 +78,17 @@ def run_command(cmd: list[str]) -> bool:
 def main():
     parser = argparse.ArgumentParser(description="Release helper for humpday")
     parser.add_argument("--version", required=True, help="New version number")
-    parser.add_argument("--type", choices=["patch", "minor", "major"],
-                       required=True, help="Release type")
-    parser.add_argument("--dry-run", action="store_true",
-                       help="Show what would be done without making changes")
+    parser.add_argument(
+        "--type",
+        choices=["patch", "minor", "major"],
+        required=True,
+        help="Release type",
+    )
+    parser.add_argument(
+        "--dry-run",
+        action="store_true",
+        help="Show what would be done without making changes",
+    )
 
     args = parser.parse_args()
 

@@ -11,6 +11,7 @@ import pytest
 
 def test_sphere_implementation():
     """Test our pure sphere implementation."""
+
     # Test pure sphere directly
     def sphere_pure(x):
         x = np.asarray(x)
@@ -29,10 +30,13 @@ def test_sphere_implementation():
 
     for point, expected_val in zip(test_points, expected):
         result = sphere_pure(point)
-        assert abs(result - expected_val) < 1e-10, f"Sphere({point}) = {result}, expected {expected_val}"
+        assert abs(result - expected_val) < 1e-10, (
+            f"Sphere({point}) = {result}, expected {expected_val}"
+        )
 
     # Test that generator produces working functions
     from humpday.optimizers.adaptive_optimizer import sphere_variants_generator
+
     gen = sphere_variants_generator(2)
     for _ in range(3):
         func = next(gen)
@@ -43,16 +47,17 @@ def test_sphere_implementation():
 
 def test_rosenbrock_implementation():
     """Test our pure Rosenbrock implementation."""
+
     # Test pure Rosenbrock directly
     def rosenbrock_pure(x):
         x = np.asarray(x)
-        return np.sum(100.0 * (x[1:] - x[:-1]**2)**2 + (1 - x[:-1])**2)
+        return np.sum(100.0 * (x[1:] - x[:-1] ** 2) ** 2 + (1 - x[:-1]) ** 2)
 
     # Test cases - Rosenbrock function
     test_points = [
-        [1, 1],      # Global minimum
-        [0, 0],      # Origin
-        [-1, 1],     # Symmetric point
+        [1, 1],  # Global minimum
+        [0, 0],  # Origin
+        [-1, 1],  # Symmetric point
     ]
 
     # Expected values for 2D Rosenbrock
@@ -61,10 +66,13 @@ def test_rosenbrock_implementation():
 
     for point, expected_val in zip(test_points, expected):
         result = rosenbrock_pure(point)
-        assert abs(result - expected_val) < 1e-10, f"Rosenbrock({point}) = {result}, expected {expected_val}"
+        assert abs(result - expected_val) < 1e-10, (
+            f"Rosenbrock({point}) = {result}, expected {expected_val}"
+        )
 
     # Test that generator produces working functions
     from humpday.optimizers.adaptive_optimizer import rosenbrock_variants_generator
+
     gen = rosenbrock_variants_generator(2)
     for _ in range(3):
         func = next(gen)
@@ -75,9 +83,10 @@ def test_rosenbrock_implementation():
 
 def test_mixed_functions():
     """Test mixed function generator."""
-    import sys
     import os
-    sys.path.insert(0, os.path.join(os.path.dirname(__file__), '..', 'examples'))
+    import sys
+
+    sys.path.insert(0, os.path.join(os.path.dirname(__file__), "..", "examples"))
 
     from adaptive_optimization_example import mixed_function_generator
 
@@ -87,7 +96,9 @@ def test_mixed_functions():
     for i in range(5):
         func = next(gen)
         result = func([0.1, 0.2])
-        assert isinstance(result, (int, float, np.number)), f"Function {i} returned {type(result)}"
+        assert isinstance(result, (int, float, np.number)), (
+            f"Function {i} returned {type(result)}"
+        )
         assert not np.isnan(result), f"Function {i} returned NaN"
         assert not np.isinf(result), f"Function {i} returned infinity"
 
@@ -106,7 +117,7 @@ def test_reference_consistency():
 
         def our_rosenbrock(x):
             x = np.asarray(x)
-            return np.sum(100.0 * (x[1:] - x[:-1]**2)**2 + (1 - x[:-1])**2)
+            return np.sum(100.0 * (x[1:] - x[:-1] ** 2) ** 2 + (1 - x[:-1]) ** 2)
 
         test_points = [
             np.array([1, 1]),
@@ -118,8 +129,9 @@ def test_reference_consistency():
         for point in test_points:
             our_result = our_rosenbrock(point)
             scipy_result = rosen(point)
-            assert abs(our_result - scipy_result) < 1e-12, \
+            assert abs(our_result - scipy_result) < 1e-12, (
                 f"Mismatch at {point}: ours={our_result}, scipy={scipy_result}"
+            )
 
         print("✓ Rosenbrock implementation matches SciPy reference")
 
@@ -130,6 +142,7 @@ def test_reference_consistency():
 
 def test_domain_handling():
     """Test that functions handle domain constraints properly."""
+
     # Test with pure sphere function directly
     def sphere_pure(x):
         x = np.asarray(x)
@@ -137,9 +150,9 @@ def test_domain_handling():
 
     # Test various input formats
     test_inputs = [
-        [0.1, 0.2, 0.3],           # List
-        np.array([0.1, 0.2, 0.3]), # NumPy array
-        (0.1, 0.2, 0.3),           # Tuple
+        [0.1, 0.2, 0.3],  # List
+        np.array([0.1, 0.2, 0.3]),  # NumPy array
+        (0.1, 0.2, 0.3),  # Tuple
     ]
 
     results = []

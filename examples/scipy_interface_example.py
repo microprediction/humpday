@@ -7,20 +7,21 @@ domains using cube transformation to the unit hypercube [0,1]^n.
 """
 
 import numpy as np
+
 try:
     import matplotlib.pyplot as plt
+
     HAVE_MATPLOTLIB = True
 except ImportError:
     HAVE_MATPLOTLIB = False
 
 from humpday import (
-    cube_minimize,
-    cube_cube_minimize_scalar,
-    cube_nelder_mead,
-    cube_differential_evolution,
-    cube_particle_swarm,
     cube_cma_es,
-    cube_prima_uobyqa
+    cube_differential_evolution,
+    cube_minimize,
+    cube_nelder_mead,
+    cube_particle_swarm,
+    cube_prima_uobyqa,
 )
 
 
@@ -33,17 +34,17 @@ def example_1_basic_usage():
     # Define objective function on arbitrary domain
     def objective(x):
         """Rosenbrock function with minimum at (1, 1)."""
-        return 100 * (x[1] - x[0]**2)**2 + (1 - x[0])**2
+        return 100 * (x[1] - x[0] ** 2) ** 2 + (1 - x[0]) ** 2
 
     # Optimize on rectangular domain [-2, 2] x [-1, 3]
     bounds = [(-2, 2), (-1, 3)]
 
-    result = cube_minimize(objective, bounds=bounds, method='NelderMead')
+    result = cube_minimize(objective, bounds=bounds, method="NelderMead")
 
     print(f"Optimization successful: {result.success}")
     print(f"Function value: {result.fun:.6e}")
     print(f"Solution: [{result.x[0]:.4f}, {result.x[1]:.4f}]")
-    print(f"Expected: [1.0000, 1.0000]")
+    print("Expected: [1.0000, 1.0000]")
     print(f"Function evaluations: {result.nfev}")
 
     # Verify solution is close to expected
@@ -72,22 +73,25 @@ def example_2_algorithm_comparison():
         ("Differential Evolution", cube_differential_evolution),
         ("Particle Swarm", cube_particle_swarm),
         ("CMA-ES", cube_cma_es),
-        ("PRIMA UOBYQA", cube_prima_uobyqa)
+        ("PRIMA UOBYQA", cube_prima_uobyqa),
     ]
 
-    print(f"{'Algorithm':<20} {'Best Value':<12} {'Solution':<20} {'Distance to Optimum'}")
+    print(
+        f"{'Algorithm':<20} {'Best Value':<12} {'Solution':<20} {'Distance to Optimum'}"
+    )
     print("-" * 70)
 
     for name, algorithm in algorithms:
         try:
-            result = algorithm(rastrigin, bounds=bounds,
-                             options={'maxiter': 500})
+            result = algorithm(rastrigin, bounds=bounds, options={"maxiter": 500})
 
             # Distance from global optimum at (0, 0)
             distance = np.linalg.norm(result.x)
 
-            print(f"{name:<20} {result.fun:<12.2e} "
-                  f"[{result.x[0]:6.3f}, {result.x[1]:6.3f}] {distance:>12.3f}")
+            print(
+                f"{name:<20} {result.fun:<12.2e} "
+                f"[{result.x[0]:6.3f}, {result.x[1]:6.3f}] {distance:>12.3f}"
+            )
 
         except Exception as e:
             print(f"{name:<20} {'FAILED':<12} {str(e)[:30]}")
@@ -102,10 +106,12 @@ def example_3_scalar_optimization():
     # 1D function with multiple local minima
     def complex_1d(x):
         """Complex 1D function with multiple local minima."""
-        return np.sin(5 * x) * np.exp(-x**2) + 0.1 * x**2
+        return np.sin(5 * x) * np.exp(-(x**2)) + 0.1 * x**2
 
     # Optimize on [-3, 3]
-    result = cube_minimize_scalar(complex_1d, bounds=(-3, 3), method='DifferentialEvolution')
+    result = cube_minimize_scalar(
+        complex_1d, bounds=(-3, 3), method="DifferentialEvolution"
+    )
 
     print(f"Minimum found at x = {result.x:.4f}")
     print(f"Function value: {result.fun:.6f}")
@@ -117,14 +123,20 @@ def example_3_scalar_optimization():
             y_plot = [complex_1d(x) for x in x_plot]
 
             plt.figure(figsize=(10, 6))
-            plt.plot(x_plot, y_plot, 'b-', linewidth=2, label='Objective function')
-            plt.plot(result.x, result.fun, 'ro', markersize=10, label=f'Optimum ({result.x:.3f}, {result.fun:.3f})')
-            plt.xlabel('x')
-            plt.ylabel('f(x)')
-            plt.title('1D Optimization Example')
+            plt.plot(x_plot, y_plot, "b-", linewidth=2, label="Objective function")
+            plt.plot(
+                result.x,
+                result.fun,
+                "ro",
+                markersize=10,
+                label=f"Optimum ({result.x:.3f}, {result.fun:.3f})",
+            )
+            plt.xlabel("x")
+            plt.ylabel("f(x)")
+            plt.title("1D Optimization Example")
             plt.legend()
             plt.grid(True, alpha=0.3)
-            plt.savefig('scipy_interface_1d_example.png', dpi=150, bbox_inches='tight')
+            plt.savefig("scipy_interface_1d_example.png", dpi=150, bbox_inches="tight")
             plt.show()
             print("Plot saved as 'scipy_interface_1d_example.png'")
         except Exception as e:
@@ -143,24 +155,25 @@ def example_4_constrained_domain():
     def portfolio_risk(weights):
         """Simple portfolio risk function."""
         # Correlation matrix (example)
-        corr = np.array([[1.0, 0.3, 0.1],
-                        [0.3, 1.0, 0.2],
-                        [0.1, 0.2, 1.0]])
+        corr = np.array([[1.0, 0.3, 0.1], [0.3, 1.0, 0.2], [0.1, 0.2, 1.0]])
 
         # Risk (variance)
         risk = np.dot(weights, np.dot(corr, weights))
 
         # Add penalty for constraint violation (weights should sum to 1)
-        constraint_penalty = 1000 * (np.sum(weights) - 1)**2
+        constraint_penalty = 1000 * (np.sum(weights) - 1) ** 2
 
         return risk + constraint_penalty
 
     # Each weight between 0 and 1
     bounds = [(0, 1), (0, 1), (0, 1)]
 
-    result = cube_minimize(portfolio_risk, bounds=bounds,
-                          method='DifferentialEvolution',
-                          options={'maxiter': 200})
+    result = cube_minimize(
+        portfolio_risk,
+        bounds=bounds,
+        method="DifferentialEvolution",
+        options={"maxiter": 200},
+    )
 
     print(f"Optimal portfolio weights: {result.x}")
     print(f"Sum of weights: {np.sum(result.x):.4f} (should be ~1.0)")
@@ -180,16 +193,19 @@ def example_5_high_dimensional():
 
     def high_dim_sphere(x):
         """High-dimensional shifted sphere function."""
-        return np.sum((x - target)**2)
+        return np.sum((x - target) ** 2)
 
     # Optimize on [-2, 2]^50
     bounds = [(-2, 2)] * n_dim
 
     print(f"Optimizing {n_dim}-dimensional problem...")
 
-    result = cube_minimize(high_dim_sphere, bounds=bounds,
-                          method='ParticleSwarm',
-                          options={'maxiter': 1000})
+    result = cube_minimize(
+        high_dim_sphere,
+        bounds=bounds,
+        method="ParticleSwarm",
+        options={"maxiter": 1000},
+    )
 
     print(f"Best function value: {result.fun:.2e}")
     print(f"Distance to true optimum: {np.linalg.norm(result.x - target):.4f}")
@@ -209,17 +225,17 @@ def example_6_domain_transformations():
     print("EXAMPLE 6: Domain Transformation Utilities")
     print("=" * 60)
 
-    from humpday import transform_to_unit_cube, transform_from_unit_cube
+    from humpday import transform_from_unit_cube, transform_to_unit_cube
 
     # Define custom bounds
     bounds = [(-10, 10), (0, 100), (-5, 5)]
 
     # Some points in the rectangular domain
     real_points = [
-        np.array([0, 50, 0]),      # Center
-        np.array([-10, 0, -5]),    # Lower corner
-        np.array([10, 100, 5]),    # Upper corner
-        np.array([5, 75, -2.5])    # Random point
+        np.array([0, 50, 0]),  # Center
+        np.array([-10, 0, -5]),  # Lower corner
+        np.array([10, 100, 5]),  # Upper corner
+        np.array([5, 75, -2.5]),  # Random point
     ]
 
     print(f"{'Real Domain':<20} {'Unit Cube':<20} {'Recovered':<20}")
@@ -251,21 +267,21 @@ def example_7_comparison_with_unit_cube():
 
     # Function defined on [-5, 5]^2
     def objective_real(x):
-        return (x[0] + 2)**2 + (x[1] - 1)**2
+        return (x[0] + 2) ** 2 + (x[1] - 1) ** 2
 
     # Same function mapped to unit cube
     def objective_unit(x):
         # Map [0,1]^2 to [-5,5]^2
         x_real = -5 + 10 * np.array(x)
-        return (x_real[0] + 2)**2 + (x_real[1] - 1)**2
+        return (x_real[0] + 2) ** 2 + (x_real[1] - 1) ** 2
 
     bounds = [(-5, 5), (-5, 5)]
 
     # Method 1: SciPy interface
-    result_scipy = cube_minimize(objective_real, bounds=bounds, method='NelderMead')
+    result_scipy = cube_minimize(objective_real, bounds=bounds, method="NelderMead")
 
     # Method 2: Direct unit cube optimization
-    best_val_unit, best_x_unit = pure_optimize(objective_unit, 'NelderMead', 1000, 2)
+    best_val_unit, best_x_unit = pure_optimize(objective_unit, "NelderMead", 1000, 2)
 
     # Transform unit cube result to real domain
     best_x_real = -5 + 10 * np.array(best_x_unit)
@@ -312,6 +328,7 @@ def main():
     except Exception as e:
         print(f"\n❌ Example failed with error: {e}")
         import traceback
+
         traceback.print_exc()
 
 

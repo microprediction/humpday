@@ -4,16 +4,17 @@ Demonstration of PRIMA UOBYQA and NEWUOA integration with HumpDay.
 Shows their performance compared to existing optimizers.
 """
 
-import numpy as np
-import time
 import sys
-import os
+import time
+
+import numpy as np
 
 # Add the humpday directory to path for imports
-sys.path.append('/Users/petercotton/github/humpday')
+sys.path.append("/Users/petercotton/github/humpday")
 
-from humpday.optimizers.primacube import prima_uobyqa_cube, prima_newuoa_cube
+from humpday.optimizers.primacube import prima_newuoa_cube, prima_uobyqa_cube
 from scipy.optimize import minimize
+
 
 def create_test_functions():
     """Create a diverse set of test problems for comparison."""
@@ -30,9 +31,11 @@ def create_test_functions():
         x = np.array(x)
         scaled_x = 4.096 * x - 2.048  # Scale to [-2.048, 2.048]
         if len(scaled_x) < 2:
-            return float('inf')
-        return sum(100*(scaled_x[i+1] - scaled_x[i]**2)**2 + (1 - scaled_x[i])**2
-                  for i in range(len(scaled_x)-1))
+            return float("inf")
+        return sum(
+            100 * (scaled_x[i + 1] - scaled_x[i] ** 2) ** 2 + (1 - scaled_x[i]) ** 2
+            for i in range(len(scaled_x) - 1)
+        )
 
     # 3. Noisy Sphere - test robustness
     def noisy_sphere(x):
@@ -42,11 +45,8 @@ def create_test_functions():
         noise = 0.1 * np.random.normal(0, 1)  # 10% noise
         return base_value + noise
 
-    return {
-        'sphere': sphere,
-        'rosenbrock': rosenbrock,
-        'noisy_sphere': noisy_sphere
-    }
+    return {"sphere": sphere, "rosenbrock": rosenbrock, "noisy_sphere": noisy_sphere}
+
 
 def scipy_powell_baseline(objective, n_trials, n_dim):
     """Reference implementation using SciPy Powell method."""
@@ -62,16 +62,17 @@ def scipy_powell_baseline(objective, n_trials, n_dim):
         result = minimize(
             counting_wrapper,
             x0,
-            method='Powell',
+            method="Powell",
             bounds=[(0, 1)] * n_dim,
-            options={'maxfev': n_trials}
+            options={"maxfev": n_trials},
         )
 
         best_x = np.clip(result.x, 0.0, 1.0)
         return result.fun, best_x, eval_count[0]
 
-    except Exception as e:
-        return float('inf'), x0, eval_count[0]
+    except Exception:
+        return float("inf"), x0, eval_count[0]
+
 
 def scipy_nelder_mead_baseline(objective, n_trials, n_dim):
     """Reference implementation using SciPy Nelder-Mead."""
@@ -87,16 +88,17 @@ def scipy_nelder_mead_baseline(objective, n_trials, n_dim):
         result = minimize(
             counting_wrapper,
             x0,
-            method='Nelder-Mead',
+            method="Nelder-Mead",
             bounds=[(0, 1)] * n_dim,
-            options={'maxfev': n_trials}
+            options={"maxfev": n_trials},
         )
 
         best_x = np.clip(result.x, 0.0, 1.0)
         return result.fun, best_x, eval_count[0]
 
-    except Exception as e:
-        return float('inf'), x0, eval_count[0]
+    except Exception:
+        return float("inf"), x0, eval_count[0]
+
 
 def run_comparison_study():
     """Run comprehensive comparison of PRIMA vs baseline methods."""
@@ -111,10 +113,10 @@ def run_comparison_study():
     dimensions = [2, 5]  # Test both low and medium dimensions
 
     optimizers = {
-        'PRIMA UOBYQA': prima_uobyqa_cube,
-        'PRIMA NEWUOA': prima_newuoa_cube,
-        'SciPy Powell': scipy_powell_baseline,
-        'SciPy Nelder-Mead': scipy_nelder_mead_baseline
+        "PRIMA UOBYQA": prima_uobyqa_cube,
+        "PRIMA NEWUOA": prima_newuoa_cube,
+        "SciPy Powell": scipy_powell_baseline,
+        "SciPy Nelder-Mead": scipy_nelder_mead_baseline,
     }
 
     results = {}
@@ -150,23 +152,25 @@ def run_comparison_study():
                     avg_time = np.mean(times)
                     avg_evals = np.mean(evaluations)
 
-                    print(f"  {opt_name:15}: {avg_value:.6f} ± {std_value:.6f} "
-                          f"({avg_time:.3f}s, {avg_evals:.1f} evals)")
+                    print(
+                        f"  {opt_name:15}: {avg_value:.6f} ± {std_value:.6f} "
+                        f"({avg_time:.3f}s, {avg_evals:.1f} evals)"
+                    )
 
                     key = (dim, func_name, opt_name)
                     results[key] = {
-                        'mean_value': avg_value,
-                        'std_value': std_value,
-                        'mean_time': avg_time,
-                        'mean_evals': avg_evals
+                        "mean_value": avg_value,
+                        "std_value": std_value,
+                        "mean_time": avg_time,
+                        "mean_evals": avg_evals,
                     }
 
     # Performance summary
-    print(f"\n🎯 PERFORMANCE SUMMARY")
+    print("\n🎯 PERFORMANCE SUMMARY")
     print("=" * 35)
 
-    prima_methods = ['PRIMA UOBYQA', 'PRIMA NEWUOA']
-    baseline_methods = ['SciPy Powell', 'SciPy Nelder-Mead']
+    prima_methods = ["PRIMA UOBYQA", "PRIMA NEWUOA"]
+    baseline_methods = ["SciPy Powell", "SciPy Nelder-Mead"]
 
     prima_wins = 0
     total_comparisons = 0
@@ -176,33 +180,37 @@ def run_comparison_study():
             print(f"\n{func_name} ({dim}D):")
 
             # Find best result for each category
-            prima_best = float('inf')
-            baseline_best = float('inf')
+            prima_best = float("inf")
+            baseline_best = float("inf")
 
             for method in prima_methods:
                 key = (dim, func_name, method)
                 if key in results:
-                    prima_best = min(prima_best, results[key]['mean_value'])
+                    prima_best = min(prima_best, results[key]["mean_value"])
 
             for method in baseline_methods:
                 key = (dim, func_name, method)
                 if key in results:
-                    baseline_best = min(baseline_best, results[key]['mean_value'])
+                    baseline_best = min(baseline_best, results[key]["mean_value"])
 
-            if prima_best < float('inf') and baseline_best < float('inf'):
+            if prima_best < float("inf") and baseline_best < float("inf"):
                 total_comparisons += 1
                 if prima_best < baseline_best:
                     prima_wins += 1
                     improvement = (baseline_best - prima_best) / baseline_best * 100
-                    print(f"  🏆 PRIMA better: {prima_best:.6f} vs {baseline_best:.6f} ({improvement:+.1f}%)")
+                    print(
+                        f"  🏆 PRIMA better: {prima_best:.6f} vs {baseline_best:.6f} ({improvement:+.1f}%)"
+                    )
                 else:
                     decline = (prima_best - baseline_best) / baseline_best * 100
-                    print(f"  📊 Baseline better: {prima_best:.6f} vs {baseline_best:.6f} ({decline:+.1f}%)")
+                    print(
+                        f"  📊 Baseline better: {prima_best:.6f} vs {baseline_best:.6f} ({decline:+.1f}%)"
+                    )
 
     # Overall assessment
     win_rate = prima_wins / total_comparisons * 100 if total_comparisons > 0 else 0
 
-    print(f"\n🏁 FINAL ASSESSMENT")
+    print("\n🏁 FINAL ASSESSMENT")
     print("=" * 25)
     print(f"PRIMA methods win rate: {prima_wins}/{total_comparisons} ({win_rate:.1f}%)")
 
@@ -216,12 +224,13 @@ def run_comparison_study():
         print("📊 PRIMA methods comparable to existing optimizers")
         print("   RECOMMENDATION: Useful additional options in the toolkit")
 
-    print(f"\n💡 KEY STRENGTHS:")
-    print(f"   • UOBYQA: High-accuracy quadratic interpolation for low dimensions")
-    print(f"   • NEWUOA: Scalable iterative approximation for higher dimensions")
-    print(f"   • Both: Derivative-free, proven Powell methods with bug fixes")
+    print("\n💡 KEY STRENGTHS:")
+    print("   • UOBYQA: High-accuracy quadratic interpolation for low dimensions")
+    print("   • NEWUOA: Scalable iterative approximation for higher dimensions")
+    print("   • Both: Derivative-free, proven Powell methods with bug fixes")
 
     return results
+
 
 if __name__ == "__main__":
     print("🧪 Demonstrating PRIMA Integration with HumpDay")
@@ -229,10 +238,11 @@ if __name__ == "__main__":
 
     try:
         results = run_comparison_study()
-        print(f"\n✨ Demonstration complete!")
+        print("\n✨ Demonstration complete!")
         print("PRIMA UOBYQA and NEWUOA are now part of the HumpDay ecosystem.")
 
     except Exception as e:
         print(f"❌ Demonstration failed: {e}")
         import traceback
+
         traceback.print_exc()

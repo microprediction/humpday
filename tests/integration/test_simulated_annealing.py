@@ -2,10 +2,12 @@
 """
 Quick test for SimulatedAnnealing
 """
-import subprocess
+
 import json
-import tempfile
 import os
+import subprocess
+import tempfile
+
 
 def test_simulated_annealing():
     """Test SimulatedAnnealing on 2D sphere function"""
@@ -49,18 +51,20 @@ try {{
 }}
 """
 
-    with tempfile.NamedTemporaryFile(mode='w', suffix='.js', delete=False) as f:
+    with tempfile.NamedTemporaryFile(mode="w", suffix=".js", delete=False) as f:
         f.write(js_code)
         temp_file = f.name
 
     try:
-        result = subprocess.run(['node', temp_file], capture_output=True, text=True, timeout=10)
+        result = subprocess.run(
+            ["node", temp_file], capture_output=True, text=True, timeout=10
+        )
 
         if result.returncode == 0:
             js_result = json.loads(result.stdout.strip())
-            if not js_result.get('error'):
-                best_value = js_result.get('bestValue', float('inf'))
-                print(f"🧪 SimulatedAnnealing Test Result:")
+            if not js_result.get("error"):
+                best_value = js_result.get("bestValue", float("inf"))
+                print("🧪 SimulatedAnnealing Test Result:")
                 print(f"   Best Value: {best_value:.6f} (target: ~0.0)")
                 print(f"   Best X: {js_result.get('bestX', [])}")
                 print(f"   Evaluations: {js_result.get('evaluations', 0)}")
@@ -89,8 +93,9 @@ try {{
     finally:
         os.unlink(temp_file)
 
-if __name__ == '__main__':
+
+if __name__ == "__main__":
     print("🚀 Testing SimulatedAnnealing...")
     result = test_simulated_annealing()
     if result:
-        print(f"\n🎯 Result: Performance needs improvement for reference matching")
+        print("\n🎯 Result: Performance needs improvement for reference matching")

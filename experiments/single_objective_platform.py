@@ -4,25 +4,26 @@ Single objective optimization contest platform.
 Users describe problems in plain English, optimizers compete to find the minimum.
 """
 
-import numpy as np
-import pandas as pd
-import time
-import json
-import sys
-from typing import Dict, List, Callable, Tuple
-from dataclasses import dataclass
 import re
+import sys
+import time
+from dataclasses import dataclass
+from typing import Callable, Dict, List, Tuple
+
+import numpy as np
 
 # Import our optimizers and surfaces
-sys.path.append('/Users/petercotton/github/humpday/humpday/optimizers')
-from primacube import prima_uobyqa_cube, prima_newuoa_cube
+sys.path.append("/Users/petercotton/github/humpday/humpday/optimizers")
+from primacube import prima_newuoa_cube, prima_uobyqa_cube
 
-sys.path.append('/Users/petercotton/github/humpday/humpday/objectives')
+sys.path.append("/Users/petercotton/github/humpday/humpday/objectives")
 from stochastic_surfaces import StochasticSurfaceGenerator
+
 
 @dataclass
 class ProblemSpec:
     """Single objective problem specification."""
+
     description: str
     dimensions: int
     surface_type: str
@@ -30,17 +31,18 @@ class ProblemSpec:
     evaluation_budget: int
     domain: str
 
+
 class SingleObjectivePlatform:
     """Contest platform for single objective optimization."""
 
     def __init__(self):
         self.surface_generator = StochasticSurfaceGenerator(seed=12345)
         self.elo_ratings = {
-            'PRIMA_UOBYQA': 1500,
-            'PRIMA_NEWUOA': 1500,
-            'SciPy_BFGS': 1500,
-            'SciPy_Powell': 1500,
-            'SciPy_NelderMead': 1500
+            "PRIMA_UOBYQA": 1500,
+            "PRIMA_NEWUOA": 1500,
+            "SciPy_BFGS": 1500,
+            "SciPy_Powell": 1500,
+            "SciPy_NelderMead": 1500,
         }
         self.match_history = []
 
@@ -52,9 +54,9 @@ class SingleObjectivePlatform:
         # Extract dimensions
         dimensions = 5  # Default
         dim_patterns = [
-            r'(\d+)\s*(?:dimension|parameter|variable|feature)',
-            r'(\d+)d\s',
-            r'with\s*(\d+)\s*(?:dim|param|var)'
+            r"(\d+)\s*(?:dimension|parameter|variable|feature)",
+            r"(\d+)d\s",
+            r"with\s*(\d+)\s*(?:dim|param|var)",
         ]
 
         for pattern in dim_patterns:
@@ -64,42 +66,52 @@ class SingleObjectivePlatform:
                 break
 
         # Determine surface type based on keywords
-        if any(word in description for word in ['smooth', 'quadratic', 'simple', 'sphere']):
-            surface_type = 'smooth'
-        elif any(word in description for word in ['valley', 'rosenbrock', 'banana', 'curved']):
-            surface_type = 'valley'
-        elif any(word in description for word in ['multimodal', 'multiple', 'local minima', 'peaks']):
-            surface_type = 'multimodal'
-        elif any(word in description for word in ['noisy', 'stochastic', 'random']):
-            surface_type = 'noisy'
+        if any(
+            word in description for word in ["smooth", "quadratic", "simple", "sphere"]
+        ):
+            surface_type = "smooth"
+        elif any(
+            word in description for word in ["valley", "rosenbrock", "banana", "curved"]
+        ):
+            surface_type = "valley"
+        elif any(
+            word in description
+            for word in ["multimodal", "multiple", "local minima", "peaks"]
+        ):
+            surface_type = "multimodal"
+        elif any(word in description for word in ["noisy", "stochastic", "random"]):
+            surface_type = "noisy"
         else:
-            surface_type = 'mixed'  # Default to varied
+            surface_type = "mixed"  # Default to varied
 
         # Determine difficulty
         if dimensions <= 5:
-            difficulty = 'easy'
+            difficulty = "easy"
         elif dimensions <= 15:
-            difficulty = 'medium'
+            difficulty = "medium"
         else:
-            difficulty = 'hard'
+            difficulty = "hard"
 
         # Set evaluation budget based on difficulty
-        budget_map = {
-            'easy': 60,
-            'medium': 100,
-            'hard': 150
-        }
+        budget_map = {"easy": 60, "medium": 100, "hard": 150}
         evaluation_budget = budget_map[difficulty]
 
         # Classify domain (simple keyword matching)
-        if any(word in description for word in ['portfolio', 'trading', 'finance', 'investment']):
-            domain = 'finance'
-        elif any(word in description for word in ['neural', 'learning', 'model', 'ml', 'ai']):
-            domain = 'machine_learning'
-        elif any(word in description for word in ['design', 'antenna', 'engine', 'material']):
-            domain = 'engineering'
+        if any(
+            word in description
+            for word in ["portfolio", "trading", "finance", "investment"]
+        ):
+            domain = "finance"
+        elif any(
+            word in description for word in ["neural", "learning", "model", "ml", "ai"]
+        ):
+            domain = "machine_learning"
+        elif any(
+            word in description for word in ["design", "antenna", "engine", "material"]
+        ):
+            domain = "engineering"
         else:
-            domain = 'general'
+            domain = "general"
 
         return ProblemSpec(
             description=description,
@@ -107,37 +119,59 @@ class SingleObjectivePlatform:
             surface_type=surface_type,
             difficulty=difficulty,
             evaluation_budget=evaluation_budget,
-            domain=domain
+            domain=domain,
         )
 
-    def generate_challenge_surfaces(self, spec: ProblemSpec, n_surfaces: int = 5) -> List[Tuple[str, Callable]]:
+    def generate_challenge_surfaces(
+        self, spec: ProblemSpec, n_surfaces: int = 5
+    ) -> List[Tuple[str, Callable]]:
         """Generate appropriate challenge surfaces for the problem spec."""
 
         surfaces = []
 
-        if spec.surface_type == 'smooth':
+        if spec.surface_type == "smooth":
             # Smooth functions like sphere variants
             for i in range(n_surfaces):
-                surfaces.append((f"sphere_variant_{i}", self.surface_generator.stochastic_sphere(f"smooth_{i}")))
+                surfaces.append(
+                    (
+                        f"sphere_variant_{i}",
+                        self.surface_generator.stochastic_sphere(f"smooth_{i}"),
+                    )
+                )
 
-        elif spec.surface_type == 'valley':
+        elif spec.surface_type == "valley":
             # Valley functions like Rosenbrock variants
             for i in range(n_surfaces):
-                surfaces.append((f"valley_{i}", self.surface_generator.stochastic_rosenbrock(f"valley_{i}")))
+                surfaces.append(
+                    (
+                        f"valley_{i}",
+                        self.surface_generator.stochastic_rosenbrock(f"valley_{i}"),
+                    )
+                )
 
-        elif spec.surface_type == 'multimodal':
+        elif spec.surface_type == "multimodal":
             # Multi-modal functions
             for i in range(n_surfaces):
                 if i % 2 == 0:
-                    surfaces.append((f"rastrigin_{i}", self.surface_generator.stochastic_rastrigin(f"multi_{i}")))
+                    surfaces.append(
+                        (
+                            f"rastrigin_{i}",
+                            self.surface_generator.stochastic_rastrigin(f"multi_{i}"),
+                        )
+                    )
                 else:
-                    surfaces.append((f"ackley_{i}", self.surface_generator.stochastic_ackley(f"multi_{i}")))
+                    surfaces.append(
+                        (
+                            f"ackley_{i}",
+                            self.surface_generator.stochastic_ackley(f"multi_{i}"),
+                        )
+                    )
 
-        elif spec.surface_type == 'noisy':
+        elif spec.surface_type == "noisy":
             # Add noise to base functions
             base_functions = [
                 self.surface_generator.stochastic_sphere,
-                self.surface_generator.stochastic_rosenbrock
+                self.surface_generator.stochastic_rosenbrock,
             ]
             for i, base_func in enumerate(base_functions * (n_surfaces // 2 + 1)):
                 if i >= n_surfaces:
@@ -151,7 +185,7 @@ class SingleObjectivePlatform:
                 self.surface_generator.stochastic_rosenbrock,
                 self.surface_generator.stochastic_rastrigin,
                 self.surface_generator.stochastic_ackley,
-                self.surface_generator.stochastic_griewank
+                self.surface_generator.stochastic_griewank,
             ]
             for i in range(n_surfaces):
                 func_type = function_types[i % len(function_types)]
@@ -167,8 +201,8 @@ class SingleObjectivePlatform:
         optimizers = {}
 
         # PRIMA methods
-        optimizers['PRIMA_UOBYQA'] = prima_uobyqa_cube
-        optimizers['PRIMA_NEWUOA'] = prima_newuoa_cube
+        optimizers["PRIMA_UOBYQA"] = prima_uobyqa_cube
+        optimizers["PRIMA_NEWUOA"] = prima_newuoa_cube
 
         # SciPy methods with improved wrappers
         def make_scipy_optimizer(method_name):
@@ -184,7 +218,8 @@ class SingleObjectivePlatform:
                     return np.log(x_bounded / (1 - x_bounded))
 
                 # For methods that don't handle bounds well
-                if method_name in ['Nelder-Mead', 'Powell']:
+                if method_name in ["Nelder-Mead", "Powell"]:
+
                     def transformed_objective(x_unbounded):
                         x_bounded = sigmoid_transform(x_unbounded)
                         return objective(x_bounded)
@@ -198,7 +233,7 @@ class SingleObjectivePlatform:
                             transformed_objective,
                             x0_unbounded,
                             method=method_name,
-                            options={'maxfev': n_trials}
+                            options={"maxfev": n_trials},
                         )
 
                         if result.success:
@@ -208,7 +243,9 @@ class SingleObjectivePlatform:
                         else:
                             best_x_bounded = x0_bounded
                             best_val = objective(x0_bounded)
-                            n_evals = result.nfev if hasattr(result, 'nfev') else n_trials
+                            n_evals = (
+                                result.nfev if hasattr(result, "nfev") else n_trials
+                            )
 
                     except:
                         best_x_bounded = x0_bounded
@@ -228,7 +265,7 @@ class SingleObjectivePlatform:
                             x0,
                             method=method_name,
                             bounds=[(0.001, 0.999)] * n_dim,
-                            options={'maxfev': n_trials}
+                            options={"maxfev": n_trials},
                         )
 
                         if result.success:
@@ -238,7 +275,9 @@ class SingleObjectivePlatform:
                         else:
                             best_x_bounded = x0
                             best_val = objective(x0)
-                            n_evals = result.nfev if hasattr(result, 'nfev') else n_trials
+                            n_evals = (
+                                result.nfev if hasattr(result, "nfev") else n_trials
+                            )
 
                     except:
                         best_x_bounded = x0
@@ -252,9 +291,9 @@ class SingleObjectivePlatform:
 
             return optimizer
 
-        optimizers['SciPy_BFGS'] = make_scipy_optimizer('L-BFGS-B')
-        optimizers['SciPy_Powell'] = make_scipy_optimizer('Powell')
-        optimizers['SciPy_NelderMead'] = make_scipy_optimizer('Nelder-Mead')
+        optimizers["SciPy_BFGS"] = make_scipy_optimizer("L-BFGS-B")
+        optimizers["SciPy_Powell"] = make_scipy_optimizer("Powell")
+        optimizers["SciPy_NelderMead"] = make_scipy_optimizer("Nelder-Mead")
 
         return optimizers
 
@@ -262,7 +301,9 @@ class SingleObjectivePlatform:
         """Run a single optimization contest."""
 
         print(f"🏁 Running Contest: {problem_spec.description}")
-        print(f"📊 {problem_spec.dimensions}D {problem_spec.surface_type} ({problem_spec.difficulty})")
+        print(
+            f"📊 {problem_spec.dimensions}D {problem_spec.surface_type} ({problem_spec.difficulty})"
+        )
         print(f"🎯 Budget: {problem_spec.evaluation_budget} evaluations")
         print()
 
@@ -287,15 +328,19 @@ class SingleObjectivePlatform:
 
                     start_time = time.time()
                     try:
-                        result = opt_func(surface_func, problem_spec.evaluation_budget,
-                                        problem_spec.dimensions, with_count=True)
+                        result = opt_func(
+                            surface_func,
+                            problem_spec.evaluation_budget,
+                            problem_spec.dimensions,
+                            with_count=True,
+                        )
 
                         if isinstance(result, tuple) and len(result) >= 3:
                             val, x, evals = result[:3]
                             if np.isfinite(val):
                                 trials.append(val)
 
-                    except Exception as e:
+                    except Exception:
                         pass  # Trial failed
 
                 if trials:
@@ -311,13 +356,16 @@ class SingleObjectivePlatform:
                 ranked = sorted(surface_results.items(), key=lambda x: x[1])
 
                 for rank, (opt_name, score) in enumerate(ranked):
-                    contest_results.append({
-                        'surface': surface_name,
-                        'optimizer': opt_name,
-                        'score': score,
-                        'rank': rank + 1,
-                        'points': len(ranked) - rank  # Higher points for better rank
-                    })
+                    contest_results.append(
+                        {
+                            "surface": surface_name,
+                            "optimizer": opt_name,
+                            "score": score,
+                            "rank": rank + 1,
+                            "points": len(ranked)
+                            - rank,  # Higher points for better rank
+                        }
+                    )
 
             print()
 
@@ -329,18 +377,17 @@ class SingleObjectivePlatform:
         # Group by surface to get head-to-head comparisons
         surfaces = {}
         for result in contest_results:
-            surface = result['surface']
+            surface = result["surface"]
             if surface not in surfaces:
                 surfaces[surface] = {}
-            surfaces[surface][result['optimizer']] = result['score']
+            surfaces[surface][result["optimizer"]] = result["score"]
 
         # Update Elo for each surface (all pairwise comparisons)
         for surface, scores in surfaces.items():
             optimizers = list(scores.keys())
 
             for i, opt1 in enumerate(optimizers):
-                for j, opt2 in enumerate(optimizers[i+1:], i+1):
-
+                for j, opt2 in enumerate(optimizers[i + 1 :], i + 1):
                     # Determine winner (lower score wins)
                     if scores[opt1] < scores[opt2]:
                         winner, loser = opt1, opt2
@@ -358,8 +405,8 @@ class SingleObjectivePlatform:
                     rating1 = self.elo_ratings[opt1]
                     rating2 = self.elo_ratings[opt2]
 
-                    expected1 = 1 / (1 + 10**((rating2 - rating1)/400))
-                    expected2 = 1 / (1 + 10**((rating1 - rating2)/400))
+                    expected1 = 1 / (1 + 10 ** ((rating2 - rating1) / 400))
+                    expected2 = 1 / (1 + 10 ** ((rating1 - rating2) / 400))
 
                     self.elo_ratings[opt1] += K * (score1 - expected1)
                     self.elo_ratings[opt2] += K * (score2 - expected2)
@@ -368,17 +415,28 @@ class SingleObjectivePlatform:
         """Get current Elo leaderboard."""
 
         leaderboard = []
-        sorted_optimizers = sorted(self.elo_ratings.items(), key=lambda x: x[1], reverse=True)
+        sorted_optimizers = sorted(
+            self.elo_ratings.items(), key=lambda x: x[1], reverse=True
+        )
 
         for rank, (optimizer, elo) in enumerate(sorted_optimizers, 1):
-            leaderboard.append({
-                'rank': rank,
-                'optimizer': optimizer,
-                'elo_rating': round(elo, 1),
-                'badge': '🥇' if rank == 1 else '🥈' if rank == 2 else '🥉' if rank == 3 else ''
-            })
+            leaderboard.append(
+                {
+                    "rank": rank,
+                    "optimizer": optimizer,
+                    "elo_rating": round(elo, 1),
+                    "badge": "🥇"
+                    if rank == 1
+                    else "🥈"
+                    if rank == 2
+                    else "🥉"
+                    if rank == 3
+                    else "",
+                }
+            )
 
         return leaderboard
+
 
 def demo_single_objective_platform():
     """Demonstrate the single objective platform."""
@@ -393,7 +451,7 @@ def demo_single_objective_platform():
         "Optimize a neural network with 8 parameters",
         "Find minimum of smooth 5-dimensional function",
         "Portfolio optimization with 12 assets",
-        "Engineering design with 15 variables and multiple local minima"
+        "Engineering design with 15 variables and multiple local minima",
     ]
 
     print("🤖 Problem Interpretation Examples:")
@@ -402,7 +460,9 @@ def demo_single_objective_platform():
     for problem in problems:
         spec = platform.interpret_problem_description(problem)
         print(f"Input:  '{problem}'")
-        print(f"Output: {spec.dimensions}D {spec.surface_type} problem ({spec.difficulty})")
+        print(
+            f"Output: {spec.dimensions}D {spec.surface_type} problem ({spec.difficulty})"
+        )
         print(f"        Budget: {spec.evaluation_budget} evals, Domain: {spec.domain}")
         print()
 
@@ -422,7 +482,10 @@ def demo_single_objective_platform():
     leaderboard = platform.get_leaderboard()
 
     for entry in leaderboard:
-        print(f"{entry['badge']} {entry['rank']}. {entry['optimizer']:15} | Elo: {entry['elo_rating']}")
+        print(
+            f"{entry['badge']} {entry['rank']}. {entry['optimizer']:15} | Elo: {entry['elo_rating']}"
+        )
+
 
 if __name__ == "__main__":
     demo_single_objective_platform()

@@ -7,10 +7,10 @@ beyond numpy and scipy basics. Lightweight, self-contained, and validated.
 Validation rate: 77.8% pass rate against reference implementations.
 """
 
-import numpy as np
 import random
-import math
-from typing import Callable, Tuple, List, Optional
+from typing import Callable, List, Tuple
+
+import numpy as np
 
 
 class BaseOptimizer:
@@ -21,7 +21,7 @@ class BaseOptimizer:
         self.n_trials = n_trials
         self.n_dim = n_dim
         self.evaluations = 0
-        self.best_value = float('inf')
+        self.best_value = float("inf")
         self.best_x = np.random.random(n_dim)
         self.track_path = False
         self.path = []
@@ -33,7 +33,9 @@ class BaseOptimizer:
         value = self.objective(x_clipped)
 
         # Track path for visualization
-        if self.track_path and (self.evaluations % max(1, self.n_trials // 20) == 0 or self.evaluations == 1):
+        if self.track_path and (
+            self.evaluations % max(1, self.n_trials // 20) == 0 or self.evaluations == 1
+        ):
             self.path.append(x_clipped.copy())
 
         if value < self.best_value:
@@ -69,7 +71,7 @@ class PRIMA_UOBYQA(BaseOptimizer):
             if k <= n:
                 # Coordinate directions
                 XPT[k] = xbase.copy()
-                XPT[k][k-1] = min(1.0, xbase[k-1] + rho)
+                XPT[k][k - 1] = min(1.0, xbase[k - 1] + rho)
             else:
                 # Random directions
                 d = np.random.randn(n)
@@ -78,7 +80,7 @@ class PRIMA_UOBYQA(BaseOptimizer):
 
             FVAL[k] = self.evaluate(XPT[k])
 
-        kopt = np.argmin(FVAL[:min(npt, self.evaluations)])
+        kopt = np.argmin(FVAL[: min(npt, self.evaluations)])
 
         # Main optimization loop
         while self.evaluations < self.n_trials and rho > rhoend:
@@ -131,7 +133,7 @@ class NelderMead(BaseOptimizer):
 
         for i in range(1, n + 1):
             simplex[i] = simplex[0].copy()
-            simplex[i][i-1] = min(1.0, simplex[i][i-1] + 0.1)
+            simplex[i][i - 1] = min(1.0, simplex[i][i - 1] + 0.1)
             values[i] = self.evaluate(simplex[i])
 
         # Nelder-Mead parameters
@@ -259,9 +261,11 @@ class ParticleSwarm(BaseOptimizer):
 
                 # Update velocity
                 r1, r2 = np.random.random(2)
-                velocities[i] = (w * velocities[i] +
-                               c1 * r1 * (personal_best_positions[i] - positions[i]) +
-                               c2 * r2 * (global_best_position - positions[i]))
+                velocities[i] = (
+                    w * velocities[i]
+                    + c1 * r1 * (personal_best_positions[i] - positions[i])
+                    + c2 * r2 * (global_best_position - positions[i])
+                )
 
                 # Update position
                 positions[i] = np.clip(positions[i] + velocities[i], 0, 1)
@@ -344,7 +348,9 @@ class SimulatedAnnealing(BaseOptimizer):
             neighbor_value = self.evaluate(neighbor)
 
             # Accept or reject
-            if neighbor_value < current_value or np.random.random() < np.exp(-(neighbor_value - current_value) / temperature):
+            if neighbor_value < current_value or np.random.random() < np.exp(
+                -(neighbor_value - current_value) / temperature
+            ):
                 current = neighbor
                 current_value = neighbor_value
 
@@ -357,7 +363,7 @@ class HarmonySearch(BaseOptimizer):
     def optimize(self) -> Tuple[float, np.ndarray]:
         HMS = min(20, max(5, self.n_dim * 2))  # Harmony Memory Size
         HMCR = 0.9  # Harmony Memory Considering Rate
-        PAR = 0.3   # Pitch Adjusting Rate
+        PAR = 0.3  # Pitch Adjusting Rate
 
         # Initialize harmony memory
         harmony_memory = []
@@ -366,7 +372,7 @@ class HarmonySearch(BaseOptimizer):
                 break
             harmony = np.random.random(self.n_dim)
             fitness = self.evaluate(harmony)
-            harmony_memory.append({'harmony': harmony, 'fitness': fitness})
+            harmony_memory.append({"harmony": harmony, "fitness": fitness})
 
         while self.evaluations < self.n_trials:
             new_harmony = np.zeros(self.n_dim)
@@ -375,7 +381,7 @@ class HarmonySearch(BaseOptimizer):
                 if np.random.random() < HMCR:
                     # Pick from harmony memory
                     selected = random.choice(harmony_memory)
-                    value = selected['harmony'][j]
+                    value = selected["harmony"][j]
 
                     # Pitch adjustment
                     if np.random.random() < PAR:
@@ -389,9 +395,12 @@ class HarmonySearch(BaseOptimizer):
             new_fitness = self.evaluate(new_harmony)
 
             # Update harmony memory (replace worst if new harmony is better)
-            harmony_memory.sort(key=lambda x: x['fitness'])
-            if new_fitness < harmony_memory[-1]['fitness']:
-                harmony_memory[-1] = {'harmony': new_harmony.copy(), 'fitness': new_fitness}
+            harmony_memory.sort(key=lambda x: x["fitness"])
+            if new_fitness < harmony_memory[-1]["fitness"]:
+                harmony_memory[-1] = {
+                    "harmony": new_harmony.copy(),
+                    "fitness": new_fitness,
+                }
 
         return self.best_value, self.best_x
 
@@ -465,7 +474,7 @@ class PRIMA_BOBYQA(BaseOptimizer):
             FVAL[k] = self.evaluate(XPT[k])
 
         while self.evaluations < self.n_trials and rho > rhoend:
-            kopt = np.argmin(FVAL[:min(len(FVAL), self.evaluations)])
+            kopt = np.argmin(FVAL[: min(len(FVAL), self.evaluations)])
             if kopt < len(XPT):
                 xopt = XPT[kopt]
 
@@ -600,7 +609,7 @@ class BayesianOpt(BaseOptimizer):
                 break
 
             # Find best points
-            best_indices = np.argsort(y_samples)[:min(3, len(y_samples))]
+            best_indices = np.argsort(y_samples)[: min(3, len(y_samples))]
 
             # Sample around best points with decreasing variance
             variance = max(0.05, 0.3 * (1 - self.evaluations / self.n_trials))
@@ -806,7 +815,7 @@ class TabuSearch(BaseOptimizer):
 
         while self.evaluations < self.n_trials:
             best_neighbor = None
-            best_neighbor_f = float('inf')
+            best_neighbor_f = float("inf")
 
             # Generate neighbors
             for _ in range(min(10, self.n_trials - self.evaluations)):
@@ -818,7 +827,9 @@ class TabuSearch(BaseOptimizer):
                 neighbor = np.clip(neighbor, 0, 1)
 
                 # Check if tabu
-                is_tabu = any(np.linalg.norm(neighbor - tabu_x) < 0.05 for tabu_x in tabu_list)
+                is_tabu = any(
+                    np.linalg.norm(neighbor - tabu_x) < 0.05 for tabu_x in tabu_list
+                )
 
                 if not is_tabu:
                     neighbor_f = self.evaluate(neighbor)
@@ -865,9 +876,11 @@ class FireflyAlgorithm(BaseOptimizer):
                         beta = beta0 * np.exp(-gamma * r**2)
 
                         # Move towards brighter firefly
-                        fireflies[i] = (fireflies[i] +
-                                      beta * (fireflies[j] - fireflies[i]) +
-                                      alpha * np.random.randn(self.n_dim))
+                        fireflies[i] = (
+                            fireflies[i]
+                            + beta * (fireflies[j] - fireflies[i])
+                            + alpha * np.random.randn(self.n_dim)
+                        )
 
                         fireflies[i] = np.clip(fireflies[i], 0, 1)
 
@@ -887,7 +900,7 @@ class AntColonyOpt(BaseOptimizer):
         evaporation = 0.1
 
         best_path = None
-        best_fitness = float('inf')
+        best_fitness = float("inf")
 
         while self.evaluations < self.n_trials:
             # Ant solutions
@@ -910,7 +923,7 @@ class AntColonyOpt(BaseOptimizer):
                     best_path = solution.copy()
 
             # Update pheromones
-            pheromone *= (1 - evaporation)
+            pheromone *= 1 - evaporation
             if best_path is not None:
                 for dim in range(self.n_dim):
                     node = int(best_path[dim] * (n_nodes - 1))
@@ -990,7 +1003,10 @@ class GeneticAlgorithm(BaseOptimizer):
             parents = []
             for _ in range(pop_size):
                 tournament_size = 3
-                tournament = random.sample(list(zip(population, fitness)), min(tournament_size, len(population)))
+                tournament = random.sample(
+                    list(zip(population, fitness)),
+                    min(tournament_size, len(population)),
+                )
                 parents.append(min(tournament, key=lambda x: x[1])[0])
 
             # Crossover and mutation
@@ -1003,8 +1019,12 @@ class GeneticAlgorithm(BaseOptimizer):
 
                 # Single point crossover
                 crossover_point = random.randint(1, self.n_dim - 1)
-                child1 = np.concatenate([parent1[:crossover_point], parent2[crossover_point:]])
-                child2 = np.concatenate([parent2[:crossover_point], parent1[crossover_point:]])
+                child1 = np.concatenate(
+                    [parent1[:crossover_point], parent2[crossover_point:]]
+                )
+                child2 = np.concatenate(
+                    [parent2[:crossover_point], parent1[crossover_point:]]
+                )
 
                 # Mutation
                 for child in [child1, child2]:
@@ -1015,39 +1035,48 @@ class GeneticAlgorithm(BaseOptimizer):
                     new_population.append(child)
 
             population = new_population[:pop_size]
-            fitness = [self.evaluate(ind) for ind in population if self.evaluations < self.n_trials]
+            fitness = [
+                self.evaluate(ind)
+                for ind in population
+                if self.evaluations < self.n_trials
+            ]
 
         return self.best_value, self.best_x
 
 
 # Create algorithm registry - all 22 validated algorithms
 PURE_OPTIMIZERS = {
-    'PRIMA_UOBYQA': PRIMA_UOBYQA,
-    'PRIMA_NEWUOA': PRIMA_NEWUOA,
-    'PRIMA_BOBYQA': PRIMA_BOBYQA,
-    'NelderMead': NelderMead,
-    'Powell': Powell,
-    'LBFGSB': LBFGSB,
-    'DifferentialEvolution': DifferentialEvolution,
-    'ParticleSwarm': ParticleSwarm,
-    'CMAEvolutionStrategy': CMAEvolutionStrategy,
-    'EvolutionStrategy': EvolutionStrategy,
-    'GeneticAlgorithm': GeneticAlgorithm,
-    'BayesianOpt': BayesianOpt,
-    'RandomSearch': RandomSearch,
-    'AdaptiveRandomSearch': AdaptiveRandomSearch,
-    'HillClimbing': HillClimbing,
-    'CoordinateDescent': CoordinateDescent,
-    'PatternSearch': PatternSearch,
-    'SimulatedAnnealing': SimulatedAnnealing,
-    'TabuSearch': TabuSearch,
-    'HarmonySearch': HarmonySearch,
-    'FireflyAlgorithm': FireflyAlgorithm,
-    'AntColonyOpt': AntColonyOpt,
+    "PRIMA_UOBYQA": PRIMA_UOBYQA,
+    "PRIMA_NEWUOA": PRIMA_NEWUOA,
+    "PRIMA_BOBYQA": PRIMA_BOBYQA,
+    "NelderMead": NelderMead,
+    "Powell": Powell,
+    "LBFGSB": LBFGSB,
+    "DifferentialEvolution": DifferentialEvolution,
+    "ParticleSwarm": ParticleSwarm,
+    "CMAEvolutionStrategy": CMAEvolutionStrategy,
+    "EvolutionStrategy": EvolutionStrategy,
+    "GeneticAlgorithm": GeneticAlgorithm,
+    "BayesianOpt": BayesianOpt,
+    "RandomSearch": RandomSearch,
+    "AdaptiveRandomSearch": AdaptiveRandomSearch,
+    "HillClimbing": HillClimbing,
+    "CoordinateDescent": CoordinateDescent,
+    "PatternSearch": PatternSearch,
+    "SimulatedAnnealing": SimulatedAnnealing,
+    "TabuSearch": TabuSearch,
+    "HarmonySearch": HarmonySearch,
+    "FireflyAlgorithm": FireflyAlgorithm,
+    "AntColonyOpt": AntColonyOpt,
 }
 
 
-def pure_optimize(objective: Callable, algorithm: str = 'NelderMead', n_trials: int = 100, n_dim: int = 2) -> Tuple[float, np.ndarray]:
+def pure_optimize(
+    objective: Callable,
+    algorithm: str = "NelderMead",
+    n_trials: int = 100,
+    n_dim: int = 2,
+) -> Tuple[float, np.ndarray]:
     """
     Lightweight optimization using pure Python algorithms.
 
@@ -1061,7 +1090,7 @@ def pure_optimize(objective: Callable, algorithm: str = 'NelderMead', n_trials: 
         (best_value, best_point)
     """
     if algorithm not in PURE_OPTIMIZERS:
-        algorithm = 'NelderMead'  # Fallback
+        algorithm = "NelderMead"  # Fallback
 
     optimizer_class = PURE_OPTIMIZERS[algorithm]
     optimizer = optimizer_class(objective, n_trials, n_dim)
@@ -1074,13 +1103,44 @@ def suggest_pure(n_dim: int, n_trials: int) -> List[str]:
     Returns list of algorithm names sorted by expected performance.
     """
     if n_dim <= 2:
-        return ['NelderMead', 'PRIMA_UOBYQA', 'PRIMA_NEWUOA', 'Powell', 'LBFGSB', 'HillClimbing']
+        return [
+            "NelderMead",
+            "PRIMA_UOBYQA",
+            "PRIMA_NEWUOA",
+            "Powell",
+            "LBFGSB",
+            "HillClimbing",
+        ]
     elif n_dim <= 10:
-        return ['DifferentialEvolution', 'CMAEvolutionStrategy', 'ParticleSwarm', 'PRIMA_BOBYQA',
-                'BayesianOpt', 'HarmonySearch', 'GeneticAlgorithm', 'PatternSearch']
+        return [
+            "DifferentialEvolution",
+            "CMAEvolutionStrategy",
+            "ParticleSwarm",
+            "PRIMA_BOBYQA",
+            "BayesianOpt",
+            "HarmonySearch",
+            "GeneticAlgorithm",
+            "PatternSearch",
+        ]
     elif n_dim <= 50:
-        return ['CMAEvolutionStrategy', 'DifferentialEvolution', 'EvolutionStrategy', 'ParticleSwarm',
-                'AdaptiveRandomSearch', 'FireflyAlgorithm', 'AntColonyOpt', 'RandomSearch']
+        return [
+            "CMAEvolutionStrategy",
+            "DifferentialEvolution",
+            "EvolutionStrategy",
+            "ParticleSwarm",
+            "AdaptiveRandomSearch",
+            "FireflyAlgorithm",
+            "AntColonyOpt",
+            "RandomSearch",
+        ]
     else:
-        return ['RandomSearch', 'AdaptiveRandomSearch', 'ParticleSwarm', 'DifferentialEvolution',
-                'HillClimbing', 'CoordinateDescent', 'SimulatedAnnealing', 'TabuSearch']
+        return [
+            "RandomSearch",
+            "AdaptiveRandomSearch",
+            "ParticleSwarm",
+            "DifferentialEvolution",
+            "HillClimbing",
+            "CoordinateDescent",
+            "SimulatedAnnealing",
+            "TabuSearch",
+        ]

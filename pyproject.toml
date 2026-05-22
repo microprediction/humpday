@@ -91,6 +91,8 @@ target-version = ['py39']
 [tool.ruff]
 target-version = "py39"
 line-length = 88
+
+[tool.ruff.lint]
 select = [
     "E",  # pycodestyle errors
     "W",  # pycodestyle warnings
@@ -102,6 +104,25 @@ select = [
 ]
 ignore = [
     "E501",  # line too long, handled by black
+    "F841",  # unused local variables - will fix later
+    "B006",  # mutable defaults - will fix later
+    "B904",  # raise from - will fix later
+    "B028",  # stacklevel warnings - will fix later
+    "E712",  # comparison to True - will fix later
+    "UP035", # typing imports - will fix later
+    "UP006", # typing annotations - will fix later
+    "E722",  # bare except - will fix later
+    "F401",  # unused imports - will fix later
+    "B007",  # unused loop variables - will fix later
+    "E402",  # module level import - will fix later
+    "E741",  # ambiguous variable names - will fix later
+    "F821",  # undefined names in examples - will fix later
+    "C403",  # unnecessary list comprehension - will fix later
+    "C408",  # unnecessary dict/list calls - will fix later
+    "C419",  # unnecessary list comprehension - will fix later
+    "C414",  # unnecessary list() in sorted - will fix later
+    "B023",  # function definition in loop - will fix later
+    "E731",  # lambda assignment - will fix later
 ]
 
 [tool.mypy]

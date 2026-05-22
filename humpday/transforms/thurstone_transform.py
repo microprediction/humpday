@@ -4,10 +4,12 @@ Replaces the winning package dependency with thurstone-based implementations.
 """
 
 import functools
-import numpy as np
 from typing import List
+
+import numpy as np
 from scipy.stats import norm
-from thurstone.conventions import STD_UNIT, STD_L
+from thurstone.conventions import STD_L
+
 
 # Alternative implementation without winning package dependency
 def cube_to_simplex_simple(u: List[float]) -> List[float]:
@@ -19,7 +21,7 @@ def cube_to_simplex_simple(u: List[float]) -> List[float]:
     :returns: a point p in (0,1)^{n+1} with sum(p)=1
     """
     # Convert to normal scores
-    z_scores = [norm.ppf(max(1e-10, min(1-1e-10, ui))) for ui in u]
+    z_scores = [norm.ppf(max(1e-10, min(1 - 1e-10, ui))) for ui in u]
     z_scores = [0.0] + z_scores  # Add reference point
 
     # Convert to exponential weights (softmax-like transformation)
@@ -55,6 +57,7 @@ def lift_to_cube_simple(objective, fail_value=100000):
     Modify a function's domain from the simplex to the cube.
     Uses the simplified transformation above.
     """
+
     @functools.wraps(objective)
     def wrapper(us):
         try:
@@ -65,15 +68,24 @@ def lift_to_cube_simple(objective, fail_value=100000):
         try:
             return objective(s)
         except:
-            warn_msg = f'WARNING: The func {objective.__name__} failed on the point {str(s)}'
+            warn_msg = (
+                f"WARNING: The func {objective.__name__} failed on the point {str(s)}"
+            )
             raise ValueError(warn_msg)
 
     return wrapper
 
 
-def minimize_optimizer_on_simplex_simple(optimizer, objective, n_trials, n_dim,
-                                       with_count=False, fail_value=100000,
-                                       return_point_on_simplex=False, **kwargs):
+def minimize_optimizer_on_simplex_simple(
+    optimizer,
+    objective,
+    n_trials,
+    n_dim,
+    with_count=False,
+    fail_value=100000,
+    return_point_on_simplex=False,
+    **kwargs,
+):
     """
     Minimize objective on the n_dim-simplex using simplified transformations.
 
@@ -86,16 +98,23 @@ def minimize_optimizer_on_simplex_simple(optimizer, objective, n_trials, n_dim,
     :param return_point_on_simplex: If True, return point on simplex
     :return: Same format as other optimizers
     """
-    lifted_objective_on_cube = lift_to_cube_simple(objective=objective, fail_value=fail_value)
-    f_best, x_best, feval_count = optimizer(lifted_objective_on_cube, n_trials=n_trials,
-                                           n_dim=n_dim, with_count=True, **kwargs)
+    lifted_objective_on_cube = lift_to_cube_simple(
+        objective=objective, fail_value=fail_value
+    )
+    f_best, x_best, feval_count = optimizer(
+        lifted_objective_on_cube,
+        n_trials=n_trials,
+        n_dim=n_dim,
+        with_count=True,
+        **kwargs,
+    )
 
     if return_point_on_simplex:
         try:
             s_best = cube_to_simplex_simple(x_best)
         except:
             print(x_best)
-            raise ValueError('Could not move optimal point back to simplex')
+            raise ValueError("Could not move optimal point back to simplex")
     else:
         s_best = np.copy(x_best)
 
@@ -122,7 +141,7 @@ def simple_ability_implied_dividends(ability: List[float]) -> List[float]:
     return dividends.tolist()
 
 
-if __name__ == '__main__':
+if __name__ == "__main__":
     # Test the transformations
     import random
 

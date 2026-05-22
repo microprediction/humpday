@@ -14,7 +14,7 @@ class TestFinalCoverage:
 
         # Test with invalid optimizer name
         try:
-            result = get_optimizer('InvalidOptimizerName')
+            result = get_optimizer("InvalidOptimizerName")
             assert result is None or callable(result)
         except (KeyError, ValueError):
             pass  # Expected
@@ -25,7 +25,7 @@ class TestFinalCoverage:
 
         # Verify that wrapper functions have proper names
         for func in OPTIMIZERS:
-            assert hasattr(func, '__name__')
+            assert hasattr(func, "__name__")
             assert isinstance(func.__name__, str)
 
     def test_error_handling_conditions(self):
@@ -39,7 +39,7 @@ class TestFinalCoverage:
         try:
             # Very small bounds
             result = minimize(simple_obj, bounds=[(0, 1e-10)])
-            assert hasattr(result, 'x')
+            assert hasattr(result, "x")
         except:
             pass  # Error handling might kick in
 
@@ -52,7 +52,8 @@ class TestFinalCoverage:
     def test_domain_edge_cases(self):
         """Test domain transformation edge cases."""
         from humpday.optimizers.scipy_interface import (
-            transform_to_unit_cube, transform_from_unit_cube
+            transform_from_unit_cube,
+            transform_to_unit_cube,
         )
 
         # Test edge case bounds
@@ -63,18 +64,19 @@ class TestFinalCoverage:
         recovered = transform_from_unit_cube(unit_point, bounds)
 
         # These functions return numpy arrays or lists
-        assert hasattr(unit_point, '__len__')
-        assert hasattr(recovered, '__len__')
+        assert hasattr(unit_point, "__len__")
+        assert hasattr(recovered, "__len__")
 
     def test_elo_system_persistence(self):
         """Test Elo system save/load edge cases."""
-        from humpday.optimizers.adaptive_optimizer import EloRatingSystem
         import tempfile
+
+        from humpday.optimizers.adaptive_optimizer import EloRatingSystem
 
         elo = EloRatingSystem()
 
         # Test save to valid location
-        with tempfile.NamedTemporaryFile(mode='w', suffix='.json', delete=False) as f:
+        with tempfile.NamedTemporaryFile(mode="w", suffix=".json", delete=False) as f:
             temp_path = f.name
 
         try:
@@ -88,6 +90,7 @@ class TestFinalCoverage:
 
         finally:
             import os
+
             if os.path.exists(temp_path):
                 os.unlink(temp_path)
 

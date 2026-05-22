@@ -3,10 +3,11 @@ Proper stochastic surface generation for valid benchmarking.
 Each run creates truly random surfaces to avoid bias from fixed landscapes.
 """
 
-import numpy as np
-import random
-from typing import Callable, Dict, Any
 import hashlib
+import random
+from typing import Any, Callable, Dict
+
+import numpy as np
 
 
 class StochasticSurfaceGenerator:
@@ -28,11 +29,15 @@ class StochasticSurfaceGenerator:
         """Generate random parameters that will be used across all functions in this run."""
 
         # Random shifts (different for each dimension)
-        self.global_shift = np.random.uniform(-0.3, 0.3)  # Global shift for all functions
+        self.global_shift = np.random.uniform(
+            -0.3, 0.3
+        )  # Global shift for all functions
         self.dimension_shifts = {}  # Will be generated per function call
 
         # Random rotations
-        self.use_rotation = np.random.choice([True, False], p=[0.7, 0.3])  # 70% chance of rotation
+        self.use_rotation = np.random.choice(
+            [True, False], p=[0.7, 0.3]
+        )  # 70% chance of rotation
 
         # Random scaling factors
         self.scale_factor = np.random.uniform(0.5, 2.0)
@@ -140,14 +145,18 @@ class StochasticSurfaceGenerator:
             dim_shifts = self._get_dimension_shifts(n_dim, function_id)
 
             # Transform with random parameters
-            scaled_x = self.scale_factor * (10.24 * x - 5.12) + dim_shifts + self.global_shift
+            scaled_x = (
+                self.scale_factor * (10.24 * x - 5.12) + dim_shifts + self.global_shift
+            )
 
             # Apply rotation
             rotated_x = self._apply_rotation(scaled_x, seed=hash(function_id) % 2**31)
 
             # Rastrigin with random frequency modulation
             freq = self.modal_frequency
-            result = 10 * n_dim + np.sum(rotated_x**2 - 10 * np.cos(2 * np.pi * freq * rotated_x))
+            result = 10 * n_dim + np.sum(
+                rotated_x**2 - 10 * np.cos(2 * np.pi * freq * rotated_x)
+            )
 
             return self._add_noise(result)
 
@@ -164,12 +173,14 @@ class StochasticSurfaceGenerator:
 
             if n_dim < 2:
                 # Fallback for 1D
-                return (x[0] - 1)**2
+                return (x[0] - 1) ** 2
 
             dim_shifts = self._get_dimension_shifts(n_dim, function_id)
 
             # Transform with random conditioning
-            scaled_x = self.scale_factor * (4.096 * x - 2.048) + dim_shifts + self.global_shift
+            scaled_x = (
+                self.scale_factor * (4.096 * x - 2.048) + dim_shifts + self.global_shift
+            )
 
             # Apply rotation
             rotated_x = self._apply_rotation(scaled_x, seed=hash(function_id) % 2**31)
@@ -178,7 +189,10 @@ class StochasticSurfaceGenerator:
             a = 1.0
             b = 100.0 * self.conditioning_factor
 
-            result = np.sum(b * (rotated_x[1:] - rotated_x[:-1]**2)**2 + (a - rotated_x[:-1])**2)
+            result = np.sum(
+                b * (rotated_x[1:] - rotated_x[:-1] ** 2) ** 2
+                + (a - rotated_x[:-1]) ** 2
+            )
 
             return self._add_noise(result)
 
@@ -196,7 +210,11 @@ class StochasticSurfaceGenerator:
             dim_shifts = self._get_dimension_shifts(n_dim, function_id)
 
             # Transform with random scaling
-            scaled_x = self.scale_factor * (65.536 * x - 32.768) + dim_shifts + self.global_shift
+            scaled_x = (
+                self.scale_factor * (65.536 * x - 32.768)
+                + dim_shifts
+                + self.global_shift
+            )
 
             # Apply rotation
             rotated_x = self._apply_rotation(scaled_x, seed=hash(function_id) % 2**31)
@@ -226,7 +244,9 @@ class StochasticSurfaceGenerator:
             dim_shifts = self._get_dimension_shifts(n_dim, function_id)
 
             # Transform with random scaling
-            scaled_x = self.scale_factor * (1200 * x - 600) + dim_shifts + self.global_shift
+            scaled_x = (
+                self.scale_factor * (1200 * x - 600) + dim_shifts + self.global_shift
+            )
 
             # Apply rotation
             rotated_x = self._apply_rotation(scaled_x, seed=hash(function_id) % 2**31)
@@ -244,11 +264,11 @@ class StochasticSurfaceGenerator:
         """Generate a suite of random function instances for benchmarking."""
 
         base_functions = [
-            ('sphere', self.stochastic_sphere),
-            ('rastrigin', self.stochastic_rastrigin),
-            ('rosenbrock', self.stochastic_rosenbrock),
-            ('ackley', self.stochastic_ackley),
-            ('griewank', self.stochastic_griewank)
+            ("sphere", self.stochastic_sphere),
+            ("rastrigin", self.stochastic_rastrigin),
+            ("rosenbrock", self.stochastic_rosenbrock),
+            ("ackley", self.stochastic_ackley),
+            ("griewank", self.stochastic_griewank),
         ]
 
         suite = {}
@@ -266,13 +286,15 @@ class StochasticSurfaceGenerator:
     def get_benchmark_metadata(self) -> Dict[str, Any]:
         """Get metadata about the random parameters used in this benchmark run."""
         return {
-            'global_shift': self.global_shift,
-            'use_rotation': self.use_rotation,
-            'scale_factor': self.scale_factor,
-            'noise_level': self.noise_level,
-            'conditioning_factor': self.conditioning_factor,
-            'modal_frequency': self.modal_frequency,
-            'random_seed_used': 'Runtime generated' if not hasattr(self, '_seed') else self._seed
+            "global_shift": self.global_shift,
+            "use_rotation": self.use_rotation,
+            "scale_factor": self.scale_factor,
+            "noise_level": self.noise_level,
+            "conditioning_factor": self.conditioning_factor,
+            "modal_frequency": self.modal_frequency,
+            "random_seed_used": "Runtime generated"
+            if not hasattr(self, "_seed")
+            else self._seed,
         }
 
 
@@ -284,7 +306,9 @@ def create_fair_benchmark_run(n_functions: int = 20, seed: int = None) -> tuple:
         (function_suite, metadata) - Functions and metadata about randomization
     """
 
-    print(f"🎲 Generating {n_functions} random function instances for fair benchmarking...")
+    print(
+        f"🎲 Generating {n_functions} random function instances for fair benchmarking..."
+    )
 
     # Create stochastic generator
     generator = StochasticSurfaceGenerator(seed=seed)
@@ -295,7 +319,7 @@ def create_fair_benchmark_run(n_functions: int = 20, seed: int = None) -> tuple:
     # Get metadata
     metadata = generator.get_benchmark_metadata()
 
-    print(f"✅ Random surfaces generated:")
+    print("✅ Random surfaces generated:")
     print(f"   Global shift: {metadata['global_shift']:.3f}")
     print(f"   Rotation enabled: {metadata['use_rotation']}")
     print(f"   Scale factor: {metadata['scale_factor']:.3f}")
@@ -313,19 +337,19 @@ if __name__ == "__main__":
     suite1, meta1 = create_fair_benchmark_run(n_functions=5, seed=42)
     suite2, meta2 = create_fair_benchmark_run(n_functions=5, seed=123)
 
-    print(f"\n=== Comparing Function Values at Same Point ===")
+    print("\n=== Comparing Function Values at Same Point ===")
     test_point = [0.5, 0.5]
 
-    print(f"Run 1 (seed=42):")
+    print("Run 1 (seed=42):")
     for name, func in list(suite1.items())[:3]:
         val = func(test_point)
         print(f"  {name}: {val:.6f}")
 
-    print(f"\nRun 2 (seed=123):")
+    print("\nRun 2 (seed=123):")
     for name, func in list(suite2.items())[:3]:
         val = func(test_point)
         print(f"  {name}: {val:.6f}")
 
-    print(f"\n✅ Values are different - proving surfaces are truly random!")
-    print(f"✅ This ensures fair comparison between optimization algorithms")
-    print(f"✅ No algorithm can benefit from memorizing fixed landscapes")
+    print("\n✅ Values are different - proving surfaces are truly random!")
+    print("✅ This ensures fair comparison between optimization algorithms")
+    print("✅ No algorithm can benefit from memorizing fixed landscapes")

@@ -2,11 +2,12 @@
 """
 Compare SimulatedAnnealing JS vs scipy reference
 """
-import subprocess
+
 import json
-import tempfile
 import os
-import numpy as np
+import subprocess
+import tempfile
+
 
 def test_js_simulated_annealing():
     """Test JavaScript SimulatedAnnealing"""
@@ -46,29 +47,31 @@ try {{
 }}
 """
 
-    with tempfile.NamedTemporaryFile(mode='w', suffix='.js', delete=False) as f:
+    with tempfile.NamedTemporaryFile(mode="w", suffix=".js", delete=False) as f:
         f.write(js_code)
         temp_file = f.name
 
     try:
-        result = subprocess.run(['node', temp_file], capture_output=True, text=True, timeout=10)
+        result = subprocess.run(
+            ["node", temp_file], capture_output=True, text=True, timeout=10
+        )
         if result.returncode == 0:
             return json.loads(result.stdout.strip())
         else:
-            return {'error': f"Execution failed: {result.stderr}"}
+            return {"error": f"Execution failed: {result.stderr}"}
     except Exception as e:
-        return {'error': str(e)}
+        return {"error": str(e)}
     finally:
         os.unlink(temp_file)
+
 
 def test_scipy_simulated_annealing():
     """Test scipy simulated annealing reference"""
     try:
         from scipy.optimize import dual_annealing
-        import numpy as np
 
         def sphere_func(x):
-            return x[0]**2 + x[1]**2
+            return x[0] ** 2 + x[1] ** 2
 
         bounds = [(0, 1), (0, 1)]
 
@@ -76,13 +79,14 @@ def test_scipy_simulated_annealing():
         result = dual_annealing(sphere_func, bounds, maxfun=100, seed=42)
 
         return {
-            'success': True,
-            'bestValue': float(result.fun),
-            'bestX': result.x.tolist(),
-            'evaluations': result.nfev
+            "success": True,
+            "bestValue": float(result.fun),
+            "bestX": result.x.tolist(),
+            "evaluations": result.nfev,
         }
     except Exception as e:
-        return {'error': str(e)}
+        return {"error": str(e)}
+
 
 def main():
     print("🧪 SIMULATED ANNEALING COMPARISON")
@@ -94,30 +98,30 @@ def main():
     print("🔧 Testing scipy dual_annealing reference...")
     ref_result = test_scipy_simulated_annealing()
 
-    print(f"\n📊 RESULTS:")
+    print("\n📊 RESULTS:")
     print("-" * 30)
 
-    if not js_result.get('error'):
-        js_value = js_result.get('bestValue', float('inf'))
+    if not js_result.get("error"):
+        js_value = js_result.get("bestValue", float("inf"))
         print(f"JavaScript SimulatedAnnealing: {js_value:.6f}")
     else:
         print(f"JavaScript SimulatedAnnealing: ERROR - {js_result.get('error')}")
 
-    if not ref_result.get('error'):
-        ref_value = ref_result.get('bestValue', float('inf'))
+    if not ref_result.get("error"):
+        ref_value = ref_result.get("bestValue", float("inf"))
         print(f"scipy dual_annealing:          {ref_value:.6f}")
     else:
         print(f"scipy dual_annealing:          ERROR - {ref_result.get('error')}")
 
-    if not js_result.get('error') and not ref_result.get('error'):
-        js_value = js_result.get('bestValue', float('inf'))
-        ref_value = ref_result.get('bestValue', float('inf'))
+    if not js_result.get("error") and not ref_result.get("error"):
+        js_value = js_result.get("bestValue", float("inf"))
+        ref_value = ref_result.get("bestValue", float("inf"))
 
         if ref_value > 0:
             ratio = js_value / ref_value
             print(f"Performance ratio:             {ratio:.2f}x (lower is better)")
         else:
-            print(f"Reference achieved perfect score!")
+            print("Reference achieved perfect score!")
 
         if js_value < ref_value * 2:
             print("✅ JavaScript is competitive!")
@@ -126,5 +130,6 @@ def main():
         else:
             print("❌ JavaScript needs significant improvement")
 
-if __name__ == '__main__':
+
+if __name__ == "__main__":
     main()

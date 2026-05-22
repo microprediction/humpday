@@ -3,13 +3,15 @@ Working enhanced surface generation using benchmark-functions package.
 Focus: Single-objective continuous optimization on hypercube [0,1]^n
 """
 
-import numpy as np
-from typing import List, Callable, Dict, Any
 import warnings
+from typing import Any, Callable, Dict, List
+
+import numpy as np
 
 # Import the working benchmark-functions package
 try:
     import benchmark_functions as bf
+
     HAS_BENCHMARK_FUNCS = True
     print("✓ benchmark-functions available - comprehensive test functions")
 except ImportError:
@@ -26,71 +28,71 @@ class WorkingEnhancedSurfaceGenerator:
     def __init__(self):
         self.function_mapping = {
             # Map user-friendly names to benchmark-functions classes
-            'sphere': 'Hypersphere',
-            'ackley': 'Ackley',
-            'griewank': 'Griewank',
-            'rastrigin': 'Rastrigin',
-            'rosenbrock': 'Rosenbrock',
-            'schwefel': 'Schwefel',
-            'styblinski_tang': 'StyblinskiTang',
-            'michalewicz': 'Michalewicz',
-            'easom': 'Easom',
-            'goldstein_price': 'GoldsteinAndPrice',
-            'himmelblau': 'Himmelblau',
-            'keane': 'Keane',
-            'mccormick': 'McCormick'
+            "sphere": "Hypersphere",
+            "ackley": "Ackley",
+            "griewank": "Griewank",
+            "rastrigin": "Rastrigin",
+            "rosenbrock": "Rosenbrock",
+            "schwefel": "Schwefel",
+            "styblinski_tang": "StyblinskiTang",
+            "michalewicz": "Michalewicz",
+            "easom": "Easom",
+            "goldstein_price": "GoldsteinAndPrice",
+            "himmelblau": "Himmelblau",
+            "keane": "Keane",
+            "mccormick": "McCormick",
         }
 
         # Categorization for 3D Thurstone analysis
         self.function_metadata = {
-            'sphere': {
-                'landscape_type': 'smooth',
-                'modality': 'unimodal',
-                'separable': True,
-                'conditioning': 'well_conditioned',
-                'global_structure': 'strong',
-                'difficulty': 'easy'
+            "sphere": {
+                "landscape_type": "smooth",
+                "modality": "unimodal",
+                "separable": True,
+                "conditioning": "well_conditioned",
+                "global_structure": "strong",
+                "difficulty": "easy",
             },
-            'ackley': {
-                'landscape_type': 'multimodal',
-                'modality': 'highly_multimodal',
-                'separable': False,
-                'conditioning': 'moderate',
-                'global_structure': 'weak',
-                'difficulty': 'hard'
+            "ackley": {
+                "landscape_type": "multimodal",
+                "modality": "highly_multimodal",
+                "separable": False,
+                "conditioning": "moderate",
+                "global_structure": "weak",
+                "difficulty": "hard",
             },
-            'griewank': {
-                'landscape_type': 'multimodal',
-                'modality': 'multimodal',
-                'separable': False,
-                'conditioning': 'moderate',
-                'global_structure': 'moderate',
-                'difficulty': 'medium'
+            "griewank": {
+                "landscape_type": "multimodal",
+                "modality": "multimodal",
+                "separable": False,
+                "conditioning": "moderate",
+                "global_structure": "moderate",
+                "difficulty": "medium",
             },
-            'rastrigin': {
-                'landscape_type': 'multimodal',
-                'modality': 'highly_multimodal',
-                'separable': True,
-                'conditioning': 'well_conditioned',
-                'global_structure': 'weak',
-                'difficulty': 'hard'
+            "rastrigin": {
+                "landscape_type": "multimodal",
+                "modality": "highly_multimodal",
+                "separable": True,
+                "conditioning": "well_conditioned",
+                "global_structure": "weak",
+                "difficulty": "hard",
             },
-            'rosenbrock': {
-                'landscape_type': 'smooth',
-                'modality': 'unimodal',
-                'separable': False,
-                'conditioning': 'ill_conditioned',
-                'global_structure': 'moderate',
-                'difficulty': 'medium'
+            "rosenbrock": {
+                "landscape_type": "smooth",
+                "modality": "unimodal",
+                "separable": False,
+                "conditioning": "ill_conditioned",
+                "global_structure": "moderate",
+                "difficulty": "medium",
             },
-            'schwefel': {
-                'landscape_type': 'rugged',
-                'modality': 'multimodal',
-                'separable': True,
-                'conditioning': 'moderate',
-                'global_structure': 'deceptive',
-                'difficulty': 'very_hard'
-            }
+            "schwefel": {
+                "landscape_type": "rugged",
+                "modality": "multimodal",
+                "separable": True,
+                "conditioning": "moderate",
+                "global_structure": "deceptive",
+                "difficulty": "very_hard",
+            },
         }
 
     def get_function_on_cube(self, function_name: str, n_dim: int) -> Callable:
@@ -101,11 +103,13 @@ class WorkingEnhancedSurfaceGenerator:
         else:
             return self._get_fallback_function_on_cube(function_name, n_dim)
 
-    def _get_benchmark_function_on_cube(self, function_name: str, n_dim: int) -> Callable:
+    def _get_benchmark_function_on_cube(
+        self, function_name: str, n_dim: int
+    ) -> Callable:
         """Create benchmark-functions based function on hypercube."""
 
         # Get the class name
-        class_name = self.function_mapping.get(function_name, 'Rastrigin')
+        class_name = self.function_mapping.get(function_name, "Rastrigin")
 
         try:
             # Get the function class and create instance
@@ -114,16 +118,16 @@ class WorkingEnhancedSurfaceGenerator:
 
             # Get typical bounds for scaling (some functions may not have bounds attribute)
             bounds_mapping = {
-                'Hypersphere': ([-5, 5], [-5, 5]),
-                'Ackley': ([-32.768, 32.768], [-32.768, 32.768]),
-                'Griewank': ([-600, 600], [-600, 600]),
-                'Rastrigin': ([-5.12, 5.12], [-5.12, 5.12]),
-                'Rosenbrock': ([-2.048, 2.048], [-2.048, 2.048]),
-                'Schwefel': ([-500, 500], [-500, 500]),
-                'StyblinskiTang': ([-5, 5], [-5, 5]),
-                'Michalewicz': ([0, np.pi], [0, np.pi]),
-                'GoldsteinAndPrice': ([-2, 2], [-2, 2]),
-                'Himmelblau': ([-5, 5], [-5, 5])
+                "Hypersphere": ([-5, 5], [-5, 5]),
+                "Ackley": ([-32.768, 32.768], [-32.768, 32.768]),
+                "Griewank": ([-600, 600], [-600, 600]),
+                "Rastrigin": ([-5.12, 5.12], [-5.12, 5.12]),
+                "Rosenbrock": ([-2.048, 2.048], [-2.048, 2.048]),
+                "Schwefel": ([-500, 500], [-500, 500]),
+                "StyblinskiTang": ([-5, 5], [-5, 5]),
+                "Michalewicz": ([0, np.pi], [0, np.pi]),
+                "GoldsteinAndPrice": ([-2, 2], [-2, 2]),
+                "Himmelblau": ([-5, 5], [-5, 5]),
             }
 
             if class_name in bounds_mapping:
@@ -147,7 +151,9 @@ class WorkingEnhancedSurfaceGenerator:
             warnings.warn(f"Benchmark function {function_name} failed: {e}")
             return self._get_fallback_function_on_cube(function_name, n_dim)
 
-    def _get_fallback_function_on_cube(self, function_name: str, n_dim: int) -> Callable:
+    def _get_fallback_function_on_cube(
+        self, function_name: str, n_dim: int
+    ) -> Callable:
         """Fallback implementations when external packages unavailable."""
 
         def sphere(x):
@@ -167,32 +173,41 @@ class WorkingEnhancedSurfaceGenerator:
         def rastrigin(x):
             x = np.array(x)
             scaled_x = 10.24 * x - 5.12  # [0,1] -> [-5.12,5.12]
-            return 10 * len(scaled_x) + np.sum(scaled_x**2 - 10 * np.cos(2 * np.pi * scaled_x))
+            return 10 * len(scaled_x) + np.sum(
+                scaled_x**2 - 10 * np.cos(2 * np.pi * scaled_x)
+            )
 
         def griewank(x):
             x = np.array(x)
             scaled_x = 1200 * x - 600  # [0,1] -> [-600,600]
             sum_sq = np.sum(scaled_x**2) / 4000
-            prod_cos = np.prod(np.cos(scaled_x / np.sqrt(np.arange(1, len(scaled_x) + 1))))
+            prod_cos = np.prod(
+                np.cos(scaled_x / np.sqrt(np.arange(1, len(scaled_x) + 1)))
+            )
             return sum_sq - prod_cos + 1
 
         def rosenbrock(x):
             x = np.array(x)
             scaled_x = 4.096 * x - 2.048  # [0,1] -> [-2.048,2.048]
-            return np.sum(100 * (scaled_x[1:] - scaled_x[:-1]**2)**2 + (1 - scaled_x[:-1])**2)
+            return np.sum(
+                100 * (scaled_x[1:] - scaled_x[:-1] ** 2) ** 2
+                + (1 - scaled_x[:-1]) ** 2
+            )
 
         def schwefel(x):
             x = np.array(x)
             scaled_x = 1000 * x - 500  # [0,1] -> [-500,500]
-            return 418.9829 * len(scaled_x) - np.sum(scaled_x * np.sin(np.sqrt(np.abs(scaled_x))))
+            return 418.9829 * len(scaled_x) - np.sum(
+                scaled_x * np.sin(np.sqrt(np.abs(scaled_x)))
+            )
 
         fallback_functions = {
-            'sphere': sphere,
-            'ackley': ackley,
-            'rastrigin': rastrigin,
-            'griewank': griewank,
-            'rosenbrock': rosenbrock,
-            'schwefel': schwefel
+            "sphere": sphere,
+            "ackley": ackley,
+            "rastrigin": rastrigin,
+            "griewank": griewank,
+            "rosenbrock": rosenbrock,
+            "schwefel": schwefel,
         }
 
         return fallback_functions.get(function_name, rastrigin)
@@ -204,12 +219,12 @@ class WorkingEnhancedSurfaceGenerator:
 
         # Core test functions for 3D Thurstone analysis
         core_functions = [
-            'sphere',      # Smooth, unimodal, easy
-            'rosenbrock',  # Smooth, unimodal, medium difficulty
-            'rastrigin',   # Multimodal, separable, hard
-            'ackley',      # Multimodal, non-separable, hard
-            'griewank',    # Multimodal, medium difficulty
-            'schwefel'     # Rugged, deceptive, very hard
+            "sphere",  # Smooth, unimodal, easy
+            "rosenbrock",  # Smooth, unimodal, medium difficulty
+            "rastrigin",  # Multimodal, separable, hard
+            "ackley",  # Multimodal, non-separable, hard
+            "griewank",  # Multimodal, medium difficulty
+            "schwefel",  # Rugged, deceptive, very hard
         ]
 
         for func_name in core_functions:
@@ -222,11 +237,11 @@ class WorkingEnhancedSurfaceGenerator:
         # Additional functions if available
         if HAS_BENCHMARK_FUNCS:
             additional_functions = [
-                'styblinski_tang',  # Multimodal with known global structure
-                'michalewicz',      # Steep ridges and valleys
-                'himmelblau',       # Four global minima
-                'goldstein_price',  # Complex multimodal surface
-                'keane'            # Constrained-like behavior
+                "styblinski_tang",  # Multimodal with known global structure
+                "michalewicz",  # Steep ridges and valleys
+                "himmelblau",  # Four global minima
+                "goldstein_price",  # Complex multimodal surface
+                "keane",  # Constrained-like behavior
             ]
 
             for func_name in additional_functions:
@@ -258,27 +273,32 @@ class WorkingEnhancedSurfaceGenerator:
 
     def get_function_metadata(self, function_name: str) -> Dict[str, Any]:
         """Get metadata for 3D Thurstone categorization."""
-        return self.function_metadata.get(function_name, {
-            'landscape_type': 'multimodal',
-            'modality': 'multimodal',
-            'separable': False,
-            'conditioning': 'moderate',
-            'global_structure': 'moderate',
-            'difficulty': 'medium'
-        })
+        return self.function_metadata.get(
+            function_name,
+            {
+                "landscape_type": "multimodal",
+                "modality": "multimodal",
+                "separable": False,
+                "conditioning": "moderate",
+                "global_structure": "moderate",
+                "difficulty": "medium",
+            },
+        )
 
-    def get_functions_by_category(self, category: str, difficulty: str = None) -> List[str]:
+    def get_functions_by_category(
+        self, category: str, difficulty: str = None
+    ) -> List[str]:
         """Get function names filtered by category and difficulty."""
 
         category_filters = {
-            'smooth': lambda meta: meta.get('landscape_type') == 'smooth',
-            'multimodal': lambda meta: meta.get('landscape_type') == 'multimodal',
-            'rugged': lambda meta: meta.get('landscape_type') == 'rugged',
-            'separable': lambda meta: meta.get('separable') == True,
-            'non_separable': lambda meta: meta.get('separable') == False,
-            'easy': lambda meta: meta.get('difficulty') == 'easy',
-            'medium': lambda meta: meta.get('difficulty') == 'medium',
-            'hard': lambda meta: meta.get('difficulty') in ['hard', 'very_hard']
+            "smooth": lambda meta: meta.get("landscape_type") == "smooth",
+            "multimodal": lambda meta: meta.get("landscape_type") == "multimodal",
+            "rugged": lambda meta: meta.get("landscape_type") == "rugged",
+            "separable": lambda meta: meta.get("separable") == True,
+            "non_separable": lambda meta: meta.get("separable") == False,
+            "easy": lambda meta: meta.get("difficulty") == "easy",
+            "medium": lambda meta: meta.get("difficulty") == "medium",
+            "hard": lambda meta: meta.get("difficulty") in ["hard", "very_hard"],
         }
 
         if category not in category_filters:
@@ -289,7 +309,7 @@ class WorkingEnhancedSurfaceGenerator:
 
         for func_name, metadata in self.function_metadata.items():
             if filter_func(metadata):
-                if difficulty is None or metadata.get('difficulty') == difficulty:
+                if difficulty is None or metadata.get("difficulty") == difficulty:
                     matching_functions.append(func_name)
 
         return matching_functions
@@ -311,26 +331,30 @@ if __name__ == "__main__":
             center_result = func([0.5, 0.5])
             corner_result = func([0.1, 0.9])
 
-            print(f"  ✓ {name:20s}: center={center_result:8.4f}, corner={corner_result:8.4f}")
+            print(
+                f"  ✓ {name:20s}: center={center_result:8.4f}, corner={corner_result:8.4f}"
+            )
 
             # Get metadata
-            base_name = name.replace('_enhanced', '')
+            base_name = name.replace("_enhanced", "")
             metadata = generator.get_function_metadata(base_name)
-            print(f"    {metadata.get('landscape_type', 'unknown'):10s} | "
-                  f"{metadata.get('modality', 'unknown'):15s} | "
-                  f"difficulty: {metadata.get('difficulty', 'unknown')}")
+            print(
+                f"    {metadata.get('landscape_type', 'unknown'):10s} | "
+                f"{metadata.get('modality', 'unknown'):15s} | "
+                f"difficulty: {metadata.get('difficulty', 'unknown')}"
+            )
 
         except Exception as e:
             print(f"  ✗ {name}: {e}")
 
     # Test categorization
-    print(f"\n=== Function Categorization ===")
+    print("\n=== Function Categorization ===")
     print(f"Smooth functions: {generator.get_functions_by_category('smooth')}")
     print(f"Multimodal functions: {generator.get_functions_by_category('multimodal')}")
     print(f"Hard functions: {generator.get_functions_by_category('hard')}")
 
-    print(f"\n=== Ready for 3D Thurstone Analysis ===")
+    print("\n=== Ready for 3D Thurstone Analysis ===")
     print(f"✓ {len(functions)} diverse test functions")
-    print(f"✓ Rich metadata for multi-dimensional categorization")
-    print(f"✓ All functions work on hypercube [0,1]^n")
-    print(f"✓ Perfect for derivative-free optimization benchmarking")
+    print("✓ Rich metadata for multi-dimensional categorization")
+    print("✓ All functions work on hypercube [0,1]^n")
+    print("✓ Perfect for derivative-free optimization benchmarking")

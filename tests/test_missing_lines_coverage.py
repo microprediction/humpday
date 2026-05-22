@@ -16,7 +16,7 @@ class TestMissingLinesCoverage:
         # Create objective that will cause improvement and trigger line 106-107
         def tricky_objective(x):
             # Start with a value, then improve dramatically
-            if not hasattr(tricky_objective, 'call_count'):
+            if not hasattr(tricky_objective, "call_count"):
                 tricky_objective.call_count = 0
             tricky_objective.call_count += 1
 
@@ -25,7 +25,7 @@ class TestMissingLinesCoverage:
                 return 100.0 + sum(x**2)
             else:
                 # Much better values to trigger improvement condition
-                return 0.01 * sum((xi - 0.5)**2 for xi in x)
+                return 0.01 * sum((xi - 0.5) ** 2 for xi in x)
 
         # Test with small npt to trigger interpolation set expansion
         optimizer = PRIMA_UOBYQA(tricky_objective, n_trials=20, n_dim=2)
@@ -62,7 +62,7 @@ class TestMissingLinesCoverage:
         from humpday.optimizers.optimizers import DifferentialEvolution
 
         def simple_objective(x):
-            return sum((xi - 0.7)**2 for xi in x)
+            return sum((xi - 0.7) ** 2 for xi in x)
 
         # Test with larger population to avoid empty candidates issue
         optimizer = DifferentialEvolution(simple_objective, n_trials=25, n_dim=2)
@@ -75,7 +75,11 @@ class TestMissingLinesCoverage:
 
         def boundary_objective(x):
             # Objective that pushes particles to boundaries
-            return sum((xi - 0.9)**2 for xi in x) if all(xi < 0.95 for xi in x) else sum((xi - 0.1)**2 for xi in x)
+            return (
+                sum((xi - 0.9) ** 2 for xi in x)
+                if all(xi < 0.95 for xi in x)
+                else sum((xi - 0.1) ** 2 for xi in x)
+            )
 
         optimizer = ParticleSwarm(boundary_objective, n_trials=20, n_dim=3)
         result = optimizer.optimize()
@@ -87,7 +91,9 @@ class TestMissingLinesCoverage:
 
         def multimodal_objective(x):
             # Create multiple local minima
-            return min(sum((xi - 0.2)**2 for xi in x), sum((xi - 0.8)**2 for xi in x))
+            return min(
+                sum((xi - 0.2) ** 2 for xi in x), sum((xi - 0.8) ** 2 for xi in x)
+            )
 
         optimizer = CMAEvolutionStrategy(multimodal_objective, n_trials=25, n_dim=2)
         result = optimizer.optimize()
@@ -110,7 +116,7 @@ class TestMissingLinesCoverage:
 
         def step_objective(x):
             # Objective designed to trigger both acceptance and rejection
-            if not hasattr(step_objective, 'calls'):
+            if not hasattr(step_objective, "calls"):
                 step_objective.calls = 0
             step_objective.calls += 1
 
@@ -129,7 +135,7 @@ class TestMissingLinesCoverage:
         from humpday.optimizers.optimizers import SimulatedAnnealing
 
         def sa_objective(x):
-            return sum((xi - 0.3)**2 for xi in x)
+            return sum((xi - 0.3) ** 2 for xi in x)
 
         optimizer = SimulatedAnnealing(sa_objective, n_trials=30, n_dim=2)
         result = optimizer.optimize()
@@ -141,7 +147,7 @@ class TestMissingLinesCoverage:
 
         def adaptive_objective(x):
             # Create valleys that require adaptive step sizing
-            return sum((xi - 0.15)**4 for xi in x) + 0.01 * sum(xi**2 for xi in x)
+            return sum((xi - 0.15) ** 4 for xi in x) + 0.01 * sum(xi**2 for xi in x)
 
         optimizer = AdaptiveRandomSearch(adaptive_objective, n_trials=40, n_dim=2)
         result = optimizer.optimize()
@@ -153,7 +159,7 @@ class TestMissingLinesCoverage:
 
         def pattern_objective(x):
             # Smooth objective that allows pattern expansion
-            return sum(xi**2 for xi in x) + 0.01 * sum((xi - 0.5)**4 for xi in x)
+            return sum(xi**2 for xi in x) + 0.01 * sum((xi - 0.5) ** 4 for xi in x)
 
         optimizer = PatternSearch(pattern_objective, n_trials=25, n_dim=2)
         result = optimizer.optimize()
@@ -164,7 +170,7 @@ class TestMissingLinesCoverage:
         from humpday.optimizers.optimizers import EvolutionStrategy
 
         def evolution_objective(x):
-            return sum((xi - 0.6)**2 for xi in x)
+            return sum((xi - 0.6) ** 2 for xi in x)
 
         optimizer = EvolutionStrategy(evolution_objective, n_trials=20, n_dim=2)
         result = optimizer.optimize()
@@ -175,7 +181,7 @@ class TestMissingLinesCoverage:
         from humpday.optimizers.optimizers import HarmonySearch
 
         def harmony_objective(x):
-            return sum((xi - 0.4)**2 for xi in x)
+            return sum((xi - 0.4) ** 2 for xi in x)
 
         optimizer = HarmonySearch(harmony_objective, n_trials=25, n_dim=2)
         result = optimizer.optimize()
@@ -187,8 +193,8 @@ class TestMissingLinesCoverage:
 
         def firefly_objective(x):
             # Multi-peak objective to trigger firefly movements
-            peak1 = sum((xi - 0.3)**2 for xi in x)
-            peak2 = sum((xi - 0.7)**2 for xi in x)
+            peak1 = sum((xi - 0.3) ** 2 for xi in x)
+            peak2 = sum((xi - 0.7) ** 2 for xi in x)
             return min(peak1, peak2)
 
         optimizer = FireflyAlgorithm(firefly_objective, n_trials=30, n_dim=2)
@@ -200,7 +206,7 @@ class TestMissingLinesCoverage:
         from humpday.optimizers.optimizers import TabuSearch
 
         def tabu_objective(x):
-            return sum((xi - 0.25)**2 for xi in x)
+            return sum((xi - 0.25) ** 2 for xi in x)
 
         optimizer = TabuSearch(tabu_objective, n_trials=25, n_dim=2)
         result = optimizer.optimize()
@@ -211,7 +217,7 @@ class TestMissingLinesCoverage:
         from humpday.optimizers.optimizers import GeneticAlgorithm
 
         def genetic_objective(x):
-            return sum(xi**2 for xi in x) + sum((xi - 0.8)**2 for xi in x)
+            return sum(xi**2 for xi in x) + sum((xi - 0.8) ** 2 for xi in x)
 
         optimizer = GeneticAlgorithm(genetic_objective, n_trials=30, n_dim=2)
         result = optimizer.optimize()
@@ -223,7 +229,7 @@ class TestMissingLinesCoverage:
 
         def ant_objective(x):
             # Discrete-like objective for ant colony
-            return sum(round(xi*10)**2 for xi in x)
+            return sum(round(xi * 10) ** 2 for xi in x)
 
         optimizer = AntColonyOpt(ant_objective, n_trials=25, n_dim=2)
         result = optimizer.optimize()
