@@ -828,7 +828,7 @@
                         <td><span class="elo-rating">${Math.round(opt.elo)}</span></td>
                         <td>
                             <span class="status-indicator status-${opt.status}"></span>
-                            ${currentContest ? `${opt.testsCompleted}/${currentContest.challengeSurfaces.length} tests` : 'pending'}
+                            ${(currentContest && currentContest.challengeSurfaces) ? `${opt.testsCompleted}/${currentContest.challengeSurfaces.length} tests` : 'pending'}
                         </td>
                     </tr>
                 `).join('');
@@ -912,6 +912,12 @@
             }
 
             console.log(`Generated ${challengeSurfaces.length} stochastic surfaces for fair competition`);
+
+            // Set up currentContest object with challengeSurfaces
+            currentContest = {
+                challengeSurfaces: challengeSurfaces,
+                interpretation: interpretation
+            };
 
             const progressSection = document.getElementById('progressSection');
             progressSection.innerHTML = ''; // Clear previous results
