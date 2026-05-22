@@ -1,206 +1,283 @@
-<!doctype html>
+<!DOCTYPE html>
 <html lang="en">
 <head>
-  <meta charset="utf-8" />
-  <meta name="viewport" content="width=device-width,initial-scale=1" />
-  <title>humpday — derivative-free optimizers in a common syntax</title>
-  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/katex@0.16.10/dist/katex.min.css" crossorigin="anonymous">
-  <script defer src="https://cdn.jsdelivr.net/npm/katex@0.16.10/dist/katex.min.js" crossorigin="anonymous"></script>
-  <script defer src="https://cdn.jsdelivr.net/npm/katex@0.16.10/dist/contrib/auto-render.min.js" crossorigin="anonymous"
-    onload="renderMathInElement(document.body, {delimiters:[{left:'$$',right:'$$',display:true},{left:'$',right:'$',display:false}]});"></script>
-  <style>
-    :root {
-      --bg: #fafafa; --panel: #fff; --text: #1a1a1a; --muted: #5a5a5a;
-      --accent: #4a3aff; --border: #e2e2e2; --code-bg: #f3f3f7;
-    }
-    * { box-sizing: border-box; }
-    html, body { margin: 0; padding: 0; background: var(--bg); color: var(--text); font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif; line-height: 1.55; font-size: 17px; }
-    a { color: var(--accent); text-decoration: none; }
-    a:hover { text-decoration: underline; }
-    header.site-header { background: #1f1d3d; color: #fff; padding: 14px 24px; border-bottom: 1px solid #15132a; }
-    header.site-header .nav-inner { max-width: 860px; margin: 0 auto; display: flex; gap: 18px; align-items: center; flex-wrap: wrap; }
-    header.site-header .brand { font-weight: 600; font-size: 1.1rem; color: #fff; }
-    header.site-header nav { display: flex; flex-wrap: wrap; gap: 0 18px; }
-    header.site-header nav a { color: #fff; opacity: 0.85; font-size: 0.95rem; }
-    header.site-header nav a:hover { opacity: 1; }
-    main { max-width: 860px; margin: 32px auto; padding: 0 24px 60px; }
-    h1 { font-size: 2.1rem; margin: 0 0 4px; line-height: 1.2; }
-    .subtitle { color: var(--muted); font-size: 1.1rem; margin: 0 0 28px; }
-    h2 { font-size: 1.35rem; margin: 2.2em 0 0.6em; border-bottom: 1px solid var(--border); padding-bottom: 4px; }
-    h3 { font-size: 1.08rem; margin: 1.6em 0 0.4em; }
-    code { background: var(--code-bg); padding: 1px 5px; border-radius: 3px; font-size: 0.92em; font-family: "SFMono-Regular", Menlo, Consolas, monospace; }
-    pre { background: var(--code-bg); padding: 12px 14px; border-radius: 6px; overflow-x: auto; font-size: 0.88em; }
-    pre code { background: none; padding: 0; }
-    ul, ol { padding-left: 1.4em; }
-    li { margin-bottom: 6px; }
-    .callout { background: #f1f0fb; border-left: 3px solid var(--accent); padding: 12px 18px; border-radius: 4px; margin: 18px 0; }
-    .tag-row { display: flex; flex-wrap: wrap; gap: 6px; margin: 12px 0; }
-    .tag { background: #ece9ff; color: var(--accent); border-radius: 3px; padding: 2px 8px; font-size: 0.8rem; }
-    .packages { display: grid; grid-template-columns: repeat(auto-fit, minmax(180px, 1fr)); gap: 6px 10px; margin: 14px 0; font-size: 0.93rem; }
-    .packages a { display: block; padding: 4px 8px; background: var(--panel); border: 1px solid var(--border); border-radius: 4px; }
-    .packages a:hover { background: #ece9ff; text-decoration: none; }
-    blockquote { margin: 18px 0; padding: 10px 18px; border-left: 3px solid #ddd; color: var(--muted); }
-    footer { max-width: 860px; margin: 40px auto 24px; padding: 16px 24px; font-size: 0.85rem; color: var(--muted); border-top: 1px solid var(--border); }
-  </style>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width,initial-scale=1">
+    <title>Humpday: Pure Python or Javascript Derivative-Free Optimization</title>
+    <meta name="description" content="22 derivative-free optimization algorithms in pure Python. No compilation, just numpy. Interactive demos and 3D visualizations.">
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/katex@0.16.10/dist/katex.min.css" crossorigin="anonymous">
+    <script defer src="https://cdn.jsdelivr.net/npm/katex@0.16.10/dist/katex.min.js" crossorigin="anonymous"></script>
+    <script defer src="https://cdn.jsdelivr.net/npm/katex@0.16.10/dist/contrib/auto-render.min.js" crossorigin="anonymous"
+        onload="renderMathInElement(document.body, {delimiters:[{left:'$$',right:'$$',display:true},{left:'$',right:'$',display:false}]});"></script>
+    <style>
+        :root {
+            --bg: #fafafa; --panel: #fff; --text: #1a1a1a; --muted: #666;
+            --accent: #2563eb; --accent-hover: #1d4ed8; --border: #e5e7eb;
+            --code-bg: #f8fafc; --success: #059669; --demo-bg: #eff6ff;
+        }
+        * { box-sizing: border-box; }
+        html, body { margin: 0; padding: 0; background: var(--bg); color: var(--text);
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+            line-height: 1.6; font-size: 16px; }
+
+        .hero {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white; padding: 60px 24px; text-align: center;
+        }
+        .hero h1 { font-size: 3rem; margin: 0 0 16px; font-weight: 700; }
+        .hero .subtitle { font-size: 1.25rem; opacity: 0.9; max-width: 600px; margin: 0 auto 32px; }
+        .hero .badges { display: flex; justify-content: center; gap: 12px; flex-wrap: wrap; }
+        .badge { background: rgba(255,255,255,0.2); padding: 6px 12px; border-radius: 20px;
+            font-size: 0.875rem; backdrop-filter: blur(10px); }
+
+        .container { max-width: 1200px; margin: 0 auto; padding: 0 24px; }
+        .section { padding: 60px 0; }
+        .section h2 { font-size: 2rem; margin: 0 0 16px; color: var(--text); }
+        .section p { font-size: 1.1rem; color: var(--muted); margin: 0 0 24px; }
+
+        .quick-start { background: var(--panel); }
+        .code-block { background: var(--code-bg); border: 1px solid var(--border);
+            border-radius: 8px; padding: 24px; font-family: 'SFMono-Regular', Consolas, monospace;
+            font-size: 0.9rem; overflow-x: auto; margin: 24px 0; }
+
+        .demos-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+            gap: 24px; margin: 40px 0; }
+        .demo-card { background: var(--panel); border: 1px solid var(--border); border-radius: 12px;
+            padding: 24px; transition: transform 0.2s, box-shadow 0.2s; }
+        .demo-card:hover { transform: translateY(-2px); box-shadow: 0 8px 25px rgba(0,0,0,0.1); }
+        .demo-card h3 { margin: 0 0 12px; color: var(--accent); }
+        .demo-card p { margin: 0 0 16px; color: var(--muted); font-size: 0.95rem; }
+        .demo-btn { display: inline-block; background: var(--accent); color: white;
+            padding: 10px 20px; border-radius: 6px; text-decoration: none; font-weight: 500;
+            transition: background 0.2s; }
+        .demo-btn:hover { background: var(--accent-hover); text-decoration: none; }
+
+        .algorithms-section { background: var(--demo-bg); }
+        .algorithm-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
+            gap: 16px; margin: 32px 0; }
+        .algorithm-card { background: var(--panel); border: 1px solid var(--border);
+            border-radius: 8px; padding: 16px; text-align: center; transition: transform 0.2s; }
+        .algorithm-card:hover { transform: translateY(-2px); }
+        .algorithm-card a { color: var(--accent); text-decoration: none; font-weight: 500; }
+        .algorithm-card a:hover { text-decoration: underline; }
+
+        .features { display: grid; grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+            gap: 32px; margin: 40px 0; }
+        .feature { text-align: center; }
+        .feature-icon { width: 64px; height: 64px; margin: 0 auto 16px;
+            background: var(--accent); border-radius: 50%; display: flex;
+            align-items: center; justify-content: center; color: white; font-size: 24px; }
+
+        .install-section { background: var(--panel); text-align: center; }
+        .install-cmd { background: #1a1a1a; color: #00ff00; padding: 20px; border-radius: 8px;
+            font-family: monospace; font-size: 1.1rem; margin: 20px 0; }
+
+        footer { background: #1a1a1a; color: white; padding: 40px 0; text-align: center; }
+        footer a { color: var(--accent); }
+
+        @media (max-width: 768px) {
+            .hero h1 { font-size: 2rem; }
+            .hero .badges { flex-direction: column; align-items: center; }
+            .demos-grid, .algorithm-grid { grid-template-columns: 1fr; }
+        }
+    </style>
 </head>
 <body>
-  <header class="site-header">
-    <div class="nav-inner">
-      <a class="brand" href="./">humpday</a>
-      <nav>
-        <a href="https://github.com/microprediction/humpday">GitHub</a>
-        <a href="https://pypi.org/project/humpday/">PyPI</a>
-        <a href="https://microprediction.github.io/optimizer-elo-ratings/html_leaderboards/overall.html">Elo leaderboard</a>
-        <a href="https://github.com/microprediction/humpday/blob/main/black_box_optimization_package_recommender.ipynb">Recommender</a>
-      </nav>
-    </div>
-  </header>
-
-  <main>
-    <h1>humpday</h1>
-    <p class="subtitle">A unified interface to fifty-plus derivative-free Python optimizers &mdash; plus Elo ratings so you can pick the right one.</p>
-
-    <div class="tag-row">
-      <span class="tag">global optimization</span>
-      <span class="tag">derivative-free</span>
-      <span class="tag">benchmarked</span>
-      <span class="tag">Elo-rated</span>
-      <span class="tag">15+ packages</span>
+    <div class="hero">
+        <h1>Humpday</h1>
+        <p class="subtitle">Pure Python or Javascript Derivative-Free Optimization<br>
+        22 validated algorithms. Zero dependencies beyond numpy.</p>
+        <div class="badges">
+            <span class="badge">Pure Python</span>
+            <span class="badge">22 Algorithms</span>
+            <span class="badge">Interactive Demos</span>
+            <span class="badge">3D Visualization</span>
+            <span class="badge">Elo Rated</span>
+        </div>
     </div>
 
-    <p>
-      Choosing a Python global optimizer means picking from a dozen packages, each with its own
-      quirky calling convention. <strong>humpday</strong> wraps fifty-plus optimization strategies
-      from <a href="https://github.com/facebook/Ax">Ax-Platform</a>, BayesianOptimization, DLib,
-      HyperOpt, NeverGrad, Optuna, Platypus, PyMoo, PySOT, SciPy, Skopt, NLopt, BOBYQA, UltraOpt,
-      FreeLunch and friends in a single calling syntax &mdash; and assigns each an
-      <a href="https://microprediction.github.io/optimizer-elo-ratings/html_leaderboards/overall.html">Elo
-      rating</a> from head-to-head tournaments parameterised by problem dimension and function-eval
-      budget. Pass your problem; get a defensible recommendation back.
-    </p>
+    <section class="quick-start section">
+        <div class="container">
+            <h2>Quick Start</h2>
+            <p>Get started with optimization in seconds. No compilation, no complex dependencies.</p>
 
-    <h2>Install</h2>
-<pre><code>pip install humpday
-pip install humpday[full]   # bring in every optional backend</code></pre>
+            <div class="code-block">pip install humpday</div>
 
-    <h2>Recommend an optimizer for your problem</h2>
-    <p>
-      Pass the dimension, an evaluation budget, and a time budget. <code>suggest()</code> returns
-      a ranked list of strategies that should perform well for that profile, independent of any
-      specific objective function:
-    </p>
-<pre><code>from pprint import pprint
-from humpday import suggest
+            <div class="code-block">from humpday import minimize
 
-pprint(suggest(n_dim=5, n_trials=130, n_seconds=5*60))
-# n_seconds is the *total* wall-clock budget the optimizer has,
-# not per-evaluation. Set this near your real constraint.</code></pre>
-    <p>
-      Or pass the objective itself and let humpday time it for you:
-    </p>
-<pre><code>import math, time
-from humpday import recommend
+def objective(x):
+    return (x[0] - 2)**2 + (x[1] - 3)**2
 
-def my_objective(u):
-    time.sleep(0.01)
-    return u[0] * math.sin(u[1])
+result = minimize(objective, bounds=[(-5, 5), (-5, 5)], method='DifferentialEvolution')
+print(f"Solution: {result.x}")  # [2.0, 3.0]</div>
+        </div>
+    </section>
 
-recommendations = recommend(my_objective, n_dim=21, n_trials=130)</code></pre>
+    <section class="section">
+        <div class="container">
+            <h2>Interactive Demos</h2>
+            <p>Experience optimization algorithms in action with our interactive demonstrations and visualizations.</p>
 
-    <h2>Run a points race on your own benchmark</h2>
-    <p>
-      Got a list of objective functions you actually care about? Run a tournament locally and
-      get rankings specific to your domain:
-    </p>
-<pre><code>from humpday import points_race
+            <div class="demos-grid">
+                <div class="demo-card">
+                    <h3>🏆 Algorithm Contest</h3>
+                    <p>Compare optimizers head-to-head on various problems. See which algorithms excel at different types of optimization challenges.</p>
+                    <a href="contest.html" class="demo-btn">Try Contest</a>
+                </div>
 
-points_race(objectives=[my_objective] * 2, n_dim=5, n_trials=100)</code></pre>
-    <p>
-      Walkthrough in the
-      <a href="https://github.com/microprediction/humpday/blob/main/black_box_optimization_package_recommender.ipynb">
-      Colab notebook</a>.
-    </p>
+                <div class="demo-card">
+                    <h3>🎮 3D Visualization</h3>
+                    <p>Watch algorithms optimize in real-time with interactive 3D visualizations. See how different strategies explore the solution space.</p>
+                    <a href="algorithm-visualization-demo.html" class="demo-btn">View 3D Demo</a>
+                </div>
 
-    <h2>Optimize on a simplex</h2>
-    <p>
-      Several humpday transforms map the unit cube to the unit simplex (and back), so any
-      cube-based optimizer can be applied to simplex-constrained problems &mdash; portfolio
-      weights, mixture components, probability vectors. See
-      <a href="https://github.com/microprediction/humpday/blob/main/humpday/transforms/cubetosimplex.py">
-      <code>cubetosimplex.py</code></a> for the variants.
-    </p>
+                <div class="demo-card">
+                    <h3>🔬 Algorithm Testing</h3>
+                    <p>Test and validate optimizer implementations. Compare Python and JavaScript versions for consistency.</p>
+                    <a href="test-optimizers.html" class="demo-btn">Run Tests</a>
+                </div>
 
-    <h2>Packages wrapped</h2>
-    <div class="packages">
-      <a href="https://github.com/microprediction/humpday/blob/main/humpday/optimizers/axcube.py">Ax-Platform</a>
-      <a href="https://github.com/microprediction/humpday/blob/main/humpday/optimizers/bayesoptcube.py">bayesian-optimization</a>
-      <a href="https://github.com/microprediction/humpday/blob/main/humpday/optimizers/dlibcube.py">DLib</a>
-      <a href="https://github.com/microprediction/humpday/blob/main/humpday/optimizers/hyperoptcube.py">HyperOpt</a>
-      <a href="https://github.com/microprediction/humpday/blob/main/humpday/optimizers/nevergradcube.py">NeverGrad</a>
-      <a href="https://github.com/microprediction/humpday/blob/main/humpday/optimizers/optunacube.py">Optuna</a>
-      <a href="https://github.com/microprediction/humpday/blob/main/humpday/optimizers/platypuscube.py">Platypus</a>
-      <a href="https://github.com/microprediction/humpday/blob/main/humpday/optimizers/pymoocube.py">PyMoo</a>
-      <a href="https://github.com/microprediction/humpday/blob/main/humpday/optimizers/pysotcube.py">PySOT</a>
-      <a href="https://github.com/microprediction/humpday/blob/main/humpday/optimizers/scipycube.py">SciPy classic</a>
-      <a href="https://github.com/microprediction/humpday/blob/main/humpday/optimizers/shgocube.py">SciPy SHGO</a>
-      <a href="https://github.com/microprediction/humpday/blob/main/humpday/optimizers/skoptcube.py">Skopt</a>
-      <a href="https://github.com/microprediction/humpday/blob/main/humpday/optimizers/nloptcube.py">NLopt</a>
-      <a href="https://github.com/microprediction/humpday/blob/main/humpday/optimizers/bobyqacube.py">Py-BOBYQA</a>
-      <a href="https://github.com/microprediction/humpday/blob/main/humpday/optimizers/ultraoptcube.py">UltraOpt</a>
-      <a href="https://github.com/MDCHAMP/FreeLunch">FreeLunch</a>
-    </div>
+                <div class="demo-card">
+                    <h3>📊 Cross-Validation</h3>
+                    <p>Validate algorithms against reference implementations. Ensure mathematical correctness and consistency.</p>
+                    <a href="js-python-validation-tests.html" class="demo-btn">Validate</a>
+                </div>
 
-    <h2>How the Elo ratings work</h2>
-    <p>
-      The sister repo
-      <a href="https://github.com/microprediction/optimizer-elo-ratings"><code>optimizer-elo-ratings</code></a>
-      runs ongoing head-to-head tournaments between every wrapped strategy across a battery of
-      synthetic objectives. Each match awards Elo points the same way chess does, parameterised
-      by problem dimension and trial budget. The
-      <a href="https://microprediction.github.io/optimizer-elo-ratings/html_leaderboards/overall.html">
-      leaderboard</a> is the live ranking; <code>suggest()</code> looks up the top strategies
-      for your specific $(d, n_{\text{trials}})$ corner of that grid.
-    </p>
+                <div class="demo-card">
+                    <h3>🧮 Stick Breaking Demo</h3>
+                    <p>Interactive visualization of mathematical transformations from unit cube to simplex for portfolio optimization.</p>
+                    <a href="stick_breaking_demo.html" class="demo-btn">Explore Math</a>
+                </div>
 
-    <h2>Articles</h2>
-    <ul>
-      <li>
-        <a href="https://www.microprediction.com/blog/humpday">
-          <em>HumpDay: A Package to Take the Pain Out of Choosing a Python Optimizer</em></a>
-      </li>
-      <li>
-        <a href="https://www.microprediction.com/blog/optimize">
-          <em>Comparing Python Global Optimizers</em></a>
-      </li>
-      <li>
-        <a href="https://microprediction.medium.com/interpreting-the-elo-ratings-for-python-global-optimizers-65304573e422">
-          <em>Interpreting the Elo Ratings for Python Global Optimizers</em></a>
-      </li>
-    </ul>
+                <div class="demo-card">
+                    <h3>🔍 Algorithm Mapping</h3>
+                    <p>Validation and mapping between different algorithm implementations and their reference counterparts.</p>
+                    <a href="algorithm-mapping-validation.html" class="demo-btn">View Mapping</a>
+                </div>
+            </div>
+        </div>
+    </section>
 
-    <h2>Cite or be cited</h2>
-    <p>
-      Pull requests at
-      <a href="https://github.com/microprediction/humpday/blob/main/CITE.md"><code>CITE.md</code></a>
-      are welcome &mdash; if your package is benchmarked here we want to credit you correctly.
-    </p>
+    <section class="algorithms-section section">
+        <div class="container">
+            <h2>22 Validated Algorithms</h2>
+            <p>Each algorithm is implemented in pure Python and validated against reference implementations.
+            Click any algorithm to see its interactive demo and documentation.</p>
 
-    <h2>Contribute</h2>
-    <p>
-      Adding a new optimizer is small: implement the common-syntax wrapper in
-      <a href="https://github.com/microprediction/humpday/tree/main/humpday/optimizers">
-      <code>humpday/optimizers/</code></a>, register it, and the Elo machinery will pick it up
-      on the next tournament.
-    </p>
-  </main>
+            <div class="algorithm-grid">
+                <div class="algorithm-card">
+                    <a href="algorithms/uobyqa.html">PRIMA UOBYQA</a>
+                </div>
+                <div class="algorithm-card">
+                    <a href="algorithms/newuoa.html">PRIMA NEWUOA</a>
+                </div>
+                <div class="algorithm-card">
+                    <a href="algorithms/bobyqa.html">PRIMA BOBYQA</a>
+                </div>
+                <div class="algorithm-card">
+                    <a href="algorithms/nelder-mead.html">Nelder-Mead</a>
+                </div>
+                <div class="algorithm-card">
+                    <a href="algorithms/powell.html">Powell</a>
+                </div>
+                <div class="algorithm-card">
+                    <a href="algorithms/lbfgsb.html">L-BFGS-B</a>
+                </div>
+                <div class="algorithm-card">
+                    <a href="algorithms/differential-evolution.html">Differential Evolution</a>
+                </div>
+                <div class="algorithm-card">
+                    <a href="algorithms/particle-swarm.html">Particle Swarm</a>
+                </div>
+                <div class="algorithm-card">
+                    <a href="algorithms/cma-evolution-strategy.html">CMA-ES</a>
+                </div>
+                <div class="algorithm-card">
+                    <a href="algorithms/genetic-algorithm.html">Genetic Algorithm</a>
+                </div>
+                <div class="algorithm-card">
+                    <a href="algorithms/bayesian-optimization.html">Bayesian Opt</a>
+                </div>
+                <div class="algorithm-card">
+                    <a href="algorithms/random-search.html">Random Search</a>
+                </div>
+                <div class="algorithm-card">
+                    <a href="algorithms/adaptive-random-search.html">Adaptive Random</a>
+                </div>
+                <div class="algorithm-card">
+                    <a href="algorithms/hill-climbing.html">Hill Climbing</a>
+                </div>
+                <div class="algorithm-card">
+                    <a href="algorithms/coordinate-descent.html">Coordinate Descent</a>
+                </div>
+                <div class="algorithm-card">
+                    <a href="algorithms/pattern-search.html">Pattern Search</a>
+                </div>
+                <div class="algorithm-card">
+                    <a href="algorithms/simulated-annealing.html">Simulated Annealing</a>
+                </div>
+                <div class="algorithm-card">
+                    <a href="algorithms/tabu-search.html">Tabu Search</a>
+                </div>
+                <div class="algorithm-card">
+                    <a href="algorithms/harmony-search.html">Harmony Search</a>
+                </div>
+                <div class="algorithm-card">
+                    <a href="algorithms/firefly-algorithm.html">Firefly Algorithm</a>
+                </div>
+                <div class="algorithm-card">
+                    <a href="algorithms/ant-colony-optimization.html">Ant Colony</a>
+                </div>
+            </div>
+        </div>
+    </section>
 
-  <footer>
-    <a href="https://github.com/microprediction/humpday">Source</a> &middot;
-    Part of the <a href="https://github.com/microprediction">microprediction</a> family
-    (see also
-    <a href="http://thurstone.microprediction.org">thurstone</a>,
-    <a href="http://schur.microprediction.org">schur</a>,
-    <a href="http://skaters.microprediction.org">skaters</a>).
-  </footer>
+    <section class="section">
+        <div class="container">
+            <h2>Why Humpday?</h2>
+            <div class="features">
+                <div class="feature">
+                    <div class="feature-icon">🚀</div>
+                    <h3>Zero Dependencies</h3>
+                    <p>Pure Python with only numpy required. No compilation, no external libraries, no headaches.</p>
+                </div>
+                <div class="feature">
+                    <div class="feature-icon">🎯</div>
+                    <h3>Validated Algorithms</h3>
+                    <p>22 algorithms cross-validated against reference implementations and JavaScript versions.</p>
+                </div>
+                <div class="feature">
+                    <div class="feature-icon">🌐</div>
+                    <h3>Python or JavaScript</h3>
+                    <p>Same algorithms available in both Python and JavaScript for maximum flexibility.</p>
+                </div>
+                <div class="feature">
+                    <div class="feature-icon">📈</div>
+                    <h3>Elo Rated</h3>
+                    <p>Algorithms ranked by performance through head-to-head tournaments on diverse problems.</p>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <section class="install-section section">
+        <div class="container">
+            <h2>Ready to Optimize?</h2>
+            <p>Get started in seconds with pip install</p>
+            <div class="install-cmd">$ pip install humpday</div>
+            <p><a href="https://github.com/microprediction/humpday">View on GitHub</a> |
+               <a href="https://pypi.org/project/humpday/">PyPI Package</a> |
+               <a href="https://microprediction.github.io/optimizer-elo-ratings/html_leaderboards/overall.html">Elo Leaderboard</a></p>
+        </div>
+    </section>
+
+    <footer>
+        <div class="container">
+            <p>&copy; 2024 Humpday | MIT License |
+            <a href="https://github.com/microprediction/humpday">GitHub</a> |
+            <a href="https://github.com/microprediction/humpday/issues">Issues</a></p>
+            <p>Part of the <a href="https://github.com/microprediction">microprediction</a> family</p>
+        </div>
+    </footer>
 </body>
 </html>
