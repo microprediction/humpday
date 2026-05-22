@@ -81,10 +81,10 @@
     </div>
 
     <div class="container">
-        <div class="abstract">
-            <strong>Abstract:</strong> Humpday provides a unified interface to 22 derivative-free optimization algorithms
+        <div style="background: var(--section-bg); padding: 24px; border-left: 4px solid var(--accent); margin: 24px 0;">
+            HumpDay provides a unified interface to 22 derivative-free optimization algorithms
             implemented in pure Python and JavaScript. All algorithms operate on the unit hypercube [0,1]ⁿ with
-            automatic domain transformations for bounded and unbounded problems. Cross-validation against reference
+            automatic domain transformations for bounded and unbounded problems. Cross-validation against SOTA well-used reference
             implementations ensures mathematical correctness.
         </div>
 
@@ -133,30 +133,6 @@ print(f"Solution: {result.x}")  # [2.0, 3.0]</code></pre>
                     <p>Real-time visualization of optimization trajectories on three-dimensional objective surfaces.</p>
                     <a href="algorithm-visualization-demo.html">View Visualization →</a>
                 </div>
-
-                <div class="demo-item">
-                    <h4>Implementation Testing</h4>
-                    <p>Validation suite for verifying algorithm correctness against reference implementations.</p>
-                    <a href="test-optimizers.html">Run Tests →</a>
-                </div>
-
-                <div class="demo-item">
-                    <h4>Cross-Platform Validation</h4>
-                    <p>Consistency verification between Python and JavaScript implementations.</p>
-                    <a href="js-python-validation-tests.html">Validate →</a>
-                </div>
-
-                <div class="demo-item">
-                    <h4>Mathematical Transformations</h4>
-                    <p>Interactive exploration of cube-to-simplex mappings for constrained optimization.</p>
-                    <a href="stick_breaking_demo.html">Explore →</a>
-                </div>
-
-                <div class="demo-item">
-                    <h4>Algorithm Mapping</h4>
-                    <p>Correspondence analysis between implemented algorithms and reference sources.</p>
-                    <a href="algorithm-mapping-validation.html">View Mapping →</a>
-                </div>
             </div>
         </section>
 
@@ -202,31 +178,159 @@ print(f"Solution: {result.x}")  # [2.0, 3.0]</code></pre>
                     <tr>
                         <th>Algorithm</th>
                         <th>Type</th>
+                        <th>Reference Package</th>
+                        <th>Paper</th>
                         <th>Documentation</th>
                     </tr>
                 </thead>
                 <tbody>
-                    <tr><td><code>PRIMA_UOBYQA</code></td><td>Trust Region</td><td><a href="algorithms/uobyqa.html">View →</a></td></tr>
-                    <tr><td><code>PRIMA_NEWUOA</code></td><td>Trust Region</td><td><a href="algorithms/newuoa.html">View →</a></td></tr>
-                    <tr><td><code>PRIMA_BOBYQA</code></td><td>Trust Region</td><td><a href="algorithms/bobyqa.html">View →</a></td></tr>
-                    <tr><td><code>NelderMead</code></td><td>Direct Search</td><td><a href="algorithms/nelder-mead.html">View →</a></td></tr>
-                    <tr><td><code>Powell</code></td><td>Direct Search</td><td><a href="algorithms/powell.html">View →</a></td></tr>
-                    <tr><td><code>LBFGSB</code></td><td>Quasi-Newton</td><td><a href="algorithms/lbfgsb.html">View →</a></td></tr>
-                    <tr><td><code>DifferentialEvolution</code></td><td>Evolutionary</td><td><a href="algorithms/differential-evolution.html">View →</a></td></tr>
-                    <tr><td><code>ParticleSwarm</code></td><td>Swarm Intelligence</td><td><a href="algorithms/particle-swarm.html">View →</a></td></tr>
-                    <tr><td><code>CMAEvolutionStrategy</code></td><td>Evolutionary</td><td><a href="algorithms/cma-evolution-strategy.html">View →</a></td></tr>
-                    <tr><td><code>GeneticAlgorithm</code></td><td>Evolutionary</td><td><a href="algorithms/genetic-algorithm.html">View →</a></td></tr>
-                    <tr><td><code>BayesianOpt</code></td><td>Surrogate-based</td><td><a href="algorithms/bayesian-optimization.html">View →</a></td></tr>
-                    <tr><td><code>SimulatedAnnealing</code></td><td>Metaheuristic</td><td><a href="algorithms/simulated-annealing.html">View →</a></td></tr>
-                    <tr><td><code>TabuSearch</code></td><td>Local Search</td><td><a href="algorithms/tabu-search.html">View →</a></td></tr>
-                    <tr><td><code>HarmonySearch</code></td><td>Metaheuristic</td><td><a href="algorithms/harmony-search.html">View →</a></td></tr>
-                    <tr><td><code>FireflyAlgorithm</code></td><td>Swarm Intelligence</td><td><a href="algorithms/firefly-algorithm.html">View →</a></td></tr>
-                    <tr><td><code>AntColonyOpt</code></td><td>Swarm Intelligence</td><td><a href="algorithms/ant-colony-optimization.html">View →</a></td></tr>
-                    <tr><td><code>RandomSearch</code></td><td>Sampling</td><td><a href="algorithms/random-search.html">View →</a></td></tr>
-                    <tr><td><code>AdaptiveRandomSearch</code></td><td>Adaptive Sampling</td><td><a href="algorithms/adaptive-random-search.html">View →</a></td></tr>
-                    <tr><td><code>HillClimbing</code></td><td>Local Search</td><td><a href="algorithms/hill-climbing.html">View →</a></td></tr>
-                    <tr><td><code>CoordinateDescent</code></td><td>Coordinate-wise</td><td><a href="algorithms/coordinate-descent.html">View →</a></td></tr>
-                    <tr><td><code>PatternSearch</code></td><td>Direct Search</td><td><a href="algorithms/pattern-search.html">View →</a></td></tr>
+                    <tr>
+                        <td><code>PRIMA_UOBYQA</code></td>
+                        <td>Trust Region</td>
+                        <td>PDFO (Powell's Fortran)</td>
+                        <td><a href="https://www.optimization-online.org/DB_HTML/2009/12/2490.html">Powell (2009)</a></td>
+                        <td><a href="algorithms/uobyqa.html">View →</a></td>
+                    </tr>
+                    <tr>
+                        <td><code>PRIMA_NEWUOA</code></td>
+                        <td>Trust Region</td>
+                        <td>PDFO (Powell's Fortran)</td>
+                        <td><a href="https://link.springer.com/article/10.1007/s10107-004-0560-5">Powell (2006)</a></td>
+                        <td><a href="algorithms/newuoa.html">View →</a></td>
+                    </tr>
+                    <tr>
+                        <td><code>PRIMA_BOBYQA</code></td>
+                        <td>Trust Region</td>
+                        <td>PDFO (Powell's Fortran)</td>
+                        <td><a href="https://www.damtp.cam.ac.uk/user/na/NA_papers/NA2009_06.pdf">Powell (2009)</a></td>
+                        <td><a href="algorithms/bobyqa.html">View →</a></td>
+                    </tr>
+                    <tr>
+                        <td><code>NelderMead</code></td>
+                        <td>Direct Search</td>
+                        <td>SciPy optimize</td>
+                        <td><a href="https://academic.oup.com/comjnl/article/7/4/308/354237">Nelder & Mead (1965)</a></td>
+                        <td><a href="algorithms/nelder-mead.html">View →</a></td>
+                    </tr>
+                    <tr>
+                        <td><code>Powell</code></td>
+                        <td>Direct Search</td>
+                        <td>SciPy optimize</td>
+                        <td><a href="https://doi.org/10.1093/comjnl/7.2.155">Powell (1964)</a></td>
+                        <td><a href="algorithms/powell.html">View →</a></td>
+                    </tr>
+                    <tr>
+                        <td><code>LBFGSB</code></td>
+                        <td>Quasi-Newton</td>
+                        <td>SciPy optimize</td>
+                        <td><a href="https://doi.org/10.1145/279232.279236">Byrd et al. (1995)</a></td>
+                        <td><a href="algorithms/lbfgsb.html">View →</a></td>
+                    </tr>
+                    <tr>
+                        <td><code>DifferentialEvolution</code></td>
+                        <td>Evolutionary</td>
+                        <td>SciPy optimize</td>
+                        <td><a href="https://link.springer.com/article/10.1023/A:1008202821328">Storn & Price (1997)</a></td>
+                        <td><a href="algorithms/differential-evolution.html">View →</a></td>
+                    </tr>
+                    <tr>
+                        <td><code>ParticleSwarm</code></td>
+                        <td>Swarm Intelligence</td>
+                        <td>PySwarms</td>
+                        <td><a href="https://doi.org/10.1109/ICNN.1995.488968">Kennedy & Eberhart (1995)</a></td>
+                        <td><a href="algorithms/particle-swarm.html">View →</a></td>
+                    </tr>
+                    <tr>
+                        <td><code>CMAEvolutionStrategy</code></td>
+                        <td>Evolutionary</td>
+                        <td>pycma</td>
+                        <td><a href="https://arxiv.org/abs/1604.00772">Hansen (2016)</a></td>
+                        <td><a href="algorithms/cma-evolution-strategy.html">View →</a></td>
+                    </tr>
+                    <tr>
+                        <td><code>GeneticAlgorithm</code></td>
+                        <td>Evolutionary</td>
+                        <td>DEAP</td>
+                        <td><a href="https://mitpress.mit.edu/books/adaptation-natural-and-artificial-systems">Holland (1992)</a></td>
+                        <td><a href="algorithms/genetic-algorithm.html">View →</a></td>
+                    </tr>
+                    <tr>
+                        <td><code>BayesianOpt</code></td>
+                        <td>Surrogate-based</td>
+                        <td>scikit-optimize</td>
+                        <td><a href="https://arxiv.org/abs/1012.2599">Brochu et al. (2010)</a></td>
+                        <td><a href="algorithms/bayesian-optimization.html">View →</a></td>
+                    </tr>
+                    <tr>
+                        <td><code>SimulatedAnnealing</code></td>
+                        <td>Metaheuristic</td>
+                        <td>SciPy optimize</td>
+                        <td><a href="https://science.sciencemag.org/content/220/4598/671">Kirkpatrick et al. (1983)</a></td>
+                        <td><a href="algorithms/simulated-annealing.html">View →</a></td>
+                    </tr>
+                    <tr>
+                        <td><code>TabuSearch</code></td>
+                        <td>Local Search</td>
+                        <td>Custom Implementation</td>
+                        <td><a href="https://www.springer.com/gp/book/9780792390917">Glover & Laguna (1997)</a></td>
+                        <td><a href="algorithms/tabu-search.html">View →</a></td>
+                    </tr>
+                    <tr>
+                        <td><code>HarmonySearch</code></td>
+                        <td>Metaheuristic</td>
+                        <td>Custom Implementation</td>
+                        <td><a href="https://link.springer.com/article/10.1007/s001840050046">Geem et al. (2001)</a></td>
+                        <td><a href="algorithms/harmony-search.html">View →</a></td>
+                    </tr>
+                    <tr>
+                        <td><code>FireflyAlgorithm</code></td>
+                        <td>Swarm Intelligence</td>
+                        <td>Custom Implementation</td>
+                        <td><a href="https://arxiv.org/abs/1003.1464">Yang (2010)</a></td>
+                        <td><a href="algorithms/firefly-algorithm.html">View →</a></td>
+                    </tr>
+                    <tr>
+                        <td><code>AntColonyOpt</code></td>
+                        <td>Swarm Intelligence</td>
+                        <td>Custom Implementation</td>
+                        <td><a href="https://doi.org/10.1016/0004-3702(91)90017-M">Dorigo et al. (1991)</a></td>
+                        <td><a href="algorithms/ant-colony-optimization.html">View →</a></td>
+                    </tr>
+                    <tr>
+                        <td><code>RandomSearch</code></td>
+                        <td>Sampling</td>
+                        <td>Built-in</td>
+                        <td><a href="https://www.jmlr.org/papers/v13/bergstra12a.html">Bergstra & Bengio (2012)</a></td>
+                        <td><a href="algorithms/random-search.html">View →</a></td>
+                    </tr>
+                    <tr>
+                        <td><code>AdaptiveRandomSearch</code></td>
+                        <td>Adaptive Sampling</td>
+                        <td>Custom Implementation</td>
+                        <td><a href="https://doi.org/10.1287/opre.2.4.474">Brooks (1958)</a></td>
+                        <td><a href="algorithms/adaptive-random-search.html">View →</a></td>
+                    </tr>
+                    <tr>
+                        <td><code>HillClimbing</code></td>
+                        <td>Local Search</td>
+                        <td>Built-in</td>
+                        <td><a href="https://doi.org/10.1145/321033.321034">Russell & Norvig (1995)</a></td>
+                        <td><a href="algorithms/hill-climbing.html">View →</a></td>
+                    </tr>
+                    <tr>
+                        <td><code>CoordinateDescent</code></td>
+                        <td>Coordinate-wise</td>
+                        <td>scikit-learn</td>
+                        <td><a href="https://doi.org/10.1007/978-0-387-40065-5">Bertsekas (1999)</a></td>
+                        <td><a href="algorithms/coordinate-descent.html">View →</a></td>
+                    </tr>
+                    <tr>
+                        <td><code>PatternSearch</code></td>
+                        <td>Direct Search</td>
+                        <td>Custom Implementation</td>
+                        <td><a href="https://doi.org/10.1137/S1052623496303470">Torczon (1997)</a></td>
+                        <td><a href="algorithms/pattern-search.html">View →</a></td>
+                    </tr>
                 </tbody>
             </table>
         </section>

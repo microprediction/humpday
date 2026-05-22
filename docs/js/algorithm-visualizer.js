@@ -384,6 +384,11 @@ class AlgorithmVisualizer {
         const controlsContainer = document.getElementById('visualizationControls');
         const useOverlay = !controlsContainer;
 
+        // Clear any existing controls to prevent duplicates
+        if (controlsContainer) {
+            controlsContainer.innerHTML = '';
+        }
+
         const controlPanel = document.createElement('div');
 
         if (useOverlay) {

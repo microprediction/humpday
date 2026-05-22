@@ -356,6 +356,7 @@
             optimizers.forEach(optimizer => {
                 optimizer.elo = 1500;
                 optimizer.status = 'waiting';
+                optimizer.testsCompleted = 0;
             });
 
             // Clear any running timers or intervals
@@ -398,42 +399,42 @@
         }
         let optimizers = [
             // PRIMA algorithms (state-of-the-art derivative-free)
-            { name: 'UOBYQA (PDFO)', internalName: 'PRIMA_UOBYQA', elo: 1500, status: 'waiting' },
-            { name: 'NEWUOA (PDFO)', internalName: 'PRIMA_NEWUOA', elo: 1500, status: 'waiting' },
-            { name: 'BOBYQA (PDFO)', internalName: 'PRIMA_BOBYQA', elo: 1500, status: 'waiting' },
+            { name: 'UOBYQA (PDFO)', internalName: 'PRIMA_UOBYQA', elo: 1500, status: 'waiting', testsCompleted: 0 },
+            { name: 'NEWUOA (PDFO)', internalName: 'PRIMA_NEWUOA', elo: 1500, status: 'waiting', testsCompleted: 0 },
+            { name: 'BOBYQA (PDFO)', internalName: 'PRIMA_BOBYQA', elo: 1500, status: 'waiting', testsCompleted: 0 },
 
             // Classical derivative-free methods
-            { name: 'Nelder-Mead (SciPy)', internalName: 'SciPy_NelderMead', elo: 1500, status: 'waiting' },
-            { name: 'Powell (SciPy)', internalName: 'SciPy_Powell', elo: 1500, status: 'waiting' },
-            { name: 'BFGS (SciPy)', internalName: 'SciPy_BFGS', elo: 1500, status: 'waiting' },
+            { name: 'Nelder-Mead (SciPy)', internalName: 'SciPy_NelderMead', elo: 1500, status: 'waiting', testsCompleted: 0 },
+            { name: 'Powell (SciPy)', internalName: 'SciPy_Powell', elo: 1500, status: 'waiting', testsCompleted: 0 },
+            { name: 'BFGS (SciPy)', internalName: 'SciPy_BFGS', elo: 1500, status: 'waiting', testsCompleted: 0 },
 
             // Evolutionary algorithms
-            { name: 'Differential Evolution (SciPy)', internalName: 'DifferentialEvolution', elo: 1500, status: 'waiting' },
-            { name: 'CMA-ES (pycma)', internalName: 'CMAEvolutionStrategy', elo: 1500, status: 'waiting' },
-            { name: 'Genetic Algorithm (DEAP)', internalName: 'GeneticAlgorithm', elo: 1500, status: 'waiting' },
+            { name: 'Differential Evolution (SciPy)', internalName: 'DifferentialEvolution', elo: 1500, status: 'waiting', testsCompleted: 0 },
+            { name: 'CMA-ES (pycma)', internalName: 'CMAEvolutionStrategy', elo: 1500, status: 'waiting', testsCompleted: 0 },
+            { name: 'Genetic Algorithm (DEAP)', internalName: 'GeneticAlgorithm', elo: 1500, status: 'waiting', testsCompleted: 0 },
 
             // Swarm intelligence
-            { name: 'Particle Swarm (PySwarm)', internalName: 'ParticleSwarm', elo: 1500, status: 'waiting' },
+            { name: 'Particle Swarm (PySwarm)', internalName: 'ParticleSwarm', elo: 1500, status: 'waiting', testsCompleted: 0 },
 
             // Metaheuristics
-            { name: 'Simulated Annealing (SciPy)', internalName: 'SimulatedAnnealing', elo: 1500, status: 'waiting' },
+            { name: 'Simulated Annealing (SciPy)', internalName: 'SimulatedAnnealing', elo: 1500, status: 'waiting', testsCompleted: 0 },
 
             // Modern Bayesian methods
-            { name: 'Bayesian Optimization (scikit-optimize)', internalName: 'BayesianOpt', elo: 1500, status: 'waiting' },
+            { name: 'Bayesian Optimization (scikit-optimize)', internalName: 'BayesianOpt', elo: 1500, status: 'waiting', testsCompleted: 0 },
 
             // Baseline methods
-            { name: 'Random Search (scikit-learn)', internalName: 'RandomSearch', elo: 1500, status: 'waiting' },
+            { name: 'Random Search (scikit-learn)', internalName: 'RandomSearch', elo: 1500, status: 'waiting', testsCompleted: 0 },
 
             // Additional gradient-free methods
-            { name: 'Adaptive Random Search (nlopt)', internalName: 'AdaptiveRandomSearch', elo: 1500, status: 'waiting' },
-            { name: 'Coordinate Descent (scikit-learn)', internalName: 'CoordinateDescent', elo: 1500, status: 'waiting' },
-            { name: 'Pattern Search (SciPy)', internalName: 'PatternSearch', elo: 1500, status: 'waiting' },
-            { name: 'Hill Climbing (SciPy)', internalName: 'HillClimbing', elo: 1500, status: 'waiting' },
-            { name: 'Tabu Search (SciPy)', internalName: 'TabuSearch', elo: 1500, status: 'waiting' },
-            { name: 'Firefly Algorithm (SciPy)', internalName: 'FireflyAlgorithm', elo: 1500, status: 'waiting' },
-            { name: 'Ant Colony Optimization (acopy)', internalName: 'AntColonyOpt', elo: 1500, status: 'waiting' },
-            { name: 'Harmony Search (pyHarmonySearch)', internalName: 'HarmonySearch', elo: 1500, status: 'waiting' },
-            { name: 'Evolution Strategy (DEAP)', internalName: 'EvolutionStrategy', elo: 1500, status: 'waiting' }
+            { name: 'Adaptive Random Search (nlopt)', internalName: 'AdaptiveRandomSearch', elo: 1500, status: 'waiting', testsCompleted: 0 },
+            { name: 'Coordinate Descent (scikit-learn)', internalName: 'CoordinateDescent', elo: 1500, status: 'waiting', testsCompleted: 0 },
+            { name: 'Pattern Search (SciPy)', internalName: 'PatternSearch', elo: 1500, status: 'waiting', testsCompleted: 0 },
+            { name: 'Hill Climbing (SciPy)', internalName: 'HillClimbing', elo: 1500, status: 'waiting', testsCompleted: 0 },
+            { name: 'Tabu Search (SciPy)', internalName: 'TabuSearch', elo: 1500, status: 'waiting', testsCompleted: 0 },
+            { name: 'Firefly Algorithm (SciPy)', internalName: 'FireflyAlgorithm', elo: 1500, status: 'waiting', testsCompleted: 0 },
+            { name: 'Ant Colony Optimization (acopy)', internalName: 'AntColonyOpt', elo: 1500, status: 'waiting', testsCompleted: 0 },
+            { name: 'Harmony Search (pyHarmonySearch)', internalName: 'HarmonySearch', elo: 1500, status: 'waiting', testsCompleted: 0 },
+            { name: 'Evolution Strategy (DEAP)', internalName: 'EvolutionStrategy', elo: 1500, status: 'waiting', testsCompleted: 0 }
         ];
 
         let selectedProblemConfig = null;
@@ -827,7 +828,7 @@
                         <td><span class="elo-rating">${Math.round(opt.elo)}</span></td>
                         <td>
                             <span class="status-indicator status-${opt.status}"></span>
-                            ${opt.status.charAt(0).toUpperCase() + opt.status.slice(1)}
+                            ${opt.testsCompleted}/${currentContest ? currentContest.challengeSurfaces.length : '?'} tests
                         </td>
                     </tr>
                 `).join('');
@@ -1021,6 +1022,7 @@
                         skipped: true
                     });
                     optimizer.status = 'skipped';
+                    optimizer.testsCompleted++;
                     continue;
                 }
 
@@ -1092,6 +1094,7 @@
                         }
 
                         optimizer.status = 'completed';
+                        optimizer.testsCompleted++;
                     } else {
                         // Timeout occurred
                         results.push({
@@ -1101,6 +1104,7 @@
                             success: false
                         });
                         optimizer.status = 'timeout';
+                        optimizer.testsCompleted++;
                     }
 
                 } catch (error) {
@@ -1112,6 +1116,7 @@
                         success: false
                     });
                     optimizer.status = 'failed';
+                    optimizer.testsCompleted++;
                 }
 
                 // Show incremental results
