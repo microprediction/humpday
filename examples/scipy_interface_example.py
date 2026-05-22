@@ -19,6 +19,7 @@ from humpday import (
     cube_cma_es,
     cube_differential_evolution,
     cube_minimize,
+    cube_minimize_scalar,
     cube_nelder_mead,
     cube_particle_swarm,
     cube_prima_uobyqa,
