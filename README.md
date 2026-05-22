@@ -20,14 +20,8 @@ from humpday import minimize
 def objective(x):
     return (x[0] - 2)**2 + (x[1] - 3)**2
 
-# Bounded optimization
 result = minimize(objective, bounds=[(-5, 5), (-5, 5)])
-
-# Unbounded optimization  
-result = minimize(objective, x0=[0, 0])
-
-# Large-scale problems (use scale hint)
-result = minimize(objective, x0=[0, 0], scale=1000)
+print(f"Solution: {result.x}")  # [2.0, 3.0]
 ```
 
 ## Algorithms
