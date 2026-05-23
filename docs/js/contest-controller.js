@@ -430,9 +430,9 @@
             { name: 'BOBYQA (PDFO)', internalName: 'PRIMA_BOBYQA', elo: 1500, status: 'waiting', testsCompleted: 0 },
 
             // Classical derivative-free methods
-            { name: 'Nelder-Mead (SciPy)', internalName: 'SciPy_NelderMead', elo: 1500, status: 'waiting', testsCompleted: 0 },
-            { name: 'Powell (SciPy)', internalName: 'SciPy_Powell', elo: 1500, status: 'waiting', testsCompleted: 0 },
-            { name: 'BFGS (SciPy)', internalName: 'SciPy_BFGS', elo: 1500, status: 'waiting', testsCompleted: 0 },
+            { name: 'Nelder-Mead (SciPy)', internalName: 'NelderMead', elo: 1500, status: 'waiting', testsCompleted: 0 },
+            { name: 'Powell (SciPy)', internalName: 'Powell', elo: 1500, status: 'waiting', testsCompleted: 0 },
+            { name: 'BFGS (SciPy)', internalName: 'LBFGSB', elo: 1500, status: 'waiting', testsCompleted: 0 },
 
             // Evolutionary algorithms
             { name: 'Differential Evolution (SciPy)', internalName: 'DifferentialEvolution', elo: 1500, status: 'waiting', testsCompleted: 0 },
