@@ -4,408 +4,316 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' 'unsafe-inline' https://cdnjs.cloudflare.com https://cdn.jsdelivr.net; style-src 'self' 'unsafe-inline';">
-    <title>Particle Swarm Optimization - Implementation Details</title>
+    <title>Particle Swarm Optimization - HumpDay Implementation</title>
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/katex@0.16.10/dist/katex.min.css" crossorigin="anonymous">
+    <script defer src="https://cdn.jsdelivr.net/npm/katex@0.16.10/dist/katex.min.js" crossorigin="anonymous"></script>
+    <script defer src="https://cdn.jsdelivr.net/npm/katex@0.16.10/dist/contrib/auto-render.min.js" crossorigin="anonymous"
+        onload="renderMathInElement(document.body, {delimiters:[{left:'$$',right:'$$',display:true},{left:'$',right:'$',display:false}]});"></script>
     <style>
         body {
-            font-family: 'Georgia', 'Times New Roman', serif;
+            font-family: 'Times New Roman', Times, serif;
+            font-size: 16px;
+            line-height: 1.6;
+            color: #000;
+            background: #fff;
             margin: 0;
-            padding: 20px;
-            background: #f8f9fa;
-            color: #2c3e50;
-        }
-
-        .container {
-            max-width: 1000px;
+            padding: 40px 20px;
+            max-width: 800px;
             margin: 0 auto;
-            background: white;
-            border-radius: 15px;
-            box-shadow: 0 20px 40px rgba(0,0,0,0.1);
-            overflow: hidden;
         }
 
-        .header {
-            background: #e74c3c;
-            color: white;
-            padding: 30px;
+        .paper-header {
             text-align: center;
+            margin-bottom: 40px;
+            border-bottom: 2px solid #000;
+            padding-bottom: 20px;
         }
 
-        .header h1 {
+        .paper-title {
+            font-size: 24px;
+            font-weight: bold;
             margin: 0 0 10px 0;
-            font-size: 2.2em;
+            letter-spacing: 0.5px;
         }
 
-        .header p {
+        .paper-subtitle {
+            font-size: 14px;
+            font-style: italic;
+            color: #333;
             margin: 0;
-            font-size: 1.1em;
-            opacity: 0.9;
         }
 
-        .content {
-            padding: 40px;
+        .abstract {
+            background: #f9f9f9;
+            border-left: 4px solid #333;
+            padding: 20px;
+            margin: 30px 0;
+            font-style: italic;
+        }
+
+        .abstract h3 {
+            margin: 0 0 10px 0;
+            font-size: 14px;
+            font-weight: bold;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+        }
+
+        h2 {
+            font-size: 18px;
+            font-weight: bold;
+            margin: 40px 0 20px 0;
+            border-bottom: 1px solid #ccc;
+            padding-bottom: 5px;
+        }
+
+        h3 {
+            font-size: 16px;
+            font-weight: bold;
+            margin: 30px 0 15px 0;
         }
 
         .implementation-table {
             width: 100%;
             border-collapse: collapse;
-            margin: 30px 0;
-            border-radius: 10px;
-            overflow: hidden;
-            box-shadow: 0 4px 8px rgba(0,0,0,0.1);
+            margin: 20px 0;
+            border: 1px solid #333;
         }
 
         .implementation-table th {
-            background: #34495e;
-            color: white;
-            padding: 15px;
+            background: #f0f0f0;
+            border: 1px solid #333;
+            padding: 12px;
             text-align: left;
-            font-weight: 600;
+            font-weight: bold;
+            font-size: 14px;
         }
 
         .implementation-table td {
-            padding: 15px;
-            border-bottom: 1px solid #eee;
+            border: 1px solid #333;
+            padding: 12px;
             vertical-align: top;
+            font-size: 14px;
         }
 
-        .implementation-table tr:hover {
-            background: #f8f9fa;
+        .code-ref {
+            font-family: 'Courier New', monospace;
+            background: #f5f5f5;
+            padding: 2px 4px;
+            border: 1px solid #ccc;
         }
 
-        .implementation-table .category {
-            font-weight: 600;
-            color: #34495e;
-            background: #ecf0f1;
+        .citation {
+            font-style: italic;
+            font-size: 14px;
         }
 
-        .link-button {
-            display: inline-block;
-            padding: 8px 16px;
-            background: #3498db;
-            color: white;
-            text-decoration: none;
-            border-radius: 4px;
-            font-size: 0.9em;
-            margin: 2px 4px;
-            transition: background 0.2s;
-        }
-
-        .link-button:hover {
-            background: #2980b9;
-        }
-
-        .link-button.paper { background: #e74c3c; }
-        .link-button.python { background: #27ae60; }
-        .link-button.javascript { background: #f39c12; }
-        .link-button.info { background: #9b59b6; }
-
-        .algorithm-description {
-            background: #fadbd8;
-            border-left: 4px solid #e74c3c;
-            padding: 20px;
-            border-radius: 5px;
-            margin: 20px 0;
-        }
-
-        .back-nav {
-            margin-bottom: 20px;
-        }
-
-        .back-nav a {
-            color: #3498db;
-            text-decoration: none;
-            font-size: 1.1em;
-        }
-
-        .back-nav a:hover {
+        a {
+            color: #000;
             text-decoration: underline;
         }
 
-        .performance-notes {
-            background: #fff3cd;
-            border: 1px solid #ffc107;
-            border-radius: 8px;
-            padding: 15px;
+        a:hover {
+            text-decoration: none;
+        }
+
+        .nav-link {
+            display: inline-block;
+            margin-bottom: 20px;
+            font-size: 14px;
+        }
+
+        .algorithm-details {
+            margin: 30px 0;
+        }
+
+        .mathematical-formulation {
+            background: #fafafa;
+            border: 1px solid #ddd;
+            padding: 20px;
             margin: 20px 0;
         }
 
-        .performance-notes h3 {
-            margin-top: 0;
-            color: #856404;
-        }
-
-        .more-section {
-            margin-top: 30px;
-            border-top: 2px solid #ecf0f1;
+        .references {
+            margin-top: 50px;
+            border-top: 2px solid #000;
             padding-top: 20px;
         }
 
-        .more-toggle {
-            background: #3498db;
-            color: white;
+        .references h2 {
             border: none;
-            padding: 10px 20px;
-            border-radius: 4px;
-            cursor: pointer;
-            font-size: 1em;
+            margin-bottom: 20px;
         }
 
-        .more-toggle:hover {
-            background: #2980b9;
+        .reference-list {
+            list-style: none;
+            padding: 0;
         }
 
-        .more-content {
-            display: none;
-            margin-top: 20px;
+        .reference-list li {
+            margin: 10px 0;
+            padding-left: 20px;
+            position: relative;
         }
 
-        .validation-pending {
-            background: #ffeaa7;
-            border: 1px solid #fdcb6e;
-            border-radius: 8px;
+        .reference-list li:before {
+            content: "[" counter(item) "]";
+            counter-increment: item;
+            position: absolute;
+            left: 0;
+            font-weight: bold;
+        }
+
+        .reference-list ol {
+            counter-reset: item;
+        }
+
+        .performance-note {
+            background: #f9f9f9;
+            border-left: 3px solid #666;
             padding: 15px;
             margin: 20px 0;
-        }
-
-        .validation-pending h3 {
-            margin-top: 0;
-            color: #d63031;
+            font-size: 14px;
         }
     </style>
 </head>
 <body>
-    <div class="container">
-        <div class="header">
-            <h1>Particle Swarm Optimization (PySwarm)</h1>
-            <p>Swarm Intelligence Global Optimizer</p>
-        </div>
-
-        <div class="content">
-            <div class="back-nav">
-                <a href="../contest.html">← Back to Optimizer Competition</a>
-            </div>
-
-            <div class="algorithm-description">
-                <strong>Particle Swarm Optimization (PSO)</strong> is a population-based metaheuristic inspired by the social behavior of bird flocking and fish schooling. Developed by Kennedy and Eberhart in 1995, PSO optimizes by having particles move through the search space, with their positions updated based on their own best-known position and the swarm's best-known position.
-            </div>
-            <div class="visualization-section">
-                <h3>Interactive 3D Visualization</h3>
-                <p>See Particle Swarm Optimization in action on 3D optimization surfaces:</p>
-                <div id="algorithmDemo" style="width: 100%; height: 600px; border: 1px solid #ddd; border-radius: 4px; margin: 15px 0; position: relative; background: #fafafa;">
-                    <div id="loadingMessage" style="position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%); text-align: center; color: #666; z-index: 10; background: rgba(255,255,255,0.9); padding: 20px; border-radius: 4px;">
-                        <p>Loading 3D visualization...</p>
-                        <p style="font-size: 0.9em;">Requires WebGL support</p>
-                    </div>
-                </div>
-                <div id="visualizationControls" style="background: #f8f9fa; padding: 15px; border: 1px solid #ddd; border-radius: 4px; margin-top: 10px;">
-                    <!-- Controls will be inserted here by the visualizer -->
-                </div>
-                <p style="font-size: 0.9em; color: #666; margin-top: 10px;">
-                    <strong>Instructions:</strong> Choose a test function and algorithm, then click Start to watch the step-by-step optimization process.
-                </p>
-            </div>
-
-
-            <h2>Implementation Details</h2>
-            <table class="implementation-table">
-                <thead>
-                    <tr>
-                        <th>Component</th>
-                        <th>Details</th>
-                        <th>Links</th>
-                    </tr>
-                </thead>
-                <tbody>
-                    <tr>
-                        <td class="category">Original Algorithm</td>
-                        <td>
-                            <strong>Kennedy & Eberhart</strong><br>
-                            Population-based stochastic optimization<br>
-                            Inspired by social behavior of bird flocks<br>
-                            <em>Published: 1995</em>
-                        </td>
-                        <td>
-                            <a href="https://ieeexplore.ieee.org/document/488968" target="_blank" class="link-button paper">📄 Original Paper</a>
-                        </td>
-                    </tr>
-                    <tr>
-                        <td class="category">Reference Implementation</td>
-                        <td>
-                            <strong>PySwarm</strong><br>
-                            Pure Python implementation of PSO<br>
-                            Standard PSO with inertia weight and constriction<br>
-                            <em>Package: pyswarm</em>
-                        </td>
-                        <td>
-                            <a href="https://pythonhosted.org/pyswarm/" target="_blank" class="link-button python">📦 PySwarm</a>
-                            <a href="https://github.com/tisimst/pyswarm" target="_blank" class="link-button python">🔍 GitHub</a>
-                        </td>
-                    </tr>
-                    <tr>
-                        <td class="category">Humpday Python Wrapper</td>
-                        <td>
-                            <strong>Humpday Integration</strong><br>
-                            Calls pyswarm.pso() with standardized interface<br>
-                            Automatic parameter tuning for optimization contests<br>
-                            <em>File: humpday/optimizers/swarmopt.py</em>
-                        </td>
-                        <td>
-                            <a href="https://github.com/microprediction/humpday" target="_blank" class="link-button python">🐍 Wrapper Code</a>
-                        </td>
-                    </tr>
-                    <tr>
-                        <td class="category">Humpday JavaScript Port</td>
-                        <td>
-                            <strong>Browser Implementation</strong><br>
-                            Pure JavaScript PSO with velocity updates<br>
-                            Social and cognitive components with inertia<br>
-                            <em>Class: ParticleSwarm</em>
-                        </td>
-                        <td>
-                            <a href="https://github.com/microprediction/humpday/blob/main/docs/js/optimizers.js" target="_blank" class="link-button javascript">🌐 JS Port</a>
-                        </td>
-                    </tr>
-                    <tr>
-                        <td class="category">Dependencies</td>
-                        <td>
-                            <strong>Reference:</strong> pyswarm package<br>
-                            <strong>Humpday Python:</strong> pyswarm, numpy<br>
-                            <strong>Humpday JS:</strong> None (standalone port)
-                        </td>
-                        <td>
-                            <a href="https://pypi.org/project/pyswarm/" target="_blank" class="link-button python">📦 PyPI</a>
-                        </td>
-                    </tr>
-                </tbody>
-            </table>
-
-            <div class="performance-notes">
-                <h3>🏁 Performance Characteristics</h3>
-                <ul>
-                    <li><strong>Best for:</strong> Global optimization of multimodal functions</li>
-                    <li><strong>Dimensions:</strong> Works well from low to moderate dimensions (~100)</li>
-                    <li><strong>Function evaluations:</strong> Population size × iterations</li>
-                    <li><strong>Convergence:</strong> Good exploration-exploitation balance</li>
-                    <li><strong>Robustness:</strong> Robust to local minima, handles noisy functions well</li>
-                </ul>
-            </div>
-
-            <div class="validation-pending">
-                <h3>⏳ Validation Status: PENDING</h3>
-                <p><strong>Validation against PySwarm reference implementation in progress.</strong></p>
-                <ul>
-                    <li>📋 Test framework: Comparing JavaScript vs pyswarm.pso()</li>
-                    <li>🎯 Target: Statistical equivalence with configurable parameters</li>
-                    <li>📊 Metrics: Best function value, convergence patterns, population diversity</li>
-                    <li>🔧 Challenge: Stochastic nature requires multiple-run statistical validation</li>
-                </ul>
-                <p><em>Full validation results will be displayed here once testing is complete.</em></p>
-            </div>
-
-            <div class="more-section">
-                <button class="more-toggle" onclick="toggleMore()">📚 More Resources</button>
-                <div id="moreContent" class="more-content">
-                    <h3>📚 Educational Resources</h3>
-                    <ul>
-                        <li><a href="https://en.wikipedia.org/wiki/Particle_swarm_optimization" target="_blank">PSO Wikipedia</a></li>
-                        <li><a href="https://pythonhosted.org/pyswarm/" target="_blank">PySwarm Documentation</a></li>
-                        <li><a href="https://ieeexplore.ieee.org/document/488968" target="_blank">Kennedy & Eberhart Original Paper (1995)</a></li>
-                        <li><a href="https://link.springer.com/article/10.1007/s10898-007-9149-x" target="_blank">Comprehensive Learning PSO</a></li>
-                        <li><a href="https://www.particleswarm.info/" target="_blank">Particle Swarm Central</a></li>
-                    </ul>
-
-                    <h3>🔬 Algorithm Theory</h3>
-                    <ul>
-                        <li><strong>Velocity Update:</strong> v(t+1) = w*v(t) + c1*r1*(pbest - x) + c2*r2*(gbest - x)</li>
-                        <li><strong>Position Update:</strong> x(t+1) = x(t) + v(t+1)</li>
-                        <li><strong>Inertia Weight (w):</strong> Controls exploration vs exploitation</li>
-                        <li><strong>Cognitive Component (c1):</strong> Attraction to personal best</li>
-                        <li><strong>Social Component (c2):</strong> Attraction to global best</li>
-                        <li><strong>Topology:</strong> Communication structure between particles</li>
-                    </ul>
-
-                    <h3>⚙️ PSO Variants</h3>
-                    <ul>
-                        <li><strong>Standard PSO:</strong> Original Kennedy-Eberhart formulation</li>
-                        <li><strong>PSO with Constriction:</strong> Clerc-Kennedy constriction factor</li>
-                        <li><strong>Comprehensive Learning PSO:</strong> Uses multiple exemplars</li>
-                        <li><strong>Adaptive PSO:</strong> Dynamic parameter adjustment</li>
-                        <li><strong>Multi-Swarm PSO:</strong> Multiple interacting swarms</li>
-                        <li><strong>Quantum PSO:</strong> Quantum-inspired position updates</li>
-                    </ul>
-
-                    <h3>🚀 PSO Applications</h3>
-                    <ul>
-                        <li><strong>Neural Network Training:</strong> Weight and architecture optimization</li>
-                        <li><strong>Engineering Design:</strong> Structural and mechanical optimization</li>
-                        <li><strong>Power Systems:</strong> Economic dispatch and power flow</li>
-                        <li><strong>Image Processing:</strong> Feature selection and clustering</li>
-                        <li><strong>Financial Modeling:</strong> Portfolio optimization</li>
-                    </ul>
-                </div>
-            </div>
-        </div>
+    <div class="paper-header">
+        <h1 class="paper-title">Particle Swarm Optimization</h1>
+        <p class="paper-subtitle">HumpDay Implementation Documentation</p>
     </div>
 
+    <a href="../contest.html" class="nav-link">← Return to Algorithm Contest</a>
+
+    <div class="abstract">
+        <h3>Abstract</h3>
+        <p>Particle Swarm Optimization (PSO) is a population-based stochastic optimization technique inspired by the social behavior of bird flocking and fish schooling. Originally developed by Kennedy and Eberhart (1995), PSO optimizes a problem by iteratively improving candidate solutions (particles) with regard to a given measure of quality. Each particle adjusts its position based on its own best-known position and the swarm's best-known position, guided by velocity vectors that balance exploration and exploitation.</p>
+    </div>
+
+    <h2>Algorithm Description</h2>
+
+    <p>The Particle Swarm Optimization algorithm maintains a swarm of particles, where each particle $i$ has a position $\mathbf{x}_i$ and velocity $\mathbf{v}_i$ in the $D$-dimensional search space. The algorithm updates these parameters according to the following equations:</p>
+
+    <div class="mathematical-formulation">
+        <p><strong>Velocity Update:</strong></p>
+        <p>$$\mathbf{v}_i^{t+1} = w\mathbf{v}_i^t + c_1r_1(\mathbf{p}_i - \mathbf{x}_i^t) + c_2r_2(\mathbf{g} - \mathbf{x}_i^t)$$</p>
+
+        <p><strong>Position Update:</strong></p>
+        <p>$$\mathbf{x}_i^{t+1} = \mathbf{x}_i^t + \mathbf{v}_i^{t+1}$$</p>
+
+        <p>where:</p>
+        <ul>
+            <li>$w$ is the inertia weight</li>
+            <li>$c_1, c_2$ are acceleration coefficients (cognitive and social parameters)</li>
+            <li>$r_1, r_2$ are random numbers in [0,1]</li>
+            <li>$\mathbf{p}_i$ is the personal best position of particle $i$</li>
+            <li>$\mathbf{g}$ is the global best position found by the swarm</li>
+        </ul>
+    </div>
+
+    <h2>Implementation Details</h2>
+
+    <table class="implementation-table">
+        <thead>
+            <tr>
+                <th>Component</th>
+                <th>Description</th>
+                <th>Reference</th>
+            </tr>
+        </thead>
+        <tbody>
+            <tr>
+                <td><strong>Original Algorithm</strong></td>
+                <td>Kennedy, J. & Eberhart, R. (1995). Particle swarm optimization technique introduced as population-based stochastic optimization inspired by social behavior of bird flocking.</td>
+                <td><a href="https://doi.org/10.1109/ICNN.1995.488968">Kennedy & Eberhart (1995)</a></td>
+            </tr>
+            <tr>
+                <td><strong>Python Implementation</strong></td>
+                <td>HumpDay modular implementation in <span class="code-ref">evolutionary_algorithms.py</span></td>
+                <td><a href="https://github.com/microprediction/humpday/blob/main/humpday/optimizers/evolutionary_algorithms.py#L79">Source Code</a></td>
+            </tr>
+            <tr>
+                <td><strong>JavaScript Implementation</strong></td>
+                <td>Browser-compatible implementation in modular structure</td>
+                <td><a href="https://github.com/microprediction/humpday/blob/main/docs/js/modules/evolutionary-algorithms.js#L79">JavaScript Source</a></td>
+            </tr>
+            <tr>
+                <td><strong>Reference Package</strong></td>
+                <td>Cross-validated against PySwarms implementation</td>
+                <td><a href="https://pyswarms.readthedocs.io/">PySwarms Documentation</a></td>
+            </tr>
+        </tbody>
+    </table>
+
+    <div class="performance-note">
+        <p><strong>Implementation Notes:</strong> This implementation includes adaptive parameters, velocity clamping, and diversification mechanisms for improved convergence and global search capabilities. The swarm size scales with problem dimensionality, and the algorithm includes early termination criteria for efficient resource utilization.</p>
+    </div>
+
+    <h2>Algorithmic Parameters</h2>
+
+    <table class="implementation-table">
+        <thead>
+            <tr>
+                <th>Parameter</th>
+                <th>Value/Range</th>
+                <th>Description</th>
+            </tr>
+        </thead>
+        <tbody>
+            <tr>
+                <td>Swarm Size</td>
+                <td>min(40, max(15, 3×D))</td>
+                <td>Number of particles, scaled by problem dimension</td>
+            </tr>
+            <tr>
+                <td>Inertia Weight ($w$)</td>
+                <td>0.9 → 0.4</td>
+                <td>Decreasing linearly with iteration progress</td>
+            </tr>
+            <tr>
+                <td>Cognitive Coefficient ($c_1$)</td>
+                <td>2.5 → 1.5</td>
+                <td>Decreasing emphasis on personal best</td>
+            </tr>
+            <tr>
+                <td>Social Coefficient ($c_2$)</td>
+                <td>1.5 → 2.5</td>
+                <td>Increasing emphasis on global best</td>
+            </tr>
+            <tr>
+                <td>Velocity Clamping</td>
+                <td>±20% of search range</td>
+                <td>Decreasing with iteration progress</td>
+            </tr>
+        </tbody>
+    </table>
+
+    <div class="references">
+        <h2>References</h2>
+        <ol class="reference-list">
+            <li>Kennedy, J., & Eberhart, R. (1995). Particle swarm optimization. <em>Proceedings of ICNN'95 - International Conference on Neural Networks</em>, 4, 1942-1948. IEEE.</li>
+            <li>Shi, Y., & Eberhart, R. (1998). A modified particle swarm optimizer. <em>1998 IEEE international conference on evolutionary computation proceedings</em>, 69-73. IEEE.</li>
+            <li>Clerc, M., & Kennedy, J. (2002). The particle swarm-explosion, stability, and convergence in a multidimensional complex space. <em>IEEE transactions on Evolutionary Computation</em>, 6(1), 58-73.</li>
+            <li>Poli, R., Kennedy, J., & Blackwell, T. (2007). Particle swarm optimization: an overview. <em>Swarm intelligence</em>, 1(1), 33-57.</li>
+        </ol>
+    </div>
+
+    <div style="margin-top: 50px; padding-top: 20px; border-top: 1px solid #ccc; text-align: center; font-size: 12px; color: #666;">
+        <p>Part of the HumpDay optimization library | <a href="../index.html">Documentation</a> | <a href="https://github.com/microprediction/humpday">Source Code</a></p>
+    </div>
+
+    <!-- Load JavaScript for any interactive elements -->
+    <script src="../js/modules/base-optimizer.js"></script>
+    <script src="../js/modules/prima-algorithms.js"></script>
+    <script src="../js/modules/scipy-algorithms.js"></script>
+    <script src="../js/modules/evolutionary-algorithms.js"></script>
+    <script src="../js/modules/index.js"></script>
+    <script src="../js/algorithm-visualizer.js"></script>
+
     <script>
-        function toggleMore() {
-            const content = document.getElementById('moreContent');
-            const button = document.querySelector('.more-toggle');
-
-            if (content.style.display === 'none' || content.style.display === '') {
-                content.style.display = 'block';
-                button.textContent = '📚 Less Resources';
-            } else {
-                content.style.display = 'none';
-                button.textContent = '📚 More Resources';
-            }
-        // Initialize 3D visualization when page loads
+        // Initialize any interactive components if needed
         document.addEventListener('DOMContentLoaded', function() {
-            // Load optimizers first, then visualizer
-            const optimizersScript = document.createElement('script');
-            optimizersScript.src = '../js/modules/index.js';
-            optimizersScript.onload = function() {
-                // Load algorithm visualizer after optimizers are loaded
-                const script = document.createElement('script');
-                script.src = '../js/algorithm-visualizer.js';
-                script.onload = function() {
-                    // Check for WebGL support
-                    function webglAvailable() {
-                        try {
-                            const canvas = document.createElement('canvas');
-                            return !!(window.WebGLRenderingContext && canvas.getContext('webgl'));
-                        } catch (e) {
-                            return false;
-                        }
-                    }
-
-                    if (webglAvailable()) {
-                        const visualizer = new AlgorithmVisualizer('algorithmDemo', {
-                            onReady: () => {
-                                // Clear loading message once visualization is ready
-                                const loadingMsg = document.getElementById('loadingMessage');
-                                if (loadingMsg) {
-                                    loadingMsg.style.display = 'none';
-                                }
-                            }
-                        });
-                    } else {
-                        document.getElementById('loadingMessage').innerHTML =
-                            '<h4>WebGL Not Supported</h4>' +
-                            '<p>Your browser does not support WebGL for 3D visualization.</p>' +
-                            '<p>Try a modern browser like Chrome, Firefox, or Safari.</p>';
-                    }
-                };
-                script.onerror = function() {
-                    document.getElementById('algorithmDemo').innerHTML =
-                        '<div style="position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%); text-align: center;">' +
-                        '<h4>Visualization Unavailable</h4>' +
-                        '<p>Could not load 3D visualization component.</p>' +
-                        '</div>';
-                };
-                document.head.appendChild(script);
-            };
-            document.head.appendChild(optimizersScript);
+            console.log('Particle Swarm Optimization page loaded');
         });
     </script>
 </body>
