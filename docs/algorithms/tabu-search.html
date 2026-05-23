@@ -1,197 +1,164 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta charset="UT-8">
+    <meta name="viewport" content="width=device-width, initial-scale=.">
     <meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' 'unsafe-inline' https://cdnjs.cloudflare.com https://cdn.jsdelivr.net; style-src 'self' 'unsafe-inline';">
     <title>Tabu Search - Implementation Details</title>
     <style>
-        body {
+        body 
             font-family: 'Georgia', 'Times New Roman', serif;
-            margin: 0;
-            padding: 20px;
+            margin: ;
+            padding: 2p;
             background: #f8f9fa;
-            color: #2c3e50;
-        }
+            color: #2c3e5;
+        
 
-        .container {
-            max-width: 1000px;
-            margin: 0 auto;
+        .container 
+            ma-width: p;
+            margin:  auto;
             background: white;
-            border-radius: 15px;
-            box-shadow: 0 20px 40px rgba(0,0,0,0.1);
+            border-radius: 5p;
+            bo-shadow:  2p p rgba(,,,.);
             overflow: hidden;
-        }
+        
 
-        .header {
-            background: #8e44ad;
+        .header 
+            background: #8ead;
             color: white;
-            padding: 30px;
-            text-align: center;
-        }
+            padding: 3p;
+            tet-align: center;
+        
 
-        .header h1 {
-            margin: 0 0 10px 0;
+        .header h 
+            margin:   p ;
             font-size: 2.2em;
-        }
+        
 
-        .header p {
-            margin: 0;
-            font-size: 1.1em;
-            opacity: 0.9;
-        }
+        .header p 
+            margin: ;
+            font-size: .em;
+            opacity: .9;
+        
 
-        .content {
-            padding: 40px;
-        }
+        .content 
+            padding: p;
+        
 
-        .implementation-table {
-            width: 100%;
+        .implementation-table 
+            width: %;
             border-collapse: collapse;
-            margin: 30px 0;
-            border-radius: 10px;
+            margin: 3p ;
+            border-radius: p;
             overflow: hidden;
-            box-shadow: 0 4px 8px rgba(0,0,0,0.1);
-        }
+            bo-shadow:  p 8p rgba(,,,.);
+        
 
-        .implementation-table th {
-            background: #34495e;
+        .implementation-table th 
+            background: #395e;
             color: white;
-            padding: 15px;
-            text-align: left;
-            font-weight: 600;
-        }
+            padding: 5p;
+            tet-align: left;
+            font-weight: ;
+        
 
-        .implementation-table td {
-            padding: 15px;
-            border-bottom: 1px solid #eee;
+        .implementation-table td 
+            padding: 5p;
+            border-bottom: p solid #eee;
             vertical-align: top;
-        }
+        
 
-        .implementation-table tr:hover {
+        .implementation-table tr:hover 
             background: #f8f9fa;
-        }
+        
 
-        .implementation-table .category {
-            font-weight: 600;
-            color: #34495e;
-            background: #ecf0f1;
-        }
+        .implementation-table .category 
+            font-weight: ;
+            color: #395e;
+            background: #ecff;
+        
 
-        .link-button {
+        .link-button 
             display: inline-block;
-            padding: 8px 16px;
-            background: #3498db;
+            padding: 8p p;
+            background: #398db;
             color: white;
-            text-decoration: none;
-            border-radius: 4px;
-            font-size: 0.9em;
-            margin: 2px 4px;
-            transition: background 0.2s;
-        }
+            tet-decoration: none;
+            border-radius: p;
+            font-size: .9em;
+            margin: 2p p;
+            transition: background .2s;
+        
 
-        .link-button:hover {
-            background: #2980b9;
-        }
+        .link-button:hover 
+            background: #298b9;
+        
 
-        .link-button.paper { background: #e74c3c; }
-        .link-button.python { background: #27ae60; }
-        .link-button.javascript { background: #f39c12; }
-        .link-button.info { background: #9b59b6; }
+        .link-button.paper  background: #e7c3c; 
+        .link-button.python  background: #27ae; 
+        .link-button.javascript  background: #f39c2; 
+        .link-button.info  background: #9b59b; 
 
-        .algorithm-description {
-            background: #f4f1ff;
-            border-left: 4px solid #8e44ad;
-            padding: 20px;
-            border-radius: 5px;
-            margin: 20px 0;
-        }
+        .algorithm-description 
+            background: #ffff;
+            border-left: p solid #8ead;
+            padding: 2p;
+            border-radius: 5p;
+            margin: 2p ;
+        
 
-        .back-nav {
-            margin-bottom: 20px;
-        }
+        .back-nav 
+            margin-bottom: 2p;
+        
 
-        .back-nav a {
-            color: #3498db;
-            text-decoration: none;
-            font-size: 1.1em;
-        }
+        .back-nav a 
+            color: #398db;
+            tet-decoration: none;
+            font-size: .em;
+        
 
-        .back-nav a:hover {
-            text-decoration: underline;
-        }
+        .back-nav a:hover 
+            tet-decoration: underline;
+        
 
-        .performance-notes {
+        .performance-notes 
             background: #fff3cd;
-            border: 1px solid #ffc107;
-            border-radius: 8px;
-            padding: 15px;
-            margin: 20px 0;
-        }
+            border: p solid #ffc7;
+            border-radius: 8p;
+            padding: 5p;
+            margin: 2p ;
+        
 
-        .performance-notes h3 {
-            margin-top: 0;
-            color: #856404;
-        }
+        .performance-notes h3 
+            margin-top: ;
+            color: #85;
+        
 
-        .more-section {
-            margin-top: 30px;
-            border-top: 2px solid #ecf0f1;
-            padding-top: 20px;
-        }
+        .more-section 
+            margin-top: 3p;
+            border-top: 2p solid #ecff;
+            padding-top: 2p;
+        
 
-        .more-toggle {
-            background: #3498db;
+        .more-toggle 
+            background: #398db;
             color: white;
             border: none;
-            padding: 10px 20px;
-            border-radius: 4px;
+            padding: p 2p;
+            border-radius: p;
             cursor: pointer;
-            font-size: 1em;
-        }
+            font-size: em;
+        
 
-        .more-toggle:hover {
-            background: #2980b9;
-        }
+        .more-toggle:hover 
+            background: #298b9;
+        
 
-        .more-content {
+        .more-content 
             display: none;
-            margin-top: 20px;
-        }
+            margin-top: 2p;
+        
 
-        .validation-pending {
-            background: #ffeaa7;
-            border: 1px solid #fdcb6e;
-            border-radius: 8px;
-            padding: 15px;
-            margin: 20px 0;
-        }
-
-        .validation-pending h3 {
-            margin-top: 0;
-            color: #d63031;
-        }
-
-        .memory-note {
-            background: #f0f4ff;
-            border: 1px solid #c7d2fe;
-            border-radius: 8px;
-            padding: 15px;
-            margin: 20px 0;
-        }
-
-        .memory-note h3 {
-            margin-top: 0;
-            color: #3730a3;
-        }
-    </style>
-</head>
-<body>
-    <div class="container">
-        <div class="header">
-            <h1>Tabu Search (Custom)</h1>
-            <p>Memory-Based Local Search Metaheuristic</p>
-        </div>
 
         <div class="content">
             <div class="back-nav">
@@ -199,32 +166,32 @@
             </div>
 
             <div class="algorithm-description">
-                <strong>Tabu Search</strong> is a sophisticated local search metaheuristic that uses memory structures to guide the optimization process. Developed by Fred Glover in the 1980s, it overcomes local optima by maintaining a "tabu list" of recently visited solutions or moves, forcing the algorithm to explore new areas even when they temporarily worsen the objective function.
+                <strong>Tabu Search</strong> is a sophisticated local search metaheuristic that uses memory structures to guide the optimization process. Developed by red Glover in the 98s, it overcomes local optima by maintaining a "tabu list" of recently visited solutions or moves, forcing the algorithm to eplore new areas even when they temporarily worsen the objective function.
             </div>
 
             <div class="memory-note">
                 <h3>🧠 Memory-Guided Search</h3>
-                <p><strong>Tabu Search uses intelligent memory to guide exploration:</strong></p>
+                <p><strong>Tabu Search uses intelligent memory to guide eploration:</strong></p>
                 <ul>
-                    <li>📋 <strong>Tabu List:</strong> Remembers recent moves to avoid cycling</li>
-                    <li>🚫 <strong>Forbidden Moves:</strong> Prevents returning to recently visited solutions</li>
-                    <li>⭐ <strong>Aspiration Criteria:</strong> Override tabu status for exceptional solutions</li>
-                    <li>🎯 <strong>Strategic Oscillation:</strong> Systematically explore around best-found solutions</li>
+                    <li> <strong>Tabu List:</strong> Remembers recent moves to avoid cycling</li>
+                    <li>🚫 <strong>orbidden Moves:</strong> Prevents returning to recently visited solutions</li>
+                    <li>⭐ <strong>Aspiration Criteria:</strong> Override tabu status for eceptional solutions</li>
+                    <li> <strong>Strategic Oscillation:</strong> Systematically eplore around best-found solutions</li>
                 </ul>
             </div>
             <div class="visualization-section">
                 <h3>Interactive 3D Visualization</h3>
                 <p>See Tabu Search in action on 3D optimization surfaces:</p>
-                <div id="algorithmDemo" style="width: 100%; height: 600px; border: 1px solid #ddd; border-radius: 4px; margin: 15px 0; position: relative; background: #fafafa;">
-                    <div id="loadingMessage" style="position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%); text-align: center; color: #666; z-index: 10; background: rgba(255,255,255,0.9); padding: 20px; border-radius: 4px;">
+                <div id="algorithmDemo" style="width: %; height: p; border: p solid #ddd; border-radius: p; margin: 5p ; position: relative; background: #fafafa;">
+                    <div id="loadingMessage" style="position: absolute; top: 5%; left: 5%; transform: translate(-5%, -5%); tet-align: center; color: #; z-inde: ; background: rgba(255,255,255,.9); padding: 2p; border-radius: p;">
                         <p>Loading 3D visualization...</p>
-                        <p style="font-size: 0.9em;">Requires WebGL support</p>
+                        <p style="font-size: .9em;">Requires WebGL support</p>
                     </div>
                 </div>
-                <div id="visualizationControls" style="background: #f8f9fa; padding: 15px; border: 1px solid #ddd; border-radius: 4px; margin-top: 10px;">
+                <div id="visualizationControls" style="background: #f8f9fa; padding: 5p; border: p solid #ddd; border-radius: p; margin-top: p;">
                     <!-- Controls will be inserted here by the visualizer -->
                 </div>
-                <p style="font-size: 0.9em; color: #666; margin-top: 10px;">
+                <p style="font-size: .9em; color: #; margin-top: p;">
                     <strong>Instructions:</strong> Choose a test function and algorithm, then click Start to watch the step-by-step optimization process.
                 </p>
             </div>
@@ -243,13 +210,13 @@
                     <tr>
                         <td class="category">Original Algorithm</td>
                         <td>
-                            <strong>Fred Glover</strong><br>
+                            <strong>red Glover</strong><br>
                             Memory-based local search metaheuristic<br>
-                            Intelligent exploration using tabu restrictions<br>
-                            <em>Published: 1986-1989</em>
+                            Intelligent eploration using tabu restrictions<br>
+                            <em>Published: 98-989</em>
                         </td>
                         <td>
-                            <a href="https://link.springer.com/article/10.1007/BF01096763" target="_blank" class="link-button paper">📄 Original Paper</a>
+                            <a href="https://link.springer.com/article/.7/B973" target="_blank" class="link-button paper">📄 Original Paper</a>
                         </td>
                     </tr>
                     <tr>
@@ -261,7 +228,7 @@
                             <em>Reference: Academic literature and specialized libraries</em>
                         </td>
                         <td>
-                            <a href="https://github.com/topics/tabu-search" target="_blank" class="link-button python">🔍 GitHub Examples</a>
+                            <a href="https://github.com/topics/tabu-search" target="_blank" class="link-button python"> GitHub Eamples</a>
                         </td>
                     </tr>
                     <tr>
@@ -270,10 +237,10 @@
                             <strong>Humpday Tabu Search</strong><br>
                             Custom implementation with adaptive tabu tenure<br>
                             Continuous optimization variant with neighborhood generation<br>
-                            <em>File: humpday/optimizers/tabusearch.py</em>
+                            <em>ile: humpday/optimizers/tabusearch.py</em>
                         </td>
                         <td>
-                            <a href="https://github.com/microprediction/humpday" target="_blank" class="link-button python">🐍 Source</a>
+                            <a href="https://github.com/microprediction/humpday" target="_blank" class="link-button python"> Source</a>
                         </td>
                     </tr>
                     <tr>
@@ -285,7 +252,7 @@
                             <em>Class: TabuSearch</em>
                         </td>
                         <td>
-                            <a href="https://github.com/microprediction/humpday/blob/main/docs/js/optimizers.js" target="_blank" class="link-button javascript">🌐 JS Implementation</a>
+                            <a href="https://github.com/microprediction/humpday/blob/main/docs/js/optimizers.js" target="_blank" class="link-button javascript"> JS Implementation</a>
                         </td>
                     </tr>
                     <tr>
@@ -296,7 +263,7 @@
                             <strong>Humpday JS:</strong> None (pure JavaScript)
                         </td>
                         <td>
-                            <span style="color: #95a5a6;">✨ No external dependencies</span>
+                            <span style="color: #95a5a;">✨ No eternal dependencies</span>
                         </td>
                     </tr>
                 </tbody>
@@ -305,25 +272,14 @@
             <div class="performance-notes">
                 <h3>🏁 Performance Characteristics</h3>
                 <ul>
-                    <li><strong>Best for:</strong> Combinatorial optimization, discrete problems, complex neighborhoods</li>
-                    <li><strong>Dimensions:</strong> Excellent for discrete spaces, adaptable to continuous</li>
-                    <li><strong>Function evaluations:</strong> Moderate, depends on neighborhood size</li>
-                    <li><strong>Convergence:</strong> Good escape from local optima, strategic exploration</li>
-                    <li><strong>Robustness:</strong> Memory prevents cycling, handles complex constraint landscapes</li>
+                    <li><strong>Best for:</strong> Combinatorial optimization, discrete problems, comple neighborhoods</li>
+                    <li><strong>Dimensions:</strong> Ecellent for discrete spaces, adaptable to continuous</li>
+                    <li><strong>unction evaluations:</strong> Moderate, depends on neighborhood size</li>
+                    <li><strong>Convergence:</strong> Good escape from local optima, strategic eploration</li>
+                    <li><strong>Robustness:</strong> Memory prevents cycling, handles comple constraint landscapes</li>
                 </ul>
             </div>
 
-            <div class="validation-pending">
-                <h3>⏳ Validation Status: PENDING</h3>
-                <p><strong>Validation of tabu search implementation in progress.</strong></p>
-                <ul>
-                    <li>📋 Test framework: Comparing against established tabu search behavior</li>
-                    <li>🎯 Target: Proper tabu list management and neighborhood exploration</li>
-                    <li>📊 Metrics: Solution quality, memory utilization, escape from local optima</li>
-                    <li>🔧 Reference: Classical tabu search literature and benchmarks</li>
-                </ul>
-                <p><em>Tabu search effectiveness measured by exploration quality and constraint adherence.</em></p>
-            </div>
 
             <div class="more-section">
                 <button class="more-toggle" onclick="toggleMore()">📚 More Resources</button>
@@ -331,17 +287,17 @@
                     <h3>📚 Educational Resources</h3>
                     <ul>
                         <li><a href="https://en.wikipedia.org/wiki/Tabu_search" target="_blank">Tabu Search Wikipedia</a></li>
-                        <li><a href="https://link.springer.com/article/10.1007/BF01096763" target="_blank">Tabu Search - Part I (Glover, 1989)</a></li>
-                        <li><a href="https://link.springer.com/article/10.1007/BF01097403" target="_blank">Tabu Search - Part II (Glover, 1990)</a></li>
-                        <li><a href="https://www.springer.com/gp/book/9781461375784" target="_blank">Tabu Search Handbook (Glover & Laguna)</a></li>
-                        <li><a href="https://optimization.mccormick.northwestern.edu/index.php/Tabu_search" target="_blank">Tabu Search Tutorial</a></li>
+                        <li><a href="https://link.springer.com/article/.7/B973" target="_blank">Tabu Search - Part I (Glover, 989)</a></li>
+                        <li><a href="https://link.springer.com/article/.7/B973" target="_blank">Tabu Search - Part II (Glover, 99)</a></li>
+                        <li><a href="https://www.springer.com/gp/book/97837578" target="_blank">Tabu Search Handbook (Glover & Laguna)</a></li>
+                        <li><a href="https://optimization.mccormick.northwestern.edu/inde.php/Tabu_search" target="_blank">Tabu Search Tutorial</a></li>
                     </ul>
 
-                    <h3>🔬 Core Components</h3>
+                    <h3> Core Components</h3>
                     <ul>
                         <li><strong>Current Solution:</strong> s ∈ S (current position in solution space)</li>
-                        <li><strong>Neighborhood:</strong> N(s) = {s' | s' is reachable from s in one move}</li>
-                        <li><strong>Tabu List:</strong> T = {forbidden moves or solutions}</li>
+                        <li><strong>Neighborhood:</strong> N(s) = s' | s' is reachable from s in one move</li>
+                        <li><strong>Tabu List:</strong> T = forbidden moves or solutions</li>
                         <li><strong>Tabu Tenure:</strong> Duration moves remain forbidden</li>
                         <li><strong>Aspiration Criteria:</strong> Conditions to override tabu restrictions</li>
                         <li><strong>Best Solution:</strong> s* = best solution found so far</li>
@@ -350,36 +306,36 @@
                     <h3>📐 Algorithm Structure</h3>
                     <ul>
                         <li><strong>Initialization:</strong> Start with initial solution s₀, empty tabu list T = ∅</li>
-                        <li><strong>Neighborhood Generation:</strong> Create candidate moves N(s) \ T</li>
+                        <li><strong>Neighborhood Generation:</strong> Create candidate moves N(s)  T</li>
                         <li><strong>Move Selection:</strong> Choose best non-tabu move (or aspiration override)</li>
-                        <li><strong>Tabu List Update:</strong> Add reverse move to T, remove expired entries</li>
+                        <li><strong>Tabu List Update:</strong> Add reverse move to T, remove epired entries</li>
                         <li><strong>Solution Update:</strong> Move to selected neighbor, update best if improved</li>
                         <li><strong>Termination:</strong> Stop based on iterations, time, or convergence</li>
                     </ul>
 
                     <h3>⚙️ Key Design Decisions</h3>
                     <ul>
-                        <li><strong>Tabu Tenure:</strong> Fixed (5-10) vs adaptive vs random</li>
+                        <li><strong>Tabu Tenure:</strong> ied (5-) vs adaptive vs random</li>
                         <li><strong>Tabu Structure:</strong> Moves vs solutions vs attributes</li>
                         <li><strong>Aspiration Criteria:</strong> Best solution, threshold, or frequency-based</li>
                         <li><strong>Neighborhood:</strong> Size vs quality trade-off</li>
-                        <li><strong>Diversification:</strong> Long-term memory for exploration</li>
+                        <li><strong>Diversification:</strong> Long-term memory for eploration</li>
                         <li><strong>Intensification:</strong> Return to promising regions</li>
                     </ul>
 
-                    <h3>🎯 Tabu Search Pseudocode</h3>
-                    <pre style="background: #f8f9fa; padding: 15px; border-radius: 8px; font-family: monospace;">
-function tabuSearch(initialSolution, maxIterations):
+                    <h3> Tabu Search Pseudocode</h3>
+                    <pre style="background: #f8f9fa; padding: 5p; border-radius: 8p; font-family: monospace;">
+function tabuSearch(initialSolution, maIterations):
     s = initialSolution
     bestSolution = s
     tabuList = []
 
-    for iter in 1 to maxIterations:
+    for iter in  to maIterations:
         neighborhood = generateNeighbors(s)
         candidateList = []
 
         for each neighbor in neighborhood:
-            move = getMoveFromTo(s, neighbor)
+            move = getMoveromTo(s, neighbor)
 
             if not isTabu(move, tabuList) or
                satisfiesAspiration(neighbor, bestSolution):
@@ -389,23 +345,23 @@ function tabuSearch(initialSolution, maxIterations):
             break  // No valid moves
 
         // Select best candidate
-        (nextSolution, bestMove) = selectBest(candidateList)
+        (netSolution, bestMove) = selectBest(candidateList)
 
         // Update tabu list
         tabuList.add(reverseMove(bestMove), currentIteration)
-        removeExpiredMoves(tabuList, currentIteration)
+        removeEpiredMoves(tabuList, currentIteration)
 
-        // Move to next solution
-        s = nextSolution
+        // Move to net solution
+        s = netSolution
         if f(s) < f(bestSolution):
             bestSolution = s
 
     return bestSolution
                     </pre>
 
-                    <h3>🔧 Tabu Search Variants</h3>
+                    <h3> Tabu Search Variants</h3>
                     <ul>
-                        <li><strong>Simple Tabu Search:</strong> Basic tabu list with fixed tenure</li>
+                        <li><strong>Simple Tabu Search:</strong> Basic tabu list with fied tenure</li>
                         <li><strong>Reactive Tabu Search:</strong> Adaptive tabu tenure based on search history</li>
                         <li><strong>Robust Tabu Search:</strong> Multiple tabu lists and escape mechanisms</li>
                         <li><strong>Parallel Tabu Search:</strong> Multiple concurrent searches</li>
@@ -413,31 +369,31 @@ function tabuSearch(initialSolution, maxIterations):
                         <li><strong>Granular Tabu Search:</strong> Restrict neighborhoods for large problems</li>
                     </ul>
 
-                    <h3>🎯 Memory Types</h3>
+                    <h3> Memory Types</h3>
                     <ul>
                         <li><strong>Short-Term (Recency):</strong> Tabu list preventing recent moves</li>
-                        <li><strong>Medium-Term (Frequency):</strong> Track frequently used moves/attributes</li>
-                        <li><strong>Long-Term (Diversification):</strong> Guide search to unexplored regions</li>
+                        <li><strong>Medium-Term (requency):</strong> Track frequently used moves/attributes</li>
+                        <li><strong>Long-Term (Diversification):</strong> Guide search to uneplored regions</li>
                         <li><strong>Strategic (Intensification):</strong> Return to promising solution regions</li>
                     </ul>
 
-                    <h3>🚀 Applications</h3>
+                    <h3> Applications</h3>
                     <ul>
                         <li><strong>Vehicle Routing:</strong> TSP, VRP, and delivery optimization</li>
                         <li><strong>Scheduling:</strong> Job shop, flow shop, and timetabling</li>
-                        <li><strong>Facility Location:</strong> Warehouse and service center placement</li>
-                        <li><strong>Graph Coloring:</strong> Frequency assignment and conflict resolution</li>
-                        <li><strong>Portfolio Selection:</strong> Financial optimization with constraints</li>
+                        <li><strong>acility Location:</strong> Warehouse and service center placement</li>
+                        <li><strong>Graph Coloring:</strong> requency assignment and conflict resolution</li>
+                        <li><strong>Portfolio Selection:</strong> inancial optimization with constraints</li>
                         <li><strong>VLSI Design:</strong> Circuit placement and routing</li>
                     </ul>
 
-                    <h3>💡 Tabu Search Philosophy</h3>
+                    <h3> Tabu Search Philosophy</h3>
                     <ul>
-                        <li><strong>Aggressive Exploration:</strong> Accept worse solutions to escape local optima</li>
+                        <li><strong>Aggressive Eploration:</strong> Accept worse solutions to escape local optima</li>
                         <li><strong>Intelligent Memory:</strong> Use history to guide future decisions</li>
                         <li><strong>Strategic Oscillation:</strong> Balance intensification and diversification</li>
-                        <li><strong>Flexible Framework:</strong> Adapt to problem-specific structures</li>
-                        <li><strong>No Randomness Required:</strong> Deterministic yet effective exploration</li>
+                        <li><strong>leible ramework:</strong> Adapt to problem-specific structures</li>
+                        <li><strong>No Randomness Required:</strong> Deterministic yet effective eploration</li>
                     </ul>
 
                     <h3>⚠️ Implementation Challenges</h3>
@@ -446,7 +402,7 @@ function tabuSearch(initialSolution, maxIterations):
                         <li><strong>Tabu Tenure:</strong> Too short (cycling) vs too long (over-restriction)</li>
                         <li><strong>Memory Management:</strong> Efficient data structures for large problems</li>
                         <li><strong>Parameter Tuning:</strong> Problem-dependent parameter sensitivity</li>
-                        <li><strong>Aspiration Criteria:</strong> Balancing exploration vs exploitation</li>
+                        <li><strong>Aspiration Criteria:</strong> Balancing eploration vs eploitation</li>
                     </ul>
                 </div>
             </div>
@@ -454,65 +410,65 @@ function tabuSearch(initialSolution, maxIterations):
     </div>
 
     <script>
-        function toggleMore() {
+        function toggleMore() 
             const content = document.getElementById('moreContent');
             const button = document.querySelector('.more-toggle');
 
-            if (content.style.display === 'none' || content.style.display === '') {
+            if (content.style.display === 'none' || content.style.display === '') 
                 content.style.display = 'block';
-                button.textContent = '📚 Less Resources';
-            } else {
+                button.tetContent = '📚 Less Resources';
+             else 
                 content.style.display = 'none';
-                button.textContent = '📚 More Resources';
-            }
+                button.tetContent = '📚 More Resources';
+            
         // Initialize 3D visualization when page loads
-        document.addEventListener('DOMContentLoaded', function() {
+        document.addEventListener('DOMContentLoaded', function() 
             // Load optimizers first, then visualizer
             const optimizersScript = document.createElement('script');
-            optimizersScript.src = '../js/modules/index.js';
-            optimizersScript.onload = function() {
+            optimizersScript.src = '../js/modules/inde.js';
+            optimizersScript.onload = function() 
                 // Load algorithm visualizer after optimizers are loaded
                 const script = document.createElement('script');
                 script.src = '../js/algorithm-visualizer.js';
-                script.onload = function() {
+                script.onload = function() 
                     // Check for WebGL support
-                    function webglAvailable() {
-                        try {
+                    function webglAvailable() 
+                        try 
                             const canvas = document.createElement('canvas');
-                            return !!(window.WebGLRenderingContext && canvas.getContext('webgl'));
-                        } catch (e) {
+                            return !!(window.WebGLRenderingContet && canvas.getContet('webgl'));
+                         catch (e) 
                             return false;
-                        }
-                    }
+                        
+                    
 
-                    if (webglAvailable()) {
-                        const visualizer = new AlgorithmVisualizer('algorithmDemo', {
-                            onReady: () => {
+                    if (webglAvailable()) 
+                        const visualizer = new AlgorithmVisualizer('algorithmDemo', 
+                            onReady: () => 
                                 // Clear loading message once visualization is ready
                                 const loadingMsg = document.getElementById('loadingMessage');
-                                if (loadingMsg) {
+                                if (loadingMsg) 
                                     loadingMsg.style.display = 'none';
-                                }
-                            }
-                        });
-                    } else {
+                                
+                            
+                        );
+                     else 
                         document.getElementById('loadingMessage').innerHTML =
-                            '<h4>WebGL Not Supported</h4>' +
+                            '<h>WebGL Not Supported</h>' +
                             '<p>Your browser does not support WebGL for 3D visualization.</p>' +
-                            '<p>Try a modern browser like Chrome, Firefox, or Safari.</p>';
-                    }
-                };
-                script.onerror = function() {
+                            '<p>Try a modern browser like Chrome, irefo, or Safari.</p>';
+                    
+                ;
+                script.onerror = function() 
                     document.getElementById('algorithmDemo').innerHTML =
-                        '<div style="position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%); text-align: center;">' +
-                        '<h4>Visualization Unavailable</h4>' +
+                        '<div style="position: absolute; top: 5%; left: 5%; transform: translate(-5%, -5%); tet-align: center;">' +
+                        '<h>Visualization Unavailable</h>' +
                         '<p>Could not load 3D visualization component.</p>' +
                         '</div>';
-                };
+                ;
                 document.head.appendChild(script);
-            };
+            ;
             document.head.appendChild(optimizersScript);
-        });
+        );
     </script>
 </body>
 </html>

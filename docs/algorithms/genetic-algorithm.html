@@ -1,184 +1,164 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta charset="UT-8">
+    <meta name="viewport" content="width=device-width, initial-scale=.">
     <meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' 'unsafe-inline' https://cdnjs.cloudflare.com https://cdn.jsdelivr.net; style-src 'self' 'unsafe-inline';">
     <title>Genetic Algorithm - Implementation Details</title>
     <style>
-        body {
+        body 
             font-family: 'Georgia', 'Times New Roman', serif;
-            margin: 0;
-            padding: 20px;
+            margin: ;
+            padding: 2p;
             background: #f8f9fa;
-            color: #2c3e50;
-        }
+            color: #2c3e5;
+        
 
-        .container {
-            max-width: 1000px;
-            margin: 0 auto;
+        .container 
+            ma-width: p;
+            margin:  auto;
             background: white;
-            border-radius: 15px;
-            box-shadow: 0 20px 40px rgba(0,0,0,0.1);
+            border-radius: 5p;
+            bo-shadow:  2p p rgba(,,,.);
             overflow: hidden;
-        }
+        
 
-        .header {
-            background: #8e44ad;
+        .header 
+            background: #8ead;
             color: white;
-            padding: 30px;
-            text-align: center;
-        }
+            padding: 3p;
+            tet-align: center;
+        
 
-        .header h1 {
-            margin: 0 0 10px 0;
+        .header h 
+            margin:   p ;
             font-size: 2.2em;
-        }
+        
 
-        .header p {
-            margin: 0;
-            font-size: 1.1em;
-            opacity: 0.9;
-        }
+        .header p 
+            margin: ;
+            font-size: .em;
+            opacity: .9;
+        
 
-        .content {
-            padding: 40px;
-        }
+        .content 
+            padding: p;
+        
 
-        .implementation-table {
-            width: 100%;
+        .implementation-table 
+            width: %;
             border-collapse: collapse;
-            margin: 30px 0;
-            border-radius: 10px;
+            margin: 3p ;
+            border-radius: p;
             overflow: hidden;
-            box-shadow: 0 4px 8px rgba(0,0,0,0.1);
-        }
+            bo-shadow:  p 8p rgba(,,,.);
+        
 
-        .implementation-table th {
-            background: #34495e;
+        .implementation-table th 
+            background: #395e;
             color: white;
-            padding: 15px;
-            text-align: left;
-            font-weight: 600;
-        }
+            padding: 5p;
+            tet-align: left;
+            font-weight: ;
+        
 
-        .implementation-table td {
-            padding: 15px;
-            border-bottom: 1px solid #eee;
+        .implementation-table td 
+            padding: 5p;
+            border-bottom: p solid #eee;
             vertical-align: top;
-        }
+        
 
-        .implementation-table tr:hover {
+        .implementation-table tr:hover 
             background: #f8f9fa;
-        }
+        
 
-        .implementation-table .category {
-            font-weight: 600;
-            color: #34495e;
-            background: #ecf0f1;
-        }
+        .implementation-table .category 
+            font-weight: ;
+            color: #395e;
+            background: #ecff;
+        
 
-        .link-button {
+        .link-button 
             display: inline-block;
-            padding: 8px 16px;
-            background: #3498db;
+            padding: 8p p;
+            background: #398db;
             color: white;
-            text-decoration: none;
-            border-radius: 4px;
-            font-size: 0.9em;
-            margin: 2px 4px;
-            transition: background 0.2s;
-        }
+            tet-decoration: none;
+            border-radius: p;
+            font-size: .9em;
+            margin: 2p p;
+            transition: background .2s;
+        
 
-        .link-button:hover {
-            background: #2980b9;
-        }
+        .link-button:hover 
+            background: #298b9;
+        
 
-        .link-button.paper { background: #e74c3c; }
-        .link-button.python { background: #27ae60; }
-        .link-button.javascript { background: #f39c12; }
-        .link-button.info { background: #9b59b6; }
+        .link-button.paper  background: #e7c3c; 
+        .link-button.python  background: #27ae; 
+        .link-button.javascript  background: #f39c2; 
+        .link-button.info  background: #9b59b; 
 
-        .algorithm-description {
-            background: #ebdef0;
-            border-left: 4px solid #8e44ad;
-            padding: 20px;
-            border-radius: 5px;
-            margin: 20px 0;
-        }
+        .algorithm-description 
+            background: #ebdef;
+            border-left: p solid #8ead;
+            padding: 2p;
+            border-radius: 5p;
+            margin: 2p ;
+        
 
-        .back-nav {
-            margin-bottom: 20px;
-        }
+        .back-nav 
+            margin-bottom: 2p;
+        
 
-        .back-nav a {
-            color: #3498db;
-            text-decoration: none;
-            font-size: 1.1em;
-        }
+        .back-nav a 
+            color: #398db;
+            tet-decoration: none;
+            font-size: .em;
+        
 
-        .back-nav a:hover {
-            text-decoration: underline;
-        }
+        .back-nav a:hover 
+            tet-decoration: underline;
+        
 
-        .performance-notes {
+        .performance-notes 
             background: #fff3cd;
-            border: 1px solid #ffc107;
-            border-radius: 8px;
-            padding: 15px;
-            margin: 20px 0;
-        }
+            border: p solid #ffc7;
+            border-radius: 8p;
+            padding: 5p;
+            margin: 2p ;
+        
 
-        .performance-notes h3 {
-            margin-top: 0;
-            color: #856404;
-        }
+        .performance-notes h3 
+            margin-top: ;
+            color: #85;
+        
 
-        .more-section {
-            margin-top: 30px;
-            border-top: 2px solid #ecf0f1;
-            padding-top: 20px;
-        }
+        .more-section 
+            margin-top: 3p;
+            border-top: 2p solid #ecff;
+            padding-top: 2p;
+        
 
-        .more-toggle {
-            background: #3498db;
+        .more-toggle 
+            background: #398db;
             color: white;
             border: none;
-            padding: 10px 20px;
-            border-radius: 4px;
+            padding: p 2p;
+            border-radius: p;
             cursor: pointer;
-            font-size: 1em;
-        }
+            font-size: em;
+        
 
-        .more-toggle:hover {
-            background: #2980b9;
-        }
+        .more-toggle:hover 
+            background: #298b9;
+        
 
-        .more-content {
+        .more-content 
             display: none;
-            margin-top: 20px;
-        }
+            margin-top: 2p;
+        
 
-        .validation-pending {
-            background: #ffeaa7;
-            border: 1px solid #fdcb6e;
-            border-radius: 8px;
-            padding: 15px;
-            margin: 20px 0;
-        }
-
-        .validation-pending h3 {
-            margin-top: 0;
-            color: #d63031;
-        }
-    </style>
-</head>
-<body>
-    <div class="container">
-        <div class="header">
-            <h1>Genetic Algorithm (DEAP)</h1>
-            <p>Evolutionary Computing Global Optimizer</p>
-        </div>
 
         <div class="content">
             <div class="back-nav">
@@ -186,21 +166,21 @@
             </div>
 
             <div class="algorithm-description">
-                <strong>Genetic Algorithms (GA)</strong> are population-based metaheuristics inspired by the process of natural selection. Introduced by John Holland in the 1970s, GAs evolve a population of candidate solutions using selection, crossover, and mutation operators. They're particularly effective for combinatorial optimization and problems where the search space is large and complex.
+                <strong>Genetic Algorithms (GA)</strong> are population-based metaheuristics inspired by the process of natural selection. Introduced by John Holland in the 97s, GAs evolve a population of candidate solutions using selection, crossover, and mutation operators. They're particularly effective for combinatorial optimization and problems where the search space is large and comple.
             </div>
             <div class="visualization-section">
                 <h3>Interactive 3D Visualization</h3>
                 <p>See Genetic Algorithm in action on 3D optimization surfaces:</p>
-                <div id="algorithmDemo" style="width: 100%; height: 600px; border: 1px solid #ddd; border-radius: 4px; margin: 15px 0; position: relative; background: #fafafa;">
-                    <div id="loadingMessage" style="position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%); text-align: center; color: #666; z-index: 10; background: rgba(255,255,255,0.9); padding: 20px; border-radius: 4px;">
+                <div id="algorithmDemo" style="width: %; height: p; border: p solid #ddd; border-radius: p; margin: 5p ; position: relative; background: #fafafa;">
+                    <div id="loadingMessage" style="position: absolute; top: 5%; left: 5%; transform: translate(-5%, -5%); tet-align: center; color: #; z-inde: ; background: rgba(255,255,255,.9); padding: 2p; border-radius: p;">
                         <p>Loading 3D visualization...</p>
-                        <p style="font-size: 0.9em;">Requires WebGL support</p>
+                        <p style="font-size: .9em;">Requires WebGL support</p>
                     </div>
                 </div>
-                <div id="visualizationControls" style="background: #f8f9fa; padding: 15px; border: 1px solid #ddd; border-radius: 4px; margin-top: 10px;">
+                <div id="visualizationControls" style="background: #f8f9fa; padding: 5p; border: p solid #ddd; border-radius: p; margin-top: p;">
                     <!-- Controls will be inserted here by the visualizer -->
                 </div>
-                <p style="font-size: 0.9em; color: #666; margin-top: 10px;">
+                <p style="font-size: .9em; color: #; margin-top: p;">
                     <strong>Instructions:</strong> Choose a test function and algorithm, then click Start to watch the step-by-step optimization process.
                 </p>
             </div>
@@ -222,10 +202,10 @@
                             <strong>John Holland</strong><br>
                             Evolutionary computation inspired by natural selection<br>
                             Population-based search with genetic operators<br>
-                            <em>Published: 1970s</em>
+                            <em>Published: 97s</em>
                         </td>
                         <td>
-                            <a href="https://mitpress.mit.edu/9780262581110/adaptation-in-natural-and-artificial-systems/" target="_blank" class="link-button paper">📖 Holland's Book</a>
+                            <a href="https://mitpress.mit.edu/9782258/adaptation-in-natural-and-artificial-systems/" target="_blank" class="link-button paper">📖 Holland's Book</a>
                         </td>
                     </tr>
                     <tr>
@@ -233,24 +213,24 @@
                         <td>
                             <strong>DEAP (Distributed Evolutionary Algorithms in Python)</strong><br>
                             Comprehensive evolutionary computation framework<br>
-                            Flexible GA with customizable operators<br>
+                            leible GA with customizable operators<br>
                             <em>Package: deap</em>
                         </td>
                         <td>
                             <a href="https://deap.readthedocs.io/" target="_blank" class="link-button python">📦 DEAP Docs</a>
-                            <a href="https://github.com/DEAP/deap" target="_blank" class="link-button python">🔍 GitHub</a>
+                            <a href="https://github.com/DEAP/deap" target="_blank" class="link-button python"> GitHub</a>
                         </td>
                     </tr>
                     <tr>
-                        <td class="category">Humpday Python Wrapper</td>
+                        <td class="category">HumpDay Python Implementation</td>
                         <td>
                             <strong>Humpday Integration</strong><br>
                             Uses DEAP's genetic algorithm framework<br>
                             Pre-configured for continuous optimization<br>
-                            <em>File: humpday/optimizers/deapopt.py</em>
+                            <em>ile: humpday/optimizers/deapopt.py</em>
                         </td>
                         <td>
-                            <a href="https://github.com/microprediction/humpday" target="_blank" class="link-button python">🐍 Wrapper Code</a>
+                            <a href="https://github.com/microprediction/humpday" target="_blank" class="link-button python"> Implementation</a>
                         </td>
                     </tr>
                     <tr>
@@ -262,7 +242,7 @@
                             <em>Class: GeneticAlgorithm</em>
                         </td>
                         <td>
-                            <a href="https://github.com/microprediction/humpday/blob/main/docs/js/optimizers.js" target="_blank" class="link-button javascript">🌐 JS Port</a>
+                            <a href="https://github.com/microprediction/humpday/blob/main/docs/js/optimizers.js" target="_blank" class="link-button javascript"> JS Port</a>
                         </td>
                     </tr>
                     <tr>
@@ -284,23 +264,12 @@
                 <ul>
                     <li><strong>Best for:</strong> Combinatorial optimization, multimodal landscapes, large search spaces</li>
                     <li><strong>Dimensions:</strong> Scales to hundreds of dimensions</li>
-                    <li><strong>Function evaluations:</strong> Population size × generations</li>
-                    <li><strong>Convergence:</strong> Good global exploration, premature convergence possible</li>
+                    <li><strong>unction evaluations:</strong> Population size × generations</li>
+                    <li><strong>Convergence:</strong> Good global eploration, premature convergence possible</li>
                     <li><strong>Robustness:</strong> Robust to noise, handles discontinuous functions well</li>
                 </ul>
             </div>
 
-            <div class="validation-pending">
-                <h3>⏳ Validation Status: PENDING</h3>
-                <p><strong>Validation against DEAP reference implementation in progress.</strong></p>
-                <ul>
-                    <li>📋 Test framework: Comparing JavaScript vs DEAP GA implementation</li>
-                    <li>🎯 Target: Statistical equivalence with standard GA operators</li>
-                    <li>📊 Metrics: Population diversity, convergence rate, final fitness values</li>
-                    <li>🔧 Challenge: Matching DEAP's operator implementations and parameters</li>
-                </ul>
-                <p><em>Full validation results will be displayed here once testing is complete.</em></p>
-            </div>
 
             <div class="more-section">
                 <button class="more-toggle" onclick="toggleMore()">📚 More Resources</button>
@@ -309,12 +278,12 @@
                     <ul>
                         <li><a href="https://en.wikipedia.org/wiki/Genetic_algorithm" target="_blank">Genetic Algorithm Wikipedia</a></li>
                         <li><a href="https://deap.readthedocs.io/" target="_blank">DEAP Documentation</a></li>
-                        <li><a href="https://mitpress.mit.edu/9780262631952/an-introduction-to-genetic-algorithms/" target="_blank">Melanie Mitchell's GA Introduction</a></li>
-                        <li><a href="https://link.springer.com/book/10.1007/978-3-662-07426-1" target="_blank">Handbook of Evolutionary Computation</a></li>
+                        <li><a href="https://mitpress.mit.edu/978223952/an-introduction-to-genetic-algorithms/" target="_blank">Melanie Mitchell's GA Introduction</a></li>
+                        <li><a href="https://link.springer.com/book/.7/978-3-2-72-" target="_blank">Handbook of Evolutionary Computation</a></li>
                         <li><a href="https://www.obitko.com/tutorials/genetic-algorithms/" target="_blank">GA Tutorial by Marek Obitko</a></li>
                     </ul>
 
-                    <h3>🔬 Algorithm Components</h3>
+                    <h3> Algorithm Components</h3>
                     <ul>
                         <li><strong>Selection:</strong> Tournament, roulette wheel, rank-based selection</li>
                         <li><strong>Crossover:</strong> Single/multi-point, uniform, simulated binary (SBX)</li>
@@ -323,7 +292,7 @@
                         <li><strong>Encoding:</strong> Binary, real-valued, permutation representations</li>
                     </ul>
 
-                    <h3>🧬 GA Variants</h3>
+                    <h3> GA Variants</h3>
                     <ul>
                         <li><strong>Simple GA:</strong> Holland's original binary-encoded GA</li>
                         <li><strong>Real-Coded GA:</strong> Direct real number representation</li>
@@ -333,20 +302,20 @@
                         <li><strong>Multi-Objective GA:</strong> NSGA-II, SPEA-2 for Pareto optimization</li>
                     </ul>
 
-                    <h3>🎯 GA Applications</h3>
+                    <h3> GA Applications</h3>
                     <ul>
                         <li><strong>Scheduling:</strong> Job shop, vehicle routing, timetabling</li>
                         <li><strong>Design Optimization:</strong> Antenna design, circuit layout</li>
-                        <li><strong>Machine Learning:</strong> Feature selection, neural network topology</li>
+                        <li><strong>Machine Learning:</strong> eature selection, neural network topology</li>
                         <li><strong>Bioinformatics:</strong> Sequence alignment, protein folding</li>
-                        <li><strong>Finance:</strong> Portfolio optimization, trading strategies</li>
+                        <li><strong>inance:</strong> Portfolio optimization, trading strategies</li>
                         <li><strong>Game AI:</strong> Strategy evolution, procedural content generation</li>
                     </ul>
 
-                    <h3>📐 Mathematical Foundation</h3>
+                    <h3>📐 Mathematical oundation</h3>
                     <ul>
                         <li><strong>Schema Theory:</strong> Building blocks and convergence analysis</li>
-                        <li><strong>No Free Lunch:</strong> Performance bounds across problem classes</li>
+                        <li><strong>No ree Lunch:</strong> Performance bounds across problem classes</li>
                         <li><strong>Markov Chain Analysis:</strong> Convergence proofs for GA variants</li>
                         <li><strong>Population Dynamics:</strong> Selection pressure and diversity maintenance</li>
                     </ul>
@@ -356,65 +325,65 @@
     </div>
 
     <script>
-        function toggleMore() {
+        function toggleMore() 
             const content = document.getElementById('moreContent');
             const button = document.querySelector('.more-toggle');
 
-            if (content.style.display === 'none' || content.style.display === '') {
+            if (content.style.display === 'none' || content.style.display === '') 
                 content.style.display = 'block';
-                button.textContent = '📚 Less Resources';
-            } else {
+                button.tetContent = '📚 Less Resources';
+             else 
                 content.style.display = 'none';
-                button.textContent = '📚 More Resources';
-            }
+                button.tetContent = '📚 More Resources';
+            
         // Initialize 3D visualization when page loads
-        document.addEventListener('DOMContentLoaded', function() {
+        document.addEventListener('DOMContentLoaded', function() 
             // Load optimizers first, then visualizer
             const optimizersScript = document.createElement('script');
-            optimizersScript.src = '../js/modules/index.js';
-            optimizersScript.onload = function() {
+            optimizersScript.src = '../js/modules/inde.js';
+            optimizersScript.onload = function() 
                 // Load algorithm visualizer after optimizers are loaded
                 const script = document.createElement('script');
                 script.src = '../js/algorithm-visualizer.js';
-                script.onload = function() {
+                script.onload = function() 
                     // Check for WebGL support
-                    function webglAvailable() {
-                        try {
+                    function webglAvailable() 
+                        try 
                             const canvas = document.createElement('canvas');
-                            return !!(window.WebGLRenderingContext && canvas.getContext('webgl'));
-                        } catch (e) {
+                            return !!(window.WebGLRenderingContet && canvas.getContet('webgl'));
+                         catch (e) 
                             return false;
-                        }
-                    }
+                        
+                    
 
-                    if (webglAvailable()) {
-                        const visualizer = new AlgorithmVisualizer('algorithmDemo', {
-                            onReady: () => {
+                    if (webglAvailable()) 
+                        const visualizer = new AlgorithmVisualizer('algorithmDemo', 
+                            onReady: () => 
                                 // Clear loading message once visualization is ready
                                 const loadingMsg = document.getElementById('loadingMessage');
-                                if (loadingMsg) {
+                                if (loadingMsg) 
                                     loadingMsg.style.display = 'none';
-                                }
-                            }
-                        });
-                    } else {
+                                
+                            
+                        );
+                     else 
                         document.getElementById('loadingMessage').innerHTML =
-                            '<h4>WebGL Not Supported</h4>' +
+                            '<h>WebGL Not Supported</h>' +
                             '<p>Your browser does not support WebGL for 3D visualization.</p>' +
-                            '<p>Try a modern browser like Chrome, Firefox, or Safari.</p>';
-                    }
-                };
-                script.onerror = function() {
+                            '<p>Try a modern browser like Chrome, irefo, or Safari.</p>';
+                    
+                ;
+                script.onerror = function() 
                     document.getElementById('algorithmDemo').innerHTML =
-                        '<div style="position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%); text-align: center;">' +
-                        '<h4>Visualization Unavailable</h4>' +
+                        '<div style="position: absolute; top: 5%; left: 5%; transform: translate(-5%, -5%); tet-align: center;">' +
+                        '<h>Visualization Unavailable</h>' +
                         '<p>Could not load 3D visualization component.</p>' +
                         '</div>';
-                };
+                ;
                 document.head.appendChild(script);
-            };
+            ;
             document.head.appendChild(optimizersScript);
-        });
+        );
     </script>
 </body>
 </html>

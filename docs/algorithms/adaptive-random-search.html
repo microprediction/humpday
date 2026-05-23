@@ -1,197 +1,164 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta charset="UT-8">
+    <meta name="viewport" content="width=device-width, initial-scale=.">
     <meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' 'unsafe-inline' https://cdnjs.cloudflare.com https://cdn.jsdelivr.net; style-src 'self' 'unsafe-inline';">
     <title>Adaptive Random Search - Implementation Details</title>
     <style>
-        body {
+        body 
             font-family: 'Georgia', 'Times New Roman', serif;
-            margin: 0;
-            padding: 20px;
+            margin: ;
+            padding: 2p;
             background: #f8f9fa;
-            color: #2c3e50;
-        }
+            color: #2c3e5;
+        
 
-        .container {
-            max-width: 1000px;
-            margin: 0 auto;
+        .container 
+            ma-width: p;
+            margin:  auto;
             background: white;
-            border-radius: 15px;
-            box-shadow: 0 20px 40px rgba(0,0,0,0.1);
+            border-radius: 5p;
+            bo-shadow:  2p p rgba(,,,.);
             overflow: hidden;
-        }
+        
 
-        .header {
-            background: linear-gradient(135deg, #27ae60 0%, #2ecc71 100%);
+        .header 
+            background: linear-gradient(35deg, #27ae %, #2ecc7 %);
             color: white;
-            padding: 30px;
-            text-align: center;
-        }
+            padding: 3p;
+            tet-align: center;
+        
 
-        .header h1 {
-            margin: 0 0 10px 0;
+        .header h 
+            margin:   p ;
             font-size: 2.2em;
-        }
+        
 
-        .header p {
-            margin: 0;
-            font-size: 1.1em;
-            opacity: 0.9;
-        }
+        .header p 
+            margin: ;
+            font-size: .em;
+            opacity: .9;
+        
 
-        .content {
-            padding: 40px;
-        }
+        .content 
+            padding: p;
+        
 
-        .implementation-table {
-            width: 100%;
+        .implementation-table 
+            width: %;
             border-collapse: collapse;
-            margin: 30px 0;
-            border-radius: 10px;
+            margin: 3p ;
+            border-radius: p;
             overflow: hidden;
-            box-shadow: 0 4px 8px rgba(0,0,0,0.1);
-        }
+            bo-shadow:  p 8p rgba(,,,.);
+        
 
-        .implementation-table th {
-            background: #34495e;
+        .implementation-table th 
+            background: #395e;
             color: white;
-            padding: 15px;
-            text-align: left;
-            font-weight: 600;
-        }
+            padding: 5p;
+            tet-align: left;
+            font-weight: ;
+        
 
-        .implementation-table td {
-            padding: 15px;
-            border-bottom: 1px solid #eee;
+        .implementation-table td 
+            padding: 5p;
+            border-bottom: p solid #eee;
             vertical-align: top;
-        }
+        
 
-        .implementation-table tr:hover {
+        .implementation-table tr:hover 
             background: #f8f9fa;
-        }
+        
 
-        .implementation-table .category {
-            font-weight: 600;
-            color: #34495e;
-            background: #ecf0f1;
-        }
+        .implementation-table .category 
+            font-weight: ;
+            color: #395e;
+            background: #ecff;
+        
 
-        .link-button {
+        .link-button 
             display: inline-block;
-            padding: 8px 16px;
-            background: #3498db;
+            padding: 8p p;
+            background: #398db;
             color: white;
-            text-decoration: none;
-            border-radius: 4px;
-            font-size: 0.9em;
-            margin: 2px 4px;
-            transition: background 0.2s;
-        }
+            tet-decoration: none;
+            border-radius: p;
+            font-size: .9em;
+            margin: 2p p;
+            transition: background .2s;
+        
 
-        .link-button:hover {
-            background: #2980b9;
-        }
+        .link-button:hover 
+            background: #298b9;
+        
 
-        .link-button.paper { background: #e74c3c; }
-        .link-button.python { background: #27ae60; }
-        .link-button.javascript { background: #f39c12; }
-        .link-button.info { background: #9b59b6; }
+        .link-button.paper  background: #e7c3c; 
+        .link-button.python  background: #27ae; 
+        .link-button.javascript  background: #f39c2; 
+        .link-button.info  background: #9b59b; 
 
-        .algorithm-description {
-            background: linear-gradient(135deg, #e8f5e8 0%, #d4edda 100%);
-            border-left: 4px solid #27ae60;
-            padding: 20px;
-            border-radius: 5px;
-            margin: 20px 0;
-        }
+        .algorithm-description 
+            background: linear-gradient(35deg, #e8f5e8 %, #dedda %);
+            border-left: p solid #27ae;
+            padding: 2p;
+            border-radius: 5p;
+            margin: 2p ;
+        
 
-        .back-nav {
-            margin-bottom: 20px;
-        }
+        .back-nav 
+            margin-bottom: 2p;
+        
 
-        .back-nav a {
-            color: #3498db;
-            text-decoration: none;
-            font-size: 1.1em;
-        }
+        .back-nav a 
+            color: #398db;
+            tet-decoration: none;
+            font-size: .em;
+        
 
-        .back-nav a:hover {
-            text-decoration: underline;
-        }
+        .back-nav a:hover 
+            tet-decoration: underline;
+        
 
-        .performance-notes {
+        .performance-notes 
             background: #fff3cd;
-            border: 1px solid #ffc107;
-            border-radius: 8px;
-            padding: 15px;
-            margin: 20px 0;
-        }
+            border: p solid #ffc7;
+            border-radius: 8p;
+            padding: 5p;
+            margin: 2p ;
+        
 
-        .performance-notes h3 {
-            margin-top: 0;
-            color: #856404;
-        }
+        .performance-notes h3 
+            margin-top: ;
+            color: #85;
+        
 
-        .more-section {
-            margin-top: 30px;
-            border-top: 2px solid #ecf0f1;
-            padding-top: 20px;
-        }
+        .more-section 
+            margin-top: 3p;
+            border-top: 2p solid #ecff;
+            padding-top: 2p;
+        
 
-        .more-toggle {
-            background: #3498db;
+        .more-toggle 
+            background: #398db;
             color: white;
             border: none;
-            padding: 10px 20px;
-            border-radius: 4px;
+            padding: p 2p;
+            border-radius: p;
             cursor: pointer;
-            font-size: 1em;
-        }
+            font-size: em;
+        
 
-        .more-toggle:hover {
-            background: #2980b9;
-        }
+        .more-toggle:hover 
+            background: #298b9;
+        
 
-        .more-content {
+        .more-content 
             display: none;
-            margin-top: 20px;
-        }
+            margin-top: 2p;
+        
 
-        .validation-pending {
-            background: #ffeaa7;
-            border: 1px solid #fdcb6e;
-            border-radius: 8px;
-            padding: 15px;
-            margin: 20px 0;
-        }
-
-        .validation-pending h3 {
-            margin-top: 0;
-            color: #d63031;
-        }
-
-        .adaptive-note {
-            background: #e7f3ff;
-            border: 1px solid #b3d9ff;
-            border-radius: 8px;
-            padding: 15px;
-            margin: 20px 0;
-        }
-
-        .adaptive-note h3 {
-            margin-top: 0;
-            color: #0066cc;
-        }
-    </style>
-</head>
-<body>
-    <div class="container">
-        <div class="header">
-            <h1>Adaptive Random Search (Custom)</h1>
-            <p>Intelligent Random Search with Learning</p>
-        </div>
 
         <div class="content">
             <div class="back-nav">
@@ -199,33 +166,33 @@
             </div>
 
             <div class="algorithm-description">
-                <strong>Adaptive Random Search (ARS)</strong> extends basic random search with intelligent adaptation mechanisms that learn from the optimization history. Unlike pure random search, ARS adjusts its sampling strategy, step sizes, or search regions based on success patterns, making it more efficient while maintaining the simplicity and robustness of random search methods.
+                <strong>Adaptive Random Search (ARS)</strong> etends basic random search with intelligent adaptation mechanisms that learn from the optimization history. Unlike pure random search, ARS adjusts its sampling strategy, step sizes, or search regions based on success patterns, making it more efficient while maintaining the simplicity and robustness of random search methods.
             </div>
 
             <div class="adaptive-note">
                 <h3>🧠 Adaptive Intelligence</h3>
                 <p><strong>Adaptive Random Search learns and adapts during optimization:</strong></p>
                 <ul>
-                    <li>📈 <strong>Success-Based Learning:</strong> Adjust strategy based on improvement patterns</li>
-                    <li>🎯 <strong>Dynamic Step Size:</strong> Increase/decrease search radius based on success rate</li>
-                    <li>🗺️ <strong>Region Focusing:</strong> Concentrate search in promising areas</li>
-                    <li>⚖️ <strong>Exploration Balance:</strong> Maintain global search capability while exploiting good regions</li>
+                    <li> <strong>Success-Based Learning:</strong> Adjust strategy based on improvement patterns</li>
+                    <li> <strong>Dynamic Step Size:</strong> Increase/decrease search radius based on success rate</li>
+                    <li>🗺️ <strong>Region ocusing:</strong> Concentrate search in promising areas</li>
+                    <li>⚖️ <strong>Eploration Balance:</strong> Maintain global search capability while eploiting good regions</li>
                 </ul>
             </div>
 
             <div class="visualization-section">
                 <h3>Interactive 3D Visualization</h3>
                 <p>See Adaptive Random Search in action on 3D optimization surfaces:</p>
-                <div id="algorithmDemo" style="width: 100%; height: 600px; border: 1px solid #ddd; border-radius: 4px; margin: 15px 0; position: relative; background: #fafafa;">
-                    <div id="loadingMessage" style="position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%); text-align: center; color: #666; z-index: 10; background: rgba(255,255,255,0.9); padding: 20px; border-radius: 4px;">
+                <div id="algorithmDemo" style="width: %; height: p; border: p solid #ddd; border-radius: p; margin: 5p ; position: relative; background: #fafafa;">
+                    <div id="loadingMessage" style="position: absolute; top: 5%; left: 5%; transform: translate(-5%, -5%); tet-align: center; color: #; z-inde: ; background: rgba(255,255,255,.9); padding: 2p; border-radius: p;">
                         <p>Loading 3D visualization...</p>
-                        <p style="font-size: 0.9em;">Requires WebGL support</p>
+                        <p style="font-size: .9em;">Requires WebGL support</p>
                     </div>
                 </div>
-                <div id="visualizationControls" style="background: #f8f9fa; padding: 15px; border: 1px solid #ddd; border-radius: 4px; margin-top: 10px;">
+                <div id="visualizationControls" style="background: #f8f9fa; padding: 5p; border: p solid #ddd; border-radius: p; margin-top: p;">
                     <!-- Controls will be inserted here by the visualizer -->
                 </div>
-                <p style="font-size: 0.9em; color: #666; margin-top: 10px;">
+                <p style="font-size: .9em; color: #; margin-top: p;">
                     <strong>Instructions:</strong> Choose a test function and algorithm, then click Start to watch the step-by-step optimization process.
                 </p>
             </div>
@@ -246,10 +213,10 @@
                             <strong>Enhanced Random Search</strong><br>
                             Random sampling with adaptive parameter adjustment<br>
                             Learning from optimization history<br>
-                            <em>Developed: Various researchers, 1970s-80s</em>
+                            <em>Developed: Various researchers, 97s-8s</em>
                         </td>
                         <td>
-                            <a href="https://link.springer.com/article/10.1023/A:1008358414138" target="_blank" class="link-button paper">📄 ARS Survey</a>
+                            <a href="https://link.springer.com/article/.23/A:835838" target="_blank" class="link-button paper">📄 ARS Survey</a>
                         </td>
                     </tr>
                     <tr>
@@ -261,7 +228,7 @@
                             <em>Reference: Optimization literature and custom implementations</em>
                         </td>
                         <td>
-                            <a href="https://github.com/topics/adaptive-search" target="_blank" class="link-button python">🔍 GitHub Examples</a>
+                            <a href="https://github.com/topics/adaptive-search" target="_blank" class="link-button python"> GitHub Eamples</a>
                         </td>
                     </tr>
                     <tr>
@@ -270,10 +237,10 @@
                             <strong>Humpday Adaptive Random Search</strong><br>
                             Custom implementation with success-rate adaptation<br>
                             Dynamic step size and region focusing<br>
-                            <em>File: humpday/optimizers/adaptiverandom.py</em>
+                            <em>ile: humpday/optimizers/adaptiverandom.py</em>
                         </td>
                         <td>
-                            <a href="https://github.com/microprediction/humpday" target="_blank" class="link-button python">🐍 Source</a>
+                            <a href="https://github.com/microprediction/humpday" target="_blank" class="link-button python"> Source</a>
                         </td>
                     </tr>
                     <tr>
@@ -285,7 +252,7 @@
                             <em>Class: AdaptiveRandomSearch</em>
                         </td>
                         <td>
-                            <a href="https://github.com/microprediction/humpday/blob/main/docs/js/optimizers.js" target="_blank" class="link-button javascript">🌐 JS Implementation</a>
+                            <a href="https://github.com/microprediction/humpday/blob/main/docs/js/optimizers.js" target="_blank" class="link-button javascript"> JS Implementation</a>
                         </td>
                     </tr>
                     <tr>
@@ -296,7 +263,7 @@
                             <strong>Humpday JS:</strong> None (pure JavaScript)
                         </td>
                         <td>
-                            <span style="color: #95a5a6;">✨ No external dependencies</span>
+                            <span style="color: #95a5a;">✨ No eternal dependencies</span>
                         </td>
                     </tr>
                 </tbody>
@@ -307,138 +274,127 @@
                 <ul>
                     <li><strong>Best for:</strong> Problems where pure random search works but can be improved</li>
                     <li><strong>Dimensions:</strong> Scalable to high dimensions like random search</li>
-                    <li><strong>Function evaluations:</strong> More efficient than pure random search</li>
-                    <li><strong>Convergence:</strong> Better than O(1/√n) through adaptive learning</li>
+                    <li><strong>unction evaluations:</strong> More efficient than pure random search</li>
+                    <li><strong>Convergence:</strong> Better than O(/√n) through adaptive learning</li>
                     <li><strong>Robustness:</strong> Maintains random search robustness with added intelligence</li>
                 </ul>
             </div>
 
-            <div class="validation-pending">
-                <h3>⏳ Validation Status: PENDING</h3>
-                <p><strong>Validation of adaptive random search implementation in progress.</strong></p>
-                <ul>
-                    <li>📋 Test framework: Comparing against pure random search baseline</li>
-                    <li>🎯 Target: Demonstrate improved efficiency over basic random search</li>
-                    <li>📊 Metrics: Convergence speed, adaptation effectiveness, final solution quality</li>
-                    <li>🔧 Reference: Performance improvement over RandomSearch implementation</li>
-                </ul>
-                <p><em>Success measured by improvement over pure random search baseline.</em></p>
-            </div>
 
             <div class="more-section">
                 <button class="more-toggle" onclick="toggleMore()">📚 More Resources</button>
                 <div id="moreContent" class="more-content">
                     <h3>📚 Educational Resources</h3>
                     <ul>
-                        <li><a href="https://link.springer.com/article/10.1023/A:1008358414138" target="_blank">Adaptive Random Search Methods (Spall)</a></li>
+                        <li><a href="https://link.springer.com/article/.23/A:835838" target="_blank">Adaptive Random Search Methods (Spall)</a></li>
                         <li><a href="https://en.wikipedia.org/wiki/Random_search" target="_blank">Random Search Wikipedia</a></li>
-                        <li><a href="https://www.jmlr.org/papers/volume13/bergstra12a/bergstra12a.pdf" target="_blank">Random Search for Hyper-Parameter Optimization</a></li>
-                        <li><a href="https://optimization.mccormick.northwestern.edu/index.php/Random_search" target="_blank">Random Search Tutorial</a></li>
-                        <li><a href="https://arxiv.org/abs/1803.07055" target="_blank">Simple random search provides competitive approach</a></li>
+                        <li><a href="https://www.jmlr.org/papers/volume3/bergstra2a/bergstra2a.pdf" target="_blank">Random Search for Hyper-Parameter Optimization</a></li>
+                        <li><a href="https://optimization.mccormick.northwestern.edu/inde.php/Random_search" target="_blank">Random Search Tutorial</a></li>
+                        <li><a href="https://ariv.org/abs/83.755" target="_blank">Simple random search provides competitive approach</a></li>
                     </ul>
 
-                    <h3>🔬 Adaptation Mechanisms</h3>
+                    <h3> Adaptation Mechanisms</h3>
                     <ul>
-                        <li><strong>Step Size Adaptation:</strong> σ(t+1) = σ(t) × factor based on success rate</li>
+                        <li><strong>Step Size Adaptation:</strong> σ(t+) = σ(t) × factor based on success rate</li>
                         <li><strong>Success Rate Tracking:</strong> Monitor fraction of improvements over recent history</li>
-                        <li><strong>Region Focusing:</strong> Bias sampling toward successful regions</li>
+                        <li><strong>Region ocusing:</strong> Bias sampling toward successful regions</li>
                         <li><strong>Direction Learning:</strong> Learn promising search directions</li>
                         <li><strong>Population Size:</strong> Adapt number of samples per iteration</li>
                         <li><strong>Distribution Shape:</strong> Modify sampling distribution parameters</li>
                     </ul>
 
-                    <h3>📐 Mathematical Foundation</h3>
+                    <h3>📐 Mathematical oundation</h3>
                     <ul>
                         <li><strong>Success Rate:</strong> p_s(t) = (# improvements) / (# recent samples)</li>
-                        <li><strong>Step Size Update:</strong> σ(t+1) = σ(t) × exp(α × (p_s(t) - p_target))</li>
-                        <li><strong>Sampling:</strong> x(t+1) ~ N(x_best, σ(t)²I) or other adaptive distributions</li>
-                        <li><strong>Region Weight:</strong> w_i ∝ exp(β × improvement_i) for region focusing</li>
+                        <li><strong>Step Size Update:</strong> σ(t+) = σ(t) × ep(α × (p_s(t) - p_target))</li>
+                        <li><strong>Sampling:</strong> (t+) ~ N(_best, σ(t)²I) or other adaptive distributions</li>
+                        <li><strong>Region Weight:</strong> w_i ∝ ep(β × improvement_i) for region focusing</li>
                     </ul>
 
                     <h3>⚙️ Key Parameters</h3>
                     <ul>
-                        <li><strong>Initial Step Size:</strong> σ₀ typically 0.1-0.5 of search range</li>
-                        <li><strong>Target Success Rate:</strong> p_target usually 0.1-0.3</li>
+                        <li><strong>Initial Step Size:</strong> σ₀ typically .-.5 of search range</li>
+                        <li><strong>Target Success Rate:</strong> p_target usually .-.3</li>
                         <li><strong>Adaptation Rate:</strong> α controls speed of step size changes</li>
                         <li><strong>Memory Window:</strong> How many recent samples to consider</li>
-                        <li><strong>Min/Max Step Size:</strong> Bounds to prevent degenerate behavior</li>
+                        <li><strong>Min/Ma Step Size:</strong> Bounds to prevent degenerate behavior</li>
                     </ul>
 
-                    <h3>🎯 ARS Algorithm Pseudocode</h3>
-                    <pre style="background: #f8f9fa; padding: 15px; border-radius: 8px; font-family: monospace;">
-function adaptiveRandomSearch(f, x0, maxEvals, targetSuccessRate):
-    x_best = x0
-    f_best = f(x0)
-    stepSize = 0.3  // Initial step size
-    successCount = 0
-    windowSize = 50
+                    <h3> ARS Algorithm Pseudocode</h3>
+                    <pre style="background: #f8f9fa; padding: 5p; border-radius: 8p; font-family: monospace;">
+function adaptiveRandomSearch(f, , maEvals, targetSuccessRate):
+    _best = 
+    f_best = f()
+    stepSize = .3  // Initial step size
+    successCount = 
+    windowSize = 5
     evaluations = []
 
-    for eval in 1 to maxEvals:
+    for eval in  to maEvals:
         // Generate candidate with current step size
-        x_candidate = x_best + stepSize * randomGaussian(n)
-        x_candidate = clip(x_candidate, [0,1])  // Bounds
-        f_candidate = f(x_candidate)
+        _candidate = _best + stepSize * randomGaussian(n)
+        _candidate = clip(_candidate, [,])  // Bounds
+        f_candidate = f(_candidate)
 
         // Track success/failure
         improved = (f_candidate < f_best)
         evaluations.append(improved)
 
         if improved:
-            x_best = x_candidate
+            _best = _candidate
             f_best = f_candidate
-            successCount += 1
+            successCount += 
 
         // Adapt step size every windowSize evaluations
-        if eval % windowSize == 0:
+        if eval % windowSize == :
             successRate = successCount / windowSize
 
             if successRate > targetSuccessRate:
-                stepSize *= 1.2  // Increase exploration
+                stepSize *= .2  // Increase eploration
             else:
-                stepSize *= 0.8  // Focus search
+                stepSize *= .8  // ocus search
 
-            stepSize = clip(stepSize, [0.01, 1.0])
-            successCount = 0
+            stepSize = clip(stepSize, [., .])
+            successCount = 
 
-    return x_best, f_best
+    return _best, f_best
                     </pre>
 
-                    <h3>🔧 ARS Variants</h3>
+                    <h3> ARS Variants</h3>
                     <ul>
-                        <li><strong>1/5-th Rule ARS:</strong> Adapt step size based on success rate ≈ 1/5</li>
+                        <li><strong>/5-th Rule ARS:</strong> Adapt step size based on success rate ≈ /5</li>
                         <li><strong>Multi-Point ARS:</strong> Generate multiple candidates per iteration</li>
-                        <li><strong>Directional ARS:</strong> Learn and exploit successful search directions</li>
+                        <li><strong>Directional ARS:</strong> Learn and eploit successful search directions</li>
                         <li><strong>Region-Based ARS:</strong> Partition search space and adapt per region</li>
-                        <li><strong>Covariance ARS:</strong> Adapt full covariance matrix like CMA-ES</li>
+                        <li><strong>Covariance ARS:</strong> Adapt full covariance matri like CMA-ES</li>
                         <li><strong>Hybrid ARS:</strong> Combine with local search or other methods</li>
                     </ul>
 
-                    <h3>📊 Adaptation Strategies</h3>
+                    <h3> Adaptation Strategies</h3>
                     <ul>
                         <li><strong>Success-Based:</strong> Adapt based on improvement frequency</li>
                         <li><strong>Progress-Based:</strong> Adapt based on magnitude of improvements</li>
                         <li><strong>Diversity-Based:</strong> Maintain population diversity</li>
                         <li><strong>Distance-Based:</strong> Adapt based on distance between improvements</li>
-                        <li><strong>Gradient-Free:</strong> Estimate search direction without gradients</li>
+                        <li><strong>Gradient-ree:</strong> Estimate search direction without gradients</li>
                     </ul>
 
-                    <h3>🚀 Applications</h3>
+                    <h3> Applications</h3>
                     <ul>
                         <li><strong>Hyperparameter Optimization:</strong> Machine learning model tuning</li>
-                        <li><strong>Black-Box Optimization:</strong> When gradient information unavailable</li>
-                        <li><strong>Noisy Functions:</strong> Robust to evaluation noise</li>
-                        <li><strong>Expensive Functions:</strong> Efficient use of limited evaluations</li>
-                        <li><strong>Multi-Modal Functions:</strong> Balance exploration and exploitation</li>
+                        <li><strong>Black-Bo Optimization:</strong> When gradient information unavailable</li>
+                        <li><strong>Noisy unctions:</strong> Robust to evaluation noise</li>
+                        <li><strong>Epensive unctions:</strong> Efficient use of limited evaluations</li>
+                        <li><strong>Multi-Modal unctions:</strong> Balance eploration and eploitation</li>
                         <li><strong>Simulation Optimization:</strong> Parameter tuning for simulations</li>
                     </ul>
 
-                    <h3>💡 Advantages of ARS</h3>
+                    <h3> Advantages of ARS</h3>
                     <ul>
                         <li><strong>Simplicity:</strong> Easy to implement and understand</li>
                         <li><strong>Robustness:</strong> Inherits random search reliability</li>
                         <li><strong>Efficiency:</strong> Better than pure random search</li>
-                        <li><strong>Parameter-Light:</strong> Few hyperparameters to tune</li>
+                        <li><strong>Parameter-Light:</strong> ew hyperparameters to tune</li>
                         <li><strong>Parallelizable:</strong> Easy to distribute evaluations</li>
                         <li><strong>No Assumptions:</strong> Works on any objective function</li>
                     </ul>
@@ -448,7 +404,7 @@ function adaptiveRandomSearch(f, x0, maxEvals, targetSuccessRate):
                         <li><strong>Slower than Specialized Methods:</strong> Less efficient than problem-specific algorithms</li>
                         <li><strong>Parameter Sensitivity:</strong> Performance depends on adaptation parameters</li>
                         <li><strong>High Dimensions:</strong> Still suffers from curse of dimensionality</li>
-                        <li><strong>Local Structure:</strong> Doesn't exploit smooth function structure</li>
+                        <li><strong>Local Structure:</strong> Doesn't eploit smooth function structure</li>
                         <li><strong>Memory Requirements:</strong> Needs to track success history</li>
                     </ul>
 
@@ -466,67 +422,67 @@ function adaptiveRandomSearch(f, x0, maxEvals, targetSuccessRate):
     </div>
 
     <script>
-        function toggleMore() {
+        function toggleMore() 
             const content = document.getElementById('moreContent');
             const button = document.querySelector('.more-toggle');
 
-            if (content.style.display === 'none' || content.style.display === '') {
+            if (content.style.display === 'none' || content.style.display === '') 
                 content.style.display = 'block';
-                button.textContent = '📚 Less Resources';
-            } else {
+                button.tetContent = '📚 Less Resources';
+             else 
                 content.style.display = 'none';
-                button.textContent = '📚 More Resources';
-            }
-        }
+                button.tetContent = '📚 More Resources';
+            
+        
 
         // Initialize 3D visualization when page loads
-        document.addEventListener('DOMContentLoaded', function() {
+        document.addEventListener('DOMContentLoaded', function() 
             // Load optimizers first, then visualizer
             const optimizersScript = document.createElement('script');
-            optimizersScript.src = '../js/modules/index.js';
-            optimizersScript.onload = function() {
+            optimizersScript.src = '../js/modules/inde.js';
+            optimizersScript.onload = function() 
                 // Load algorithm visualizer after optimizers are loaded
                 const script = document.createElement('script');
                 script.src = '../js/algorithm-visualizer.js';
-                script.onload = function() {
+                script.onload = function() 
                     // Check for WebGL support
-                    function webglAvailable() {
-                        try {
+                    function webglAvailable() 
+                        try 
                             const canvas = document.createElement('canvas');
-                            return !!(window.WebGLRenderingContext && canvas.getContext('webgl'));
-                        } catch (e) {
+                            return !!(window.WebGLRenderingContet && canvas.getContet('webgl'));
+                         catch (e) 
                             return false;
-                        }
-                    }
+                        
+                    
 
-                    if (webglAvailable()) {
-                        const visualizer = new AlgorithmVisualizer('algorithmDemo', {
-                            onReady: () => {
+                    if (webglAvailable()) 
+                        const visualizer = new AlgorithmVisualizer('algorithmDemo', 
+                            onReady: () => 
                                 // Clear loading message once visualization is ready
                                 const loadingMsg = document.getElementById('loadingMessage');
-                                if (loadingMsg) {
+                                if (loadingMsg) 
                                     loadingMsg.style.display = 'none';
-                                }
-                            }
-                        });
-                    } else {
+                                
+                            
+                        );
+                     else 
                         document.getElementById('loadingMessage').innerHTML =
-                            '<h4>WebGL Not Supported</h4>' +
+                            '<h>WebGL Not Supported</h>' +
                             '<p>Your browser does not support WebGL for 3D visualization.</p>' +
-                            '<p>Try a modern browser like Chrome, Firefox, or Safari.</p>';
-                    }
-                };
-                script.onerror = function() {
+                            '<p>Try a modern browser like Chrome, irefo, or Safari.</p>';
+                    
+                ;
+                script.onerror = function() 
                     document.getElementById('algorithmDemo').innerHTML =
-                        '<div style="position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%); text-align: center;">' +
-                        '<h4>Visualization Unavailable</h4>' +
+                        '<div style="position: absolute; top: 5%; left: 5%; transform: translate(-5%, -5%); tet-align: center;">' +
+                        '<h>Visualization Unavailable</h>' +
                         '<p>Could not load 3D visualization component.</p>' +
                         '</div>';
-                };
+                ;
                 document.head.appendChild(script);
-            };
+            ;
             document.head.appendChild(optimizersScript);
-        });
+        );
     </script>
 </body>
 </html>

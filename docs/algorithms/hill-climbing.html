@@ -1,197 +1,164 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta charset="UT-8">
+    <meta name="viewport" content="width=device-width, initial-scale=.">
     <meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' 'unsafe-inline' https://cdnjs.cloudflare.com https://cdn.jsdelivr.net; style-src 'self' 'unsafe-inline';">
     <title>Hill Climbing - Implementation Details</title>
     <style>
-        body {
+        body 
             font-family: 'Georgia', 'Times New Roman', serif;
-            margin: 0;
-            padding: 20px;
+            margin: ;
+            padding: 2p;
             background: #f8f9fa;
-            color: #2c3e50;
-        }
+            color: #2c3e5;
+        
 
-        .container {
-            max-width: 1000px;
-            margin: 0 auto;
+        .container 
+            ma-width: p;
+            margin:  auto;
             background: white;
-            border-radius: 15px;
-            box-shadow: 0 20px 40px rgba(0,0,0,0.1);
+            border-radius: 5p;
+            bo-shadow:  2p p rgba(,,,.);
             overflow: hidden;
-        }
+        
 
-        .header {
-            background: #e74c3c;
+        .header 
+            background: #e7c3c;
             color: white;
-            padding: 30px;
-            text-align: center;
-        }
+            padding: 3p;
+            tet-align: center;
+        
 
-        .header h1 {
-            margin: 0 0 10px 0;
+        .header h 
+            margin:   p ;
             font-size: 2.2em;
-        }
+        
 
-        .header p {
-            margin: 0;
-            font-size: 1.1em;
-            opacity: 0.9;
-        }
+        .header p 
+            margin: ;
+            font-size: .em;
+            opacity: .9;
+        
 
-        .content {
-            padding: 40px;
-        }
+        .content 
+            padding: p;
+        
 
-        .implementation-table {
-            width: 100%;
+        .implementation-table 
+            width: %;
             border-collapse: collapse;
-            margin: 30px 0;
-            border-radius: 10px;
+            margin: 3p ;
+            border-radius: p;
             overflow: hidden;
-            box-shadow: 0 4px 8px rgba(0,0,0,0.1);
-        }
+            bo-shadow:  p 8p rgba(,,,.);
+        
 
-        .implementation-table th {
-            background: #34495e;
+        .implementation-table th 
+            background: #395e;
             color: white;
-            padding: 15px;
-            text-align: left;
-            font-weight: 600;
-        }
+            padding: 5p;
+            tet-align: left;
+            font-weight: ;
+        
 
-        .implementation-table td {
-            padding: 15px;
-            border-bottom: 1px solid #eee;
+        .implementation-table td 
+            padding: 5p;
+            border-bottom: p solid #eee;
             vertical-align: top;
-        }
+        
 
-        .implementation-table tr:hover {
+        .implementation-table tr:hover 
             background: #f8f9fa;
-        }
+        
 
-        .implementation-table .category {
-            font-weight: 600;
-            color: #34495e;
-            background: #ecf0f1;
-        }
+        .implementation-table .category 
+            font-weight: ;
+            color: #395e;
+            background: #ecff;
+        
 
-        .link-button {
+        .link-button 
             display: inline-block;
-            padding: 8px 16px;
-            background: #3498db;
+            padding: 8p p;
+            background: #398db;
             color: white;
-            text-decoration: none;
-            border-radius: 4px;
-            font-size: 0.9em;
-            margin: 2px 4px;
-            transition: background 0.2s;
-        }
+            tet-decoration: none;
+            border-radius: p;
+            font-size: .9em;
+            margin: 2p p;
+            transition: background .2s;
+        
 
-        .link-button:hover {
-            background: #2980b9;
-        }
+        .link-button:hover 
+            background: #298b9;
+        
 
-        .link-button.paper { background: #e74c3c; }
-        .link-button.python { background: #27ae60; }
-        .link-button.javascript { background: #f39c12; }
-        .link-button.info { background: #9b59b6; }
+        .link-button.paper  background: #e7c3c; 
+        .link-button.python  background: #27ae; 
+        .link-button.javascript  background: #f39c2; 
+        .link-button.info  background: #9b59b; 
 
-        .algorithm-description {
+        .algorithm-description 
             background: #fadbd8;
-            border-left: 4px solid #e74c3c;
-            padding: 20px;
-            border-radius: 5px;
-            margin: 20px 0;
-        }
+            border-left: p solid #e7c3c;
+            padding: 2p;
+            border-radius: 5p;
+            margin: 2p ;
+        
 
-        .back-nav {
-            margin-bottom: 20px;
-        }
+        .back-nav 
+            margin-bottom: 2p;
+        
 
-        .back-nav a {
-            color: #3498db;
-            text-decoration: none;
-            font-size: 1.1em;
-        }
+        .back-nav a 
+            color: #398db;
+            tet-decoration: none;
+            font-size: .em;
+        
 
-        .back-nav a:hover {
-            text-decoration: underline;
-        }
+        .back-nav a:hover 
+            tet-decoration: underline;
+        
 
-        .performance-notes {
+        .performance-notes 
             background: #fff3cd;
-            border: 1px solid #ffc107;
-            border-radius: 8px;
-            padding: 15px;
-            margin: 20px 0;
-        }
+            border: p solid #ffc7;
+            border-radius: 8p;
+            padding: 5p;
+            margin: 2p ;
+        
 
-        .performance-notes h3 {
-            margin-top: 0;
-            color: #856404;
-        }
+        .performance-notes h3 
+            margin-top: ;
+            color: #85;
+        
 
-        .more-section {
-            margin-top: 30px;
-            border-top: 2px solid #ecf0f1;
-            padding-top: 20px;
-        }
+        .more-section 
+            margin-top: 3p;
+            border-top: 2p solid #ecff;
+            padding-top: 2p;
+        
 
-        .more-toggle {
-            background: #3498db;
+        .more-toggle 
+            background: #398db;
             color: white;
             border: none;
-            padding: 10px 20px;
-            border-radius: 4px;
+            padding: p 2p;
+            border-radius: p;
             cursor: pointer;
-            font-size: 1em;
-        }
+            font-size: em;
+        
 
-        .more-toggle:hover {
-            background: #2980b9;
-        }
+        .more-toggle:hover 
+            background: #298b9;
+        
 
-        .more-content {
+        .more-content 
             display: none;
-            margin-top: 20px;
-        }
+            margin-top: 2p;
+        
 
-        .validation-pending {
-            background: #ffeaa7;
-            border: 1px solid #fdcb6e;
-            border-radius: 8px;
-            padding: 15px;
-            margin: 20px 0;
-        }
-
-        .validation-pending h3 {
-            margin-top: 0;
-            color: #d63031;
-        }
-
-        .local-search-note {
-            background: #fff5f5;
-            border: 1px solid #fed7d7;
-            border-radius: 8px;
-            padding: 15px;
-            margin: 20px 0;
-        }
-
-        .local-search-note h3 {
-            margin-top: 0;
-            color: #c53030;
-        }
-    </style>
-</head>
-<body>
-    <div class="container">
-        <div class="header">
-            <h1>Hill Climbing (Local Search)</h1>
-            <p>Simple Greedy Local Search Algorithm</p>
-        </div>
 
         <div class="content">
             <div class="back-nav">
@@ -199,32 +166,32 @@
             </div>
 
             <div class="algorithm-description">
-                <strong>Hill Climbing</strong> is one of the simplest local search optimization algorithms. It repeatedly moves to neighboring solutions that improve the objective function, stopping when no better neighbors exist. Despite its simplicity, hill climbing forms the foundation for many more sophisticated optimization methods and serves as an important baseline for local search techniques.
+                <strong>Hill Climbing</strong> is one of the simplest local search optimization algorithms. It repeatedly moves to neighboring solutions that improve the objective function, stopping when no better neighbors eist. Despite its simplicity, hill climbing forms the foundation for many more sophisticated optimization methods and serves as an important baseline for local search techniques.
             </div>
 
             <div class="local-search-note">
                 <h3>⚠️ Local Search Algorithm Notice</h3>
                 <p><strong>Hill Climbing is a pure local search method:</strong></p>
                 <ul>
-                    <li>🎯 <strong>Local Optima:</strong> Gets trapped in local minima - no global search capability</li>
-                    <li>🔄 <strong>Starting Point Dependent:</strong> Final solution depends heavily on initialization</li>
-                    <li>⚡ <strong>Fast Convergence:</strong> Very efficient for local refinement</li>
-                    <li>🔧 <strong>Baseline Method:</strong> Useful as starting point or component in hybrid algorithms</li>
+                    <li> <strong>Local Optima:</strong> Gets trapped in local minima - no global search capability</li>
+                    <li>🔄 <strong>Starting Point Dependent:</strong> inal solution depends heavily on initialization</li>
+                    <li> <strong>ast Convergence:</strong> Very efficient for local refinement</li>
+                    <li> <strong>Baseline Method:</strong> Useful as starting point or component in hybrid algorithms</li>
                 </ul>
             </div>
             <div class="visualization-section">
                 <h3>Interactive 3D Visualization</h3>
                 <p>See Hill Climbing in action on 3D optimization surfaces:</p>
-                <div id="algorithmDemo" style="width: 100%; height: 600px; border: 1px solid #ddd; border-radius: 4px; margin: 15px 0; position: relative; background: #fafafa;">
-                    <div id="loadingMessage" style="position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%); text-align: center; color: #666; z-index: 10; background: rgba(255,255,255,0.9); padding: 20px; border-radius: 4px;">
+                <div id="algorithmDemo" style="width: %; height: p; border: p solid #ddd; border-radius: p; margin: 5p ; position: relative; background: #fafafa;">
+                    <div id="loadingMessage" style="position: absolute; top: 5%; left: 5%; transform: translate(-5%, -5%); tet-align: center; color: #; z-inde: ; background: rgba(255,255,255,.9); padding: 2p; border-radius: p;">
                         <p>Loading 3D visualization...</p>
-                        <p style="font-size: 0.9em;">Requires WebGL support</p>
+                        <p style="font-size: .9em;">Requires WebGL support</p>
                     </div>
                 </div>
-                <div id="visualizationControls" style="background: #f8f9fa; padding: 15px; border: 1px solid #ddd; border-radius: 4px; margin-top: 10px;">
+                <div id="visualizationControls" style="background: #f8f9fa; padding: 5p; border: p solid #ddd; border-radius: p; margin-top: p;">
                     <!-- Controls will be inserted here by the visualizer -->
                 </div>
-                <p style="font-size: 0.9em; color: #666; margin-top: 10px;">
+                <p style="font-size: .9em; color: #; margin-top: p;">
                     <strong>Instructions:</strong> Choose a test function and algorithm, then click Start to watch the step-by-step optimization process.
                 </p>
             </div>
@@ -246,7 +213,7 @@
                             <strong>Classic Local Search</strong><br>
                             Greedy improvement of current solution<br>
                             Move to best neighbor until local optimum reached<br>
-                            <em>Concept: Ancient (1950s AI research)</em>
+                            <em>Concept: Ancient (95s AI research)</em>
                         </td>
                         <td>
                             <a href="https://en.wikipedia.org/wiki/Hill_climbing" target="_blank" class="link-button info">📖 Wikipedia</a>
@@ -261,7 +228,7 @@
                             <em>Self-reference: Algorithm-specific implementation</em>
                         </td>
                         <td>
-                            <a href="https://artint.info/html/ArtInt_71.html" target="_blank" class="link-button info">🎓 AI Textbook</a>
+                            <a href="https://artint.info/html/ArtInt_7.html" target="_blank" class="link-button info">🎓 AI Tetbook</a>
                         </td>
                     </tr>
                     <tr>
@@ -270,10 +237,10 @@
                             <strong>Humpday Hill Climbing</strong><br>
                             Custom local search with neighborhood generation<br>
                             Steepest ascent or first improvement strategies<br>
-                            <em>File: humpday/optimizers/localsearch*.py</em>
+                            <em>ile: humpday/optimizers/localsearch*.py</em>
                         </td>
                         <td>
-                            <a href="https://github.com/microprediction/humpday" target="_blank" class="link-button python">🐍 Source</a>
+                            <a href="https://github.com/microprediction/humpday" target="_blank" class="link-button python"> Source</a>
                         </td>
                     </tr>
                     <tr>
@@ -285,7 +252,7 @@
                             <em>Class: HillClimbing</em>
                         </td>
                         <td>
-                            <a href="https://github.com/microprediction/humpday/blob/main/docs/js/optimizers.js" target="_blank" class="link-button javascript">🌐 JS Implementation</a>
+                            <a href="https://github.com/microprediction/humpday/blob/main/docs/js/optimizers.js" target="_blank" class="link-button javascript"> JS Implementation</a>
                         </td>
                     </tr>
                     <tr>
@@ -296,7 +263,7 @@
                             <strong>Humpday JS:</strong> None (pure JavaScript)
                         </td>
                         <td>
-                            <span style="color: #95a5a6;">✨ No external dependencies</span>
+                            <span style="color: #95a5a;">✨ No eternal dependencies</span>
                         </td>
                     </tr>
                 </tbody>
@@ -307,23 +274,12 @@
                 <ul>
                     <li><strong>Best for:</strong> Local refinement, unimodal functions, quick improvements</li>
                     <li><strong>Dimensions:</strong> Scalable to any dimension</li>
-                    <li><strong>Function evaluations:</strong> Very efficient, minimal evaluations per step</li>
-                    <li><strong>Convergence:</strong> Fast local convergence, no global guarantees</li>
+                    <li><strong>unction evaluations:</strong> Very efficient, minimal evaluations per step</li>
+                    <li><strong>Convergence:</strong> ast local convergence, no global guarantees</li>
                     <li><strong>Robustness:</strong> Simple and reliable, but limited by local optima</li>
                 </ul>
             </div>
 
-            <div class="validation-pending">
-                <h3>⏳ Validation Status: PENDING</h3>
-                <p><strong>Validation of hill climbing implementation in progress.</strong></p>
-                <ul>
-                    <li>📋 Test framework: Comparing behavior against theoretical expectations</li>
-                    <li>🎯 Target: Proper local search behavior and convergence to local optima</li>
-                    <li>📊 Metrics: Local optimality verification, convergence speed</li>
-                    <li>🔧 Reference: Self-validation against algorithm specification</li>
-                </ul>
-                <p><em>Hill climbing is simple enough that correct implementation is the primary validation.</em></p>
-            </div>
 
             <div class="more-section">
                 <button class="more-toggle" onclick="toggleMore()">📚 More Resources</button>
@@ -331,13 +287,13 @@
                     <h3>📚 Educational Resources</h3>
                     <ul>
                         <li><a href="https://en.wikipedia.org/wiki/Hill_climbing" target="_blank">Hill Climbing Wikipedia</a></li>
-                        <li><a href="https://artint.info/html/ArtInt_71.html" target="_blank">Artificial Intelligence: Foundations of Computational Agents</a></li>
+                        <li><a href="https://artint.info/html/ArtInt_7.html" target="_blank">Artificial Intelligence: oundations of Computational Agents</a></li>
                         <li><a href="http://aima.cs.berkeley.edu/" target="_blank">AI: A Modern Approach (Russell & Norvig)</a></li>
-                        <li><a href="https://optimization.mccormick.northwestern.edu/index.php/Heuristic_algorithms" target="_blank">Heuristic Algorithms Overview</a></li>
+                        <li><a href="https://optimization.mccormick.northwestern.edu/inde.php/Heuristic_algorithms" target="_blank">Heuristic Algorithms Overview</a></li>
                         <li><a href="https://www.cs.cmu.edu/~awm/tutorials/" target="_blank">CMU Local Search Tutorials</a></li>
                     </ul>
 
-                    <h3>🔬 Algorithm Variants</h3>
+                    <h3> Algorithm Variants</h3>
                     <ul>
                         <li><strong>Simple Hill Climbing:</strong> Move to first improving neighbor</li>
                         <li><strong>Steepest-Ascent:</strong> Evaluate all neighbors, choose best improvement</li>
@@ -351,12 +307,12 @@
                         <li><strong>Continuous:</strong> Small perturbations in real-valued variables</li>
                         <li><strong>Discrete:</strong> Bit-flips, swaps, insertions for combinatorial problems</li>
                         <li><strong>Gaussian:</strong> Normal distribution around current point</li>
-                        <li><strong>Uniform:</strong> Uniform sampling within fixed radius</li>
+                        <li><strong>Uniform:</strong> Uniform sampling within fied radius</li>
                         <li><strong>Adaptive:</strong> Step size changes based on success rate</li>
                     </ul>
 
                     <h3>⚙️ Algorithm Pseudocode</h3>
-                    <pre style="background: #f8f9fa; padding: 15px; border-radius: 8px; font-family: monospace;">
+                    <pre style="background: #f8f9fa; padding: 5p; border-radius: 8p; font-family: monospace;">
 function hillClimbing(problem, initialSolution):
     current = initialSolution
     currentValue = evaluate(current)
@@ -365,7 +321,7 @@ function hillClimbing(problem, initialSolution):
         neighbor = generateNeighbor(current)
         neighborValue = evaluate(neighbor)
 
-        if neighborValue > currentValue:  // for maximization
+        if neighborValue > currentValue:  // for maimization
             current = neighbor
             currentValue = neighborValue
         else:
@@ -374,7 +330,7 @@ function hillClimbing(problem, initialSolution):
     return current
                     </pre>
 
-                    <h3>💡 When Hill Climbing Works Well</h3>
+                    <h3> When Hill Climbing Works Well</h3>
                     <ul>
                         <li><strong>Unimodal Problems:</strong> Single global optimum with no local optima</li>
                         <li><strong>Local Refinement:</strong> Polishing solutions from other algorithms</li>
@@ -388,11 +344,11 @@ function hillClimbing(problem, initialSolution):
                         <li><strong>Local Optima:</strong> Cannot escape local minima</li>
                         <li><strong>Plateaus:</strong> Gets stuck on flat regions</li>
                         <li><strong>Ridges:</strong> Difficulty with narrow valleys</li>
-                        <li><strong>Starting Point Sensitive:</strong> Final result depends on initialization</li>
+                        <li><strong>Starting Point Sensitive:</strong> inal result depends on initialization</li>
                         <li><strong>No Global View:</strong> Purely greedy approach</li>
                     </ul>
 
-                    <h3>🔧 Improvements and Extensions</h3>
+                    <h3> Improvements and Etensions</h3>
                     <ul>
                         <li><strong>Random Restart:</strong> Run multiple times with different starts</li>
                         <li><strong>Simulated Annealing:</strong> Allow occasional uphill moves</li>
@@ -401,11 +357,11 @@ function hillClimbing(problem, initialSolution):
                         <li><strong>Iterated Local Search:</strong> Perturb and restart periodically</li>
                     </ul>
 
-                    <h3>🎯 Applications</h3>
+                    <h3> Applications</h3>
                     <ul>
                         <li><strong>Traveling Salesman:</strong> 2-opt, 3-opt local search moves</li>
                         <li><strong>Scheduling:</strong> Local improvements to task assignments</li>
-                        <li><strong>Neural Networks:</strong> Fine-tuning network weights</li>
+                        <li><strong>Neural Networks:</strong> ine-tuning network weights</li>
                         <li><strong>Game Playing:</strong> Position evaluation and move refinement</li>
                         <li><strong>Parameter Tuning:</strong> Local optimization of system parameters</li>
                         <li><strong>Image Processing:</strong> Local enhancement operations</li>
@@ -416,65 +372,65 @@ function hillClimbing(problem, initialSolution):
     </div>
 
     <script>
-        function toggleMore() {
+        function toggleMore() 
             const content = document.getElementById('moreContent');
             const button = document.querySelector('.more-toggle');
 
-            if (content.style.display === 'none' || content.style.display === '') {
+            if (content.style.display === 'none' || content.style.display === '') 
                 content.style.display = 'block';
-                button.textContent = '📚 Less Resources';
-            } else {
+                button.tetContent = '📚 Less Resources';
+             else 
                 content.style.display = 'none';
-                button.textContent = '📚 More Resources';
-            }
+                button.tetContent = '📚 More Resources';
+            
         // Initialize 3D visualization when page loads
-        document.addEventListener('DOMContentLoaded', function() {
+        document.addEventListener('DOMContentLoaded', function() 
             // Load optimizers first, then visualizer
             const optimizersScript = document.createElement('script');
-            optimizersScript.src = '../js/modules/index.js';
-            optimizersScript.onload = function() {
+            optimizersScript.src = '../js/modules/inde.js';
+            optimizersScript.onload = function() 
                 // Load algorithm visualizer after optimizers are loaded
                 const script = document.createElement('script');
                 script.src = '../js/algorithm-visualizer.js';
-                script.onload = function() {
+                script.onload = function() 
                     // Check for WebGL support
-                    function webglAvailable() {
-                        try {
+                    function webglAvailable() 
+                        try 
                             const canvas = document.createElement('canvas');
-                            return !!(window.WebGLRenderingContext && canvas.getContext('webgl'));
-                        } catch (e) {
+                            return !!(window.WebGLRenderingContet && canvas.getContet('webgl'));
+                         catch (e) 
                             return false;
-                        }
-                    }
+                        
+                    
 
-                    if (webglAvailable()) {
-                        const visualizer = new AlgorithmVisualizer('algorithmDemo', {
-                            onReady: () => {
+                    if (webglAvailable()) 
+                        const visualizer = new AlgorithmVisualizer('algorithmDemo', 
+                            onReady: () => 
                                 // Clear loading message once visualization is ready
                                 const loadingMsg = document.getElementById('loadingMessage');
-                                if (loadingMsg) {
+                                if (loadingMsg) 
                                     loadingMsg.style.display = 'none';
-                                }
-                            }
-                        });
-                    } else {
+                                
+                            
+                        );
+                     else 
                         document.getElementById('loadingMessage').innerHTML =
-                            '<h4>WebGL Not Supported</h4>' +
+                            '<h>WebGL Not Supported</h>' +
                             '<p>Your browser does not support WebGL for 3D visualization.</p>' +
-                            '<p>Try a modern browser like Chrome, Firefox, or Safari.</p>';
-                    }
-                };
-                script.onerror = function() {
+                            '<p>Try a modern browser like Chrome, irefo, or Safari.</p>';
+                    
+                ;
+                script.onerror = function() 
                     document.getElementById('algorithmDemo').innerHTML =
-                        '<div style="position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%); text-align: center;">' +
-                        '<h4>Visualization Unavailable</h4>' +
+                        '<div style="position: absolute; top: 5%; left: 5%; transform: translate(-5%, -5%); tet-align: center;">' +
+                        '<h>Visualization Unavailable</h>' +
                         '<p>Could not load 3D visualization component.</p>' +
                         '</div>';
-                };
+                ;
                 document.head.appendChild(script);
-            };
+            ;
             document.head.appendChild(optimizersScript);
-        });
+        );
     </script>
 </body>
 </html>

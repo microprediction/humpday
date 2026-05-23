@@ -1,6 +1,6 @@
 """
-All optimizers - pure Python implementations of the 22 validated algorithms.
-No external dependencies beyond numpy. Lightweight and reliable.
+All optimizers - pure Python implementations of validated algorithms.
+No external dependencies beyond numpy. Clean ports, not wrappers.
 """
 
 # Import from new modular structure
@@ -39,9 +39,9 @@ PURE_OPTIMIZERS = {
 }
 
 
-# Create optimizer function wrappers for backward compatibility
-def create_optimizer_wrapper(optimizer_class):
-    """Create a function wrapper for an optimizer class."""
+# Create optimizer function interfaces for backward compatibility
+def create_optimizer_function(optimizer_class):
+    """Create a function interface for an optimizer class."""
 
     def optimizer_function(objective, n_dim, n_trials=100, with_count=False):
         optimizer = optimizer_class(objective, n_trials, n_dim)
@@ -66,18 +66,18 @@ def create_optimizer_wrapper(optimizer_class):
 
 
 # Create all optimizer functions
-OPTIMIZERS = [create_optimizer_wrapper(cls) for cls in PURE_OPTIMIZERS.values()]
+OPTIMIZERS = [create_optimizer_function(cls) for cls in PURE_OPTIMIZERS.values()]
 
 # Named optimizer functions for direct access
-prima_uobyqa = create_optimizer_wrapper(PRIMA_UOBYQA)
-nelder_mead = create_optimizer_wrapper(NelderMead)
-differential_evolution = create_optimizer_wrapper(DifferentialEvolution)
-particle_swarm = create_optimizer_wrapper(ParticleSwarm)
-random_search = create_optimizer_wrapper(RandomSearch)
-hill_climbing = create_optimizer_wrapper(HillClimbing)
-simulated_annealing = create_optimizer_wrapper(SimulatedAnnealing)
-harmony_search = create_optimizer_wrapper(HarmonySearch)
-genetic_algorithm = create_optimizer_wrapper(GeneticAlgorithm)
+prima_uobyqa = create_optimizer_function(PRIMA_UOBYQA)
+nelder_mead = create_optimizer_function(NelderMead)
+differential_evolution = create_optimizer_function(DifferentialEvolution)
+particle_swarm = create_optimizer_function(ParticleSwarm)
+random_search = create_optimizer_function(RandomSearch)
+hill_climbing = create_optimizer_function(HillClimbing)
+simulated_annealing = create_optimizer_function(SimulatedAnnealing)
+harmony_search = create_optimizer_function(HarmonySearch)
+genetic_algorithm = create_optimizer_function(GeneticAlgorithm)
 
 # Algorithm names for easy reference
 ALGORITHM_NAMES = list(PURE_OPTIMIZERS.keys())
@@ -86,7 +86,7 @@ ALGORITHM_NAMES = list(PURE_OPTIMIZERS.keys())
 def get_optimizer(name: str):
     """Get optimizer by name."""
     if name in PURE_OPTIMIZERS:
-        return create_optimizer_wrapper(PURE_OPTIMIZERS[name])
+        return create_optimizer_function(PURE_OPTIMIZERS[name])
     return None
 
 

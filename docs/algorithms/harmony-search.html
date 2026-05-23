@@ -1,185 +1,151 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta charset="UT-8">
+    <meta name="viewport" content="width=device-width, initial-scale=.">
     <meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' 'unsafe-inline' https://cdnjs.cloudflare.com https://cdn.jsdelivr.net; style-src 'self' 'unsafe-inline';">
     <title>Harmony Search (pyHarmonySearch) - Implementation Details</title>
     <style>
-        body {
-            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
-            line-height: 1.6;
-            margin: 0;
-            padding: 20px;
+        body 
+            font-family: -apple-system, BlinkMacSystemont, "Segoe UI", Roboto, sans-serif;
+            line-height: .;
+            margin: ;
+            padding: 2p;
             background: #ffffff;
             color: #333;
-        }
+        
 
-        .container {
-            max-width: 900px;
-            margin: 0 auto;
+        .container 
+            ma-width: 9p;
+            margin:  auto;
             background: white;
-            border: 1px solid #ddd;
-            box-shadow: 0 2px 4px rgba(0,0,0,0.05);
-        }
+            border: p solid #ddd;
+            bo-shadow:  2p p rgba(,,,.5);
+        
 
-        .header {
+        .header 
             background: #f8f9fa;
-            padding: 20px;
-            border-bottom: 1px solid #ddd;
-        }
+            padding: 2p;
+            border-bottom: p solid #ddd;
+        
 
-        .header h1 {
-            margin: 0 0 5px 0;
-            font-size: 1.8em;
-            font-weight: 600;
+        .header h 
+            margin:   5p ;
+            font-size: .8em;
+            font-weight: ;
             color: #333;
-        }
+        
 
-        .header p {
-            margin: 0;
-            font-size: 1em;
-            color: #666;
-        }
+        .header p 
+            margin: ;
+            font-size: em;
+            color: #;
+        
 
-        .content {
-            padding: 20px;
-        }
+        .content 
+            padding: 2p;
+        
 
-        .implementation-table {
-            width: 100%;
+        .implementation-table 
+            width: %;
             border-collapse: collapse;
-            margin: 20px 0;
-            border: 1px solid #ddd;
-        }
+            margin: 2p ;
+            border: p solid #ddd;
+        
 
-        .implementation-table th {
+        .implementation-table th 
             background: #f8f9fa;
-            padding: 12px;
-            text-align: left;
-            font-weight: 600;
+            padding: 2p;
+            tet-align: left;
+            font-weight: ;
             color: #333;
-            border-bottom: 1px solid #ddd;
-        }
+            border-bottom: p solid #ddd;
+        
 
-        .implementation-table td {
-            padding: 12px;
-            border-bottom: 1px solid #eee;
+        .implementation-table td 
+            padding: 2p;
+            border-bottom: p solid #eee;
             vertical-align: top;
-        }
+        
 
-        .implementation-table .category {
-            font-weight: 600;
+        .implementation-table .category 
+            font-weight: ;
             color: #333;
             background: #f8f9fa;
-        }
+        
 
-        .link-button {
+        .link-button 
             display: inline-block;
-            padding: 6px 12px;
-            background: #007bff;
+            padding: p 2p;
+            background: #7bff;
             color: white;
-            text-decoration: none;
-            border-radius: 3px;
-            font-size: 0.9em;
-            margin: 2px;
-        }
+            tet-decoration: none;
+            border-radius: 3p;
+            font-size: .9em;
+            margin: 2p;
+        
 
-        .link-button:hover {
-            background: #0056b3;
-        }
+        .link-button:hover 
+            background: #5b3;
+        
 
-        .algorithm-description {
+        .algorithm-description 
             background: #f8f9fa;
-            border: 1px solid #ddd;
-            padding: 15px;
-            margin: 20px 0;
-        }
+            border: p solid #ddd;
+            padding: 5p;
+            margin: 2p ;
+        
 
-        .back-nav {
-            margin-bottom: 20px;
-        }
+        .back-nav 
+            margin-bottom: 2p;
+        
 
-        .back-nav a {
-            color: #007bff;
-            text-decoration: none;
-        }
+        .back-nav a 
+            color: #7bff;
+            tet-decoration: none;
+        
 
-        .back-nav a:hover {
-            text-decoration: underline;
-        }
+        .back-nav a:hover 
+            tet-decoration: underline;
+        
 
-        .performance-notes {
+        .performance-notes 
             background: #f8f9fa;
-            border: 1px solid #ddd;
-            padding: 15px;
-            margin: 20px 0;
-        }
+            border: p solid #ddd;
+            padding: 5p;
+            margin: 2p ;
+        
 
-        .performance-notes h3 {
-            margin-top: 0;
+        .performance-notes h3 
+            margin-top: ;
             color: #333;
-        }
+        
 
-        .more-section {
-            margin-top: 20px;
-            border-top: 1px solid #ddd;
-            padding-top: 20px;
-        }
+        .more-section 
+            margin-top: 2p;
+            border-top: p solid #ddd;
+            padding-top: 2p;
+        
 
-        .more-toggle {
-            background: #007bff;
+        .more-toggle 
+            background: #7bff;
             color: white;
             border: none;
-            padding: 8px 16px;
-            border-radius: 3px;
+            padding: 8p p;
+            border-radius: 3p;
             cursor: pointer;
-            font-size: 0.9em;
-        }
+            font-size: .9em;
+        
 
-        .more-toggle:hover {
-            background: #0056b3;
-        }
+        .more-toggle:hover 
+            background: #5b3;
+        
 
-        .more-content {
+        .more-content 
             display: none;
-            margin-top: 15px;
-        }
+            margin-top: 5p;
+        
 
-        .validation-pending {
-            background: #f8f9fa;
-            border: 1px solid #ddd;
-            padding: 15px;
-            margin: 20px 0;
-        }
-
-        .validation-pending h3 {
-            margin-top: 0;
-            color: #333;
-        }
-
-        .harmony-note {
-            background: #f8f9fa;
-            border: 1px solid #ddd;
-            padding: 15px;
-            margin: 20px 0;
-        }
-
-        .harmony-note h3 {
-            margin-top: 0;
-            color: #333;
-        }
-    </style>
-    <!-- Three.js for 3D visualization -->
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
-    <script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/controls/OrbitControls.js"></script>
-</head>
-<body>
-    <div class="container">
-        <div class="header">
-            <h1>Harmony Search (pyHarmonySearch)</h1>
-            <p>Music-Inspired Metaheuristic Algorithm</p>
-        </div>
 
         <div class="content">
             <div class="back-nav">
@@ -187,7 +153,7 @@
             </div>
 
             <div class="algorithm-description">
-                <strong>Harmony Search (HS)</strong> is a nature-inspired metaheuristic algorithm based on the improvisation process of musicians. Developed by Zong Woo Geem in 2001, it mimics how musicians compose harmonies by combining existing melodies with new variations. The algorithm maintains a harmony memory of good solutions and generates new candidates through musical improvisation rules.
+                <strong>Harmony Search (HS)</strong> is a nature-inspired metaheuristic algorithm based on the improvisation process of musicians. Developed by Zong Woo Geem in 2, it mimics how musicians compose harmonies by combining eisting melodies with new variations. The algorithm maintains a harmony memory of good solutions and generates new candidates through musical improvisation rules.
             </div>
 
             <div class="harmony-note">
@@ -195,7 +161,7 @@
                 <p><strong>Harmony Search mimics musical composition process:</strong></p>
                 <ul>
                     <li><strong>Harmony Memory:</strong> Collection of good musical pieces (solutions)</li>
-                    <li><strong>Memory Consideration:</strong> Play a note from existing harmonies</li>
+                    <li><strong>Memory Consideration:</strong> Play a note from eisting harmonies</li>
                     <li><strong>Pitch Adjustment:</strong> Slightly modify a selected note</li>
                     <li><strong>Random Selection:</strong> Play a completely new note</li>
                 </ul>
@@ -204,17 +170,17 @@
             <div class="visualization-section">
                 <h3>Interactive 3D Visualization</h3>
                 <p>See Harmony Search in action on 3D optimization surfaces:</p>
-                <div id="algorithmDemo" style="width: 100%; height: 600px; border: 1px solid #ddd; border-radius: 4px; margin: 15px 0; position: relative; background: #fafafa;">
-                    <div id="loadingMessage" style="position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%); text-align: center; color: #666; z-index: 10; background: rgba(255,255,255,0.9); padding: 20px; border-radius: 4px;">
+                <div id="algorithmDemo" style="width: %; height: p; border: p solid #ddd; border-radius: p; margin: 5p ; position: relative; background: #fafafa;">
+                    <div id="loadingMessage" style="position: absolute; top: 5%; left: 5%; transform: translate(-5%, -5%); tet-align: center; color: #; z-inde: ; background: rgba(255,255,255,.9); padding: 2p; border-radius: p;">
                         <p>Loading 3D visualization...</p>
-                        <p style="font-size: 0.9em;">Requires WebGL support</p>
+                        <p style="font-size: .9em;">Requires WebGL support</p>
                     </div>
                 </div>
-                <div id="visualizationControls" style="background: #f8f9fa; padding: 15px; border: 1px solid #ddd; border-radius: 4px; margin-top: 10px;">
+                <div id="visualizationControls" style="background: #f8f9fa; padding: 5p; border: p solid #ddd; border-radius: p; margin-top: p;">
                     <!-- Controls will be inserted here by the visualizer -->
                 </div>
-                <p style="font-size: 0.9em; color: #666; margin-top: 10px;">
-                    <strong>Instructions:</strong> Choose a test function and algorithm, then click Start to watch the step-by-step optimization process. Each step shows where the algorithm decides to move next.
+                <p style="font-size: .9em; color: #; margin-top: p;">
+                    <strong>Instructions:</strong> Choose a test function and algorithm, then click Start to watch the step-by-step optimization process. Each step shows where the algorithm decides to move net.
                 </p>
             </div>
 
@@ -234,10 +200,10 @@
                             <strong>Zong Woo Geem</strong><br>
                             Music-inspired optimization metaheuristic<br>
                             Based on musical improvisation and harmony composition<br>
-                            <em>Published: 2001</em>
+                            <em>Published: 2</em>
                         </td>
                         <td>
-                            <a href="https://link.springer.com/article/10.1023/A:1010928611306" target="_blank" class="link-button paper">📄 Original Paper</a>
+                            <a href="https://link.springer.com/article/.23/A:9283" target="_blank" class="link-button paper">📄 Original Paper</a>
                         </td>
                     </tr>
                     <tr>
@@ -245,7 +211,7 @@
                         <td>
                             <strong>pyHarmonySearch</strong><br>
                             Tested against pyHarmonySearch package<br>
-                            Optional external dependency for validation<br>
+                            Optional eternal dependency for validation<br>
                             <em>Reference: PyPI harmony search implementation</em>
                         </td>
                         <td>
@@ -258,10 +224,10 @@
                             <strong>Humpday Harmony Search</strong><br>
                             Custom implementation with classical HS operators<br>
                             Harmony memory, pitch adjustment, and randomization<br>
-                            <em>File: humpday/optimizers/harmonysearch.py</em>
+                            <em>ile: humpday/optimizers/harmonysearch.py</em>
                         </td>
                         <td>
-                            <a href="https://github.com/microprediction/humpday" target="_blank" class="link-button python">🐍 Source</a>
+                            <a href="https://github.com/microprediction/humpday" target="_blank" class="link-button python"> Source</a>
                         </td>
                     </tr>
                     <tr>
@@ -273,7 +239,7 @@
                             <em>Class: HarmonySearch</em>
                         </td>
                         <td>
-                            <a href="https://github.com/microprediction/humpday/blob/main/docs/js/optimizers.js" target="_blank" class="link-button javascript">🌐 JS Implementation</a>
+                            <a href="https://github.com/microprediction/humpday/blob/main/docs/js/optimizers.js" target="_blank" class="link-button javascript"> JS Implementation</a>
                         </td>
                     </tr>
                     <tr>
@@ -284,7 +250,7 @@
                             <strong>Humpday JS:</strong> None (pure JavaScript)
                         </td>
                         <td>
-                            <span style="color: #95a5a6;">✨ No external dependencies</span>
+                            <span style="color: #95a5a;">✨ No eternal dependencies</span>
                         </td>
                     </tr>
                 </tbody>
@@ -295,9 +261,9 @@
                 <ul>
                     <li><strong>Best for:</strong> Continuous optimization, parameter tuning, engineering design</li>
                     <li><strong>Dimensions:</strong> Handles moderate to high dimensions well</li>
-                    <li><strong>Function evaluations:</strong> Memory-based, HMS × generations</li>
-                    <li><strong>Convergence:</strong> Steady improvement through memory exploitation</li>
-                    <li><strong>Robustness:</strong> Balance between exploitation and exploration through HS operators</li>
+                    <li><strong>unction evaluations:</strong> Memory-based, HMS × generations</li>
+                    <li><strong>Convergence:</strong> Steady improvement through memory eploitation</li>
+                    <li><strong>Robustness:</strong> Balance between eploitation and eploration through HS operators</li>
                 </ul>
             </div>
 
@@ -307,13 +273,13 @@
                     <h3>📚 Educational Resources</h3>
                     <ul>
                         <li><a href="https://en.wikipedia.org/wiki/Harmony_search" target="_blank">Harmony Search Wikipedia</a></li>
-                        <li><a href="https://link.springer.com/article/10.1023/A:1010928611306" target="_blank">Original HS Paper (Geem et al., 2001)</a></li>
-                        <li><a href="https://www.springer.com/gp/book/9783642007378" target="_blank">Music-Inspired Harmony Search Algorithm</a></li>
-                        <li><a href="https://ieeexplore.ieee.org/document/4531873" target="_blank">Improved Harmony Search Algorithm</a></li>
-                        <li><a href="https://link.springer.com/journal/10287" target="_blank">International Journal of Optimization</a></li>
+                        <li><a href="https://link.springer.com/article/.23/A:9283" target="_blank">Original HS Paper (Geem et al., 2)</a></li>
+                        <li><a href="https://www.springer.com/gp/book/978327378" target="_blank">Music-Inspired Harmony Search Algorithm</a></li>
+                        <li><a href="https://ieeeplore.ieee.org/document/53873" target="_blank">Improved Harmony Search Algorithm</a></li>
+                        <li><a href="https://link.springer.com/journal/287" target="_blank">International Journal of Optimization</a></li>
                     </ul>
 
-                    <h3>🔬 Core Algorithm Components</h3>
+                    <h3> Core Algorithm Components</h3>
                     <ul>
                         <li><strong>Harmony Memory (HM):</strong> Population of HMS best solutions found</li>
                         <li><strong>Harmony Memory Size (HMS):</strong> Number of solutions stored</li>
@@ -323,46 +289,46 @@
                         <li><strong>Random Selection:</strong> Generate completely new value</li>
                     </ul>
 
-                    <h3>📐 Mathematical Formulation</h3>
+                    <h3>📐 Mathematical ormulation</h3>
                     <ul>
-                        <li><strong>Memory Selection:</strong> x'ᵢ = HMⱼ(i) with probability HMCR</li>
-                        <li><strong>Pitch Adjustment:</strong> x'ᵢ = x'ᵢ ± rand() × bw with probability PAR</li>
-                        <li><strong>Random Selection:</strong> x'ᵢ ~ Uniform(LBᵢ, UBᵢ) with probability (1-HMCR)</li>
+                        <li><strong>Memory Selection:</strong> 'ᵢ = HMⱼ(i) with probability HMCR</li>
+                        <li><strong>Pitch Adjustment:</strong> 'ᵢ = 'ᵢ ± rand() × bw with probability PAR</li>
+                        <li><strong>Random Selection:</strong> 'ᵢ ~ Uniform(LBᵢ, UBᵢ) with probability (-HMCR)</li>
                         <li><strong>Memory Update:</strong> Replace worst harmony if new harmony is better</li>
                     </ul>
 
                     <h3>⚙️ Key Parameters</h3>
                     <ul>
-                        <li><strong>HMS:</strong> Harmony Memory Size, typically 10-50</li>
-                        <li><strong>HMCR:</strong> Memory Consideration Rate, usually 0.7-0.95</li>
-                        <li><strong>PAR:</strong> Pitch Adjusting Rate, usually 0.1-0.5</li>
+                        <li><strong>HMS:</strong> Harmony Memory Size, typically -5</li>
+                        <li><strong>HMCR:</strong> Memory Consideration Rate, usually .7-.95</li>
+                        <li><strong>PAR:</strong> Pitch Adjusting Rate, usually .-.5</li>
                         <li><strong>bw:</strong> Bandwidth for pitch adjustment</li>
-                        <li><strong>Termination:</strong> Maximum iterations or convergence criteria</li>
+                        <li><strong>Termination:</strong> Maimum iterations or convergence criteria</li>
                     </ul>
 
-                    <h3>🎯 Harmony Search Algorithm Pseudocode</h3>
-                    <pre style="background: #f8f9fa; padding: 15px; border-radius: 8px; font-family: monospace;">
-function harmonySearch(objectiveFunction, HMS, HMCR, PAR, maxIter):
-    // Step 1: Initialize Harmony Memory
+                    <h3> Harmony Search Algorithm Pseudocode</h3>
+                    <pre style="background: #f8f9fa; padding: 5p; border-radius: 8p; font-family: monospace;">
+function harmonySearch(objectiveunction, HMS, HMCR, PAR, maIter):
+    // Step : Initialize Harmony Memory
     HM = []
-    for i in 1 to HMS:
+    for i in  to HMS:
         harmony = generateRandomSolution()
-        HM.add(harmony, objectiveFunction(harmony))
+        HM.add(harmony, objectiveunction(harmony))
 
-    sortByFitness(HM)
+    sortByitness(HM)
 
     // Step 2: Improvise New Harmony
-    for iteration in 1 to maxIter:
+    for iteration in  to maIter:
         newHarmony = []
 
-        for j in 1 to problemDimension:
+        for j in  to problemDimension:
             if random() < HMCR:  // Memory consideration
                 // Choose value from memory
-                randomHarmonyIndex = randomInt(0, HMS-1)
-                newValue = HM[randomHarmonyIndex][j]
+                randomHarmonyInde = randomInt(, HMS-)
+                newValue = HM[randomHarmonyInde][j]
 
                 if random() < PAR:  // Pitch adjustment
-                    newValue += (random() - 0.5) * 2 * bandwidth
+                    newValue += (random() - .5) * 2 * bandwidth
                     newValue = clip(newValue, lowerBound, upperBound)
 
             else:  // Random selection
@@ -371,18 +337,18 @@ function harmonySearch(objectiveFunction, HMS, HMCR, PAR, maxIter):
             newHarmony[j] = newValue
 
         // Step 3: Update Harmony Memory
-        newFitness = objectiveFunction(newHarmony)
+        newitness = objectiveunction(newHarmony)
 
-        if newFitness < HM[HMS-1].fitness:  // Better than worst
-            HM[HMS-1] = (newHarmony, newFitness)
-            sortByFitness(HM)
+        if newitness < HM[HMS-].fitness:  // Better than worst
+            HM[HMS-] = (newHarmony, newitness)
+            sortByitness(HM)
 
-    return HM[0]  // Best harmony
+    return HM[]  // Best harmony
                     </pre>
 
-                    <h3>🔧 Harmony Search Variants</h3>
+                    <h3> Harmony Search Variants</h3>
                     <ul>
-                        <li><strong>Classical HS:</strong> Original algorithm with fixed parameters</li>
+                        <li><strong>Classical HS:</strong> Original algorithm with fied parameters</li>
                         <li><strong>Improved HS (IHS):</strong> Dynamic PAR and bandwidth adjustment</li>
                         <li><strong>Self-Adaptive HS:</strong> Automatic parameter tuning</li>
                         <li><strong>Global-Best HS:</strong> Use best harmony for pitch adjustment</li>
@@ -400,24 +366,24 @@ function harmonySearch(objectiveFunction, HMS, HMCR, PAR, maxIter):
                         <li><strong>Aesthetic Quality:</strong> Objective function value</li>
                     </ul>
 
-                    <h3>🚀 Applications</h3>
+                    <h3> Applications</h3>
                     <ul>
                         <li><strong>Engineering Design:</strong> Structural optimization, water distribution</li>
                         <li><strong>Energy Systems:</strong> Power system optimization, renewable energy</li>
                         <li><strong>Manufacturing:</strong> Production scheduling, resource allocation</li>
                         <li><strong>Transportation:</strong> Vehicle routing, traffic optimization</li>
-                        <li><strong>Machine Learning:</strong> Feature selection, neural network training</li>
+                        <li><strong>Machine Learning:</strong> eature selection, neural network training</li>
                         <li><strong>Economics:</strong> Portfolio optimization, supply chain management</li>
                     </ul>
 
-                    <h3>💡 Advantages of Harmony Search</h3>
+                    <h3> Advantages of Harmony Search</h3>
                     <ul>
                         <li><strong>Simplicity:</strong> Easy to understand and implement</li>
-                        <li><strong>Few Parameters:</strong> Only HMS, HMCR, PAR to tune</li>
+                        <li><strong>ew Parameters:</strong> Only HMS, HMCR, PAR to tune</li>
                         <li><strong>Memory-Based:</strong> Maintains population of good solutions</li>
-                        <li><strong>Flexibility:</strong> Adapts to continuous and discrete problems</li>
-                        <li><strong>Balance:</strong> Good trade-off between exploration and exploitation</li>
-                        <li><strong>No Gradient Needed:</strong> Works with black-box functions</li>
+                        <li><strong>leibility:</strong> Adapts to continuous and discrete problems</li>
+                        <li><strong>Balance:</strong> Good trade-off between eploration and eploitation</li>
+                        <li><strong>No Gradient Needed:</strong> Works with black-bo functions</li>
                     </ul>
 
                     <h3>⚠️ Limitations</h3>
@@ -426,29 +392,29 @@ function harmonySearch(objectiveFunction, HMS, HMCR, PAR, maxIter):
                         <li><strong>Premature Convergence:</strong> May converge too quickly with wrong parameters</li>
                         <li><strong>Slow Convergence:</strong> Can be slow on some problem types</li>
                         <li><strong>Local Search Ability:</strong> Limited fine-tuning capability</li>
-                        <li><strong>Memory Management:</strong> Fixed memory size may be suboptimal</li>
+                        <li><strong>Memory Management:</strong> ied memory size may be suboptimal</li>
                     </ul>
 
                     <h3>🔄 Parameter Guidelines</h3>
                     <ul>
-                        <li><strong>HMCR = 0.9:</strong> High memory consideration for exploitation</li>
-                        <li><strong>HMCR = 0.1:</strong> Low memory consideration for exploration</li>
-                        <li><strong>PAR = 0.3:</strong> Moderate pitch adjustment</li>
-                        <li><strong>HMS = 10-30:</strong> Small memory for fast convergence</li>
-                        <li><strong>HMS = 50-100:</strong> Large memory for diverse population</li>
+                        <li><strong>HMCR = .9:</strong> High memory consideration for eploitation</li>
+                        <li><strong>HMCR = .:</strong> Low memory consideration for eploration</li>
+                        <li><strong>PAR = .3:</strong> Moderate pitch adjustment</li>
+                        <li><strong>HMS = -3:</strong> Small memory for fast convergence</li>
+                        <li><strong>HMS = 5-:</strong> Large memory for diverse population</li>
                         <li><strong>Dynamic Parameters:</strong> Adapt HMCR, PAR during search</li>
                     </ul>
 
-                    <h3>🎨 Creative Aspects</h3>
+                    <h3> Creative Aspects</h3>
                     <ul>
                         <li><strong>Artistic Inspiration:</strong> Based on human creativity and musical composition</li>
                         <li><strong>Improvisation Process:</strong> Mimics how musicians create new melodies</li>
                         <li><strong>Harmony Aesthetics:</strong> Better solutions are like more beautiful music</li>
                         <li><strong>Cultural Bridge:</strong> Connects optimization with arts and music</li>
-                        <li><strong>Intuitive Understanding:</strong> Easy to explain through musical metaphor</li>
+                        <li><strong>Intuitive Understanding:</strong> Easy to eplain through musical metaphor</li>
                     </ul>
 
-                    <h3>📊 Comparison with Other Metaheuristics</h3>
+                    <h3> Comparison with Other Metaheuristics</h3>
                     <ul>
                         <li><strong>vs GA:</strong> Memory-based vs generation-based evolution</li>
                         <li><strong>vs PSO:</strong> Discrete memory vs continuous population movement</li>
@@ -462,67 +428,67 @@ function harmonySearch(objectiveFunction, HMS, HMCR, PAR, maxIter):
     </div>
 
     <script>
-        function toggleMore() {
+        function toggleMore() 
             const content = document.getElementById('moreContent');
             const button = document.querySelector('.more-toggle');
 
-            if (content.style.display === 'none' || content.style.display === '') {
+            if (content.style.display === 'none' || content.style.display === '') 
                 content.style.display = 'block';
-                button.textContent = 'Less Resources';
-            } else {
+                button.tetContent = 'Less Resources';
+             else 
                 content.style.display = 'none';
-                button.textContent = 'More Resources';
-            }
-        }
+                button.tetContent = 'More Resources';
+            
+        
 
         // Initialize 3D visualization when page loads
-        document.addEventListener('DOMContentLoaded', function() {
+        document.addEventListener('DOMContentLoaded', function() 
             // Load optimizers first, then visualizer
             const optimizersScript = document.createElement('script');
-            optimizersScript.src = '../js/modules/index.js';
-            optimizersScript.onload = function() {
+            optimizersScript.src = '../js/modules/inde.js';
+            optimizersScript.onload = function() 
                 // Load algorithm visualizer after optimizers are loaded
                 const script = document.createElement('script');
                 script.src = '../js/algorithm-visualizer.js';
-            script.onload = function() {
+            script.onload = function() 
                 // Check for WebGL support
-                function webglAvailable() {
-                    try {
+                function webglAvailable() 
+                    try 
                         const canvas = document.createElement('canvas');
-                        return !!(window.WebGLRenderingContext && canvas.getContext('webgl'));
-                    } catch (e) {
+                        return !!(window.WebGLRenderingContet && canvas.getContet('webgl'));
+                     catch (e) 
                         return false;
-                    }
-                }
+                    
+                
 
-                if (webglAvailable()) {
-                    const visualizer = new AlgorithmVisualizer('algorithmDemo', {
-                        onReady: () => {
+                if (webglAvailable()) 
+                    const visualizer = new AlgorithmVisualizer('algorithmDemo', 
+                        onReady: () => 
                             // Clear loading message once visualization is ready
                             const loadingMsg = document.getElementById('loadingMessage');
-                            if (loadingMsg) {
+                            if (loadingMsg) 
                                 loadingMsg.style.display = 'none';
-                            }
-                        }
-                    });
-                } else {
+                            
+                        
+                    );
+                 else 
                     document.getElementById('loadingMessage').innerHTML =
-                        '<h4>WebGL Not Supported</h4>' +
+                        '<h>WebGL Not Supported</h>' +
                         '<p>Your browser does not support WebGL for 3D visualization.</p>' +
-                        '<p>Try a modern browser like Chrome, Firefox, or Safari.</p>';
-                }
-            };
-            script.onerror = function() {
+                        '<p>Try a modern browser like Chrome, irefo, or Safari.</p>';
+                
+            ;
+            script.onerror = function() 
                 document.getElementById('algorithmDemo').innerHTML =
-                    '<div style="position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%); text-align: center;">' +
-                    '<h4>Visualization Unavailable</h4>' +
+                    '<div style="position: absolute; top: 5%; left: 5%; transform: translate(-5%, -5%); tet-align: center;">' +
+                    '<h>Visualization Unavailable</h>' +
                     '<p>Could not load 3D visualization component.</p>' +
                     '</div>';
-                };
+                ;
                 document.head.appendChild(script);
-            };
+            ;
             document.head.appendChild(optimizersScript);
-        });
+        );
     </script>
 </body>
 </html>
