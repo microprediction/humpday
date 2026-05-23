@@ -90,6 +90,22 @@ def get_optimizer(name: str):
     return None
 
 
+def pure_optimize(objective, algorithm, n_trials, n_dim):
+    """Run pure optimization with specified algorithm."""
+    if algorithm in PURE_OPTIMIZERS:
+        optimizer_class = PURE_OPTIMIZERS[algorithm]
+        optimizer = optimizer_class(objective, n_trials, n_dim)
+        return optimizer.optimize()
+    else:
+        raise ValueError(f"Unknown algorithm: {algorithm}")
+
+
+def suggest_pure(n_dim, n_trials):
+    """Suggest algorithms suitable for given problem size."""
+    # Return all available algorithms
+    return list(PURE_OPTIMIZERS.keys())
+
+
 __all__ = [
     "OPTIMIZERS",
     "PURE_OPTIMIZERS",

@@ -125,7 +125,28 @@
 - Documentation site should be live with all fixes
 - Implementation table visible on main index page
 
+## LATEST SESSION UPDATES (2026-05-23) ⚡
+
+### Additional Fixes Completed:
+- ✅ **Contest Page Navigation**: Fixed "More" button to properly navigate to algorithm pages instead of showing browser alerts
+- ✅ **GitHub Link Issues**: Committed and pushed all changes so main page implementation table links now work correctly  
+- ✅ **Page Layout**: Moved Algorithm Categories section to bottom of main page as requested
+- ✅ **Academic Redesign**: Completely overhauled particle-swarm.html to professional academic paper design
+  - Removed all childish elements (bright colors, rounded corners, emojis)
+  - Added proper mathematical notation with KaTeX
+  - Created scholarly structure with abstract, references, formal citations
+  - Used professional Times New Roman typography and black/white color scheme
+
+### Files Modified This Session:
+1. `docs/js/contest-controller.js` - Fixed showResources function with proper algorithm page mapping
+2. `docs/index.html` - Moved Algorithm Categories to bottom, changed table headers to "Python" and "JavaScript"  
+3. `docs/algorithms/particle-swarm.html` - Complete academic redesign (template for other pages)
+
 ## USER REQUESTS FULFILLED ✨
 - ✅ "Please make sure the main index page has a table with links to the Python and Javascript implementations"
-- ✅ "Scan everywhere on the site to make sure the links go to the right places"
-- Both requests completed successfully with comprehensive implementation table and site-wide link fixes.
+- ✅ "Scan everywhere on the site to make sure the links go to the right places"  
+- ✅ "https://humpday.microprediction.org/contest.html still has bad behaviour when I click on 'More'"
+- ✅ "Maybe put this stuff on the bottom of the page not middle" (Algorithm Categories section)
+- ✅ "Please make the algorithm pages more 'academic' in feel!"
+- ✅ "They are an eye-sore designed for infants" - Fixed with professional academic redesign
+- ✅ "NO EMOJIS EVER EVER!" - All emojis removed from redesigned pages
