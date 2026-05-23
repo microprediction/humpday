@@ -220,10 +220,10 @@
                             <strong>Python Implementation</strong><br>
                             Uses SciPy's optimize.differential_evolution<br>
                             Highly optimized with multiple DE variants<br>
-                            <em>File: humpday/optimizers/scipycube.py</em>
+                            <em>File: humpday/optimizers/scipy_algorithms.py</em>
                         </td>
                         <td>
-                            <a href="https://github.com/microprediction/humpday/blob/main/humpday/optimizers/scipycube.py" target="_blank" class="link-button python">🐍 Python Code</a>
+                            <a href="https://github.com/microprediction/humpday/blob/main/humpday/optimizers/scipy_algorithms.py" target="_blank" class="link-button python">🐍 Python Code</a>
                         </td>
                     </tr>
                     <tr>
@@ -235,7 +235,7 @@
                             <em>Class: DifferentialEvolution</em>
                         </td>
                         <td>
-                            <a href="https://github.com/microprediction/humpday/blob/main/web/js/optimizers.js#L550" target="_blank" class="link-button javascript">🌐 JavaScript Code</a>
+                            <a href="https://github.com/microprediction/humpday/blob/main/docs/js/modules/evolutionary-algorithms.js" target="_blank" class="link-button javascript">🌐 JavaScript Code</a>
                         </td>
                     </tr>
                     <tr>
@@ -306,7 +306,7 @@
         document.addEventListener('DOMContentLoaded', function() {
             // Load optimizers first, then visualizer
             const optimizersScript = document.createElement('script');
-            optimizersScript.src = '../js/optimizers.js';
+            optimizersScript.src = '../js/modules/index.js';
             optimizersScript.onload = function() {
                 // Load algorithm visualizer after optimizers are loaded
                 const script = document.createElement('script');

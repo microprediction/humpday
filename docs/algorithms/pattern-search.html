@@ -396,7 +396,7 @@
         document.addEventListener('DOMContentLoaded', function() {
             // Load optimizers first, then visualizer
             const optimizersScript = document.createElement('script');
-            optimizersScript.src = '../js/optimizers.js';
+            optimizersScript.src = '../js/modules/index.js';
             optimizersScript.onload = function() {
                 // Load algorithm visualizer after optimizers are loaded
                 const script = document.createElement('script');

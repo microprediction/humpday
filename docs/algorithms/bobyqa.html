@@ -233,10 +233,10 @@
                             <strong>Humpday Integration</strong><br>
                             Calls PDFO's BOBYQA implementation<br>
                             Standardized interface for optimization contests<br>
-                            <em>File: humpday/optimizers/primacube.py</em>
+                            <em>File: humpday/optimizers/prima_algorithms.py</em>
                         </td>
                         <td>
-                            <a href="https://github.com/microprediction/humpday/blob/main/humpday/optimizers/primacube.py" target="_blank" class="link-button python">🐍 Wrapper Code</a>
+                            <a href="https://github.com/microprediction/humpday/blob/main/humpday/optimizers/prima_algorithms.py" target="_blank" class="link-button python">🐍 Wrapper Code</a>
                         </td>
                     </tr>
                     <tr>
@@ -248,7 +248,7 @@
                             <em>Class: PRIMA_BOBYQA</em>
                         </td>
                         <td>
-                            <a href="https://github.com/microprediction/humpday/blob/main/web/js/optimizers.js#L240" target="_blank" class="link-button javascript">🌐 JS Port</a>
+                            <a href="https://github.com/microprediction/humpday/blob/main/docs/js/modules/prima-algorithms.js" target="_blank" class="link-button javascript">🌐 JS Port</a>
                         </td>
                     </tr>
                 </tbody>
@@ -298,7 +298,7 @@
         document.addEventListener('DOMContentLoaded', function() {
             // Load optimizers first, then visualizer
             const optimizersScript = document.createElement('script');
-            optimizersScript.src = '../js/optimizers.js';
+            optimizersScript.src = '../js/modules/index.js';
             optimizersScript.onload = function() {
                 // Load algorithm visualizer after optimizers are loaded
                 const script = document.createElement('script');

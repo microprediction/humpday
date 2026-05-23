@@ -322,9 +322,39 @@
             const info = algorithmInfo[algorithmName];
             if (!info || !info.resources) return;
 
-            // Navigate to algorithm-specific page instead of showing popup
-            const algorithmPageUrl = `algorithms/${algorithmName.toLowerCase().replace(/[^a-z0-9]/g, '-')}.html`;
-            window.open(algorithmPageUrl, '_blank');
+            // Map algorithm names to actual HTML filenames
+            const algorithmPageMap = {
+                'UOBYQA (PDFO)': 'uobyqa.html',
+                'NEWUOA (PDFO)': 'newuoa.html',
+                'BOBYQA (PDFO)': 'bobyqa.html',
+                'Nelder-Mead (SciPy)': 'nelder-mead.html',
+                'Powell (SciPy)': 'powell.html',
+                'Differential Evolution (SciPy)': 'differential-evolution.html',
+                'CMA-ES (pycma)': 'cma-evolution-strategy.html',
+                'Genetic Algorithm (DEAP)': 'genetic-algorithm.html',
+                'Particle Swarm (PySwarm)': 'particle-swarm.html',
+                'Simulated Annealing (SciPy)': 'simulated-annealing.html',
+                'BFGS (SciPy)': 'lbfgsb.html',
+                'Bayesian Optimization (scikit-optimize)': 'bayesian-optimization.html',
+                'Random Search (scikit-learn)': 'random-search.html',
+                'Adaptive Random Search (nlopt)': 'adaptive-random-search.html',
+                'Coordinate Descent (scikit-learn)': 'coordinate-descent.html',
+                'Pattern Search (SciPy)': 'pattern-search.html',
+                'Hill Climbing (SciPy)': 'hill-climbing.html',
+                'Tabu Search (SciPy)': 'tabu-search.html',
+                'Firefly Algorithm (SciPy)': 'firefly-algorithm.html',
+                'Ant Colony Optimization (acopy)': 'ant-colony-optimization.html',
+                'Harmony Search (pyHarmonySearch)': 'harmony-search.html',
+                'Evolution Strategy (DEAP)': 'cma-evolution-strategy.html'
+            };
+
+            const pageFile = algorithmPageMap[algorithmName];
+            if (pageFile) {
+                const algorithmPageUrl = `algorithms/${pageFile}`;
+                window.open(algorithmPageUrl, '_blank');
+            } else {
+                console.warn(`No page mapping found for algorithm: ${algorithmName}`);
+            }
         }
 
         function resetContest() {
