@@ -1079,8 +1079,8 @@
                 try {
                     console.log(`Running ${optimizer.name} on surface ${surfaceIndex + 1}`);
 
-                    // Create optimizer instance using internal name for factory
-                    const opt = OptimizerFactory.create(
+                    // Create optimizer instance using new modular structure
+                    const opt = window.createOptimizer(
                         optimizer.internalName || optimizer.name,
                         surface.func,
                         interpretation.budget,
