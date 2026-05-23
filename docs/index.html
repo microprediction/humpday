@@ -68,6 +68,30 @@
             position: absolute; left: 0; font-weight: 600; }
         .references ol { counter-reset: item; }
 
+        .btn {
+            display: inline-block;
+            background: var(--accent);
+            color: white;
+            text-decoration: none;
+            border-radius: 4px;
+            transition: background-color 0.2s;
+            font-weight: 500;
+        }
+
+        .btn:hover {
+            background: #2980b9;
+            color: white;
+            text-decoration: none;
+        }
+
+        .btn-secondary {
+            background: var(--header-bg);
+        }
+
+        .btn-secondary:hover {
+            background: #2c3e50;
+        }
+
         footer { background: var(--header-bg); color: white; padding: 24px 0; text-align: center;
             font-size: 0.9rem; }
         footer a { color: #74b9ff; }
