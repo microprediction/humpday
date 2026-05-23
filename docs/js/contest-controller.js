@@ -1336,8 +1336,13 @@
         }
 
         function updateEloRatings(results) {
-            // Simple Elo update simulation
-            const K = 32;
+            // Conservative Elo update for stable long-term averages
+            // Lower K-factor reduces recency bias and gives better averages over many challenges
+            const baseK = 12; // Much lower for stability
+
+            // Diminishing K-factor based on number of completed tests
+            const avgTestsCompleted = optimizers.reduce((sum, opt) => sum + opt.testsCompleted, 0) / optimizers.length;
+            const K = Math.max(8, baseK * Math.exp(-avgTestsCompleted / 20)); // Decreases as more data accumulated
 
             for (let i = 0; i < results.length; i++) {
                 for (let j = i + 1; j < results.length; j++) {
