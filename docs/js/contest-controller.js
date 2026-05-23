@@ -10,7 +10,7 @@
                 displayName: 'UOBYQA (PDFO)',
                 paper: 'https://doi.org/10.1007/s101070100290',
                 referenceImpl: 'https://www.pdfo.net/',
-                humpdayPython: 'https://github.com/microprediction/humpday/blob/main/humpday/optimizers/primacube.py',
+                humpdayPython: 'https://github.com/microprediction/humpday/blob/main/humpday/optimizers/optimizers.py#L48',
                 humpdayJS: 'js/optimizers.js',
                 resources: [
                     'https://arxiv.org/abs/2302.13246',
@@ -21,8 +21,8 @@
                 displayName: 'NEWUOA (PDFO)',
                 paper: 'https://www.damtp.cam.ac.uk/user/na/NA_papers/NA2004_08.pdf',
                 referenceImpl: 'https://www.pdfo.net/',
-                humpdayPython: 'https://github.com/microprediction/humpday/blob/main/humpday/optimizers/primacube.py',
-                humpdayJS: 'https://github.com/microprediction/humpday/blob/main/web/js/optimizers.js#L156',
+                humpdayPython: 'https://github.com/microprediction/humpday/blob/main/humpday/optimizers/optimizers.py#L120',
+                humpdayJS: 'js/optimizers.js',
                 resources: [
                     'https://arxiv.org/abs/2302.13246',
                     'https://github.com/pdfo/pdfo'
@@ -32,8 +32,8 @@
                 displayName: 'BOBYQA (PDFO)',
                 paper: 'https://www.damtp.cam.ac.uk/user/na/NA_papers/NA2009_06.pdf',
                 referenceImpl: 'https://www.pdfo.net/',
-                humpdayPython: 'https://github.com/microprediction/humpday/blob/main/humpday/optimizers/primacube.py',
-                humpdayJS: 'https://github.com/microprediction/humpday/blob/main/web/js/optimizers.js#L240',
+                humpdayPython: 'https://github.com/microprediction/humpday/blob/main/humpday/optimizers/optimizers.py',
+                humpdayJS: 'js/optimizers.js',
                 resources: [
                     'https://arxiv.org/abs/2302.13246',
                     'https://github.com/pdfo/pdfo'
@@ -43,8 +43,8 @@
                 displayName: 'Nelder-Mead (SciPy)',
                 paper: 'https://doi.org/10.1093/comjnl/7.4.308',
                 referenceImpl: 'https://docs.scipy.org/doc/scipy/reference/optimize.minimize-neldermead.html',
-                humpdayPython: 'https://github.com/microprediction/humpday/blob/main/humpday/optimizers/scipycube.py',
-                humpdayJS: 'https://github.com/microprediction/humpday/blob/main/web/js/optimizers.js#L320',
+                humpdayPython: 'https://github.com/microprediction/humpday/blob/main/humpday/optimizers/optimizers.py',
+                humpdayJS: 'js/optimizers.js',
                 resources: [
                     'https://github.com/scipy/scipy',
                     'https://optimization.mccormick.northwestern.edu/index.php/Nelder-Mead_method'
@@ -54,7 +54,7 @@
                 displayName: 'Powell (SciPy)',
                 paper: 'https://doi.org/10.1093/comjnl/7.2.155',
                 referenceImpl: 'https://docs.scipy.org/doc/scipy/reference/optimize.minimize-powell.html',
-                humpdayPython: 'https://github.com/microprediction/humpday/blob/main/humpday/optimizers/scipycube.py',
+                humpdayPython: 'https://github.com/microprediction/humpday/blob/main/humpday/optimizers/optimizers.py',
                 humpdayJS: 'js/optimizers.js',
                 resources: [
                     'https://github.com/scipy/scipy',
@@ -65,7 +65,7 @@
                 displayName: 'Differential Evolution (SciPy)',
                 paper: 'https://doi.org/10.1023/A:1008202821328',
                 referenceImpl: 'https://docs.scipy.org/doc/scipy/reference/generated/scipy.optimize.differential_evolution.html',
-                humpdayPython: 'https://github.com/microprediction/humpday/blob/main/humpday/optimizers/scipycube.py',
+                humpdayPython: 'https://github.com/microprediction/humpday/blob/main/humpday/optimizers/optimizers.py',
                 humpdayJS: 'js/optimizers.js',
                 resources: [
                     'https://pablormier.github.io/2017/09/05/a-tutorial-on-differential-evolution-with-python/',
@@ -76,7 +76,7 @@
                 displayName: 'CMA-ES (pycma)',
                 paper: 'https://arxiv.org/abs/1604.00772',
                 referenceImpl: 'https://pypi.org/project/cma/',
-                humpdayPython: 'https://github.com/microprediction/humpday/blob/main/humpday/optimizers/comprehensive_derivative_free.py',
+                humpdayPython: 'https://github.com/microprediction/humpday/blob/main/humpday/optimizers/optimizers.py',
                 humpdayJS: 'js/optimizers.js',
                 resources: [
                     'https://cma-es.github.io/',
@@ -87,7 +87,7 @@
                 displayName: 'Genetic Algorithm (DEAP)',
                 paper: 'https://doi.org/10.7551/mitpress/1090.001.0001',
                 referenceImpl: 'https://deap.readthedocs.io/en/master/',
-                humpdayPython: 'https://github.com/microprediction/humpday/blob/main/humpday/optimizers/comprehensive_derivative_free.py',
+                humpdayPython: 'https://github.com/microprediction/humpday/blob/main/humpday/optimizers/optimizers.py',
                 humpdayJS: 'js/optimizers.js',
                 resources: [
                     'https://towardsdatascience.com/introduction-to-genetic-algorithms-including-example-code-e396e98d8bf3',
@@ -98,7 +98,7 @@
                 displayName: 'Particle Swarm (PySwarm)',
                 paper: 'https://doi.org/10.1109/ICNN.1995.488968',
                 referenceImpl: 'https://pypi.org/project/pyswarm/',
-                humpdayPython: 'https://github.com/microprediction/humpday/blob/main/humpday/optimizers/comprehensive_derivative_free.py',
+                humpdayPython: 'https://github.com/microprediction/humpday/blob/main/humpday/optimizers/optimizers.py',
                 humpdayJS: 'js/optimizers.js',
                 resources: [
                     'https://nathanrooy.github.io/posts/2016-08-17/simple-particle-swarm-optimization-with-python/',
@@ -109,7 +109,7 @@
                 displayName: 'Simulated Annealing (SciPy)',
                 paper: 'https://doi.org/10.1126/science.220.4598.671',
                 referenceImpl: 'https://docs.scipy.org/doc/scipy/reference/generated/scipy.optimize.dual_annealing.html',
-                humpdayPython: 'https://github.com/microprediction/humpday/blob/main/humpday/optimizers/comprehensive_derivative_free.py',
+                humpdayPython: 'https://github.com/microprediction/humpday/blob/main/humpday/optimizers/optimizers.py',
                 humpdayJS: 'js/optimizers.js',
                 resources: [
                     'https://optimization.mccormick.northwestern.edu/index.php/Simulated_annealing',
@@ -120,7 +120,7 @@
                 displayName: 'BFGS (SciPy)',
                 paper: 'https://doi.org/10.1007/BF01589116',
                 referenceImpl: 'https://docs.scipy.org/doc/scipy/reference/generated/scipy.optimize.minimize.html#scipy.optimize.minimize',
-                humpdayPython: 'https://github.com/microprediction/humpday/blob/main/humpday/optimizers/scipycube.py',
+                humpdayPython: 'https://github.com/microprediction/humpday/blob/main/humpday/optimizers/optimizers.py',
                 humpdayJS: 'js/optimizers.js',
                 resources: [
                     'https://optimization.mccormick.northwestern.edu/index.php/BFGS_method',
@@ -131,7 +131,7 @@
                 displayName: 'Bayesian Optimization (scikit-optimize)',
                 paper: 'https://arxiv.org/abs/1012.2599',
                 referenceImpl: 'https://distill.pub/2020/bayesian-optimization/',
-                humpdayPython: 'https://github.com/microprediction/humpday/blob/main/humpday/optimizers/bayesoptcube.py',
+                humpdayPython: 'https://github.com/microprediction/humpday/blob/main/humpday/optimizers/optimizers.py',
                 humpdayJS: 'js/optimizers.js',
                 resources: [
                     'https://distill.pub/2020/bayesian-optimization/',
@@ -142,7 +142,7 @@
                 displayName: 'Random Search (scikit-learn)',
                 paper: 'https://jmlr.org/papers/v13/bergstra12a.html',
                 referenceImpl: 'https://en.wikipedia.org/wiki/Random_search',
-                humpdayPython: 'https://github.com/microprediction/humpday/blob/main/humpday/optimizers/comprehensive_derivative_free.py',
+                humpdayPython: 'https://github.com/microprediction/humpday/blob/main/humpday/optimizers/optimizers.py',
                 humpdayJS: 'js/optimizers.js',
                 resources: [
                     'https://optimization.mccormick.northwestern.edu/index.php/Random_search',
@@ -153,7 +153,7 @@
                 displayName: 'Adaptive Random Search (nlopt)',
                 paper: 'https://doi.org/10.1007/BF01581033',
                 referenceImpl: 'https://nlopt.readthedocs.io/en/latest/NLopt_Algorithms/#controlled-random-search-crs-family',
-                humpdayPython: 'https://github.com/microprediction/humpday/blob/main/humpday/optimizers/allcube.py',
+                humpdayPython: 'https://github.com/microprediction/humpday/blob/main/humpday/optimizers/optimizers.py',
                 humpdayJS: 'js/optimizers.js',
                 resources: [
                     'https://optimization.mccormick.northwestern.edu/index.php/Random_search',
@@ -164,7 +164,7 @@
                 displayName: 'Coordinate Descent (scikit-learn)',
                 paper: 'https://doi.org/10.1007/s10107-015-0892-3',
                 referenceImpl: 'https://scikit-learn.org/stable/modules/linear_model.html#coordinate-descent',
-                humpdayPython: 'https://github.com/microprediction/humpday/blob/main/humpday/optimizers/allcube.py',
+                humpdayPython: 'https://github.com/microprediction/humpday/blob/main/humpday/optimizers/optimizers.py',
                 humpdayJS: 'js/optimizers.js',
                 resources: [
                     'https://optimization.mccormick.northwestern.edu/index.php/Coordinate_descent',
@@ -175,7 +175,7 @@
                 displayName: 'Pattern Search (SciPy)',
                 paper: 'https://doi.org/10.1137/S1052623493250780',
                 referenceImpl: 'https://docs.scipy.org/doc/scipy/reference/optimize.minimize-cobyla.html',
-                humpdayPython: 'https://github.com/microprediction/humpday/blob/main/humpday/optimizers/allcube.py',
+                humpdayPython: 'https://github.com/microprediction/humpday/blob/main/humpday/optimizers/optimizers.py',
                 humpdayJS: 'js/optimizers.js',
                 resources: [
                     'https://optimization.mccormick.northwestern.edu/index.php/Pattern_search',
@@ -186,7 +186,7 @@
                 displayName: 'Hill Climbing (SciPy)',
                 paper: 'https://doi.org/10.1007/s00521-016-2328-2',
                 referenceImpl: 'https://docs.scipy.org/doc/scipy/reference/generated/scipy.optimize.minimize.html',
-                humpdayPython: 'https://github.com/microprediction/humpday/blob/main/humpday/optimizers/allcube.py',
+                humpdayPython: 'https://github.com/microprediction/humpday/blob/main/humpday/optimizers/optimizers.py',
                 humpdayJS: 'js/optimizers.js',
                 resources: [
                     'https://towardsdatascience.com/hill-climbing-optimization-algorithm-8ddd2d8d6b6d',
@@ -197,7 +197,7 @@
                 displayName: 'Tabu Search (SciPy)',
                 paper: 'https://doi.org/10.1287/ijoc.1.3.190',
                 referenceImpl: 'https://docs.scipy.org/doc/scipy/reference/generated/scipy.optimize.basinhopping.html',
-                humpdayPython: 'https://github.com/microprediction/humpday/blob/main/humpday/optimizers/allcube.py',
+                humpdayPython: 'https://github.com/microprediction/humpday/blob/main/humpday/optimizers/optimizers.py',
                 humpdayJS: 'js/optimizers.js',
                 resources: [
                     'https://optimization.mccormick.northwestern.edu/index.php/Tabu_search',
@@ -208,7 +208,7 @@
                 displayName: 'Firefly Algorithm (SciPy)',
                 paper: 'https://doi.org/10.1007/978-3-642-04944-6_14',
                 referenceImpl: 'https://docs.scipy.org/doc/scipy/reference/generated/scipy.optimize.differential_evolution.html',
-                humpdayPython: 'https://github.com/microprediction/humpday/blob/main/humpday/optimizers/allcube.py',
+                humpdayPython: 'https://github.com/microprediction/humpday/blob/main/humpday/optimizers/optimizers.py',
                 humpdayJS: 'js/optimizers.js',
                 resources: [
                     'https://www.mathworks.com/matlabcentral/fileexchange/29693-firefly-algorithm',
@@ -219,7 +219,7 @@
                 displayName: 'Ant Colony Optimization (acopy)',
                 paper: 'https://doi.org/10.1109/3477.484436',
                 referenceImpl: 'https://pypi.org/project/acopy/',
-                humpdayPython: 'https://github.com/microprediction/humpday/blob/main/humpday/optimizers/allcube.py',
+                humpdayPython: 'https://github.com/microprediction/humpday/blob/main/humpday/optimizers/optimizers.py',
                 humpdayJS: 'js/optimizers.js',
                 resources: [
                     'https://optimization.mccormick.northwestern.edu/index.php/Ant_colony_optimization',
@@ -230,7 +230,7 @@
                 displayName: 'Harmony Search (pyHarmonySearch)',
                 paper: 'https://doi.org/10.1177/003754970107600201',
                 referenceImpl: 'https://pypi.org/project/pyHarmonySearch/',
-                humpdayPython: 'https://github.com/microprediction/humpday/blob/main/humpday/optimizers/allcube.py',
+                humpdayPython: 'https://github.com/microprediction/humpday/blob/main/humpday/optimizers/optimizers.py',
                 humpdayJS: 'js/optimizers.js',
                 resources: [
                     'https://optimization.mccormick.northwestern.edu/index.php/Harmony_search',
@@ -241,7 +241,7 @@
                 displayName: 'Evolution Strategy (DEAP)',
                 paper: 'https://doi.org/10.1007/978-3-662-43505-2_44',
                 referenceImpl: 'https://deap.readthedocs.io/en/master/api/algo.html#evolution-strategies',
-                humpdayPython: 'https://github.com/microprediction/humpday/blob/main/humpday/optimizers/allcube.py',
+                humpdayPython: 'https://github.com/microprediction/humpday/blob/main/humpday/optimizers/optimizers.py',
                 humpdayJS: 'js/optimizers.js',
                 resources: [
                     'https://optimization.mccormick.northwestern.edu/index.php/Evolution_strategy',
@@ -322,13 +322,9 @@
             const info = algorithmInfo[algorithmName];
             if (!info || !info.resources) return;
 
-            const resourcesHtml = info.resources.map(url => {
-                const domain = new URL(url).hostname.replace('www.', '');
-                return `<li><a href="${url}" target="_blank" style="color: #007bff;">${domain}</a></li>`;
-            }).join('');
-
-            alert(`📚 Additional Resources for ${info.displayName}:\n\n` +
-                info.resources.map(url => new URL(url).hostname.replace('www.', '')).join('\n'));
+            // Navigate to algorithm-specific page instead of showing popup
+            const algorithmPageUrl = `algorithms/${algorithmName.toLowerCase().replace(/[^a-z0-9]/g, '-')}.html`;
+            window.open(algorithmPageUrl, '_blank');
         }
 
         function resetContest() {
@@ -812,17 +808,18 @@
                             </span>
                         </td>
                         <td>
-                            <div style="display: flex; flex-direction: column; gap: 4px;">
-                                <strong>
-                                    <a href="${algorithmInfo[opt.name]?.explanation || '#'}" target="_blank"
-                                       style="color: #333; text-decoration: none; border-bottom: 1px dotted #ccc;"
-                                       title="Learn about ${getAlgorithmDisplayName(opt.name)}">
-                                        ${getAlgorithmDisplayName(opt.name)}
-                                    </a>
-                                </strong>
-                                ${getAlgorithmLinks(opt.name)}
-                                    ${algorithmInfo[opt.name]?.resources ? `<a href="#" onclick="showResources('${opt.name}'); return false;" style="color: #6f42c1; text-decoration: none;">📚 More</a>` : ''}
+                            <div style="display: flex; flex-direction: column; gap: 2px;">
+                                <div style="display: flex; align-items: center; gap: 8px;">
+                                    <strong>
+                                        <a href="${algorithmInfo[opt.name]?.explanation || '#'}" target="_blank"
+                                           style="color: #333; text-decoration: none; border-bottom: 1px dotted #ccc;"
+                                           title="Learn about ${getAlgorithmDisplayName(opt.name)}">
+                                            ${getAlgorithmDisplayName(opt.name)}
+                                        </a>
+                                    </strong>
+                                    ${algorithmInfo[opt.name]?.resources ? `<a href="#" onclick="showResources('${opt.name}'); return false;" style="color: #6f42c1; text-decoration: none; font-size: 0.85em;">More</a>` : ''}
                                 </div>
+                                ${getAlgorithmLinks(opt.name)}
                             </div>
                         </td>
                         <td><span class="elo-rating">${Math.round(opt.elo)}</span></td>
