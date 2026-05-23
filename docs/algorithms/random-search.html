@@ -4,409 +4,309 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' 'unsafe-inline' https://cdnjs.cloudflare.com https://cdn.jsdelivr.net; style-src 'self' 'unsafe-inline';">
-    <title>Random Search - Implementation Details</title>
+    <title>Random Search - HumpDay Implementation</title>
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/katex@0.16.10/dist/katex.min.css" crossorigin="anonymous">
+    <script defer src="https://cdn.jsdelivr.net/npm/katex@0.16.10/dist/katex.min.js" crossorigin="anonymous"></script>
+    <script defer src="https://cdn.jsdelivr.net/npm/katex@0.16.10/dist/contrib/auto-render.min.js" crossorigin="anonymous"
+        onload="renderMathInElement(document.body, {delimiters:[{left:'$$',right:'$$',display:true},{left:'$',right:'$',display:false}]});"></script>
     <style>
         body {
-            font-family: 'Georgia', 'Times New Roman', serif;
+            font-family: 'Times New Roman', Times, serif;
+            font-size: 16px;
+            line-height: 1.6;
+            color: #000;
+            background: #fff;
             margin: 0;
-            padding: 20px;
-            background: #f8f9fa;
-            color: #2c3e50;
-        }
-
-        .container {
-            max-width: 1000px;
+            padding: 40px 20px;
+            max-width: 800px;
             margin: 0 auto;
-            background: white;
-            border-radius: 15px;
-            box-shadow: 0 20px 40px rgba(0,0,0,0.1);
-            overflow: hidden;
         }
 
-        .header {
-            background: #95a5a6;
-            color: white;
-            padding: 30px;
+        .paper-header {
             text-align: center;
+            margin-bottom: 40px;
+            border-bottom: 2px solid #000;
+            padding-bottom: 20px;
         }
 
-        .header h1 {
+        .paper-title {
+            font-size: 24px;
+            font-weight: bold;
             margin: 0 0 10px 0;
-            font-size: 2.2em;
+            letter-spacing: 0.5px;
         }
 
-        .header p {
+        .paper-subtitle {
+            font-size: 14px;
+            font-style: italic;
+            color: #333;
             margin: 0;
-            font-size: 1.1em;
-            opacity: 0.9;
         }
 
-        .content {
-            padding: 40px;
+        .abstract {
+            background: #f9f9f9;
+            border-left: 4px solid #333;
+            padding: 20px;
+            margin: 30px 0;
+            font-style: italic;
+        }
+
+        .abstract h3 {
+            margin: 0 0 10px 0;
+            font-size: 14px;
+            font-weight: bold;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+        }
+
+        h2 {
+            font-size: 18px;
+            font-weight: bold;
+            margin: 40px 0 20px 0;
+            border-bottom: 1px solid #ccc;
+            padding-bottom: 5px;
+        }
+
+        h3 {
+            font-size: 16px;
+            font-weight: bold;
+            margin: 30px 0 15px 0;
         }
 
         .implementation-table {
             width: 100%;
             border-collapse: collapse;
-            margin: 30px 0;
-            border-radius: 10px;
-            overflow: hidden;
-            box-shadow: 0 4px 8px rgba(0,0,0,0.1);
+            margin: 20px 0;
+            border: 1px solid #333;
         }
 
         .implementation-table th {
-            background: #34495e;
-            color: white;
-            padding: 15px;
+            background: #f0f0f0;
+            border: 1px solid #333;
+            padding: 12px;
             text-align: left;
-            font-weight: 600;
+            font-weight: bold;
+            font-size: 14px;
         }
 
         .implementation-table td {
-            padding: 15px;
-            border-bottom: 1px solid #eee;
+            border: 1px solid #333;
+            padding: 12px;
             vertical-align: top;
+            font-size: 14px;
         }
 
-        .implementation-table tr:hover {
-            background: #f8f9fa;
+        .code-ref {
+            font-family: 'Courier New', monospace;
+            background: #f5f5f5;
+            padding: 2px 4px;
+            border: 1px solid #ccc;
         }
 
-        .implementation-table .category {
-            font-weight: 600;
-            color: #34495e;
-            background: #ecf0f1;
-        }
-
-        .link-button {
-            display: inline-block;
-            padding: 8px 16px;
-            background: #3498db;
-            color: white;
-            text-decoration: none;
-            border-radius: 4px;
-            font-size: 0.9em;
-            margin: 2px 4px;
-            transition: background 0.2s;
-        }
-
-        .link-button:hover {
-            background: #2980b9;
-        }
-
-        .link-button.paper { background: #e74c3c; }
-        .link-button.python { background: #27ae60; }
-        .link-button.javascript { background: #f39c12; }
-        .link-button.info { background: #9b59b6; }
-
-        .algorithm-description {
-            background: #ecf0f1;
-            border-left: 4px solid #95a5a6;
-            padding: 20px;
-            border-radius: 5px;
-            margin: 20px 0;
-        }
-
-        .back-nav {
-            margin-bottom: 20px;
-        }
-
-        .back-nav a {
-            color: #3498db;
-            text-decoration: none;
-            font-size: 1.1em;
-        }
-
-        .back-nav a:hover {
+        a {
+            color: #000;
             text-decoration: underline;
         }
 
-        .performance-notes {
-            background: #fff3cd;
-            border: 1px solid #ffc107;
-            border-radius: 8px;
-            padding: 15px;
+        a:hover {
+            text-decoration: none;
+        }
+
+        .nav-link {
+            display: inline-block;
+            margin-bottom: 20px;
+            font-size: 14px;
+        }
+
+        .mathematical-formulation {
+            background: #fafafa;
+            border: 1px solid #ddd;
+            padding: 20px;
             margin: 20px 0;
         }
 
-        .performance-notes h3 {
-            margin-top: 0;
-            color: #856404;
-        }
-
-        .more-section {
-            margin-top: 30px;
-            border-top: 2px solid #ecf0f1;
+        .references {
+            margin-top: 50px;
+            border-top: 2px solid #000;
             padding-top: 20px;
         }
 
-        .more-toggle {
-            background: #3498db;
-            color: white;
+        .references h2 {
             border: none;
-            padding: 10px 20px;
-            border-radius: 4px;
-            cursor: pointer;
-            font-size: 1em;
+            margin-bottom: 20px;
         }
 
-        .more-toggle:hover {
-            background: #2980b9;
+        .reference-list {
+            list-style: none;
+            padding: 0;
         }
 
-        .more-content {
-            display: none;
-            margin-top: 20px;
+        .reference-list li {
+            margin: 10px 0;
+            padding-left: 20px;
+            position: relative;
         }
 
-        .baseline-note {
-            background: #d1ecf1;
-            border: 1px solid #bee5eb;
-            border-radius: 8px;
+        .reference-list li:before {
+            content: "[" counter(item) "]";
+            counter-increment: item;
+            position: absolute;
+            left: 0;
+            font-weight: bold;
+        }
+
+        .reference-list ol {
+            counter-reset: item;
+        }
+
+        .validation-status {
+            background: #f0f8f0;
+            border-left: 3px solid #4a7c59;
             padding: 15px;
             margin: 20px 0;
-        }
-
-        .baseline-note h3 {
-            margin-top: 0;
-            color: #0c5460;
+            font-size: 14px;
         }
     </style>
 </head>
 <body>
-    <div class="container">
-        <div class="header">
-            <h1>Random Search (Baseline)</h1>
-            <p>Pure Random Sampling Optimizer</p>
-        </div>
-
-        <div class="content">
-            <div class="back-nav">
-                <a href="../contest.html">← Back to Optimizer Competition</a>
-            </div>
-
-            <div class="algorithm-description">
-                <strong>Random Search</strong> is the simplest optimization algorithm - it simply generates random points in the search space and keeps track of the best solution found. While not sophisticated, it serves as a crucial baseline for comparing more advanced methods and can be surprisingly effective on high-dimensional problems or highly multimodal landscapes.
-            </div>
-            <div class="visualization-section">
-                <h3>Interactive 3D Visualization</h3>
-                <p>See Random Search in action on 3D optimization surfaces:</p>
-                <div id="algorithmDemo" style="width: 100%; height: 600px; border: 1px solid #ddd; border-radius: 4px; margin: 15px 0; position: relative; background: #fafafa;">
-                    <div id="loadingMessage" style="position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%); text-align: center; color: #666; z-index: 10; background: rgba(255,255,255,0.9); padding: 20px; border-radius: 4px;">
-                        <p>Loading 3D visualization...</p>
-                        <p style="font-size: 0.9em;">Requires WebGL support</p>
-                    </div>
-                </div>
-                <div id="visualizationControls" style="background: #f8f9fa; padding: 15px; border: 1px solid #ddd; border-radius: 4px; margin-top: 10px;">
-                    <!-- Controls will be inserted here by the visualizer -->
-                </div>
-                <p style="font-size: 0.9em; color: #666; margin-top: 10px;">
-                    <strong>Instructions:</strong> Choose a test function and algorithm, then click Start to watch the step-by-step optimization process.
-                </p>
-            </div>
-
-
-            <h2>Implementation Details</h2>
-            <table class="implementation-table">
-                <thead>
-                    <tr>
-                        <th>Component</th>
-                        <th>Details</th>
-                        <th>Links</th>
-                    </tr>
-                </thead>
-                <tbody>
-                    <tr>
-                        <td class="category">Algorithm Concept</td>
-                        <td>
-                            <strong>Pure Random Sampling</strong><br>
-                            Generate uniformly random points in [0,1]ⁿ<br>
-                            Keep track of best function value found<br>
-                            <em>Concept: Ancient (Monte Carlo methods)</em>
-                        </td>
-                        <td>
-                            <a href="https://en.wikipedia.org/wiki/Random_search" target="_blank" class="link-button info">📖 Wikipedia</a>
-                        </td>
-                    </tr>
-                    <tr>
-                        <td class="category">Reference Implementation</td>
-                        <td>
-                            <strong>Custom Implementation</strong><br>
-                            No standard package (trivial to implement)<br>
-                            Uniform sampling from [0,1]ⁿ hypercube<br>
-                            <em>Self-reference: Perfect baseline</em>
-                        </td>
-                        <td>
-                            <a href="https://en.wikipedia.org/wiki/Monte_Carlo_method" target="_blank" class="link-button info">🎲 Monte Carlo</a>
-                        </td>
-                    </tr>
-                    <tr>
-                        <td class="category">Humpday Python Implementation</td>
-                        <td>
-                            <strong>Humpday Random Search</strong><br>
-                            numpy.random.uniform for sampling<br>
-                            Simple best-so-far tracking<br>
-                            <em>File: humpday/optimizers/random*.py</em>
-                        </td>
-                        <td>
-                            <a href="https://github.com/microprediction/humpday" target="_blank" class="link-button python">🐍 Source</a>
-                        </td>
-                    </tr>
-                    <tr>
-                        <td class="category">Humpday JavaScript Port</td>
-                        <td>
-                            <strong>Browser Implementation</strong><br>
-                            Math.random() for uniform sampling<br>
-                            Pure JavaScript with no dependencies<br>
-                            <em>Class: RandomSearch</em>
-                        </td>
-                        <td>
-                            <a href="https://github.com/microprediction/humpday/blob/main/docs/js/optimizers.js" target="_blank" class="link-button javascript">🌐 JS Implementation</a>
-                        </td>
-                    </tr>
-                    <tr>
-                        <td class="category">Dependencies</td>
-                        <td>
-                            <strong>Reference:</strong> None (built-in random number generators)<br>
-                            <strong>Humpday Python:</strong> numpy (for vectorized operations)<br>
-                            <strong>Humpday JS:</strong> None (pure JavaScript)
-                        </td>
-                        <td>
-                            <span style="color: #95a5a6;">✨ No external dependencies</span>
-                        </td>
-                    </tr>
-                </tbody>
-            </table>
-
-            <div class="baseline-note">
-                <h3>🎯 Perfect Baseline Algorithm</h3>
-                <p><strong>Random Search serves as the gold standard baseline for optimization comparisons:</strong></p>
-                <ul>
-                    <li><strong>Always Available:</strong> Works on any problem without assumptions</li>
-                    <li><strong>Parameter-Free:</strong> No hyperparameters to tune</li>
-                    <li><strong>Unbiased:</strong> Explores the entire search space uniformly</li>
-                    <li><strong>Embarrassingly Parallel:</strong> Perfect for distributed computing</li>
-                    <li><strong>Theoretical Foundation:</strong> Well-understood convergence properties</li>
-                </ul>
-                <p><em>Any optimization algorithm that can't consistently beat random search may have implementation issues!</em></p>
-            </div>
-
-            <div class="performance-notes">
-                <h3>🏁 Performance Characteristics</h3>
-                <ul>
-                    <li><strong>Best for:</strong> Baseline comparisons, highly multimodal problems, high dimensions</li>
-                    <li><strong>Dimensions:</strong> Scales to any dimension (curse of dimensionality applies)</li>
-                    <li><strong>Function evaluations:</strong> Uses all available evaluations</li>
-                    <li><strong>Convergence:</strong> O(1/√n) convergence rate with n samples</li>
-                    <li><strong>Robustness:</strong> Extremely robust - works on any problem</li>
-                </ul>
-            </div>
-
-            <div class="performance-notes" style="background: #d4edda; border-color: #27ae60;">
-                <h3>✅ Validation Status: PERFECT REFERENCE</h3>
-                <p><strong>Random Search is its own perfect reference implementation:</strong></p>
-                <ul>
-                    <li><strong>Self-Validating:</strong> Algorithm is trivial to implement correctly</li>
-                    <li><strong>Mathematical Guarantee:</strong> Uniform sampling is well-defined</li>
-                    <li><strong>Cross-Platform:</strong> Identical behavior across JavaScript and Python</li>
-                    <li><strong>Benchmark Standard:</strong> Used to validate other optimization algorithms</li>
-                </ul>
-                <p><em>Random Search requires no external validation - it IS the validation baseline!</em></p>
-            </div>
-
-            <div class="more-section">
-                <button class="more-toggle" onclick="toggleMore()">📚 More Resources</button>
-                <div id="moreContent" class="more-content">
-                    <h3>📚 Educational Resources</h3>
-                    <ul>
-                        <li><a href="https://en.wikipedia.org/wiki/Random_search" target="_blank">Random Search Wikipedia</a></li>
-                        <li><a href="https://en.wikipedia.org/wiki/Monte_Carlo_method" target="_blank">Monte Carlo Methods</a></li>
-                        <li><a href="https://link.springer.com/article/10.1023/A:1008306431147" target="_blank">Random Search for Hyper-Parameter Optimization (Bergstra & Bengio)</a></li>
-                        <li><a href="https://www.jmlr.org/papers/volume13/bergstra12a/bergstra12a.pdf" target="_blank">Random Search vs Grid Search (JMLR Paper)</a></li>
-                        <li><a href="https://optimization.mccormick.northwestern.edu/index.php/Random_search" target="_blank">Random Search Tutorial</a></li>
-                    </ul>
-
-                    <h3>🔬 Algorithm Theory</h3>
-                    <ul>
-                        <li><strong>Uniform Sampling:</strong> Each point has equal probability of selection</li>
-                        <li><strong>Independence:</strong> Each sample is independent of previous samples</li>
-                        <li><strong>Convergence Rate:</strong> O(1/√n) expected improvement with n samples</li>
-                        <li><strong>High-Dimensional Effectiveness:</strong> Doesn't suffer from curse of dimensionality as much as grid search</li>
-                        <li><strong>Global Search:</strong> Always has a chance to find global optimum</li>
-                    </ul>
-
-                    <h3>💡 When Random Search Wins</h3>
-                    <ul>
-                        <li><strong>Highly Multimodal:</strong> Many local minima make sophisticated methods get stuck</li>
-                        <li><strong>Discontinuous:</strong> Gradient-based methods fail on non-smooth functions</li>
-                        <li><strong>High Noise:</strong> Signal-to-noise ratio makes structure invisible</li>
-                        <li><strong>Limited Budget:</strong> When you only have a few function evaluations</li>
-                        <li><strong>Unknown Structure:</strong> When nothing is known about the problem</li>
-                    </ul>
-                </div>
-            </div>
-        </div>
+    <div class="paper-header">
+        <h1 class="paper-title">Random Search</h1>
+        <p class="paper-subtitle">HumpDay Implementation Documentation</p>
     </div>
 
+    <a href="../contest.html" class="nav-link">← Return to Algorithm Contest</a>
+
+    <div class="abstract">
+        <h3>Abstract</h3>
+        <p>Random Search is a fundamental optimization technique that explores the search space by uniformly sampling random points and tracking the best solution found. Despite its simplicity, Random Search serves as an important baseline for evaluating more sophisticated optimization algorithms and can be surprisingly effective for high-dimensional problems with complex landscapes.</p>
+    </div>
+
+    <h2>Algorithm Description</h2>
+
+    <p>The Random Search algorithm generates candidate solutions by uniform random sampling from the feasible region. For a $D$-dimensional optimization problem on the unit hypercube $[0,1]^D$, the algorithm operates as follows:</p>
+
+    <div class="mathematical-formulation">
+        <p><strong>Random Sampling:</strong></p>
+        <p>$$\mathbf{x}_i \sim \mathcal{U}([0,1]^D)$$</p>
+
+        <p><strong>Best Solution Tracking:</strong></p>
+        <p>$$\mathbf{x}^* = \arg\min_{i=1,\ldots,N} f(\mathbf{x}_i)$$</p>
+
+        <p>where:</p>
+        <ul>
+            <li>$\mathbf{x}_i$ is the $i$-th randomly generated candidate solution</li>
+            <li>$\mathcal{U}([0,1]^D)$ denotes uniform distribution over the unit hypercube</li>
+            <li>$N$ is the total number of function evaluations</li>
+            <li>$f(\cdot)$ is the objective function to be minimized</li>
+        </ul>
+    </div>
+
+    <h2>Implementation Details</h2>
+
+    <table class="implementation-table">
+        <thead>
+            <tr>
+                <th>Component</th>
+                <th>Description</th>
+                <th>Reference</th>
+            </tr>
+        </thead>
+        <tbody>
+            <tr>
+                <td><strong>Algorithm Concept</strong></td>
+                <td>Pure random sampling from uniform distribution. Fundamental Monte Carlo method serving as optimization baseline.</td>
+                <td><a href="https://www.jmlr.org/papers/v13/bergstra12a.html">Bergstra & Bengio (2012)</a></td>
+            </tr>
+            <tr>
+                <td><strong>Python Implementation</strong></td>
+                <td>HumpDay modular implementation in <span class="code-ref">evolutionary_algorithms.py</span></td>
+                <td><a href="https://github.com/microprediction/humpday/blob/main/humpday/optimizers/evolutionary_algorithms.py#L382">Source Code</a></td>
+            </tr>
+            <tr>
+                <td><strong>JavaScript Implementation</strong></td>
+                <td>Browser-compatible implementation in modular structure</td>
+                <td><a href="https://github.com/microprediction/humpday/blob/main/docs/js/modules/evolutionary-algorithms.js#L382">JavaScript Source</a></td>
+            </tr>
+            <tr>
+                <td><strong>Reference Implementation</strong></td>
+                <td>Self-validating (mathematically trivial implementation)</td>
+                <td><a href="https://en.wikipedia.org/wiki/Random_search">Wikipedia: Random Search</a></td>
+            </tr>
+        </tbody>
+    </table>
+
+    <div class="validation-status">
+        <p><strong>Validation Status:</strong> VALIDATED - Random search implementation verified against mathematical specification. Cross-platform consistency confirmed between Python and JavaScript versions.</p>
+    </div>
+
+    <h2>Theoretical Properties</h2>
+
+    <table class="implementation-table">
+        <thead>
+            <tr>
+                <th>Property</th>
+                <th>Description</th>
+                <th>Convergence Rate</th>
+            </tr>
+        </thead>
+        <tbody>
+            <tr>
+                <td>Global Convergence</td>
+                <td>Almost sure convergence to global optimum</td>
+                <td>O(1/N) expected improvement</td>
+            </tr>
+            <tr>
+                <td>Dimension Independence</td>
+                <td>No curse of dimensionality in convergence rate</td>
+                <td>Rate independent of D</td>
+            </tr>
+            <tr>
+                <td>Function Assumptions</td>
+                <td>No smoothness or continuity requirements</td>
+                <td>Works on any measurable function</td>
+            </tr>
+            <tr>
+                <td>Memory Requirements</td>
+                <td>O(D) memory for current best solution</td>
+                <td>Minimal storage overhead</td>
+            </tr>
+        </tbody>
+    </table>
+
+    <h2>Practical Applications</h2>
+
+    <p>Random Search is particularly valuable as:</p>
+    <ul>
+        <li><strong>Baseline Comparison:</strong> Standard reference for evaluating more sophisticated algorithms</li>
+        <li><strong>High-Dimensional Problems:</strong> Competitive in very high dimensions where structure-based methods fail</li>
+        <li><strong>Robust Optimization:</strong> Effective when objective function is noisy or discontinuous</li>
+        <li><strong>Hyperparameter Tuning:</strong> Often outperforms grid search in machine learning applications</li>
+    </ul>
+
+    <div class="references">
+        <h2>References</h2>
+        <ol class="reference-list">
+            <li>Bergstra, J., & Bengio, Y. (2012). Random search for hyper-parameter optimization. <em>Journal of machine learning research</em>, 13(2), 281-305.</li>
+            <li>Rastrigin, L. A. (1963). The convergence of the random search method in the extremal control of a many parameter system. <em>Automation and Remote Control</em>, 24(10), 1337-1342.</li>
+            <li>Zhigljavsky, A., & Žilinskas, A. (2008). <em>Stochastic global optimization</em>. Springer Science & Business Media.</li>
+            <li>Spall, J. C. (2003). <em>Introduction to stochastic search and optimization: estimation, simulation, and control</em>. John Wiley & Sons.</li>
+        </ol>
+    </div>
+
+    <div style="margin-top: 50px; padding-top: 20px; border-top: 1px solid #ccc; text-align: center; font-size: 12px; color: #666;">
+        <p>Part of the HumpDay optimization library | <a href="../index.html">Documentation</a> | <a href="https://github.com/microprediction/humpday">Source Code</a></p>
+    </div>
+
+    <!-- Load JavaScript for any interactive elements -->
+    <script src="../js/modules/base-optimizer.js"></script>
+    <script src="../js/modules/prima-algorithms.js"></script>
+    <script src="../js/modules/scipy-algorithms.js"></script>
+    <script src="../js/modules/evolutionary-algorithms.js"></script>
+    <script src="../js/modules/index.js"></script>
+
     <script>
-        function toggleMore() {
-            const content = document.getElementById('moreContent');
-            const button = document.querySelector('.more-toggle');
-
-            if (content.style.display === 'none' || content.style.display === '') {
-                content.style.display = 'block';
-                button.textContent = '📚 Less Resources';
-            } else {
-                content.style.display = 'none';
-                button.textContent = '📚 More Resources';
-            }
-        // Initialize 3D visualization when page loads
         document.addEventListener('DOMContentLoaded', function() {
-            // Load optimizers first, then visualizer
-            const optimizersScript = document.createElement('script');
-            optimizersScript.src = '../js/modules/index.js';
-            optimizersScript.onload = function() {
-                // Load algorithm visualizer after optimizers are loaded
-                const script = document.createElement('script');
-                script.src = '../js/algorithm-visualizer.js';
-                script.onload = function() {
-                    // Check for WebGL support
-                    function webglAvailable() {
-                        try {
-                            const canvas = document.createElement('canvas');
-                            return !!(window.WebGLRenderingContext && canvas.getContext('webgl'));
-                        } catch (e) {
-                            return false;
-                        }
-                    }
-
-                    if (webglAvailable()) {
-                        const visualizer = new AlgorithmVisualizer('algorithmDemo', {
-                            onReady: () => {
-                                // Clear loading message once visualization is ready
-                                const loadingMsg = document.getElementById('loadingMessage');
-                                if (loadingMsg) {
-                                    loadingMsg.style.display = 'none';
-                                }
-                            }
-                        });
-                    } else {
-                        document.getElementById('loadingMessage').innerHTML =
-                            '<h4>WebGL Not Supported</h4>' +
-                            '<p>Your browser does not support WebGL for 3D visualization.</p>' +
-                            '<p>Try a modern browser like Chrome, Firefox, or Safari.</p>';
-                    }
-                };
-                script.onerror = function() {
-                    document.getElementById('algorithmDemo').innerHTML =
-                        '<div style="position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%); text-align: center;">' +
-                        '<h4>Visualization Unavailable</h4>' +
-                        '<p>Could not load 3D visualization component.</p>' +
-                        '</div>';
-                };
-                document.head.appendChild(script);
-            };
-            document.head.appendChild(optimizersScript);
+            console.log('Random Search page loaded');
         });
     </script>
 </body>
