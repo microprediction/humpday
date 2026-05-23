@@ -1,8 +1,9 @@
 name: CI
 
 on:
-  push:
-    branches: [ main ]
+  # Temporarily disabled push trigger to clear action queue
+  # push:
+  #   branches: [ main ]
   pull_request:
     branches: [ main ]
 
