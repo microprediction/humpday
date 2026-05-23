@@ -712,6 +712,17 @@
             // Start contest
             setTimeout(() => {
                 runRealContest(interpretation);
+
+                // Scroll to leaderboard after contest starts
+                setTimeout(() => {
+                    const contestArea = document.getElementById('contestArea');
+                    if (contestArea) {
+                        contestArea.scrollIntoView({
+                            behavior: 'smooth',
+                            block: 'start'
+                        });
+                    }
+                }, 1000); // Give contest time to initialize and show
             }, 500);
         }
 
