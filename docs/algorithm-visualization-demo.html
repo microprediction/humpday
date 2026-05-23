@@ -202,14 +202,33 @@ document.addEventListener('DOMContentLoaded', function() {
 
     <script>
         function showEmbedCode() {
-            document.getElementById('embedCodeModal').style.display = 'block';
+            console.log('showEmbedCode called'); // Debug log
+            const modal = document.getElementById('embedCodeModal');
+            if (modal) {
+                modal.style.display = 'block';
+                console.log('Modal shown');
+            } else {
+                console.error('embedCodeModal not found');
+            }
         }
 
         function hideEmbedCode() {
-            document.getElementById('embedCodeModal').style.display = 'none';
+            console.log('hideEmbedCode called'); // Debug log
+            const modal = document.getElementById('embedCodeModal');
+            if (modal) {
+                modal.style.display = 'none';
+                console.log('Modal hidden');
+            } else {
+                console.error('embedCodeModal not found');
+            }
         }
 
+        // Make functions globally available
+        window.showEmbedCode = showEmbedCode;
+        window.hideEmbedCode = hideEmbedCode;
+
         function copyEmbedCode() {
+            console.log('copyEmbedCode called'); // Debug log
             const embedCode = `<!-- Three.js CDN -->
 <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/controls/OrbitControls.js"></script>
@@ -239,6 +258,9 @@ document.addEventListener('DOMContentLoaded', function() {
                 }, 2000);
             });
         }
+
+        // Make copyEmbedCode globally available too
+        window.copyEmbedCode = copyEmbedCode;
 
         // Close modal when clicking outside
         document.addEventListener('click', function(event) {

@@ -356,8 +356,8 @@ class AlgorithmVisualizer {
         const geometry = new THREE.SphereGeometry(0.15, 16, 16);
         const material = new THREE.MeshBasicMaterial({
             color: 0x00ff00,
-            transparent: true,
-            opacity: 0.8
+            transparent: false, // Make solid for better visibility
+            opacity: 1.0
         });
         const marker = new THREE.Mesh(geometry, material);
 
@@ -370,8 +370,10 @@ class AlgorithmVisualizer {
         const z = func.func(optimum.x, optimum.y);
         let scaledZ = this.getScaledZ(z);
 
-        marker.position.set(sceneX, sceneY, scaledZ + 0.08);
+        marker.position.set(sceneX, sceneY, scaledZ + 0.2); // Higher above surface
         marker.name = 'optimumMarker';
+
+        console.log('Creating optimum marker at:', sceneX, sceneY, scaledZ + 0.2); // Debug log
 
         // Add a small pulsing animation
         marker.scale.setScalar(1.0);
@@ -422,9 +424,13 @@ class AlgorithmVisualizer {
         });
         functionSelect.value = this.currentFunction;
         functionSelect.addEventListener('change', (e) => {
+            console.log('Function changed to:', e.target.value); // Debug log
             this.currentFunction = e.target.value;
             this.createSurface();
             this.resetOptimization();
+
+            // Force immediate render to ensure surface updates are visible
+            this.renderer.render(this.scene, this.camera);
         });
 
         // Algorithm selector
@@ -863,18 +869,25 @@ class AlgorithmVisualizer {
         const geometry = new THREE.SphereGeometry(0.12, 16, 16);
         const material = new THREE.MeshBasicMaterial({
             color: 0xff0000,  // BRIGHT RED for new sample point
-            transparent: true,
+            transparent: false, // Make solid for better visibility
             opacity: 1.0
         });
         const marker = new THREE.Mesh(geometry, material);
-        marker.position.set(sceneX, sceneY, scaledZ + 0.05);
+
+        // Position marker well above surface for visibility
+        marker.position.set(sceneX, sceneY, scaledZ + 0.2);
         marker.name = 'pathMarker';
 
         // Make NEW point extra large to show it's the current sample
         marker.scale.setScalar(2.5);  // Much bigger!
 
+        console.log('Creating path marker at:', sceneX, sceneY, scaledZ + 0.2); // Debug log
+
         this.scene.add(marker);
         this.optimizerPath.push(marker);
+
+        // Force render to show new marker immediately
+        this.renderer.render(this.scene, this.camera);
 
         // Shrink and recolor previous markers to show progression
         this.optimizerPath.forEach((oldMarker, index) => {
