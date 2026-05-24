@@ -248,6 +248,19 @@ document.addEventListener('DOMContentLoaded', function() {
         // Initialize visualizer when page loads
         document.addEventListener('DOMContentLoaded', function() {
             // The visualizer will be initialized by demo-controller.js
+
+            // Temporary backup visualization if main one fails
+            setTimeout(() => {
+                const mainContainer = document.getElementById('algorithmVisualization');
+                if (mainContainer && mainContainer.children.length === 1) { // Only loading message
+                    console.log('Main visualization failed, creating backup...');
+                    try {
+                        const backupVisualizer = new AlgorithmVisualizer('algorithmVisualization');
+                    } catch (error) {
+                        console.error('Backup visualization also failed:', error);
+                    }
+                }
+            }, 3000); // Wait 3 seconds for main to load
         });
     </script>
 
