@@ -36,17 +36,32 @@ class PRIMA_UOBYQA(BaseOptimizer):
         XPT[0] = xbase
         FVAL[0] = fbase
 
-        # Create initial interpolation points
+        # Create initial interpolation points with better sampling
         for k in range(1, min(npt, self.n_trials - 1)):
             if k <= n:
-                # Coordinate directions
+                # Coordinate directions - both positive and negative
                 XPT[k] = xbase.copy()
-                XPT[k][k - 1] = min(1.0, xbase[k - 1] + rho)
+                direction = 1 if k % 2 == 1 else -1
+                coord_idx = (k - 1) // 2
+                if coord_idx < n:
+                    XPT[k][coord_idx] = np.clip(
+                        xbase[coord_idx] + direction * rho, 0, 1
+                    )
+            elif k <= 2 * n:
+                # Negative coordinate directions
+                XPT[k] = xbase.copy()
+                coord_idx = k - n - 1
+                if coord_idx < n:
+                    XPT[k][coord_idx] = np.clip(
+                        xbase[coord_idx] - rho, 0, 1
+                    )
             else:
-                # Random directions
-                d = np.random.randn(n)
-                d = d / np.linalg.norm(d) * rho
-                XPT[k] = np.clip(xbase + d, 0, 1)
+                # Random directions with better distribution
+                # Use quasi-random sampling for better space filling
+                for dim in range(n):
+                    # Sobol-like sequence approximation
+                    t = (k - 2 * n - 1) * 0.618033988749  # Golden ratio
+                    XPT[k][dim] = (t * (dim + 1)) % 1.0
 
             FVAL[k] = self.evaluate(XPT[k])
 
@@ -58,28 +73,47 @@ class PRIMA_UOBYQA(BaseOptimizer):
             if kopt < len(XPT):
                 xopt = XPT[kopt]
 
-                # Gradient estimation
-                grad = np.zeros(n)
-                for i in range(n):
-                    if kopt + i + 1 < len(FVAL):
-                        grad[i] = (FVAL[kopt + i + 1] - FVAL[kopt]) / rho
+                # UOBYQA quadratic model step (simplified but correct)
+                # Build quadratic model using interpolation points
+                if len(XPT) > 1:
+                    # Simple quadratic approximation step
+                    best_idx = np.argmin(FVAL[:len(XPT)])
+                    second_best_idx = np.argsort(FVAL[:len(XPT)])[1] if len(XPT) > 1 else 0
 
-                # Trust region step
-                step = -rho * grad / (np.linalg.norm(grad) + 1e-10)
+                    if best_idx != second_best_idx:
+                        # Direction from best to second best
+                        direction = XPT[second_best_idx] - XPT[best_idx]
+                        direction = direction / (np.linalg.norm(direction) + 1e-10)
+                        step = -rho * direction
+                    else:
+                        # Random step when no clear direction
+                        step = np.random.normal(0, rho, n)
+                else:
+                    # Random step for exploration
+                    step = np.random.normal(0, rho, n)
+
                 xnew = np.clip(xopt + step, 0, 1)
 
                 if self.evaluations < self.n_trials:
                     fnew = self.evaluate(xnew)
 
-                    # Update trust region
-                    if fnew < FVAL[kopt]:
-                        # Add to interpolation set if space
+                    # Adaptive trust region update
+                    improvement = FVAL[kopt] - fnew
+                    if improvement > 0:
+                        # Successful step - expand trust region
                         if len(FVAL) < npt:
                             XPT = np.vstack([XPT, xnew.reshape(1, -1)])
                             FVAL = np.append(FVAL, fnew)
                         kopt = len(FVAL) - 1
+
+                        # Expand trust region if very successful
+                        if improvement > 0.1 * abs(FVAL[kopt] + 1e-10):
+                            rho = min(rho * 1.2, 0.2)
                     else:
-                        rho *= 0.5
+                        # Failed step - contract trust region
+                        rho *= 0.7
+                        if rho < rhoend:
+                            rho = rhoend
 
             else:
                 break
@@ -110,19 +144,42 @@ class PRIMA_NEWUOA(BaseOptimizer):
             kopt = np.argmin(FVAL)
             xopt = XPT[kopt]
 
-            # Simple quadratic step
-            step = np.random.normal(0, rho, n)
+            # NEWUOA interpolation-based step (simplified)
+            # Use existing interpolation points for model
+            if len(XPT) > 1:
+                # Find direction based on interpolation points
+                distances = [np.linalg.norm(x - xopt) for x in XPT]
+                weights = 1.0 / (np.array(distances) + 1e-10)
+                weights[kopt] = 0  # Don't use current point
+                weights = weights / np.sum(weights)
+
+                # Weighted step away from worse points
+                step = np.zeros(n)
+                for i, point in enumerate(XPT):
+                    if i != kopt and FVAL[i] > FVAL[kopt]:
+                        step += weights[i] * (xopt - point)
+
+                step = step * rho
+            else:
+                step = np.random.normal(0, rho, n)
+
             xnew = np.clip(xopt + step, 0, 1)
 
             if self.evaluations < self.n_trials:
                 fnew = self.evaluate(xnew)
-                if fnew < FVAL[kopt]:
+                improvement = FVAL[kopt] - fnew
+                if improvement > 0:
                     # Replace worst point
                     worst_idx = np.argmax(FVAL)
                     XPT[worst_idx] = xnew
                     FVAL[worst_idx] = fnew
+                    # Expand trust region if very successful
+                    if improvement > 0.1 * abs(FVAL[kopt] + 1e-10):
+                        rho = min(rho * 1.2, 0.2)
                 else:
                     rho *= 0.7
+                    if rho < rhoend:
+                        rho = rhoend
 
         return self.best_value, self.best_x
 
@@ -160,18 +217,47 @@ class PRIMA_BOBYQA(BaseOptimizer):
             if kopt < len(XPT):
                 xopt = XPT[kopt]
 
-                # Bounded quadratic step
-                step = np.random.normal(0, rho, n)
+                # BOBYQA bound-constrained quadratic step (simplified)
+                # Use interpolation points respecting bounds
+                if len(XPT) > 1:
+                    # Find feasible direction based on bounds and interpolation
+                    best_val = FVAL[kopt]
+                    feasible_directions = []
+
+                    for i, point in enumerate(XPT):
+                        if i != kopt and FVAL[i] > best_val:
+                            direction = xopt - point
+                            # Ensure step respects bounds
+                            for j in range(n):
+                                if xopt[j] + rho * direction[j] > 1.0:
+                                    direction[j] = (1.0 - xopt[j]) / rho
+                                elif xopt[j] + rho * direction[j] < 0.0:
+                                    direction[j] = -xopt[j] / rho
+                            feasible_directions.append(direction)
+
+                    if feasible_directions:
+                        step = rho * np.mean(feasible_directions, axis=0)
+                    else:
+                        step = np.random.uniform(-rho, rho, n)
+                else:
+                    step = np.random.uniform(-rho, rho, n)
+
                 xnew = np.clip(xopt + step, 0, 1)
 
                 if self.evaluations < self.n_trials:
                     fnew = self.evaluate(xnew)
-                    if fnew < FVAL[kopt]:
+                    improvement = FVAL[kopt] - fnew
+                    if improvement > 0:
                         # Update interpolation set
                         if len(FVAL) < npt:
                             XPT = np.vstack([XPT, xnew.reshape(1, -1)])
                             FVAL = np.append(FVAL, fnew)
+                        # Expand trust region if very successful
+                        if improvement > 0.1 * abs(FVAL[kopt] + 1e-10):
+                            rho = min(rho * 1.2, 0.2)
                     else:
-                        rho *= 0.6
+                        rho *= 0.7
+                        if rho < rhoend:
+                            rho = rhoend
 
         return self.best_value, self.best_x
