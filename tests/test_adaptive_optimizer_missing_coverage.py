@@ -126,11 +126,12 @@ class TestAdaptiveOptimizerMissingCoverage:
 
     def test_tournament_function_signature(self):
         """Test run_algorithm_tournament function exists and has correct signature."""
+        import inspect
+
         from humpday.optimizers.adaptive_optimizer import (
             EloRatingSystem,
             run_algorithm_tournament,
         )
-        import inspect
 
         # Test that function exists and has expected parameters
         sig = inspect.signature(run_algorithm_tournament)
