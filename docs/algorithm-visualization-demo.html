@@ -44,7 +44,46 @@
 
             <div class="embed-section">
                 <h3>Embed This in Your Own Web Page</h3>
-                <p>Want to add interactive 3D optimization visualization to your website? Contact us for embed instructions.</p>
+                <p>Want to add interactive 3D optimization visualization to your website? It's just a few lines of code!</p>
+                <button onclick="showEmbedModal()" style="background: #007bff; color: white; border: none; padding: 12px 24px; border-radius: 4px; cursor: pointer; font-size: 16px; font-weight: 600;">
+                    Show Embed Code
+                </button>
+            </div>
+
+            <!-- Embed Modal -->
+            <div id="embedModal" style="display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.5); z-index: 1000;">
+                <div style="position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%); background: white; padding: 30px; border-radius: 8px; max-width: 800px; width: 90%; max-height: 80%; overflow-y: auto;">
+                    <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px;">
+                        <h3 style="margin: 0; color: #333;">Embed Code</h3>
+                        <button onclick="hideEmbedModal()" style="background: none; border: none; font-size: 24px; cursor: pointer; color: #666;">&times;</button>
+                    </div>
+                    <p>Copy and paste this code into your HTML page:</p>
+                    <textarea readonly style="width: 100%; height: 200px; font-family: monospace; font-size: 12px; background: #2d3748; color: #e2e8f0; border: none; padding: 15px; border-radius: 4px;" onclick="this.select()"><!-- Three.js CDN -->
+<script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/controls/OrbitControls.js"></script>
+
+<!-- Humpday optimization algorithms -->
+<script src="https://microprediction.github.io/humpday/js/optimizers.js"></script>
+<script src="https://microprediction.github.io/humpday/js/algorithm-visualizer.js"></script>
+
+<!-- Container for the 3D visualization -->
+<div id="optimizationDemo" style="width: 100%; height: 500px; border: 1px solid #ddd;"></div>
+
+<!-- Initialize the visualizer -->
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    const visualizer = new AlgorithmVisualizer('optimizationDemo');
+});
+</script></textarea>
+                    <div style="text-align: center; margin-top: 15px;">
+                        <button onclick="copyEmbedCode()" style="background: #28a745; color: white; border: none; padding: 10px 20px; border-radius: 4px; cursor: pointer; margin-right: 10px;">
+                            Copy to Clipboard
+                        </button>
+                        <button onclick="hideEmbedModal()" style="background: #6c757d; color: white; border: none; padding: 10px 20px; border-radius: 4px; cursor: pointer;">
+                            Close
+                        </button>
+                    </div>
+                </div>
             </div>
 
         </div>
@@ -56,6 +95,30 @@
     <script src="js/optimizers.js"></script>
     <script src="js/algorithm-visualizer.js"></script>
     <script src="js/demo-controller.js"></script>
+
+    <script>
+        function showEmbedModal() {
+            document.getElementById('embedModal').style.display = 'block';
+        }
+
+        function hideEmbedModal() {
+            document.getElementById('embedModal').style.display = 'none';
+        }
+
+        function copyEmbedCode() {
+            const textarea = document.querySelector('#embedModal textarea');
+            textarea.select();
+            document.execCommand('copy');
+            const button = event.target;
+            const originalText = button.textContent;
+            button.textContent = 'Copied!';
+            button.style.background = '#28a745';
+            setTimeout(() => {
+                button.textContent = originalText;
+                button.style.background = '#28a745';
+            }, 2000);
+        }
+    </script>
 
 </body>
 </html>
