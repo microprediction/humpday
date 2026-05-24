@@ -1,11 +1,19 @@
 """
 PRIMA algorithm implementations: UOBYQA, NEWUOA, and BOBYQA.
 
+**LIBRARY INTENT - CRITICAL:**
+- Pure Python implementations of established optimization algorithms
+- NO external dependencies except numpy (no scipy, no 3rd party optimization libs)
+- Algorithms must be algorithmically correct versions of reference implementations
+- 3rd party packages used ONLY in testing for validation/comparison
+- Goal: optimization that works anywhere Python runs, no compilation/dependencies
+
 These are pure Python implementations of the PRIMA (Powell's Recent Interpolation Methods)
 algorithms by M.J.D. Powell. PRIMA represents state-of-the-art derivative-free optimization
 for small to medium-scale problems.
 
-Reference: https://www.pdfo.net/
+Reference implementations: https://www.pdfo.net/
+Must match algorithmic behavior of reference, not use reference directly.
 """
 
 from typing import Tuple
