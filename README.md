@@ -3,6 +3,7 @@
 [![Tests](https://github.com/microprediction/humpday/workflows/tests/badge.svg)](https://github.com/microprediction/humpday/actions)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
 [![Python 3.9+](https://img.shields.io/badge/python-3.9+-blue.svg)](https://www.python.org/downloads/)
+[![JavaScript](https://img.shields.io/badge/javascript-ES6+-yellow.svg)](https://developer.mozilla.org/en-US/docs/Web/JavaScript)
 
 **[Documentation & Live Demos](https://humpday.microprediction.org)**
 
