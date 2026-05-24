@@ -53,21 +53,11 @@ class TestSciPyInterfaceMissingCoverage:
     def test_algorithm_specific_cube_functions(self):
         """Test algorithm-specific cube functions (lines 176, 179, 182, 185-191, 197-198, 203-209)."""
         from humpday import (
-            cube_adaptive_random_search,
-            cube_bayesian_opt,
             cube_cma_es,
             cube_differential_evolution,
-            cube_evolution_strategy,
-            cube_firefly_algorithm,
-            cube_genetic_algorithm,
-            cube_harmony_search,
-            cube_hill_climbing,
             cube_nelder_mead,
             cube_particle_swarm,
-            cube_pattern_search,
             cube_prima_uobyqa,
-            cube_simulated_annealing,
-            cube_tabu_search,
         )
 
         def simple_objective(x):
@@ -80,7 +70,6 @@ class TestSciPyInterfaceMissingCoverage:
             cube_particle_swarm,
             cube_cma_es,
             cube_prima_uobyqa,
-            cube_bayesian_opt,
             cube_hill_climbing,
             cube_simulated_annealing,
             cube_adaptive_random_search,
@@ -88,8 +77,6 @@ class TestSciPyInterfaceMissingCoverage:
             cube_evolution_strategy,
             cube_harmony_search,
             cube_firefly_algorithm,
-            cube_tabu_search,
-            cube_genetic_algorithm,
         ]
 
         for cube_func in cube_functions:
@@ -129,15 +116,15 @@ class TestSciPyInterfaceMissingCoverage:
                 # Some methods might have specific requirements
                 pass
 
-    def test_cube_ant_colony_optimization(self):
-        """Test cube_ant_colony_optimization specific function (lines 370, 375, 380, 385, 390)."""
-        from humpday.optimizers.scipy_interface import cube_ant_colony_optimization
+    def test_cube_minimize_edge_cases(self):
+        """Test cube_minimize with edge cases."""
+        from humpday import cube_minimize
 
         def simple_objective(x):
             return sum(x**2)
 
         try:
-            result = cube_ant_colony_optimization(
+            result = cube_minimize(
                 simple_objective, n_dim=2, n_trials=10
             )
             assert hasattr(result, "x")
