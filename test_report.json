@@ -1,0 +1,168 @@
+{
+  "python_tests": {
+    "total_algorithms": 13,
+    "working": 12,
+    "failed": 1,
+    "working_list": [
+      "PRIMA_UOBYQA",
+      "PRIMA_NEWUOA",
+      "PRIMA_BOBYQA",
+      "NelderMead",
+      "Powell",
+      "LBFGSB",
+      "ParticleSwarm",
+      "SimulatedAnnealing",
+      "GeneticAlgorithm",
+      "RandomSearch",
+      "HillClimbing",
+      "HarmonySearch"
+    ],
+    "failed_list": [
+      "DifferentialEvolution"
+    ]
+  },
+  "javascript_tests": {},
+  "website_tests": {
+    "/": {
+      "status": "ok",
+      "size": 27652
+    },
+    "/contest.html": {
+      "status": "ok",
+      "size": 37033
+    },
+    "/test-modular.html": {
+      "status": "ok",
+      "size": 6141
+    },
+    "/contest-modular.html": {
+      "status": "ok",
+      "size": 11670
+    },
+    "/js/modules/index.js": {
+      "status": "ok",
+      "size": 4858
+    },
+    "/js/modules/base-optimizer.js": {
+      "status": "ok",
+      "size": 2118
+    },
+    "/js/modules/prima-algorithms.js": {
+      "status": "ok",
+      "size": 55389
+    },
+    "/js/modules/scipy-algorithms.js": {
+      "status": "ok",
+      "size": 11581
+    },
+    "/js/modules/evolutionary-algorithms.js": {
+      "status": "ok",
+      "size": 34853
+    },
+    "/js/modules/search-algorithms.js": {
+      "status": "ok",
+      "size": 7406
+    },
+    "/js/modules/optimizer-factory.js": {
+      "status": "ok",
+      "size": 4672
+    }
+  },
+  "link_tests": {
+    "total_found": 56,
+    "tested": 20,
+    "working": 12,
+    "results": {
+      "https://github.com/microprediction/humpday/blob/main/docs/js/modules/scipy-algorithms.js#L145": "ok",
+      "https://github.com/microprediction/humpday/blob/main/docs/js/modules/prima-algorithms.js#L580": "ok",
+      "https://github.com/microprediction/humpday": "ok",
+      "https://github.com/microprediction/humpday/blob/main/docs/js/modules/evolutionary-algorithms.js#L272": "ok",
+      "https://github.com/microprediction/humpday/blob/main/humpday/optimizers/scipy_algorithms.py#L83": "ok",
+      "https://github.com/microprediction/humpday/blob/main/docs/js/modules/search-algorithms.js#L129": "error_404",
+      "https://arxiv.org/abs/1604.00772": "ok",
+      "https://github.com/microprediction/humpday/blob/main/docs/js/modules/search-algorithms.js#L69": "error_404",
+      "https://doi.org/10.7551/mitpress/1090.001.0001": "error_403",
+      "https://github.com/microprediction/humpday/blob/main/docs/js/modules/evolutionary-algorithms.js#L654": "ok",
+      "https://doi.org/10.1145/279232.279236": "error_403",
+      "https://github.com/microprediction/humpday/blob/main/docs/js/modules/evolutionary-algorithms.js#L719": "ok",
+      "https://doi.org/10.1137/S1052623493250780": "error_403",
+      "https://github.com/microprediction/humpday/blob/main/humpday/optimizers/scipy_algorithms.py#L149": "ok",
+      "https://doi.org/10.1093/comjnl/7.4.308": "error_403",
+      "https://github.com/microprediction/humpday/blob/main/docs/js/modules/search-algorithms.js#L16": "error_404",
+      "https://github.com/microprediction/humpday/blob/main/docs/js/modules/evolutionary-algorithms.js#L208": "ok",
+      "https://github.com/microprediction/humpday/blob/main/docs/js/modules/evolutionary-algorithms.js#L463": "ok",
+      "https://github.com/microprediction/humpday/blob/main/docs/js/modules/scipy-algorithms.js#L209": "ok",
+      "https://doi.org/10.1109/3477.484436": "error_418"
+    }
+  },
+  "file_integrity": {
+    "docs/index.html": {
+      "status": "ok",
+      "size": 27652
+    },
+    "docs/contest.html": {
+      "status": "ok",
+      "size": 37033
+    },
+    "docs/test-modular.html": {
+      "status": "ok",
+      "size": 6141
+    },
+    "docs/contest-modular.html": {
+      "status": "ok",
+      "size": 11670
+    },
+    "docs/js/modules/base-optimizer.js": {
+      "status": "ok",
+      "size": 2118
+    },
+    "docs/js/modules/prima-algorithms.js": {
+      "status": "ok",
+      "size": 55389
+    },
+    "docs/js/modules/scipy-algorithms.js": {
+      "status": "ok",
+      "size": 11581
+    },
+    "docs/js/modules/evolutionary-algorithms.js": {
+      "status": "ok",
+      "size": 34853
+    },
+    "docs/js/modules/search-algorithms.js": {
+      "status": "ok",
+      "size": 7406
+    },
+    "docs/js/modules/optimizer-factory.js": {
+      "status": "ok",
+      "size": 4672
+    },
+    "docs/js/modules/index.js": {
+      "status": "ok",
+      "size": 4858
+    },
+    "docs/js/stochastic_surfaces.js": {
+      "status": "ok",
+      "size": 15217
+    },
+    "docs/js/contest-controller.js": {
+      "status": "ok",
+      "size": 77540
+    },
+    "humpday/optimizers/alloptimizers.py": {
+      "status": "ok",
+      "size": 4220
+    },
+    "humpday/optimizers/prima_algorithms.py": {
+      "status": "ok",
+      "size": 5712
+    },
+    "humpday/optimizers/scipy_algorithms.py": {
+      "status": "ok",
+      "size": 6166
+    },
+    "humpday/optimizers/evolutionary_algorithms.py": {
+      "status": "ok",
+      "size": 7696
+    }
+  }
+}

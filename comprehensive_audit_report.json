@@ -1,0 +1,1114 @@
+{
+  "timestamp": "2026-05-23T20:14:01.097966",
+  "algorithm_tests": {
+    "python": {
+      "DifferentialEvolution": {
+        "sphere_2d": {
+          "best_value": 0.0,
+          "solution_length": 2,
+          "execution_time": 0.011888980865478516,
+          "success": true
+        },
+        "sphere_5d": {
+          "best_value": 0.822840249131048,
+          "solution_length": 5,
+          "execution_time": 0.00039196014404296875,
+          "success": true
+        },
+        "sphere_10d": {
+          "best_value": 1.0019164958021851,
+          "solution_length": 10,
+          "execution_time": 0.0004420280456542969,
+          "success": true
+        },
+        "rosenbrock_2d": {
+          "best_value": 0.0,
+          "solution_length": 2,
+          "execution_time": 0.0003514289855957031,
+          "success": true
+        },
+        "rosenbrock_5d": {
+          "best_value": 3.693674967439357,
+          "solution_length": 5,
+          "execution_time": 0.00041222572326660156,
+          "success": true
+        },
+        "rosenbrock_10d": {
+          "best_value": 91.45187448882474,
+          "solution_length": 10,
+          "execution_time": 0.0005300045013427734,
+          "success": true
+        },
+        "rastrigin_2d": {
+          "best_value": 0.0,
+          "solution_length": 2,
+          "execution_time": 0.00036787986755371094,
+          "success": true
+        },
+        "rastrigin_5d": {
+          "best_value": 4.859988099856828,
+          "solution_length": 5,
+          "execution_time": 0.0004260540008544922,
+          "success": true
+        },
+        "rastrigin_10d": {
+          "best_value": 5.358382614596692,
+          "solution_length": 10,
+          "execution_time": 0.0005252361297607422,
+          "success": true
+        }
+      },
+      "GeneticAlgorithm": {
+        "sphere_2d": {
+          "best_value": 0.010477787798640888,
+          "solution_length": 2,
+          "execution_time": 0.0005209445953369141,
+          "success": true
+        },
+        "sphere_5d": {
+          "best_value": 0.1729722814094963,
+          "solution_length": 5,
+          "execution_time": 0.0004818439483642578,
+          "success": true
+        },
+        "sphere_10d": {
+          "best_value": 1.49881529143409,
+          "solution_length": 10,
+          "execution_time": 0.00024819374084472656,
+          "success": true
+        },
+        "rosenbrock_2d": {
+          "best_value": 0.050348562912169485,
+          "solution_length": 2,
+          "execution_time": 0.0004630088806152344,
+          "success": true
+        },
+        "rosenbrock_5d": {
+          "best_value": 3.9601106111850894,
+          "solution_length": 5,
+          "execution_time": 0.0005118846893310547,
+          "success": true
+        },
+        "rosenbrock_10d": {
+          "best_value": 41.416586300416476,
+          "solution_length": 10,
+          "execution_time": 0.00033211708068847656,
+          "success": true
+        },
+        "rastrigin_2d": {
+          "best_value": 1.9472105976348217,
+          "solution_length": 2,
+          "execution_time": 0.0004849433898925781,
+          "success": true
+        },
+        "rastrigin_5d": {
+          "best_value": 18.73796055834098,
+          "solution_length": 5,
+          "execution_time": 0.0005209445953369141,
+          "success": true
+        },
+        "rastrigin_10d": {
+          "best_value": 56.7441293167318,
+          "solution_length": 10,
+          "execution_time": 0.00032782554626464844,
+          "success": true
+        }
+      },
+      "HarmonySearch": {
+        "sphere_2d": {
+          "best_value": 0.03086183769314647,
+          "solution_length": 2,
+          "execution_time": 0.00021195411682128906,
+          "success": true
+        },
+        "sphere_5d": {
+          "best_value": 0.07089461636391342,
+          "solution_length": 5,
+          "execution_time": 0.0002980232238769531,
+          "success": true
+        },
+        "sphere_10d": {
+          "best_value": 0.5231621936297404,
+          "solution_length": 10,
+          "execution_time": 0.0003809928894042969,
+          "success": true
+        },
+        "rosenbrock_2d": {
+          "best_value": 0.3422583162454414,
+          "solution_length": 2,
+          "execution_time": 0.0001888275146484375,
+          "success": true
+        },
+        "rosenbrock_5d": {
+          "best_value": 4.422806698079045,
+          "solution_length": 5,
+          "execution_time": 0.0003178119659423828,
+          "success": true
+        },
+        "rosenbrock_10d": {
+          "best_value": 62.2017728519745,
+          "solution_length": 10,
+          "execution_time": 0.0004677772521972656,
+          "success": true
+        },
+        "rastrigin_2d": {
+          "best_value": 0.040858846614767685,
+          "solution_length": 2,
+          "execution_time": 0.00019812583923339844,
+          "success": true
+        },
+        "rastrigin_5d": {
+          "best_value": 9.153317082232427,
+          "solution_length": 5,
+          "execution_time": 0.00031685829162597656,
+          "success": true
+        },
+        "rastrigin_10d": {
+          "best_value": 39.143066654932454,
+          "solution_length": 10,
+          "execution_time": 0.0004608631134033203,
+          "success": true
+        }
+      },
+      "HillClimbing": {
+        "sphere_2d": {
+          "best_value": 0.006163040212756086,
+          "solution_length": 2,
+          "execution_time": 0.00017380714416503906,
+          "success": true
+        },
+        "sphere_5d": {
+          "best_value": 0.02196926515000163,
+          "solution_length": 5,
+          "execution_time": 0.00017309188842773438,
+          "success": true
+        },
+        "sphere_10d": {
+          "best_value": 1.064349186201153,
+          "solution_length": 10,
+          "execution_time": 0.00018787384033203125,
+          "success": true
+        },
+        "rosenbrock_2d": {
+          "best_value": 0.037849505238942475,
+          "solution_length": 2,
+          "execution_time": 0.00015687942504882812,
+          "success": true
+        },
+        "rosenbrock_5d": {
+          "best_value": 18.623924538817693,
+          "solution_length": 5,
+          "execution_time": 0.0002009868621826172,
+          "success": true
+        },
+        "rosenbrock_10d": {
+          "best_value": 47.35676444452762,
+          "solution_length": 10,
+          "execution_time": 0.0002732276916503906,
+          "success": true
+        },
+        "rastrigin_2d": {
+          "best_value": 0.9970581495779705,
+          "solution_length": 2,
+          "execution_time": 0.00017690658569335938,
+          "success": true
+        },
+        "rastrigin_5d": {
+          "best_value": 9.34130244617971,
+          "solution_length": 5,
+          "execution_time": 0.00021505355834960938,
+          "success": true
+        },
+        "rastrigin_10d": {
+          "best_value": 37.63675726135428,
+          "solution_length": 10,
+          "execution_time": 0.0002651214599609375,
+          "success": true
+        }
+      },
+      "LBFGSB": {
+        "sphere_2d": {
+          "best_value": 0.0,
+          "solution_length": 2,
+          "execution_time": 0.00013709068298339844,
+          "success": true
+        },
+        "sphere_5d": {
+          "best_value": 0.3570466132881747,
+          "solution_length": 5,
+          "execution_time": 0.00011396408081054688,
+          "success": true
+        },
+        "sphere_10d": {
+          "best_value": 1.9109233074783247,
+          "solution_length": 10,
+          "execution_time": 0.00011920928955078125,
+          "success": true
+        },
+        "rosenbrock_2d": {
+          "best_value": 0.30529830962925203,
+          "solution_length": 2,
+          "execution_time": 0.0001201629638671875,
+          "success": true
+        },
+        "rosenbrock_5d": {
+          "best_value": 95.76327508939002,
+          "solution_length": 5,
+          "execution_time": 0.00014209747314453125,
+          "success": true
+        },
+        "rosenbrock_10d": {
+          "best_value": 261.5056593844394,
+          "solution_length": 10,
+          "execution_time": 0.00019884109497070312,
+          "success": true
+        },
+        "rastrigin_2d": {
+          "best_value": 2.0,
+          "solution_length": 2,
+          "execution_time": 0.00013780593872070312,
+          "success": true
+        },
+        "rastrigin_5d": {
+          "best_value": 2.0,
+          "solution_length": 5,
+          "execution_time": 0.00015401840209960938,
+          "success": true
+        },
+        "rastrigin_10d": {
+          "best_value": 4.0,
+          "solution_length": 10,
+          "execution_time": 0.00019598007202148438,
+          "success": true
+        }
+      },
+      "NelderMead": {
+        "sphere_2d": {
+          "best_value": 0.0,
+          "solution_length": 2,
+          "execution_time": 0.0002739429473876953,
+          "success": true
+        },
+        "sphere_5d": {
+          "best_value": 0.14058396729139552,
+          "solution_length": 5,
+          "execution_time": 0.00028014183044433594,
+          "success": true
+        },
+        "sphere_10d": {
+          "best_value": 3.683341456538838,
+          "solution_length": 10,
+          "execution_time": 0.0002760887145996094,
+          "success": true
+        },
+        "rosenbrock_2d": {
+          "best_value": 0.0,
+          "solution_length": 2,
+          "execution_time": 0.00024509429931640625,
+          "success": true
+        },
+        "rosenbrock_5d": {
+          "best_value": 2.6316553303112515,
+          "solution_length": 5,
+          "execution_time": 0.00029397010803222656,
+          "success": true
+        },
+        "rosenbrock_10d": {
+          "best_value": 48.99087870118405,
+          "solution_length": 10,
+          "execution_time": 0.0003609657287597656,
+          "success": true
+        },
+        "rastrigin_2d": {
+          "best_value": 0.9997178352820733,
+          "solution_length": 2,
+          "execution_time": 0.0002491474151611328,
+          "success": true
+        },
+        "rastrigin_5d": {
+          "best_value": 3.049651391796374,
+          "solution_length": 5,
+          "execution_time": 0.00031375885009765625,
+          "success": true
+        },
+        "rastrigin_10d": {
+          "best_value": 33.33366948908825,
+          "solution_length": 10,
+          "execution_time": 0.0003561973571777344,
+          "success": true
+        }
+      },
+      "PRIMA_BOBYQA": {
+        "sphere_2d": {
+          "best_value": 0.6878026650452942,
+          "solution_length": 2,
+          "execution_time": 0.00011491775512695312,
+          "success": true
+        },
+        "sphere_5d": {
+          "best_value": 0.20518027037066625,
+          "solution_length": 5,
+          "execution_time": 0.00014591217041015625,
+          "success": true
+        },
+        "sphere_10d": {
+          "best_value": 2.568636047458399,
+          "solution_length": 10,
+          "execution_time": 0.0001800060272216797,
+          "success": true
+        },
+        "rosenbrock_2d": {
+          "best_value": 1.0942418752775855,
+          "solution_length": 2,
+          "execution_time": 9.012222290039062e-05,
+          "success": true
+        },
+        "rosenbrock_5d": {
+          "best_value": 24.76029455621362,
+          "solution_length": 5,
+          "execution_time": 0.00013494491577148438,
+          "success": true
+        },
+        "rosenbrock_10d": {
+          "best_value": 78.03961937640085,
+          "solution_length": 10,
+          "execution_time": 0.00020003318786621094,
+          "success": true
+        },
+        "rastrigin_2d": {
+          "best_value": 1.1965975866375729,
+          "solution_length": 2,
+          "execution_time": 0.0001201629638671875,
+          "success": true
+        },
+        "rastrigin_5d": {
+          "best_value": 18.651964451528293,
+          "solution_length": 5,
+          "execution_time": 0.0001647472381591797,
+          "success": true
+        },
+        "rastrigin_10d": {
+          "best_value": 81.43627861624105,
+          "solution_length": 10,
+          "execution_time": 0.0002219676971435547,
+          "success": true
+        }
+      },
+      "PRIMA_NEWUOA": {
+        "sphere_2d": {
+          "best_value": 6.217704554907638e-05,
+          "solution_length": 2,
+          "execution_time": 0.00013208389282226562,
+          "success": true
+        },
+        "sphere_5d": {
+          "best_value": 0.9807598173760053,
+          "solution_length": 5,
+          "execution_time": 0.00014019012451171875,
+          "success": true
+        },
+        "sphere_10d": {
+          "best_value": 2.372672881832942,
+          "solution_length": 10,
+          "execution_time": 0.0004870891571044922,
+          "success": true
+        },
+        "rosenbrock_2d": {
+          "best_value": 0.06728174320277305,
+          "solution_length": 2,
+          "execution_time": 0.00026798248291015625,
+          "success": true
+        },
+        "rosenbrock_5d": {
+          "best_value": 8.725790234340039,
+          "solution_length": 5,
+          "execution_time": 0.00044274330139160156,
+          "success": true
+        },
+        "rosenbrock_10d": {
+          "best_value": 66.9973955823992,
+          "solution_length": 10,
+          "execution_time": 0.0005090236663818359,
+          "success": true
+        },
+        "rastrigin_2d": {
+          "best_value": 1.990187517545717,
+          "solution_length": 2,
+          "execution_time": 0.00031113624572753906,
+          "success": true
+        },
+        "rastrigin_5d": {
+          "best_value": 10.59324384675486,
+          "solution_length": 5,
+          "execution_time": 0.00046181678771972656,
+          "success": true
+        },
+        "rastrigin_10d": {
+          "best_value": 28.64823391478062,
+          "solution_length": 10,
+          "execution_time": 0.0006258487701416016,
+          "success": true
+        }
+      },
+      "PRIMA_UOBYQA": {
+        "sphere_2d": {
+          "best_value": 0.019290312129789614,
+          "solution_length": 2,
+          "execution_time": 0.00019407272338867188,
+          "success": true
+        },
+        "sphere_5d": {
+          "best_value": 0.12549505893229176,
+          "solution_length": 5,
+          "execution_time": 0.00023317337036132812,
+          "success": true
+        },
+        "sphere_10d": {
+          "best_value": 2.2436052090273644,
+          "solution_length": 10,
+          "execution_time": 0.0003230571746826172,
+          "success": true
+        },
+        "rosenbrock_2d": {
+          "best_value": 0.779607791171451,
+          "solution_length": 2,
+          "execution_time": 0.00015497207641601562,
+          "success": true
+        },
+        "rosenbrock_5d": {
+          "best_value": 19.577389528561994,
+          "solution_length": 5,
+          "execution_time": 0.00024390220642089844,
+          "success": true
+        },
+        "rosenbrock_10d": {
+          "best_value": 73.77019924493104,
+          "solution_length": 10,
+          "execution_time": 0.00043010711669921875,
+          "success": true
+        },
+        "rastrigin_2d": {
+          "best_value": 9.858700464166011,
+          "solution_length": 2,
+          "execution_time": 0.0001709461212158203,
+          "success": true
+        },
+        "rastrigin_5d": {
+          "best_value": 34.79120766349013,
+          "solution_length": 5,
+          "execution_time": 0.0002639293670654297,
+          "success": true
+        },
+        "rastrigin_10d": {
+          "best_value": 106.86319988033253,
+          "solution_length": 10,
+          "execution_time": 0.0004258155822753906,
+          "success": true
+        }
+      },
+      "ParticleSwarm": {
+        "sphere_2d": {
+          "best_value": 0.01583311490726114,
+          "solution_length": 2,
+          "execution_time": 0.0007162094116210938,
+          "success": true
+        },
+        "sphere_5d": {
+          "best_value": 0.42525366577931967,
+          "solution_length": 5,
+          "execution_time": 0.0006711483001708984,
+          "success": true
+        },
+        "sphere_10d": {
+          "best_value": 1.2556204961464728,
+          "solution_length": 10,
+          "execution_time": 0.0005199909210205078,
+          "success": true
+        },
+        "rosenbrock_2d": {
+          "best_value": 0.05626720382489325,
+          "solution_length": 2,
+          "execution_time": 0.0006268024444580078,
+          "success": true
+        },
+        "rosenbrock_5d": {
+          "best_value": 3.4115371533957553,
+          "solution_length": 5,
+          "execution_time": 0.0007157325744628906,
+          "success": true
+        },
+        "rosenbrock_10d": {
+          "best_value": 39.72087746615523,
+          "solution_length": 10,
+          "execution_time": 0.0006840229034423828,
+          "success": true
+        },
+        "rastrigin_2d": {
+          "best_value": 0.0,
+          "solution_length": 2,
+          "execution_time": 0.0007512569427490234,
+          "success": true
+        },
+        "rastrigin_5d": {
+          "best_value": 17.85611747463242,
+          "solution_length": 5,
+          "execution_time": 0.0007851123809814453,
+          "success": true
+        },
+        "rastrigin_10d": {
+          "best_value": 59.202868909836056,
+          "solution_length": 10,
+          "execution_time": 0.0007030963897705078,
+          "success": true
+        }
+      },
+      "Powell": {
+        "sphere_2d": {
+          "best_value": 0.0,
+          "solution_length": 2,
+          "execution_time": 0.0008120536804199219,
+          "success": true
+        },
+        "sphere_5d": {
+          "best_value": 0.07537039624074571,
+          "solution_length": 5,
+          "execution_time": 0.0005822181701660156,
+          "success": true
+        },
+        "sphere_10d": {
+          "best_value": 1.4981942677612003,
+          "solution_length": 10,
+          "execution_time": 0.0005939006805419922,
+          "success": true
+        },
+        "rosenbrock_2d": {
+          "best_value": 0.01839419283892129,
+          "solution_length": 2,
+          "execution_time": 0.0006201267242431641,
+          "success": true
+        },
+        "rosenbrock_5d": {
+          "best_value": 8.7324636704898,
+          "solution_length": 5,
+          "execution_time": 0.0006761550903320312,
+          "success": true
+        },
+        "rosenbrock_10d": {
+          "best_value": 45.68421641431059,
+          "solution_length": 10,
+          "execution_time": 0.0007827281951904297,
+          "success": true
+        },
+        "rastrigin_2d": {
+          "best_value": 1.0,
+          "solution_length": 2,
+          "execution_time": 0.0007350444793701172,
+          "success": true
+        },
+        "rastrigin_5d": {
+          "best_value": 1.0,
+          "solution_length": 5,
+          "execution_time": 0.0006499290466308594,
+          "success": true
+        },
+        "rastrigin_10d": {
+          "best_value": 24.0447629667473,
+          "solution_length": 10,
+          "execution_time": 0.0007500648498535156,
+          "success": true
+        }
+      },
+      "RandomSearch": {
+        "sphere_2d": {
+          "best_value": 0.0464012045131304,
+          "solution_length": 2,
+          "execution_time": 0.0002548694610595703,
+          "success": true
+        },
+        "sphere_5d": {
+          "best_value": 0.08364669183097928,
+          "solution_length": 5,
+          "execution_time": 0.0002658367156982422,
+          "success": true
+        },
+        "sphere_10d": {
+          "best_value": 1.626656624426526,
+          "solution_length": 10,
+          "execution_time": 0.00030493736267089844,
+          "success": true
+        },
+        "rosenbrock_2d": {
+          "best_value": 0.0030832963963529567,
+          "solution_length": 2,
+          "execution_time": 0.0002512931823730469,
+          "success": true
+        },
+        "rosenbrock_5d": {
+          "best_value": 12.074702480951025,
+          "solution_length": 5,
+          "execution_time": 0.00032520294189453125,
+          "success": true
+        },
+        "rosenbrock_10d": {
+          "best_value": 53.372357800624755,
+          "solution_length": 10,
+          "execution_time": 0.00046896934509277344,
+          "success": true
+        },
+        "rastrigin_2d": {
+          "best_value": 2.2572518470220935,
+          "solution_length": 2,
+          "execution_time": 0.0002377033233642578,
+          "success": true
+        },
+        "rastrigin_5d": {
+          "best_value": 9.356849896459835,
+          "solution_length": 5,
+          "execution_time": 0.00015306472778320312,
+          "success": true
+        },
+        "rastrigin_10d": {
+          "best_value": 56.216683286621205,
+          "solution_length": 10,
+          "execution_time": 0.00021004676818847656,
+          "success": true
+        }
+      },
+      "SimulatedAnnealing": {
+        "sphere_2d": {
+          "best_value": 0.0,
+          "solution_length": 2,
+          "execution_time": 0.0002491474151611328,
+          "success": true
+        },
+        "sphere_5d": {
+          "best_value": 0.047069094300395964,
+          "solution_length": 5,
+          "execution_time": 0.00023412704467773438,
+          "success": true
+        },
+        "sphere_10d": {
+          "best_value": 2.3133609788409597,
+          "solution_length": 10,
+          "execution_time": 0.0002460479736328125,
+          "success": true
+        },
+        "rosenbrock_2d": {
+          "best_value": 0.0,
+          "solution_length": 2,
+          "execution_time": 0.0002257823944091797,
+          "success": true
+        },
+        "rosenbrock_5d": {
+          "best_value": 4.0,
+          "solution_length": 5,
+          "execution_time": 0.00026607513427734375,
+          "success": true
+        },
+        "rosenbrock_10d": {
+          "best_value": 75.69731476208322,
+          "solution_length": 10,
+          "execution_time": 0.0003352165222167969,
+          "success": true
+        },
+        "rastrigin_2d": {
+          "best_value": 0.0,
+          "solution_length": 2,
+          "execution_time": 0.00023698806762695312,
+          "success": true
+        },
+        "rastrigin_5d": {
+          "best_value": 2.0,
+          "solution_length": 5,
+          "execution_time": 0.0002639293670654297,
+          "success": true
+        },
+        "rastrigin_10d": {
+          "best_value": 26.112796329396303,
+          "solution_length": 10,
+          "execution_time": 0.0003228187561035156,
+          "success": true
+        }
+      }
+    },
+    "javascript": {
+      "/js/modules/base-optimizer.js": {
+        "status_code": 200,
+        "load_time_ms": 0.7402896881103516,
+        "size_kb": 2.068359375,
+        "class_count": 0,
+        "function_count": 0,
+        "syntax_issues": [],
+        "success": true
+      },
+      "/js/modules/prima-algorithms.js": {
+        "status_code": 200,
+        "load_time_ms": 0.7760524749755859,
+        "size_kb": 54.0908203125,
+        "class_count": 3,
+        "function_count": 0,
+        "syntax_issues": [],
+        "success": true
+      },
+      "/js/modules/scipy-algorithms.js": {
+        "status_code": 200,
+        "load_time_ms": 0.6878376007080078,
+        "size_kb": 11.349609375,
+        "class_count": 3,
+        "function_count": 0,
+        "syntax_issues": [],
+        "success": true
+      },
+      "/js/modules/evolutionary-algorithms.js": {
+        "status_code": 200,
+        "load_time_ms": 0.6620883941650391,
+        "size_kb": 35.0078125,
+        "class_count": 12,
+        "function_count": 0,
+        "syntax_issues": [],
+        "success": true
+      },
+      "/js/modules/search-algorithms.js": {
+        "status_code": 200,
+        "load_time_ms": 0.7178783416748047,
+        "size_kb": 7.232421875,
+        "class_count": 4,
+        "function_count": 0,
+        "syntax_issues": [],
+        "success": true
+      },
+      "/js/modules/optimizer-factory.js": {
+        "status_code": 200,
+        "load_time_ms": 0.8339881896972656,
+        "size_kb": 4.5625,
+        "class_count": 0,
+        "function_count": 0,
+        "syntax_issues": [],
+        "success": true
+      },
+      "/js/modules/index.js": {
+        "status_code": 200,
+        "load_time_ms": 0.6871223449707031,
+        "size_kb": 4.744140625,
+        "class_count": 0,
+        "function_count": 0,
+        "syntax_issues": [],
+        "success": true
+      }
+    }
+  },
+  "performance_tests": {
+    "/": {
+      "status_code": 200,
+      "load_time_ms": 1.4052391052246094,
+      "content_size_kb": 27.00390625,
+      "content_type": "text/html",
+      "success": true
+    },
+    "/contest.html": {
+      "status_code": 200,
+      "load_time_ms": 0.8530616760253906,
+      "content_size_kb": 36.1650390625,
+      "content_type": "text/html",
+      "success": true
+    },
+    "/test-modular.html": {
+      "status_code": 200,
+      "load_time_ms": 0.7092952728271484,
+      "content_size_kb": 5.91015625,
+      "content_type": "text/html",
+      "success": true
+    },
+    "/contest-modular.html": {
+      "status_code": 200,
+      "load_time_ms": 0.7138252258300781,
+      "content_size_kb": 11.396484375,
+      "content_type": "text/html",
+      "success": true
+    }
+  },
+  "link_tests": {
+    "internal": {
+      "algorithms/harmony-search.html": {
+        "status": 200,
+        "success": true
+      },
+      "contest.html": {
+        "status": 200,
+        "success": true
+      },
+      "algorithm-visualization-demo.html": {
+        "status": 200,
+        "success": true
+      },
+      "algorithms/firefly-algorithm.html": {
+        "status": 200,
+        "success": true
+      },
+      "algorithms/powell.html": {
+        "status": 200,
+        "success": true
+      },
+      "algorithms/adaptive-random-search.html": {
+        "status": 200,
+        "success": true
+      },
+      "algorithms/particle-swarm.html": {
+        "status": 200,
+        "success": true
+      },
+      "algorithms/coordinate-descent.html": {
+        "status": 200,
+        "success": true
+      },
+      "algorithms/simulated-annealing.html": {
+        "status": 200,
+        "success": true
+      },
+      "algorithms/newuoa.html": {
+        "status": 200,
+        "success": true
+      },
+      "algorithms/nelder-mead.html": {
+        "status": 200,
+        "success": true
+      },
+      "algorithms/tabu-search.html": {
+        "status": 200,
+        "success": true
+      },
+      "algorithms/differential-evolution.html": {
+        "status": 200,
+        "success": true
+      },
+      "test-modular.html": {
+        "status": 200,
+        "success": true
+      },
+      "algorithms/bobyqa.html": {
+        "status": 200,
+        "success": true
+      },
+      "algorithms/cma-evolution-strategy.html": {
+        "status": 200,
+        "success": true
+      },
+      "algorithms/bayesian-optimization.html": {
+        "status": 200,
+        "success": true
+      },
+      "algorithms/lbfgsb.html": {
+        "status": 200,
+        "success": true
+      },
+      "algorithms/random-search.html": {
+        "status": 200,
+        "success": true
+      },
+      "algorithms/pattern-search.html": {
+        "status": 200,
+        "success": true
+      }
+    },
+    "external": {
+      "https://doi.org/10.1177/003754970107600201": {
+        "status": 403,
+        "success": false
+      },
+      "https://github.com/microprediction/humpday/blob/main/docs/js/modules/search-algorithms.js#L16": {
+        "status": 404,
+        "success": false
+      },
+      "https://doi.org/10.1007/978-3-662-43505-2_44": {
+        "status": 200,
+        "success": true
+      },
+      "https://doi.org/10.1007/s10107-015-0892-3": {
+        "status": 200,
+        "success": true
+      },
+      "https://doi.org/10.1023/A:1008202821328": {
+        "status": 200,
+        "success": true
+      },
+      "https://github.com/microprediction/humpday/blob/main/humpday/optimizers/scipy_algorithms.py#L149": {
+        "status": 200,
+        "success": true
+      },
+      "https://github.com/microprediction/humpday/blob/main/humpday/optimizers/evolutionary_algorithms.py#L207": {
+        "status": 200,
+        "success": true
+      },
+      "https://github.com/microprediction/humpday/blob/main/docs/js/modules/evolutionary-algorithms.js#L525": {
+        "status": 200,
+        "success": true
+      },
+      "https://github.com/microprediction/humpday/blob/main/humpday/optimizers/evolutionary_algorithms.py#L271": {
+        "status": 200,
+        "success": true
+      },
+      "https://doi.org/10.1109/ICNN.1995.488968": {
+        "status": 418,
+        "success": false
+      },
+      "https://github.com/microprediction/humpday/blob/main/docs/js/modules/scipy-algorithms.js#L209": {
+        "status": 200,
+        "success": true
+      },
+      "https://doi.org/10.1093/comjnl/7.4.308": {
+        "status": 403,
+        "success": false
+      },
+      "https://doi.org/10.1007/s00521-016-2328-2": {
+        "status": 200,
+        "success": true
+      },
+      "https://github.com/microprediction/humpday/blob/main/docs/js/modules/evolutionary-algorithms.js#L272": {
+        "status": 200,
+        "success": true
+      },
+      "https://jmlr.org/papers/v13/bergstra12a.html": {
+        "status": 200,
+        "success": true
+      }
+    },
+    "totals": {
+      "internal_found": 25,
+      "external_found": 61,
+      "internal_tested": 20,
+      "external_tested": 15
+    }
+  },
+  "style_audit": {
+    "fonts_found": [
+      "Courier New",
+      "Arial, sans-serif",
+      "Arial",
+      "Times New Roman"
+    ],
+    "color_schemes": [
+      "#f8d7da",
+      "#666",
+      "#007bff",
+      "#d4edda",
+      "white",
+      "#fff",
+      "var(--header-bg)",
+      "#2c3e50",
+      "#000",
+      "#74b9ff",
+      "#3498db",
+      "#28a745",
+      "#6c757d",
+      "#999",
+      "#ffffff",
+      "#495057",
+      "#333",
+      "#ccc",
+      "var(--text)",
+      "#155724",
+      "var(--accent)",
+      "#e74c3c",
+      "#ffc107",
+      "var(--muted)",
+      "#721c24",
+      "#7f8c8d"
+    ],
+    "style_inconsistencies": [],
+    "emoji_usage": [
+      {
+        "file": "contest-modular.html",
+        "emojis": [
+          "\u2713",
+          "\u2717"
+        ],
+        "count": 2
+      },
+      {
+        "file": "test-modular.html",
+        "emojis": [
+          "\u2713",
+          "\u2717"
+        ],
+        "count": 2
+      },
+      {
+        "file": "debug-modules.html",
+        "emojis": [
+          "\u2713",
+          "\u2717",
+          "\u2713",
+          "\u2717",
+          "\u2713",
+          "\u2717",
+          "\u2713",
+          "\u2717",
+          "\u2717"
+        ],
+        "count": 9
+      },
+      {
+        "file": "stick_breaking_demo.html",
+        "emojis": [
+          "\ud83d\udcd0",
+          "\ud83c\udf21",
+          "\ud83c\udfaf",
+          "\ud83d\udce6",
+          "\ud83d\udd3a",
+          "\ud83d\udcca",
+          "\ud83c\udf10"
+        ],
+        "count": 7
+      }
+    ],
+    "font_issues": [
+      {
+        "file": "index.html",
+        "font": "'Courier New', monospace",
+        "issue": "non-standard font family"
+      },
+      {
+        "file": "index.html",
+        "font": "'Courier New', monospace",
+        "issue": "non-standard font family"
+      },
+      {
+        "file": "stick_breaking_demo.html",
+        "font": "'Courier New', monospace",
+        "issue": "non-standard font family"
+      }
+    ]
+  },
+  "accessibility_tests": {
+    "algorithm-visualization-demo.html": {
+      "issues": [],
+      "issue_count": 0
+    },
+    "index.html": {
+      "issues": [],
+      "issue_count": 0
+    },
+    "contest-modular.html": {
+      "issues": [],
+      "issue_count": 0
+    },
+    "test-modular.html": {
+      "issues": [],
+      "issue_count": 0
+    },
+    "debug-modules.html": {
+      "issues": [],
+      "issue_count": 0
+    },
+    "contest.html": {
+      "issues": [],
+      "issue_count": 0
+    },
+    "stick_breaking_demo.html": {
+      "issues": [],
+      "issue_count": 0
+    }
+  },
+  "browser_tests": {},
+  "security_tests": {}
+}

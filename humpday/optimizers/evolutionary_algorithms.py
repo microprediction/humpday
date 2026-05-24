@@ -17,7 +17,8 @@ class DifferentialEvolution(BaseOptimizer):
     """Differential Evolution algorithm."""
 
     def optimize(self) -> Tuple[float, np.ndarray]:
-        pop_size = min(20, self.n_trials // 5)
+        # Ensure minimum population size for DE (need at least 4: current + 3 others)
+        pop_size = max(10, min(20, self.n_trials // 5))
         F = 0.8  # Scaling factor
         CR = 0.9  # Crossover probability
 
@@ -31,9 +32,15 @@ class DifferentialEvolution(BaseOptimizer):
                     break
 
                 # Select three random individuals (different from current)
+                # Ensure we have enough candidates
                 candidates = list(range(pop_size))
                 candidates.remove(i)
-                a, b, c = np.random.choice(candidates, 3, replace=False)
+
+                if len(candidates) < 3:
+                    # Fallback: allow replacement if population too small
+                    a, b, c = np.random.choice(candidates, 3, replace=True)
+                else:
+                    a, b, c = np.random.choice(candidates, 3, replace=False)
 
                 # Mutation
                 mutant = population[a] + F * (population[b] - population[c])
