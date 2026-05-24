@@ -45,7 +45,7 @@
             <div class="embed-section">
                 <h3>Embed This in Your Own Web Page</h3>
                 <p>Want to add interactive 3D optimization visualization to your website? It's just a few lines of code!</p>
-                <button onclick="showEmbedModal()" style="background: #007bff; color: white; border: none; padding: 12px 24px; border-radius: 4px; cursor: pointer; font-size: 16px; font-weight: 600;">
+                <button id="embedButton" style="background: #007bff; color: white; border: none; padding: 12px 24px; border-radius: 4px; cursor: pointer; font-size: 16px; font-weight: 600;">
                     Show Embed Code
                 </button>
             </div>
@@ -97,27 +97,35 @@ document.addEventListener('DOMContentLoaded', function() {
     <script src="js/demo-controller.js"></script>
 
     <script>
-        function showEmbedModal() {
-            document.getElementById('embedModal').style.display = 'block';
-        }
+        document.addEventListener('DOMContentLoaded', function() {
+            // Embed modal functionality
+            const embedButton = document.getElementById('embedButton');
+            const embedModal = document.getElementById('embedModal');
 
-        function hideEmbedModal() {
-            document.getElementById('embedModal').style.display = 'none';
-        }
+            embedButton.addEventListener('click', function() {
+                embedModal.style.display = 'block';
+            });
 
-        function copyEmbedCode() {
-            const textarea = document.querySelector('#embedModal textarea');
-            textarea.select();
-            document.execCommand('copy');
-            const button = event.target;
-            const originalText = button.textContent;
-            button.textContent = 'Copied!';
-            button.style.background = '#28a745';
-            setTimeout(() => {
-                button.textContent = originalText;
+            // Close modal functions
+            window.hideEmbedModal = function() {
+                embedModal.style.display = 'none';
+            };
+
+            // Copy function
+            window.copyEmbedCode = function() {
+                const textarea = document.querySelector('#embedModal textarea');
+                textarea.select();
+                document.execCommand('copy');
+                const button = event.target;
+                const originalText = button.textContent;
+                button.textContent = 'Copied!';
                 button.style.background = '#28a745';
-            }, 2000);
-        }
+                setTimeout(() => {
+                    button.textContent = originalText;
+                    button.style.background = '#28a745';
+                }, 2000);
+            };
+        });
     </script>
 
 </body>

@@ -202,8 +202,8 @@ class AlgorithmVisualizer {
             0.1,
             1000
         );
-        // Set camera to show full surface topology from elevated perspective
-        this.camera.position.set(7, 5, 7);
+        // Set camera to match desired rectangular view from Image #8
+        this.camera.position.set(8, 6, 4);
         this.camera.lookAt(0, 0, 0);
 
         // Renderer
