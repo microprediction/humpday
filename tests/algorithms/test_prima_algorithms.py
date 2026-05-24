@@ -259,6 +259,9 @@ class TestPRIMAPerformance:
 
     def test_prima_efficiency(self):
         """Test PRIMA algorithms are reasonably efficient compared to SciPy."""
+        pytest.importorskip(
+            "scipy", reason="SciPy not available for performance comparison"
+        )
         from scipy.optimize import minimize
 
         def simple_quadratic(x):

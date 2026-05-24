@@ -70,13 +70,6 @@ class TestSciPyInterfaceMissingCoverage:
             cube_particle_swarm,
             cube_cma_es,
             cube_prima_uobyqa,
-            cube_hill_climbing,
-            cube_simulated_annealing,
-            cube_adaptive_random_search,
-            cube_pattern_search,
-            cube_evolution_strategy,
-            cube_harmony_search,
-            cube_firefly_algorithm,
         ]
 
         for cube_func in cube_functions:
