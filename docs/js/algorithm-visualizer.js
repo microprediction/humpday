@@ -202,7 +202,8 @@ class AlgorithmVisualizer {
             0.1,
             1000
         );
-        this.camera.position.set(6, 6, 4);
+        // Set camera to the ideal angle for viewing optimization surfaces
+        this.camera.position.set(8, 5, 6);
         this.camera.lookAt(0, 0, 0);
 
         // Renderer
@@ -216,6 +217,11 @@ class AlgorithmVisualizer {
         this.controls = new THREE.OrbitControls(this.camera, this.renderer.domElement);
         this.controls.enableDamping = true;
         this.controls.dampingFactor = 0.05;
+        // Set ideal viewing constraints for optimization surfaces
+        this.controls.minPolarAngle = Math.PI * 0.1; // Prevent looking too far up
+        this.controls.maxPolarAngle = Math.PI * 0.8; // Prevent looking too far down
+        this.controls.minDistance = 4;
+        this.controls.maxDistance = 20;
 
         // Lighting
         this.setupLighting();
