@@ -33,10 +33,20 @@
             font-style: italic;
         }
 
-        .controls {
-            display: grid;
-            grid-template-columns: 1fr 1fr;
+        .coordinate-controls {
+            display: flex;
             gap: 30px;
+            margin-bottom: 20px;
+            justify-content: center;
+        }
+
+        .adaptive-controls {
+            display: flex;
+            justify-content: center;
+            margin-bottom: 30px;
+        }
+
+        .controls {
             margin-bottom: 30px;
         }
 
@@ -45,6 +55,12 @@
             padding: 20px;
             border-radius: 10px;
             border-left: 4px solid #3498db;
+            min-width: 250px;
+        }
+
+        .adaptive-controls .control-panel {
+            max-width: 400px;
+            border-left: 4px solid #e74c3c;
         }
 
         .slider-container {
@@ -218,39 +234,36 @@
 </head>
 <body>
     <div class="container">
-        <h1>🥖 Stick Breaking Transform</h1>
+        <h1>Stick Breaking Transform</h1>
         <p class="subtitle">Interactive Visualization: Cube [0,1]² → Simplex (3 weights)</p>
 
+        <!-- Visualizations First -->
+
+        <!-- Controls Below Visualizations -->
         <div class="controls">
-            <div class="control-panel">
-                <h3>Cube Coordinates</h3>
-                <div class="slider-container">
-                    <div class="slider-label">
-                        <span>z₁ (First Parameter)</span>
-                        <span id="z1Value">0.50</span>
+            <!-- Coordinate Controls -->
+            <div class="coordinate-controls">
+                <div class="control-panel">
+                    <h3>Cube Coordinates</h3>
+                    <div class="slider-container">
+                        <div class="slider-label">
+                            <span>z₁ (First Parameter)</span>
+                            <span id="z1Value">0.50</span>
+                        </div>
+                        <input type="range" id="z1Slider" class="slider" min="0" max="1" step="0.01" value="0.5">
                     </div>
-                    <input type="range" id="z1Slider" class="slider" min="0" max="1" step="0.01" value="0.5">
+
+                    <div class="slider-container">
+                        <div class="slider-label">
+                            <span>z₂ (Second Parameter)</span>
+                            <span id="z2Value">0.50</span>
+                        </div>
+                        <input type="range" id="z2Slider" class="slider" min="0" max="1" step="0.01" value="0.5">
+                    </div>
                 </div>
 
-                <div class="slider-container">
-                    <div class="slider-label">
-                        <span>z₂ (Second Parameter)</span>
-                        <span id="z2Value">0.50</span>
-                    </div>
-                    <input type="range" id="z2Slider" class="slider" min="0" max="1" step="0.01" value="0.5">
-                </div>
-
-                <div class="slider-container">
-                    <div class="slider-label">
-                        <span>Temperature</span>
-                        <span id="temperatureValue">1.00</span>
-                    </div>
-                    <input type="range" id="temperatureSlider" class="slider" min="0.1" max="3" step="0.1" value="1.0">
-                </div>
-            </div>
-
-            <div class="control-panel">
-                <h3>Simplex Weights</h3>
+                <div class="control-panel">
+                    <h3>Simplex Weights</h3>
                 <div class="weight-display">
                     <div class="weight-bar">
                         <div class="weight-fill" id="weight1" style="background: #e74c3c;"></div>
@@ -269,9 +282,21 @@
                     </div>
                 </div>
             </div>
-        </div>
 
-        <div class="visualization">
+            <!-- Separate Adaptive Model Control -->
+            <div class="adaptive-controls">
+                <div class="control-panel">
+                    <h3>Distribution Model</h3>
+                    <div class="slider-container">
+                        <div class="slider-label">
+                            <span>Temperature</span>
+                            <span id="temperatureValue">1.00</span>
+                        </div>
+                        <input type="range" id="temperatureSlider" class="slider" min="0.1" max="3" step="0.1" value="1.0">
+                    </div>
+                </div>
+            </div>
+        </div>
             <div class="viz-panel">
                 <div class="viz-title">Unit Cube [0,1]²</div>
                 <canvas id="cubeCanvas" class="cube-viz" width="300" height="250"></canvas>
