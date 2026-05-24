@@ -149,7 +149,7 @@ class AlgorithmVisualizer {
         this.currentFunction = 'sphere';
         this.resolution = 50; // Grid resolution for surface
         this.viewMode = '3d'; // '3d' or 'wireframe'
-        this.animationSpeed = 'medium'; // 'slow', 'medium', 'fast'
+        this.animationSpeed = 'fast'; // 'slow', 'medium', 'fast'
 
         this.init();
     }
@@ -202,7 +202,8 @@ class AlgorithmVisualizer {
             0.1,
             1000
         );
-        this.camera.position.set(6, 6, 4);
+        // Set camera to user-tested optimal horizontal diamond perspective
+        this.camera.position.set(-1.874, -16.095, 11.723);
         this.camera.lookAt(0, 0, 0);
 
         // Renderer
@@ -533,7 +534,6 @@ class AlgorithmVisualizer {
             const speedSelect = document.createElement('select');
             speedSelect.style.cssText = 'padding: 4px; border: 1px solid #ddd; border-radius: 4px; margin-left: 5px;';
             const speedOptions = [
-                { value: 'slow', text: 'Slow (3s)' },
                 { value: 'medium', text: 'Medium (1.5s)' },
                 { value: 'fast', text: 'Fast (0.5s)' },
                 { value: 'very-fast', text: 'Very Fast (0.2s)' }
@@ -600,7 +600,6 @@ class AlgorithmVisualizer {
             const speedSelect = document.createElement('select');
             speedSelect.style.cssText = 'width: 100%; padding: 8px; border: 1px solid #ddd; border-radius: 4px;';
             const speedOptions = [
-                { value: 'slow', text: 'Slow (3s)' },
                 { value: 'medium', text: 'Medium (1.5s)' },
                 { value: 'fast', text: 'Fast (0.5s)' },
                 { value: 'very-fast', text: 'Very Fast (0.2s)' }
