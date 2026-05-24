@@ -202,8 +202,8 @@ class AlgorithmVisualizer {
             0.1,
             1000
         );
-        // Set camera for straight-on rectangular view (more top-down perspective)
-        this.camera.position.set(6, 10, 6);
+        // Set camera to achieve the exact horizontal diamond perspective from Image #10
+        this.camera.position.set(8, 4, 6);
         this.camera.lookAt(0, 0, 0);
 
         // Renderer
