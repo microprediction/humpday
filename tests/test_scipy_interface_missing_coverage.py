@@ -124,9 +124,7 @@ class TestSciPyInterfaceMissingCoverage:
             return sum(x**2)
 
         try:
-            result = cube_minimize(
-                simple_objective, n_dim=2, n_trials=10
-            )
+            result = cube_minimize(simple_objective, n_dim=2, n_trials=10)
             assert hasattr(result, "x")
             assert hasattr(result, "fun")
         except Exception:

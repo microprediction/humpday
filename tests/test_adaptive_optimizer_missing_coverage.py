@@ -136,8 +136,12 @@ class TestAdaptiveOptimizerMissingCoverage:
         # Test that function exists and has expected parameters
         sig = inspect.signature(run_algorithm_tournament)
         expected_params = {
-            'objective_generator', 'trials_per_problem', 'n_problems',
-            'n_dim', 'elo_system', 'algorithms_to_test'
+            "objective_generator",
+            "trials_per_problem",
+            "n_problems",
+            "n_dim",
+            "elo_system",
+            "algorithms_to_test",
         }
         actual_params = set(sig.parameters.keys())
 
@@ -145,8 +149,8 @@ class TestAdaptiveOptimizerMissingCoverage:
 
         # Test EloRatingSystem creation works
         elo_system = EloRatingSystem()
-        assert hasattr(elo_system, 'ratings')
-        assert hasattr(elo_system, 'match_history')
+        assert hasattr(elo_system, "ratings")
+        assert hasattr(elo_system, "match_history")
 
     def test_suggest_algorithm_from_elo_edge_cases(self):
         """Test suggest_algorithm_from_elo with edge cases."""
@@ -161,7 +165,9 @@ class TestAdaptiveOptimizerMissingCoverage:
         result = suggest_algorithm_from_elo(elo_system, n_dim=2, problem_type="smooth")
         assert isinstance(result, str)
 
-        result = suggest_algorithm_from_elo(elo_system, n_dim=20, problem_type="multimodal")
+        result = suggest_algorithm_from_elo(
+            elo_system, n_dim=20, problem_type="multimodal"
+        )
         assert isinstance(result, str)
 
         result = suggest_algorithm_from_elo(elo_system, n_dim=5, problem_type="noisy")

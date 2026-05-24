@@ -244,7 +244,9 @@ class TestAdaptiveOptimizerEdgeCases:
         result = suggest_algorithm_from_elo(elo_system, n_dim=1, problem_type="smooth")
         assert isinstance(result, str)
 
-        result = suggest_algorithm_from_elo(elo_system, n_dim=100, problem_type="multimodal")
+        result = suggest_algorithm_from_elo(
+            elo_system, n_dim=100, problem_type="multimodal"
+        )
         assert isinstance(result, str)
 
         result = suggest_algorithm_from_elo(elo_system, n_dim=50, problem_type="noisy")
