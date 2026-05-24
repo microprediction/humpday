@@ -4,13 +4,19 @@ No external dependencies beyond numpy. Clean ports, not wrappers.
 """
 
 # Import from new modular structure
-from .prima_algorithms import PRIMA_UOBYQA, PRIMA_NEWUOA, PRIMA_BOBYQA
-from .scipy_algorithms import NelderMead, Powell, LBFGSB
-from .evolutionary_algorithms import DifferentialEvolution, ParticleSwarm, SimulatedAnnealing, GeneticAlgorithm, RandomSearch
+from .evolutionary_algorithms import (
+    DifferentialEvolution,
+    GeneticAlgorithm,
+    ParticleSwarm,
+    RandomSearch,
+    SimulatedAnnealing,
+)
+from .prima_algorithms import PRIMA_BOBYQA, PRIMA_NEWUOA, PRIMA_UOBYQA
+from .scipy_algorithms import LBFGSB, NelderMead, Powell
 
 # For algorithms not yet in modules, import from old file temporarily
 try:
-    from .optimizers import HillClimbing, HarmonySearch
+    from .optimizers import HarmonySearch, HillClimbing
 except ImportError:
     # Create placeholder classes if not available
     from .base import BaseOptimizer
