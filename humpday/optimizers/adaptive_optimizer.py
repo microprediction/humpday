@@ -72,17 +72,21 @@ class EloRatingSystem:
         sorted_ratings = sorted(self.ratings.items(), key=lambda x: x[1], reverse=True)
         return sorted_ratings[:n]
 
-    def save_ratings(self, filepath: str):
-        """Save ratings and history to file."""
-        data = {
-            "ratings": self.ratings,
-            "match_history": self.match_history,
-            "initial_rating": self.initial_rating,
-            "k_factor": self.k_factor,
-        }
-        os.makedirs(os.path.dirname(filepath), exist_ok=True)
-        with open(filepath, "w") as f:
-            json.dump(data, f, indent=2)
+    def save_ratings(self, filepath: str) -> bool:
+        """Save ratings and history to file. Returns True if successful."""
+        try:
+            data = {
+                "ratings": self.ratings,
+                "match_history": self.match_history,
+                "initial_rating": self.initial_rating,
+                "k_factor": self.k_factor,
+            }
+            os.makedirs(os.path.dirname(filepath), exist_ok=True)
+            with open(filepath, "w") as f:
+                json.dump(data, f, indent=2)
+            return True
+        except Exception:
+            return False
 
     def load_ratings(self, filepath: str) -> bool:
         """Load ratings and history from file. Returns True if successful."""

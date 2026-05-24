@@ -13,7 +13,7 @@ class TestAdaptiveOptimizerMissingCoverage:
 
     def test_normalize_scores_edge_cases(self):
         """Test normalize_scores with edge cases (lines 97, 100-101, 108, 114)."""
-        from humpday.optimizers.adaptive_optimizer import normalize_scores
+        from humpday.optimizers.adaptive_optimizer import normalize_performance as normalize_scores
 
         # Test with all equal values (should trigger division by zero handling)
         equal_values = [1.0, 1.0, 1.0, 1.0]
