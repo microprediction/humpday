@@ -4,14 +4,16 @@ Comprehensive test suite for HumpDay repository and website.
 Tests Python implementation, JavaScript modules, website functionality, and links.
 """
 
-import os
-import sys
-import subprocess
 import json
+import os
+import subprocess
+import sys
 import time
 from pathlib import Path
-import requests
 from urllib.parse import urljoin
+
+import requests
+
 
 class HumpDayTester:
     def __init__(self):

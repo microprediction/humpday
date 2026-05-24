@@ -6,8 +6,8 @@ This script tests the completeness and consistency of the HumpDay optimization
 library across both implementations.
 """
 
-import sys
 import os
+import sys
 
 # Add the humpday module to the path
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), '.'))
@@ -20,6 +20,7 @@ except ImportError as e:
     sys.exit(1)
 
 import numpy as np
+
 
 def sphere_function(x):
     """Simple sphere function: f(x) = sum(xi^2)"""
@@ -153,7 +154,7 @@ def create_comparison_report():
     print("SUMMARY")
     print("="*60)
     print(f"Python implementation: {py_success}/{py_total} algorithms working")
-    print(f"Expected JavaScript: 22 algorithms (modular implementation)")
+    print("Expected JavaScript: 22 algorithms (modular implementation)")
 
     # Write JavaScript test to file
     js_test_file = os.path.join(os.path.dirname(__file__), 'docs', 'js_algorithm_test.js')

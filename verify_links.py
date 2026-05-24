@@ -4,10 +4,12 @@ Link verification script for HumpDay implementation table.
 Checks that all GitHub links in the implementation table are valid and accessible.
 """
 
-import requests
 import re
 import time
 from pathlib import Path
+
+import requests
+
 
 def check_github_link(url):
     """Check if a GitHub link is accessible."""
@@ -57,10 +59,10 @@ def verify_all_links():
         print(f"{i:2d}. Checking: {link.split('/')[-1]}")
 
         if check_github_link(link):
-            print(f"    ✓ Working")
+            print("    ✓ Working")
             working_links.append(link)
         else:
-            print(f"    ✗ Broken")
+            print("    ✗ Broken")
             broken_links.append(link)
 
         # Be nice to GitHub's servers

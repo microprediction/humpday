@@ -8,7 +8,7 @@ and performance characteristics. Validates against known benchmarks.
 import numpy as np
 import pytest
 
-from humpday.optimizers.prima_algorithms import PRIMA_UOBYQA, PRIMA_NEWUOA, PRIMA_BOBYQA
+from humpday.optimizers.prima_algorithms import PRIMA_BOBYQA, PRIMA_NEWUOA, PRIMA_UOBYQA
 
 
 class TestPRIMAAlgorithms:
@@ -151,7 +151,7 @@ class TestPRIMAAlgorithms:
 
         # All algorithms should find solutions
         assert len(results) == 3
-        print(f"\nPRIMA Algorithm Comparison on 2D Rosenbrock:")
+        print("\nPRIMA Algorithm Comparison on 2D Rosenbrock:")
         for name, result in results.items():
             print(f"  {name:8}: {result['value']:8.4f} ({result['evaluations']} evals)")
 

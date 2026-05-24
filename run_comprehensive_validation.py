@@ -30,20 +30,20 @@ Author: HumpDay Comprehensive Validation Runner
 Date: 2026-05-23
 """
 
-import sys
 import argparse
-import time
 import json
+import sys
+import time
 from pathlib import Path
-from typing import Dict, Any, List
+from typing import Any, Dict, List
 
 # Add current directory to path for imports
 sys.path.insert(0, str(Path(__file__).parent))
 
 try:
+    from benchmark_suite import BenchmarkSuite
     from cross_validation_framework import CrossValidationFramework
     from statistical_validation import StatisticalValidator, create_convergence_plots
-    from benchmark_suite import BenchmarkSuite
 except ImportError as e:
     print(f"❌ Import error: {e}")
     print("Please ensure all validation modules are in the same directory")
@@ -52,8 +52,12 @@ except ImportError as e:
 # Import HumpDay components
 try:
     from humpday.optimizers.alloptimizers import PURE_OPTIMIZERS, pure_optimize
-    from humpday.optimizers.prima_algorithms import PRIMA_UOBYQA, PRIMA_NEWUOA, PRIMA_BOBYQA
-    from humpday.optimizers.scipy_algorithms import NelderMead, Powell, LBFGSB
+    from humpday.optimizers.prima_algorithms import (
+        PRIMA_BOBYQA,
+        PRIMA_NEWUOA,
+        PRIMA_UOBYQA,
+    )
+    from humpday.optimizers.scipy_algorithms import LBFGSB, NelderMead, Powell
 except ImportError as e:
     print(f"❌ HumpDay import error: {e}")
     print("Please ensure HumpDay is properly installed and accessible")
@@ -88,7 +92,7 @@ class ComprehensiveValidationRunner:
             'PRIMA_BOBYQA': PRIMA_BOBYQA
         }
 
-        print(f"🚀 Comprehensive Validation Runner Initialized")
+        print("🚀 Comprehensive Validation Runner Initialized")
         print(f"📁 Output directory: {self.output_dir}")
         print(f"🔍 Test algorithms: {len(self.test_algorithms)}")
         print(f"🎯 Benchmark problems: {len(self.benchmark_suite.problems)}")
@@ -372,7 +376,7 @@ class ComprehensiveValidationRunner:
     def print_validation_summary(self, report: Dict[str, Any]) -> None:
         """Print a human-readable validation summary."""
 
-        print(f"\n🎯 COMPREHENSIVE VALIDATION SUMMARY")
+        print("\n🎯 COMPREHENSIVE VALIDATION SUMMARY")
         print("=" * 50)
 
         summary = report['validation_summary']
@@ -381,7 +385,7 @@ class ComprehensiveValidationRunner:
         print(f"Overall pass rate: {summary['overall_pass_rate']:.1f}%")
 
         # Category breakdown
-        print(f"\n📊 VALIDATION CATEGORIES")
+        print("\n📊 VALIDATION CATEGORIES")
         for category, results in report['validation_categories'].items():
             if results:
                 if 'pass_rate' in results:
@@ -391,14 +395,14 @@ class ComprehensiveValidationRunner:
 
         # Algorithm performance
         if report['algorithm_performance']:
-            print(f"\n🔢 ALGORITHM PERFORMANCE")
+            print("\n🔢 ALGORITHM PERFORMANCE")
             sorted_algs = sorted(report['algorithm_performance'].items(), key=lambda x: x[1], reverse=True)
             for alg, score in sorted_algs:
                 status = "🏆" if score > 0.8 else "✅" if score > 0.6 else "⚠️" if score > 0.4 else "❌"
                 print(f"  {status} {alg}: {score:.1%}")
 
         # Recommendations
-        print(f"\n💡 RECOMMENDATIONS")
+        print("\n💡 RECOMMENDATIONS")
         for rec in report['recommendations']:
             print(f"  {rec}")
 
@@ -513,11 +517,11 @@ def main():
         n_trials = args.trials
         n_runs = args.runs
 
-    print(f"🔬 HumpDay Comprehensive Cross-Validation Framework")
+    print("🔬 HumpDay Comprehensive Cross-Validation Framework")
     print("=" * 60)
     print("Mathematical rigor and equivalence testing for optimization algorithms")
     print("")
-    print(f"Configuration:")
+    print("Configuration:")
     print(f"  Trials per run: {n_trials}")
     print(f"  Runs per test: {n_runs}")
     print(f"  Output directory: {args.output}")
@@ -538,13 +542,13 @@ def main():
             skip_javascript=args.skip_js
         )
 
-        print(f"\n🎉 VALIDATION SUITE COMPLETED SUCCESSFULLY!")
+        print("\n🎉 VALIDATION SUITE COMPLETED SUCCESSFULLY!")
         print(f"📊 Results available in: {args.output}/")
 
         return 0
 
     except KeyboardInterrupt:
-        print(f"\n⏹️ Validation interrupted by user")
+        print("\n⏹️ Validation interrupted by user")
         return 1
     except Exception as e:
         print(f"\n❌ Validation failed: {e}")

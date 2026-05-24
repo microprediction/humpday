@@ -18,10 +18,11 @@ Author: HumpDay Benchmark Suite
 Date: 2026-05-23
 """
 
-import numpy as np
-from typing import Callable, List, Tuple, Dict, Any, Optional
-from dataclasses import dataclass
 from abc import ABC, abstractmethod
+from dataclasses import dataclass
+from typing import Any, Callable, Dict, List, Optional, Tuple
+
+import numpy as np
 
 
 @dataclass
@@ -531,7 +532,7 @@ class BenchmarkSuite:
                     problem = self.problems[problem_name]
                     print(f"  • {problem_name} - {problem.metadata.difficulty}")
 
-        print(f"\nDimensions available: {sorted(set(p.metadata.dimension for p in self.problems.values()))}")
+        print(f"\nDimensions available: {sorted({p.metadata.dimension for p in self.problems.values()})}")
 
 
 def main():
@@ -559,7 +560,7 @@ def main():
 
         return best_value, best_x
 
-    print(f"\n🧪 Testing Random Search on selected problems...")
+    print("\n🧪 Testing Random Search on selected problems...")
 
     # Test on a few problems
     test_problems = ['Sphere_2D', 'Rosenbrock_2D', 'Rastrigin_2D']
@@ -572,7 +573,7 @@ def main():
         print(f"  Std:  {stats['std']:.6f}")
         print(f"  Success rate: {stats['success_rate']:.2f}")
 
-    print(f"\n✅ Benchmark suite working correctly")
+    print("\n✅ Benchmark suite working correctly")
 
 
 if __name__ == "__main__":
