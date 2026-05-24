@@ -1,0 +1,385 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>HumpDay Optimization Contest - Modular Implementation</title>
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+
+        body {
+            font-family: 'Times New Roman', Times, serif;
+            line-height: 1.6;
+            color: #333;
+            background: #ffffff;
+        }
+
+        header {
+            background: #ffffff;
+            padding: 2rem 0;
+            border-bottom: 2px solid #000;
+            text-align: center;
+        }
+
+        h1 {
+            font-size: 2.5rem;
+            font-weight: bold;
+            color: #000;
+            margin-bottom: 0.5rem;
+        }
+
+        .subtitle {
+            font-size: 1.1rem;
+            color: #666;
+            font-style: italic;
+        }
+
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+            padding: 0 2rem;
+        }
+
+        .academic-button {
+            background: #ffffff;
+            color: #000;
+            border: 2px solid #000;
+            padding: 12px 24px;
+            font-size: 1rem;
+            font-family: 'Times New Roman', Times, serif;
+            font-weight: bold;
+            cursor: pointer;
+            transition: all 0.2s ease;
+            text-decoration: none;
+            display: inline-block;
+            margin: 0 8px;
+        }
+
+        .academic-button:hover {
+            background: #000;
+            color: #ffffff;
+        }
+
+        .academic-button:active {
+            transform: translateY(1px);
+        }
+
+        .controls {
+            text-align: center;
+            padding: 2rem 0;
+            background: #f8f8f8;
+            border-bottom: 1px solid #ddd;
+        }
+
+        .contest-area {
+            padding: 2rem 0;
+        }
+
+        .interpretation {
+            background: #f9f9f9;
+            border: 1px solid #ddd;
+            padding: 1.5rem;
+            margin: 1rem 0;
+            font-size: 0.95rem;
+        }
+
+        .leaderboard {
+            background: white;
+            border: 1px solid #ddd;
+            border-radius: 8px;
+            overflow: hidden;
+            margin: 2rem 0;
+        }
+
+        .leaderboard table {
+            width: 100%;
+            border-collapse: collapse;
+        }
+
+        .leaderboard th {
+            background: #f8f8f8;
+            padding: 12px;
+            text-align: left;
+            border-bottom: 2px solid #ddd;
+            font-weight: bold;
+        }
+
+        .leaderboard td {
+            padding: 10px 12px;
+            border-bottom: 1px solid #eee;
+        }
+
+        .leaderboard tr:hover {
+            background: #f9f9f9;
+        }
+
+        .elo-rating {
+            font-weight: bold;
+            font-size: 1.1em;
+        }
+
+        .status-indicator {
+            width: 8px;
+            height: 8px;
+            border-radius: 50%;
+            display: inline-block;
+            margin-right: 8px;
+        }
+
+        .status-waiting { background: #6c757d; }
+        .status-running { background: #ffc107; }
+        .status-completed { background: #28a745; }
+        .status-failed { background: #dc3545; }
+        .status-timeout { background: #fd7e14; }
+        .status-skipped { background: #6f42c1; }
+
+        .progress-section {
+            margin: 2rem 0;
+        }
+
+        .surface-progress {
+            border: 1px solid #ddd;
+            border-radius: 5px;
+            margin: 10px 0;
+            overflow: hidden;
+        }
+
+        .surface-title {
+            background: #f8f8f8;
+            padding: 12px;
+            cursor: pointer;
+            font-weight: bold;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        .surface-content {
+            padding: 15px;
+            border-top: 1px solid #ddd;
+        }
+
+        .surface-progress.collapsed .surface-content {
+            display: none;
+        }
+
+        .surface-progress.collapsed .collapse-indicator::before {
+            content: '▶';
+        }
+
+        .collapse-indicator::before {
+            content: '▼';
+        }
+
+        .optimizer-result {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 8px;
+            margin: 4px 0;
+            background: #f8f9fa;
+            border-radius: 4px;
+            border-left: 4px solid #28a745;
+        }
+
+        .optimizer-result.running {
+            border-left-color: #ffc107;
+            background: #fff3cd;
+        }
+
+        .optimizer-result.skipped {
+            border-left-color: #6c757d;
+            background: #f8f9fa;
+            opacity: 0.7;
+        }
+
+        .loading {
+            text-align: center;
+            padding: 20px;
+            color: #666;
+        }
+
+        .spinner {
+            border: 3px solid #f3f3f3;
+            border-top: 3px solid #666;
+            border-radius: 50%;
+            width: 20px;
+            height: 20px;
+            animation: spin 1s linear infinite;
+            margin: 0 auto 10px;
+        }
+
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+    </style>
+</head>
+<body>
+    <header>
+        <div class="container">
+            <h1>HumpDay Optimization Contest</h1>
+            <div class="subtitle">Professional Algorithm Evaluation Platform - Modular Implementation</div>
+        </div>
+    </header>
+
+    <div class="controls">
+        <div class="container">
+            <button class="academic-button" onclick="runQuickTest()">Quick Test (5 algorithms)</button>
+            <button class="academic-button" onclick="runFullContest()">Full Contest (All 22 algorithms)</button>
+            <button class="academic-button" onclick="resetContest()">Reset</button>
+        </div>
+    </div>
+
+    <div class="container">
+        <div id="loadingStatus" style="text-align: center; padding: 20px; color: #666;"></div>
+
+        <div id="interpretation" class="interpretation" style="display: none;">
+            <div id="interpretationDetails"></div>
+        </div>
+
+        <div id="contestArea" class="contest-area" style="display: none;">
+            <div id="contestInfo"></div>
+
+            <div class="leaderboard">
+                <table>
+                    <thead>
+                        <tr>
+                            <th>Rank</th>
+                            <th>Algorithm</th>
+                            <th>Elo Rating</th>
+                            <th>Progress</th>
+                        </tr>
+                    </thead>
+                    <tbody id="leaderboardBody">
+                    </tbody>
+                </table>
+            </div>
+
+            <div class="progress-section">
+                <div id="progressSection"></div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Load modular algorithm implementations -->
+    <script src="js/modules/base-optimizer.js"></script>
+    <script src="js/modules/prima-algorithms.js"></script>
+    <script src="js/modules/scipy-algorithms.js"></script>
+    <script src="js/modules/evolutionary-algorithms.js"></script>
+    <script src="js/modules/search-algorithms.js"></script>
+    <script src="js/modules/index.js"></script>
+    <script src="js/modules/optimizer-factory.js"></script>
+
+    <!-- Load contest support files -->
+    <script src="js/stochastic_surfaces.js"></script>
+    <script src="js/contest-controller.js"></script>
+
+    <script>
+        // Test that all modules loaded properly
+        function runQuickTest() {
+            console.log('Running quick test with 5 algorithms...');
+
+            const quickAlgorithms = ['PRIMA_UOBYQA', 'NelderMead', 'DifferentialEvolution', 'ParticleSwarm', 'RandomSearch'];
+
+            // Override optimizer list temporarily for quick test
+            const originalOptimizers = optimizers.slice();
+            optimizers.length = 0;
+
+            quickAlgorithms.forEach((name, index) => {
+                const found = originalOptimizers.find(opt => opt.internalName === name);
+                if (found) {
+                    optimizers.push(found);
+                } else {
+                    console.warn(`Algorithm ${name} not found in optimizers list`);
+                }
+            });
+
+            console.log(`Quick test starting with ${optimizers.length} algorithms`);
+
+            // Run a simple 2D sphere problem
+            const problemConfig = {
+                dimensions: 2,
+                surfaceType: 'sphere',
+                difficulty: 'easy',
+                budget: 50
+            };
+
+            const interpretation = {
+                dimensions: 2,
+                surfaceType: 'sphere',
+                difficulty: 'easy',
+                budget: 50,
+                domain: 'unit_hypercube',
+                template_used: 'quick_test',
+                confidence: 1.0,
+                surface_config: {},
+                enable_visualization: true
+            };
+
+            showInterpretation(interpretation, "Quick Test - 2D Sphere");
+            setTimeout(() => runRealContest(interpretation), 500);
+        }
+
+        function runFullContest() {
+            console.log('Running full contest with all 22 algorithms...');
+
+            // Verify all algorithms are available
+            const verification = OptimizerFactory.verifyAll();
+            if (!verification) {
+                alert('Some algorithms are missing! Check console for details.');
+                return;
+            }
+
+            console.log(`Full contest starting with ${optimizers.length} algorithms`);
+
+            // Run a moderate 3D problem
+            const interpretation = {
+                dimensions: 3,
+                surfaceType: 'rastrigin',
+                difficulty: 'medium',
+                budget: 100,
+                domain: 'unit_hypercube',
+                template_used: 'full_contest',
+                confidence: 1.0,
+                surface_config: {},
+                enable_visualization: false
+            };
+
+            showInterpretation(interpretation, "Full Contest - 3D Rastrigin");
+            setTimeout(() => runRealContest(interpretation), 500);
+        }
+
+        // Initialize when page loads
+        window.addEventListener('load', function() {
+            const loadingDiv = document.getElementById('loadingStatus');
+            loadingDiv.innerHTML = 'Loading modular optimization algorithms...';
+
+            setTimeout(() => {
+                try {
+                    // Verify OptimizerFactory is available
+                    if (!window.OptimizerFactory) {
+                        throw new Error('OptimizerFactory not loaded');
+                    }
+
+                    // Verify algorithms
+                    const available = OptimizerFactory.getAvailableAlgorithms();
+                    console.log(`Loaded ${available.length} algorithms:`, available);
+
+                    if (available.length !== 22) {
+                        throw new Error(`Expected 22 algorithms, found ${available.length}`);
+                    }
+
+                    loadingDiv.innerHTML = `Successfully loaded all ${available.length} optimization algorithms`;
+                    loadingDiv.style.color = '#28a745';
+
+                } catch (error) {
+                    loadingDiv.innerHTML = `Error loading algorithms: ${error.message}`;
+                    loadingDiv.style.color = '#dc3545';
+                    console.error('Loading error:', error);
+                }
+            }, 1000);
+        });
+    </script>
+</body>
+</html>

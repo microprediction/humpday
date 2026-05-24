@@ -9,7 +9,7 @@ from typing import Callable, List, Optional, Tuple, Union
 
 import numpy as np
 
-from .optimizers import PURE_OPTIMIZERS, pure_optimize
+from .alloptimizers import PURE_OPTIMIZERS, pure_optimize
 
 
 def unbounded_to_unit_cube(

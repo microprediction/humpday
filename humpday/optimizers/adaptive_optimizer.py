@@ -13,7 +13,7 @@ from typing import Any, Callable, Dict, List, Optional, Tuple
 
 import numpy as np
 
-from .optimizers import PURE_OPTIMIZERS, pure_optimize
+from .alloptimizers import PURE_OPTIMIZERS, pure_optimize
 
 
 class EloRatingSystem:

@@ -11,7 +11,10 @@ if (typeof module !== 'undefined' && module.exports) {
     const { Optimizer, MathUtils } = require('./base-optimizer.js');
     const { PRIMA_UOBYQA, PRIMA_NEWUOA, PRIMA_BOBYQA } = require('./prima-algorithms.js');
     const { NelderMead, Powell, LBFGSB } = require('./scipy-algorithms.js');
-    const { DifferentialEvolution, ParticleSwarm, SimulatedAnnealing, GeneticAlgorithm, RandomSearch } = require('./evolutionary-algorithms.js');
+    const { DifferentialEvolution, ParticleSwarm, SimulatedAnnealing, GeneticAlgorithm, RandomSearch,
+            BayesianOpt, CMAEvolutionStrategy, TabuSearch, FireflyAlgorithm, AntColonyOpt,
+            HarmonySearch, EvolutionStrategy } = require('./evolutionary-algorithms.js');
+    const { AdaptiveRandomSearch, CoordinateDescent, PatternSearch, HillClimbing } = require('./search-algorithms.js');
 
     // Export everything
     module.exports = {
@@ -35,6 +38,19 @@ if (typeof module !== 'undefined' && module.exports) {
         SimulatedAnnealing,
         GeneticAlgorithm,
         RandomSearch,
+        BayesianOpt,
+        CMAEvolutionStrategy,
+        TabuSearch,
+        FireflyAlgorithm,
+        AntColonyOpt,
+        HarmonySearch,
+        EvolutionStrategy,
+
+        // Search algorithms
+        AdaptiveRandomSearch,
+        CoordinateDescent,
+        PatternSearch,
+        HillClimbing,
 
         // Algorithm registry for factory pattern
         algorithms: {
@@ -48,7 +64,18 @@ if (typeof module !== 'undefined' && module.exports) {
             'ParticleSwarm': ParticleSwarm,
             'SimulatedAnnealing': SimulatedAnnealing,
             'GeneticAlgorithm': GeneticAlgorithm,
-            'RandomSearch': RandomSearch
+            'RandomSearch': RandomSearch,
+            'BayesianOpt': BayesianOpt,
+            'CMAEvolutionStrategy': CMAEvolutionStrategy,
+            'TabuSearch': TabuSearch,
+            'FireflyAlgorithm': FireflyAlgorithm,
+            'AntColonyOpt': AntColonyOpt,
+            'HarmonySearch': HarmonySearch,
+            'EvolutionStrategy': EvolutionStrategy,
+            'AdaptiveRandomSearch': AdaptiveRandomSearch,
+            'CoordinateDescent': CoordinateDescent,
+            'PatternSearch': PatternSearch,
+            'HillClimbing': HillClimbing
         }
     };
 } else {
@@ -71,7 +98,20 @@ if (typeof module !== 'undefined' && module.exports) {
         ParticleSwarm: window.ParticleSwarm,
         SimulatedAnnealing: window.SimulatedAnnealing,
         GeneticAlgorithm: window.GeneticAlgorithm,
-        RandomSearch: window.RandomSearch
+        RandomSearch: window.RandomSearch,
+        BayesianOpt: window.BayesianOpt,
+        CMAEvolutionStrategy: window.CMAEvolutionStrategy,
+        TabuSearch: window.TabuSearch,
+        FireflyAlgorithm: window.FireflyAlgorithm,
+        AntColonyOpt: window.AntColonyOpt,
+        HarmonySearch: window.HarmonySearch,
+        EvolutionStrategy: window.EvolutionStrategy,
+
+        // Search algorithms
+        AdaptiveRandomSearch: window.AdaptiveRandomSearch,
+        CoordinateDescent: window.CoordinateDescent,
+        PatternSearch: window.PatternSearch,
+        HillClimbing: window.HillClimbing
     };
 
     // Factory function for creating optimizers by name
@@ -81,5 +121,12 @@ if (typeof module !== 'undefined' && module.exports) {
             throw new Error(`Unknown algorithm: ${algorithmName}`);
         }
         return new AlgorithmClass(objective, nTrials, nDim);
+    };
+
+    // OptimizerFactory compatible with current contest system
+    window.OptimizerFactory = {
+        create(algorithmName, objective, nTrials, nDim) {
+            return window.createOptimizer(algorithmName, objective, nTrials, nDim);
+        }
     };
 }
