@@ -306,7 +306,7 @@ class TestPRIMAPerformance:
         optimizer = PRIMA_UOBYQA(sphere, n_trials=50, n_dim=2)
         my_f, my_x = optimizer.optimize()
 
-        print(f"\nPRIMA Comparison on Sphere Function:")
+        print("\nPRIMA Comparison on Sphere Function:")
         print(f"Real PRIMA UOBYQA: f={real_result.fun:.8f}, evals={real_result.nfev}")
         print(f"My PRIMA UOBYQA:   f={my_f:.8f}, evals={optimizer.evaluations}")
 
@@ -314,7 +314,7 @@ class TestPRIMAPerformance:
         if real_result.fun < 1e-6:  # Real PRIMA found exact solution
             assert my_f < 0.01, f"My PRIMA should get close to optimum, got {my_f}"
         else:
-            assert my_f < real_result.fun * 10, f"My PRIMA should be within 10x of real PRIMA"
+            assert my_f < real_result.fun * 10, "My PRIMA should be within 10x of real PRIMA"
 
     def test_prima_scaling(self):
         """Test how PRIMA algorithms scale with dimension."""
