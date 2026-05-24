@@ -202,8 +202,8 @@ class AlgorithmVisualizer {
             0.1,
             1000
         );
-        // Set camera to elevated side angle for optimal surface view
-        this.camera.position.set(6, 6, 8);
+        // Set camera to tilted perspective matching desired view
+        this.camera.position.set(4, 7, 3);
         this.camera.lookAt(0, 0, 0);
 
         // Renderer
