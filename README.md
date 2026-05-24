@@ -28,7 +28,7 @@ print(f"Solution: {result.x}")  # [2.0, 3.0]
 
 22 validated optimizers: **[See them in action](https://humpday.microprediction.org)** | **[Source code](humpday/optimizers/optimizers.py)**
 
-Trust region methods, evolutionary algorithms, metaheuristics. Each ranked by [Elo ratings](https://microprediction.github.io/optimizer-elo-ratings/html_leaderboards/overall.html) from head-to-head tournaments.
+Trust region methods, evolutionary algorithms, metaheuristics. 
 
 ## Comparison
 
