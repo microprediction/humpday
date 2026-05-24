@@ -106,7 +106,11 @@ class PRIMA_UOBYQA(BaseOptimizer):
                     fnew = self.evaluate(xnew)
 
                     # Adaptive trust region update
-                    if np.isfinite(fnew) and kopt < len(FVAL) and np.isfinite(FVAL[kopt]):
+                    if (
+                        np.isfinite(fnew)
+                        and kopt < len(FVAL)
+                        and np.isfinite(FVAL[kopt])
+                    ):
                         improvement = FVAL[kopt] - fnew
                     else:
                         improvement = -1  # Treat as failure if invalid values

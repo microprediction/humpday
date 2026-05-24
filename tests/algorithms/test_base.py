@@ -153,7 +153,9 @@ class TestBaseOptimizer:
             optimizer.optimize()
 
             assert len(optimizer.best_x) == n_dim
-            assert optimizer.best_value < 3.0  # Should find reasonable solution (basic test alg)
+            assert (
+                optimizer.best_value < 3.0
+            )  # Should find reasonable solution (basic test alg)
             assert optimizer.evaluations > 0
 
     def test_optimization_improves(self):
@@ -230,7 +232,9 @@ class TestObjectiveFunctions:
         optimizer.optimize()
 
         # Should still find reasonable solution despite noise
-        assert optimizer.best_value < 1.0  # Allow for noise tolerance and basic test alg
+        assert (
+            optimizer.best_value < 1.0
+        )  # Allow for noise tolerance and basic test alg
 
     def test_discontinuous_function(self):
         """Test optimization with discontinuous objective."""

@@ -300,7 +300,7 @@ class TestPRIMAPerformance:
         x0 = np.array([0.5, 0.5])
 
         # Real PRIMA UOBYQA result
-        real_result = pdfo.pdfo(sphere, x0, method='uobyqa', options={'maxfev': 50})
+        real_result = pdfo.pdfo(sphere, x0, method="uobyqa", options={"maxfev": 50})
 
         # My PRIMA UOBYQA result
         optimizer = PRIMA_UOBYQA(sphere, n_trials=50, n_dim=2)
@@ -314,7 +314,9 @@ class TestPRIMAPerformance:
         if real_result.fun < 1e-6:  # Real PRIMA found exact solution
             assert my_f < 0.01, f"My PRIMA should get close to optimum, got {my_f}"
         else:
-            assert my_f < real_result.fun * 10, "My PRIMA should be within 10x of real PRIMA"
+            assert my_f < real_result.fun * 10, (
+                "My PRIMA should be within 10x of real PRIMA"
+            )
 
     def test_prima_scaling(self):
         """Test how PRIMA algorithms scale with dimension."""
