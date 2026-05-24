@@ -149,7 +149,7 @@ class AlgorithmVisualizer {
         this.currentFunction = 'sphere';
         this.resolution = 50; // Grid resolution for surface
         this.viewMode = '3d'; // '3d' or 'wireframe'
-        this.animationSpeed = 'medium'; // 'slow', 'medium', 'fast'
+        this.animationSpeed = 'fast'; // 'slow', 'medium', 'fast'
 
         this.init();
     }
@@ -202,8 +202,8 @@ class AlgorithmVisualizer {
             0.1,
             1000
         );
-        // Set camera to achieve the exact horizontal diamond perspective from Image #10
-        this.camera.position.set(8, 4, 6);
+        // Set camera to user's exact desired horizontal diamond perspective coordinates
+        this.camera.position.set(-1.874, -16.095, 11.723);
         this.camera.lookAt(0, 0, 0);
 
         // Renderer
@@ -217,9 +217,9 @@ class AlgorithmVisualizer {
         this.controls = new THREE.OrbitControls(this.camera, this.renderer.domElement);
         this.controls.enableDamping = true;
         this.controls.dampingFactor = 0.05;
-        // Set ideal viewing constraints for optimization surfaces
-        this.controls.minPolarAngle = Math.PI * 0.1; // Prevent looking too far up
-        this.controls.maxPolarAngle = Math.PI * 0.8; // Prevent looking too far down
+        // Set ideal viewing constraints for horizontal diamond perspective
+        this.controls.minPolarAngle = Math.PI * 0.02; // Allow nearly direct top-down view
+        this.controls.maxPolarAngle = Math.PI * 0.9;  // Allow very steep viewing angles
         this.controls.minDistance = 4;
         this.controls.maxDistance = 20;
 
@@ -231,6 +231,9 @@ class AlgorithmVisualizer {
 
         // Create UI controls
         this.createUI();
+
+        // Add camera coordinate display
+        this.createCoordinateDisplay();
 
         // Start render loop
         this.animate();
@@ -539,7 +542,6 @@ class AlgorithmVisualizer {
             const speedSelect = document.createElement('select');
             speedSelect.style.cssText = 'padding: 4px; border: 1px solid #ddd; border-radius: 4px; margin-left: 5px;';
             const speedOptions = [
-                { value: 'slow', text: 'Slow (3s)' },
                 { value: 'medium', text: 'Medium (1.5s)' },
                 { value: 'fast', text: 'Fast (0.5s)' },
                 { value: 'very-fast', text: 'Very Fast (0.2s)' }
@@ -606,7 +608,6 @@ class AlgorithmVisualizer {
             const speedSelect = document.createElement('select');
             speedSelect.style.cssText = 'width: 100%; padding: 8px; border: 1px solid #ddd; border-radius: 4px;';
             const speedOptions = [
-                { value: 'slow', text: 'Slow (3s)' },
                 { value: 'medium', text: 'Medium (1.5s)' },
                 { value: 'fast', text: 'Fast (0.5s)' },
                 { value: 'very-fast', text: 'Very Fast (0.2s)' }
@@ -936,7 +937,50 @@ class AlgorithmVisualizer {
     animate() {
         requestAnimationFrame(() => this.animate());
         this.controls.update();
+        this.updateCoordinateDisplay();
         this.renderer.render(this.scene, this.camera);
+    }
+
+    createCoordinateDisplay() {
+        // Create coordinate display overlay
+        const coordDisplay = document.createElement('div');
+        coordDisplay.id = 'cameraCoordinates';
+        coordDisplay.style.cssText = `
+            position: absolute;
+            top: 10px;
+            right: 10px;
+            background: rgba(255, 255, 255, 0.95);
+            color: #333;
+            padding: 15px;
+            border-radius: 4px;
+            font-family: 'Times New Roman', Times, serif;
+            font-size: 14px;
+            z-index: 1000;
+            border: 1px solid #ddd;
+            box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+        `;
+        this.container.appendChild(coordDisplay);
+    }
+
+    updateCoordinateDisplay() {
+        const coordDisplay = document.getElementById('cameraCoordinates');
+        if (coordDisplay) {
+            const pos = this.camera.position;
+            const target = this.controls.target;
+            coordDisplay.innerHTML = `
+                <div style="font-weight: bold; margin-bottom: 8px;">Camera Position</div>
+                <div>X: ${pos.x.toFixed(3)}</div>
+                <div>Y: ${pos.y.toFixed(3)}</div>
+                <div>Z: ${pos.z.toFixed(3)}</div>
+                <div style="font-weight: bold; margin: 8px 0 5px 0;">Look At Target</div>
+                <div>X: ${target.x.toFixed(3)}</div>
+                <div>Y: ${target.y.toFixed(3)}</div>
+                <div>Z: ${target.z.toFixed(3)}</div>
+                <div style="color: #666; margin-top: 8px; font-size: 12px;">
+                    Rotate to desired view then copy coordinates
+                </div>
+            `;
+        }
     }
 
     onWindowResize() {
@@ -947,6 +991,11 @@ class AlgorithmVisualizer {
 
     destroy() {
         this.stopOptimization();
+        // Remove coordinate display
+        const coordDisplay = document.getElementById('cameraCoordinates');
+        if (coordDisplay) {
+            coordDisplay.remove();
+        }
         this.container.removeChild(this.renderer.domElement);
         this.scene.clear();
     }

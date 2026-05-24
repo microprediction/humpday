@@ -1,360 +1,237 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-    <meta charset="UT-8">
-    <meta name="viewport" content="width=device-width, initial-scale=.">
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' 'unsafe-inline' https://cdnjs.cloudflare.com https://cdn.jsdelivr.net; style-src 'self' 'unsafe-inline';">
     <title>Powell's Method - Implementation Details</title>
     <style>
-        body 
-            font-family: 'Georgia', 'Times New Roman', serif;
-            margin: ;
-            padding: 2p;
+        body {
+            font-family: 'Times New Roman', Times, serif;
+            margin: 0;
+            padding: 20px;
             background: #f8f9fa;
-            color: #2c3e5;
-        
+            color: #2c3e50;
+        }
 
-        .container 
-            ma-width: p;
-            margin:  auto;
+        .container {
+            max-width: 900px;
+            margin: 0 auto;
             background: white;
-            border-radius: 5p;
-            bo-shadow:  2p p rgba(,,,.);
+            border-radius: 8px;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.1);
             overflow: hidden;
-        
+        }
 
-        .header 
-            background: #27ae;
+        .header {
+            background: #34495e;
             color: white;
-            padding: 3p;
-            tet-align: center;
-        
+            padding: 30px;
+            text-align: center;
+        }
 
-        .header h 
-            margin:   p ;
+        .header h1 {
+            margin: 0 0 10px 0;
             font-size: 2.2em;
-        
+        }
 
-        .header p 
-            margin: ;
-            font-size: .em;
-            opacity: .9;
-        
+        .header p {
+            margin: 0;
+            font-size: 1.1em;
+            opacity: 0.9;
+        }
 
-        .content 
-            padding: p;
-        
+        .content {
+            padding: 30px;
+        }
 
-        .implementation-table 
-            width: %;
+        .implementation-table {
+            width: 100%;
             border-collapse: collapse;
-            margin: 3p ;
-            border-radius: p;
-            overflow: hidden;
-            bo-shadow:  p 8p rgba(,,,.);
-        
+            margin: 20px 0;
+        }
 
-        .implementation-table th 
-            background: #395e;
-            color: white;
-            padding: 5p;
-            tet-align: left;
-            font-weight: ;
-        
+        .implementation-table th,
+        .implementation-table td {
+            padding: 12px;
+            text-align: left;
+            border-bottom: 1px solid #ddd;
+        }
 
-        .implementation-table td 
-            padding: 5p;
-            border-bottom: p solid #eee;
-            vertical-align: top;
-        
+        .implementation-table th {
+            background-color: #f8f9fa;
+            font-weight: bold;
+        }
 
-        .implementation-table tr:hover 
+        .implementation-table a {
+            color: #3498db;
+            text-decoration: none;
+        }
+
+        .implementation-table a:hover {
+            text-decoration: underline;
+        }
+
+        .description {
             background: #f8f9fa;
-        
+            border-left: 4px solid #3498db;
+            padding: 20px;
+            margin: 20px 0;
+        }
 
-        .implementation-table .category 
-            font-weight: ;
-            color: #395e;
-            background: #ecff;
-        
+        .algorithm-details {
+            background: #fdfdfd;
+            border: 1px solid #e1e8ed;
+            padding: 25px;
+            margin: 25px 0;
+        }
 
-        .link-button 
+        .algorithm-details h3 {
+            margin-top: 0;
+            color: #34495e;
+        }
+
+        .code-block {
+            background: #2c3e50;
+            color: #ecf0f1;
+            padding: 20px;
+            border-radius: 4px;
+            font-family: 'Courier New', monospace;
+            font-size: 0.9em;
+            overflow-x: auto;
+            margin: 15px 0;
+        }
+
+        .back-link {
             display: inline-block;
-            padding: 8p p;
-            background: #398db;
+            margin-top: 20px;
+            padding: 10px 20px;
+            background: #3498db;
             color: white;
-            tet-decoration: none;
-            border-radius: p;
-            font-size: .9em;
-            margin: 2p p;
-            transition: background .2s;
-        
+            text-decoration: none;
+            border-radius: 4px;
+        }
 
-        .link-button:hover 
-            background: #298b9;
-        
-
-        .link-button.paper  background: #e7c3c; 
-        .link-button.python  background: #27ae; 
-        .link-button.javascript  background: #f39c2; 
-        .link-button.info  background: #9b59b; 
-
-        .algorithm-description 
-            background: #e8ff3;
-            border-left: p solid #27ae;
-            padding: 2p;
-            border-radius: 5p;
-            margin: 2p ;
-        
-
-        .back-nav 
-            margin-bottom: 2p;
-        
-
-        .back-nav a 
-            color: #398db;
-            tet-decoration: none;
-            font-size: .em;
-        
-
-        .back-nav a:hover 
-            tet-decoration: underline;
-        
-
-        .performance-notes 
-            background: #fff3cd;
-            border: p solid #ffc7;
-            border-radius: 8p;
-            padding: 5p;
-            margin: 2p ;
-        
-
-        .performance-notes h3 
-            margin-top: ;
-            color: #85;
-        
-
-        .more-section 
-            margin-top: 3p;
-            border-top: 2p solid #ecff;
-            padding-top: 2p;
-        
-
-        .more-toggle 
-            background: #398db;
-            color: white;
-            border: none;
-            padding: p 2p;
-            border-radius: p;
-            cursor: pointer;
-            font-size: em;
-        
-
-        .more-toggle:hover 
-            background: #298b9;
-        
-
-        .more-content 
-            display: none;
-            margin-top: 2p;
-        
-
+        .back-link:hover {
+            background: #2980b9;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <h1>Powell's Method</h1>
+            <p>Derivative-free optimization using conjugate directions</p>
+        </div>
 
         <div class="content">
-            <div class="back-nav">
-                <a href="../contest.html">← Back to Optimizer Competition</a>
+            <div class="description">
+                Powell's method is a derivative-free optimization algorithm that iteratively searches along conjugate directions.
+                It builds a set of mutually conjugate directions through successive line searches, making it effective for
+                quadratic functions and well-conditioned problems.
             </div>
 
-            <div class="algorithm-description">
-                <strong>Powell's Method</strong> is a derivative-free optimization algorithm that builds a set of conjugate search directions. Developed by Michael J.D. Powell in the 9s, it's particularly effective for quadratic functions and doesn't require gradient information. The method iteratively optimizes along coordinate aes and then along constructed conjugate directions.
-            </div>
-            <div class="visualization-section">
-                <h3>Interactive 3D Visualization</h3>
-                <p>See Powell in action on 3D optimization surfaces:</p>
-                <div id="algorithmDemo" style="width: %; height: p; border: p solid #ddd; border-radius: p; margin: 5p ; position: relative; background: #fafafa;">
-                    <div id="loadingMessage" style="position: absolute; top: 5%; left: 5%; transform: translate(-5%, -5%); tet-align: center; color: #; z-inde: ; background: rgba(255,255,255,.9); padding: 2p; border-radius: p;">
-                        <p>Loading 3D visualization...</p>
-                        <p style="font-size: .9em;">Requires WebGL support</p>
-                    </div>
-                </div>
-                <div id="visualizationControls" style="background: #f8f9fa; padding: 5p; border: p solid #ddd; border-radius: p; margin-top: p;">
-                    <!-- Controls will be inserted here by the visualizer -->
-                </div>
-                <p style="font-size: .9em; color: #; margin-top: p;">
-                    <strong>Instructions:</strong> Choose a test function and algorithm, then click Start to watch the step-by-step optimization process.
+            <div class="algorithm-details">
+                <h3>Algorithm Overview</h3>
+                <p>
+                    Powell's method performs optimization through the following steps:
+                </p>
+                <ol>
+                    <li>Initialize with coordinate directions as the initial set</li>
+                    <li>Perform line searches along each direction in sequence</li>
+                    <li>Replace one direction with the overall displacement vector</li>
+                    <li>Repeat until convergence</li>
+                </ol>
+                <p>
+                    The method is particularly effective for quadratic functions and problems where gradients
+                    are expensive or unavailable to compute.
                 </p>
             </div>
-
 
             <h2>Implementation Details</h2>
             <table class="implementation-table">
                 <thead>
                     <tr>
-                        <th>Component</th>
+                        <th>Aspect</th>
                         <th>Details</th>
-                        <th>Links</th>
                     </tr>
                 </thead>
                 <tbody>
                     <tr>
-                        <td class="category">Original Algorithm</td>
-                        <td>
-                            <strong>Michael J.D. Powell</strong><br>
-                            Conjugate direction method for unconstrained optimization<br>
-                            Derivative-free approach using line searches<br>
-                            <em>Published: 9</em>
-                        </td>
-                        <td>
-                            <a href="https://en.wikipedia.org/wiki/Powell%27s_method" target="_blank" class="link-button info">📖 Wikipedia</a>
-                        </td>
+                        <td><strong>Algorithm Type</strong></td>
+                        <td>Derivative-free, conjugate direction method</td>
                     </tr>
                     <tr>
-                        <td class="category">Reference Implementation</td>
-                        <td>
-                            <strong>SciPy optimize.minimize</strong><br>
-                            Method: 'Powell'<br>
-                            scipy.optimize.minimize(method='powell')<br>
-                            <em>Package: scipy</em>
-                        </td>
-                        <td>
-                            <a href="https://docs.scipy.org/doc/scipy/reference/optimize.minimize-powell.html" target="_blank" class="link-button python"> SciPy Docs</a>
-                            <a href="https://github.com/scipy/scipy/blob/main/scipy/optimize/_optimize.py" target="_blank" class="link-button python"> Source</a>
-                        </td>
+                        <td><strong>Convergence</strong></td>
+                        <td>Quadratic for quadratic functions, linear for general functions</td>
                     </tr>
                     <tr>
-                        <td class="category">HumpDay Python Implementation</td>
-                        <td>
-                            <strong>Humpday Integration</strong><br>
-                            Calls scipy.optimize.minimize(method='powell')<br>
-                            Standardized interface for optimization contests<br>
-                            <em>ile: humpday/optimizers/scipyopt.py</em>
-                        </td>
-                        <td>
-                            <a href="https://github.com/microprediction/humpday/blob/main/humpday/optimizers/scipyopt.py" target="_blank" class="link-button python"> Implementation</a>
-                        </td>
+                        <td><strong>Memory Requirements</strong></td>
+                        <td>O(n²) for direction matrix storage</td>
                     </tr>
                     <tr>
-                        <td class="category">Humpday JavaScript Port</td>
-                        <td>
-                            <strong>Browser Implementation</strong><br>
-                            Pure JavaScript port of Powell's conjugate direction method<br>
-                            Line search optimization with direction set updates<br>
-                            <em>Class: Powell</em>
-                        </td>
-                        <td>
-                            <a href="https://github.com/microprediction/humpday/blob/main/docs/js/optimizers.js" target="_blank" class="link-button javascript"> JS Port</a>
-                        </td>
+                        <td><strong>Best For</strong></td>
+                        <td>Smooth, well-conditioned functions without noise</td>
                     </tr>
                     <tr>
-                        <td class="category">Dependencies</td>
-                        <td>
-                            <strong>Reference:</strong> scipy.optimize<br>
-                            <strong>Humpday Python:</strong> scipy, numpy<br>
-                            <strong>Humpday JS:</strong> None (standalone port)
-                        </td>
-                        <td>
-                            <a href="https://pypi.org/project/scipy/" target="_blank" class="link-button python">📦 PyPI</a>
-                        </td>
+                        <td><strong>Dimensions</strong></td>
+                        <td>Low to medium (< 100 dimensions)</td>
                     </tr>
                 </tbody>
             </table>
 
-            <div class="performance-notes">
-                <h3>🏁 Performance Characteristics</h3>
+            <h2>Source Code</h2>
+            <table class="implementation-table">
+                <thead>
+                    <tr>
+                        <th>Language</th>
+                        <th>Implementation</th>
+                        <th>Reference</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    <tr>
+                        <td><strong>Python</strong></td>
+                        <td><a href="https://github.com/microprediction/humpday/blob/main/humpday/optimizers/scipy_algorithms.py" target="_blank">scipy_algorithms.py</a></td>
+                        <td><a href="https://docs.scipy.org/doc/scipy/reference/optimize.minimize-powell.html" target="_blank">SciPy Documentation</a></td>
+                    </tr>
+                    <tr>
+                        <td><strong>JavaScript</strong></td>
+                        <td><a href="https://github.com/microprediction/humpday/blob/main/docs/js/modules/scipy-algorithms.js" target="_blank">scipy-algorithms.js</a></td>
+                        <td><a href="https://doi.org/10.1093/comjnl/7.2.155" target="_blank">Powell (1964)</a></td>
+                    </tr>
+                </tbody>
+            </table>
+
+            <h2>Usage Example</h2>
+            <div class="code-block">from humpday import minimize
+
+def objective(x):
+    return (x[0] - 2)**2 + (x[1] - 3)**2
+
+result = minimize(objective, bounds=[(-5, 5), (-5, 5)], method='Powell')
+print(f"Optimum: {result.x}")  # [2.0, 3.0]</div>
+
+            <div class="algorithm-details">
+                <h3>When to Use Powell's Method</h3>
                 <ul>
-                    <li><strong>Best for:</strong> Quadratic functions and smooth, unimodal problems</li>
-                    <li><strong>Dimensions:</strong> Works well up to moderate dimensions (~2-5)</li>
-                    <li><strong>unction evaluations:</strong> Typically O(n²) evaluations per iteration</li>
-                    <li><strong>Convergence:</strong> Ecellent on quadratic functions, linear convergence</li>
-                    <li><strong>Robustness:</strong> Can be sensitive to poorly conditioned problems</li>
+                    <li><strong>Smooth functions:</strong> Works best on differentiable, well-behaved functions</li>
+                    <li><strong>No derivatives:</strong> When gradients are unavailable or expensive to compute</li>
+                    <li><strong>Low-medium dimensions:</strong> Most effective for problems with fewer than 100 variables</li>
+                    <li><strong>Quadratic problems:</strong> Achieves quadratic convergence on quadratic functions</li>
+                </ul>
+
+                <h3>Limitations</h3>
+                <ul>
+                    <li>Can be slow on highly nonlinear functions</li>
+                    <li>May struggle with ill-conditioned problems</li>
+                    <li>Sensitive to numerical precision issues</li>
+                    <li>Not suitable for noisy or discontinuous functions</li>
                 </ul>
             </div>
 
-
-            <div class="more-section">
-                <button class="more-toggle" onclick="toggleMore()">📚 More Resources</button>
-                <div id="moreContent" class="more-content">
-                    <h3>📚 Educational Resources</h3>
-                    <ul>
-                        <li><a href="https://en.wikipedia.org/wiki/Powell%27s_method" target="_blank">Powell's Method Wikipedia</a></li>
-                        <li><a href="https://docs.scipy.org/doc/scipy/reference/optimize.html" target="_blank">SciPy Optimization Guide</a></li>
-                        <li><a href="https://optimization.mccormick.northwestern.edu/inde.php/Powell%27s_method" target="_blank">Powell's Method Tutorial</a></li>
-                        <li><a href="https://numerical.recipes/" target="_blank">Numerical Recipes (Chapter on Multidimensional Minimization)</a></li>
-                        <li><a href="https://mathworld.wolfram.com/ConjugateDirectionMethod.html" target="_blank">Conjugate Direction Methods - Wolfram MathWorld</a></li>
-                    </ul>
-
-                    <h3> Algorithm Theory</h3>
-                    <ul>
-                        <li><strong>Conjugate Directions:</strong> Method builds orthogonal search directions</li>
-                        <li><strong>Line Search:</strong> Uses golden section or Brent's method for D optimization</li>
-                        <li><strong>Direction Updates:</strong> Replaces oldest direction with new conjugate direction</li>
-                        <li><strong>Quadratic Convergence:</strong> inite termination on quadratic functions in n steps</li>
-                    </ul>
-                </div>
-            </div>
+            <a href="../index.html" class="back-link">← Back to Algorithm Overview</a>
         </div>
     </div>
-
-    <script>
-        function toggleMore() 
-            const content = document.getElementById('moreContent');
-            const button = document.querySelector('.more-toggle');
-
-            if (content.style.display === 'none' || content.style.display === '') 
-                content.style.display = 'block';
-                button.tetContent = '📚 Less Resources';
-             else 
-                content.style.display = 'none';
-                button.tetContent = '📚 More Resources';
-            
-        // Initialize 3D visualization when page loads
-        document.addEventListener('DOMContentLoaded', function() 
-            // Load optimizers first, then visualizer
-            const optimizersScript = document.createElement('script');
-            optimizersScript.src = '../js/modules/inde.js';
-            optimizersScript.onload = function() 
-                // Load algorithm visualizer after optimizers are loaded
-                const script = document.createElement('script');
-                script.src = '../js/algorithm-visualizer.js';
-                script.onload = function() 
-                    // Check for WebGL support
-                    function webglAvailable() 
-                        try 
-                            const canvas = document.createElement('canvas');
-                            return !!(window.WebGLRenderingContet && canvas.getContet('webgl'));
-                         catch (e) 
-                            return false;
-                        
-                    
-
-                    if (webglAvailable()) 
-                        const visualizer = new AlgorithmVisualizer('algorithmDemo', 
-                            onReady: () => 
-                                // Clear loading message once visualization is ready
-                                const loadingMsg = document.getElementById('loadingMessage');
-                                if (loadingMsg) 
-                                    loadingMsg.style.display = 'none';
-                                
-                            
-                        );
-                     else 
-                        document.getElementById('loadingMessage').innerHTML =
-                            '<h>WebGL Not Supported</h>' +
-                            '<p>Your browser does not support WebGL for 3D visualization.</p>' +
-                            '<p>Try a modern browser like Chrome, irefo, or Safari.</p>';
-                    
-                ;
-                script.onerror = function() 
-                    document.getElementById('algorithmDemo').innerHTML =
-                        '<div style="position: absolute; top: 5%; left: 5%; transform: translate(-5%, -5%); tet-align: center;">' +
-                        '<h>Visualization Unavailable</h>' +
-                        '<p>Could not load 3D visualization component.</p>' +
-                        '</div>';
-                ;
-                document.head.appendChild(script);
-            ;
-            document.head.appendChild(optimizersScript);
-        );
-    </script>
 </body>
 </html>

@@ -1,0 +1,100 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>3D Algorithm Visualization Demo</title>
+    <style>
+        body {
+            font-family: 'Times New Roman', Times, serif;
+            margin: 0;
+            padding: 20px;
+            background: #f8f9fa;
+            color: #333;
+        }
+
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+            background: white;
+            border-radius: 8px;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+            overflow: hidden;
+        }
+
+        .header {
+            background: #343a40;
+            color: white;
+            padding: 20px;
+            text-align: center;
+        }
+
+        .content {
+            padding: 20px;
+        }
+
+        .visualization-container {
+            width: 100%;
+            height: 600px;
+            border: 1px solid #ddd;
+            border-radius: 4px;
+            position: relative;
+            margin: 20px 0;
+            background: #fafafa;
+        }
+
+        .description {
+            background: #f8f9fa;
+            border-left: 4px solid #007bff;
+            padding: 15px;
+            margin: 15px 0;
+        }
+
+        #visualizationControls {
+            background: #f8f9fa;
+            padding: 20px;
+            border: 1px solid #ddd;
+            border-radius: 4px;
+            margin-top: 10px;
+            margin-bottom: 20px;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <h1>3D Algorithm Visualization Tool</h1>
+            <p>Interactive optimization algorithm demonstration on 3D surfaces</p>
+        </div>
+
+        <div class="content">
+            <div class="description">
+                <h2>Interactive 3D Optimization</h2>
+                <p>This visualization shows optimization algorithms navigating complex 3D surfaces in real-time. Watch how different algorithms explore the search space and converge to optimal solutions.</p>
+            </div>
+
+            <!-- SINGLE Visualization Container -->
+            <div id="algorithmVisualization" class="visualization-container">
+                <div id="loadingMessage" style="position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%); text-align: center; z-index: 10; background: rgba(255,255,255,0.9); padding: 20px; border-radius: 4px;">
+                    <p>Loading 3D visualization...</p>
+                    <p style="font-size: 0.9em; color: #666;">Requires WebGL support</p>
+                </div>
+            </div>
+
+            <!-- Controls Container -->
+            <div id="visualizationControls">
+                <!-- Controls will be inserted here by the visualizer -->
+            </div>
+
+        </div>
+    </div>
+
+    <!-- JavaScript includes -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/controls/OrbitControls.js"></script>
+    <script src="js/optimizers.js"></script>
+    <script src="js/algorithm-visualizer.js"></script>
+    <script src="js/demo-controller.js"></script>
+
+</body>
+</html>

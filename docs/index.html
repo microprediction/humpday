@@ -108,14 +108,15 @@
     <div class="container">
         <div style="background: var(--section-bg); padding: 24px; border-left: 4px solid var(--accent); margin: 24px 0;">
             HumpDay provides a unified interface to 22 derivative-free optimization algorithms
-            implemented in pure Python and JavaScript. All algorithms operate on the unit hypercube [0,1]ⁿ with
+            implemented in both pure Python and JavaScript, with no dependencies and a small footprint. All algorithms operate on the unit hypercube [0,1]ⁿ with
             automatic domain transformations for bounded and unbounded problems. Cross-validation against SOTA well-used reference
             implementations ensures mathematical correctness.
         </div>
 
         <div style="text-align: center; margin: 8px 0; padding: 4px;">
             <a href="contest.html" class="btn" style="margin: 0 10px; padding: 6px 12px;">Run Algorithm Contest</a>
-            <a href="https://github.com/microprediction/humpday/tree/main/docs/js/modules" class="btn btn-secondary" style="margin: 0 10px; padding: 6px 12px;" target="_blank">JavaScript Modular Source</a>
+            <a href="https://github.com/microprediction/humpday/tree/main/humpday/optimizers" class="btn btn-secondary" style="margin: 0 10px; padding: 6px 12px;" target="_blank">Python Source</a>
+            <a href="https://github.com/microprediction/humpday/tree/main/docs/js/modules" class="btn btn-secondary" style="margin: 0 10px; padding: 6px 12px;" target="_blank">JavaScript Source</a>
             <a href="test-modular.html" class="btn btn-secondary" style="margin: 0 10px; padding: 6px 12px;">Test All Algorithms</a>
         </div>
 
@@ -281,7 +282,7 @@ print(f"Solution: {result.x}")  # [2.0, 3.0]</code></pre>
                     <tr>
                         <td><code>BayesianOpt</code></td>
                         <td>Bayesian</td>
-                        <td><em>Not in Python core</em></td>
+                        <td><a href="https://github.com/microprediction/humpday/blob/main/humpday/optimizers/evolutionary_algorithms.py" target="_blank">evolutionary_algorithms.py</a></td>
                         <td><a href="https://github.com/microprediction/humpday/blob/main/docs/js/modules/evolutionary-algorithms.js#L296" target="_blank">evolutionary-algorithms.js#L296</a></td>
                         <td><a href="https://arxiv.org/abs/1012.2599" target="_blank">Brochu et al. (2010)</a></td>
                         <td><a href="algorithms/bayesian-optimization.html">View →</a></td>
@@ -289,7 +290,7 @@ print(f"Solution: {result.x}")  # [2.0, 3.0]</code></pre>
                     <tr>
                         <td><code>CMAEvolutionStrategy</code></td>
                         <td>Evolutionary</td>
-                        <td><em>Not in Python core</em></td>
+                        <td><a href="https://github.com/microprediction/humpday/blob/main/humpday/optimizers/evolutionary_algorithms.py" target="_blank">evolutionary_algorithms.py</a></td>
                         <td><a href="https://github.com/microprediction/humpday/blob/main/docs/js/modules/evolutionary-algorithms.js#L408" target="_blank">evolutionary-algorithms.js#L408</a></td>
                         <td><a href="https://arxiv.org/abs/1604.00772" target="_blank">Hansen (2016)</a></td>
                         <td><a href="algorithms/cma-evolution-strategy.html">View →</a></td>
@@ -297,7 +298,7 @@ print(f"Solution: {result.x}")  # [2.0, 3.0]</code></pre>
                     <tr>
                         <td><code>TabuSearch</code></td>
                         <td>Metaheuristic</td>
-                        <td><em>Not in Python core</em></td>
+                        <td><a href="https://github.com/microprediction/humpday/blob/main/humpday/optimizers/search_algorithms.py" target="_blank">search_algorithms.py</a></td>
                         <td><a href="https://github.com/microprediction/humpday/blob/main/docs/js/modules/evolutionary-algorithms.js#L463" target="_blank">evolutionary-algorithms.js#L463</a></td>
                         <td><a href="https://doi.org/10.1287/ijoc.1.3.190" target="_blank">Glover (1989)</a></td>
                         <td><a href="algorithms/tabu-search.html">View →</a></td>
@@ -305,7 +306,7 @@ print(f"Solution: {result.x}")  # [2.0, 3.0]</code></pre>
                     <tr>
                         <td><code>FireflyAlgorithm</code></td>
                         <td>Bio-inspired</td>
-                        <td><em>Not in Python core</em></td>
+                        <td><a href="https://github.com/microprediction/humpday/blob/main/humpday/optimizers/evolutionary_algorithms.py" target="_blank">evolutionary_algorithms.py</a></td>
                         <td><a href="https://github.com/microprediction/humpday/blob/main/docs/js/modules/evolutionary-algorithms.js#L525" target="_blank">evolutionary-algorithms.js#L525</a></td>
                         <td><a href="https://doi.org/10.1007/978-3-642-04944-6_14" target="_blank">Yang (2008)</a></td>
                         <td><a href="algorithms/firefly-algorithm.html">View →</a></td>
@@ -313,7 +314,7 @@ print(f"Solution: {result.x}")  # [2.0, 3.0]</code></pre>
                     <tr>
                         <td><code>AntColonyOpt</code></td>
                         <td>Swarm Intelligence</td>
-                        <td><em>Not in Python core</em></td>
+                        <td><a href="https://github.com/microprediction/humpday/blob/main/humpday/optimizers/evolutionary_algorithms.py" target="_blank">evolutionary_algorithms.py</a></td>
                         <td><a href="https://github.com/microprediction/humpday/blob/main/docs/js/modules/evolutionary-algorithms.js#L582" target="_blank">evolutionary-algorithms.js#L582</a></td>
                         <td><a href="https://doi.org/10.1109/3477.484436" target="_blank">Dorigo et al. (1996)</a></td>
                         <td><a href="algorithms/ant-colony-optimization.html">View →</a></td>
@@ -329,7 +330,7 @@ print(f"Solution: {result.x}")  # [2.0, 3.0]</code></pre>
                     <tr>
                         <td><code>EvolutionStrategy</code></td>
                         <td>Evolutionary</td>
-                        <td><em>Not in Python core</em></td>
+                        <td><a href="https://github.com/microprediction/humpday/blob/main/humpday/optimizers/evolutionary_algorithms.py" target="_blank">evolutionary_algorithms.py</a></td>
                         <td><a href="https://github.com/microprediction/humpday/blob/main/docs/js/modules/evolutionary-algorithms.js#L719" target="_blank">evolutionary-algorithms.js#L719</a></td>
                         <td><a href="https://doi.org/10.1007/978-3-662-43505-2_44" target="_blank">Beyer & Schwefel (2002)</a></td>
                         <td><a href="algorithms/evolution-strategy.html">View →</a></td>
@@ -339,7 +340,7 @@ print(f"Solution: {result.x}")  # [2.0, 3.0]</code></pre>
                     <tr>
                         <td><code>AdaptiveRandomSearch</code></td>
                         <td>Adaptive Search</td>
-                        <td><em>Not in Python core</em></td>
+                        <td><a href="https://github.com/microprediction/humpday/blob/main/humpday/optimizers/search_algorithms.py" target="_blank">search_algorithms.py</a></td>
                         <td><a href="https://github.com/microprediction/humpday/blob/main/docs/js/modules/search-algorithms.js#L16" target="_blank">search-algorithms.js#L16</a></td>
                         <td><a href="https://doi.org/10.1007/BF01581033" target="_blank">Schumer & Steiglitz (1968)</a></td>
                         <td><a href="algorithms/adaptive-random-search.html">View →</a></td>
@@ -347,7 +348,7 @@ print(f"Solution: {result.x}")  # [2.0, 3.0]</code></pre>
                     <tr>
                         <td><code>CoordinateDescent</code></td>
                         <td>Local Search</td>
-                        <td><em>Not in Python core</em></td>
+                        <td><a href="https://github.com/microprediction/humpday/blob/main/humpday/optimizers/search_algorithms.py" target="_blank">search_algorithms.py</a></td>
                         <td><a href="https://github.com/microprediction/humpday/blob/main/docs/js/modules/search-algorithms.js#L69" target="_blank">search-algorithms.js#L69</a></td>
                         <td><a href="https://doi.org/10.1007/s10107-015-0892-3" target="_blank">Wright (2015)</a></td>
                         <td><a href="algorithms/coordinate-descent.html">View →</a></td>
@@ -355,7 +356,7 @@ print(f"Solution: {result.x}")  # [2.0, 3.0]</code></pre>
                     <tr>
                         <td><code>PatternSearch</code></td>
                         <td>Direct Search</td>
-                        <td><em>Not in Python core</em></td>
+                        <td><a href="https://github.com/microprediction/humpday/blob/main/humpday/optimizers/search_algorithms.py" target="_blank">search_algorithms.py</a></td>
                         <td><a href="https://github.com/microprediction/humpday/blob/main/docs/js/modules/search-algorithms.js#L129" target="_blank">search-algorithms.js#L129</a></td>
                         <td><a href="https://doi.org/10.1137/S1052623493250780" target="_blank">Torczon (1997)</a></td>
                         <td><a href="algorithms/pattern-search.html">View →</a></td>
