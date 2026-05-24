@@ -287,6 +287,35 @@ class TestPRIMAPerformance:
             # Should perform within reasonable factor of SciPy (allow 5x worse)
             assert best_value < scipy_best * 5.0
 
+    def test_prima_vs_real_prima(self):
+        """Test my PRIMA implementations against REAL PRIMA (PDFO) - the correct way!"""
+        pytest.importorskip("pdfo", reason="PDFO not available for PRIMA validation")
+
+        import pdfo
+
+        def sphere(x):
+            return sum(xi**2 for xi in x)
+
+        # Test on simple sphere function
+        x0 = np.array([0.5, 0.5])
+
+        # Real PRIMA UOBYQA result
+        real_result = pdfo.pdfo(sphere, x0, method='uobyqa', options={'maxfev': 50})
+
+        # My PRIMA UOBYQA result
+        optimizer = PRIMA_UOBYQA(sphere, n_trials=50, n_dim=2)
+        my_f, my_x = optimizer.optimize()
+
+        print(f"\nPRIMA Comparison on Sphere Function:")
+        print(f"Real PRIMA UOBYQA: f={real_result.fun:.8f}, evals={real_result.nfev}")
+        print(f"My PRIMA UOBYQA:   f={my_f:.8f}, evals={optimizer.evaluations}")
+
+        # My implementation should achieve reasonable performance compared to real PRIMA
+        if real_result.fun < 1e-6:  # Real PRIMA found exact solution
+            assert my_f < 0.01, f"My PRIMA should get close to optimum, got {my_f}"
+        else:
+            assert my_f < real_result.fun * 10, f"My PRIMA should be within 10x of real PRIMA"
+
     def test_prima_scaling(self):
         """Test how PRIMA algorithms scale with dimension."""
 
