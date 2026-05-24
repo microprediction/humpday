@@ -42,15 +42,15 @@ def demo_basic_validation():
     def sphere_2d(x):
         x = np.asarray(x)
         scaled = (x - 0.5) * 10  # Transform [0,1] to [-5,5]
-        return np.sum(scaled ** 2)
+        return np.sum(scaled**2)
 
     print("Testing algorithms on 2D Sphere function...")
 
     # Test algorithms
     algorithms = {
-        'NelderMead': NelderMead,
-        'Powell': Powell,
-        'PRIMA_UOBYQA': PRIMA_UOBYQA
+        "NelderMead": NelderMead,
+        "Powell": Powell,
+        "PRIMA_UOBYQA": PRIMA_UOBYQA,
     }
 
     results = {}
@@ -96,8 +96,7 @@ def demo_statistical_validation():
 
     # Statistical comparison
     comparison = validator.compare_performance_distributions(
-        algorithm_a_results, algorithm_b_results,
-        "Algorithm_A", "Algorithm_B"
+        algorithm_a_results, algorithm_b_results, "Algorithm_A", "Algorithm_B"
     )
 
     print("\nStatistical Analysis:")
@@ -128,12 +127,14 @@ def demo_benchmark_suite():
     print(f"Created benchmark suite with {len(suite.problems)} problems:")
     for problem_name in suite.problems:
         problem = suite.problems[problem_name]
-        print(f"  • {problem_name} - {problem.metadata.difficulty} ({problem.metadata.problem_class})")
+        print(
+            f"  • {problem_name} - {problem.metadata.difficulty} ({problem.metadata.problem_class})"
+        )
 
     # Test an algorithm on benchmarks
     def simple_algorithm(objective, n_trials, n_dim):
         """Simple random search for demonstration."""
-        best_value = float('inf')
+        best_value = float("inf")
         best_x = None
 
         for _ in range(n_trials):
@@ -151,12 +152,12 @@ def demo_benchmark_suite():
         simple_algorithm,
         problem_names=list(suite.problems.keys()),
         n_runs=3,
-        n_trials=30
+        n_trials=30,
     )
 
     for problem_name, result in results.items():
-        if 'statistics' in result:
-            stats = result['statistics']
+        if "statistics" in result:
+            stats = result["statistics"]
             print(f"  {problem_name}: {stats['mean']:.4f} ± {stats['std']:.4f}")
 
     return results
@@ -197,7 +198,9 @@ def demo_convergence_analysis():
     print(f"  Rate B: {analysis.convergence_rate_b:.4f}")
     print(f"  Rate similarity: {analysis.rate_similarity:.4f}")
     print(f"  Path correlation: {analysis.path_correlation:.4f}")
-    print(f"  Equivalent behavior: {'✅ Yes' if analysis.passed_equivalence else '❌ No'}")
+    print(
+        f"  Equivalent behavior: {'✅ Yes' if analysis.passed_equivalence else '❌ No'}"
+    )
 
     return analysis
 
@@ -223,7 +226,11 @@ def demo_comprehensive_framework():
         print("\nQuick Validation Results:")
         print(f"  Tests run: {total_tests}")
         print(f"  Tests passed: {passed_tests}")
-        print(f"  Pass rate: {passed_tests/total_tests*100:.1f}%" if total_tests > 0 else "  Pass rate: N/A")
+        print(
+            f"  Pass rate: {passed_tests/total_tests*100:.1f}%"
+            if total_tests > 0
+            else "  Pass rate: N/A"
+        )
 
         # Show some specific results
         if framework.results:
@@ -262,7 +269,9 @@ def main():
     except Exception as e:
         print(f"\n❌ Demo failed: {e}")
         import traceback
+
         traceback.print_exc()
+
 
 if __name__ == "__main__":
     main()

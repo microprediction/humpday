@@ -40,9 +40,9 @@ class TestObjectiveImplementations:
         for point in test_points:
             our_result = our_sphere(point)
             ref_result = ref_sphere(point)
-            assert abs(our_result - ref_result) < 1e-15, (
-                f"Sphere mismatch at {point}: ours={our_result}, ref={ref_result}"
-            )
+            assert (
+                abs(our_result - ref_result) < 1e-15
+            ), f"Sphere mismatch at {point}: ours={our_result}, ref={ref_result}"
 
     def test_rosenbrock_vs_scipy(self):
         """Test Rosenbrock against SciPy reference if available."""
@@ -66,9 +66,9 @@ class TestObjectiveImplementations:
             for point in test_points:
                 our_result = our_rosenbrock(point)
                 scipy_result = rosen(point)
-                assert abs(our_result - scipy_result) < 1e-12, (
-                    f"Rosenbrock mismatch: ours={our_result}, scipy={scipy_result}"
-                )
+                assert (
+                    abs(our_result - scipy_result) < 1e-12
+                ), f"Rosenbrock mismatch: ours={our_result}, scipy={scipy_result}"
 
         except ImportError:
             # Test against manual calculation for known points
@@ -94,9 +94,9 @@ class TestObjectiveImplementations:
         # Test key points
         # Center [0.5, 0.5] should map to [0, 0] and be close to global minimum
         center_result = our_rastrigin_unit_cube([0.5, 0.5])
-        assert center_result < 1.0, (
-            f"Center point should be near minimum: {center_result}"
-        )
+        assert (
+            center_result < 1.0
+        ), f"Center point should be near minimum: {center_result}"
 
         # Corners should be worse than center
         corner_results = [
@@ -107,9 +107,9 @@ class TestObjectiveImplementations:
         ]
 
         for corner_result in corner_results:
-            assert corner_result > center_result, (
-                f"Corner should be worse than center: {corner_result} vs {center_result}"
-            )
+            assert (
+                corner_result > center_result
+            ), f"Corner should be worse than center: {corner_result} vs {center_result}"
 
     def test_ackley_implementation(self):
         """Test Ackley function implementation."""
@@ -130,17 +130,17 @@ class TestObjectiveImplementations:
 
         # Test that center is close to global minimum (should be near 0)
         center_result = our_ackley_unit_cube([0.5, 0.5])
-        assert center_result < 1.0, (
-            f"Ackley center should be near minimum: {center_result}"
-        )
+        assert (
+            center_result < 1.0
+        ), f"Ackley center should be near minimum: {center_result}"
 
         # Test different dimensions
         for n_dim in [1, 2, 3, 5]:
             center = [0.5] * n_dim
             result = our_ackley_unit_cube(center)
-            assert result >= -1e-10, (
-                f"Ackley should be non-negative (allowing floating point precision): {result}"
-            )
+            assert (
+                result >= -1e-10
+            ), f"Ackley should be non-negative (allowing floating point precision): {result}"
             assert result < 5.0, f"Ackley center should be reasonable: {result}"
 
 
@@ -155,9 +155,9 @@ class TestOptimizerImplementations:
         def test_obj(x):
             return np.sum(np.asarray(x) ** 2)
 
-        assert len(PURE_OPTIMIZERS) == 22, (
-            f"Expected 22 optimizers, got {len(PURE_OPTIMIZERS)}"
-        )
+        assert (
+            len(PURE_OPTIMIZERS) == 22
+        ), f"Expected 22 optimizers, got {len(PURE_OPTIMIZERS)}"
 
         for name, optimizer_class in PURE_OPTIMIZERS.items():
             # Test instantiation
@@ -184,13 +184,13 @@ class TestOptimizerImplementations:
         rs_optimizer = RandomSearch(quadratic, 100, 2)
         rs_best_val, rs_best_x = rs_optimizer.optimize()
 
-        assert rs_best_val < 1.0, (
-            f"RandomSearch didn't find good solution: {rs_best_val}"
-        )
+        assert (
+            rs_best_val < 1.0
+        ), f"RandomSearch didn't find good solution: {rs_best_val}"
         assert len(rs_best_x) == 2, f"Wrong solution dimension: {len(rs_best_x)}"
-        assert rs_optimizer.evaluations <= 100, (
-            f"Too many evaluations: {rs_optimizer.evaluations}"
-        )
+        assert (
+            rs_optimizer.evaluations <= 100
+        ), f"Too many evaluations: {rs_optimizer.evaluations}"
 
         # Test NelderMead (should be more accurate)
         nm_optimizer = NelderMead(quadratic, 100, 2)
@@ -249,9 +249,9 @@ class TestOptimizerImplementations:
         result2 = RandomSearch(test_objective, 20, 2).optimize()
 
         # Results should be identical (same random seed)
-        assert abs(result1[0] - result2[0]) < 1e-10, (
-            "Non-deterministic behavior with same seed"
-        )
+        assert (
+            abs(result1[0] - result2[0]) < 1e-10
+        ), "Non-deterministic behavior with same seed"
 
 
 class TestAdaptiveSystem:
@@ -393,9 +393,9 @@ class TestDomainHandling:
 
         # All should give the same result
         for i in range(1, len(results)):
-            assert abs(results[i] - results[0]) < 1e-12, (
-                f"Inconsistent results for different input formats: {results}"
-            )
+            assert (
+                abs(results[i] - results[0]) < 1e-12
+            ), f"Inconsistent results for different input formats: {results}"
 
 
 def run_comprehensive_validation():

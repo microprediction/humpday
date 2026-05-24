@@ -330,9 +330,11 @@ def adaptive_optimize(
         "elo_system": elo_system,
         "top_algorithms": final_top_algorithms,
         "recommendations": recommendations,
-        "total_problems_solved": n_warmup_problems + adaptive_problems
-        if remaining_budget > 0
-        else n_warmup_problems,
+        "total_problems_solved": (
+            n_warmup_problems + adaptive_problems
+            if remaining_budget > 0
+            else n_warmup_problems
+        ),
         "total_matches": len(elo_system.match_history),
     }
 

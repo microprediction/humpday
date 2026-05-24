@@ -184,9 +184,9 @@ class TestPythonVs3rdParty:
         for point in test_points:
             our_result = our_sphere(point)
             ref_result = reference_sphere(point)
-            assert abs(our_result - ref_result) < REFERENCE_TOLERANCE, (
-                f"Sphere mismatch at {point}: ours={our_result}, ref={ref_result}"
-            )
+            assert (
+                abs(our_result - ref_result) < REFERENCE_TOLERANCE
+            ), f"Sphere mismatch at {point}: ours={our_result}, ref={ref_result}"
 
     def test_rosenbrock_vs_scipy(self):
         """Test Rosenbrock against SciPy reference."""
@@ -209,9 +209,9 @@ class TestPythonVs3rdParty:
             for point in test_points:
                 our_result = our_rosenbrock(point)
                 scipy_result = rosen(point)
-                assert abs(our_result - scipy_result) < REFERENCE_TOLERANCE, (
-                    f"Rosenbrock mismatch at {point}: ours={our_result}, scipy={scipy_result}"
-                )
+                assert (
+                    abs(our_result - scipy_result) < REFERENCE_TOLERANCE
+                ), f"Rosenbrock mismatch at {point}: ours={our_result}, scipy={scipy_result}"
 
         except ImportError:
             pytest.skip("SciPy not available for Rosenbrock validation")
@@ -242,9 +242,9 @@ class TestPythonVs3rdParty:
 
             # Both should find the minimum reasonably well
             assert our_result[0] < 0.01, f"Our DE didn't converge: {our_result[0]}"
-            assert scipy_result.fun < 0.01, (
-                f"SciPy DE didn't converge: {scipy_result.fun}"
-            )
+            assert (
+                scipy_result.fun < 0.01
+            ), f"SciPy DE didn't converge: {scipy_result.fun}"
 
             # Solutions should be close to [0.3, 0.3]
             target = np.array([0.3, 0.3])
@@ -288,9 +288,9 @@ class TestPythonVs3rdParty:
             our_error = np.linalg.norm(np.array(our_result[1]) - target)
 
             # Our implementation should work well on this simple problem
-            assert our_result[0] < 0.01, (
-                f"Our Nelder-Mead didn't converge: {our_result[0]}"
-            )
+            assert (
+                our_result[0] < 0.01
+            ), f"Our Nelder-Mead didn't converge: {our_result[0]}"
             assert our_error < 0.1, f"Our Nelder-Mead solution error: {our_error}"
 
         except ImportError:
@@ -325,9 +325,9 @@ class TestJavaScriptVsPython:
             python_result = python_sphere(point)
             js_result = js_results[i]
 
-            assert abs(python_result - js_result) < JS_PYTHON_TOLERANCE, (
-                f"Sphere JS/Python mismatch at {point}: Python={python_result}, JS={js_result}"
-            )
+            assert (
+                abs(python_result - js_result) < JS_PYTHON_TOLERANCE
+            ), f"Sphere JS/Python mismatch at {point}: Python={python_result}, JS={js_result}"
 
     def test_rosenbrock_js_vs_python(self):
         """Test JavaScript Rosenbrock vs Python Rosenbrock."""
@@ -356,9 +356,9 @@ class TestJavaScriptVsPython:
             python_result = python_rosenbrock(point)
             js_result = js_results[i]
 
-            assert abs(python_result - js_result) < JS_PYTHON_TOLERANCE, (
-                f"Rosenbrock JS/Python mismatch at {point}: Python={python_result}, JS={js_result}"
-            )
+            assert (
+                abs(python_result - js_result) < JS_PYTHON_TOLERANCE
+            ), f"Rosenbrock JS/Python mismatch at {point}: Python={python_result}, JS={js_result}"
 
     def test_rastrigin_js_vs_python(self):
         """Test JavaScript Rastrigin vs Python Rastrigin with domain transformation."""
@@ -388,9 +388,9 @@ class TestJavaScriptVsPython:
             python_result = python_rastrigin(point)
             js_result = js_results[i]
 
-            assert abs(python_result - js_result) < JS_PYTHON_TOLERANCE, (
-                f"Rastrigin JS/Python mismatch at {point}: Python={python_result}, JS={js_result}"
-            )
+            assert (
+                abs(python_result - js_result) < JS_PYTHON_TOLERANCE
+            ), f"Rastrigin JS/Python mismatch at {point}: Python={python_result}, JS={js_result}"
 
     def test_ackley_js_vs_python(self):
         """Test JavaScript Ackley vs Python Ackley with domain transformation."""
@@ -423,9 +423,9 @@ class TestJavaScriptVsPython:
             python_result = python_ackley(point)
             js_result = js_results[i]
 
-            assert abs(python_result - js_result) < JS_PYTHON_TOLERANCE, (
-                f"Ackley JS/Python mismatch at {point}: Python={python_result}, JS={js_result}"
-            )
+            assert (
+                abs(python_result - js_result) < JS_PYTHON_TOLERANCE
+            ), f"Ackley JS/Python mismatch at {point}: Python={python_result}, JS={js_result}"
 
     def test_griewank_js_vs_python(self):
         """Test JavaScript Griewank vs Python Griewank with domain transformation."""
@@ -460,9 +460,9 @@ class TestJavaScriptVsPython:
             python_result = python_griewank(point)
             js_result = js_results[i]
 
-            assert abs(python_result - js_result) < JS_PYTHON_TOLERANCE, (
-                f"Griewank JS/Python mismatch at {point}: Python={python_result}, JS={js_result}"
-            )
+            assert (
+                abs(python_result - js_result) < JS_PYTHON_TOLERANCE
+            ), f"Griewank JS/Python mismatch at {point}: Python={python_result}, JS={js_result}"
 
 
 class TestOptimizerConsistency:
@@ -487,9 +487,9 @@ class TestOptimizerConsistency:
                 # Check basic sanity
                 assert isinstance(best_val, (int, float, np.number))
                 assert len(best_x) == 2
-                assert all(0 <= xi <= 1 for xi in best_x), (
-                    f"{name} violated bounds: {best_x}"
-                )
+                assert all(
+                    0 <= xi <= 1 for xi in best_x
+                ), f"{name} violated bounds: {best_x}"
 
                 successful_optimizers.append(name)
 

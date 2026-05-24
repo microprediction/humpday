@@ -125,9 +125,9 @@ def run_single_comparison(
             "success": True,
             "error": None,
             "timestamp": start_time.isoformat(),
-            "convergence_quality": abs(best_value)
-            if abs(best_value) < 100
-            else 100,  # Normalized quality metric
+            "convergence_quality": (
+                abs(best_value) if abs(best_value) < 100 else 100
+            ),  # Normalized quality metric
         }
 
     except Exception as e:

@@ -168,9 +168,9 @@ class TestSciPyInterface:
         x_bounded_from_unit = np.array([-2, -1]) + x_unit_solution * np.array([5, 5])
 
         # Both should find similar solutions
-        assert abs(result_bounded.fun - result_unit[0]) < 0.1, (
-            f"Function values differ: bounded={result_bounded.fun}, unit={result_unit[0]}"
-        )
+        assert (
+            abs(result_bounded.fun - result_unit[0]) < 0.1
+        ), f"Function values differ: bounded={result_bounded.fun}, unit={result_unit[0]}"
 
         # Solutions should be close (allowing for randomness)
         solution_diff = np.linalg.norm(result_bounded.x - x_bounded_from_unit)

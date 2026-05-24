@@ -31,6 +31,7 @@ except ImportError:
         A = np.random.randn(n_dim, n_dim)
         return np.dot(A, A.T)
 
+
 # This problem is randomly generated, but only once per day
 # If a solution run straddles GMT midnight, well that's life in the big city.
 

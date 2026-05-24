@@ -304,7 +304,9 @@ def example_7_comparison_with_unit_cube():
     if diff < 0.1:
         print("✅ Both methods give consistent results!")
     else:
-        print("⚠️  Results differ - this can happen due to randomness in initialization")
+        print(
+            "⚠️  Results differ - this can happen due to randomness in initialization"
+        )
 
 
 def main():

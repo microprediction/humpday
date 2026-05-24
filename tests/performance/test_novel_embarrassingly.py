@@ -210,9 +210,9 @@ class NovelTechniqueAnalysis:
                     {
                         "run": i,
                         "success": result.success,
-                        "final_value": float(result.fun)
-                        if result.success
-                        else float("inf"),
+                        "final_value": (
+                            float(result.fun) if result.success else float("inf")
+                        ),
                         "total_time": total_time,
                         "evaluations": eval_count[0],
                         "avg_eval_time": avg_eval_time,

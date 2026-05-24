@@ -425,13 +425,11 @@ class SingleObjectivePlatform:
                     "rank": rank,
                     "optimizer": optimizer,
                     "elo_rating": round(elo, 1),
-                    "badge": "🥇"
-                    if rank == 1
-                    else "🥈"
-                    if rank == 2
-                    else "🥉"
-                    if rank == 3
-                    else "",
+                    "badge": (
+                        "🥇"
+                        if rank == 1
+                        else "🥈" if rank == 2 else "🥉" if rank == 3 else ""
+                    ),
                 }
             )
 

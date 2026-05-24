@@ -49,12 +49,12 @@ class TestDeapObjectives:
         ]:
             result = func(test_point_2d)
             assert isinstance(result, tuple), f"{func.__name__} should return tuple"
-            assert len(result) == 1, (
-                f"{func.__name__} should return single-element tuple"
-            )
-            assert isinstance(result[0], (int, float)), (
-                f"{func.__name__} should return numeric value"
-            )
+            assert (
+                len(result) == 1
+            ), f"{func.__name__} should return single-element tuple"
+            assert isinstance(
+                result[0], (int, float)
+            ), f"{func.__name__} should return numeric value"
 
             # Test with higher dimension
             result_nd = func(test_point_nd)
@@ -148,9 +148,9 @@ class TestClassicObjectives:
             for func in functions:
                 # Test center point
                 result = func(test_point)
-                assert isinstance(result, (int, float)), (
-                    f"{func.__name__} should return numeric"
-                )
+                assert isinstance(
+                    result, (int, float)
+                ), f"{func.__name__} should return numeric"
 
                 # Test edge point
                 result_edge = func(edge_point)
@@ -198,9 +198,9 @@ class TestBBOBObjectives:
 
             for func in functions:
                 result = func(test_point)
-                assert isinstance(result, (int, float)), (
-                    f"{func.__name__} should return numeric"
-                )
+                assert isinstance(
+                    result, (int, float)
+                ), f"{func.__name__} should return numeric"
 
         except ImportError:
             pytest.skip("BBOB objectives module has import issues")
@@ -223,9 +223,9 @@ class TestChatGPTObjectives:
                     if callable(attr):
                         try:
                             result = attr(test_point)
-                            assert isinstance(result, (int, float)), (
-                                f"{attr_name} should return numeric"
-                            )
+                            assert isinstance(
+                                result, (int, float)
+                            ), f"{attr_name} should return numeric"
                         except (TypeError, ValueError):
                             # Some functions might need specific inputs
                             pass
@@ -260,9 +260,9 @@ class TestEnhancedSurfaces:
 
             for func in functions:
                 result = func(test_point)
-                assert isinstance(result, (int, float)), (
-                    f"{func.__name__} should return numeric"
-                )
+                assert isinstance(
+                    result, (int, float)
+                ), f"{func.__name__} should return numeric"
 
         except (ImportError, AttributeError):
             pytest.skip("Enhanced surfaces module has import/attribute issues")
@@ -281,9 +281,9 @@ class TestEnhancedSurfaces:
                     if callable(attr):
                         try:
                             result = attr(test_point)
-                            assert isinstance(result, (int, float)), (
-                                f"{attr_name} should return numeric"
-                            )
+                            assert isinstance(
+                                result, (int, float)
+                            ), f"{attr_name} should return numeric"
                         except (TypeError, ValueError):
                             pass
 
@@ -308,9 +308,9 @@ class TestStochasticSurfaces:
                     if callable(attr):
                         try:
                             result = attr(test_point)
-                            assert isinstance(result, (int, float)), (
-                                f"{attr_name} should return numeric"
-                            )
+                            assert isinstance(
+                                result, (int, float)
+                            ), f"{attr_name} should return numeric"
                         except (TypeError, ValueError):
                             pass
 
@@ -337,13 +337,13 @@ class TestPortfolioObjectives:
                             result = attr(test_weights)
                             # Portfolio functions might return arrays or single values
                             if isinstance(result, (list, tuple, np.ndarray)):
-                                assert len(result) > 0, (
-                                    f"{attr_name} should return non-empty result"
-                                )
+                                assert (
+                                    len(result) > 0
+                                ), f"{attr_name} should return non-empty result"
                             else:
-                                assert isinstance(result, (int, float)), (
-                                    f"{attr_name} should return numeric"
-                                )
+                                assert isinstance(
+                                    result, (int, float)
+                                ), f"{attr_name} should return numeric"
                         except (TypeError, ValueError, IndexError):
                             # Portfolio functions might need specific input formats
                             pass
@@ -370,13 +370,13 @@ class TestHorseObjectives:
                             result = attr(test_point)
                             # Horse functions might return arrays or single values
                             if isinstance(result, (list, tuple, np.ndarray)):
-                                assert len(result) > 0, (
-                                    f"{attr_name} should return non-empty result"
-                                )
+                                assert (
+                                    len(result) > 0
+                                ), f"{attr_name} should return non-empty result"
                             else:
-                                assert isinstance(result, (int, float)), (
-                                    f"{attr_name} should return numeric"
-                                )
+                                assert isinstance(
+                                    result, (int, float)
+                                ), f"{attr_name} should return numeric"
                         except (TypeError, ValueError):
                             pass
 
@@ -401,9 +401,9 @@ class TestTransformObjectives:
                         try:
                             result = attr(test_point)
                             # Transform functions might return various types
-                            assert result is not None, (
-                                f"{attr_name} should return something"
-                            )
+                            assert (
+                                result is not None
+                            ), f"{attr_name} should return something"
                         except (TypeError, ValueError):
                             pass
 
@@ -420,9 +420,9 @@ class TestAllObjectives:
             from humpday.objectives import allobjectives
 
             # Just test that the module imports without error
-            assert hasattr(allobjectives, "__file__"), (
-                "Module should have file attribute"
-            )
+            assert hasattr(
+                allobjectives, "__file__"
+            ), "Module should have file attribute"
 
         except ImportError:
             pytest.skip("All objectives module has import issues")
@@ -438,9 +438,9 @@ class TestPlanarObjectives:
 
             # These might be specialized modules, just test import
             assert hasattr(planar_h1, "__file__"), "Planar H1 module should exist"
-            assert hasattr(planar_h1_optimizer, "__file__"), (
-                "Planar H1 optimizer should exist"
-            )
+            assert hasattr(
+                planar_h1_optimizer, "__file__"
+            ), "Planar H1 optimizer should exist"
 
         except ImportError:
             pytest.skip("Planar modules have import issues")

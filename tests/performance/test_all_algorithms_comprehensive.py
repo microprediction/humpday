@@ -753,9 +753,9 @@ class ComprehensiveAlgorithmValidator:
 
             return {
                 "success": result.success,
-                "x": result.x.tolist()
-                if hasattr(result.x, "tolist")
-                else list(result.x),
+                "x": (
+                    result.x.tolist() if hasattr(result.x, "tolist") else list(result.x)
+                ),
                 "fun": float(result.fun),
                 "nfev": int(result.nfev),
             }

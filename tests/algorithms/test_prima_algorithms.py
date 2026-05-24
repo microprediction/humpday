@@ -17,27 +17,36 @@ class TestPRIMAAlgorithms:
     @pytest.fixture
     def sphere_function(self):
         """Simple sphere function with known optimum."""
+
         def sphere(x):
             return sum(xi**2 for xi in x)
+
         return sphere
 
     @pytest.fixture
     def quadratic_function(self):
         """Quadratic function ideal for PRIMA methods."""
+
         def quadratic(x):
-            return sum((xi - 0.3)**2 for xi in x)  # Optimum at [0.3, 0.3, ...]
+            return sum((xi - 0.3) ** 2 for xi in x)  # Optimum at [0.3, 0.3, ...]
+
         return quadratic
 
     @pytest.fixture
     def rosenbrock_unit_cube(self):
         """Rosenbrock function scaled to unit cube."""
+
         def rosenbrock(x):
             # Scale [0,1] to [-2,2] where Rosenbrock optimum is at [1,1]
             scaled_x = 4 * np.array(x) - 2
             if len(scaled_x) < 2:
                 return 1000.0
-            return sum(100.0 * (scaled_x[i+1] - scaled_x[i]**2)**2 +
-                      (1 - scaled_x[i])**2 for i in range(len(scaled_x)-1))
+            return sum(
+                100.0 * (scaled_x[i + 1] - scaled_x[i] ** 2) ** 2
+                + (1 - scaled_x[i]) ** 2
+                for i in range(len(scaled_x) - 1)
+            )
+
         return rosenbrock
 
     def test_prima_uobyqa_initialization(self, sphere_function):
@@ -130,7 +139,7 @@ class TestPRIMAAlgorithms:
         algorithms = [
             ("UOBYQA", PRIMA_UOBYQA),
             ("NEWUOA", PRIMA_NEWUOA),
-            ("BOBYQA", PRIMA_BOBYQA)
+            ("BOBYQA", PRIMA_BOBYQA),
         ]
 
         results = {}
@@ -140,9 +149,9 @@ class TestPRIMAAlgorithms:
             best_value, best_x = optimizer.optimize()
 
             results[name] = {
-                'value': best_value,
-                'x': best_x,
-                'evaluations': optimizer.evaluations
+                "value": best_value,
+                "x": best_x,
+                "evaluations": optimizer.evaluations,
             }
 
             # All should make reasonable progress on Rosenbrock
@@ -203,13 +212,16 @@ class TestPRIMAAlgorithms:
 
         # Results should be identical (or very close due to floating point)
         assert abs(results[0][0] - results[1][0]) < 1e-10  # Same best value
-        np.testing.assert_allclose(results[0][1], results[1][1], atol=1e-10)  # Same best point
+        np.testing.assert_allclose(
+            results[0][1], results[1][1], atol=1e-10
+        )  # Same best point
 
     def test_prima_small_dimensions(self, quadratic_function):
         """Test PRIMA algorithms work with small dimensions."""
+
         # Test 1D optimization
         def objective_1d(x):
-            return (x[0] - 0.7)**2
+            return (x[0] - 0.7) ** 2
 
         for AlgorithmClass in [PRIMA_UOBYQA, PRIMA_NEWUOA, PRIMA_BOBYQA]:
             optimizer = AlgorithmClass(objective_1d, n_trials=20, n_dim=1)
@@ -221,10 +233,11 @@ class TestPRIMAAlgorithms:
 
     def test_prima_error_handling(self):
         """Test PRIMA algorithms handle edge cases gracefully."""
+
         def problematic_function(x):
             # Function that might cause numerical issues
             if any(xi < 0.001 or xi > 0.999 for xi in x):
-                return float('inf')
+                return float("inf")
             return sum(1.0 / xi for xi in x)  # Can be unstable near boundaries
 
         for AlgorithmClass in [PRIMA_UOBYQA, PRIMA_NEWUOA, PRIMA_BOBYQA]:
@@ -236,7 +249,9 @@ class TestPRIMAAlgorithms:
                 assert np.isfinite(best_value)  # Should find finite solution
                 assert all(0 <= xi <= 1 for xi in best_x)  # Within bounds
             except Exception as e:
-                pytest.fail(f"{AlgorithmClass.__name__} crashed on problematic function: {e}")
+                pytest.fail(
+                    f"{AlgorithmClass.__name__} crashed on problematic function: {e}"
+                )
 
 
 class TestPRIMAPerformance:
@@ -244,13 +259,15 @@ class TestPRIMAPerformance:
 
     def test_prima_efficiency(self):
         """Test PRIMA algorithms are reasonably efficient."""
+
         def simple_quadratic(x):
-            return sum((xi - 0.5)**2 for xi in x)
+            return sum((xi - 0.5) ** 2 for xi in x)
 
         for AlgorithmClass in [PRIMA_UOBYQA, PRIMA_NEWUOA, PRIMA_BOBYQA]:
             optimizer = AlgorithmClass(simple_quadratic, n_trials=50, n_dim=3)
 
             import time
+
             start_time = time.time()
             best_value, best_x = optimizer.optimize()
             elapsed = time.time() - start_time
@@ -261,6 +278,7 @@ class TestPRIMAPerformance:
 
     def test_prima_scaling(self):
         """Test how PRIMA algorithms scale with dimension."""
+
         def sphere(x):
             return sum(xi**2 for xi in x)
 

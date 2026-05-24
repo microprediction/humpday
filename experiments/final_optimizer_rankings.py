@@ -290,11 +290,11 @@ class FinalOptimizerRankings:
         overall_stats["success_rate"] = success_rates
 
         # Combined score: weighted average of normalized performance and success rate
-        overall_stats["combined_score"] = (
-            0.7 * overall_stats["norm_mean"]  # 70% performance
-            + 0.3
-            * (1 - overall_stats["success_rate"] / 100)  # 30% reliability (inverted)
-        )
+        overall_stats["combined_score"] = 0.7 * overall_stats[
+            "norm_mean"
+        ] + 0.3 * (  # 70% performance
+            1 - overall_stats["success_rate"] / 100
+        )  # 30% reliability (inverted)
 
         overall_stats = overall_stats.sort_values("combined_score")
 
@@ -302,11 +302,7 @@ class FinalOptimizerRankings:
             medal = (
                 "🥇"
                 if rank == 1
-                else "🥈"
-                if rank == 2
-                else "🥉"
-                if rank == 3
-                else "  "
+                else "🥈" if rank == 2 else "🥉" if rank == 3 else "  "
             )
             print(
                 f"{rank:<4} {medal} {opt:<15} {row['norm_mean']:<8.3f} {row['norm_std']:<8.3f} "

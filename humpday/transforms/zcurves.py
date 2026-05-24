@@ -20,9 +20,9 @@ def to_space(p: float, bounds=None, dim: int = None):
     :param dim     Dimension. Only used if bounds are not supplied.
     """
     if bounds is None:
-        assert dim is not None, (
-            "If you don't supply bounds, dimension of hypercube is required"
-        )
+        assert (
+            dim is not None
+        ), "If you don't supply bounds, dimension of hypercube is required"
         bounds = [(0, 1) for _ in range(dim)]
     else:
         dim = len(bounds)
@@ -106,9 +106,9 @@ def verify_embedding(embedding, inverse, n_dim):
         v0 = embedding(u0)
         assert all([0 <= v0_j <= 1 for v0_j in v0]), "pi does not go to the cube"
         u0_check = inverse(v0, n_dim)
-        assert np.linalg.norm(np.array(u0_check) - np.array(u0)) < 1e-1, (
-            "map_down does not invert map_up"
-        )
+        assert (
+            np.linalg.norm(np.array(u0_check) - np.array(u0)) < 1e-1
+        ), "map_down does not invert map_up"
     return len(v0)
 
 

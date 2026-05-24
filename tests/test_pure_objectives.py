@@ -30,9 +30,9 @@ def test_sphere_implementation():
 
     for point, expected_val in zip(test_points, expected):
         result = sphere_pure(point)
-        assert abs(result - expected_val) < 1e-10, (
-            f"Sphere({point}) = {result}, expected {expected_val}"
-        )
+        assert (
+            abs(result - expected_val) < 1e-10
+        ), f"Sphere({point}) = {result}, expected {expected_val}"
 
     # Test that generator produces working functions
     from humpday.optimizers.adaptive_optimizer import sphere_variants_generator
@@ -66,9 +66,9 @@ def test_rosenbrock_implementation():
 
     for point, expected_val in zip(test_points, expected):
         result = rosenbrock_pure(point)
-        assert abs(result - expected_val) < 1e-10, (
-            f"Rosenbrock({point}) = {result}, expected {expected_val}"
-        )
+        assert (
+            abs(result - expected_val) < 1e-10
+        ), f"Rosenbrock({point}) = {result}, expected {expected_val}"
 
     # Test that generator produces working functions
     from humpday.optimizers.adaptive_optimizer import rosenbrock_variants_generator
@@ -96,9 +96,9 @@ def test_mixed_functions():
     for i in range(5):
         func = next(gen)
         result = func([0.1, 0.2])
-        assert isinstance(result, (int, float, np.number)), (
-            f"Function {i} returned {type(result)}"
-        )
+        assert isinstance(
+            result, (int, float, np.number)
+        ), f"Function {i} returned {type(result)}"
         assert not np.isnan(result), f"Function {i} returned NaN"
         assert not np.isinf(result), f"Function {i} returned infinity"
 
@@ -129,9 +129,9 @@ def test_reference_consistency():
         for point in test_points:
             our_result = our_rosenbrock(point)
             scipy_result = rosen(point)
-            assert abs(our_result - scipy_result) < 1e-12, (
-                f"Mismatch at {point}: ours={our_result}, scipy={scipy_result}"
-            )
+            assert (
+                abs(our_result - scipy_result) < 1e-12
+            ), f"Mismatch at {point}: ours={our_result}, scipy={scipy_result}"
 
         print("✓ Rosenbrock implementation matches SciPy reference")
 

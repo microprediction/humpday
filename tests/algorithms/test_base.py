@@ -20,7 +20,11 @@ class TestOptimizer(BaseOptimizer):
             if self.evaluations >= self.n_trials:
                 break
             # Move toward center of unit cube
-            x = self.best_x + 0.1 * (0.5 - self.best_x) + 0.05 * np.random.randn(self.n_dim)
+            x = (
+                self.best_x
+                + 0.1 * (0.5 - self.best_x)
+                + 0.05 * np.random.randn(self.n_dim)
+            )
             x = np.clip(x, 0, 1)
             self.evaluate(x)
         return self.best_value, self.best_x
@@ -31,6 +35,7 @@ class TestBaseOptimizer:
 
     def test_initialization(self):
         """Test proper initialization of BaseOptimizer."""
+
         def objective(x):
             return sum(xi**2 for xi in x)
 
@@ -40,15 +45,16 @@ class TestBaseOptimizer:
         assert optimizer.n_trials == 100
         assert optimizer.n_dim == 3
         assert optimizer.evaluations == 0
-        assert optimizer.best_value == float('inf')
+        assert optimizer.best_value == float("inf")
         assert len(optimizer.best_x) == 3
         assert not optimizer.track_path
         assert len(optimizer.path) == 0
 
     def test_evaluate_function(self):
         """Test objective evaluation and tracking."""
+
         def objective(x):
-            return sum((xi - 0.3)**2 for xi in x)  # Optimum at [0.3, 0.3]
+            return sum((xi - 0.3) ** 2 for xi in x)  # Optimum at [0.3, 0.3]
 
         optimizer = TestOptimizer(objective, n_trials=50, n_dim=2)
 
@@ -56,7 +62,7 @@ class TestBaseOptimizer:
         x = np.array([0.5, 0.6])
         value = optimizer.evaluate(x)
 
-        expected = (0.5 - 0.3)**2 + (0.6 - 0.3)**2
+        expected = (0.5 - 0.3) ** 2 + (0.6 - 0.3) ** 2
         assert abs(value - expected) < 1e-10
         assert optimizer.evaluations == 1
         assert optimizer.best_value == value
@@ -64,6 +70,7 @@ class TestBaseOptimizer:
 
     def test_best_value_tracking(self):
         """Test that best value and position are properly tracked."""
+
         def objective(x):
             return sum(xi**2 for xi in x)  # Optimum at origin
 
@@ -82,11 +89,14 @@ class TestBaseOptimizer:
         for i, point in enumerate(points):
             optimizer.evaluate(point)
             assert abs(optimizer.best_value - expected_best_values[i]) < 1e-10
-            if expected_best_values[i] <= (expected_best_values[i-1] if i > 0 else float('inf')):
+            if expected_best_values[i] <= (
+                expected_best_values[i - 1] if i > 0 else float("inf")
+            ):
                 np.testing.assert_array_equal(optimizer.best_x, point)
 
     def test_path_tracking(self):
         """Test path tracking functionality."""
+
         def objective(x):
             return sum(xi**2 for xi in x)
 
@@ -103,6 +113,7 @@ class TestBaseOptimizer:
 
     def test_clipping_bounds(self):
         """Test that points are properly clipped to unit cube."""
+
         def objective(x):
             return sum(xi**2 for xi in x)
 
@@ -118,6 +129,7 @@ class TestBaseOptimizer:
 
     def test_evaluation_limit(self):
         """Test that optimization respects evaluation budget."""
+
         def objective(x):
             return sum(xi**2 for xi in x)
 
@@ -129,6 +141,7 @@ class TestBaseOptimizer:
 
     def test_different_dimensions(self):
         """Test optimizer works with different dimensions."""
+
         def objective(x):
             return sum(xi**2 for xi in x)
 
@@ -142,8 +155,9 @@ class TestBaseOptimizer:
 
     def test_optimization_improves(self):
         """Test that optimization actually improves the objective."""
+
         def objective(x):
-            return sum((xi - 0.7)**2 for xi in x)  # Optimum at [0.7, 0.7]
+            return sum((xi - 0.7) ** 2 for xi in x)  # Optimum at [0.7, 0.7]
 
         optimizer = TestOptimizer(objective, n_trials=50, n_dim=2)
 
@@ -167,6 +181,7 @@ class TestObjectiveFunctions:
 
     def test_sphere_function(self):
         """Test sphere function optimization."""
+
         def sphere(x):
             return sum(xi**2 for xi in x)
 
@@ -179,10 +194,14 @@ class TestObjectiveFunctions:
 
     def test_rosenbrock_function(self):
         """Test Rosenbrock function optimization."""
+
         def rosenbrock(x):
             if len(x) < 2:
-                return float('inf')
-            return sum(100.0 * (x[i+1] - x[i]**2)**2 + (1 - x[i])**2 for i in range(len(x)-1))
+                return float("inf")
+            return sum(
+                100.0 * (x[i + 1] - x[i] ** 2) ** 2 + (1 - x[i]) ** 2
+                for i in range(len(x) - 1)
+            )
 
         # Scale to unit cube (Rosenbrock optimum is at [1, 1] in [-2, 2]^2)
         def rosenbrock_unit_cube(x):
@@ -198,6 +217,7 @@ class TestObjectiveFunctions:
 
     def test_noisy_function(self):
         """Test optimization with noisy objective."""
+
         def noisy_sphere(x):
             clean_value = sum(xi**2 for xi in x)
             noise = 0.01 * np.random.randn()  # Small noise
@@ -211,6 +231,7 @@ class TestObjectiveFunctions:
 
     def test_discontinuous_function(self):
         """Test optimization with discontinuous objective."""
+
         def step_function(x):
             return sum(int(xi * 10) for xi in x)  # Step function
 

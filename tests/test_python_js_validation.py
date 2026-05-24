@@ -127,9 +127,9 @@ class TestObjectiveFunctions:
             python_result = python_sphere(point)
             js_result = js_results[i]
 
-            assert abs(python_result - js_result) < FUNCTION_TOLERANCE, (
-                f"Sphere function mismatch at {point}: Python={python_result}, JS={js_result}"
-            )
+            assert (
+                abs(python_result - js_result) < FUNCTION_TOLERANCE
+            ), f"Sphere function mismatch at {point}: Python={python_result}, JS={js_result}"
 
     def test_rosenbrock_function(self):
         """Test Rosenbrock function Python vs JavaScript."""
@@ -160,9 +160,9 @@ class TestObjectiveFunctions:
             python_result = python_rosenbrock(point)
             js_result = js_results[i]
 
-            assert abs(python_result - js_result) < FUNCTION_TOLERANCE, (
-                f"Rosenbrock function mismatch at {point}: Python={python_result}, JS={js_result}"
-            )
+            assert (
+                abs(python_result - js_result) < FUNCTION_TOLERANCE
+            ), f"Rosenbrock function mismatch at {point}: Python={python_result}, JS={js_result}"
 
     def test_rastrigin_function(self):
         """Test Rastrigin function Python vs JavaScript."""
@@ -197,9 +197,9 @@ class TestObjectiveFunctions:
             python_result = python_rastrigin(point)
             js_result = js_results[i]
 
-            assert abs(python_result - js_result) < FUNCTION_TOLERANCE, (
-                f"Rastrigin function mismatch at {point}: Python={python_result}, JS={js_result}"
-            )
+            assert (
+                abs(python_result - js_result) < FUNCTION_TOLERANCE
+            ), f"Rastrigin function mismatch at {point}: Python={python_result}, JS={js_result}"
 
 
 class TestOptimizerValidation:
@@ -242,9 +242,9 @@ class TestOptimizerValidation:
         js_best = js_result["bestValue"]
 
         # Both should be reasonably good (for sphere function, expect values < 1.0 with 50 trials)
-        assert python_best < 1.0, (
-            f"Python RandomSearch found poor solution: {python_best}"
-        )
+        assert (
+            python_best < 1.0
+        ), f"Python RandomSearch found poor solution: {python_best}"
         assert js_best < 1.0, f"JavaScript RandomSearch found poor solution: {js_best}"
 
         # Both should have used all evaluations
@@ -277,12 +277,12 @@ class TestOptimizerValidation:
         js_result = json.loads(js_result_str)
 
         # Both should find the optimum reasonably well
-        assert python_best_val < 0.01, (
-            f"Python Nelder-Mead didn't converge: {python_best_val}"
-        )
-        assert js_result["bestValue"] < 0.01, (
-            f"JavaScript Nelder-Mead didn't converge: {js_result['bestValue']}"
-        )
+        assert (
+            python_best_val < 0.01
+        ), f"Python Nelder-Mead didn't converge: {python_best_val}"
+        assert (
+            js_result["bestValue"] < 0.01
+        ), f"JavaScript Nelder-Mead didn't converge: {js_result['bestValue']}"
 
         # Check that best points are close to [0.3, 0.3]
         expected = np.array([0.3, 0.3])
@@ -290,9 +290,9 @@ class TestOptimizerValidation:
         js_error = np.linalg.norm(np.array(js_result["bestX"]) - expected)
 
         assert python_error < 0.1, f"Python solution far from optimum: {python_best_x}"
-        assert js_error < 0.1, (
-            f"JavaScript solution far from optimum: {js_result['bestX']}"
-        )
+        assert (
+            js_error < 0.1
+        ), f"JavaScript solution far from optimum: {js_result['bestX']}"
 
 
 class TestReferenceValidation:
@@ -347,9 +347,9 @@ class TestReferenceValidation:
             for point in test_points:
                 our_result = our_rosenbrock(point)
                 scipy_result = rosen(point)
-                assert abs(our_result - scipy_result) < 1e-12, (
-                    f"Rosenbrock mismatch at {point}: ours={our_result}, scipy={scipy_result}"
-                )
+                assert (
+                    abs(our_result - scipy_result) < 1e-12
+                ), f"Rosenbrock mismatch at {point}: ours={our_result}, scipy={scipy_result}"
 
         except ImportError:
             pytest.skip("SciPy not available for reference comparison")
@@ -415,9 +415,9 @@ class TestDomainTransformations:
         boundary_results = js_results[1:3]
 
         # Center should be better than boundaries for Rastrigin
-        assert center_result < min(boundary_results), (
-            f"Center point not optimal: center={center_result}, boundaries={boundary_results}"
-        )
+        assert center_result < min(
+            boundary_results
+        ), f"Center point not optimal: center={center_result}, boundaries={boundary_results}"
 
 
 # Integration test
@@ -446,9 +446,9 @@ def test_end_to_end_optimization():
 
     # Both should find the minimum
     assert python_result[0] < 0.01, f"Python didn't find minimum: {python_result[0]}"
-    assert js_result["bestValue"] < 0.01, (
-        f"JavaScript didn't find minimum: {js_result['bestValue']}"
-    )
+    assert (
+        js_result["bestValue"] < 0.01
+    ), f"JavaScript didn't find minimum: {js_result['bestValue']}"
 
     # Solutions should be close
     python_point = np.array(python_result[1])

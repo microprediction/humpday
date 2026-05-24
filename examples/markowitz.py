@@ -23,9 +23,7 @@ def nice_div(a, b):
         return (
             1.0
             if abs(a - b) < 0.01 * (abs(a) + abs(b))
-            else 100.0
-            if abs(b) < 1e-6
-            else a / b
+            else 100.0 if abs(b) < 1e-6 else a / b
         )
 
 

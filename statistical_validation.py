@@ -26,6 +26,7 @@ import numpy as np
 # Handle optional scipy import
 try:
     from scipy import stats
+
     SCIPY_AVAILABLE = True
 except ImportError:
     SCIPY_AVAILABLE = False
@@ -37,6 +38,7 @@ warnings.filterwarnings("ignore", category=UserWarning)
 @dataclass
 class ConvergenceAnalysis:
     """Results of convergence analysis between two algorithms."""
+
     algorithm_a: str
     algorithm_b: str
     convergence_rate_a: float
@@ -50,6 +52,7 @@ class ConvergenceAnalysis:
 @dataclass
 class DistributionComparison:
     """Results of statistical distribution comparison."""
+
     algorithm_a: str
     algorithm_b: str
     mean_difference: float
@@ -64,15 +67,19 @@ class DistributionComparison:
 class StatisticalValidator:
     """Advanced statistical validation for optimization algorithms."""
 
-    def __init__(self, significance_level: float = 0.05, equivalence_threshold: float = 0.1):
+    def __init__(
+        self, significance_level: float = 0.05, equivalence_threshold: float = 0.1
+    ):
         self.significance_level = significance_level
         self.equivalence_threshold = equivalence_threshold
 
-    def analyze_convergence_behavior(self,
-                                   convergence_a: List[float],
-                                   convergence_b: List[float],
-                                   algorithm_a: str,
-                                   algorithm_b: str) -> ConvergenceAnalysis:
+    def analyze_convergence_behavior(
+        self,
+        convergence_a: List[float],
+        convergence_b: List[float],
+        algorithm_a: str,
+        algorithm_b: str,
+    ) -> ConvergenceAnalysis:
         """
         Analyze and compare convergence behavior of two algorithms.
 
@@ -94,7 +101,7 @@ class StatisticalValidator:
                 rate_similarity=0.0,
                 path_correlation=0.0,
                 statistical_significance=1.0,
-                passed_equivalence=False
+                passed_equivalence=False,
             )
 
         # Truncate to same length for fair comparison
@@ -121,7 +128,9 @@ class StatisticalValidator:
         # Statistical significance test (Mann-Whitney U test)
         try:
             if SCIPY_AVAILABLE:
-                statistic, p_value = stats.mannwhitneyu(conv_a, conv_b, alternative='two-sided')
+                statistic, p_value = stats.mannwhitneyu(
+                    conv_a, conv_b, alternative="two-sided"
+                )
             else:
                 # Fallback: simple comparison
                 mean_diff = abs(np.mean(conv_a) - np.mean(conv_b))
@@ -133,9 +142,9 @@ class StatisticalValidator:
 
         # Equivalence test
         passed_equivalence = (
-            rate_similarity > (1 - self.equivalence_threshold) and
-            abs(path_correlation) > 0.7 and
-            p_value > self.significance_level
+            rate_similarity > (1 - self.equivalence_threshold)
+            and abs(path_correlation) > 0.7
+            and p_value > self.significance_level
         )
 
         return ConvergenceAnalysis(
@@ -146,7 +155,7 @@ class StatisticalValidator:
             rate_similarity=rate_similarity,
             path_correlation=path_correlation,
             statistical_significance=p_value,
-            passed_equivalence=passed_equivalence
+            passed_equivalence=passed_equivalence,
         )
 
     def _fit_convergence_rate(self, convergence: np.ndarray) -> float:
@@ -160,7 +169,7 @@ class StatisticalValidator:
 
         # Remove duplicates and ensure monotonic improvement for rate calculation
         unique_conv = []
-        last_val = float('inf')
+        last_val = float("inf")
         for val in convergence:
             if val < last_val:
                 unique_conv.append(val)
@@ -196,11 +205,13 @@ class StatisticalValidator:
 
         return 0.0
 
-    def compare_performance_distributions(self,
-                                        results_a: List[float],
-                                        results_b: List[float],
-                                        algorithm_a: str,
-                                        algorithm_b: str) -> DistributionComparison:
+    def compare_performance_distributions(
+        self,
+        results_a: List[float],
+        results_b: List[float],
+        algorithm_a: str,
+        algorithm_b: str,
+    ) -> DistributionComparison:
         """
         Compare performance distributions using multiple statistical tests.
 
@@ -214,13 +225,13 @@ class StatisticalValidator:
             return DistributionComparison(
                 algorithm_a=algorithm_a,
                 algorithm_b=algorithm_b,
-                mean_difference=float('inf'),
-                variance_ratio=float('inf'),
+                mean_difference=float("inf"),
+                variance_ratio=float("inf"),
                 ks_statistic=1.0,
                 ks_pvalue=0.0,
                 mannwhitney_statistic=0.0,
                 mannwhitney_pvalue=0.0,
-                equivalent=False
+                equivalent=False,
             )
 
         arr_a = np.array(results_a)
@@ -241,7 +252,9 @@ class StatisticalValidator:
                 ks_statistic, ks_pvalue = stats.ks_2samp(arr_a, arr_b)
             else:
                 # Fallback: simple comparison
-                ks_statistic = abs(np.mean(arr_a) - np.mean(arr_b)) / (np.std(arr_a) + np.std(arr_b) + 1e-10)
+                ks_statistic = abs(np.mean(arr_a) - np.mean(arr_b)) / (
+                    np.std(arr_a) + np.std(arr_b) + 1e-10
+                )
                 ks_pvalue = 0.5  # Neutral p-value
         except Exception:
             ks_statistic, ks_pvalue = 1.0, 0.0
@@ -249,7 +262,9 @@ class StatisticalValidator:
         # Mann-Whitney U test
         try:
             if SCIPY_AVAILABLE:
-                mw_statistic, mw_pvalue = stats.mannwhitneyu(arr_a, arr_b, alternative='two-sided')
+                mw_statistic, mw_pvalue = stats.mannwhitneyu(
+                    arr_a, arr_b, alternative="two-sided"
+                )
             else:
                 # Fallback: t-test approximation
                 mean_diff = abs(np.mean(arr_a) - np.mean(arr_b))
@@ -264,10 +279,10 @@ class StatisticalValidator:
         acceptable_variance_ratio = 0.2 < variance_ratio < 5.0
 
         equivalent = (
-            relative_mean_diff < self.equivalence_threshold and
-            acceptable_variance_ratio and
-            ks_pvalue > self.significance_level and
-            mw_pvalue > self.significance_level
+            relative_mean_diff < self.equivalence_threshold
+            and acceptable_variance_ratio
+            and ks_pvalue > self.significance_level
+            and mw_pvalue > self.significance_level
         )
 
         return DistributionComparison(
@@ -279,14 +294,16 @@ class StatisticalValidator:
             ks_pvalue=ks_pvalue,
             mannwhitney_statistic=mw_statistic,
             mannwhitney_pvalue=mw_pvalue,
-            equivalent=equivalent
+            equivalent=equivalent,
         )
 
-    def test_mathematical_equivalence(self,
-                                    python_results: Dict[str, List[float]],
-                                    reference_results: Dict[str, List[float]],
-                                    convergence_python: Dict[str, List[List[float]]],
-                                    convergence_reference: Dict[str, List[List[float]]]) -> Dict[str, Any]:
+    def test_mathematical_equivalence(
+        self,
+        python_results: Dict[str, List[float]],
+        reference_results: Dict[str, List[float]],
+        convergence_python: Dict[str, List[List[float]]],
+        convergence_reference: Dict[str, List[List[float]]],
+    ) -> Dict[str, Any]:
         """
         Comprehensive mathematical equivalence testing.
 
@@ -298,10 +315,10 @@ class StatisticalValidator:
         """
 
         equivalence_report = {
-            'distribution_comparisons': [],
-            'convergence_analyses': [],
-            'overall_equivalence': {},
-            'statistical_summary': {}
+            "distribution_comparisons": [],
+            "convergence_analyses": [],
+            "overall_equivalence": {},
+            "statistical_summary": {},
         }
 
         # Compare distributions for each algorithm
@@ -311,9 +328,9 @@ class StatisticalValidator:
                     python_results[alg_name],
                     reference_results[alg_name],
                     f"{alg_name}_Python",
-                    f"{alg_name}_Reference"
+                    f"{alg_name}_Reference",
                 )
-                equivalence_report['distribution_comparisons'].append(dist_comparison)
+                equivalence_report["distribution_comparisons"].append(dist_comparison)
 
         # Compare convergence behaviors
         for alg_name in convergence_python.keys():
@@ -328,53 +345,86 @@ class StatisticalValidator:
                         py_run,
                         ref_run,
                         f"{alg_name}_Python_Run{i}",
-                        f"{alg_name}_Reference_Run{i}"
+                        f"{alg_name}_Reference_Run{i}",
                     )
                     conv_analyses.append(conv_analysis)
 
-                equivalence_report['convergence_analyses'].extend(conv_analyses)
+                equivalence_report["convergence_analyses"].extend(conv_analyses)
 
         # Overall equivalence assessment
-        dist_passed = sum(1 for comp in equivalence_report['distribution_comparisons'] if comp.equivalent)
-        dist_total = len(equivalence_report['distribution_comparisons'])
+        dist_passed = sum(
+            1
+            for comp in equivalence_report["distribution_comparisons"]
+            if comp.equivalent
+        )
+        dist_total = len(equivalence_report["distribution_comparisons"])
 
-        conv_passed = sum(1 for analysis in equivalence_report['convergence_analyses'] if analysis.passed_equivalence)
-        conv_total = len(equivalence_report['convergence_analyses'])
+        conv_passed = sum(
+            1
+            for analysis in equivalence_report["convergence_analyses"]
+            if analysis.passed_equivalence
+        )
+        conv_total = len(equivalence_report["convergence_analyses"])
 
-        equivalence_report['overall_equivalence'] = {
-            'distribution_pass_rate': (dist_passed / dist_total * 100) if dist_total > 0 else 0,
-            'convergence_pass_rate': (conv_passed / conv_total * 100) if conv_total > 0 else 0,
-            'algorithms_tested': len(set(python_results.keys()) & set(reference_results.keys())),
-            'mathematical_equivalence': (dist_passed + conv_passed) / (dist_total + conv_total) > 0.8 if (dist_total + conv_total) > 0 else False
+        equivalence_report["overall_equivalence"] = {
+            "distribution_pass_rate": (
+                (dist_passed / dist_total * 100) if dist_total > 0 else 0
+            ),
+            "convergence_pass_rate": (
+                (conv_passed / conv_total * 100) if conv_total > 0 else 0
+            ),
+            "algorithms_tested": len(
+                set(python_results.keys()) & set(reference_results.keys())
+            ),
+            "mathematical_equivalence": (
+                (dist_passed + conv_passed) / (dist_total + conv_total) > 0.8
+                if (dist_total + conv_total) > 0
+                else False
+            ),
         }
 
         # Statistical summary
-        if equivalence_report['distribution_comparisons']:
-            mean_diffs = [comp.mean_difference for comp in equivalence_report['distribution_comparisons']]
-            var_ratios = [comp.variance_ratio for comp in equivalence_report['distribution_comparisons']]
-            ks_pvalues = [comp.ks_pvalue for comp in equivalence_report['distribution_comparisons']]
+        if equivalence_report["distribution_comparisons"]:
+            mean_diffs = [
+                comp.mean_difference
+                for comp in equivalence_report["distribution_comparisons"]
+            ]
+            var_ratios = [
+                comp.variance_ratio
+                for comp in equivalence_report["distribution_comparisons"]
+            ]
+            ks_pvalues = [
+                comp.ks_pvalue
+                for comp in equivalence_report["distribution_comparisons"]
+            ]
 
-            equivalence_report['statistical_summary'] = {
-                'mean_difference_stats': {
-                    'median': np.median(mean_diffs),
-                    'max': np.max(mean_diffs),
-                    'q75': np.percentile(mean_diffs, 75)
+            equivalence_report["statistical_summary"] = {
+                "mean_difference_stats": {
+                    "median": np.median(mean_diffs),
+                    "max": np.max(mean_diffs),
+                    "q75": np.percentile(mean_diffs, 75),
                 },
-                'variance_ratio_stats': {
-                    'median': np.median(var_ratios),
-                    'outside_acceptable_range': sum(1 for vr in var_ratios if vr < 0.2 or vr > 5.0)
+                "variance_ratio_stats": {
+                    "median": np.median(var_ratios),
+                    "outside_acceptable_range": sum(
+                        1 for vr in var_ratios if vr < 0.2 or vr > 5.0
+                    ),
                 },
-                'ks_test_stats': {
-                    'median_pvalue': np.median(ks_pvalues),
-                    'significant_differences': sum(1 for pv in ks_pvalues if pv < self.significance_level)
-                }
+                "ks_test_stats": {
+                    "median_pvalue": np.median(ks_pvalues),
+                    "significant_differences": sum(
+                        1 for pv in ks_pvalues if pv < self.significance_level
+                    ),
+                },
             }
 
         return equivalence_report
 
-    def validate_cross_language_consistency(self,
-                                          python_results: Dict[str, List[float]],
-                                          javascript_results: Dict[str, List[float]]) -> Dict[str, Any]:
+    def validate_cross_language_consistency(
+        self,
+        python_results: Dict[str, List[float]],
+        javascript_results: Dict[str, List[float]],
+    ) -> Dict[str, Any]:
         """
         Validate consistency between Python and JavaScript implementations.
 
@@ -385,9 +435,9 @@ class StatisticalValidator:
         """
 
         consistency_report = {
-            'language_comparisons': [],
-            'consistency_metrics': {},
-            'cross_language_equivalence': False
+            "language_comparisons": [],
+            "consistency_metrics": {},
+            "cross_language_equivalence": False,
         }
 
         # Relaxed thresholds for cross-language comparison
@@ -402,36 +452,58 @@ class StatisticalValidator:
                         python_results[alg_name],
                         javascript_results[alg_name],
                         f"{alg_name}_Python",
-                        f"{alg_name}_JavaScript"
+                        f"{alg_name}_JavaScript",
                     )
-                    consistency_report['language_comparisons'].append(comparison)
+                    consistency_report["language_comparisons"].append(comparison)
 
             # Calculate consistency metrics
-            if consistency_report['language_comparisons']:
-                consistent_algorithms = sum(1 for comp in consistency_report['language_comparisons'] if comp.equivalent)
-                total_algorithms = len(consistency_report['language_comparisons'])
+            if consistency_report["language_comparisons"]:
+                consistent_algorithms = sum(
+                    1
+                    for comp in consistency_report["language_comparisons"]
+                    if comp.equivalent
+                )
+                total_algorithms = len(consistency_report["language_comparisons"])
 
-                mean_differences = [comp.mean_difference for comp in consistency_report['language_comparisons']]
-                variance_ratios = [comp.variance_ratio for comp in consistency_report['language_comparisons']]
+                mean_differences = [
+                    comp.mean_difference
+                    for comp in consistency_report["language_comparisons"]
+                ]
+                variance_ratios = [
+                    comp.variance_ratio
+                    for comp in consistency_report["language_comparisons"]
+                ]
 
-                consistency_report['consistency_metrics'] = {
-                    'consistency_rate': (consistent_algorithms / total_algorithms * 100) if total_algorithms > 0 else 0,
-                    'algorithms_tested': total_algorithms,
-                    'mean_difference_distribution': {
-                        'median': np.median(mean_differences),
-                        'max': np.max(mean_differences),
-                        'acceptable_count': sum(1 for md in mean_differences if md < 1.0)
+                consistency_report["consistency_metrics"] = {
+                    "consistency_rate": (
+                        (consistent_algorithms / total_algorithms * 100)
+                        if total_algorithms > 0
+                        else 0
+                    ),
+                    "algorithms_tested": total_algorithms,
+                    "mean_difference_distribution": {
+                        "median": np.median(mean_differences),
+                        "max": np.max(mean_differences),
+                        "acceptable_count": sum(
+                            1 for md in mean_differences if md < 1.0
+                        ),
                     },
-                    'variance_ratio_distribution': {
-                        'median': np.median(variance_ratios),
-                        'stable_count': sum(1 for vr in variance_ratios if 0.1 < vr < 10.0)
-                    }
+                    "variance_ratio_distribution": {
+                        "median": np.median(variance_ratios),
+                        "stable_count": sum(
+                            1 for vr in variance_ratios if 0.1 < vr < 10.0
+                        ),
+                    },
                 }
 
                 # Overall cross-language equivalence
-                consistency_report['cross_language_equivalence'] = (
-                    consistency_report['consistency_metrics']['consistency_rate'] > 60 and
-                    consistency_report['consistency_metrics']['mean_difference_distribution']['acceptable_count'] / total_algorithms > 0.7
+                consistency_report["cross_language_equivalence"] = (
+                    consistency_report["consistency_metrics"]["consistency_rate"] > 60
+                    and consistency_report["consistency_metrics"][
+                        "mean_difference_distribution"
+                    ]["acceptable_count"]
+                    / total_algorithms
+                    > 0.7
                 )
 
         finally:
@@ -440,61 +512,86 @@ class StatisticalValidator:
 
         return consistency_report
 
-    def generate_statistical_report(self, validation_results: List[Any]) -> Dict[str, Any]:
+    def generate_statistical_report(
+        self, validation_results: List[Any]
+    ) -> Dict[str, Any]:
         """Generate comprehensive statistical validation report."""
 
         report = {
-            'timestamp': np.datetime64('now').astype(str),
-            'statistical_parameters': {
-                'significance_level': self.significance_level,
-                'equivalence_threshold': self.equivalence_threshold
+            "timestamp": np.datetime64("now").astype(str),
+            "statistical_parameters": {
+                "significance_level": self.significance_level,
+                "equivalence_threshold": self.equivalence_threshold,
             },
-            'validation_summary': {},
-            'recommendations': []
+            "validation_summary": {},
+            "recommendations": [],
         }
 
         # Categorize results by test type
         test_categories = {}
         for result in validation_results:
-            category = getattr(result, 'test_name', 'unknown')
+            category = getattr(result, "test_name", "unknown")
             if category not in test_categories:
                 test_categories[category] = []
             test_categories[category].append(result)
 
         # Generate category-specific statistics
         for category, results in test_categories.items():
-            passed = sum(1 for r in results if getattr(r, 'passed', False))
+            passed = sum(1 for r in results if getattr(r, "passed", False))
             total = len(results)
 
-            report['validation_summary'][category] = {
-                'total_tests': total,
-                'passed_tests': passed,
-                'pass_rate': (passed / total * 100) if total > 0 else 0,
-                'critical_failures': sum(1 for r in results if not getattr(r, 'passed', True) and 'PRIMA' in getattr(r, 'algorithm_name', ''))
+            report["validation_summary"][category] = {
+                "total_tests": total,
+                "passed_tests": passed,
+                "pass_rate": (passed / total * 100) if total > 0 else 0,
+                "critical_failures": sum(
+                    1
+                    for r in results
+                    if not getattr(r, "passed", True)
+                    and "PRIMA" in getattr(r, "algorithm_name", "")
+                ),
             }
 
         # Generate recommendations based on statistical analysis
-        overall_pass_rate = sum(cat['passed_tests'] for cat in report['validation_summary'].values()) / sum(cat['total_tests'] for cat in report['validation_summary'].values()) * 100 if report['validation_summary'] else 0
+        overall_pass_rate = (
+            sum(cat["passed_tests"] for cat in report["validation_summary"].values())
+            / sum(cat["total_tests"] for cat in report["validation_summary"].values())
+            * 100
+            if report["validation_summary"]
+            else 0
+        )
 
         if overall_pass_rate >= 90:
-            report['recommendations'].append("✅ Excellent mathematical consistency across all implementations")
+            report["recommendations"].append(
+                "✅ Excellent mathematical consistency across all implementations"
+            )
         elif overall_pass_rate >= 75:
-            report['recommendations'].append("✅ Good statistical equivalence with minor variations")
+            report["recommendations"].append(
+                "✅ Good statistical equivalence with minor variations"
+            )
         elif overall_pass_rate >= 50:
-            report['recommendations'].append("⚠️ Moderate consistency - review failing algorithms")
+            report["recommendations"].append(
+                "⚠️ Moderate consistency - review failing algorithms"
+            )
         else:
-            report['recommendations'].append("❌ Poor statistical equivalence - significant implementation issues")
+            report["recommendations"].append(
+                "❌ Poor statistical equivalence - significant implementation issues"
+            )
 
         # Specific recommendations for failed categories
-        for category, stats in report['validation_summary'].items():
-            if stats['pass_rate'] < 50:
-                report['recommendations'].append(f"🔧 Review {category} implementation consistency")
+        for category, stats in report["validation_summary"].items():
+            if stats["pass_rate"] < 50:
+                report["recommendations"].append(
+                    f"🔧 Review {category} implementation consistency"
+                )
 
         return report
 
 
-def create_convergence_plots(convergence_data: Dict[str, List[List[float]]],
-                           output_dir: str = "validation_results") -> None:
+def create_convergence_plots(
+    convergence_data: Dict[str, List[List[float]]],
+    output_dir: str = "validation_results",
+) -> None:
     """
     Create visualization plots for convergence analysis.
 
@@ -504,6 +601,7 @@ def create_convergence_plots(convergence_data: Dict[str, List[List[float]]],
         from pathlib import Path
 
         import matplotlib.pyplot as plt
+
         MATPLOTLIB_AVAILABLE = True
 
         output_path = Path(output_dir)
@@ -518,7 +616,7 @@ def create_convergence_plots(convergence_data: Dict[str, List[List[float]]],
             # Plot all runs
             for i, run in enumerate(runs):
                 if run:
-                    plt.plot(run, alpha=0.3, color='blue', linewidth=1)
+                    plt.plot(run, alpha=0.3, color="blue", linewidth=1)
 
             # Plot average convergence
             if runs:
@@ -531,17 +629,17 @@ def create_convergence_plots(convergence_data: Dict[str, List[List[float]]],
                         avg_convergence.append(np.mean(values_at_step))
 
                 if avg_convergence:
-                    plt.plot(avg_convergence, color='red', linewidth=3, label='Average')
+                    plt.plot(avg_convergence, color="red", linewidth=3, label="Average")
 
-            plt.xlabel('Function Evaluations')
-            plt.ylabel('Objective Function Value')
-            plt.title(f'{algorithm} - Convergence Analysis')
-            plt.yscale('log')
+            plt.xlabel("Function Evaluations")
+            plt.ylabel("Objective Function Value")
+            plt.title(f"{algorithm} - Convergence Analysis")
+            plt.yscale("log")
             plt.legend()
             plt.grid(True, alpha=0.3)
 
             plot_file = output_path / f"{algorithm}_convergence.png"
-            plt.savefig(plot_file, dpi=300, bbox_inches='tight')
+            plt.savefig(plot_file, dpi=300, bbox_inches="tight")
             plt.close()
 
         print(f"📈 Convergence plots saved to {output_path}")

@@ -26,31 +26,31 @@ from .search_algorithms import AdaptiveRandomSearch, CoordinateDescent, PatternS
 # Define PURE_OPTIMIZERS for backward compatibility - all 22 algorithms
 PURE_OPTIMIZERS = {
     # PRIMA algorithms
-    'PRIMA_UOBYQA': PRIMA_UOBYQA,
-    'PRIMA_NEWUOA': PRIMA_NEWUOA,
-    'PRIMA_BOBYQA': PRIMA_BOBYQA,
+    "PRIMA_UOBYQA": PRIMA_UOBYQA,
+    "PRIMA_NEWUOA": PRIMA_NEWUOA,
+    "PRIMA_BOBYQA": PRIMA_BOBYQA,
     # SciPy algorithms
-    'NelderMead': NelderMead,
-    'Powell': Powell,
-    'LBFGSB': LBFGSB,
+    "NelderMead": NelderMead,
+    "Powell": Powell,
+    "LBFGSB": LBFGSB,
     # Evolutionary algorithms
-    'DifferentialEvolution': DifferentialEvolution,
-    'ParticleSwarm': ParticleSwarm,
-    'SimulatedAnnealing': SimulatedAnnealing,
-    'GeneticAlgorithm': GeneticAlgorithm,
-    'RandomSearch': RandomSearch,
-    'BayesianOpt': BayesianOpt,
-    'CMAEvolutionStrategy': CMAEvolutionStrategy,
-    'TabuSearch': TabuSearch,
-    'FireflyAlgorithm': FireflyAlgorithm,
-    'AntColonyOpt': AntColonyOpt,
-    'EvolutionStrategy': EvolutionStrategy,
-    'HillClimbing': HillClimbing,
-    'HarmonySearch': HarmonySearch,
+    "DifferentialEvolution": DifferentialEvolution,
+    "ParticleSwarm": ParticleSwarm,
+    "SimulatedAnnealing": SimulatedAnnealing,
+    "GeneticAlgorithm": GeneticAlgorithm,
+    "RandomSearch": RandomSearch,
+    "BayesianOpt": BayesianOpt,
+    "CMAEvolutionStrategy": CMAEvolutionStrategy,
+    "TabuSearch": TabuSearch,
+    "FireflyAlgorithm": FireflyAlgorithm,
+    "AntColonyOpt": AntColonyOpt,
+    "EvolutionStrategy": EvolutionStrategy,
+    "HillClimbing": HillClimbing,
+    "HarmonySearch": HarmonySearch,
     # Search algorithms
-    'AdaptiveRandomSearch': AdaptiveRandomSearch,
-    'CoordinateDescent': CoordinateDescent,
-    'PatternSearch': PatternSearch,
+    "AdaptiveRandomSearch": AdaptiveRandomSearch,
+    "CoordinateDescent": CoordinateDescent,
+    "PatternSearch": PatternSearch,
 }
 
 
@@ -63,7 +63,7 @@ def create_optimizer_function(optimizer_class):
         result = optimizer.optimize()
 
         # Handle different return formats
-        if hasattr(result, '__len__') and len(result) == 2:
+        if hasattr(result, "__len__") and len(result) == 2:
             # Old format: (best_value, best_x)
             best_value, best_x = result
         else:

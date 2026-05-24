@@ -292,9 +292,9 @@ class StochasticSurfaceGenerator:
             "noise_level": self.noise_level,
             "conditioning_factor": self.conditioning_factor,
             "modal_frequency": self.modal_frequency,
-            "random_seed_used": "Runtime generated"
-            if not hasattr(self, "_seed")
-            else self._seed,
+            "random_seed_used": (
+                "Runtime generated" if not hasattr(self, "_seed") else self._seed
+            ),
         }
 
 
