@@ -202,8 +202,8 @@ class AlgorithmVisualizer {
             0.1,
             1000
         );
-        // Set camera to match the ideal side-view orientation for optimization surfaces
-        this.camera.position.set(10, 4, 2);
+        // Set camera to elevated side angle for optimal surface view
+        this.camera.position.set(6, 6, 8);
         this.camera.lookAt(0, 0, 0);
 
         // Renderer
