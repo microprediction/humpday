@@ -4,22 +4,56 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' 'unsafe-inline' https://cdnjs.cloudflare.com https://cdn.jsdelivr.net; style-src 'self' 'unsafe-inline';">
-    <title>3D Algorithm Visualization - HumpDay</title>
-    <link rel="stylesheet" href="academic.css">
+    <title>3D Algorithm Visualization Demo</title>
     <style>
+        body {
+            font-family: 'Times New Roman', Times, serif;
+            margin: 0;
+            padding: 20px;
+            background: #f8f9fa;
+            color: #333;
+        }
+
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+            background: white;
+            border-radius: 8px;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+            overflow: hidden;
+        }
+
+        .header {
+            background: #343a40;
+            color: white;
+            padding: 20px;
+            text-align: center;
+        }
+
+        .content {
+            padding: 20px;
+        }
+
         .visualization-container {
             width: 100%;
             height: 600px;
-            border: 1px solid var(--border);
+            border: 1px solid #ddd;
             border-radius: 4px;
             position: relative;
-            margin: 24px 0;
+            margin: 20px 0;
             background: #fafafa;
+        }
+
+        .description {
+            background: #f8f9fa;
+            border-left: 4px solid #007bff;
+            padding: 15px;
+            margin: 15px 0;
         }
 
         .embed-section {
             background: #e8f4fd;
-            border: 1px solid var(--accent);
+            border: 1px solid #007bff;
             padding: 20px;
             margin: 20px 0;
             border-radius: 4px;
@@ -28,7 +62,7 @@
 
         .embed-section h3 {
             margin-top: 0;
-            color: var(--accent);
+            color: #007bff;
         }
 
         .embed-modal {
@@ -56,108 +90,65 @@
             overflow-y: auto;
         }
 
-        .embed-modal-header {
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-            margin-bottom: 20px;
-        }
-
-        .embed-modal-header h3 {
-            margin: 0;
-            color: var(--text);
-        }
-
-        .close-button {
-            background: none;
-            border: none;
-            font-size: 24px;
-            cursor: pointer;
-            color: var(--muted);
-        }
-
-        .embed-features {
-            background: var(--section-bg);
-            border: 1px solid var(--border);
-            padding: 15px;
-            border-radius: 4px;
-            margin: 15px 0;
-        }
-
-        .embed-features h4 {
-            margin-top: 0;
-            color: var(--text);
-        }
-
-        .embed-features ul {
-            margin: 0;
-            color: var(--muted);
-        }
-
-        .visualization-controls {
-            background: var(--section-bg);
+        #visualizationControls {
+            background: #f8f9fa;
             padding: 20px;
-            border: 1px solid var(--border);
+            border: 1px solid #ddd;
             border-radius: 4px;
             margin-top: 10px;
+            margin-bottom: 20px;
         }
     </style>
 </head>
 <body>
-    <div class="header">
-        <h1>3D Algorithm Visualization Tool</h1>
-        <p class="subtitle">Interactive optimization algorithm demonstration on 3D surfaces</p>
-    </div>
-
     <div class="container">
-        <div class="section">
-            <h2>Interactive 3D Optimization</h2>
-            <p>This visualization shows optimization algorithms navigating complex 3D surfaces in real-time. Watch how different algorithms explore the search space and converge to optimal solutions.</p>
+        <div class="header">
+            <h1>3D Algorithm Visualization Tool</h1>
+            <p>Interactive optimization algorithm demonstration on 3D surfaces</p>
         </div>
 
-
-        <!-- Visualization Container -->
-        <div id="algorithmVisualization" class="visualization-container">
-            <div id="loadingMessage" style="position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%); text-align: center; z-index: 10; background: rgba(255,255,255,0.9); padding: 20px; border-radius: 4px;">
-                <p>Loading 3D visualization...</p>
-                <p style="font-size: 0.9em; color: var(--muted);">Requires WebGL support</p>
+        <div class="content">
+            <div class="description">
+                <h2>Interactive 3D Optimization</h2>
+                <p>This visualization shows optimization algorithms navigating complex 3D surfaces in real-time. Watch how different algorithms explore the search space and converge to optimal solutions.</p>
             </div>
-        </div>
 
-        <!-- Controls Container -->
-        <div id="visualizationControls" class="visualization-controls">
-            <!-- Controls will be inserted here by the visualizer -->
-        </div>
+            <!-- Visualization Container -->
+            <div id="algorithmVisualization" class="visualization-container">
+                <div id="loadingMessage" style="position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%); text-align: center; z-index: 10; background: rgba(255,255,255,0.9); padding: 20px; border-radius: 4px;">
+                    <p>Loading 3D visualization...</p>
+                    <p style="font-size: 0.9em; color: #666;">Requires WebGL support</p>
+                </div>
+            </div>
 
-        <div class="section">
+            <!-- Controls Container -->
+            <div id="visualizationControls">
+                <!-- Controls will be inserted here by the visualizer -->
+            </div>
+
             <div class="embed-section">
                 <h3>Embed This in Your Own Web Page</h3>
                 <p>Want to add interactive 3D optimization visualization to your website? It's just a few lines of code!</p>
-                <button class="btn" onclick="showEmbedCode()">
+                <button onclick="showEmbedCode()" style="background: #007bff; color: white; border: none; padding: 12px 24px; border-radius: 4px; cursor: pointer; font-size: 16px; font-weight: 600;">
                     Show Embed Code
                 </button>
             </div>
-        </div>
 
-        <div id="embedCodeModal" class="embed-modal">
-            <div class="embed-modal-content">
-                <div class="embed-modal-header">
-                    <h3>Embed Interactive 3D Optimization</h3>
-                    <button class="close-button" onclick="hideEmbedCode()">×</button>
-                </div>
+            <div id="embedCodeModal" class="embed-modal">
+                <div class="embed-modal-content">
+                    <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px;">
+                        <h3 style="margin: 0; color: #333;">Embed Code</h3>
+                        <button onclick="hideEmbedCode()" style="background: none; border: none; font-size: 24px; cursor: pointer; color: #666;">&times;</button>
+                    </div>
 
-                <p>Copy and paste this code into your HTML page:</p>
+                    <p>Copy and paste this code into your HTML page:</p>
 
-                <pre class="code-block">&lt;!-- Three.js CDN --&gt;
+                    <pre style="background: #2d3748; color: #e2e8f0; padding: 20px; border-radius: 4px; overflow-x: auto; font-size: 14px; margin: 15px 0;">&lt;!-- Three.js CDN --&gt;
 &lt;script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"&gt;&lt;/script&gt;
 &lt;script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/controls/OrbitControls.js"&gt;&lt;/script&gt;
 
-&lt;!-- HumpDay optimization algorithms --&gt;
-&lt;script src="https://microprediction.github.io/humpday/js/modules/base-optimizer.js"&gt;&lt;/script&gt;
-&lt;script src="https://microprediction.github.io/humpday/js/modules/prima-algorithms.js"&gt;&lt;/script&gt;
-&lt;script src="https://microprediction.github.io/humpday/js/modules/scipy-algorithms.js"&gt;&lt;/script&gt;
-&lt;script src="https://microprediction.github.io/humpday/js/modules/evolutionary-algorithms.js"&gt;&lt;/script&gt;
-&lt;script src="https://microprediction.github.io/humpday/js/modules/index.js"&gt;&lt;/script&gt;
+&lt;!-- Humpday optimization algorithms --&gt;
+&lt;script src="https://microprediction.github.io/humpday/js/optimizers.js"&gt;&lt;/script&gt;
 &lt;script src="https://microprediction.github.io/humpday/js/algorithm-visualizer.js"&gt;&lt;/script&gt;
 
 &lt;!-- Container for the 3D visualization --&gt;
@@ -170,39 +161,37 @@ document.addEventListener('DOMContentLoaded', function() {
 });
 &lt;/script&gt;</pre>
 
-                <div class="embed-features">
-                    <h4>Features Included:</h4>
-                    <ul>
-                        <li>22 optimization algorithms (PRIMA, SciPy, evolutionary, metaheuristic)</li>
-                        <li>12 test functions (Sphere, Rosenbrock, Ackley, Rastrigin, etc.)</li>
-                        <li>Interactive 3D visualization with rotation, zoom, pan</li>
-                        <li>Speed controls and real-time algorithm comparison</li>
-                        <li>Educational step-by-step optimization path display</li>
-                    </ul>
-                </div>
+                    <div style="background: #f8f9fa; border: 1px solid #ddd; padding: 15px; border-radius: 4px; margin: 15px 0;">
+                        <h4 style="margin-top: 0; color: #333;">Features Included:</h4>
+                        <ul style="margin: 0; color: #666;">
+                            <li>22+ optimization algorithms (PRIMA, SciPy, evolutionary, metaheuristic)</li>
+                            <li>12 test functions (Sphere, Rosenbrock, Ackley, Rastrigin, etc.)</li>
+                            <li>Interactive 3D visualization with rotation, zoom, pan</li>
+                            <li>Speed controls and real-time algorithm comparison</li>
+                            <li>Educational step-by-step optimization path display</li>
+                        </ul>
+                    </div>
 
-                <div class="text-center">
-                    <button class="btn" onclick="copyEmbedCode()">Copy to Clipboard</button>
-                    <button class="btn btn-secondary" onclick="hideEmbedCode()">Close</button>
+                    <div style="text-align: center;">
+                        <button onclick="copyEmbedCode()" style="background: #28a745; color: white; border: none; padding: 10px 20px; border-radius: 4px; cursor: pointer; margin-right: 10px;">
+                            Copy to Clipboard
+                        </button>
+                        <button onclick="hideEmbedCode()" style="background: #6c757d; color: white; border: none; padding: 10px 20px; border-radius: 4px; cursor: pointer;">
+                            Close
+                        </button>
+                    </div>
                 </div>
             </div>
+
         </div>
     </div>
-
-    <footer>
-        <p>&copy; 2024 HumpDay. <a href="https://github.com/microprediction/humpday">View on GitHub</a></p>
-    </footer>
 
     <!-- Three.js CDN -->
     <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/controls/OrbitControls.js"></script>
 
     <!-- Load the real algorithm implementations -->
-    <script src="js/modules/base-optimizer.js"></script>
-    <script src="js/modules/prima-algorithms.js"></script>
-    <script src="js/modules/scipy-algorithms.js"></script>
-    <script src="js/modules/evolutionary-algorithms.js"></script>
-    <script src="js/modules/index.js"></script>
+    <script src="js/optimizers.js"></script>
     <!-- Load our visualizer -->
     <script src="js/algorithm-visualizer.js"></script>
 
@@ -210,43 +199,20 @@ document.addEventListener('DOMContentLoaded', function() {
 
     <script>
         function showEmbedCode() {
-            console.log('showEmbedCode called'); // Debug log
-            const modal = document.getElementById('embedCodeModal');
-            if (modal) {
-                modal.style.display = 'block';
-                console.log('Modal shown');
-            } else {
-                console.error('embedCodeModal not found');
-            }
+            document.getElementById('embedCodeModal').style.display = 'block';
         }
 
         function hideEmbedCode() {
-            console.log('hideEmbedCode called'); // Debug log
-            const modal = document.getElementById('embedCodeModal');
-            if (modal) {
-                modal.style.display = 'none';
-                console.log('Modal hidden');
-            } else {
-                console.error('embedCodeModal not found');
-            }
+            document.getElementById('embedCodeModal').style.display = 'none';
         }
 
-        // Make functions globally available
-        window.showEmbedCode = showEmbedCode;
-        window.hideEmbedCode = hideEmbedCode;
-
         function copyEmbedCode() {
-            console.log('copyEmbedCode called'); // Debug log
             const embedCode = `<!-- Three.js CDN -->
 <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/controls/OrbitControls.js"></script>
 
 <!-- Humpday optimization algorithms -->
-<script src="https://microprediction.github.io/humpday/js/modules/base-optimizer.js"></script>
-<script src="https://microprediction.github.io/humpday/js/modules/prima-algorithms.js"></script>
-<script src="https://microprediction.github.io/humpday/js/modules/scipy-algorithms.js"></script>
-<script src="https://microprediction.github.io/humpday/js/modules/evolutionary-algorithms.js"></script>
-<script src="https://microprediction.github.io/humpday/js/modules/index.js"></script>
+<script src="https://microprediction.github.io/humpday/js/optimizers.js"></script>
 <script src="https://microprediction.github.io/humpday/js/algorithm-visualizer.js"></script>
 
 <!-- Container for the 3D visualization -->
@@ -263,16 +229,13 @@ document.addEventListener('DOMContentLoaded', function() {
                 const button = event.target;
                 const originalText = button.textContent;
                 button.textContent = 'Copied!';
-                button.style.background = '#27ae60';
+                button.style.background = '#28a745';
                 setTimeout(() => {
                     button.textContent = originalText;
-                    button.style.background = '';
+                    button.style.background = '#28a745';
                 }, 2000);
             });
         }
-
-        // Make copyEmbedCode globally available too
-        window.copyEmbedCode = copyEmbedCode;
 
         // Close modal when clicking outside
         document.addEventListener('click', function(event) {
@@ -281,6 +244,12 @@ document.addEventListener('DOMContentLoaded', function() {
                 hideEmbedCode();
             }
         });
+
+        // Initialize visualizer when page loads
+        document.addEventListener('DOMContentLoaded', function() {
+            // The visualizer will be initialized by demo-controller.js
+        });
     </script>
+
 </body>
 </html>
