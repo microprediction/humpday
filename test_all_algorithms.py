@@ -6,11 +6,11 @@ This script tests the completeness and consistency of the HumpDay optimization
 library across both implementations.
 """
 
-import sys
 import os
+import sys
 
 # Add the humpday module to the path
-sys.path.insert(0, os.path.join(os.path.dirname(__file__), '.'))
+sys.path.insert(0, os.path.join(os.path.dirname(__file__), "."))
 
 try:
     from humpday.optimizers.alloptimizers import PURE_OPTIMIZERS, get_optimizer
@@ -21,21 +21,32 @@ except ImportError as e:
 
 import numpy as np
 
+
 def sphere_function(x):
     """Simple sphere function: f(x) = sum(xi^2)"""
     return sum(xi**2 for xi in x)
 
+
 def test_python_algorithms():
     """Test all algorithms in the Python implementation."""
-    print("="*60)
+    print("=" * 60)
     print("TESTING PYTHON ALGORITHMS")
-    print("="*60)
+    print("=" * 60)
 
     expected_algorithms = [
-        'PRIMA_UOBYQA', 'PRIMA_NEWUOA', 'PRIMA_BOBYQA',
-        'NelderMead', 'Powell', 'LBFGSB',
-        'DifferentialEvolution', 'ParticleSwarm', 'SimulatedAnnealing',
-        'GeneticAlgorithm', 'RandomSearch', 'HillClimbing', 'HarmonySearch'
+        "PRIMA_UOBYQA",
+        "PRIMA_NEWUOA",
+        "PRIMA_BOBYQA",
+        "NelderMead",
+        "Powell",
+        "LBFGSB",
+        "DifferentialEvolution",
+        "ParticleSwarm",
+        "SimulatedAnnealing",
+        "GeneticAlgorithm",
+        "RandomSearch",
+        "HillClimbing",
+        "HarmonySearch",
     ]
 
     print(f"Expected {len(expected_algorithms)} algorithms in Python")
@@ -68,13 +79,16 @@ def test_python_algorithms():
         except Exception as e:
             print(f"  ✗ {name}: Error - {e}")
 
-    print(f"\nPython Results: {success_count}/{len(PURE_OPTIMIZERS)} algorithms working")
+    print(
+        f"\nPython Results: {success_count}/{len(PURE_OPTIMIZERS)} algorithms working"
+    )
     return success_count, len(PURE_OPTIMIZERS)
+
 
 def generate_js_test():
     """Generate a JavaScript test that can be run in the browser."""
 
-    js_test_code = '''
+    js_test_code = """
 // Test all 22 algorithms in JavaScript modular implementation
 const expectedAlgorithms = [
     // PRIMA algorithms
@@ -133,15 +147,16 @@ function testJavaScriptAlgorithms() {
 
 // Run the test (call this in browser console after loading modules)
 // testJavaScriptAlgorithms();
-'''
+"""
 
     return js_test_code
 
+
 def create_comparison_report():
     """Create a comprehensive test report."""
-    print("="*60)
+    print("=" * 60)
     print("HUMPDAY ALGORITHM COMPLETENESS TEST")
-    print("="*60)
+    print("=" * 60)
 
     # Test Python
     py_success, py_total = test_python_algorithms()
@@ -149,19 +164,23 @@ def create_comparison_report():
     # Generate JavaScript test
     js_code = generate_js_test()
 
-    print("\n" + "="*60)
+    print("\n" + "=" * 60)
     print("SUMMARY")
-    print("="*60)
+    print("=" * 60)
     print(f"Python implementation: {py_success}/{py_total} algorithms working")
-    print(f"Expected JavaScript: 22 algorithms (modular implementation)")
+    print("Expected JavaScript: 22 algorithms (modular implementation)")
 
     # Write JavaScript test to file
-    js_test_file = os.path.join(os.path.dirname(__file__), 'docs', 'js_algorithm_test.js')
+    js_test_file = os.path.join(
+        os.path.dirname(__file__), "docs", "js_algorithm_test.js"
+    )
     try:
-        with open(js_test_file, 'w') as f:
+        with open(js_test_file, "w") as f:
             f.write(js_code)
         print(f"\nJavaScript test code written to: {js_test_file}")
-        print("To test JavaScript: Load the modular HTML page and run testJavaScriptAlgorithms() in console")
+        print(
+            "To test JavaScript: Load the modular HTML page and run testJavaScriptAlgorithms() in console"
+        )
     except Exception as e:
         print(f"Could not write JavaScript test file: {e}")
 
@@ -176,6 +195,7 @@ def create_comparison_report():
     print("1. Test JavaScript implementation in browser")
     print("2. Update contest system to use modular structure")
     print("3. Verify contest runs with all 22 algorithms")
+
 
 if __name__ == "__main__":
     create_comparison_report()

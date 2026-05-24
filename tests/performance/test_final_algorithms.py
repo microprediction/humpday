@@ -20,7 +20,7 @@ TEST_FUNCTIONS = {
 }
 
 
-def test_algorithm_multiple_runs(algorithm_name, num_runs=5):
+def run_algorithm_multiple_runs(algorithm_name, num_runs=5):
     """Test algorithm multiple times for statistical validation"""
     results = []
 
@@ -94,7 +94,7 @@ def main():
     for algorithm in algorithms:
         print(f"\n🔧 Testing {algorithm} (5 runs)...")
 
-        results = test_algorithm_multiple_runs(algorithm, 5)
+        results = run_algorithm_multiple_runs(algorithm, 5)
 
         if results:
             best_value = min(results)

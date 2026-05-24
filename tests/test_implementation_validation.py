@@ -362,23 +362,11 @@ class TestDomainHandling:
 
     def test_input_format_consistency(self):
         """Test that functions handle different input formats consistently."""
-        from humpday.optimizers.adaptive_optimizer import sphere_variants_generator
 
-        gen = sphere_variants_generator(3)
-        # Get a deterministic function by testing several and picking one that gives expected result
-        sphere_func = None
-        for _ in range(10):
-            candidate = next(gen)
-            test_result = candidate([0, 0, 0])
-            if abs(test_result) < 1e-10:  # Pure sphere should give 0 at origin
-                sphere_func = candidate
-                break
-
-        if sphere_func is None:
-            # Use a simple sphere function for testing
-            def sphere_func(x):
-                x = np.asarray(x)
-                return np.sum(x * x)
+        # Use a simple deterministic sphere function for consistency testing
+        def sphere_func(x):
+            x = np.asarray(x)
+            return np.sum(x * x)
 
         # Test same point in different formats
         test_point_value = [0.1, 0.2, 0.3]

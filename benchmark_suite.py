@@ -18,21 +18,23 @@ Author: HumpDay Benchmark Suite
 Date: 2026-05-23
 """
 
-import numpy as np
-from typing import Callable, List, Tuple, Dict, Any, Optional
-from dataclasses import dataclass
 from abc import ABC, abstractmethod
+from dataclasses import dataclass
+from typing import Any, Callable, Dict, List, Optional, Tuple
+
+import numpy as np
 
 
 @dataclass
 class BenchmarkMetadata:
     """Metadata for benchmark problems."""
+
     name: str
     dimension: int
     optimal_value: float
     optimal_point: np.ndarray
     problem_class: str  # 'smooth', 'multimodal', 'noisy', 'constrained'
-    difficulty: str     # 'easy', 'medium', 'hard'
+    difficulty: str  # 'easy', 'medium', 'hard'
     literature_reference: str
     domain_bounds: Tuple[float, float] = (0.0, 1.0)
 
@@ -73,7 +75,7 @@ class SphereProblem(BenchmarkProblem):
         x = np.asarray(x)
         # Transform [0,1]^n to [-5,5]^n for proper sphere domain
         x_scaled = (x - 0.5) * 10
-        return np.sum(x_scaled ** 2)
+        return np.sum(x_scaled**2)
 
     def _get_metadata(self) -> BenchmarkMetadata:
         return BenchmarkMetadata(
@@ -83,7 +85,7 @@ class SphereProblem(BenchmarkProblem):
             optimal_point=np.full(self.dimension, 0.5),  # Center of unit cube
             problem_class="smooth",
             difficulty="easy",
-            literature_reference="Schwefel (1995)"
+            literature_reference="Schwefel (1995)",
         )
 
 
@@ -100,12 +102,14 @@ class RosenbrockProblem(BenchmarkProblem):
     def objective(self, x: np.ndarray) -> float:
         x = np.asarray(x)
         if len(x) < 2:
-            return float('inf')
+            return float("inf")
 
         # Transform [0,1]^n to [-2,2]^n for standard Rosenbrock domain
         x_scaled = (x - 0.5) * 4
 
-        return np.sum(100.0 * (x_scaled[1:] - x_scaled[:-1]**2)**2 + (1 - x_scaled[:-1])**2)
+        return np.sum(
+            100.0 * (x_scaled[1:] - x_scaled[:-1] ** 2) ** 2 + (1 - x_scaled[:-1]) ** 2
+        )
 
     def _get_metadata(self) -> BenchmarkMetadata:
         # Optimal point (1,1,...,1) maps to (0.75,0.75,...,0.75) in [0,1]^n
@@ -116,7 +120,7 @@ class RosenbrockProblem(BenchmarkProblem):
             optimal_point=np.full(self.dimension, 0.75),
             problem_class="smooth",
             difficulty="hard",
-            literature_reference="Rosenbrock (1960)"
+            literature_reference="Rosenbrock (1960)",
         )
 
 
@@ -150,7 +154,7 @@ class RastriginProblem(BenchmarkProblem):
             optimal_point=np.full(self.dimension, 0.5),  # Center maps to origin
             problem_class="multimodal",
             difficulty="hard",
-            literature_reference="Rastrigin (1974)"
+            literature_reference="Rastrigin (1974)",
         )
 
 
@@ -164,7 +168,9 @@ class AckleyProblem(BenchmarkProblem):
     - Nearly flat outer region with central attraction
     """
 
-    def __init__(self, dimension: int, a: float = 20.0, b: float = 0.2, c: float = 2*np.pi):
+    def __init__(
+        self, dimension: int, a: float = 20.0, b: float = 0.2, c: float = 2 * np.pi
+    ):
         self.a = a
         self.b = b
         self.c = c
@@ -179,8 +185,12 @@ class AckleyProblem(BenchmarkProblem):
         sum_sq = np.sum(x_scaled**2) / n
         sum_cos = np.sum(np.cos(self.c * x_scaled)) / n
 
-        return (self.a + np.exp(1) - self.a * np.exp(-self.b * np.sqrt(sum_sq)) -
-                np.exp(sum_cos))
+        return (
+            self.a
+            + np.exp(1)
+            - self.a * np.exp(-self.b * np.sqrt(sum_sq))
+            - np.exp(sum_cos)
+        )
 
     def _get_metadata(self) -> BenchmarkMetadata:
         return BenchmarkMetadata(
@@ -190,7 +200,7 @@ class AckleyProblem(BenchmarkProblem):
             optimal_point=np.full(self.dimension, 0.5),
             problem_class="multimodal",
             difficulty="medium",
-            literature_reference="Ackley (1987)"
+            literature_reference="Ackley (1987)",
         )
 
 
@@ -226,7 +236,7 @@ class GriewankProblem(BenchmarkProblem):
             optimal_point=np.full(self.dimension, 0.5),
             problem_class="multimodal",
             difficulty="medium",
-            literature_reference="Griewank (1981)"
+            literature_reference="Griewank (1981)",
         )
 
 
@@ -239,7 +249,9 @@ class NoisySphere(BenchmarkProblem):
     - Noise level configurable
     """
 
-    def __init__(self, dimension: int, noise_std: float = 0.1, seed: Optional[int] = None):
+    def __init__(
+        self, dimension: int, noise_std: float = 0.1, seed: Optional[int] = None
+    ):
         self.noise_std = noise_std
         self.rng = np.random.RandomState(seed)
         super().__init__(dimension)
@@ -249,7 +261,7 @@ class NoisySphere(BenchmarkProblem):
         x_scaled = (x - 0.5) * 10
 
         # Base sphere function
-        sphere_value = np.sum(x_scaled ** 2)
+        sphere_value = np.sum(x_scaled**2)
 
         # Add Gaussian noise
         noise = self.rng.normal(0, self.noise_std * sphere_value)
@@ -264,7 +276,7 @@ class NoisySphere(BenchmarkProblem):
             optimal_point=np.full(self.dimension, 0.5),
             problem_class="noisy",
             difficulty="medium",
-            literature_reference="Noisy variant of Schwefel (1995)"
+            literature_reference="Noisy variant of Schwefel (1995)",
         )
 
 
@@ -277,13 +289,22 @@ class QuadraticProblem(BenchmarkProblem):
     - Tests algorithm behavior on ill-conditioned problems
     """
 
-    def __init__(self, dimension: int, condition_number: float = 1.0, optimal_point: Optional[np.ndarray] = None):
+    def __init__(
+        self,
+        dimension: int,
+        condition_number: float = 1.0,
+        optimal_point: Optional[np.ndarray] = None,
+    ):
         self.condition_number = condition_number
-        self.optimal_point_scaled = optimal_point if optimal_point is not None else np.full(dimension, 0.5)
+        self.optimal_point_scaled = (
+            optimal_point if optimal_point is not None else np.full(dimension, 0.5)
+        )
 
         # Create Hessian matrix with specified condition number
         eigenvals = np.linspace(1.0, condition_number, dimension)
-        Q_eig, _ = np.linalg.qr(np.random.randn(dimension, dimension))  # Random orthogonal matrix
+        Q_eig, _ = np.linalg.qr(
+            np.random.randn(dimension, dimension)
+        )  # Random orthogonal matrix
         self.Q = Q_eig @ np.diag(eigenvals) @ Q_eig.T
 
         super().__init__(dimension)
@@ -301,8 +322,12 @@ class QuadraticProblem(BenchmarkProblem):
             optimal_value=0.0,
             optimal_point=self.optimal_point_scaled.copy(),
             problem_class="smooth",
-            difficulty="easy" if self.condition_number < 10 else "medium" if self.condition_number < 100 else "hard",
-            literature_reference="General quadratic optimization"
+            difficulty="easy"
+            if self.condition_number < 10
+            else "medium"
+            if self.condition_number < 100
+            else "hard",
+            literature_reference="General quadratic optimization",
         )
 
 
@@ -312,10 +337,10 @@ class BenchmarkSuite:
     def __init__(self):
         self.problems: Dict[str, BenchmarkProblem] = {}
         self.problem_classes = {
-            'smooth': [],
-            'multimodal': [],
-            'noisy': [],
-            'constrained': []
+            "smooth": [],
+            "multimodal": [],
+            "noisy": [],
+            "constrained": [],
         }
 
     def add_problem(self, problem: BenchmarkProblem) -> None:
@@ -338,10 +363,15 @@ class BenchmarkSuite:
 
     def get_problems_by_difficulty(self, difficulty: str) -> List[str]:
         """Get problems by difficulty level."""
-        return [name for name, prob in self.problems.items()
-                if prob.metadata.difficulty == difficulty]
+        return [
+            name
+            for name, prob in self.problems.items()
+            if prob.metadata.difficulty == difficulty
+        ]
 
-    def create_standard_suite(self, dimensions: List[int] = [2, 5, 10]) -> 'BenchmarkSuite':
+    def create_standard_suite(
+        self, dimensions: List[int] = [2, 5, 10]
+    ) -> "BenchmarkSuite":
         """Create standard benchmark suite with common problems."""
 
         for dim in dimensions:
@@ -367,17 +397,28 @@ class BenchmarkSuite:
     def get_validation_problems(self) -> List[BenchmarkProblem]:
         """Get a curated set of problems for validation."""
         validation_names = [
-            'Sphere_2D', 'Sphere_5D', 'Sphere_10D',
-            'Rosenbrock_2D', 'Rosenbrock_5D',
-            'Rastrigin_2D',
-            'Ackley_2D',
-            'Quadratic_2D_cond1.0', 'Quadratic_5D_cond100.0'
+            "Sphere_2D",
+            "Sphere_5D",
+            "Sphere_10D",
+            "Rosenbrock_2D",
+            "Rosenbrock_5D",
+            "Rastrigin_2D",
+            "Ackley_2D",
+            "Quadratic_2D_cond1.0",
+            "Quadratic_5D_cond100.0",
         ]
 
-        return [self.problems[name] for name in validation_names if name in self.problems]
+        return [
+            self.problems[name] for name in validation_names if name in self.problems
+        ]
 
-    def evaluate_algorithm(self, algorithm_func: Callable, problem_names: Optional[List[str]] = None,
-                          n_runs: int = 5, n_trials: int = 100) -> Dict[str, Dict[str, Any]]:
+    def evaluate_algorithm(
+        self,
+        algorithm_func: Callable,
+        problem_names: Optional[List[str]] = None,
+        n_runs: int = 5,
+        n_trials: int = 100,
+    ) -> Dict[str, Dict[str, Any]]:
         """
         Evaluate an algorithm on specified benchmark problems.
 
@@ -401,15 +442,17 @@ class BenchmarkSuite:
         if problem_names is None:
             problems_to_test = self.get_validation_problems()
         else:
-            problems_to_test = [self.problems[name] for name in problem_names if name in self.problems]
+            problems_to_test = [
+                self.problems[name] for name in problem_names if name in self.problems
+            ]
 
         results = {}
 
         for problem in problems_to_test:
             problem_results = {
-                'metadata': problem.metadata,
-                'runs': [],
-                'statistics': {}
+                "metadata": problem.metadata,
+                "runs": [],
+                "statistics": {},
             }
 
             # Run multiple independent trials
@@ -420,16 +463,24 @@ class BenchmarkSuite:
                 np.random.seed(run * 42)  # Reproducible but varied seeds
 
                 try:
-                    best_value, best_x = algorithm_func(problem.objective, n_trials, problem.dimension)
+                    best_value, best_x = algorithm_func(
+                        problem.objective, n_trials, problem.dimension
+                    )
                     values.append(best_value)
                     solutions.append(best_x)
 
-                    problem_results['runs'].append({
-                        'run_id': run,
-                        'best_value': best_value,
-                        'best_x': best_x if isinstance(best_x, list) else best_x.tolist(),
-                        'distance_to_optimum': np.linalg.norm(np.array(best_x) - problem.metadata.optimal_point)
-                    })
+                    problem_results["runs"].append(
+                        {
+                            "run_id": run,
+                            "best_value": best_value,
+                            "best_x": best_x
+                            if isinstance(best_x, list)
+                            else best_x.tolist(),
+                            "distance_to_optimum": np.linalg.norm(
+                                np.array(best_x) - problem.metadata.optimal_point
+                            ),
+                        }
+                    )
 
                 except Exception as e:
                     print(f"Error in run {run} for {problem.metadata.name}: {e}")
@@ -438,23 +489,31 @@ class BenchmarkSuite:
             # Calculate statistics
             if values:
                 values = np.array(values)
-                problem_results['statistics'] = {
-                    'mean': np.mean(values),
-                    'std': np.std(values),
-                    'median': np.median(values),
-                    'min': np.min(values),
-                    'max': np.max(values),
-                    'success_rate': np.sum(values < problem.metadata.optimal_value + 0.01) / len(values),
-                    'relative_error': np.mean(values) / (abs(problem.metadata.optimal_value) + 1e-10)
+                problem_results["statistics"] = {
+                    "mean": np.mean(values),
+                    "std": np.std(values),
+                    "median": np.median(values),
+                    "min": np.min(values),
+                    "max": np.max(values),
+                    "success_rate": np.sum(
+                        values < problem.metadata.optimal_value + 0.01
+                    )
+                    / len(values),
+                    "relative_error": np.mean(values)
+                    / (abs(problem.metadata.optimal_value) + 1e-10),
                 }
 
             results[problem.metadata.name] = problem_results
 
         return results
 
-    def compare_algorithms(self, algorithms: Dict[str, Callable],
-                          problem_names: Optional[List[str]] = None,
-                          n_runs: int = 5, n_trials: int = 100) -> Dict[str, Any]:
+    def compare_algorithms(
+        self,
+        algorithms: Dict[str, Callable],
+        problem_names: Optional[List[str]] = None,
+        n_runs: int = 5,
+        n_trials: int = 100,
+    ) -> Dict[str, Any]:
         """
         Compare multiple algorithms on benchmark problems.
 
@@ -462,22 +521,23 @@ class BenchmarkSuite:
         """
 
         comparison_results = {
-            'algorithms': list(algorithms.keys()),
-            'problems': problem_names or [p.metadata.name for p in self.get_validation_problems()],
-            'individual_results': {},
-            'comparisons': {},
-            'rankings': {}
+            "algorithms": list(algorithms.keys()),
+            "problems": problem_names
+            or [p.metadata.name for p in self.get_validation_problems()],
+            "individual_results": {},
+            "comparisons": {},
+            "rankings": {},
         }
 
         # Evaluate each algorithm
         for alg_name, alg_func in algorithms.items():
             print(f"Evaluating {alg_name}...")
-            comparison_results['individual_results'][alg_name] = self.evaluate_algorithm(
-                alg_func, problem_names, n_runs, n_trials
+            comparison_results["individual_results"][alg_name] = (
+                self.evaluate_algorithm(alg_func, problem_names, n_runs, n_trials)
             )
 
         # Pairwise comparisons and rankings
-        for problem_name in comparison_results['problems']:
+        for problem_name in comparison_results["problems"]:
             if problem_name not in self.problems:
                 continue
 
@@ -486,24 +546,28 @@ class BenchmarkSuite:
 
             # Extract results for this problem
             for alg_name in algorithms.keys():
-                if (alg_name in comparison_results['individual_results'] and
-                    problem_name in comparison_results['individual_results'][alg_name]):
-
-                    stats = comparison_results['individual_results'][alg_name][problem_name]['statistics']
-                    algorithm_scores[alg_name] = stats.get('mean', float('inf'))
+                if (
+                    alg_name in comparison_results["individual_results"]
+                    and problem_name
+                    in comparison_results["individual_results"][alg_name]
+                ):
+                    stats = comparison_results["individual_results"][alg_name][
+                        problem_name
+                    ]["statistics"]
+                    algorithm_scores[alg_name] = stats.get("mean", float("inf"))
 
             # Rank algorithms for this problem
             sorted_algs = sorted(algorithm_scores.items(), key=lambda x: x[1])
-            problem_comparison['ranking'] = [alg for alg, score in sorted_algs]
-            problem_comparison['scores'] = algorithm_scores
+            problem_comparison["ranking"] = [alg for alg, score in sorted_algs]
+            problem_comparison["scores"] = algorithm_scores
 
-            comparison_results['comparisons'][problem_name] = problem_comparison
+            comparison_results["comparisons"][problem_name] = problem_comparison
 
         # Overall rankings (average rank across problems)
         overall_ranks = {alg: [] for alg in algorithms.keys()}
 
-        for problem_name, comp in comparison_results['comparisons'].items():
-            ranking = comp['ranking']
+        for problem_name, comp in comparison_results["comparisons"].items():
+            ranking = comp["ranking"]
             for i, alg in enumerate(ranking):
                 overall_ranks[alg].append(i + 1)  # Rank starts from 1
 
@@ -513,7 +577,9 @@ class BenchmarkSuite:
             if ranks:
                 final_rankings[alg] = np.mean(ranks)
 
-        comparison_results['rankings']['overall'] = sorted(final_rankings.items(), key=lambda x: x[1])
+        comparison_results["rankings"]["overall"] = sorted(
+            final_rankings.items(), key=lambda x: x[1]
+        )
 
         return comparison_results
 
@@ -531,7 +597,9 @@ class BenchmarkSuite:
                     problem = self.problems[problem_name]
                     print(f"  • {problem_name} - {problem.metadata.difficulty}")
 
-        print(f"\nDimensions available: {sorted(set(p.metadata.dimension for p in self.problems.values()))}")
+        print(
+            f"\nDimensions available: {sorted({p.metadata.dimension for p in self.problems.values()})}"
+        )
 
 
 def main():
@@ -546,7 +614,7 @@ def main():
     # Test a simple algorithm on a few problems
     def random_search(objective, n_trials: int, n_dim: int):
         """Simple random search for testing."""
-        best_value = float('inf')
+        best_value = float("inf")
         best_x = None
 
         for _ in range(n_trials):
@@ -559,20 +627,22 @@ def main():
 
         return best_value, best_x
 
-    print(f"\n🧪 Testing Random Search on selected problems...")
+    print("\n🧪 Testing Random Search on selected problems...")
 
     # Test on a few problems
-    test_problems = ['Sphere_2D', 'Rosenbrock_2D', 'Rastrigin_2D']
-    results = suite.evaluate_algorithm(random_search, test_problems, n_runs=3, n_trials=50)
+    test_problems = ["Sphere_2D", "Rosenbrock_2D", "Rastrigin_2D"]
+    results = suite.evaluate_algorithm(
+        random_search, test_problems, n_runs=3, n_trials=50
+    )
 
     for problem_name, result in results.items():
-        stats = result['statistics']
+        stats = result["statistics"]
         print(f"\n{problem_name}:")
         print(f"  Mean: {stats['mean']:.6f}")
         print(f"  Std:  {stats['std']:.6f}")
         print(f"  Success rate: {stats['success_rate']:.2f}")
 
-    print(f"\n✅ Benchmark suite working correctly")
+    print("\n✅ Benchmark suite working correctly")
 
 
 if __name__ == "__main__":

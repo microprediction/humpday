@@ -16,20 +16,21 @@ Author: HumpDay Cross-Validation Framework
 Date: 2026-05-23
 """
 
-import sys
 import json
+import sys
 import time
 import warnings
-from pathlib import Path
-from typing import Dict, List, Tuple, Any, Optional, Union, Callable
-from dataclasses import dataclass, field
 from collections import defaultdict
+from dataclasses import dataclass, field
+from pathlib import Path
+from typing import Any, Callable, Dict, List, Optional, Tuple, Union
 
 import numpy as np
 
 # Optional matplotlib import
 try:
     import matplotlib.pyplot as plt
+
     MATPLOTLIB_AVAILABLE = True
 except ImportError:
     MATPLOTLIB_AVAILABLE = False
@@ -40,14 +41,15 @@ warnings.filterwarnings("ignore", category=UserWarning)
 warnings.filterwarnings("ignore", category=RuntimeWarning)
 
 # Import HumpDay components
-from humpday.optimizers.prima_algorithms import PRIMA_UOBYQA, PRIMA_NEWUOA, PRIMA_BOBYQA
-from humpday.optimizers.scipy_algorithms import NelderMead, Powell, LBFGSB
 from humpday.optimizers.alloptimizers import PURE_OPTIMIZERS
+from humpday.optimizers.prima_algorithms import PRIMA_BOBYQA, PRIMA_NEWUOA, PRIMA_UOBYQA
+from humpday.optimizers.scipy_algorithms import LBFGSB, NelderMead, Powell
 
 
 @dataclass
 class ValidationResult:
     """Container for validation test results."""
+
     test_name: str
     algorithm_name: str
     reference_name: str
@@ -61,6 +63,7 @@ class ValidationResult:
 @dataclass
 class BenchmarkProblem:
     """Standard benchmark problem definition."""
+
     name: str
     objective_func: Callable
     dimension: int
@@ -76,11 +79,12 @@ class StandardBenchmarks:
     @staticmethod
     def sphere_2d() -> BenchmarkProblem:
         """2D Sphere function: f(x) = sum(x_i^2)"""
+
         def sphere(x):
             x = np.asarray(x)
             # Transform [0,1] to [-5,5] for proper sphere domain
             x_scaled = (x - 0.5) * 10
-            return np.sum(x_scaled ** 2)
+            return np.sum(x_scaled**2)
 
         return BenchmarkProblem(
             name="Sphere_2D",
@@ -88,16 +92,17 @@ class StandardBenchmarks:
             dimension=2,
             optimal_value=0.0,
             optimal_point=np.array([0.5, 0.5]),  # Center of unit cube
-            problem_class="smooth"
+            problem_class="smooth",
         )
 
     @staticmethod
     def sphere_5d() -> BenchmarkProblem:
         """5D Sphere function for higher dimensional testing."""
+
         def sphere(x):
             x = np.asarray(x)
             x_scaled = (x - 0.5) * 10
-            return np.sum(x_scaled ** 2)
+            return np.sum(x_scaled**2)
 
         return BenchmarkProblem(
             name="Sphere_5D",
@@ -105,16 +110,17 @@ class StandardBenchmarks:
             dimension=5,
             optimal_value=0.0,
             optimal_point=np.array([0.5] * 5),
-            problem_class="smooth"
+            problem_class="smooth",
         )
 
     @staticmethod
     def sphere_10d() -> BenchmarkProblem:
         """10D Sphere function for high dimensional testing."""
+
         def sphere(x):
             x = np.asarray(x)
             x_scaled = (x - 0.5) * 10
-            return np.sum(x_scaled ** 2)
+            return np.sum(x_scaled**2)
 
         return BenchmarkProblem(
             name="Sphere_10D",
@@ -122,36 +128,46 @@ class StandardBenchmarks:
             dimension=10,
             optimal_value=0.0,
             optimal_point=np.array([0.5] * 10),
-            problem_class="smooth"
+            problem_class="smooth",
         )
 
     @staticmethod
     def rosenbrock_2d() -> BenchmarkProblem:
         """2D Rosenbrock function: f(x,y) = 100(y-x^2)^2 + (1-x)^2"""
+
         def rosenbrock(x):
             x = np.asarray(x)
             # Transform [0,1] to [-2,2] for standard Rosenbrock domain
             x_scaled = (x - 0.5) * 4
             if len(x_scaled) < 2:
-                return float('inf')
-            return np.sum(100.0 * (x_scaled[1:] - x_scaled[:-1]**2)**2 + (1 - x_scaled[:-1])**2)
+                return float("inf")
+            return np.sum(
+                100.0 * (x_scaled[1:] - x_scaled[:-1] ** 2) ** 2
+                + (1 - x_scaled[:-1]) ** 2
+            )
 
         return BenchmarkProblem(
             name="Rosenbrock_2D",
             objective_func=rosenbrock,
             dimension=2,
             optimal_value=0.0,
-            optimal_point=np.array([0.75, 0.75]),  # f(1,1)=0 maps to [0.75,0.75] in [0,1]
-            problem_class="smooth"
+            optimal_point=np.array(
+                [0.75, 0.75]
+            ),  # f(1,1)=0 maps to [0.75,0.75] in [0,1]
+            problem_class="smooth",
         )
 
     @staticmethod
     def rosenbrock_5d() -> BenchmarkProblem:
         """5D Rosenbrock function."""
+
         def rosenbrock(x):
             x = np.asarray(x)
             x_scaled = (x - 0.5) * 4
-            return np.sum(100.0 * (x_scaled[1:] - x_scaled[:-1]**2)**2 + (1 - x_scaled[:-1])**2)
+            return np.sum(
+                100.0 * (x_scaled[1:] - x_scaled[:-1] ** 2) ** 2
+                + (1 - x_scaled[:-1]) ** 2
+            )
 
         return BenchmarkProblem(
             name="Rosenbrock_5D",
@@ -159,12 +175,13 @@ class StandardBenchmarks:
             dimension=5,
             optimal_value=0.0,
             optimal_point=np.array([0.75] * 5),
-            problem_class="smooth"
+            problem_class="smooth",
         )
 
     @staticmethod
     def rastrigin_2d() -> BenchmarkProblem:
         """2D Rastrigin function - multimodal with many local optima."""
+
         def rastrigin(x):
             x = np.asarray(x)
             # Transform [0,1] to [-5.12, 5.12]
@@ -179,7 +196,7 @@ class StandardBenchmarks:
             dimension=2,
             optimal_value=0.0,
             optimal_point=np.array([0.5, 0.5]),  # Global minimum at origin
-            problem_class="multimodal"
+            problem_class="multimodal",
         )
 
     @staticmethod
@@ -199,7 +216,9 @@ class ReferenceImplementations:
     """Reference implementations using external packages."""
 
     @staticmethod
-    def scipy_nelder_mead(objective, n_trials: int, n_dim: int) -> Tuple[float, np.ndarray, List[float]]:
+    def scipy_nelder_mead(
+        objective, n_trials: int, n_dim: int
+    ) -> Tuple[float, np.ndarray, List[float]]:
         """Reference Nelder-Mead using SciPy."""
         try:
             from scipy.optimize import minimize
@@ -213,7 +232,7 @@ class ReferenceImplementations:
 
             # Multiple random starts for robustness
             best_result = None
-            best_value = float('inf')
+            best_value = float("inf")
 
             for _ in range(3):  # 3 random starts
                 x0 = np.random.random(n_dim)
@@ -221,9 +240,9 @@ class ReferenceImplementations:
                 result = minimize(
                     tracking_objective,
                     x0,
-                    method='Nelder-Mead',
+                    method="Nelder-Mead",
                     bounds=[(0, 1)] * n_dim,
-                    options={'maxfev': n_trials // 3}
+                    options={"maxfev": n_trials // 3},
                 )
 
                 if result.fun < best_value:
@@ -233,10 +252,12 @@ class ReferenceImplementations:
             return best_result.fun, np.clip(best_result.x, 0, 1), convergence_history
 
         except ImportError:
-            return float('inf'), np.random.random(n_dim), []
+            return float("inf"), np.random.random(n_dim), []
 
     @staticmethod
-    def scipy_powell(objective, n_trials: int, n_dim: int) -> Tuple[float, np.ndarray, List[float]]:
+    def scipy_powell(
+        objective, n_trials: int, n_dim: int
+    ) -> Tuple[float, np.ndarray, List[float]]:
         """Reference Powell using SciPy."""
         try:
             from scipy.optimize import minimize
@@ -253,18 +274,20 @@ class ReferenceImplementations:
             result = minimize(
                 tracking_objective,
                 x0,
-                method='Powell',
+                method="Powell",
                 bounds=[(0, 1)] * n_dim,
-                options={'maxfev': n_trials}
+                options={"maxfev": n_trials},
             )
 
             return result.fun, np.clip(result.x, 0, 1), convergence_history
 
         except ImportError:
-            return float('inf'), np.random.random(n_dim), []
+            return float("inf"), np.random.random(n_dim), []
 
     @staticmethod
-    def scipy_lbfgsb(objective, n_trials: int, n_dim: int) -> Tuple[float, np.ndarray, List[float]]:
+    def scipy_lbfgsb(
+        objective, n_trials: int, n_dim: int
+    ) -> Tuple[float, np.ndarray, List[float]]:
         """Reference L-BFGS-B using SciPy."""
         try:
             from scipy.optimize import minimize
@@ -281,18 +304,20 @@ class ReferenceImplementations:
             result = minimize(
                 tracking_objective,
                 x0,
-                method='L-BFGS-B',
+                method="L-BFGS-B",
                 bounds=[(0, 1)] * n_dim,
-                options={'maxfun': n_trials}
+                options={"maxfun": n_trials},
             )
 
             return result.fun, np.clip(result.x, 0, 1), convergence_history
 
         except ImportError:
-            return float('inf'), np.random.random(n_dim), []
+            return float("inf"), np.random.random(n_dim), []
 
     @staticmethod
-    def pdfo_prima_uobyqa(objective, n_trials: int, n_dim: int) -> Tuple[float, np.ndarray, List[float]]:
+    def pdfo_prima_uobyqa(
+        objective, n_trials: int, n_dim: int
+    ) -> Tuple[float, np.ndarray, List[float]]:
         """Reference PRIMA UOBYQA using PDFO if available."""
         try:
             import pdfo
@@ -308,20 +333,21 @@ class ReferenceImplementations:
             bounds = [(0, 1)] * n_dim
 
             result = pdfo.uobyqa(
-                tracking_objective,
-                x0,
-                bounds=bounds,
-                options={'maxfev': n_trials}
+                tracking_objective, x0, bounds=bounds, options={"maxfev": n_trials}
             )
 
             return result.fun, np.clip(result.x, 0, 1), convergence_history
 
         except ImportError:
             # Fallback to our implementation for comparison baseline
-            return ReferenceImplementations.humpday_prima_uobyqa(objective, n_trials, n_dim)
+            return ReferenceImplementations.humpday_prima_uobyqa(
+                objective, n_trials, n_dim
+            )
 
     @staticmethod
-    def humpday_prima_uobyqa(objective, n_trials: int, n_dim: int) -> Tuple[float, np.ndarray, List[float]]:
+    def humpday_prima_uobyqa(
+        objective, n_trials: int, n_dim: int
+    ) -> Tuple[float, np.ndarray, List[float]]:
         """Our PRIMA UOBYQA implementation for internal reference."""
         optimizer = PRIMA_UOBYQA(objective, n_trials, n_dim)
 
@@ -352,28 +378,30 @@ class CrossValidationFramework:
 
         # Algorithm configurations
         self.python_algorithms = {
-            'NelderMead': NelderMead,
-            'Powell': Powell,
-            'LBFGSB': LBFGSB,
-            'PRIMA_UOBYQA': PRIMA_UOBYQA,
-            'PRIMA_NEWUOA': PRIMA_NEWUOA,
-            'PRIMA_BOBYQA': PRIMA_BOBYQA,
+            "NelderMead": NelderMead,
+            "Powell": Powell,
+            "LBFGSB": LBFGSB,
+            "PRIMA_UOBYQA": PRIMA_UOBYQA,
+            "PRIMA_NEWUOA": PRIMA_NEWUOA,
+            "PRIMA_BOBYQA": PRIMA_BOBYQA,
         }
 
         # Reference implementations for validation
         self.reference_implementations = {
-            'NelderMead': ReferenceImplementations.scipy_nelder_mead,
-            'Powell': ReferenceImplementations.scipy_powell,
-            'LBFGSB': ReferenceImplementations.scipy_lbfgsb,
-            'PRIMA_UOBYQA': ReferenceImplementations.pdfo_prima_uobyqa,
+            "NelderMead": ReferenceImplementations.scipy_nelder_mead,
+            "Powell": ReferenceImplementations.scipy_powell,
+            "LBFGSB": ReferenceImplementations.scipy_lbfgsb,
+            "PRIMA_UOBYQA": ReferenceImplementations.pdfo_prima_uobyqa,
         }
 
-        print(f"🔬 Cross-Validation Framework initialized")
+        print("🔬 Cross-Validation Framework initialized")
         print(f"📊 {len(self.benchmarks)} benchmark problems loaded")
         print(f"🔢 {len(self.python_algorithms)} Python algorithms configured")
         print(f"📋 Results will be saved to: {self.output_dir}")
 
-    def run_python_vs_reference_validation(self, n_trials: int = 100, n_runs: int = 5) -> Dict[str, Any]:
+    def run_python_vs_reference_validation(
+        self, n_trials: int = 100, n_runs: int = 5
+    ) -> Dict[str, Any]:
         """
         Validate Python implementations against external reference packages.
 
@@ -403,7 +431,9 @@ class CrossValidationFramework:
                     np.random.seed(run * 42)  # Reproducible seeds
 
                     # Run our Python implementation
-                    optimizer = alg_class(benchmark.objective_func, n_trials, benchmark.dimension)
+                    optimizer = alg_class(
+                        benchmark.objective_func, n_trials, benchmark.dimension
+                    )
 
                     # Track convergence
                     python_convergence = []
@@ -434,7 +464,9 @@ class CrossValidationFramework:
 
                         # Statistical correlation of convergence paths
                         if min_len > 3:
-                            correlation = np.corrcoef(py_conv_sample, ref_conv_sample)[0, 1]
+                            correlation = np.corrcoef(py_conv_sample, ref_conv_sample)[
+                                0, 1
+                            ]
                             if not np.isnan(correlation):
                                 convergence_correlation.append(correlation)
 
@@ -446,14 +478,19 @@ class CrossValidationFramework:
 
                 # Mathematical equivalence test (using relative tolerance)
                 relative_error = abs(py_mean - ref_mean) / (abs(ref_mean) + 1e-10)
-                convergence_corr_mean = np.mean(convergence_correlation) if convergence_correlation else 0.0
+                convergence_corr_mean = (
+                    np.mean(convergence_correlation) if convergence_correlation else 0.0
+                )
 
                 # Validation criteria
                 equiv_threshold = 0.1  # 10% relative error allowed
                 convergence_threshold = 0.7  # 70% convergence correlation required
 
                 passed_equivalence = relative_error < equiv_threshold
-                passed_convergence = convergence_corr_mean > convergence_threshold or len(convergence_correlation) == 0
+                passed_convergence = (
+                    convergence_corr_mean > convergence_threshold
+                    or len(convergence_correlation) == 0
+                )
                 passed_overall = passed_equivalence and passed_convergence
 
                 # Record detailed results
@@ -462,7 +499,9 @@ class CrossValidationFramework:
                     algorithm_name=alg_name,
                     reference_name="SciPy/PDFO",
                     passed=passed_overall,
-                    error_message="" if passed_overall else f"Relative error: {relative_error:.3f}, Convergence corr: {convergence_corr_mean:.3f}",
+                    error_message=""
+                    if passed_overall
+                    else f"Relative error: {relative_error:.3f}, Convergence corr: {convergence_corr_mean:.3f}",
                     metrics={
                         "python_mean": py_mean,
                         "python_std": py_std,
@@ -471,8 +510,8 @@ class CrossValidationFramework:
                         "relative_error": relative_error,
                         "convergence_correlation": convergence_corr_mean,
                         "n_runs": n_runs,
-                        "n_trials": n_trials
-                    }
+                        "n_trials": n_trials,
+                    },
                 )
 
                 self.results.append(validation_result)
@@ -480,11 +519,15 @@ class CrossValidationFramework:
 
                 # Output validation result
                 status = "✅ PASS" if passed_overall else "❌ FAIL"
-                print(f"    {status} - Rel. Error: {relative_error:.3f}, Convergence: {convergence_corr_mean:.3f}")
+                print(
+                    f"    {status} - Rel. Error: {relative_error:.3f}, Convergence: {convergence_corr_mean:.3f}"
+                )
 
         return dict(validation_results)
 
-    def run_cross_language_validation(self, n_trials: int = 100, n_runs: int = 5) -> Dict[str, Any]:
+    def run_cross_language_validation(
+        self, n_trials: int = 100, n_runs: int = 5
+    ) -> Dict[str, Any]:
         """
         Cross-language validation: JavaScript vs Python implementations.
 
@@ -497,8 +540,10 @@ class CrossValidationFramework:
         # Check if Node.js is available for JavaScript execution
         try:
             import subprocess
-            result = subprocess.run(['node', '--version'],
-                                  capture_output=True, text=True, timeout=5)
+
+            result = subprocess.run(
+                ["node", "--version"], capture_output=True, text=True, timeout=5
+            )
             if result.returncode != 0:
                 print("⚠️ Node.js not available - skipping JavaScript validation")
                 return {}
@@ -509,7 +554,7 @@ class CrossValidationFramework:
         validation_results = defaultdict(list)
 
         # JavaScript test harness
-        js_test_code = '''
+        js_test_code = """
         // Load JavaScript optimizers
         const fs = require('fs');
         const path = require('path');
@@ -583,34 +628,38 @@ class CrossValidationFramework:
         }
 
         console.log(JSON.stringify(results));
-        '''
+        """
 
         # Write JavaScript test file
         js_test_file = self.output_dir / "js_test.js"
-        with open(js_test_file, 'w') as f:
+        with open(js_test_file, "w") as f:
             f.write(js_test_code)
 
         # JavaScript algorithms to test (matching our Python implementations)
         js_algorithms = [
-            'PRIMA_UOBYQA',
-            'PRIMA_NEWUOA',
-            'PRIMA_BOBYQA',
-            'SciPy_NelderMead',
-            'SciPy_Powell',
-            'SciPy_BFGS'
+            "PRIMA_UOBYQA",
+            "PRIMA_NEWUOA",
+            "PRIMA_BOBYQA",
+            "SciPy_NelderMead",
+            "SciPy_Powell",
+            "SciPy_BFGS",
         ]
 
         test_config = {
-            'algorithms': js_algorithms,
-            'n_trials': n_trials,
-            'n_runs': n_runs
+            "algorithms": js_algorithms,
+            "n_trials": n_trials,
+            "n_runs": n_runs,
         }
 
         # Run JavaScript tests
         try:
-            js_result = subprocess.run([
-                'node', str(js_test_file), json.dumps(test_config)
-            ], capture_output=True, text=True, timeout=60, cwd=str(Path.cwd()))
+            js_result = subprocess.run(
+                ["node", str(js_test_file), json.dumps(test_config)],
+                capture_output=True,
+                text=True,
+                timeout=60,
+                cwd=str(Path.cwd()),
+            )
 
             if js_result.returncode != 0:
                 print(f"❌ JavaScript test failed: {js_result.stderr}")
@@ -624,12 +673,12 @@ class CrossValidationFramework:
 
         # Compare JavaScript vs Python results
         python_js_mapping = {
-            'NelderMead': 'SciPy_NelderMead',
-            'Powell': 'SciPy_Powell',
-            'LBFGSB': 'SciPy_BFGS',
-            'PRIMA_UOBYQA': 'PRIMA_UOBYQA',
-            'PRIMA_NEWUOA': 'PRIMA_NEWUOA',
-            'PRIMA_BOBYQA': 'PRIMA_BOBYQA'
+            "NelderMead": "SciPy_NelderMead",
+            "Powell": "SciPy_Powell",
+            "LBFGSB": "SciPy_BFGS",
+            "PRIMA_UOBYQA": "PRIMA_UOBYQA",
+            "PRIMA_NEWUOA": "PRIMA_NEWUOA",
+            "PRIMA_BOBYQA": "PRIMA_BOBYQA",
         }
 
         for benchmark in self.benchmarks:
@@ -649,27 +698,33 @@ class CrossValidationFramework:
                 python_values = []
                 for run in range(n_runs):
                     np.random.seed(run * 42)
-                    optimizer = py_class(benchmark.objective_func, n_trials, benchmark.dimension)
+                    optimizer = py_class(
+                        benchmark.objective_func, n_trials, benchmark.dimension
+                    )
                     best_val, _ = optimizer.optimize()
                     python_values.append(best_val)
 
                 # Get JavaScript results
                 js_data = js_results[benchmark.name][js_name]
-                js_values = js_data['values']
+                js_values = js_data["values"]
 
                 # Statistical comparison
                 py_mean = np.mean(python_values)
                 py_std = np.std(python_values)
-                js_mean = js_data['mean']
-                js_std = js_data['std']
+                js_mean = js_data["mean"]
+                js_std = js_data["std"]
 
                 # Cross-language equivalence test
                 relative_error = abs(py_mean - js_mean) / (abs(js_mean) + 1e-10)
                 std_ratio = py_std / (js_std + 1e-10)
 
                 # Validation criteria for cross-language consistency
-                error_threshold = 0.2  # 20% relative error allowed (different implementations)
-                std_ratio_threshold = 3.0  # Standard deviation shouldn't differ by more than 3x
+                error_threshold = (
+                    0.2  # 20% relative error allowed (different implementations)
+                )
+                std_ratio_threshold = (
+                    3.0  # Standard deviation shouldn't differ by more than 3x
+                )
 
                 passed_mean = relative_error < error_threshold
                 passed_std = 0.33 < std_ratio < std_ratio_threshold
@@ -681,15 +736,17 @@ class CrossValidationFramework:
                     algorithm_name=f"{py_name}_vs_{js_name}",
                     reference_name="Cross_Language",
                     passed=passed_overall,
-                    error_message="" if passed_overall else f"Mean error: {relative_error:.3f}, Std ratio: {std_ratio:.3f}",
+                    error_message=""
+                    if passed_overall
+                    else f"Mean error: {relative_error:.3f}, Std ratio: {std_ratio:.3f}",
                     metrics={
                         "python_mean": py_mean,
                         "python_std": py_std,
                         "javascript_mean": js_mean,
                         "javascript_std": js_std,
                         "relative_error": relative_error,
-                        "std_ratio": std_ratio
-                    }
+                        "std_ratio": std_ratio,
+                    },
                 )
 
                 self.results.append(validation_result)
@@ -697,7 +754,9 @@ class CrossValidationFramework:
 
                 # Output result
                 status = "✅ PASS" if passed_overall else "❌ FAIL"
-                print(f"    {status} - Mean Error: {relative_error:.3f}, Std Ratio: {std_ratio:.2f}")
+                print(
+                    f"    {status} - Mean Error: {relative_error:.3f}, Std Ratio: {std_ratio:.2f}"
+                )
 
         return dict(validation_results)
 
@@ -720,7 +779,7 @@ class CrossValidationFramework:
             self._test_prima_properties,
             self._test_convergence_properties,
             self._test_bounds_handling,
-            self._test_parameter_consistency
+            self._test_parameter_consistency,
         ]
 
         for test_func in math_tests:
@@ -740,7 +799,7 @@ class CrossValidationFramework:
 
         # Test simplex properties
         def quadratic_2d(x):
-            return (x[0] - 0.3)**2 + (x[1] - 0.7)**2
+            return (x[0] - 0.3) ** 2 + (x[1] - 0.7) ** 2
 
         optimizer = NelderMead(quadratic_2d, 100, 2)
 
@@ -776,7 +835,9 @@ class CrossValidationFramework:
             reference_name="Simplex_Properties",
             passed=passed,
             error_message="" if passed else "Simplex validation failed",
-            metrics={"final_value": best_val if 'best_val' in locals() else float('inf')}
+            metrics={
+                "final_value": best_val if "best_val" in locals() else float("inf")
+            },
         )
 
         results["NelderMead_Properties"].append(result)
@@ -793,7 +854,7 @@ class CrossValidationFramework:
         # Powell should work well on quadratic functions
         def quadratic_nd(x):
             x = np.asarray(x)
-            return np.sum((x - 0.5)**2)
+            return np.sum((x - 0.5) ** 2)
 
         optimizer = Powell(quadratic_nd, 100, 3)
         best_val, best_x = optimizer.optimize()
@@ -807,7 +868,7 @@ class CrossValidationFramework:
             reference_name="Quadratic_Optimization",
             passed=passed,
             error_message="" if passed else f"Poor quadratic optimization: {best_val}",
-            metrics={"final_value": best_val}
+            metrics={"final_value": best_val},
         )
 
         results["Powell_Properties"].append(result)
@@ -822,15 +883,15 @@ class CrossValidationFramework:
         print("  🔍 Testing PRIMA Properties")
 
         prima_algorithms = [
-            ('PRIMA_UOBYQA', PRIMA_UOBYQA),
-            ('PRIMA_NEWUOA', PRIMA_NEWUOA),
-            ('PRIMA_BOBYQA', PRIMA_BOBYQA)
+            ("PRIMA_UOBYQA", PRIMA_UOBYQA),
+            ("PRIMA_NEWUOA", PRIMA_NEWUOA),
+            ("PRIMA_BOBYQA", PRIMA_BOBYQA),
         ]
 
         # PRIMA algorithms should handle quadratic models well
         def pure_quadratic(x):
             x = np.asarray(x)
-            return np.sum((x - 0.4)**2)
+            return np.sum((x - 0.4) ** 2)
 
         for alg_name, alg_class in prima_algorithms:
             optimizer = alg_class(pure_quadratic, 50, 2)
@@ -844,8 +905,10 @@ class CrossValidationFramework:
                 algorithm_name=alg_name,
                 reference_name="Quadratic_Interpolation",
                 passed=passed,
-                error_message="" if passed else f"Poor quadratic performance: {best_val}",
-                metrics={"final_value": best_val}
+                error_message=""
+                if passed
+                else f"Poor quadratic performance: {best_val}",
+                metrics={"final_value": best_val},
             )
 
             results[f"{alg_name}_Properties"].append(result)
@@ -862,7 +925,7 @@ class CrossValidationFramework:
         # Test monotonic convergence on unimodal functions
         def simple_convex(x):
             x = np.asarray(x)
-            return np.sum((x - 0.6)**2)
+            return np.sum((x - 0.6) ** 2)
 
         for alg_name, alg_class in self.python_algorithms.items():
             convergence_history = []
@@ -892,8 +955,14 @@ class CrossValidationFramework:
                 algorithm_name=alg_name,
                 reference_name="Convergence_Properties",
                 passed=passed,
-                error_message="" if passed else f"Poor convergence: {improvement_ratio:.2f}",
-                metrics={"improvement_ratio": improvement_ratio if 'improvement_ratio' in locals() else 0.0}
+                error_message=""
+                if passed
+                else f"Poor convergence: {improvement_ratio:.2f}",
+                metrics={
+                    "improvement_ratio": improvement_ratio
+                    if "improvement_ratio" in locals()
+                    else 0.0
+                },
             )
 
             results[f"{alg_name}_Convergence"].append(result)
@@ -929,7 +998,9 @@ class CrossValidationFramework:
                 reference_name="Bounds_Handling",
                 passed=bounds_respected,
                 error_message="" if bounds_respected else f"Bounds violated: {best_x}",
-                metrics={"bounds_violation": sum(1 for xi in best_x if xi < 0 or xi > 1)}
+                metrics={
+                    "bounds_violation": sum(1 for xi in best_x if xi < 0 or xi > 1)
+                },
             )
 
             results[f"{alg_name}_Bounds"].append(result)
@@ -945,7 +1016,7 @@ class CrossValidationFramework:
 
         # Test that algorithms give consistent results with same parameters
         def test_objective(x):
-            return np.sum((np.asarray(x) - 0.3)**2)
+            return np.sum((np.asarray(x) - 0.3) ** 2)
 
         for alg_name, alg_class in self.python_algorithms.items():
             values = []
@@ -965,8 +1036,10 @@ class CrossValidationFramework:
                 algorithm_name=alg_name,
                 reference_name="Parameter_Consistency",
                 passed=passed,
-                error_message="" if passed else f"Inconsistent results: {consistency_error}",
-                metrics={"consistency_error": consistency_error}
+                error_message=""
+                if passed
+                else f"Inconsistent results: {consistency_error}",
+                metrics={"consistency_error": consistency_error},
             )
 
             results[f"{alg_name}_Consistency"].append(result)
@@ -992,14 +1065,14 @@ class CrossValidationFramework:
         passed_tests = sum(1 for r in self.results if r.passed)
         pass_rate = (passed_tests / total_tests * 100) if total_tests > 0 else 0
 
-        print(f"\n🎯 OVERALL VALIDATION SUMMARY")
+        print("\n🎯 OVERALL VALIDATION SUMMARY")
         print(f"   Total Tests: {total_tests}")
         print(f"   Passed: {passed_tests}")
         print(f"   Failed: {total_tests - passed_tests}")
         print(f"   Pass Rate: {pass_rate:.1f}%")
 
         # Test type breakdown
-        print(f"\n📊 RESULTS BY TEST TYPE")
+        print("\n📊 RESULTS BY TEST TYPE")
         for test_type, results_list in by_test_type.items():
             type_passed = sum(1 for r in results_list if r.passed)
             type_total = len(results_list)
@@ -1007,7 +1080,7 @@ class CrossValidationFramework:
             print(f"   {test_type}: {type_passed}/{type_total} ({type_rate:.1f}%)")
 
         # Algorithm breakdown
-        print(f"\n🔢 RESULTS BY ALGORITHM")
+        print("\n🔢 RESULTS BY ALGORITHM")
         for alg_name, results_list in by_algorithm.items():
             alg_passed = sum(1 for r in results_list if r.passed)
             alg_total = len(results_list)
@@ -1021,13 +1094,17 @@ class CrossValidationFramework:
                 "total_tests": total_tests,
                 "passed_tests": passed_tests,
                 "failed_tests": total_tests - passed_tests,
-                "pass_rate": pass_rate
+                "pass_rate": pass_rate,
             },
             "by_test_type": {
                 test_type: {
                     "total": len(results_list),
                     "passed": sum(1 for r in results_list if r.passed),
-                    "pass_rate": (sum(1 for r in results_list if r.passed) / len(results_list) * 100)
+                    "pass_rate": (
+                        sum(1 for r in results_list if r.passed)
+                        / len(results_list)
+                        * 100
+                    ),
                 }
                 for test_type, results_list in by_test_type.items()
             },
@@ -1035,7 +1112,11 @@ class CrossValidationFramework:
                 alg_name: {
                     "total": len(results_list),
                     "passed": sum(1 for r in results_list if r.passed),
-                    "pass_rate": (sum(1 for r in results_list if r.passed) / len(results_list) * 100)
+                    "pass_rate": (
+                        sum(1 for r in results_list if r.passed)
+                        / len(results_list)
+                        * 100
+                    ),
                 }
                 for alg_name, results_list in by_algorithm.items()
             },
@@ -1046,15 +1127,15 @@ class CrossValidationFramework:
                     "reference_name": r.reference_name,
                     "passed": r.passed,
                     "error_message": r.error_message,
-                    "metrics": r.metrics
+                    "metrics": r.metrics,
                 }
                 for r in self.results
-            ]
+            ],
         }
 
         # Save report
         report_file = self.output_dir / "validation_report.json"
-        with open(report_file, 'w') as f:
+        with open(report_file, "w") as f:
             json.dump(report_data, f, indent=2, default=str)
 
         print(f"\n💾 Detailed report saved to: {report_file}")
@@ -1063,7 +1144,9 @@ class CrossValidationFramework:
         recommendations = []
 
         if pass_rate >= 90:
-            recommendations.append("✅ EXCELLENT: All algorithms show strong mathematical consistency")
+            recommendations.append(
+                "✅ EXCELLENT: All algorithms show strong mathematical consistency"
+            )
         elif pass_rate >= 75:
             recommendations.append("✅ GOOD: Most algorithms validated successfully")
         elif pass_rate >= 50:
@@ -1072,19 +1155,26 @@ class CrossValidationFramework:
             recommendations.append("❌ POOR: Significant validation issues found")
 
         # Specific recommendations
-        failed_algorithms = {alg_name for alg_name, results_list in by_algorithm.items()
-                           if sum(1 for r in results_list if r.passed) / len(results_list) < 0.5}
+        failed_algorithms = {
+            alg_name
+            for alg_name, results_list in by_algorithm.items()
+            if sum(1 for r in results_list if r.passed) / len(results_list) < 0.5
+        }
 
         if failed_algorithms:
-            recommendations.append(f"🔧 Review implementations: {', '.join(failed_algorithms)}")
+            recommendations.append(
+                f"🔧 Review implementations: {', '.join(failed_algorithms)}"
+            )
 
-        print(f"\n🎯 RECOMMENDATIONS")
+        print("\n🎯 RECOMMENDATIONS")
         for rec in recommendations:
             print(f"   {rec}")
 
         return report_data
 
-    def run_full_validation_suite(self, n_trials: int = 100, n_runs: int = 5) -> Dict[str, Any]:
+    def run_full_validation_suite(
+        self, n_trials: int = 100, n_runs: int = 5
+    ) -> Dict[str, Any]:
         """Run the complete cross-validation framework."""
         print("🚀 STARTING COMPREHENSIVE CROSS-VALIDATION")
         print("=" * 60)
@@ -1094,18 +1184,19 @@ class CrossValidationFramework:
 
         # Run all validation tests
         try:
-            print("\n" + "="*60)
+            print("\n" + "=" * 60)
             self.run_python_vs_reference_validation(n_trials, n_runs)
 
-            print("\n" + "="*60)
+            print("\n" + "=" * 60)
             self.run_cross_language_validation(n_trials, n_runs)
 
-            print("\n" + "="*60)
+            print("\n" + "=" * 60)
             self.run_mathematical_correctness_validation()
 
         except Exception as e:
             print(f"❌ Validation suite failed: {e}")
             import traceback
+
             traceback.print_exc()
 
         elapsed_time = time.time() - start_time
@@ -1130,10 +1221,10 @@ def main():
     # Run comprehensive validation
     report = framework.run_full_validation_suite(
         n_trials=100,  # Sufficient for statistical validation
-        n_runs=5       # Multiple runs for statistical significance
+        n_runs=5,  # Multiple runs for statistical significance
     )
 
-    print(f"\n🎉 VALIDATION COMPLETE!")
+    print("\n🎉 VALIDATION COMPLETE!")
     print(f"Results saved to: {framework.output_dir}")
 
     return report

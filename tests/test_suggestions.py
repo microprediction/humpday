@@ -9,7 +9,6 @@ def test_suggest():
                     n_dim=n_dim,
                     n_trials=n_trials,
                     n_seconds=n_seconds,
-                    category="classic",
                 )
                 assert len(sg) >= 1
 

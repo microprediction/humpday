@@ -4,43 +4,53 @@ No external dependencies beyond numpy. Clean ports, not wrappers.
 """
 
 # Import from new modular structure
-from .prima_algorithms import PRIMA_UOBYQA, PRIMA_NEWUOA, PRIMA_BOBYQA
-from .scipy_algorithms import NelderMead, Powell, LBFGSB
 from .evolutionary_algorithms import (
-    DifferentialEvolution, ParticleSwarm, SimulatedAnnealing, GeneticAlgorithm,
-    RandomSearch, BayesianOpt, CMAEvolutionStrategy, TabuSearch, FireflyAlgorithm,
-    AntColonyOpt, EvolutionStrategy, HillClimbing, HarmonySearch
+    AntColonyOpt,
+    BayesianOpt,
+    CMAEvolutionStrategy,
+    DifferentialEvolution,
+    EvolutionStrategy,
+    FireflyAlgorithm,
+    GeneticAlgorithm,
+    HarmonySearch,
+    HillClimbing,
+    ParticleSwarm,
+    RandomSearch,
+    SimulatedAnnealing,
+    TabuSearch,
 )
+from .prima_algorithms import PRIMA_BOBYQA, PRIMA_NEWUOA, PRIMA_UOBYQA
+from .scipy_algorithms import LBFGSB, NelderMead, Powell
 from .search_algorithms import AdaptiveRandomSearch, CoordinateDescent, PatternSearch
 
 # Define PURE_OPTIMIZERS for backward compatibility - all 22 algorithms
 PURE_OPTIMIZERS = {
     # PRIMA algorithms
-    'PRIMA_UOBYQA': PRIMA_UOBYQA,
-    'PRIMA_NEWUOA': PRIMA_NEWUOA,
-    'PRIMA_BOBYQA': PRIMA_BOBYQA,
+    "PRIMA_UOBYQA": PRIMA_UOBYQA,
+    "PRIMA_NEWUOA": PRIMA_NEWUOA,
+    "PRIMA_BOBYQA": PRIMA_BOBYQA,
     # SciPy algorithms
-    'NelderMead': NelderMead,
-    'Powell': Powell,
-    'LBFGSB': LBFGSB,
+    "NelderMead": NelderMead,
+    "Powell": Powell,
+    "LBFGSB": LBFGSB,
     # Evolutionary algorithms
-    'DifferentialEvolution': DifferentialEvolution,
-    'ParticleSwarm': ParticleSwarm,
-    'SimulatedAnnealing': SimulatedAnnealing,
-    'GeneticAlgorithm': GeneticAlgorithm,
-    'RandomSearch': RandomSearch,
-    'BayesianOpt': BayesianOpt,
-    'CMAEvolutionStrategy': CMAEvolutionStrategy,
-    'TabuSearch': TabuSearch,
-    'FireflyAlgorithm': FireflyAlgorithm,
-    'AntColonyOpt': AntColonyOpt,
-    'EvolutionStrategy': EvolutionStrategy,
-    'HillClimbing': HillClimbing,
-    'HarmonySearch': HarmonySearch,
+    "DifferentialEvolution": DifferentialEvolution,
+    "ParticleSwarm": ParticleSwarm,
+    "SimulatedAnnealing": SimulatedAnnealing,
+    "GeneticAlgorithm": GeneticAlgorithm,
+    "RandomSearch": RandomSearch,
+    "BayesianOpt": BayesianOpt,
+    "CMAEvolutionStrategy": CMAEvolutionStrategy,
+    "TabuSearch": TabuSearch,
+    "FireflyAlgorithm": FireflyAlgorithm,
+    "AntColonyOpt": AntColonyOpt,
+    "EvolutionStrategy": EvolutionStrategy,
+    "HillClimbing": HillClimbing,
+    "HarmonySearch": HarmonySearch,
     # Search algorithms
-    'AdaptiveRandomSearch': AdaptiveRandomSearch,
-    'CoordinateDescent': CoordinateDescent,
-    'PatternSearch': PatternSearch,
+    "AdaptiveRandomSearch": AdaptiveRandomSearch,
+    "CoordinateDescent": CoordinateDescent,
+    "PatternSearch": PatternSearch,
 }
 
 
@@ -53,7 +63,7 @@ def create_optimizer_function(optimizer_class):
         result = optimizer.optimize()
 
         # Handle different return formats
-        if hasattr(result, '__len__') and len(result) == 2:
+        if hasattr(result, "__len__") and len(result) == 2:
             # Old format: (best_value, best_x)
             best_value, best_x = result
         else:

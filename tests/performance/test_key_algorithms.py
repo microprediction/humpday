@@ -23,7 +23,7 @@ TEST_FUNCTIONS = {
 }
 
 
-def test_algorithm(algorithm_name, test_func_name, target_value):
+def run_algorithm_test(algorithm_name, test_func_name, target_value):
     """Test a specific algorithm on a specific test function"""
 
     test_func = TEST_FUNCTIONS[test_func_name]
@@ -132,7 +132,7 @@ def main():
         for test_name, test_func in TEST_FUNCTIONS.items():
             print(f"  [{test_func['name']}]...", end=" ")
 
-            result = test_algorithm(algorithm, test_name, test_func["target"])
+            result = run_algorithm_test(algorithm, test_name, test_func["target"])
             results.append(result)
 
             if result["success"]:

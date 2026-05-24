@@ -92,9 +92,11 @@ class ParticleSwarm(BaseOptimizer):
 
                 # Update velocity
                 r1, r2 = np.random.random(self.n_dim), np.random.random(self.n_dim)
-                velocities[i] = (w * velocities[i] +
-                               c1 * r1 * (personal_best_pos[i] - positions[i]) +
-                               c2 * r2 * (self.best_x - positions[i]))
+                velocities[i] = (
+                    w * velocities[i]
+                    + c1 * r1 * (personal_best_pos[i] - positions[i])
+                    + c2 * r2 * (self.best_x - positions[i])
+                )
 
                 # Velocity clamping
                 vmax = 0.2 * (1 - 0.5 * iteration / max_iterations)
@@ -156,7 +158,9 @@ class SimulatedAnnealing(BaseOptimizer):
 
                 # Metropolis criterion
                 delta = new_fx - fx
-                if delta < 0 or (temp > final_temp and np.random.random() < np.exp(-delta / temp)):
+                if delta < 0 or (
+                    temp > final_temp and np.random.random() < np.exp(-delta / temp)
+                ):
                     x, fx = new_x, new_fx
 
                 # Cool down
@@ -203,7 +207,9 @@ class GeneticAlgorithm(BaseOptimizer):
 
                 # Mutation
                 mutation_mask = np.random.random(self.n_dim) < mutation_rate
-                child[mutation_mask] += (np.random.random(np.sum(mutation_mask)) - 0.5) * 0.2
+                child[mutation_mask] += (
+                    np.random.random(np.sum(mutation_mask)) - 0.5
+                ) * 0.2
                 child = np.clip(child, 0, 1)
 
                 new_population.append(child)

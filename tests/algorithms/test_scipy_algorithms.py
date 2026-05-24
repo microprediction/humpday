@@ -8,7 +8,7 @@ convergence behavior, and robustness across different problem types.
 import numpy as np
 import pytest
 
-from humpday.optimizers.scipy_algorithms import NelderMead, Powell, LBFGSB
+from humpday.optimizers.scipy_algorithms import LBFGSB, NelderMead, Powell
 
 
 class TestSciPyAlgorithms:
@@ -17,32 +17,40 @@ class TestSciPyAlgorithms:
     @pytest.fixture
     def sphere_function(self):
         """Simple sphere function."""
+
         def sphere(x):
             return sum(xi**2 for xi in x)
+
         return sphere
 
     @pytest.fixture
     def rosenbrock_function(self):
         """Rosenbrock function (classic optimization test)."""
+
         def rosenbrock(x):
             if len(x) < 2:
                 return 1000.0
-            return sum(100.0 * (x[i+1] - x[i]**2)**2 + (1 - x[i])**2
-                      for i in range(len(x)-1))
+            return sum(
+                100.0 * (x[i + 1] - x[i] ** 2) ** 2 + (1 - x[i]) ** 2
+                for i in range(len(x) - 1)
+            )
+
         return rosenbrock
 
     @pytest.fixture
     def beale_function(self):
         """Beale function - has steep ridges."""
+
         def beale(x):
             if len(x) != 2:
                 return 1000.0
             # Scale from [0,1]² to [-4.5, 4.5]²
             x1, x2 = 9 * x[0] - 4.5, 9 * x[1] - 4.5
-            term1 = (1.5 - x1 + x1*x2)**2
-            term2 = (2.25 - x1 + x1*x2**2)**2
-            term3 = (2.625 - x1 + x1*x2**3)**2
+            term1 = (1.5 - x1 + x1 * x2) ** 2
+            term2 = (2.25 - x1 + x1 * x2**2) ** 2
+            term3 = (2.625 - x1 + x1 * x2**3) ** 2
             return term1 + term2 + term3
+
         return beale
 
     def test_nelder_mead_initialization(self, sphere_function):
@@ -151,7 +159,7 @@ class TestSciPyAlgorithms:
         algorithms = [
             ("Nelder-Mead", NelderMead),
             ("Powell", Powell),
-            ("L-BFGS-B", LBFGSB)
+            ("L-BFGS-B", LBFGSB),
         ]
 
         results = {}
@@ -161,23 +169,26 @@ class TestSciPyAlgorithms:
             best_value, best_x = optimizer.optimize()
 
             results[name] = {
-                'value': best_value,
-                'x': best_x,
-                'evaluations': optimizer.evaluations
+                "value": best_value,
+                "x": best_x,
+                "evaluations": optimizer.evaluations,
             }
 
             # All should handle the function without crashing
             assert np.isfinite(best_value)
             assert optimizer.evaluations > 0
 
-        print(f"\nSciPy Algorithm Comparison on Beale function:")
+        print("\nSciPy Algorithm Comparison on Beale function:")
         for name, result in results.items():
-            print(f"  {name:12}: {result['value']:8.4f} ({result['evaluations']} evals)")
+            print(
+                f"  {name:12}: {result['value']:8.4f} ({result['evaluations']} evals)"
+            )
 
     def test_scipy_robustness(self):
         """Test SciPy algorithms handle edge cases."""
+
         def noisy_function(x):
-            clean = sum((xi - 0.3)**2 for xi in x)
+            clean = sum((xi - 0.3) ** 2 for xi in x)
             noise = 0.01 * np.random.randn()
             return clean + noise
 
@@ -192,8 +203,9 @@ class TestSciPyAlgorithms:
 
     def test_scipy_convergence(self):
         """Test SciPy algorithms converge properly."""
+
         def quadratic(x):
-            return sum((xi - 0.4)**2 for xi in x)
+            return sum((xi - 0.4) ** 2 for xi in x)
 
         for AlgorithmClass in [NelderMead, Powell, LBFGSB]:
             np.random.seed(42)
@@ -208,6 +220,7 @@ class TestSciPyAlgorithms:
 
     def test_scipy_path_tracking(self):
         """Test path tracking with SciPy algorithms."""
+
         def simple_objective(x):
             return sum(xi**2 for xi in x)
 
@@ -224,6 +237,7 @@ class TestSciPyAlgorithms:
 
     def test_scipy_evaluation_budget(self):
         """Test SciPy algorithms respect evaluation budgets."""
+
         def simple_function(x):
             return sum(xi**2 for xi in x)
 
@@ -237,9 +251,10 @@ class TestSciPyAlgorithms:
 
     def test_nelder_mead_simplex_behavior(self):
         """Test Nelder-Mead specific simplex operations."""
+
         def asymmetric_function(x):
             # Function that benefits from simplex adaptation
-            return x[0]**2 + 10 * x[1]**2
+            return x[0] ** 2 + 10 * x[1] ** 2
 
         np.random.seed(42)
         optimizer = NelderMead(asymmetric_function, n_trials=100, n_dim=2)
@@ -252,9 +267,10 @@ class TestSciPyAlgorithms:
 
     def test_powell_line_search(self):
         """Test Powell method's line search behavior."""
+
         def ridge_function(x):
             # Function with ridge structure
-            return (x[0] - 0.3)**2 + 0.1 * (x[1] - 0.7)**2
+            return (x[0] - 0.3) ** 2 + 0.1 * (x[1] - 0.7) ** 2
 
         np.random.seed(42)
         optimizer = Powell(ridge_function, n_trials=80, n_dim=2)
@@ -267,6 +283,7 @@ class TestSciPyAlgorithms:
 
     def test_lbfgsb_gradient_approximation(self):
         """Test L-BFGS-B finite difference gradient approximation."""
+
         def smooth_function(x):
             return sum(i * xi**2 for i, xi in enumerate(x, 1))  # Weighted quadratic
 
@@ -284,13 +301,15 @@ class TestSciPyPerformance:
 
     def test_scipy_efficiency(self):
         """Test SciPy algorithms are reasonably efficient."""
+
         def simple_quadratic(x):
-            return sum((xi - 0.5)**2 for xi in x)
+            return sum((xi - 0.5) ** 2 for xi in x)
 
         for AlgorithmClass in [NelderMead, Powell, LBFGSB]:
             optimizer = AlgorithmClass(simple_quadratic, n_trials=50, n_dim=3)
 
             import time
+
             start_time = time.time()
             best_value, best_x = optimizer.optimize()
             elapsed = time.time() - start_time
@@ -301,6 +320,7 @@ class TestSciPyPerformance:
 
     def test_scipy_scalability(self):
         """Test how SciPy algorithms scale with problem size."""
+
         def sphere(x):
             return sum(xi**2 for xi in x)
 

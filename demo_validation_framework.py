@@ -13,19 +13,20 @@ This demo runs quickly with reduced parameters to show the framework in action.
 Usage: python demo_validation_framework.py
 """
 
-import numpy as np
-from pathlib import Path
 import sys
+from pathlib import Path
+
+import numpy as np
 
 # Add current directory to path
 sys.path.insert(0, str(Path(__file__).parent))
 
 try:
-    from cross_validation_framework import CrossValidationFramework, StandardBenchmarks
-    from statistical_validation import StatisticalValidator
     from benchmark_suite import BenchmarkSuite
-    from humpday.optimizers.scipy_algorithms import NelderMead, Powell
+    from cross_validation_framework import CrossValidationFramework, StandardBenchmarks
     from humpday.optimizers.prima_algorithms import PRIMA_UOBYQA
+    from humpday.optimizers.scipy_algorithms import NelderMead, Powell
+    from statistical_validation import StatisticalValidator
 except ImportError as e:
     print(f"❌ Import error: {e}")
     print("Please ensure all modules are available")
@@ -41,15 +42,15 @@ def demo_basic_validation():
     def sphere_2d(x):
         x = np.asarray(x)
         scaled = (x - 0.5) * 10  # Transform [0,1] to [-5,5]
-        return np.sum(scaled ** 2)
+        return np.sum(scaled**2)
 
     print("Testing algorithms on 2D Sphere function...")
 
     # Test algorithms
     algorithms = {
-        'NelderMead': NelderMead,
-        'Powell': Powell,
-        'PRIMA_UOBYQA': PRIMA_UOBYQA
+        "NelderMead": NelderMead,
+        "Powell": Powell,
+        "PRIMA_UOBYQA": PRIMA_UOBYQA,
     }
 
     results = {}
@@ -95,11 +96,10 @@ def demo_statistical_validation():
 
     # Statistical comparison
     comparison = validator.compare_performance_distributions(
-        algorithm_a_results, algorithm_b_results,
-        "Algorithm_A", "Algorithm_B"
+        algorithm_a_results, algorithm_b_results, "Algorithm_A", "Algorithm_B"
     )
 
-    print(f"\nStatistical Analysis:")
+    print("\nStatistical Analysis:")
     print(f"  Mean difference: {comparison.mean_difference:.4f}")
     print(f"  Variance ratio: {comparison.variance_ratio:.4f}")
     print(f"  KS test p-value: {comparison.ks_pvalue:.4f}")
@@ -118,7 +118,7 @@ def demo_benchmark_suite():
     suite = BenchmarkSuite()
 
     # Add some problems
-    from benchmark_suite import SphereProblem, RosenbrockProblem, RastriginProblem
+    from benchmark_suite import RastriginProblem, RosenbrockProblem, SphereProblem
 
     suite.add_problem(SphereProblem(2))
     suite.add_problem(RosenbrockProblem(2))
@@ -127,12 +127,14 @@ def demo_benchmark_suite():
     print(f"Created benchmark suite with {len(suite.problems)} problems:")
     for problem_name in suite.problems:
         problem = suite.problems[problem_name]
-        print(f"  • {problem_name} - {problem.metadata.difficulty} ({problem.metadata.problem_class})")
+        print(
+            f"  • {problem_name} - {problem.metadata.difficulty} ({problem.metadata.problem_class})"
+        )
 
     # Test an algorithm on benchmarks
     def simple_algorithm(objective, n_trials, n_dim):
         """Simple random search for demonstration."""
-        best_value = float('inf')
+        best_value = float("inf")
         best_x = None
 
         for _ in range(n_trials):
@@ -144,18 +146,18 @@ def demo_benchmark_suite():
 
         return best_value, best_x
 
-    print(f"\nTesting simple random search algorithm:")
+    print("\nTesting simple random search algorithm:")
 
     results = suite.evaluate_algorithm(
         simple_algorithm,
         problem_names=list(suite.problems.keys()),
         n_runs=3,
-        n_trials=30
+        n_trials=30,
     )
 
     for problem_name, result in results.items():
-        if 'statistics' in result:
-            stats = result['statistics']
+        if "statistics" in result:
+            stats = result["statistics"]
             print(f"  {problem_name}: {stats['mean']:.4f} ± {stats['std']:.4f}")
 
     return results
@@ -191,12 +193,14 @@ def demo_convergence_analysis():
         conv_a, conv_b, "Fast_Start", "Steady"
     )
 
-    print(f"\nConvergence Analysis:")
+    print("\nConvergence Analysis:")
     print(f"  Rate A: {analysis.convergence_rate_a:.4f}")
     print(f"  Rate B: {analysis.convergence_rate_b:.4f}")
     print(f"  Rate similarity: {analysis.rate_similarity:.4f}")
     print(f"  Path correlation: {analysis.path_correlation:.4f}")
-    print(f"  Equivalent behavior: {'✅ Yes' if analysis.passed_equivalence else '❌ No'}")
+    print(
+        f"  Equivalent behavior: {'✅ Yes' if analysis.passed_equivalence else '❌ No'}"
+    )
 
     return analysis
 
@@ -219,14 +223,18 @@ def demo_comprehensive_framework():
         total_tests = len(framework.results)
         passed_tests = sum(1 for r in framework.results if r.passed)
 
-        print(f"\nQuick Validation Results:")
+        print("\nQuick Validation Results:")
         print(f"  Tests run: {total_tests}")
         print(f"  Tests passed: {passed_tests}")
-        print(f"  Pass rate: {passed_tests/total_tests*100:.1f}%" if total_tests > 0 else "  Pass rate: N/A")
+        print(
+            f"  Pass rate: {passed_tests / total_tests * 100:.1f}%"
+            if total_tests > 0
+            else "  Pass rate: N/A"
+        )
 
         # Show some specific results
         if framework.results:
-            print(f"\nSample Results:")
+            print("\nSample Results:")
             for result in framework.results[:3]:  # Show first 3 results
                 status = "✅" if result.passed else "❌"
                 print(f"  {status} {result.algorithm_name} - {result.test_name}")
@@ -261,7 +269,9 @@ def main():
     except Exception as e:
         print(f"\n❌ Demo failed: {e}")
         import traceback
+
         traceback.print_exc()
+
 
 if __name__ == "__main__":
     main()
