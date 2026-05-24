@@ -1,0 +1,138 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>HumpDay Modular Test - All 22 Algorithms</title>
+    <style>
+        body { font-family: Arial, sans-serif; margin: 20px; }
+        .test-result { margin: 5px 0; padding: 5px; }
+        .success { background-color: #d4edda; color: #155724; }
+        .error { background-color: #f8d7da; color: #721c24; }
+        .algorithm-list { display: grid; grid-template-columns: repeat(3, 1fr); gap: 10px; margin: 20px 0; }
+        .algorithm { padding: 8px; background: #f8f9fa; border: 1px solid #dee2e6; border-radius: 4px; font-size: 0.9em; }
+    </style>
+</head>
+<body>
+    <h1>HumpDay Modular Implementation Test</h1>
+    <p>Testing all 22 algorithms in modular structure...</p>
+
+    <div id="loadingStatus"></div>
+    <div id="testResults"></div>
+    <div id="algorithmList"></div>
+
+    <!-- Load all modular files -->
+    <script src="js/modules/base-optimizer.js"></script>
+    <script src="js/modules/prima-algorithms.js"></script>
+    <script src="js/modules/scipy-algorithms.js"></script>
+    <script src="js/modules/evolutionary-algorithms.js"></script>
+    <script src="js/modules/search-algorithms.js"></script>
+    <script src="js/modules/index.js"></script>
+    <script src="js/modules/optimizer-factory.js"></script>
+
+    <script>
+        // Test all 22 algorithms
+        const expectedAlgorithms = [
+            // PRIMA algorithms
+            'PRIMA_UOBYQA', 'PRIMA_NEWUOA', 'PRIMA_BOBYQA',
+            // SciPy algorithms
+            'NelderMead', 'Powell', 'LBFGSB',
+            // Evolutionary algorithms
+            'DifferentialEvolution', 'ParticleSwarm', 'SimulatedAnnealing',
+            'GeneticAlgorithm', 'RandomSearch', 'BayesianOpt', 'CMAEvolutionStrategy',
+            'TabuSearch', 'FireflyAlgorithm', 'AntColonyOpt', 'HarmonySearch', 'EvolutionStrategy',
+            // Search algorithms
+            'AdaptiveRandomSearch', 'CoordinateDescent', 'PatternSearch', 'HillClimbing'
+        ];
+
+        function simpleObjective(x) {
+            // Simple sphere function: sum of squares
+            return x.reduce((sum, xi) => sum + xi * xi, 0);
+        }
+
+        function runTests() {
+            const loadingDiv = document.getElementById('loadingStatus');
+            const resultsDiv = document.getElementById('testResults');
+            const listDiv = document.getElementById('algorithmList');
+
+            loadingDiv.innerHTML = 'Loading modules...';
+
+            // Wait longer for all modules to load and export to global scope
+            setTimeout(() => {
+                loadingDiv.innerHTML = '';
+
+                // Debug: Log what's actually available
+                console.log('window.Powell exists?', typeof window.Powell !== 'undefined');
+                console.log('window.LBFGSB exists?', typeof window.LBFGSB !== 'undefined');
+                console.log('OptimizerFactory available?', typeof window.OptimizerFactory !== 'undefined');
+
+                let results = [];
+                let successCount = 0;
+
+                // Debug what's available
+                console.log('Available in HumpDayOptimizers:', Object.keys(window.HumpDayOptimizers || {}));
+                console.log('Available algorithms from factory:', window.OptimizerFactory?.getAvailableAlgorithms?.() || 'Factory not available');
+
+                // Test each algorithm
+                expectedAlgorithms.forEach(algorithmName => {
+                    try {
+                        // Use OptimizerFactory as the primary test (most reliable)
+                        if (!window.OptimizerFactory) {
+                            throw new Error('OptimizerFactory not available');
+                        }
+
+                        const optimizer = window.OptimizerFactory.create(algorithmName, simpleObjective, 10, 2);
+                        if (!optimizer) {
+                            throw new Error('Factory returned null');
+                        }
+
+                        // Test basic optimization (just a few evaluations)
+                        const result = optimizer.optimize();
+                        if (!result || typeof result.bestValue !== 'number') {
+                            throw new Error('Invalid optimization result');
+                        }
+
+                        results.push({
+                            name: algorithmName,
+                            success: true,
+                            message: `Working - Best: ${result.bestValue.toFixed(6)} (${result.evaluations} evals)`
+                        });
+                        successCount++;
+
+                    } catch (error) {
+                        results.push({
+                            name: algorithmName,
+                            success: false,
+                            message: `Error: ${error.message}`
+                        });
+                    }
+                });
+
+                // Display results
+                resultsDiv.innerHTML = `
+                    <h2>Test Results: ${successCount}/${expectedAlgorithms.length} algorithms working</h2>
+                    ${results.map(result =>
+                        `<div class="test-result ${result.success ? 'success' : 'error'}">
+                            <strong>${result.name}:</strong> ${result.message}
+                        </div>`
+                    ).join('')}
+                `;
+
+                // Display algorithm list
+                listDiv.innerHTML = `
+                    <h3>All Expected Algorithms (${expectedAlgorithms.length} total):</h3>
+                    <div class="algorithm-list">
+                        ${expectedAlgorithms.map((name, i) =>
+                            `<div class="algorithm">${i + 1}. ${name}</div>`
+                        ).join('')}
+                    </div>
+                `;
+
+            }, 500);
+        }
+
+        // Run tests when page loads
+        window.addEventListener('load', runTests);
+    </script>
+</body>
+</html>

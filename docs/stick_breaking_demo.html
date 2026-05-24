@@ -6,7 +6,7 @@
     <title>Stick Breaking Transform Visualization</title>
     <style>
         body {
-            font-family: 'Arial', sans-serif;
+            font-family: 'Times New Roman', Times, serif;
             margin: 20px;
             background: linear-gradient(135deg, #f5f7fa 0%, #c3cfe2 100%);
         }
@@ -155,7 +155,7 @@
         }
 
         .formula {
-            font-family: 'Courier New', monospace;
+            font-family: 'Times New Roman', Times, serif;
             background: white;
             padding: 10px;
             border-radius: 5px;
@@ -223,7 +223,7 @@
 
         <div class="controls">
             <div class="control-panel">
-                <h3>📐 Cube Coordinates</h3>
+                <h3>Cube Coordinates</h3>
                 <div class="slider-container">
                     <div class="slider-label">
                         <span>z₁ (First Parameter)</span>
@@ -242,7 +242,7 @@
 
                 <div class="slider-container">
                     <div class="slider-label">
-                        <span>🌡️ Temperature</span>
+                        <span>Temperature</span>
                         <span id="temperatureValue">1.00</span>
                     </div>
                     <input type="range" id="temperatureSlider" class="slider" min="0.1" max="3" step="0.1" value="1.0">
@@ -250,7 +250,7 @@
             </div>
 
             <div class="control-panel">
-                <h3>🎯 Simplex Weights</h3>
+                <h3>Simplex Weights</h3>
                 <div class="weight-display">
                     <div class="weight-bar">
                         <div class="weight-fill" id="weight1" style="background: #e74c3c;"></div>
@@ -273,7 +273,7 @@
 
         <div class="visualization">
             <div class="viz-panel">
-                <div class="viz-title">📦 Unit Cube [0,1]²</div>
+                <div class="viz-title">Unit Cube [0,1]²</div>
                 <canvas id="cubeCanvas" class="cube-viz" width="300" height="250"></canvas>
                 <p style="font-size: 12px; color: #7f8c8d; margin-top: 10px;">
                     Red dot shows current (z₁, z₂) position
@@ -281,7 +281,7 @@
             </div>
 
             <div class="viz-panel">
-                <div class="viz-title">🔺 Probability Simplex</div>
+                <div class="viz-title">Probability Simplex</div>
                 <canvas id="simplexCanvas" class="simplex-viz" width="300" height="250"></canvas>
                 <p style="font-size: 12px; color: #7f8c8d; margin-top: 10px;">
                     Triangle shows valid probability space
@@ -290,7 +290,7 @@
         </div>
 
         <div class="math-explanation">
-            <div class="math-title">📊 How Stick Breaking Works:</div>
+            <div class="math-title">How Stick Breaking Works:</div>
             <div class="formula" id="mathFormula">
                 θ₁ = sigmoid(z₁/T) = 1/(1 + e^(-z₁/T))<br>
                 θ₂ = sigmoid(z₂/T) = 1/(1 + e^(-z₂/T))<br><br>
@@ -302,7 +302,7 @@
         </div>
 
         <div class="grid-demo">
-            <h3>🌐 Grid Sampling: How Cube Points Map to Simplex</h3>
+            <h3>Grid Sampling: How Cube Points Map to Simplex</h3>
             <button class="button" onclick="generateGrid()">Generate 10×10 Grid Sample</button>
             <div id="gridViz" class="grid-viz"></div>
             <p style="font-size: 12px; color: #7f8c8d; margin-top: 10px;">

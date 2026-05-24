@@ -1,0 +1,93 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Debug Module Loading</title>
+</head>
+<body>
+    <h1>Module Loading Debug</h1>
+    <div id="debug-output"></div>
+
+    <!-- Load modules in exact same order as test-modular.html -->
+    <script src="js/modules/base-optimizer.js"></script>
+    <script src="js/modules/prima-algorithms.js"></script>
+    <script src="js/modules/scipy-algorithms.js"></script>
+    <script src="js/modules/evolutionary-algorithms.js"></script>
+    <script src="js/modules/search-algorithms.js"></script>
+    <script src="js/modules/index.js"></script>
+    <script src="js/modules/optimizer-factory.js"></script>
+
+    <script>
+        function debugModuleLoading() {
+            const output = document.getElementById('debug-output');
+            let html = '<h2>Module Loading Diagnostics</h2>';
+
+            // Check what's available in window
+            html += '<h3>1. Individual Algorithm Classes in Window:</h3>';
+            const algorithmNames = [
+                'PRIMA_UOBYQA', 'PRIMA_NEWUOA', 'PRIMA_BOBYQA',
+                'NelderMead', 'Powell', 'LBFGSB',
+                'DifferentialEvolution', 'ParticleSwarm', 'SimulatedAnnealing',
+                'GeneticAlgorithm', 'RandomSearch', 'BayesianOpt', 'CMAEvolutionStrategy',
+                'TabuSearch', 'FireflyAlgorithm', 'AntColonyOpt', 'HarmonySearch', 'EvolutionStrategy',
+                'AdaptiveRandomSearch', 'CoordinateDescent', 'PatternSearch', 'HillClimbing'
+            ];
+
+            algorithmNames.forEach(name => {
+                const exists = typeof window[name] !== 'undefined';
+                const className = exists ? window[name].name : 'Not Found';
+                html += `<p>${exists ? '[OK]' : '[MISSING]'} window.${name}: ${className}</p>`;
+            });
+
+            // Check HumpDayOptimizers registry
+            html += '<h3>2. HumpDayOptimizers Registry:</h3>';
+            if (typeof window.HumpDayOptimizers !== 'undefined') {
+                const registry = window.HumpDayOptimizers;
+                Object.keys(registry).forEach(name => {
+                    html += `<p>[OK] HumpDayOptimizers.${name}: ${registry[name].name}</p>`;
+                });
+            } else {
+                html += '<p>[MISSING] HumpDayOptimizers not found</p>';
+            }
+
+            // Check OptimizerFactory
+            html += '<h3>3. OptimizerFactory:</h3>';
+            if (typeof window.OptimizerFactory !== 'undefined') {
+                html += '<p>[OK] OptimizerFactory available</p>';
+                if (typeof window.OptimizerFactory.getAvailableAlgorithms === 'function') {
+                    const available = window.OptimizerFactory.getAvailableAlgorithms();
+                    html += `<p>Available algorithms: ${available.length}</p>`;
+                    available.forEach(name => {
+                        html += `<p>  - ${name}</p>`;
+                    });
+                }
+            } else {
+                html += '<p>[MISSING] OptimizerFactory not found</p>';
+            }
+
+            // Test a few specific algorithms
+            html += '<h3>4. Algorithm Creation Tests:</h3>';
+            const testAlgorithms = ['Powell', 'LBFGSB', 'NelderMead', 'DifferentialEvolution'];
+
+            testAlgorithms.forEach(name => {
+                try {
+                    if (window.OptimizerFactory) {
+                        const optimizer = window.OptimizerFactory.create(name, x => x[0]*x[0], 10, 2);
+                        html += `<p>[OK] ${name}: Successfully created via factory</p>`;
+                    } else {
+                        html += `<p>[MISSING] ${name}: OptimizerFactory not available</p>`;
+                    }
+                } catch (error) {
+                    html += `<p>[ERROR] ${name}: Error - ${error.message}</p>`;
+                }
+            });
+
+            output.innerHTML = html;
+        }
+
+        // Run debug when page loads
+        window.addEventListener('load', () => {
+            setTimeout(debugModuleLoading, 1000); // Give modules time to load
+        });
+    </script>
+</body>
+</html>

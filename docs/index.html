@@ -34,13 +34,13 @@
             border-left: 4px solid var(--accent); margin: 24px 0; }
 
         .code-block { background: var(--code-bg); border: 1px solid var(--border);
-            padding: 20px; font-family: 'Courier New', monospace; font-size: 0.9rem;
+            padding: 20px; font-family: 'Times New Roman', Times, serif; font-size: 0.9rem;
             overflow-x: auto; margin: 20px 0; }
 
         .algorithm-list { background: var(--section-bg); border: 1px solid var(--border);
             padding: 16px; margin: 16px 0; }
         .algorithm-list summary { font-weight: 600; cursor: pointer; }
-        .algorithm-list .methods { margin-top: 12px; font-family: 'Courier New', monospace;
+        .algorithm-list .methods { margin-top: 12px; font-family: 'Times New Roman', Times, serif;
             font-size: 0.85rem; line-height: 1.5; }
         .algorithm-list code { background: #e8f4f8; padding: 2px 6px; margin: 2px;
             border-radius: 3px; }
@@ -115,7 +115,8 @@
 
         <div style="text-align: center; margin: 8px 0; padding: 4px;">
             <a href="contest.html" class="btn" style="margin: 0 10px; padding: 6px 12px;">Run Algorithm Contest</a>
-            <a href="js/modules/index.js" class="btn btn-secondary" style="margin: 0 10px; padding: 6px 12px;">JavaScript Source Code</a>
+            <a href="https://github.com/microprediction/humpday/tree/main/docs/js/modules" class="btn btn-secondary" style="margin: 0 10px; padding: 6px 12px;" target="_blank">JavaScript Modular Source</a>
+            <a href="test-modular.html" class="btn btn-secondary" style="margin: 0 10px; padding: 6px 12px;">Test All Algorithms</a>
         </div>
 
         <section class="section">
@@ -175,116 +176,197 @@ print(f"Solution: {result.x}")  # [2.0, 3.0]</code></pre>
                     <tr>
                         <th>Algorithm</th>
                         <th>Type</th>
-                        <th>Python</th>
-                        <th>JavaScript</th>
-                        <th>Reference</th>
+                        <th>Python Implementation</th>
+                        <th>JavaScript Implementation</th>
+                        <th>Reference Paper</th>
                         <th>Documentation</th>
                     </tr>
                 </thead>
                 <tbody>
+                    <!-- PRIMA Algorithms (Trust Region Methods) -->
                     <tr>
                         <td><code>PRIMA_UOBYQA</code></td>
                         <td>Trust Region</td>
-                        <td><a href="https://github.com/microprediction/humpday/blob/main/humpday/optimizers/prima_algorithms.py#L15">prima_algorithms.py#L15</a></td>
-                        <td><a href="https://github.com/microprediction/humpday/blob/main/docs/js/modules/prima-algorithms.js#L18">prima-algorithms.js#L18</a></td>
-                        <td><a href="https://www.optimization-online.org/DB_HTML/2009/12/2490.html">Powell (2009)</a></td>
+                        <td><a href="https://github.com/microprediction/humpday/blob/main/humpday/optimizers/prima_algorithms.py#L16" target="_blank">prima_algorithms.py#L16</a></td>
+                        <td><a href="https://github.com/microprediction/humpday/blob/main/docs/js/modules/prima-algorithms.js#L72" target="_blank">prima-algorithms.js#L72</a></td>
+                        <td><a href="https://doi.org/10.1007/s101070100290" target="_blank">Powell (2002)</a></td>
                         <td><a href="algorithms/uobyqa.html">View →</a></td>
                     </tr>
                     <tr>
                         <td><code>PRIMA_NEWUOA</code></td>
                         <td>Trust Region</td>
-                        <td><a href="https://github.com/microprediction/humpday/blob/main/humpday/optimizers/prima_algorithms.py#L84">prima_algorithms.py#L84</a></td>
-                        <td><a href="https://github.com/microprediction/humpday/blob/main/docs/js/modules/prima-algorithms.js#L87">prima-algorithms.js#L87</a></td>
-                        <td><a href="https://link.springer.com/article/10.1007/s10107-004-0560-5">Powell (2006)</a></td>
+                        <td><a href="https://github.com/microprediction/humpday/blob/main/humpday/optimizers/prima_algorithms.py#L84" target="_blank">prima_algorithms.py#L84</a></td>
+                        <td><a href="https://github.com/microprediction/humpday/blob/main/docs/js/modules/prima-algorithms.js#L320" target="_blank">prima-algorithms.js#L320</a></td>
+                        <td><a href="https://www.damtp.cam.ac.uk/user/na/NA_papers/NA2004_08.pdf" target="_blank">Powell (2006)</a></td>
                         <td><a href="algorithms/newuoa.html">View →</a></td>
                     </tr>
                     <tr>
                         <td><code>PRIMA_BOBYQA</code></td>
                         <td>Trust Region</td>
-                        <td><a href="https://github.com/microprediction/humpday/blob/main/humpday/optimizers/prima_algorithms.py#L155">prima_algorithms.py#L155</a></td>
-                        <td><a href="https://github.com/microprediction/humpday/blob/main/docs/js/modules/prima-algorithms.js#L158">prima-algorithms.js#L158</a></td>
-                        <td><a href="https://www.damtp.cam.ac.uk/user/na/NA_papers/NA2009_06.pdf">Powell (2009)</a></td>
+                        <td><a href="https://github.com/microprediction/humpday/blob/main/humpday/optimizers/prima_algorithms.py#L148" target="_blank">prima_algorithms.py#L148</a></td>
+                        <td><a href="https://github.com/microprediction/humpday/blob/main/docs/js/modules/prima-algorithms.js#L580" target="_blank">prima-algorithms.js#L580</a></td>
+                        <td><a href="https://www.damtp.cam.ac.uk/user/na/NA_papers/NA2009_06.pdf" target="_blank">Powell (2009)</a></td>
                         <td><a href="algorithms/bobyqa.html">View →</a></td>
                     </tr>
+
+                    <!-- SciPy Algorithms (Classical Methods) -->
                     <tr>
                         <td><code>NelderMead</code></td>
                         <td>Direct Search</td>
-                        <td><a href="https://github.com/microprediction/humpday/blob/main/humpday/optimizers/scipy_algorithms.py#L18">scipy_algorithms.py#L18</a></td>
-                        <td><a href="https://github.com/microprediction/humpday/blob/main/docs/js/modules/scipy-algorithms.js#L18">scipy-algorithms.js#L18</a></td>
-                        <td><a href="https://academic.oup.com/comjnl/article/7/4/308/354237">Nelder & Mead (1965)</a></td>
+                        <td><a href="https://github.com/microprediction/humpday/blob/main/humpday/optimizers/scipy_algorithms.py#L17" target="_blank">scipy_algorithms.py#L17</a></td>
+                        <td><a href="https://github.com/microprediction/humpday/blob/main/docs/js/modules/scipy-algorithms.js#L18" target="_blank">scipy-algorithms.js#L18</a></td>
+                        <td><a href="https://doi.org/10.1093/comjnl/7.4.308" target="_blank">Nelder & Mead (1965)</a></td>
                         <td><a href="algorithms/nelder-mead.html">View →</a></td>
                     </tr>
                     <tr>
                         <td><code>Powell</code></td>
                         <td>Direct Search</td>
-                        <td><a href="https://github.com/microprediction/humpday/blob/main/humpday/optimizers/scipy_algorithms.py#L161">scipy_algorithms.py#L161</a></td>
-                        <td><a href="https://github.com/microprediction/humpday/blob/main/docs/js/modules/scipy-algorithms.js#L161">scipy-algorithms.js#L161</a></td>
-                        <td><a href="https://doi.org/10.1093/comjnl/7.2.155">Powell (1964)</a></td>
+                        <td><a href="https://github.com/microprediction/humpday/blob/main/humpday/optimizers/scipy_algorithms.py#L83" target="_blank">scipy_algorithms.py#L83</a></td>
+                        <td><a href="https://github.com/microprediction/humpday/blob/main/docs/js/modules/scipy-algorithms.js#L145" target="_blank">scipy-algorithms.js#L145</a></td>
+                        <td><a href="https://doi.org/10.1093/comjnl/7.2.155" target="_blank">Powell (1964)</a></td>
                         <td><a href="algorithms/powell.html">View →</a></td>
                     </tr>
                     <tr>
                         <td><code>LBFGSB</code></td>
                         <td>Quasi-Newton</td>
-                        <td><a href="https://github.com/microprediction/humpday/blob/main/humpday/optimizers/scipy_algorithms.py#L280">scipy_algorithms.py#L280</a></td>
-                        <td><a href="https://github.com/microprediction/humpday/blob/main/docs/js/modules/scipy-algorithms.js#L280">scipy-algorithms.js#L280</a></td>
-                        <td><a href="https://doi.org/10.1145/279232.279236">Byrd et al. (1995)</a></td>
+                        <td><a href="https://github.com/microprediction/humpday/blob/main/humpday/optimizers/scipy_algorithms.py#L149" target="_blank">scipy_algorithms.py#L149</a></td>
+                        <td><a href="https://github.com/microprediction/humpday/blob/main/docs/js/modules/scipy-algorithms.js#L209" target="_blank">scipy-algorithms.js#L209</a></td>
+                        <td><a href="https://doi.org/10.1145/279232.279236" target="_blank">Byrd et al. (1995)</a></td>
                         <td><a href="algorithms/lbfgsb.html">View →</a></td>
                     </tr>
+
+                    <!-- Evolutionary Algorithms -->
                     <tr>
                         <td><code>DifferentialEvolution</code></td>
                         <td>Evolutionary</td>
-                        <td><a href="https://github.com/microprediction/humpday/blob/main/humpday/optimizers/evolutionary_algorithms.py#L15">evolutionary_algorithms.py#L15</a></td>
-                        <td><a href="https://github.com/microprediction/humpday/blob/main/docs/js/modules/evolutionary-algorithms.js#L15">evolutionary-algorithms.js#L15</a></td>
-                        <td><a href="https://link.springer.com/article/10.1023/A:1008202821328">Storn & Price (1997)</a></td>
+                        <td><a href="https://github.com/microprediction/humpday/blob/main/humpday/optimizers/evolutionary_algorithms.py#L15" target="_blank">evolutionary_algorithms.py#L15</a></td>
+                        <td><a href="https://github.com/microprediction/humpday/blob/main/docs/js/modules/evolutionary-algorithms.js#L16" target="_blank">evolutionary-algorithms.js#L16</a></td>
+                        <td><a href="https://doi.org/10.1023/A:1008202821328" target="_blank">Storn & Price (1997)</a></td>
                         <td><a href="algorithms/differential-evolution.html">View →</a></td>
                     </tr>
                     <tr>
                         <td><code>ParticleSwarm</code></td>
                         <td>Swarm Intelligence</td>
-                        <td><a href="https://github.com/microprediction/humpday/blob/main/humpday/optimizers/evolutionary_algorithms.py#L79">evolutionary_algorithms.py#L79</a></td>
-                        <td><a href="https://github.com/microprediction/humpday/blob/main/docs/js/modules/evolutionary-algorithms.js#L79">evolutionary-algorithms.js#L79</a></td>
-                        <td><a href="https://doi.org/10.1109/ICNN.1995.488968">Kennedy & Eberhart (1995)</a></td>
+                        <td><a href="https://github.com/microprediction/humpday/blob/main/humpday/optimizers/evolutionary_algorithms.py#L79" target="_blank">evolutionary_algorithms.py#L79</a></td>
+                        <td><a href="https://github.com/microprediction/humpday/blob/main/docs/js/modules/evolutionary-algorithms.js#L80" target="_blank">evolutionary-algorithms.js#L80</a></td>
+                        <td><a href="https://doi.org/10.1109/ICNN.1995.488968" target="_blank">Kennedy & Eberhart (1995)</a></td>
                         <td><a href="algorithms/particle-swarm.html">View →</a></td>
                     </tr>
                     <tr>
                         <td><code>SimulatedAnnealing</code></td>
                         <td>Metaheuristic</td>
-                        <td><a href="https://github.com/microprediction/humpday/blob/main/humpday/optimizers/evolutionary_algorithms.py#L190">evolutionary_algorithms.py#L190</a></td>
-                        <td><a href="https://github.com/microprediction/humpday/blob/main/docs/js/modules/evolutionary-algorithms.js#L190">evolutionary-algorithms.js#L190</a></td>
-                        <td><a href="https://science.sciencemag.org/content/220/4598/671">Kirkpatrick et al. (1983)</a></td>
+                        <td><a href="https://github.com/microprediction/humpday/blob/main/humpday/optimizers/evolutionary_algorithms.py#L143" target="_blank">evolutionary_algorithms.py#L143</a></td>
+                        <td><a href="https://github.com/microprediction/humpday/blob/main/docs/js/modules/evolutionary-algorithms.js#L144" target="_blank">evolutionary-algorithms.js#L144</a></td>
+                        <td><a href="https://doi.org/10.1126/science.220.4598.671" target="_blank">Kirkpatrick et al. (1983)</a></td>
                         <td><a href="algorithms/simulated-annealing.html">View →</a></td>
                     </tr>
                     <tr>
                         <td><code>GeneticAlgorithm</code></td>
                         <td>Evolutionary</td>
-                        <td><a href="https://github.com/microprediction/humpday/blob/main/humpday/optimizers/evolutionary_algorithms.py#L305">evolutionary_algorithms.py#L305</a></td>
-                        <td><a href="https://github.com/microprediction/humpday/blob/main/docs/js/modules/evolutionary-algorithms.js#L305">evolutionary-algorithms.js#L305</a></td>
-                        <td><a href="https://mitpress.mit.edu/books/adaptation-natural-and-artificial-systems">Holland (1992)</a></td>
+                        <td><a href="https://github.com/microprediction/humpday/blob/main/humpday/optimizers/evolutionary_algorithms.py#L207" target="_blank">evolutionary_algorithms.py#L207</a></td>
+                        <td><a href="https://github.com/microprediction/humpday/blob/main/docs/js/modules/evolutionary-algorithms.js#L208" target="_blank">evolutionary-algorithms.js#L208</a></td>
+                        <td><a href="https://doi.org/10.7551/mitpress/1090.001.0001" target="_blank">Holland (1992)</a></td>
                         <td><a href="algorithms/genetic-algorithm.html">View →</a></td>
                     </tr>
                     <tr>
                         <td><code>RandomSearch</code></td>
                         <td>Sampling</td>
-                        <td><a href="https://github.com/microprediction/humpday/blob/main/humpday/optimizers/evolutionary_algorithms.py#L382">evolutionary_algorithms.py#L382</a></td>
-                        <td><a href="https://github.com/microprediction/humpday/blob/main/docs/js/modules/evolutionary-algorithms.js#L382">evolutionary-algorithms.js#L382</a></td>
-                        <td><a href="https://www.jmlr.org/papers/v13/bergstra12a.html">Bergstra & Bengio (2012)</a></td>
+                        <td><a href="https://github.com/microprediction/humpday/blob/main/humpday/optimizers/evolutionary_algorithms.py#L271" target="_blank">evolutionary_algorithms.py#L271</a></td>
+                        <td><a href="https://github.com/microprediction/humpday/blob/main/docs/js/modules/evolutionary-algorithms.js#L272" target="_blank">evolutionary-algorithms.js#L272</a></td>
+                        <td><a href="https://jmlr.org/papers/v13/bergstra12a.html" target="_blank">Bergstra & Bengio (2012)</a></td>
                         <td><a href="algorithms/random-search.html">View →</a></td>
                     </tr>
+
+                    <!-- Advanced Evolutionary/Metaheuristic Algorithms -->
                     <tr>
-                        <td><code>HillClimbing</code></td>
-                        <td>Local Search</td>
-                        <td><a href="https://github.com/microprediction/humpday/blob/main/humpday/optimizers/alloptimizers.py#L17">alloptimizers.py#L17</a></td>
-                        <td><em>Pending modularization</em></td>
-                        <td><a href="https://doi.org/10.1145/321033.321034">Russell & Norvig (1995)</a></td>
-                        <td><a href="algorithms/hill-climbing.html">View →</a></td>
+                        <td><code>BayesianOpt</code></td>
+                        <td>Bayesian</td>
+                        <td><em>Not in Python core</em></td>
+                        <td><a href="https://github.com/microprediction/humpday/blob/main/docs/js/modules/evolutionary-algorithms.js#L296" target="_blank">evolutionary-algorithms.js#L296</a></td>
+                        <td><a href="https://arxiv.org/abs/1012.2599" target="_blank">Brochu et al. (2010)</a></td>
+                        <td><a href="algorithms/bayesian-optimization.html">View →</a></td>
+                    </tr>
+                    <tr>
+                        <td><code>CMAEvolutionStrategy</code></td>
+                        <td>Evolutionary</td>
+                        <td><em>Not in Python core</em></td>
+                        <td><a href="https://github.com/microprediction/humpday/blob/main/docs/js/modules/evolutionary-algorithms.js#L408" target="_blank">evolutionary-algorithms.js#L408</a></td>
+                        <td><a href="https://arxiv.org/abs/1604.00772" target="_blank">Hansen (2016)</a></td>
+                        <td><a href="algorithms/cma-evolution-strategy.html">View →</a></td>
+                    </tr>
+                    <tr>
+                        <td><code>TabuSearch</code></td>
+                        <td>Metaheuristic</td>
+                        <td><em>Not in Python core</em></td>
+                        <td><a href="https://github.com/microprediction/humpday/blob/main/docs/js/modules/evolutionary-algorithms.js#L463" target="_blank">evolutionary-algorithms.js#L463</a></td>
+                        <td><a href="https://doi.org/10.1287/ijoc.1.3.190" target="_blank">Glover (1989)</a></td>
+                        <td><a href="algorithms/tabu-search.html">View →</a></td>
+                    </tr>
+                    <tr>
+                        <td><code>FireflyAlgorithm</code></td>
+                        <td>Bio-inspired</td>
+                        <td><em>Not in Python core</em></td>
+                        <td><a href="https://github.com/microprediction/humpday/blob/main/docs/js/modules/evolutionary-algorithms.js#L525" target="_blank">evolutionary-algorithms.js#L525</a></td>
+                        <td><a href="https://doi.org/10.1007/978-3-642-04944-6_14" target="_blank">Yang (2008)</a></td>
+                        <td><a href="algorithms/firefly-algorithm.html">View →</a></td>
+                    </tr>
+                    <tr>
+                        <td><code>AntColonyOpt</code></td>
+                        <td>Swarm Intelligence</td>
+                        <td><em>Not in Python core</em></td>
+                        <td><a href="https://github.com/microprediction/humpday/blob/main/docs/js/modules/evolutionary-algorithms.js#L582" target="_blank">evolutionary-algorithms.js#L582</a></td>
+                        <td><a href="https://doi.org/10.1109/3477.484436" target="_blank">Dorigo et al. (1996)</a></td>
+                        <td><a href="algorithms/ant-colony-optimization.html">View →</a></td>
                     </tr>
                     <tr>
                         <td><code>HarmonySearch</code></td>
                         <td>Metaheuristic</td>
-                        <td><a href="https://github.com/microprediction/humpday/blob/main/humpday/optimizers/alloptimizers.py#L20">alloptimizers.py#L20</a></td>
-                        <td><em>Pending modularization</em></td>
-                        <td><a href="https://link.springer.com/article/10.1007/s001840050046">Geem et al. (2001)</a></td>
+                        <td><a href="https://github.com/microprediction/humpday/blob/main/humpday/optimizers/alloptimizers.py#L38" target="_blank">alloptimizers.py#L38</a></td>
+                        <td><a href="https://github.com/microprediction/humpday/blob/main/docs/js/modules/evolutionary-algorithms.js#L654" target="_blank">evolutionary-algorithms.js#L654</a></td>
+                        <td><a href="https://doi.org/10.1177/003754970107600201" target="_blank">Geem et al. (2001)</a></td>
                         <td><a href="algorithms/harmony-search.html">View →</a></td>
+                    </tr>
+                    <tr>
+                        <td><code>EvolutionStrategy</code></td>
+                        <td>Evolutionary</td>
+                        <td><em>Not in Python core</em></td>
+                        <td><a href="https://github.com/microprediction/humpday/blob/main/docs/js/modules/evolutionary-algorithms.js#L719" target="_blank">evolutionary-algorithms.js#L719</a></td>
+                        <td><a href="https://doi.org/10.1007/978-3-662-43505-2_44" target="_blank">Beyer & Schwefel (2002)</a></td>
+                        <td><a href="algorithms/evolution-strategy.html">View →</a></td>
+                    </tr>
+
+                    <!-- Search Algorithms -->
+                    <tr>
+                        <td><code>AdaptiveRandomSearch</code></td>
+                        <td>Adaptive Search</td>
+                        <td><em>Not in Python core</em></td>
+                        <td><a href="https://github.com/microprediction/humpday/blob/main/docs/js/modules/search-algorithms.js#L16" target="_blank">search-algorithms.js#L16</a></td>
+                        <td><a href="https://doi.org/10.1007/BF01581033" target="_blank">Schumer & Steiglitz (1968)</a></td>
+                        <td><a href="algorithms/adaptive-random-search.html">View →</a></td>
+                    </tr>
+                    <tr>
+                        <td><code>CoordinateDescent</code></td>
+                        <td>Local Search</td>
+                        <td><em>Not in Python core</em></td>
+                        <td><a href="https://github.com/microprediction/humpday/blob/main/docs/js/modules/search-algorithms.js#L69" target="_blank">search-algorithms.js#L69</a></td>
+                        <td><a href="https://doi.org/10.1007/s10107-015-0892-3" target="_blank">Wright (2015)</a></td>
+                        <td><a href="algorithms/coordinate-descent.html">View →</a></td>
+                    </tr>
+                    <tr>
+                        <td><code>PatternSearch</code></td>
+                        <td>Direct Search</td>
+                        <td><em>Not in Python core</em></td>
+                        <td><a href="https://github.com/microprediction/humpday/blob/main/docs/js/modules/search-algorithms.js#L129" target="_blank">search-algorithms.js#L129</a></td>
+                        <td><a href="https://doi.org/10.1137/S1052623493250780" target="_blank">Torczon (1997)</a></td>
+                        <td><a href="algorithms/pattern-search.html">View →</a></td>
+                    </tr>
+                    <tr>
+                        <td><code>HillClimbing</code></td>
+                        <td>Local Search</td>
+                        <td><a href="https://github.com/microprediction/humpday/blob/main/humpday/optimizers/alloptimizers.py#L37" target="_blank">alloptimizers.py#L37</a></td>
+                        <td><a href="https://github.com/microprediction/humpday/blob/main/docs/js/modules/search-algorithms.js#L200" target="_blank">search-algorithms.js#L200</a></td>
+                        <td><a href="https://doi.org/10.1007/s00521-016-2328-2" target="_blank">Russell & Norvig (1995)</a></td>
+                        <td><a href="algorithms/hill-climbing.html">View →</a></td>
                     </tr>
                 </tbody>
             </table>
@@ -326,9 +408,11 @@ print(f"Solution: {result.x}")  # [2.0, 3.0]</code></pre>
 
     <footer>
         <div class="container">
-            <p><a href="https://github.com/microprediction/humpday">Source Code</a> |
-               <a href="https://pypi.org/project/humpday/">PyPI Package</a> |
-               <a href="contest.html">Algorithm Contest</a></p>
+            <p><a href="https://github.com/microprediction/humpday" target="_blank">Python Source Code</a> |
+               <a href="https://github.com/microprediction/humpday/tree/main/docs/js/modules" target="_blank">JavaScript Source Code</a> |
+               <a href="https://pypi.org/project/humpday/" target="_blank">PyPI Package</a> |
+               <a href="contest.html">Algorithm Contest</a> |
+               <a href="test-modular.html">Test Suite</a></p>
             <p>&copy; 2024 | MIT License</p>
         </div>
     </footer>
