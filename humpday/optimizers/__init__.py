@@ -40,11 +40,15 @@ from .scipy_algorithms import LBFGSB, NelderMead, Powell
 
 __all__ = [
     # Base class
-    'BaseOptimizer',
+    "BaseOptimizer",
     # PRIMA algorithms
-    'PRIMA_UOBYQA', 'PRIMA_NEWUOA', 'PRIMA_BOBYQA',
+    "PRIMA_UOBYQA",
+    "PRIMA_NEWUOA",
+    "PRIMA_BOBYQA",
     # SciPy algorithms
-    'NelderMead', 'Powell', 'LBFGSB',
+    "NelderMead",
+    "Powell",
+    "LBFGSB",
     # Evolutionary algorithms
-    'DifferentialEvolution',
+    "DifferentialEvolution",
 ]

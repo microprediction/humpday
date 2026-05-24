@@ -60,9 +60,7 @@ class PRIMA_UOBYQA(BaseOptimizer):
                 XPT[k] = xbase.copy()
                 coord_idx = k - n - 1
                 if coord_idx < n:
-                    XPT[k][coord_idx] = np.clip(
-                        xbase[coord_idx] - rho, 0, 1
-                    )
+                    XPT[k][coord_idx] = np.clip(xbase[coord_idx] - rho, 0, 1)
             else:
                 # Random directions with better distribution
                 # Use quasi-random sampling for better space filling
@@ -85,8 +83,10 @@ class PRIMA_UOBYQA(BaseOptimizer):
                 # Build quadratic model using interpolation points
                 if len(XPT) > 1:
                     # Simple quadratic approximation step
-                    best_idx = np.argmin(FVAL[:len(XPT)])
-                    second_best_idx = np.argsort(FVAL[:len(XPT)])[1] if len(XPT) > 1 else 0
+                    best_idx = np.argmin(FVAL[: len(XPT)])
+                    second_best_idx = (
+                        np.argsort(FVAL[: len(XPT)])[1] if len(XPT) > 1 else 0
+                    )
 
                     if best_idx != second_best_idx:
                         # Direction from best to second best
