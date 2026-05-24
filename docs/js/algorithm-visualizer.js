@@ -202,8 +202,8 @@ class AlgorithmVisualizer {
             0.1,
             1000
         );
-        // Set camera to tilted perspective matching desired view
-        this.camera.position.set(4, 7, 3);
+        // Set camera to show full surface topology from elevated perspective
+        this.camera.position.set(7, 5, 7);
         this.camera.lookAt(0, 0, 0);
 
         // Renderer
