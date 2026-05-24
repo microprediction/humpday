@@ -532,7 +532,7 @@ class BenchmarkSuite:
                     problem = self.problems[problem_name]
                     print(f"  • {problem_name} - {problem.metadata.difficulty}")
 
-        print(f"\nDimensions available: {sorted(set(p.metadata.dimension for p in self.problems.values()))}")
+        print(f"\nDimensions available: {sorted({p.metadata.dimension for p in self.problems.values()})}")
 
 
 def main():
