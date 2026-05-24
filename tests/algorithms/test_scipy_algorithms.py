@@ -8,7 +8,7 @@ convergence behavior, and robustness across different problem types.
 import numpy as np
 import pytest
 
-from humpday.optimizers.scipy_algorithms import NelderMead, Powell, LBFGSB
+from humpday.optimizers.scipy_algorithms import LBFGSB, NelderMead, Powell
 
 
 class TestSciPyAlgorithms:
@@ -170,7 +170,7 @@ class TestSciPyAlgorithms:
             assert np.isfinite(best_value)
             assert optimizer.evaluations > 0
 
-        print(f"\nSciPy Algorithm Comparison on Beale function:")
+        print("\nSciPy Algorithm Comparison on Beale function:")
         for name, result in results.items():
             print(f"  {name:12}: {result['value']:8.4f} ({result['evaluations']} evals)")
 

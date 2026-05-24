@@ -17,10 +17,11 @@ Author: HumpDay Statistical Validation Module
 Date: 2026-05-23
 """
 
-import numpy as np
-from typing import List, Tuple, Dict, Any, Optional
-from dataclasses import dataclass
 import warnings
+from dataclasses import dataclass
+from typing import Any, Dict, List, Optional, Tuple
+
+import numpy as np
 
 # Handle optional scipy import
 try:
@@ -500,8 +501,9 @@ def create_convergence_plots(convergence_data: Dict[str, List[List[float]]],
     NOTE: This function requires matplotlib which may not be available in all environments.
     """
     try:
-        import matplotlib.pyplot as plt
         from pathlib import Path
+
+        import matplotlib.pyplot as plt
         MATPLOTLIB_AVAILABLE = True
 
         output_path = Path(output_dir)
@@ -571,7 +573,7 @@ def main():
         conv_a.tolist(), conv_b.tolist(), "Algorithm_A", "Algorithm_B"
     )
 
-    print(f"Convergence Analysis:")
+    print("Convergence Analysis:")
     print(f"  Rate A: {conv_analysis.convergence_rate_a:.4f}")
     print(f"  Rate B: {conv_analysis.convergence_rate_b:.4f}")
     print(f"  Similarity: {conv_analysis.rate_similarity:.4f}")
@@ -586,13 +588,13 @@ def main():
         results_a, results_b, "Algorithm_A", "Algorithm_B"
     )
 
-    print(f"\nDistribution Comparison:")
+    print("\nDistribution Comparison:")
     print(f"  Mean difference: {dist_comparison.mean_difference:.4f}")
     print(f"  Variance ratio: {dist_comparison.variance_ratio:.4f}")
     print(f"  KS p-value: {dist_comparison.ks_pvalue:.4f}")
     print(f"  Equivalent: {dist_comparison.equivalent}")
 
-    print(f"\n✅ Statistical validation module working correctly")
+    print("\n✅ Statistical validation module working correctly")
 
 
 if __name__ == "__main__":

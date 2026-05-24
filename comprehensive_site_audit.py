@@ -4,17 +4,19 @@ Comprehensive HumpDay Site Audit & Testing Suite
 Tests functionality, performance, links, and prepares style consistency report.
 """
 
-import os
-import sys
-import subprocess
-import json
-import time
-import re
-from pathlib import Path
-import requests
-from urllib.parse import urljoin, urlparse
 import concurrent.futures
+import json
+import os
+import re
+import subprocess
+import sys
+import time
 from datetime import datetime
+from pathlib import Path
+from urllib.parse import urljoin, urlparse
+
+import requests
+
 
 class ComprehensiveSiteAuditor:
     def __init__(self):
@@ -40,8 +42,9 @@ class ComprehensiveSiteAuditor:
 
         try:
             sys.path.insert(0, str(self.base_path))
-            from humpday.optimizers.alloptimizers import PURE_OPTIMIZERS, get_optimizer
             import numpy as np
+
+            from humpday.optimizers.alloptimizers import PURE_OPTIMIZERS, get_optimizer
 
             test_functions = {
                 'sphere': lambda x: sum(xi**2 for xi in x),

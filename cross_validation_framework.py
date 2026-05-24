@@ -16,14 +16,14 @@ Author: HumpDay Cross-Validation Framework
 Date: 2026-05-23
 """
 
-import sys
 import json
+import sys
 import time
 import warnings
-from pathlib import Path
-from typing import Dict, List, Tuple, Any, Optional, Union, Callable
-from dataclasses import dataclass, field
 from collections import defaultdict
+from dataclasses import dataclass, field
+from pathlib import Path
+from typing import Any, Callable, Dict, List, Optional, Tuple, Union
 
 import numpy as np
 
@@ -40,9 +40,9 @@ warnings.filterwarnings("ignore", category=UserWarning)
 warnings.filterwarnings("ignore", category=RuntimeWarning)
 
 # Import HumpDay components
-from humpday.optimizers.prima_algorithms import PRIMA_UOBYQA, PRIMA_NEWUOA, PRIMA_BOBYQA
-from humpday.optimizers.scipy_algorithms import NelderMead, Powell, LBFGSB
 from humpday.optimizers.alloptimizers import PURE_OPTIMIZERS
+from humpday.optimizers.prima_algorithms import PRIMA_BOBYQA, PRIMA_NEWUOA, PRIMA_UOBYQA
+from humpday.optimizers.scipy_algorithms import LBFGSB, NelderMead, Powell
 
 
 @dataclass
@@ -368,7 +368,7 @@ class CrossValidationFramework:
             'PRIMA_UOBYQA': ReferenceImplementations.pdfo_prima_uobyqa,
         }
 
-        print(f"🔬 Cross-Validation Framework initialized")
+        print("🔬 Cross-Validation Framework initialized")
         print(f"📊 {len(self.benchmarks)} benchmark problems loaded")
         print(f"🔢 {len(self.python_algorithms)} Python algorithms configured")
         print(f"📋 Results will be saved to: {self.output_dir}")
@@ -992,14 +992,14 @@ class CrossValidationFramework:
         passed_tests = sum(1 for r in self.results if r.passed)
         pass_rate = (passed_tests / total_tests * 100) if total_tests > 0 else 0
 
-        print(f"\n🎯 OVERALL VALIDATION SUMMARY")
+        print("\n🎯 OVERALL VALIDATION SUMMARY")
         print(f"   Total Tests: {total_tests}")
         print(f"   Passed: {passed_tests}")
         print(f"   Failed: {total_tests - passed_tests}")
         print(f"   Pass Rate: {pass_rate:.1f}%")
 
         # Test type breakdown
-        print(f"\n📊 RESULTS BY TEST TYPE")
+        print("\n📊 RESULTS BY TEST TYPE")
         for test_type, results_list in by_test_type.items():
             type_passed = sum(1 for r in results_list if r.passed)
             type_total = len(results_list)
@@ -1007,7 +1007,7 @@ class CrossValidationFramework:
             print(f"   {test_type}: {type_passed}/{type_total} ({type_rate:.1f}%)")
 
         # Algorithm breakdown
-        print(f"\n🔢 RESULTS BY ALGORITHM")
+        print("\n🔢 RESULTS BY ALGORITHM")
         for alg_name, results_list in by_algorithm.items():
             alg_passed = sum(1 for r in results_list if r.passed)
             alg_total = len(results_list)
@@ -1078,7 +1078,7 @@ class CrossValidationFramework:
         if failed_algorithms:
             recommendations.append(f"🔧 Review implementations: {', '.join(failed_algorithms)}")
 
-        print(f"\n🎯 RECOMMENDATIONS")
+        print("\n🎯 RECOMMENDATIONS")
         for rec in recommendations:
             print(f"   {rec}")
 
@@ -1133,7 +1133,7 @@ def main():
         n_runs=5       # Multiple runs for statistical significance
     )
 
-    print(f"\n🎉 VALIDATION COMPLETE!")
+    print("\n🎉 VALIDATION COMPLETE!")
     print(f"Results saved to: {framework.output_dir}")
 
     return report

@@ -8,14 +8,14 @@ with focused, maintainable modules for better code organization and readability.
 # Base class
 from .base import BaseOptimizer
 
-# PRIMA algorithms (state-of-the-art derivative-free methods)
-from .prima_algorithms import PRIMA_UOBYQA, PRIMA_NEWUOA, PRIMA_BOBYQA
-
-# SciPy-based classical methods
-from .scipy_algorithms import NelderMead, Powell, LBFGSB
-
 # Evolutionary algorithms
 from .evolutionary_algorithms import DifferentialEvolution
+
+# PRIMA algorithms (state-of-the-art derivative-free methods)
+from .prima_algorithms import PRIMA_BOBYQA, PRIMA_NEWUOA, PRIMA_UOBYQA
+
+# SciPy-based classical methods
+from .scipy_algorithms import LBFGSB, NelderMead, Powell
 
 # NOTE: Additional modules to be created:
 # - swarm_algorithms.py (ParticleSwarm, AntColonyOpt, FireflyAlgorithm)
