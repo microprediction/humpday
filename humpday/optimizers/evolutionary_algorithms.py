@@ -238,64 +238,156 @@ class RandomSearch(BaseOptimizer):
 
 
 class BayesianOpt(BaseOptimizer):
-    """Simplified Bayesian Optimization."""
+    """Bayesian Optimization with Gaussian Process and Expected Improvement."""
+
+    def __init__(self, objective, n_trials, n_dim):
+        super().__init__(objective, n_trials, n_dim)
+        self.X_observed = []
+        self.y_observed = []
+        self.length_scale = 0.2
+        self.signal_variance = 1.0
+        self.noise_variance = 1e-6
 
     def optimize(self) -> Tuple[float, np.ndarray]:
-        # Random sampling phase
-        X_samples = []
-        y_samples = []
+        # Initial random exploration
+        n_initial = min(5, max(2, self.n_dim))
 
-        # Initial random samples
-        n_initial = min(10, self.n_trials // 3)
         for _ in range(n_initial):
             if self.evaluations >= self.n_trials:
                 break
             x = np.random.random(self.n_dim)
             y = self.evaluate(x)
-            X_samples.append(x)
-            y_samples.append(y)
+            self.X_observed.append(x)
+            self.y_observed.append(y)
 
-        # Acquisition phase (simplified - just sample around best points)
+        self.X_observed = np.array(self.X_observed)
+        self.y_observed = np.array(self.y_observed)
+
+        # Bayesian optimization loop
         while self.evaluations < self.n_trials:
-            if len(y_samples) == 0:
-                break
-
-            # Find best points
-            best_indices = np.argsort(y_samples)[: min(3, len(y_samples))]
-
-            # Sample around best points with decreasing variance
-            variance = max(0.05, 0.3 * (1 - self.evaluations / self.n_trials))
-
-            for idx in best_indices:
-                if self.evaluations >= self.n_trials:
-                    break
-
-                x_best = X_samples[idx]
-                x_new = x_best + np.random.normal(0, variance, self.n_dim)
-                x_new = np.clip(x_new, 0, 1)
-
-                y_new = self.evaluate(x_new)
-                X_samples.append(x_new)
-                y_samples.append(y_new)
+            try:
+                x_next = self._optimize_acquisition()
+                y_next = self.evaluate(x_next)
+                self.X_observed = np.vstack([self.X_observed, x_next])
+                self.y_observed = np.append(self.y_observed, y_next)
+            except Exception:
+                # Fallback to random sampling
+                x_next = np.random.random(self.n_dim)
+                y_next = self.evaluate(x_next)
+                self.X_observed = np.vstack([self.X_observed, x_next])
+                self.y_observed = np.append(self.y_observed, y_next)
 
         return self.best_value, self.best_x
 
+    def _kernel(self, X1, X2):
+        """RBF kernel."""
+        if X1.ndim == 1:
+            X1 = X1.reshape(1, -1)
+        if X2.ndim == 1:
+            X2 = X2.reshape(1, -1)
+        sqdist = np.sum(X1**2, axis=1).reshape(-1, 1) + np.sum(X2**2, axis=1) - 2 * np.dot(X1, X2.T)
+        return self.signal_variance * np.exp(-0.5 * sqdist / self.length_scale**2)
+
+    def _gp_predict(self, X_test):
+        """Gaussian Process prediction."""
+        if X_test.ndim == 1:
+            X_test = X_test.reshape(1, -1)
+
+        K = self._kernel(self.X_observed, self.X_observed)
+        K += self.noise_variance * np.eye(len(self.X_observed))
+        K_s = self._kernel(self.X_observed, X_test)
+        K_ss = self._kernel(X_test, X_test)
+
+        try:
+            from scipy.linalg import cholesky, solve
+            L = cholesky(K, lower=True)
+            alpha = solve(L, self.y_observed)
+            alpha = solve(L.T, alpha)
+            mu = K_s.T @ alpha
+            v = solve(L, K_s)
+            var = K_ss - v.T @ v
+            var = np.maximum(var, 1e-8)
+        except:
+            try:
+                K_inv = np.linalg.pinv(K)
+                mu = K_s.T @ K_inv @ self.y_observed
+                var = K_ss - K_s.T @ K_inv @ K_s
+                var = np.maximum(var, 1e-8)
+            except:
+                mu = np.full(len(X_test), np.mean(self.y_observed))
+                var = np.full(len(X_test), np.var(self.y_observed))
+
+        return mu.flatten(), np.sqrt(np.diag(var))
+
+    def _expected_improvement(self, X):
+        """Expected Improvement acquisition."""
+        mu, sigma = self._gp_predict(X)
+        f_best = np.min(self.y_observed)
+        improvement = f_best - mu - 0.01
+        Z = improvement / sigma
+        ei = improvement * self._normal_cdf(Z) + sigma * self._normal_pdf(Z)
+        ei[sigma == 0] = 0.0
+        return ei
+
+    def _normal_cdf(self, x):
+        """Standard normal CDF approximation."""
+        return 0.5 * (1 + np.sign(x) * np.sqrt(1 - np.exp(-2 * x**2 / np.pi)))
+
+    def _normal_pdf(self, x):
+        """Standard normal PDF."""
+        return np.exp(-0.5 * x**2) / np.sqrt(2 * np.pi)
+
+    def _optimize_acquisition(self):
+        """Optimize acquisition function."""
+        best_x = None
+        best_ei = -np.inf
+
+        # Try multiple random starting points
+        for _ in range(min(10, max(5, 2 * self.n_dim))):
+            x = np.random.random(self.n_dim)
+            ei = self._expected_improvement(x.reshape(1, -1))[0]
+            if ei > best_ei:
+                best_ei = ei
+                best_x = x
+
+        return np.clip(best_x, 0, 1) if best_x is not None else np.random.random(self.n_dim)
+
 
 class CMAEvolutionStrategy(BaseOptimizer):
-    """Simplified CMA-ES algorithm."""
+    """CMA-ES with evolution paths and proper step-size adaptation."""
 
     def optimize(self) -> Tuple[float, np.ndarray]:
         n = self.n_dim
-        lambda_ = min(20, self.n_trials // 5)
-        mu = lambda_ // 2
+
+        # CMA-ES parameters (Hansen's recommended values)
+        lambda_ = min(50, 4 + int(3 * np.log(n)))  # Population size
+        mu = lambda_ // 2  # Number of parents
+        weights = np.log(mu + 1/2) - np.log(np.arange(1, mu + 1))
+        weights = weights / np.sum(weights)
+        mueff = 1 / np.sum(weights**2)  # Variance effective selection mass
+
+        # Adaptation parameters
+        cc = (4 + mueff/n) / (n + 4 + 2*mueff/n)  # Time constant for cumulation for C
+        cs = (mueff + 2) / (n + mueff + 5)  # Time constant for cumulation for sigma
+        c1 = 2 / ((n + 1.3)**2 + mueff)  # Learning rate for rank-one update
+        cmu = min(1 - c1, 2 * (mueff - 2 + 1/mueff) / ((n + 2)**2 + mueff))  # Learning rate for rank-mu update
+        damps = 1 + 2 * max(0, np.sqrt((mueff - 1)/(n + 1)) - 1) + cs  # Damping for sigma
 
         # Initialize
-        mean = np.random.random(n)
-        sigma = 0.3
-        C = np.eye(n)
+        mean = 0.5 * np.ones(n)  # Start at center of unit cube
+        sigma = 0.3  # Step size
+        C = np.eye(n)  # Covariance matrix
+        pc = np.zeros(n)  # Evolution path for C
+        ps = np.zeros(n)  # Evolution path for sigma
+        invsqrtC = np.eye(n)  # Inverse square root of C
 
-        while self.evaluations < self.n_trials:
-            # Generate population
+        generation = 0
+        max_generations = min(100, self.n_trials // lambda_)
+
+        while self.evaluations < self.n_trials and generation < max_generations:
+            generation += 1
+
+            # Generate and evaluate lambda offspring
             population = []
             fitness = []
 
@@ -303,28 +395,71 @@ class CMAEvolutionStrategy(BaseOptimizer):
                 if self.evaluations >= self.n_trials:
                     break
 
-                # Sample from multivariate normal
-                x = np.random.multivariate_normal(mean, sigma**2 * C)
-                x = np.clip(x, 0, 1)
+                # Sample from N(0, C)
+                z = np.random.multivariate_normal(np.zeros(n), C)
+                x = np.clip(mean + sigma * z, 0, 1)  # Enforce bounds
+
                 f = self.evaluate(x)
+                population.append((x, z, f))  # Store x, z, and fitness
 
-                population.append(x)
-                fitness.append(f)
-
-            if len(fitness) == 0:
+            if len(population) == 0:
                 break
 
-            # Selection and update
-            indices = np.argsort(fitness)[:mu]
-            selected = [population[i] for i in indices]
+            # Sort by fitness
+            population.sort(key=lambda p: p[2])
+            fitness = [p[2] for p in population]
 
-            # Update mean
-            mean = np.mean(selected, axis=0)
+            # Selection and recombination
+            old_mean = mean.copy()
+            mean = np.zeros(n)
+            for i in range(mu):
+                mean += weights[i] * population[i][0]
 
-            # Simple covariance update
-            if len(selected) > 1:
-                centered = np.array(selected) - mean
-                C = np.cov(centered, rowvar=False) + 1e-6 * np.eye(n)
+            # Update evolution paths
+            y = (mean - old_mean) / sigma  # Step in coordinate system
+
+            # Path for sigma (conjugate evolution path)
+            ps = (1 - cs) * ps + np.sqrt(cs * (2 - cs) * mueff) * invsqrtC @ y
+
+            # Heaviside function
+            hsig = 1 if np.linalg.norm(ps) / np.sqrt(1 - (1-cs)**(2*generation)) < 1.4 + 2/(n+1) else 0
+
+            # Path for C (cumulative evolution path)
+            pc = (1 - cc) * pc + hsig * np.sqrt(cc * (2 - cc) * mueff) * y
+
+            # Adapt covariance matrix C
+            if len(population) >= mu:
+                # Rank-mu update
+                weighted_diffs = np.zeros((n, n))
+                for i in range(mu):
+                    diff = (population[i][0] - old_mean) / sigma
+                    weighted_diffs += weights[i] * np.outer(diff, diff)
+
+                C = ((1 - c1 - cmu) * C +
+                     c1 * np.outer(pc, pc) +
+                     cmu * weighted_diffs)
+
+                # Ensure C remains positive definite
+                min_eig = np.min(np.real(np.linalg.eigvals(C)))
+                if min_eig < 1e-14:
+                    C += (1e-14 - min_eig) * np.eye(n)
+
+            # Update invsqrtC for next iteration
+            try:
+                # Eigendecomposition
+                D, B = np.linalg.eigh(C)
+                D = np.real(D)
+                D[D < 1e-14] = 1e-14  # Ensure positive eigenvalues
+                invsqrtC = B @ np.diag(1/np.sqrt(D)) @ B.T
+            except:
+                # Fallback if eigendecomposition fails
+                invsqrtC = np.eye(n)
+
+            # Adapt step size sigma
+            sigma = sigma * np.exp((cs/damps) * (np.linalg.norm(ps)/np.sqrt(n) - 1))
+
+            # Keep sigma reasonable for unit cube
+            sigma = max(min(sigma, 0.5), 1e-6)
 
         return self.best_value, self.best_x
 
