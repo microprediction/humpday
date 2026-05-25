@@ -171,9 +171,14 @@ def suggest_pure(n_dim, n_trials):
             "SimulatedAnnealing",
         ]
     else:
+        # n > 50. AdaptiveRandomSearch leads because it produces a monotone
+        # convergence curve on any objective with mild structure; plain
+        # RandomSearch is i.i.d. and only competitive when the surface is
+        # essentially structureless. RandomSearch is kept as #2 — a robust
+        # baseline when ARS's step adaptation stalls in a bad basin.
         return [
-            "RandomSearch",
             "AdaptiveRandomSearch",
+            "RandomSearch",
             "ParticleSwarm",
             "DifferentialEvolution",
             "HillClimbing",
