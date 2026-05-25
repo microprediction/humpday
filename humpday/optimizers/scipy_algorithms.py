@@ -60,10 +60,15 @@ class NelderMead(BaseOptimizer):
         sim = sim[ind]
         fsim = fsim[ind]
 
+        # SciPy tolerance parameters
+        xatol = 1e-4  # position tolerance
+        fatol = 1e-4  # function value tolerance
+
         # Main optimization loop (SciPy structure)
         while self.evaluations < self.n_trials:
-            # Convergence check (simplified)
-            if np.max(np.abs(fsim[0] - fsim[1:])) < 1e-8:
+            # SciPy convergence check - EXACT match to SciPy implementation
+            if (np.max(np.ravel(np.abs(sim[1:] - sim[0]))) <= xatol and
+                np.max(np.abs(fsim[0] - fsim[1:])) <= fatol):
                 break
 
             # Calculate centroid of best n points (SciPy approach)
@@ -208,7 +213,7 @@ class Powell(BaseOptimizer):
         return self.best_value, self.best_x
 
     def _linesearch_powell(self, p, xi, fval):
-        """Robust line search for Powell method."""
+        """Improved line search for Powell method - SciPy inspired with golden section."""
 
         def myfunc(alpha):
             x_trial = np.clip(p + alpha * xi, 0, 1)
@@ -220,83 +225,103 @@ class Powell(BaseOptimizer):
         if not np.any(xi):
             return fval, p, xi
 
-        # Calculate maximum safe alpha in both directions to stay in bounds
-        max_alpha_pos = 1.0
-        max_alpha_neg = 1.0
+        # Calculate safe alpha bounds to keep within [0,1] hypercube
+        alpha_bounds = []
+        for i in range(len(xi)):
+            if abs(xi[i]) > 1e-12:
+                # For constraint: 0 <= p[i] + alpha * xi[i] <= 1
+                bound1 = -p[i] / xi[i]
+                bound2 = (1.0 - p[i]) / xi[i]
+                alpha_bounds.extend([bound1, bound2])
 
-        for i, d in enumerate(xi):
-            if d > 0:
-                max_alpha_pos = min(max_alpha_pos, (1.0 - p[i]) / (d + 1e-12))
-                max_alpha_neg = min(max_alpha_neg, p[i] / (d + 1e-12))
-            elif d < 0:
-                max_alpha_pos = min(max_alpha_pos, p[i] / (-d + 1e-12))
-                max_alpha_neg = min(max_alpha_neg, (1.0 - p[i]) / (-d + 1e-12))
+        if not alpha_bounds:
+            return fval, p, xi
 
-        # Create test points in BOTH directions (this was the key bug!)
-        test_alphas = [0.0]
+        alpha_min = max(min(alpha_bounds), -1.0)
+        alpha_max = min(max(alpha_bounds), 1.0)
 
-        # Positive direction
-        if max_alpha_pos > 1e-12:
-            for i in range(1, 6):
-                alpha = max_alpha_pos * (i / 6.0)
-                test_alphas.append(alpha)
+        if alpha_max <= alpha_min:
+            return fval, p, xi
 
-        # Negative direction
-        if max_alpha_neg > 1e-12:
-            for i in range(1, 6):
-                alpha = -max_alpha_neg * (i / 6.0)
-                test_alphas.append(alpha)
+        # Golden section search
+        golden_ratio = (3.0 - np.sqrt(5.0)) / 2.0
+        tol = 1e-6
+        max_evals = min(10, self.n_trials - self.evaluations)
 
-        best_alpha = 0.0
-        best_f = fval
+        # Start with three points
+        if abs(alpha_min) < abs(alpha_max):
+            a, c = alpha_min, alpha_max
+        else:
+            a, c = alpha_max, alpha_min
 
-        for alpha in test_alphas:
-            if self.evaluations >= self.n_trials:
-                break
+        # Golden section method
+        b = a + golden_ratio * (c - a)
 
-            f_alpha = myfunc(alpha)
-            if f_alpha < best_f:
-                best_f = f_alpha
-                best_alpha = alpha
+        if self.evaluations >= self.n_trials:
+            return fval, p, xi
 
-        # Golden section refinement around best point
-        if best_alpha != 0 and self.evaluations < self.n_trials - 5:
-            # Refine around the best point found
-            delta = max(max_alpha_pos, max_alpha_neg) / 20.0
-            max_bound = max(max_alpha_pos, max_alpha_neg)
-            a = max(-max_bound, best_alpha - delta)
-            b = min(max_bound, best_alpha + delta)
+        fa = fval if abs(a) < 1e-10 else myfunc(a)
 
-            golden_ratio = (3.0 - np.sqrt(5.0)) / 2.0
+        if self.evaluations >= self.n_trials:
+            return fval, p, xi
 
-            for _ in range(5):  # Limited golden section iterations
-                if self.evaluations >= self.n_trials - 1:
-                    break
+        fc = myfunc(c)
 
-                if abs(b - a) < 1e-6:
-                    break
+        if self.evaluations >= self.n_trials:
+            return fval, p, xi
 
-                c = a + golden_ratio * (b - a)
-                d = a + (1 - golden_ratio) * (b - a)
+        fb = myfunc(b)
 
-                fc = myfunc(c)
-                if self.evaluations >= self.n_trials:
-                    break
+        # Find minimum of the three
+        best_alpha = a
+        best_f = fa
+        if fb < best_f:
+            best_alpha = b
+            best_f = fb
+        if fc < best_f:
+            best_alpha = c
+            best_f = fc
 
-                fd = myfunc(d)
+        # Refine with golden section if we have evaluations left
+        evaluations_used = 3
+        while (evaluations_used < max_evals and
+               abs(c - a) > tol and
+               self.evaluations < self.n_trials):
 
-                if fc < fd:
-                    b = d
-                    if fc < best_f:
-                        best_f = fc
-                        best_alpha = c
+            if c - b > b - a:
+                # Test point in larger interval
+                x = b + golden_ratio * (c - b)
+                fx = myfunc(x)
+                evaluations_used += 1
+
+                if fx < fb:
+                    # New minimum found
+                    a, b = b, x
+                    fa, fb = fb, fx
+                    if fx < best_f:
+                        best_alpha = x
+                        best_f = fx
                 else:
-                    a = c
-                    if fd < best_f:
-                        best_f = fd
-                        best_alpha = d
+                    c = x
+                    fc = fx
+            else:
+                # Test point in smaller interval
+                x = b - golden_ratio * (b - a)
+                fx = myfunc(x)
+                evaluations_used += 1
 
-        # Return result
+                if fx < fb:
+                    # New minimum found
+                    c, b = b, x
+                    fc, fb = fb, fx
+                    if fx < best_f:
+                        best_alpha = x
+                        best_f = fx
+                else:
+                    a = x
+                    fa = fx
+
+        # Return best result
         if best_f < fval:
             x_new = np.clip(p + best_alpha * xi, 0, 1)
             xi_new = best_alpha * xi
