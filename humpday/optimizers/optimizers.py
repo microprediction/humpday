@@ -815,7 +815,7 @@ class TabuSearch(BaseOptimizer):
 
         # Diversification tracking
         iterations_without_improvement = 0
-        max_stagnation = 15
+        max_stagnation = 10  # Reduced for faster testing
 
         # Best solution tracking for aspiration
         global_best_x = x.copy()
@@ -827,17 +827,17 @@ class TabuSearch(BaseOptimizer):
             best_tabu_neighbor = None
             best_tabu_neighbor_f = float("inf")
 
-            # Generate neighbors with multiple strategies
+            # Generate neighbors with multiple strategies - REDUCED for performance
             neighbors = []
 
-            # Strategy 1: Random perturbation (original)
-            for _ in range(6):
+            # Strategy 1: Random perturbation (reduced)
+            for _ in range(3):  # Reduced from 6 to 3
                 neighbor = x + np.random.normal(0, step_size, self.n_dim)
                 neighbor = np.clip(neighbor, 0, 1)
                 neighbors.append(neighbor)
 
-            # Strategy 2: Coordinate-wise moves for intensification
-            for i in range(min(4, self.n_dim)):
+            # Strategy 2: Coordinate-wise moves for intensification (reduced)
+            for i in range(min(2, self.n_dim)):  # Reduced from 4 to 2
                 for direction in [-step_size, step_size]:
                     neighbor = x.copy()
                     neighbor[i] = np.clip(neighbor[i] + direction, 0, 1)
@@ -965,17 +965,17 @@ class AntColonyOpt(BaseOptimizer):
     """Enhanced Ant Colony Optimization with proper pheromone dynamics."""
 
     def optimize(self) -> Tuple[float, np.ndarray]:
-        n_ants = min(12, max(5, self.n_trials // 8))
-        n_archive = min(10, n_ants)  # Solution archive size
+        n_ants = min(6, max(3, self.n_trials // 15))  # Fewer ants for speed
+        n_archive = min(5, n_ants)  # Smaller archive
 
         # ACO parameters following Dorigo's recommendations
-        evaporation_rate = 0.02  # Global evaporation
-        local_evaporation = 0.1  # Local pheromone evaporation
+        evaporation_rate = 0.05  # Faster evaporation for quicker convergence
+        local_evaporation = 0.2  # Faster local evaporation
         q0 = 0.9  # Exploitation vs exploration balance
 
-        # Continuous ACO with Gaussian kernels
-        kernel_width = 0.1
-        n_kernels = 20  # Number of Gaussian kernels per dimension
+        # Continuous ACO with Gaussian kernels - REDUCED for performance
+        kernel_width = 0.15
+        n_kernels = 8  # Fewer kernels for speed
 
         # Initialize pheromone kernels (position, width, strength)
         pheromone_kernels = []
