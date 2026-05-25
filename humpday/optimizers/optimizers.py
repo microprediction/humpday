@@ -868,9 +868,11 @@ class TabuSearch(BaseOptimizer):
 
             # Aspiration criteria: Accept tabu move if it's better than global best
             aspiration_triggered = False
-            if (best_tabu_neighbor is not None and
-                best_tabu_neighbor_f < global_best_f and
-                (best_neighbor is None or best_tabu_neighbor_f < best_neighbor_f)):
+            if (
+                best_tabu_neighbor is not None
+                and best_tabu_neighbor_f < global_best_f
+                and (best_neighbor is None or best_tabu_neighbor_f < best_neighbor_f)
+            ):
                 best_neighbor = best_tabu_neighbor
                 best_neighbor_f = best_tabu_neighbor_f
                 aspiration_triggered = True
@@ -968,7 +970,7 @@ class AntColonyOpt(BaseOptimizer):
 
         # ACO parameters following Dorigo's recommendations
         evaporation_rate = 0.02  # Global evaporation
-        local_evaporation = 0.1   # Local pheromone evaporation
+        local_evaporation = 0.1  # Local pheromone evaporation
         q0 = 0.9  # Exploitation vs exploration balance
 
         # Continuous ACO with Gaussian kernels
@@ -1008,7 +1010,9 @@ class AntColonyOpt(BaseOptimizer):
                         # Exploitation: choose based on pheromone strength
                         best_kernel_idx = 0
                         best_strength = 0
-                        for i, (pos, width, strength) in enumerate(pheromone_kernels[dim]):
+                        for i, (pos, width, strength) in enumerate(
+                            pheromone_kernels[dim]
+                        ):
                             if strength > best_strength:
                                 best_strength = strength
                                 best_kernel_idx = i
@@ -1050,9 +1054,13 @@ class AntColonyOpt(BaseOptimizer):
                 for dim in range(self.n_dim):
                     for i, (pos, width, strength) in enumerate(pheromone_kernels[dim]):
                         distance = abs(pos - solution[dim])
-                        influence = np.exp(-distance**2 / (2 * width**2))
-                        pheromone_kernels[dim][i][2] *= (1 - local_evaporation * influence)
-                        pheromone_kernels[dim][i][2] = max(pheromone_kernels[dim][i][2], 0.1)
+                        influence = np.exp(-(distance**2) / (2 * width**2))
+                        pheromone_kernels[dim][i][2] *= (
+                            1 - local_evaporation * influence
+                        )
+                        pheromone_kernels[dim][i][2] = max(
+                            pheromone_kernels[dim][i][2], 0.1
+                        )
 
             # Add solutions to archive
             iteration_solutions.sort(key=lambda x: x[1])  # Sort by fitness
@@ -1067,8 +1075,10 @@ class AntColonyOpt(BaseOptimizer):
             # Evaporation
             for dim in range(self.n_dim):
                 for i in range(len(pheromone_kernels[dim])):
-                    pheromone_kernels[dim][i][2] *= (1 - evaporation_rate)
-                    pheromone_kernels[dim][i][2] = max(pheromone_kernels[dim][i][2], 0.1)
+                    pheromone_kernels[dim][i][2] *= 1 - evaporation_rate
+                    pheromone_kernels[dim][i][2] = max(
+                        pheromone_kernels[dim][i][2], 0.1
+                    )
 
             # Reinforce good solutions
             for solution, fitness in solution_archive:
@@ -1091,7 +1101,9 @@ class AntColonyOpt(BaseOptimizer):
                     # Also adjust kernel position slightly towards good solution
                     current_pos = pheromone_kernels[dim][closest_idx][0]
                     learning_rate = 0.1
-                    new_pos = current_pos + learning_rate * (solution[dim] - current_pos)
+                    new_pos = current_pos + learning_rate * (
+                        solution[dim] - current_pos
+                    )
                     pheromone_kernels[dim][closest_idx][0] = np.clip(new_pos, 0, 1)
 
             # Extra reinforcement for global best

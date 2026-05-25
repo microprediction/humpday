@@ -22,10 +22,10 @@ class NelderMead(BaseOptimizer):
         n = self.n_dim
 
         # SciPy parameter names and values (matches exactly)
-        rho = 1.0     # reflection coefficient (was alpha)
-        chi = 2.0     # expansion coefficient (was gamma)
-        psi = 0.5     # contraction coefficient (was beta)
-        sigma = 0.5   # shrinkage coefficient (same name)
+        rho = 1.0  # reflection coefficient (was alpha)
+        chi = 2.0  # expansion coefficient (was gamma)
+        psi = 0.5  # contraction coefficient (was beta)
+        sigma = 0.5  # shrinkage coefficient (same name)
 
         # SciPy simplex initialization
         nonzdelt = 0.05
@@ -67,8 +67,10 @@ class NelderMead(BaseOptimizer):
         # Main optimization loop (SciPy structure)
         while self.evaluations < self.n_trials:
             # SciPy convergence check - EXACT match to SciPy implementation
-            if (np.max(np.ravel(np.abs(sim[1:] - sim[0]))) <= xatol and
-                np.max(np.abs(fsim[0] - fsim[1:])) <= fatol):
+            if (
+                np.max(np.ravel(np.abs(sim[1:] - sim[0]))) <= xatol
+                and np.max(np.abs(fsim[0] - fsim[1:])) <= fatol
+            ):
                 break
 
             # Calculate centroid of best n points (SciPy approach)
@@ -197,12 +199,12 @@ class Powell(BaseOptimizer):
 
             fx2 = self.evaluate(x2)
 
-            if (fx > fx2):
-                t = 2.0*(fx + fx2 - 2.0*fval)
-                temp = (fx - fval - delta)
-                t *= temp*temp
+            if fx > fx2:
+                t = 2.0 * (fx + fx2 - 2.0 * fval)
+                temp = fx - fval - delta
+                t *= temp * temp
                 temp = fx - fx2
-                t -= delta*temp*temp
+                t -= delta * temp * temp
 
                 if t < 0.0:
                     fval, x, direc1 = self._linesearch_powell(x, direc1, fval)
@@ -218,7 +220,7 @@ class Powell(BaseOptimizer):
         def myfunc(alpha):
             x_trial = np.clip(p + alpha * xi, 0, 1)
             if self.evaluations >= self.n_trials:
-                return float('inf')
+                return float("inf")
             return self.evaluate(x_trial)
 
         # If direction is zero, don't optimize
@@ -284,10 +286,11 @@ class Powell(BaseOptimizer):
 
         # Refine with golden section if we have evaluations left
         evaluations_used = 3
-        while (evaluations_used < max_evals and
-               abs(c - a) > tol and
-               self.evaluations < self.n_trials):
-
+        while (
+            evaluations_used < max_evals
+            and abs(c - a) > tol
+            and self.evaluations < self.n_trials
+        ):
             if c - b > b - a:
                 # Test point in larger interval
                 x = b + golden_ratio * (c - b)
@@ -328,8 +331,6 @@ class Powell(BaseOptimizer):
             return best_f, x_new, xi_new
         else:
             return fval, p, np.zeros_like(xi)
-
-
 
 
 class LBFGSB(BaseOptimizer):
