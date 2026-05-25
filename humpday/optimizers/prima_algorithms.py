@@ -59,7 +59,6 @@ class PRIMA_UOBYQA(BaseOptimizer):
 
             # Build robust quadratic model
             try:
-                from scipy.linalg import svd
                 g, H = self._build_robust_quadratic_model(XPT, FVAL, nused, n, kopt)
             except Exception:
                 rho *= 0.5
@@ -122,7 +121,6 @@ class PRIMA_UOBYQA(BaseOptimizer):
 
     def _build_robust_quadratic_model(self, XPT, FVAL, nused, n, kopt):
         """Build quadratic model with SVD for numerical stability."""
-        from scipy.linalg import svd, LinAlgError
 
         if nused < n + 1:
             raise ValueError("Insufficient points")
@@ -145,10 +143,10 @@ class PRIMA_UOBYQA(BaseOptimizer):
                     col += 1
 
         try:
-            U, s, Vt = svd(A, full_matrices=False)
+            U, s, Vt = np.linalg.svd(A, full_matrices=False)
             s = np.maximum(s, s[0] * 1e-12)
             coeffs = Vt.T @ np.diag(1/s) @ U.T @ b
-        except LinAlgError:
+        except np.linalg.LinAlgError:
             coeffs = np.linalg.pinv(A) @ b
 
         g = coeffs[1:n+1]

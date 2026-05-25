@@ -299,12 +299,11 @@ class BayesianOpt(BaseOptimizer):
         K_ss = self._kernel(X_test, X_test)
 
         try:
-            from scipy.linalg import cholesky, solve
-            L = cholesky(K, lower=True)
-            alpha = solve(L, self.y_observed)
-            alpha = solve(L.T, alpha)
+            L = np.linalg.cholesky(K)
+            alpha = np.linalg.solve(L, self.y_observed)
+            alpha = np.linalg.solve(L.T, alpha)
             mu = K_s.T @ alpha
-            v = solve(L, K_s)
+            v = np.linalg.solve(L, K_s)
             var = K_ss - v.T @ v
             var = np.maximum(var, 1e-8)
         except:
