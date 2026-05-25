@@ -16,263 +16,295 @@ from .base import BaseOptimizer
 
 
 class NelderMead(BaseOptimizer):
-    """Nelder-Mead simplex algorithm."""
+    """Nelder-Mead simplex algorithm (faithful to SciPy implementation)."""
 
     def optimize(self) -> Tuple[float, np.ndarray]:
         n = self.n_dim
 
-        # Initialize simplex
-        simplex = np.zeros((n + 1, n))
-        values = np.zeros(n + 1)
+        # SciPy parameter names and values (matches exactly)
+        rho = 1.0     # reflection coefficient (was alpha)
+        chi = 2.0     # expansion coefficient (was gamma)
+        psi = 0.5     # contraction coefficient (was beta)
+        sigma = 0.5   # shrinkage coefficient (same name)
 
-        # Better initial simplex starting point
-        simplex[0] = 0.3 + 0.4 * np.random.random(n)  # Interior starting point
-        values[0] = self.evaluate(simplex[0])
+        # SciPy simplex initialization
+        nonzdelt = 0.05
+        zdelt = 0.00025
 
-        for i in range(1, n + 1):
-            simplex[i] = simplex[0].copy()
-            simplex[i][i - 1] = min(1.0, simplex[i][i - 1] + 0.1)
-            values[i] = self.evaluate(simplex[i])
+        sim = np.empty((n + 1, n), dtype=float)
 
-        # Nelder-Mead parameters
-        alpha, gamma, beta, sigma = 1.0, 2.0, 0.5, 0.5
+        # Initial simplex construction (SciPy approach)
+        x0 = 0.3 + 0.4 * np.random.random(n)  # Interior starting point
+        sim[0] = x0
 
+        for k in range(n):
+            y = x0.copy()
+            if y[k] != 0:
+                y[k] = (1 + nonzdelt) * y[k]
+            else:
+                y[k] = zdelt
+            sim[k + 1] = y
+
+        # Ensure all points are within bounds
+        sim = np.clip(sim, 0, 1)
+
+        # Evaluate initial simplex
+        fsim = np.zeros(n + 1)
+        for k in range(n + 1):
+            if self.evaluations >= self.n_trials:
+                break
+            fsim[k] = self.evaluate(sim[k])
+
+        # Sort initial simplex
+        ind = np.argsort(fsim)
+        sim = sim[ind]
+        fsim = fsim[ind]
+
+        # Main optimization loop (SciPy structure)
         while self.evaluations < self.n_trials:
-            # Sort simplex
-            indices = np.argsort(values)
-            simplex = simplex[indices]
-            values = values[indices]
+            # Convergence check (simplified)
+            if np.max(np.abs(fsim[0] - fsim[1:])) < 1e-8:
+                break
 
-            # Centroid of best n points
-            centroid = np.mean(simplex[:-1], axis=0)
+            # Calculate centroid of best n points (SciPy approach)
+            xbar = np.add.reduce(sim[:-1], 0) / n
 
-            # Reflection
-            reflected = centroid + alpha * (centroid - simplex[-1])
-            reflected = np.clip(reflected, 0, 1)
+            # Reflection step
+            xr = (1 + rho) * xbar - rho * sim[-1]
+            xr = np.clip(xr, 0, 1)
 
             if self.evaluations >= self.n_trials:
                 break
 
-            f_reflected = self.evaluate(reflected)
+            fxr = self.evaluate(xr)
 
-            if values[0] <= f_reflected < values[-2]:
-                simplex[-1] = reflected
-                values[-1] = f_reflected
-            elif f_reflected < values[0]:
-                # Expansion
-                expanded = centroid + gamma * (reflected - centroid)
-                expanded = np.clip(expanded, 0, 1)
-                if self.evaluations < self.n_trials:
-                    f_expanded = self.evaluate(expanded)
-                    if f_expanded < f_reflected:
-                        simplex[-1] = expanded
-                        values[-1] = f_expanded
-                    else:
-                        simplex[-1] = reflected
-                        values[-1] = f_reflected
-            else:
-                # Contraction
-                if f_reflected < values[-1]:
-                    contracted = centroid + beta * (reflected - centroid)
+            if fxr < fsim[0]:
+                # Expansion step
+                xe = (1 + rho * chi) * xbar - rho * chi * sim[-1]
+                xe = np.clip(xe, 0, 1)
+
+                if self.evaluations >= self.n_trials:
+                    break
+
+                fxe = self.evaluate(xe)
+
+                if fxe < fxr:
+                    sim[-1] = xe
+                    fsim[-1] = fxe
                 else:
-                    contracted = centroid + beta * (simplex[-1] - centroid)
+                    sim[-1] = xr
+                    fsim[-1] = fxr
+            elif fxr < fsim[-2]:
+                # Accept reflection point
+                sim[-1] = xr
+                fsim[-1] = fxr
+            else:
+                # Contraction step
+                if fxr < fsim[-1]:
+                    # Outside contraction
+                    xc = (1 + psi * rho) * xbar - psi * rho * sim[-1]
+                else:
+                    # Inside contraction
+                    xc = (1 - psi) * xbar + psi * sim[-1]
 
-                contracted = np.clip(contracted, 0, 1)
-                if self.evaluations < self.n_trials:
-                    f_contracted = self.evaluate(contracted)
-                    if f_contracted < min(f_reflected, values[-1]):
-                        simplex[-1] = contracted
-                        values[-1] = f_contracted
-                    else:
-                        # Shrink
-                        for i in range(1, n + 1):
-                            simplex[i] = simplex[0] + sigma * (simplex[i] - simplex[0])
-                            simplex[i] = np.clip(simplex[i], 0, 1)
-                            if self.evaluations < self.n_trials:
-                                values[i] = self.evaluate(simplex[i])
+                xc = np.clip(xc, 0, 1)
+
+                if self.evaluations >= self.n_trials:
+                    break
+
+                fxc = self.evaluate(xc)
+
+                if fxc < min(fxr, fsim[-1]):
+                    sim[-1] = xc
+                    fsim[-1] = fxc
+                else:
+                    # Shrink step (SciPy approach)
+                    for j in range(1, n + 1):
+                        sim[j] = sim[0] + sigma * (sim[j] - sim[0])
+                        sim[j] = np.clip(sim[j], 0, 1)
+                        if self.evaluations < self.n_trials:
+                            fsim[j] = self.evaluate(sim[j])
+
+            # Sort simplex (SciPy approach)
+            ind = np.argsort(fsim)
+            sim = sim[ind]
+            fsim = fsim[ind]
 
         return self.best_value, self.best_x
 
 
 class Powell(BaseOptimizer):
-    """Powell's method with golden section line search."""
+    """Powell's method - direct adaptation from SciPy source code."""
 
     def optimize(self) -> Tuple[float, np.ndarray]:
+        # Direct adaptation from SciPy's _minimize_powell
         n = self.n_dim
         x = 0.3 + 0.4 * np.random.random(n)  # Start in interior
-        f = self.evaluate(x)
 
-        # Initial direction set (coordinate directions)
-        directions = np.eye(n)
+        # Initial direction set (coordinate directions) - exactly like SciPy
+        direc = np.eye(n, dtype=float)
 
-        max_iterations = min(20, self.n_trials // (n + 1))
+        # SciPy default parameters
+        xtol = 1e-4
+        ftol = 1e-4
+        maxiter = n * 20  # SciPy uses N*1000, but we have limited evaluations
 
-        for iteration in range(max_iterations):
-            if self.evaluations >= self.n_trials:
-                break
+        fval = self.evaluate(x)
+        x1 = x.copy()
+        iter = 0
 
-            x_start = x.copy()
-            f_start = f
+        # Main Powell loop - directly from SciPy
+        while iter < maxiter and self.evaluations < self.n_trials:
+            fx = fval
+            bigind = 0
+            delta = 0.0
 
             # Line searches along each direction
             for i in range(n):
                 if self.evaluations >= self.n_trials:
                     break
 
-                direction = directions[i]
-                x_new, f_new = self._golden_section_line_search(x, f, direction)
-                x, f = x_new, f_new
+                direc1 = direc[i]
+                fx2 = fval
+                fval, x, direc1 = self._linesearch_powell(x, direc1, fval)
 
-            # Check for convergence
-            if np.linalg.norm(x - x_start) < 1e-8:
+                if (fx2 - fval) > delta:
+                    delta = fx2 - fval
+                    bigind = i
+
+            iter += 1
+
+            # SciPy convergence check
+            bnd = ftol * (np.abs(fx) + np.abs(fval)) + 1e-20
+            if 2.0 * (fx - fval) <= bnd:
                 break
 
-            # Update directions (Powell's conjugate direction update)
-            if not np.allclose(x, x_start):
-                new_direction = x - x_start
-                new_direction = new_direction / (np.linalg.norm(new_direction) + 1e-12)
+            if self.evaluations >= self.n_trials:
+                break
 
-                # Replace the direction that contributed least
-                directions = np.vstack([directions[1:], new_direction.reshape(1, -1)])
+            # Construct the extrapolated point
+            direc1 = x - x1
+            x1 = x.copy()
+            x2 = np.clip(x + direc1, 0, 1)  # Keep in bounds
 
-                # Additional line search along new conjugate direction
-                if self.evaluations < self.n_trials:
-                    x_new, f_new = self._golden_section_line_search(x, f, new_direction)
-                    x, f = x_new, f_new
+            if self.evaluations >= self.n_trials:
+                break
+
+            fx2 = self.evaluate(x2)
+
+            if (fx > fx2):
+                t = 2.0*(fx + fx2 - 2.0*fval)
+                temp = (fx - fval - delta)
+                t *= temp*temp
+                temp = fx - fx2
+                t -= delta*temp*temp
+
+                if t < 0.0:
+                    fval, x, direc1 = self._linesearch_powell(x, direc1, fval)
+                    if np.any(direc1):
+                        direc[bigind] = direc[-1].copy()
+                        direc[-1] = direc1
 
         return self.best_value, self.best_x
 
-    def _golden_section_line_search(self, x, f, direction, max_step=0.5):
-        """Golden section line search along direction."""
-        # Golden ratio constants
-        phi = (1 + np.sqrt(5)) / 2
-        resphi = 2 - phi
+    def _linesearch_powell(self, p, xi, fval):
+        """Robust line search for Powell method."""
 
-        # Find bracketing interval [a, b] where minimum lies
-        a, b = self._bracket_minimum(x, f, direction, max_step)
+        def myfunc(alpha):
+            x_trial = np.clip(p + alpha * xi, 0, 1)
+            if self.evaluations >= self.n_trials:
+                return float('inf')
+            return self.evaluate(x_trial)
 
-        if abs(b - a) < 1e-10:
-            return x, f
+        # If direction is zero, don't optimize
+        if not np.any(xi):
+            return fval, p, xi
 
-        # Golden section search
-        tol = 1e-6
-        c = a + resphi * (b - a)
-        d = a + (1 - resphi) * (b - a)
+        # Calculate maximum safe alpha in both directions to stay in bounds
+        max_alpha_pos = 1.0
+        max_alpha_neg = 1.0
 
-        # Evaluate at c and d
-        x_c = np.clip(x + c * direction, 0, 1)
-        x_d = np.clip(x + d * direction, 0, 1)
+        for i, d in enumerate(xi):
+            if d > 0:
+                max_alpha_pos = min(max_alpha_pos, (1.0 - p[i]) / (d + 1e-12))
+                max_alpha_neg = min(max_alpha_neg, p[i] / (d + 1e-12))
+            elif d < 0:
+                max_alpha_pos = min(max_alpha_pos, p[i] / (-d + 1e-12))
+                max_alpha_neg = min(max_alpha_neg, (1.0 - p[i]) / (-d + 1e-12))
 
-        if self.evaluations >= self.n_trials:
-            return x, f
+        # Create test points in BOTH directions (this was the key bug!)
+        test_alphas = [0.0]
 
-        f_c = self.evaluate(x_c)
+        # Positive direction
+        if max_alpha_pos > 1e-12:
+            for i in range(1, 6):
+                alpha = max_alpha_pos * (i / 6.0)
+                test_alphas.append(alpha)
 
-        if self.evaluations >= self.n_trials:
-            return x_c if f_c < f else x, min(f_c, f)
+        # Negative direction
+        if max_alpha_neg > 1e-12:
+            for i in range(1, 6):
+                alpha = -max_alpha_neg * (i / 6.0)
+                test_alphas.append(alpha)
 
-        f_d = self.evaluate(x_d)
+        best_alpha = 0.0
+        best_f = fval
 
-        # Main golden section loop
-        while abs(b - a) > tol and self.evaluations < self.n_trials - 1:
-            if f_c < f_d:
-                b = d
-                d = c
-                f_d = f_c
-                c = a + resphi * (b - a)
-                x_c = np.clip(x + c * direction, 0, 1)
-                f_c = self.evaluate(x_c)
-            else:
-                a = c
-                c = d
-                f_c = f_d
-                d = a + (1 - resphi) * (b - a)
-                x_d = np.clip(x + d * direction, 0, 1)
-                f_d = self.evaluate(x_d)
-
+        for alpha in test_alphas:
             if self.evaluations >= self.n_trials:
                 break
 
-        # Return best point found
-        if f_c < f_d:
-            best_alpha = c
-            best_f = f_c
-        else:
-            best_alpha = d
-            best_f = f_d
+            f_alpha = myfunc(alpha)
+            if f_alpha < best_f:
+                best_f = f_alpha
+                best_alpha = alpha
 
-        x_best = np.clip(x + best_alpha * direction, 0, 1)
-        return (x_best, best_f) if best_f < f else (x, f)
+        # Golden section refinement around best point
+        if best_alpha != 0 and self.evaluations < self.n_trials - 5:
+            # Refine around the best point found
+            delta = max(max_alpha_pos, max_alpha_neg) / 20.0
+            max_bound = max(max_alpha_pos, max_alpha_neg)
+            a = max(-max_bound, best_alpha - delta)
+            b = min(max_bound, best_alpha + delta)
 
-    def _bracket_minimum(self, x, f, direction, max_step):
-        """Find bracketing interval [a, b] containing minimum."""
-        # Start with small step
-        step = 0.01
-        a = 0.0  # Start at current point
+            golden_ratio = (3.0 - np.sqrt(5.0)) / 2.0
 
-        # Find initial bracket
-        x_step = np.clip(x + step * direction, 0, 1)
+            for _ in range(5):  # Limited golden section iterations
+                if self.evaluations >= self.n_trials - 1:
+                    break
 
-        if self.evaluations >= self.n_trials:
-            return a, step
+                if abs(b - a) < 1e-6:
+                    break
 
-        f_step = self.evaluate(x_step)
+                c = a + golden_ratio * (b - a)
+                d = a + (1 - golden_ratio) * (b - a)
 
-        if f_step > f:
-            # Minimum is between 0 and step, try negative direction
-            neg_step = -step
-            x_neg = np.clip(x + neg_step * direction, 0, 1)
+                fc = myfunc(c)
+                if self.evaluations >= self.n_trials:
+                    break
 
-            if self.evaluations >= self.n_trials:
-                return neg_step, a
+                fd = myfunc(d)
 
-            f_neg = self.evaluate(x_neg)
-
-            if f_neg < f:
-                # Minimum in negative direction
-                return self._expand_bracket(x, f, direction, neg_step, -1, max_step)
-            else:
-                # Minimum between negative step and positive step
-                return neg_step, step
-        else:
-            # Minimum is beyond step, expand in positive direction
-            return self._expand_bracket(x, f, direction, step, 1, max_step)
-
-    def _expand_bracket(self, x, f, direction, initial_step, sign, max_step):
-        """Expand bracket to find interval containing minimum."""
-        a = 0.0 if sign > 0 else initial_step
-        b = initial_step if sign > 0 else 0.0
-        step = abs(initial_step)
-
-        # Expand bracket until we bracket the minimum
-        for _ in range(10):  # Max expansions
-            if self.evaluations >= self.n_trials - 1:
-                break
-
-            step *= 2
-            if step > max_step:
-                step = max_step
-
-            test_alpha = sign * step
-            x_test = np.clip(x + test_alpha * direction, 0, 1)
-            f_test = self.evaluate(x_test)
-
-            if f_test > f or step >= max_step:
-                # Found bracket or hit max step
-                if sign > 0:
-                    return a, test_alpha
+                if fc < fd:
+                    b = d
+                    if fc < best_f:
+                        best_f = fc
+                        best_alpha = c
                 else:
-                    return test_alpha, a
+                    a = c
+                    if fd < best_f:
+                        best_f = fd
+                        best_alpha = d
 
-            # Update bracket
-            if sign > 0:
-                a = b
-                b = test_alpha
-            else:
-                b = a
-                a = test_alpha
+        # Return result
+        if best_f < fval:
+            x_new = np.clip(p + best_alpha * xi, 0, 1)
+            xi_new = best_alpha * xi
+            return best_f, x_new, xi_new
+        else:
+            return fval, p, np.zeros_like(xi)
 
-        return a, b
+
 
 
 class LBFGSB(BaseOptimizer):
