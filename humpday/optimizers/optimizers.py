@@ -803,28 +803,52 @@ class PatternSearch(BaseOptimizer):
 
 
 class TabuSearch(BaseOptimizer):
-    """Tabu Search algorithm."""
+    """Enhanced Tabu Search algorithm with aspiration criteria and diversification."""
 
     def optimize(self) -> Tuple[float, np.ndarray]:
         x = np.random.random(self.n_dim)
         f = self.evaluate(x)
 
         tabu_list = []
-        tabu_tenure = 5
+        tabu_tenure = 7  # Slightly longer tenure
         step_size = 0.1
+
+        # Diversification tracking
+        iterations_without_improvement = 0
+        max_stagnation = 10  # Reduced for faster testing
+
+        # Best solution tracking for aspiration
+        global_best_x = x.copy()
+        global_best_f = f
 
         while self.evaluations < self.n_trials:
             best_neighbor = None
             best_neighbor_f = float("inf")
+            best_tabu_neighbor = None
+            best_tabu_neighbor_f = float("inf")
 
-            # Generate neighbors
-            for _ in range(min(10, self.n_trials - self.evaluations)):
+            # Generate neighbors with multiple strategies - REDUCED for performance
+            neighbors = []
+
+            # Strategy 1: Random perturbation (reduced)
+            for _ in range(3):  # Reduced from 6 to 3
+                neighbor = x + np.random.normal(0, step_size, self.n_dim)
+                neighbor = np.clip(neighbor, 0, 1)
+                neighbors.append(neighbor)
+
+            # Strategy 2: Coordinate-wise moves for intensification (reduced)
+            for i in range(min(2, self.n_dim)):  # Reduced from 4 to 2
+                for direction in [-step_size, step_size]:
+                    neighbor = x.copy()
+                    neighbor[i] = np.clip(neighbor[i] + direction, 0, 1)
+                    neighbors.append(neighbor)
+
+            # Evaluate all neighbors
+            for neighbor in neighbors:
                 if self.evaluations >= self.n_trials:
                     break
 
-                # Random neighbor
-                neighbor = x + np.random.normal(0, step_size, self.n_dim)
-                neighbor = np.clip(neighbor, 0, 1)
+                neighbor_f = self.evaluate(neighbor)
 
                 # Check if tabu
                 is_tabu = any(
@@ -832,19 +856,66 @@ class TabuSearch(BaseOptimizer):
                 )
 
                 if not is_tabu:
-                    neighbor_f = self.evaluate(neighbor)
+                    # Non-tabu neighbor
                     if neighbor_f < best_neighbor_f:
                         best_neighbor = neighbor
                         best_neighbor_f = neighbor_f
+                else:
+                    # Tabu neighbor (for aspiration check)
+                    if neighbor_f < best_tabu_neighbor_f:
+                        best_tabu_neighbor = neighbor
+                        best_tabu_neighbor_f = neighbor_f
+
+            # Aspiration criteria: Accept tabu move if it's better than global best
+            aspiration_triggered = False
+            if (
+                best_tabu_neighbor is not None
+                and best_tabu_neighbor_f < global_best_f
+                and (best_neighbor is None or best_tabu_neighbor_f < best_neighbor_f)
+            ):
+                best_neighbor = best_tabu_neighbor
+                best_neighbor_f = best_tabu_neighbor_f
+                aspiration_triggered = True
 
             if best_neighbor is not None:
                 x = best_neighbor
                 f = best_neighbor_f
 
-                # Update tabu list
-                tabu_list.append(x.copy())
-                if len(tabu_list) > tabu_tenure:
-                    tabu_list.pop(0)
+                # Update global best
+                if f < global_best_f:
+                    global_best_f = f
+                    global_best_x = x.copy()
+                    iterations_without_improvement = 0
+                else:
+                    iterations_without_improvement += 1
+
+                # Update tabu list (don't add if aspiration was triggered with global best)
+                if not (aspiration_triggered and f == global_best_f):
+                    tabu_list.append(x.copy())
+                    if len(tabu_list) > tabu_tenure:
+                        tabu_list.pop(0)
+            else:
+                iterations_without_improvement += 1
+
+            # Diversification: If stuck, make a larger random jump
+            if iterations_without_improvement >= max_stagnation:
+                # Large diversification move
+                x = np.random.random(self.n_dim)
+                if self.evaluations < self.n_trials:
+                    f = self.evaluate(x)
+
+                # Clear tabu list for fresh start
+                tabu_list.clear()
+                iterations_without_improvement = 0
+
+                # Increase step size temporarily for more exploration
+                step_size = min(0.3, step_size * 1.5)
+            else:
+                # Adaptive step size
+                if iterations_without_improvement > 5:
+                    step_size = min(0.25, step_size * 1.1)  # Explore more
+                else:
+                    step_size = max(0.05, step_size * 0.95)  # Focus search
 
         return self.best_value, self.best_x
 
@@ -891,43 +962,170 @@ class FireflyAlgorithm(BaseOptimizer):
 
 
 class AntColonyOpt(BaseOptimizer):
-    """Ant Colony Optimization (continuous version)."""
+    """Enhanced Ant Colony Optimization with proper pheromone dynamics."""
 
     def optimize(self) -> Tuple[float, np.ndarray]:
-        n_ants = min(15, self.n_trials // 5)
-        n_nodes = 10  # Discretization per dimension
-        pheromone = np.ones((self.n_dim, n_nodes))
-        evaporation = 0.1
+        n_ants = min(6, max(3, self.n_trials // 15))  # Fewer ants for speed
+        n_archive = min(5, n_ants)  # Smaller archive
 
-        best_path = None
-        best_fitness = float("inf")
+        # ACO parameters following Dorigo's recommendations
+        evaporation_rate = 0.05  # Faster evaporation for quicker convergence
+        local_evaporation = 0.2  # Faster local evaporation
+        q0 = 0.9  # Exploitation vs exploration balance
+
+        # Continuous ACO with Gaussian kernels - REDUCED for performance
+        kernel_width = 0.15
+        n_kernels = 8  # Fewer kernels for speed
+
+        # Initialize pheromone kernels (position, width, strength)
+        pheromone_kernels = []
+        for dim in range(self.n_dim):
+            kernels = []
+            for _ in range(n_kernels):
+                pos = np.random.random()
+                strength = 1.0
+                kernels.append([pos, kernel_width, strength])
+            pheromone_kernels.append(kernels)
+
+        # Solution archive for multiple ant contributions
+        solution_archive = []
+        global_best_solution = None
+        global_best_fitness = float("inf")
+
+        iteration = 0
 
         while self.evaluations < self.n_trials:
-            # Ant solutions
+            iteration_solutions = []
+
+            # Construct solutions with ants
             for ant in range(n_ants):
                 if self.evaluations >= self.n_trials:
                     break
 
-                # Construct solution
                 solution = np.zeros(self.n_dim)
-                for dim in range(self.n_dim):
-                    # Probabilistic selection based on pheromone
-                    probs = pheromone[dim] / (np.sum(pheromone[dim]) + 1e-10)
-                    node = np.random.choice(n_nodes, p=probs)
-                    solution[dim] = node / (n_nodes - 1)  # Map to [0,1]
 
+                # Construct solution dimension by dimension
+                for dim in range(self.n_dim):
+                    if np.random.random() < q0:
+                        # Exploitation: choose based on pheromone strength
+                        best_kernel_idx = 0
+                        best_strength = 0
+                        for i, (pos, width, strength) in enumerate(
+                            pheromone_kernels[dim]
+                        ):
+                            if strength > best_strength:
+                                best_strength = strength
+                                best_kernel_idx = i
+
+                        # Sample from best kernel with some noise
+                        mean_pos = pheromone_kernels[dim][best_kernel_idx][0]
+                        solution[dim] = np.clip(
+                            mean_pos + np.random.normal(0, kernel_width * 0.5), 0, 1
+                        )
+                    else:
+                        # Exploration: weighted random selection
+                        weights = []
+                        positions = []
+                        for pos, width, strength in pheromone_kernels[dim]:
+                            weights.append(strength + 1e-10)
+                            positions.append(pos)
+
+                        weights = np.array(weights)
+                        weights = weights / np.sum(weights)
+
+                        selected_idx = np.random.choice(len(weights), p=weights)
+                        selected_pos = positions[selected_idx]
+
+                        # Sample around selected position
+                        solution[dim] = np.clip(
+                            selected_pos + np.random.normal(0, kernel_width), 0, 1
+                        )
+
+                # Evaluate solution
                 fitness = self.evaluate(solution)
+                iteration_solutions.append((solution.copy(), fitness))
 
-                if fitness < best_fitness:
-                    best_fitness = fitness
-                    best_path = solution.copy()
+                # Update global best
+                if fitness < global_best_fitness:
+                    global_best_fitness = fitness
+                    global_best_solution = solution.copy()
 
-            # Update pheromones
-            pheromone *= 1 - evaporation
-            if best_path is not None:
+                # Local pheromone update (diminish used paths)
                 for dim in range(self.n_dim):
-                    node = int(best_path[dim] * (n_nodes - 1))
-                    pheromone[dim, node] += 1.0 / (best_fitness + 1e-10)
+                    for i, (pos, width, strength) in enumerate(pheromone_kernels[dim]):
+                        distance = abs(pos - solution[dim])
+                        influence = np.exp(-(distance**2) / (2 * width**2))
+                        pheromone_kernels[dim][i][2] *= (
+                            1 - local_evaporation * influence
+                        )
+                        pheromone_kernels[dim][i][2] = max(
+                            pheromone_kernels[dim][i][2], 0.1
+                        )
+
+            # Add solutions to archive
+            iteration_solutions.sort(key=lambda x: x[1])  # Sort by fitness
+            for sol, fit in iteration_solutions[:n_archive]:
+                solution_archive.append((sol, fit))
+
+            # Keep archive size manageable
+            solution_archive.sort(key=lambda x: x[1])
+            solution_archive = solution_archive[:n_archive]
+
+            # Global pheromone update
+            # Evaporation
+            for dim in range(self.n_dim):
+                for i in range(len(pheromone_kernels[dim])):
+                    pheromone_kernels[dim][i][2] *= 1 - evaporation_rate
+                    pheromone_kernels[dim][i][2] = max(
+                        pheromone_kernels[dim][i][2], 0.1
+                    )
+
+            # Reinforce good solutions
+            for solution, fitness in solution_archive:
+                pheromone_addition = 1.0 / (1.0 + fitness)
+
+                for dim in range(self.n_dim):
+                    # Find closest kernel and reinforce it
+                    closest_dist = float("inf")
+                    closest_idx = 0
+
+                    for i, (pos, width, strength) in enumerate(pheromone_kernels[dim]):
+                        dist = abs(pos - solution[dim])
+                        if dist < closest_dist:
+                            closest_dist = dist
+                            closest_idx = i
+
+                    # Reinforce closest kernel
+                    pheromone_kernels[dim][closest_idx][2] += pheromone_addition
+
+                    # Also adjust kernel position slightly towards good solution
+                    current_pos = pheromone_kernels[dim][closest_idx][0]
+                    learning_rate = 0.1
+                    new_pos = current_pos + learning_rate * (
+                        solution[dim] - current_pos
+                    )
+                    pheromone_kernels[dim][closest_idx][0] = np.clip(new_pos, 0, 1)
+
+            # Extra reinforcement for global best
+            if global_best_solution is not None:
+                extra_reinforcement = 2.0 / (1.0 + global_best_fitness)
+                for dim in range(self.n_dim):
+                    # Find closest kernel to global best
+                    closest_dist = float("inf")
+                    closest_idx = 0
+                    for i, (pos, width, strength) in enumerate(pheromone_kernels[dim]):
+                        dist = abs(pos - global_best_solution[dim])
+                        if dist < closest_dist:
+                            closest_dist = dist
+                            closest_idx = i
+                    pheromone_kernels[dim][closest_idx][2] += extra_reinforcement
+
+            iteration += 1
+
+            # Adaptive parameter adjustment
+            if iteration % 10 == 0 and iteration > 0:
+                # Adjust exploration-exploitation balance
+                q0 = max(0.1, q0 * 0.98)  # Gradually increase exploration
 
         return self.best_value, self.best_x
 
