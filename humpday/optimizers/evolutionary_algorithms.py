@@ -285,7 +285,11 @@ class BayesianOpt(BaseOptimizer):
             X1 = X1.reshape(1, -1)
         if X2.ndim == 1:
             X2 = X2.reshape(1, -1)
-        sqdist = np.sum(X1**2, axis=1).reshape(-1, 1) + np.sum(X2**2, axis=1) - 2 * np.dot(X1, X2.T)
+        sqdist = (
+            np.sum(X1**2, axis=1).reshape(-1, 1)
+            + np.sum(X2**2, axis=1)
+            - 2 * np.dot(X1, X2.T)
+        )
         return self.signal_variance * np.exp(-0.5 * sqdist / self.length_scale**2)
 
     def _gp_predict(self, X_test):
@@ -349,7 +353,11 @@ class BayesianOpt(BaseOptimizer):
                 best_ei = ei
                 best_x = x
 
-        return np.clip(best_x, 0, 1) if best_x is not None else np.random.random(self.n_dim)
+        return (
+            np.clip(best_x, 0, 1)
+            if best_x is not None
+            else np.random.random(self.n_dim)
+        )
 
 
 class CMAEvolutionStrategy(BaseOptimizer):
@@ -361,18 +369,20 @@ class CMAEvolutionStrategy(BaseOptimizer):
         # CMA-ES parameters (Hansen's recommended values)
         lambda_ = min(50, 4 + int(3 * np.log(n)))  # Population size
         mu = lambda_ // 2  # Number of parents
-        weights = np.log(mu + 1/2) - np.log(np.arange(1, mu + 1))
+        weights = np.log(mu + 1 / 2) - np.log(np.arange(1, mu + 1))
         weights = weights / np.sum(weights)
         mueff = 1 / np.sum(weights**2)  # Variance effective selection mass
 
         # Adaptation parameters
-        cc = (4 + mueff/n) / (n + 4 + 2*mueff/n)  # Time constant for cumulation for C
+        cc = (4 + mueff / n) / (
+            n + 4 + 2 * mueff / n
+        )  # Time constant for cumulation for C
         cs = (mueff + 2) / (n + mueff + 5)  # Time constant for cumulation for sigma
-        c1 = 2 / ((n + 1.3)**2 + mueff)  # Learning rate for rank-one update
+        c1 = 2 / ((n + 1.3) ** 2 + mueff)  # Learning rate for rank-one update
         # Learning rate for rank-mu update
-        cmu = min(1 - c1, 2 * (mueff - 2 + 1/mueff) / ((n + 2)**2 + mueff))
+        cmu = min(1 - c1, 2 * (mueff - 2 + 1 / mueff) / ((n + 2) ** 2 + mueff))
         # Damping for sigma
-        damps = 1 + 2 * max(0, np.sqrt((mueff - 1)/(n + 1)) - 1) + cs
+        damps = 1 + 2 * max(0, np.sqrt((mueff - 1) / (n + 1)) - 1) + cs
 
         # Initialize
         mean = 0.5 * np.ones(n)  # Start at center of unit cube
@@ -423,7 +433,12 @@ class CMAEvolutionStrategy(BaseOptimizer):
             ps = (1 - cs) * ps + np.sqrt(cs * (2 - cs) * mueff) * invsqrtC @ y
 
             # Heaviside function
-            hsig = 1 if np.linalg.norm(ps) / np.sqrt(1 - (1-cs)**(2*generation)) < 1.4 + 2/(n+1) else 0
+            hsig = (
+                1
+                if np.linalg.norm(ps) / np.sqrt(1 - (1 - cs) ** (2 * generation))
+                < 1.4 + 2 / (n + 1)
+                else 0
+            )
 
             # Path for C (cumulative evolution path)
             pc = (1 - cc) * pc + hsig * np.sqrt(cc * (2 - cc) * mueff) * y
@@ -436,9 +451,7 @@ class CMAEvolutionStrategy(BaseOptimizer):
                     diff = (population[i][0] - old_mean) / sigma
                     weighted_diffs += weights[i] * np.outer(diff, diff)
 
-                C = ((1 - c1 - cmu) * C +
-                     c1 * np.outer(pc, pc) +
-                     cmu * weighted_diffs)
+                C = (1 - c1 - cmu) * C + c1 * np.outer(pc, pc) + cmu * weighted_diffs
 
                 # Ensure C remains positive definite
                 min_eig = np.min(np.real(np.linalg.eigvals(C)))
@@ -451,13 +464,13 @@ class CMAEvolutionStrategy(BaseOptimizer):
                 D, B = np.linalg.eigh(C)
                 D = np.real(D)
                 D[D < 1e-14] = 1e-14  # Ensure positive eigenvalues
-                invsqrtC = B @ np.diag(1/np.sqrt(D)) @ B.T
+                invsqrtC = B @ np.diag(1 / np.sqrt(D)) @ B.T
             except:
                 # Fallback if eigendecomposition fails
                 invsqrtC = np.eye(n)
 
             # Adapt step size sigma
-            sigma = sigma * np.exp((cs/damps) * (np.linalg.norm(ps)/np.sqrt(n) - 1))
+            sigma = sigma * np.exp((cs / damps) * (np.linalg.norm(ps) / np.sqrt(n) - 1))
 
             # Keep sigma reasonable for unit cube
             sigma = max(min(sigma, 0.5), 1e-6)

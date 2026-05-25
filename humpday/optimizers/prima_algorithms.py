@@ -52,10 +52,11 @@ class PRIMA_UOBYQA(BaseOptimizer):
         iteration = 0
         max_iterations = min(100, self.n_trials // npt)
 
-        while (self.evaluations < self.n_trials and
-               rho > rhoend and
-               iteration < max_iterations):
-
+        while (
+            self.evaluations < self.n_trials
+            and rho > rhoend
+            and iteration < max_iterations
+        ):
             iteration += 1
 
             # Build robust quadratic model
@@ -146,11 +147,11 @@ class PRIMA_UOBYQA(BaseOptimizer):
         try:
             U, s, Vt = np.linalg.svd(A, full_matrices=False)
             s = np.maximum(s, s[0] * 1e-12)
-            coeffs = Vt.T @ np.diag(1/s) @ U.T @ b
+            coeffs = Vt.T @ np.diag(1 / s) @ U.T @ b
         except np.linalg.LinAlgError:
             coeffs = np.linalg.pinv(A) @ b
 
-        g = coeffs[1:n+1]
+        g = coeffs[1 : n + 1]
         H = np.zeros((n, n))
         col = n + 1
         for i in range(n):
@@ -226,8 +227,8 @@ class PRIMA_UOBYQA(BaseOptimizer):
             point_idx += 1
 
         # Cross-term points
-        for i in range(n-1):
-            for j in range(i+1, n):
+        for i in range(n - 1):
+            for j in range(i + 1, n):
                 if point_idx >= npt:
                     break
 
@@ -246,8 +247,7 @@ class PRIMA_UOBYQA(BaseOptimizer):
         if g_norm > 1e-12:
             return -rho * g / g_norm
         else:
-            return np.random.normal(0, rho/3, n)
-
+            return np.random.normal(0, rho / 3, n)
 
     def _build_quadratic_model(self, XPT, FVAL, kopt, npt, n):
         """Build quadratic model: q(d) = g^T d + 0.5 d^T H d"""
@@ -256,14 +256,18 @@ class PRIMA_UOBYQA(BaseOptimizer):
         nused = min(npt, np.count_nonzero(FVAL != 0) + 1)  # +1 for base point
         if nused < n + 1:
             # Need at least n+1 points for quadratic model
-            nused = min(npt, len([f for f in FVAL if f != float('inf')]))
+            nused = min(npt, len([f for f in FVAL if f != float("inf")]))
 
         if nused < n + 1:
-            raise np.linalg.LinAlgError(f"Not enough points for model: {nused} < {n+1}")
+            raise np.linalg.LinAlgError(
+                f"Not enough points for model: {nused} < {n + 1}"
+            )
 
         # Build interpolation matrix A and RHS b
         # For quadratic model: [1, x, 0.5*x*x, x_i*x_j for i<j]
-        nterms = 1 + n + n + n*(n-1)//2  # Constant + linear + diagonal + cross terms
+        nterms = (
+            1 + n + n + n * (n - 1) // 2
+        )  # Constant + linear + diagonal + cross terms
         A = np.zeros((nused, nterms))
         b = FVAL[:nused] - FVAL[kopt]  # Relative to best point
 
@@ -276,16 +280,16 @@ class PRIMA_UOBYQA(BaseOptimizer):
             idx += 1
 
             # Linear terms
-            A[k, idx:idx+n] = x
+            A[k, idx : idx + n] = x
             idx += n
 
             # Quadratic diagonal terms
-            A[k, idx:idx+n] = 0.5 * x * x
+            A[k, idx : idx + n] = 0.5 * x * x
             idx += n
 
             # Cross terms
-            for i in range(n-1):
-                for j in range(i+1, n):
+            for i in range(n - 1):
+                for j in range(i + 1, n):
                     A[k, idx] = x[i] * x[j]
                     idx += 1
 
@@ -299,17 +303,17 @@ class PRIMA_UOBYQA(BaseOptimizer):
             coeffs = np.linalg.pinv(A) @ b
 
         # Extract gradient and Hessian
-        gq = coeffs[1:1+n]
+        gq = coeffs[1 : 1 + n]
         hq = np.zeros((n, n))
 
         # Diagonal Hessian elements
         for i in range(n):
-            hq[i, i] = coeffs[1+n+i]
+            hq[i, i] = coeffs[1 + n + i]
 
         # Cross terms
-        idx = 1 + 2*n
-        for i in range(n-1):
-            for j in range(i+1, n):
+        idx = 1 + 2 * n
+        for i in range(n - 1):
+            for j in range(i + 1, n):
                 hq[i, j] = hq[j, i] = coeffs[idx]
                 idx += 1
 
@@ -342,9 +346,9 @@ class PRIMA_UOBYQA(BaseOptimizer):
             b = 2 * np.dot(d_cauchy, diff)
             c = np.dot(d_cauchy, d_cauchy) - rho**2
 
-            discriminant = b**2 - 4*a*c
+            discriminant = b**2 - 4 * a * c
             if discriminant >= 0:
-                tau = (-b + np.sqrt(discriminant)) / (2*a)
+                tau = (-b + np.sqrt(discriminant)) / (2 * a)
                 return d_cauchy + tau * diff
         except np.linalg.LinAlgError:
             pass
@@ -402,10 +406,11 @@ class PRIMA_NEWUOA(BaseOptimizer):
         iteration = 0
         max_iterations = min(100, self.n_trials // npt)
 
-        while (self.evaluations < self.n_trials and
-               rho > rhoend and
-               iteration < max_iterations):
-
+        while (
+            self.evaluations < self.n_trials
+            and rho > rhoend
+            and iteration < max_iterations
+        ):
             iteration += 1
 
             # Build NEWUOA model (underdetermined quadratic approximation)
@@ -532,16 +537,16 @@ class PRIMA_NEWUOA(BaseOptimizer):
         """Build NEWUOA model using underdetermined interpolation."""
         try:
             # Use QR decomposition for numerical stability
-            Q, R = np.linalg.qr(A, mode='reduced')
+            Q, R = np.linalg.qr(A, mode="reduced")
 
             # Solve R * coeffs = Q.T * b
             coeffs = np.linalg.solve(R, Q.T @ b)
 
             # Extract gradient (linear coefficients relative to best point)
-            g = coeffs[1:n+1]
+            g = coeffs[1 : n + 1]
 
             # Build approximate Hessian (diagonal only for NEWUOA)
-            H = np.diag(coeffs[n+1:2*n+1])
+            H = np.diag(coeffs[n + 1 : 2 * n + 1])
 
             # Ensure positive definiteness for trust region
             eigenvals = np.diag(H)
@@ -571,9 +576,7 @@ class PRIMA_NEWUOA(BaseOptimizer):
                 diff = XPT[k] - XPT[kopt]
 
                 # Check if this is a coordinate direction point
-                if (abs(diff[i]) > 1e-6 and
-                    np.sum(np.abs(diff)) < 2 * abs(diff[i])):
-
+                if abs(diff[i]) > 1e-6 and np.sum(np.abs(diff)) < 2 * abs(diff[i]):
                     if diff[i] > 0:
                         pos_val = FVAL[k]
                     else:
@@ -581,8 +584,11 @@ class PRIMA_NEWUOA(BaseOptimizer):
 
             # Central difference approximation
             if pos_val != FVAL[kopt] and neg_val != FVAL[kopt]:
-                step_size = max(abs(diff[i]) for k in range(len(FVAL))
-                               if k != kopt and abs(XPT[k][i] - XPT[kopt][i]) > 1e-6)
+                step_size = max(
+                    abs(diff[i])
+                    for k in range(len(FVAL))
+                    if k != kopt and abs(XPT[k][i] - XPT[kopt][i]) > 1e-6
+                )
                 g[i] = (pos_val - neg_val) / (2 * step_size)
 
         return g
@@ -634,9 +640,9 @@ class PRIMA_NEWUOA(BaseOptimizer):
             b = 2 * np.dot(d_cauchy, diff)
             c = np.dot(d_cauchy, d_cauchy) - rho**2
 
-            discriminant = b**2 - 4*a*c
+            discriminant = b**2 - 4 * a * c
             if discriminant >= 0 and a > 1e-12:
-                tau = (-b + np.sqrt(discriminant)) / (2*a)
+                tau = (-b + np.sqrt(discriminant)) / (2 * a)
                 return d_cauchy + tau * diff
 
         except Exception:
@@ -733,10 +739,11 @@ class PRIMA_BOBYQA(BaseOptimizer):
         iteration = 0
         max_iterations = min(100, self.n_trials // npt)
 
-        while (self.evaluations < self.n_trials and
-               rho > rhoend and
-               iteration < max_iterations):
-
+        while (
+            self.evaluations < self.n_trials
+            and rho > rhoend
+            and iteration < max_iterations
+        ):
             iteration += 1
 
             # Build bound-constrained quadratic model
@@ -748,7 +755,9 @@ class PRIMA_BOBYQA(BaseOptimizer):
 
             # Solve bound-constrained trust region subproblem
             try:
-                d = self._solve_bound_constrained_tr(g, H, rho, n, xbase + XPT[kopt], xl, xu)
+                d = self._solve_bound_constrained_tr(
+                    g, H, rho, n, xbase + XPT[kopt], xl, xu
+                )
             except Exception:
                 d = self._fallback_bound_step(g, rho, n, xbase + XPT[kopt], xl, xu)
 
@@ -868,12 +877,12 @@ class PRIMA_BOBYQA(BaseOptimizer):
                     col += 1
 
             # Solve using QR decomposition
-            Q, R = np.linalg.qr(A, mode='reduced')
+            Q, R = np.linalg.qr(A, mode="reduced")
             coeffs = np.linalg.solve(R, Q.T @ b)
 
             # Extract gradient and Hessian
-            g = coeffs[1:n+1]
-            H = np.diag(coeffs[n+1:2*n+1])
+            g = coeffs[1 : n + 1]
+            H = np.diag(coeffs[n + 1 : 2 * n + 1])
 
             # Ensure positive definiteness
             eigenvals = np.diag(H)
@@ -903,9 +912,7 @@ class PRIMA_BOBYQA(BaseOptimizer):
                 diff = XPT[k] - XPT[kopt]
 
                 # Look for coordinate direction points
-                if (abs(diff[i]) > 1e-6 and
-                    np.sum(np.abs(diff)) < 2 * abs(diff[i])):
-
+                if abs(diff[i]) > 1e-6 and np.sum(np.abs(diff)) < 2 * abs(diff[i]):
                     if diff[i] > 0:
                         pos_val = FVAL[k]
                         pos_step = diff[i]
@@ -933,8 +940,11 @@ class PRIMA_BOBYQA(BaseOptimizer):
 
                 # Check if it satisfies bounds
                 x_new = x_current + d_newton
-                if (np.all(x_new >= xl) and np.all(x_new <= xu) and
-                    np.linalg.norm(d_newton) <= rho):
+                if (
+                    np.all(x_new >= xl)
+                    and np.all(x_new <= xu)
+                    and np.linalg.norm(d_newton) <= rho
+                ):
                     return d_newton
         except Exception:
             pass
@@ -1023,7 +1033,7 @@ class PRIMA_BOBYQA(BaseOptimizer):
         if np.linalg.norm(g) > 1e-12:
             d = -rho * g / np.linalg.norm(g)
         else:
-            d = np.random.normal(0, rho/3, n)
+            d = np.random.normal(0, rho / 3, n)
 
         # Project to satisfy bounds
         x_new = x_current + d
