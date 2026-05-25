@@ -341,6 +341,8 @@ class TestSciPyPerformance:
 
                 # More reasonable threshold - algorithms should find decent solution
                 # in at least one of multiple attempts
-                assert final_best < 2.0, f"{AlgorithmClass.__name__} {n_dim}D: best={final_best:.3f} from {best_results}"
+                assert final_best < 2.0, (
+                    f"{AlgorithmClass.__name__} {n_dim}D: best={final_best:.3f} from {best_results}"
+                )
                 assert len(best_x) == n_dim
                 assert all(0 <= xi <= 1 for xi in best_x)

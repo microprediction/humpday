@@ -20,7 +20,9 @@ import numpy as np
 import pytest
 
 # Skip all JavaScript validation tests - eval() loading issue needs to be resolved
-pytestmark = pytest.mark.skip(reason="JavaScript validation tests broken - eval() doesn't load TestSurfaces properly")
+pytestmark = pytest.mark.skip(
+    reason="JavaScript validation tests broken - eval() doesn't load TestSurfaces properly"
+)
 
 # Test configuration
 REPO_ROOT = Path(__file__).parent.parent
