@@ -9,7 +9,7 @@ from typing import Callable, List, Optional, Tuple, Union
 
 import numpy as np
 
-from .alloptimizers import PURE_OPTIMIZERS, pure_optimize
+from .alloptimizers import PURE_OPTIMIZERS, pure_optimize, suggest_pure
 
 
 def unbounded_to_unit_cube(
@@ -130,7 +130,7 @@ def cube_minimize(
     fun: Callable,
     x0: Optional[np.ndarray] = None,
     args: Tuple = (),
-    method: str = "NelderMead",
+    method: Optional[str] = None,
     bounds: Optional[Union[List[Tuple[float, float]], Tuple[float, float]]] = None,
     scale: Optional[Union[float, np.ndarray]] = None,
     options: Optional[dict] = None,
@@ -150,7 +150,10 @@ def cube_minimize(
         Extra arguments passed to objective function (currently not supported)
     method : str, optional
         Optimization algorithm name. Must be one of the 22 available algorithms.
-        Default is 'NelderMead'.
+        If None (default), an algorithm is auto-selected from `suggest_pure`
+        based on the problem dimension: NelderMead for n <= 2,
+        DifferentialEvolution for 3-10, CMAEvolutionStrategy for 11-50,
+        and AdaptiveRandomSearch for n > 50.
     bounds : sequence or tuple, optional
         Bounds for variables. Either:
         - List of (min, max) tuples for each dimension: [(x1_min, x1_max), (x2_min, x2_max), ...]
@@ -213,6 +216,14 @@ def cube_minimize(
                 n_dim = len(bounds)
         else:
             n_dim = len(bounds)
+
+    # Auto-pick a method when not specified, using the dimension-based
+    # heuristic in suggest_pure. This is a much better default than the old
+    # hard-coded "NelderMead" — Nelder-Mead is fine for n <= 2 but degrades
+    # rapidly with dimension. suggest_pure's top pick already matches
+    # NelderMead at n <= 2, so callers in that regime see no behavior change.
+    if method is None:
+        method = suggest_pure(n_dim, maxiter)[0]
 
     # Validate method
     if method not in PURE_OPTIMIZERS:
@@ -318,7 +329,7 @@ def cube_minimize_scalar(
 def minimize(
     fun: Callable,
     x0: Optional[np.ndarray] = None,
-    method: str = "NelderMead",
+    method: Optional[str] = None,
     bounds: Optional[Union[List[Tuple[float, float]], Tuple[float, float]]] = None,
     scale: Optional[Union[float, np.ndarray]] = None,
     options: Optional[dict] = None,
@@ -336,7 +347,10 @@ def minimize(
     x0 : array_like, optional
         Initial guess (currently ignored)
     method : str, optional
-        Optimization algorithm name (default: 'NelderMead')
+        Optimization algorithm name. If None (the default), the method is
+        chosen automatically based on problem dimension via `suggest_pure`:
+        NelderMead for n <= 2, DifferentialEvolution for 3-10,
+        CMAEvolutionStrategy for 11-50, AdaptiveRandomSearch for n > 50.
     bounds : sequence or tuple, optional
         Bounds for variables (None for unbounded optimization)
     scale : float or array_like, optional
