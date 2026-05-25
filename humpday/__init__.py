@@ -3,6 +3,18 @@ Humpday: Lightweight derivative-free optimization
 Pure Python implementations with no external dependencies (beyond numpy/scipy)
 """
 
+from importlib.metadata import PackageNotFoundError
+from importlib.metadata import version as _pkg_version
+
+try:
+    __version__ = _pkg_version("humpday")
+except PackageNotFoundError:
+    # Running from a source checkout without `pip install` — fall back so
+    # `humpday.__version__` is always a string. The CI publish workflow's
+    # `python -c "import humpday; print(humpday.__version__)"` step relies on
+    # this attribute existing.
+    __version__ = "0.0.0+source"
+
 from humpday.optimizers.adaptive_optimizer import (
     EloRatingSystem,
     adaptive_optimize,
@@ -93,6 +105,8 @@ def minimize_unit_cube(
 recommend = suggest
 
 __all__ = [
+    # Package metadata
+    "__version__",
     # Core interface
     "OPTIMIZERS",
     "PURE_OPTIMIZERS",
