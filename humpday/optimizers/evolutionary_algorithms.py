@@ -369,8 +369,10 @@ class CMAEvolutionStrategy(BaseOptimizer):
         cc = (4 + mueff/n) / (n + 4 + 2*mueff/n)  # Time constant for cumulation for C
         cs = (mueff + 2) / (n + mueff + 5)  # Time constant for cumulation for sigma
         c1 = 2 / ((n + 1.3)**2 + mueff)  # Learning rate for rank-one update
-        cmu = min(1 - c1, 2 * (mueff - 2 + 1/mueff) / ((n + 2)**2 + mueff))  # Learning rate for rank-mu update
-        damps = 1 + 2 * max(0, np.sqrt((mueff - 1)/(n + 1)) - 1) + cs  # Damping for sigma
+        # Learning rate for rank-mu update
+        cmu = min(1 - c1, 2 * (mueff - 2 + 1/mueff) / ((n + 2)**2 + mueff))
+        # Damping for sigma
+        damps = 1 + 2 * max(0, np.sqrt((mueff - 1)/(n + 1)) - 1) + cs
 
         # Initialize
         mean = 0.5 * np.ones(n)  # Start at center of unit cube

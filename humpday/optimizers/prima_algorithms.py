@@ -26,7 +26,8 @@ from .base import BaseOptimizer
 class PRIMA_UOBYQA(BaseOptimizer):
     """PRIMA UOBYQA - Advanced implementation with robust quadratic interpolation.
 
-    Based on Powell's theory with sophisticated trust region methods and numerical stability.
+    Based on Powell's theory with sophisticated trust region methods and
+    numerical stability.
     """
 
     def optimize(self) -> Tuple[float, np.ndarray]:
