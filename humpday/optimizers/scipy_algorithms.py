@@ -9,9 +9,6 @@ Reference: https://docs.scipy.org/doc/scipy/reference/optimize.html
 """
 
 import math
-from typing import Tuple
-
-import numpy as np
 
 from humpday import _array as _A
 
@@ -395,58 +392,3 @@ class LBFGSB(BaseOptimizer):
                 break
 
         return self.best_value, self.best_x
-
-    def _finite_difference_gradient(self, x, f, eps):
-        """Compute gradient using finite differences."""
-        grad = np.zeros(self.n_dim)
-
-        for i in range(self.n_dim):
-            if self.evaluations >= self.n_trials:
-                break
-
-            # Forward difference with bound checking
-            x_plus = x.copy()
-            if x[i] + eps <= 1.0:
-                x_plus[i] = x[i] + eps
-                f_plus = self.evaluate(x_plus)
-                grad[i] = (f_plus - f) / eps
-            else:
-                # Backward difference near upper bound
-                x_minus = x.copy()
-                x_minus[i] = max(0.0, x[i] - eps)
-                f_minus = self.evaluate(x_minus)
-                grad[i] = (f - f_minus) / eps
-
-        return grad
-
-    def _backtracking_line_search(self, x, f, grad, direction, c1=1e-4, alpha_max=1.0):
-        """Backtracking line search with Armijo condition."""
-        alpha = min(alpha_max, 1.0)
-        rho = 0.8  # Backtracking factor
-
-        # Ensure we don't violate bounds
-        for i in range(self.n_dim):
-            if direction[i] > 0:
-                alpha = min(alpha, (1.0 - x[i]) / (direction[i] + 1e-10))
-            elif direction[i] < 0:
-                alpha = min(alpha, x[i] / (-direction[i] + 1e-10))
-
-        armijo_condition = c1 * np.dot(grad, direction)
-
-        for _ in range(10):  # Max backtracking steps
-            if self.evaluations >= self.n_trials:
-                return None
-
-            x_new = np.clip(x + alpha * direction, 0, 1)
-            f_new = self.evaluate(x_new)
-
-            # Armijo condition
-            if f_new <= f + alpha * armijo_condition:
-                return alpha
-
-            alpha *= rho
-
-            if alpha < 1e-10:
-                break
-
-        return alpha if alpha >= 1e-10 else None

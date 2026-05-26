@@ -8,9 +8,6 @@ They excel at global optimization and handling multimodal landscapes.
 
 import math
 import random
-from typing import Tuple
-
-import numpy as np
 
 from humpday import _array as _A
 

@@ -4,7 +4,7 @@ build-backend = "hatchling.build"
 
 [project]
 name = "humpday"
-version = "0.9.0"
+version = "0.10.0"
 description = "Taking the pain out of choosing a Python global optimizer"
 readme = "README.md"
 license = "MIT"
@@ -22,14 +22,19 @@ classifiers = [
     "Programming Language :: Python :: 3.13",
 ]
 
-# Core dependencies - Pyodide compatible
-dependencies = [
-    "numpy>=1.21.5",
-    # Pure Python optimization algorithms - no external optimizer packages needed
-    # Lightweight implementation with 22+ validated algorithms
-]
+# Core dependencies — none. Every algorithm has a pure-Python path via
+# `humpday._array`, so `pip install humpday` ships a true zero-dependency
+# wheel. For speed on dimensions where it matters, opt into the numpy
+# backend with `pip install humpday[fast]` below.
+dependencies = []
 
 [project.optional-dependencies]
+# Speed: numpy backend for the shim. Algorithm code calls the same shim
+# functions either way; numpy is transparently used when available.
+fast = [
+    "numpy>=1.21.5",
+]
+
 # Only include working optimizers that don't cause compatibility issues
 extra = [
     "optuna>=3.0.0",  # Known to work with Python 3.12
@@ -44,8 +49,12 @@ experimental = [
     # Note: ax-platform, nlopt, dlib, hyperopt have compatibility issues
 ]
 
-# Development dependencies
+# Development dependencies. Includes numpy because much of the test
+# suite imports numpy directly (parity tests, reference checks, etc.)
+# — `[fast]` is the *runtime* numpy opt-in for end-users; `[dev]` is
+# the superset needed to develop and run the full test suite.
 dev = [
+    "numpy>=1.21.5",
     "pytest>=7.0.0",
     "pytest-cov>=4.0.0",
     "black>=23.0.0",

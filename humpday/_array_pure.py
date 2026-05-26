@@ -173,6 +173,14 @@ def sin(x):
     return _elementwise(math.sin, x)
 
 
+def tan(x):
+    return _elementwise(math.tan, x)
+
+
+def atan(x):
+    return _elementwise(math.atan, x)
+
+
 def exp(x):
     return _elementwise(math.exp, x)
 
@@ -187,6 +195,9 @@ def sqrt(x):
 
 def abs(x):  # noqa: A001 — match numpy API
     return _elementwise(_builtins.abs, x)
+
+
+pi = math.pi
 
 
 # ---------------------------------------------------------------------------
@@ -325,10 +336,13 @@ __all__ = [
     # Elementwise math
     "cos",
     "sin",
+    "tan",
+    "atan",
     "exp",
     "log",
     "sqrt",
     "abs",
+    "pi",
     # Reductions
     "sum",
     "mean",

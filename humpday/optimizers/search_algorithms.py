@@ -6,10 +6,6 @@ including methods like coordinate descent, pattern search, and adaptive random s
 They are particularly effective for local optimization and structured exploration.
 """
 
-from typing import Tuple
-
-import numpy as np
-
 from humpday import _array as _A
 
 from .base import BaseOptimizer
