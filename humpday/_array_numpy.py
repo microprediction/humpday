@@ -30,10 +30,13 @@ arange = _np.arange
 
 cos = _np.cos
 sin = _np.sin
+tan = _np.tan
+atan = _np.arctan  # arctan in numpy; shim uses the math-module name.
 exp = _np.exp
 log = _np.log
 sqrt = _np.sqrt
 abs = _np.abs  # noqa: A001 — intentional shadowing to match numpy's API
+pi = _np.pi
 
 # ---------------------------------------------------------------------------
 # Reductions
@@ -108,10 +111,13 @@ __all__ = [
     # Elementwise math
     "cos",
     "sin",
+    "tan",
+    "atan",
     "exp",
     "log",
     "sqrt",
     "abs",
+    "pi",
     # Reductions
     "sum",
     "mean",

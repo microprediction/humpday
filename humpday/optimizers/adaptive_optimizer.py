@@ -11,7 +11,7 @@ import os
 from collections.abc import Generator
 from typing import Any, Callable, Dict, List, Optional, Tuple
 
-import numpy as np
+from humpday import _array as _A
 
 from .alloptimizers import PURE_OPTIMIZERS, pure_optimize
 
@@ -127,7 +127,7 @@ def normalize_performance(values: List[float]) -> List[float]:
 
 
 def run_algorithm_tournament(
-    objective_generator: Generator[Callable[[np.ndarray], float], None, None],
+    objective_generator: Generator[Callable[[Any], float], None, None],
     trials_per_problem: int,
     n_problems: int,
     n_dim: int,
@@ -207,7 +207,7 @@ def run_algorithm_tournament(
 
 
 def adaptive_optimize(
-    objective_generator: Generator[Callable[[np.ndarray], float], None, None],
+    objective_generator: Generator[Callable[[Any], float], None, None],
     trials_budget: int,
     n_dim: int,
     n_warmup_problems: int = 5,
@@ -385,64 +385,71 @@ def suggest_algorithm_from_elo(
 # These are tested against reference implementations to ensure correctness
 
 
-# Pure lightweight implementations
+# Pure-Python objective-function generators for the Elo tournament. These
+# used to depend on numpy; rewritten via the shim so the whole adaptive
+# optimization path stays loadable without numpy.
+
+
+def _uniform_in(low: float, high: float, n: int):
+    """Length-n list of independent uniform [low, high) samples — what
+    `np.random.uniform(low, high, n)` returns. Uses the shim RNG so a
+    single `_A.seed(...)` call seeds every random source the package uses."""
+    span = high - low
+    return [low + span * _A.random_scalar() for _ in range(n)]
+
+
 def sphere_variants_generator(
     n_dim: int = 2,
-) -> Generator[Callable[[np.ndarray], float], None, None]:
-    """Generator yielding variants of the sphere function - pure lightweight implementation."""
+) -> Generator[Callable[[Any], float], None, None]:
+    """Generator yielding variants of the sphere function."""
 
     def sphere_pure(x):
-        """Pure sphere function: sum(x^2)"""
-        x = np.asarray(x)
-        return np.sum(x * x)
+        """sum(x_i ^ 2)"""
+        return sum(float(xi) * float(xi) for xi in x)
 
     def shifted_sphere(x):
-        """Sphere with random shift"""
-        x = np.asarray(x)
-        shift = np.random.uniform(-0.3, 0.3, len(x))
-        x_shifted = x + shift
-        return np.sum(x_shifted * x_shifted)
+        """Sphere with a random per-dimension shift in [-0.3, 0.3]."""
+        shift = _uniform_in(-0.3, 0.3, len(x))
+        return sum((float(xi) + s) * (float(xi) + s) for xi, s in zip(x, shift))
 
     def scaled_sphere(x):
-        """Sphere with different scales per dimension"""
-        x = np.asarray(x)
-        scales = np.random.uniform(0.5, 2.0, len(x))
-        x_scaled = scales * x
-        return np.sum(x_scaled * x_scaled)
+        """Sphere with random per-dimension scaling in [0.5, 2.0]."""
+        scales = _uniform_in(0.5, 2.0, len(x))
+        return sum((s * float(xi)) * (s * float(xi)) for xi, s in zip(x, scales))
 
     variants = [sphere_pure, shifted_sphere, scaled_sphere]
-
     while True:
-        yield np.random.choice(variants)
+        yield _A.random_choice(variants)
 
 
 def rosenbrock_variants_generator(
     n_dim: int = 2,
-) -> Generator[Callable[[np.ndarray], float], None, None]:
-    """Generator yielding variants of the Rosenbrock function - pure lightweight implementation."""
+) -> Generator[Callable[[Any], float], None, None]:
+    """Generator yielding variants of the Rosenbrock function."""
+
+    def _rosenbrock(values):
+        """Standard Rosenbrock applied to a flat sequence of floats."""
+        total = 0.0
+        for i in range(len(values) - 1):
+            a = float(values[i])
+            b = float(values[i + 1])
+            total += 100.0 * (b - a * a) ** 2 + (1.0 - a) ** 2
+        return total
 
     def rosenbrock_pure(x):
-        """Pure Rosenbrock function: sum(100*(x[i+1] - x[i]^2)^2 + (1 - x[i])^2)"""
-        x = np.asarray(x)
-        return np.sum(100.0 * (x[1:] - x[:-1] ** 2) ** 2 + (1 - x[:-1]) ** 2)
+        return _rosenbrock(list(x))
 
     def scaled_rosenbrock(x):
-        """Rosenbrock with random scaling"""
-        x = np.asarray(x)
-        scale = np.random.uniform(0.1, 5.0)
-        return scale * np.sum(100.0 * (x[1:] - x[:-1] ** 2) ** 2 + (1 - x[:-1]) ** 2)
+        """Rosenbrock × random scale in [0.1, 5.0]."""
+        scale = _uniform_in(0.1, 5.0, 1)[0]
+        return scale * _rosenbrock(list(x))
 
     def shifted_rosenbrock(x):
-        """Rosenbrock with random shift"""
-        x = np.asarray(x)
-        shift = np.random.uniform(-0.2, 0.2, len(x))
-        x_shifted = x + shift
-        return np.sum(
-            100.0 * (x_shifted[1:] - x_shifted[:-1] ** 2) ** 2
-            + (1 - x_shifted[:-1]) ** 2
-        )
+        """Rosenbrock with a random per-dimension shift in [-0.2, 0.2]."""
+        shift = _uniform_in(-0.2, 0.2, len(x))
+        shifted = [float(xi) + s for xi, s in zip(x, shift)]
+        return _rosenbrock(shifted)
 
     variants = [rosenbrock_pure, scaled_rosenbrock, shifted_rosenbrock]
-
     while True:
-        yield np.random.choice(variants)
+        yield _A.random_choice(variants)
