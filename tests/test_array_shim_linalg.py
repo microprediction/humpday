@@ -74,6 +74,36 @@ def test_matrix_zeros(L):
     _close_matrix(Z, [[0, 0, 0], [0, 0, 0]])
 
 
+@pytest.mark.parametrize("L", BACKENDS)
+def test_outer(L):
+    # outer([1,2,3], [4,5]) = [[4,5],[8,10],[12,15]]
+    out = L.outer([1.0, 2.0, 3.0], [4.0, 5.0])
+    _close_matrix(out, [[4, 5], [8, 10], [12, 15]])
+    # Length-1 vectors give a 1x1 matrix.
+    _close_matrix(L.outer([7.0], [9.0]), [[63.0]])
+
+
+@pytest.mark.parametrize("L", BACKENDS)
+def test_diag_from_vec(L):
+    _close_matrix(
+        L.diag([1.0, 2.0, 3.0]),
+        [[1, 0, 0], [0, 2, 0], [0, 0, 3]],
+    )
+
+
+@pytest.mark.parametrize("L", BACKENDS)
+def test_diagonal_extract(L):
+    M = [[1.0, 2.0, 3.0], [4.0, 5.0, 6.0], [7.0, 8.0, 9.0]]
+    _close_vec(L.diagonal(M), [1.0, 5.0, 9.0])
+
+
+@pytest.mark.parametrize("L", BACKENDS)
+def test_diag_diagonal_roundtrip(L):
+    """`diagonal(diag(v))` should give `v` back."""
+    v = [0.5, 1.5, -2.5, 4.0]
+    _close_vec(L.diagonal(L.diag(v)), v)
+
+
 # ---------------------------------------------------------------------------
 # Matrix-matrix / matrix-vector
 # ---------------------------------------------------------------------------

@@ -57,6 +57,22 @@ def matrix_zeros(rows: int, cols: int) -> List[List[float]]:
     return [[0.0] * cols for _ in range(rows)]
 
 
+def outer(a, b):
+    """Outer product of two 1-D vectors. Returns shape (len(a), len(b))."""
+    return [[float(ai) * float(bj) for bj in b] for ai in a]
+
+
+def diag(vec):
+    """Diagonal matrix built from a 1-D vector. Returns shape (n, n)."""
+    n = len(vec)
+    return [[float(vec[i]) if i == j else 0.0 for j in range(n)] for i in range(n)]
+
+
+def diagonal(mat):
+    """Extract the diagonal of a square 2-D matrix as a `_Vec`."""
+    return _Vec(float(mat[i][i]) for i in range(len(mat)))
+
+
 # ---------------------------------------------------------------------------
 # Matrix-matrix / matrix-vector
 # ---------------------------------------------------------------------------
@@ -312,6 +328,9 @@ def eigh(
 __all__ = [
     "eye",
     "matrix_zeros",
+    "outer",
+    "diag",
+    "diagonal",
     "matmul",
     "matvec",
     "transpose",

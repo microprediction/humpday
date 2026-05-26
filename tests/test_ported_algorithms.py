@@ -47,7 +47,10 @@ PORTED = [
     ("search_algorithms", "PatternSearch"),
     ("scipy_algorithms", "NelderMead"),
     ("scipy_algorithms", "Powell"),
+    ("scipy_algorithms", "LBFGSB"),
     ("evolutionary_algorithms", "AntColonyOpt"),
+    ("evolutionary_algorithms", "CMAEvolutionStrategy"),
+    ("evolutionary_algorithms", "BayesianOpt"),
 ]
 
 
@@ -93,12 +96,12 @@ def test_pure_backend_works_for_ported_algorithms(tmp_path):
             TabuSearch, FireflyAlgorithm,
             ParticleSwarm, DifferentialEvolution, GeneticAlgorithm,
             EvolutionStrategy,
-            AntColonyOpt,
+            AntColonyOpt, CMAEvolutionStrategy, BayesianOpt,
         )
         from humpday.optimizers.search_algorithms import (
             AdaptiveRandomSearch, CoordinateDescent, PatternSearch,
         )
-        from humpday.optimizers.scipy_algorithms import NelderMead, Powell
+        from humpday.optimizers.scipy_algorithms import NelderMead, Powell, LBFGSB
 
         def sphere(x):
             return float(sum((xi - 0.5) ** 2 for xi in x))
@@ -109,9 +112,9 @@ def test_pure_backend_works_for_ported_algorithms(tmp_path):
             TabuSearch, FireflyAlgorithm,
             ParticleSwarm, DifferentialEvolution, GeneticAlgorithm,
             EvolutionStrategy,
-            AntColonyOpt,
+            AntColonyOpt, CMAEvolutionStrategy, BayesianOpt,
             AdaptiveRandomSearch, CoordinateDescent, PatternSearch,
-            NelderMead, Powell,
+            NelderMead, Powell, LBFGSB,
         ]
         for cls in ALGORITHMS:
             opt = cls(sphere, n_trials=200, n_dim=5)
@@ -141,7 +144,11 @@ def test_pure_backend_works_for_ported_algorithms(tmp_path):
         env=env,
         capture_output=True,
         text=True,
-        timeout=60,
+        # Generous: pure-Python CMA-ES (Jacobi eigh per generation) and
+        # BayesianOpt (Cholesky-solve per query) are markedly slower than
+        # numpy. 200 trials × 5-D × 19 algorithms takes ~90s on dev hardware,
+        # so 180s leaves comfortable headroom on CI runners.
+        timeout=180,
     )
 
     assert completed.returncode == 0, (

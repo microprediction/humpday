@@ -24,6 +24,21 @@ def matrix_zeros(rows, cols):
     return _np.zeros((rows, cols))
 
 
+def outer(a, b):
+    """Outer product of two 1-D vectors. Returns shape (len(a), len(b))."""
+    return _np.outer(a, b)
+
+
+def diag(vec):
+    """Diagonal matrix built from a 1-D vector. Returns shape (n, n)."""
+    return _np.diag(vec)
+
+
+def diagonal(mat):
+    """Extract the diagonal of a square 2-D matrix as a 1-D vector."""
+    return _np.diag(mat)
+
+
 # ---- Matrix-matrix / matrix-vector ------------------------------------------
 
 
@@ -58,6 +73,9 @@ def eigh(A):
 __all__ = [
     "eye",
     "matrix_zeros",
+    "outer",
+    "diag",
+    "diagonal",
     "matmul",
     "matvec",
     "transpose",
