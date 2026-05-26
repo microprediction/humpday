@@ -16,21 +16,28 @@ Reference implementations: https://www.pdfo.net/
 Must match algorithmic behavior of reference, not use reference directly.
 """
 
-from typing import Tuple
+import math
 
-import numpy as np
+from humpday import _array as _A
 
 from .base import BaseOptimizer
 
 
-class PRIMA_UOBYQA(BaseOptimizer):
-    """PRIMA UOBYQA - Advanced implementation with robust quadratic interpolation.
+class _PRIMALinAlgError(ValueError):
+    """Raised when a PRIMA linear-algebra step fails (singular system,
+    rank-deficient interpolation, etc.). Catches in PRIMA optimize() loops
+    use the broad `Exception` clause, so this never escapes the algorithm."""
 
-    Based on Powell's theory with sophisticated trust region methods and
-    numerical stability.
+
+class PRIMA_UOBYQA(BaseOptimizer):
+    """PRIMA UOBYQA — quadratic-interpolation trust-region method.
+
+    Pure-Python via the `humpday._array` shim — no direct numpy use.
+    XPT (interpolation points) is a list-of-vectors; the quadratic model
+    coefficient matrix A is a list-of-rows for the SVD/pinv solve.
     """
 
-    def optimize(self) -> Tuple[float, np.ndarray]:
+    def optimize(self):
         n = self.n_dim
         npt = (n + 1) * (n + 2) // 2  # Full quadratic model points
 
@@ -39,16 +46,15 @@ class PRIMA_UOBYQA(BaseOptimizer):
         rhoend = 1e-8
         rho = rhobeg
 
-        # Initialize with strategic base point
-        xbase = np.clip(0.5 * np.ones(n), 0.1, 0.9)
-        fbase = self.evaluate(xbase)
+        # Initial base point pulled into the interior of [0, 1]^n.
+        xbase = _A.clip(0.5 * _A.ones(n), 0.1, 0.9)
+        _ = self.evaluate(xbase)
 
-        # Initialize interpolation system
         XPT, FVAL = self._initialize_interpolation_points(xbase, rho, npt, n)
         nused = min(len(FVAL), npt)
-        kopt = np.argmin(FVAL[:nused])
+        # argmin via stdlib — works on lists, ndarrays, _Vec.
+        kopt = min(range(nused), key=FVAL.__getitem__)
 
-        # Main optimization loop
         iteration = 0
         max_iterations = min(100, self.n_trials // npt)
 
@@ -59,47 +65,44 @@ class PRIMA_UOBYQA(BaseOptimizer):
         ):
             iteration += 1
 
-            # Build robust quadratic model
             try:
                 g, H = self._build_robust_quadratic_model(XPT, FVAL, nused, n, kopt)
             except Exception:
                 rho *= 0.5
                 continue
 
-            # Advanced trust region solving
             try:
                 d = self._solve_trust_region_advanced(g, H, rho, n)
             except Exception:
                 d = self._fallback_step(g, rho, n)
 
-            # Evaluate candidate point
-            xnew = np.clip(xbase + XPT[kopt] + d, 0, 1)
+            xnew = _A.clip(xbase + XPT[kopt] + d, 0, 1)
 
             if self.evaluations >= self.n_trials:
                 break
 
             fnew = self.evaluate(xnew)
 
-            # Trust region update
-            predicted_reduction = -(g.T @ d + 0.5 * d.T @ H @ d)
+            # Predicted reduction: -(g·d + 0.5 d·H·d).
+            Hd = _A.linalg.matvec(H, d)
+            predicted_reduction = -(_A.dot(g, d) + 0.5 * _A.dot(d, Hd))
             actual_reduction = FVAL[kopt] - fnew
 
-            # Update interpolation set
+            # Update interpolation set.
             if nused < npt:
-                XPT = np.vstack([XPT[:nused], (xnew - xbase).reshape(1, -1)])
-                FVAL = np.append(FVAL[:nused], fnew)
+                XPT.append(xnew - xbase)
+                FVAL.append(fnew)
                 nused += 1
             else:
-                # Replace worst point
+                # Replace worst point that isn't the current best.
                 candidates = [i for i in range(nused) if i != kopt]
                 if candidates and fnew < max(FVAL[i] for i in candidates):
                     worst_idx = max(candidates, key=lambda i: FVAL[i])
                     XPT[worst_idx] = xnew - xbase
                     FVAL[worst_idx] = fnew
 
-            kopt = np.argmin(FVAL[:nused])
+            kopt = min(range(nused), key=FVAL.__getitem__)
 
-            # Update trust region radius
             if abs(predicted_reduction) > 1e-12:
                 ratio = actual_reduction / predicted_reduction
             else:
@@ -112,80 +115,101 @@ class PRIMA_UOBYQA(BaseOptimizer):
             else:
                 rho = max(rho * 0.5, rhoend)
 
-            # Base point shifting
-            if np.linalg.norm(XPT[kopt]) > 0.5 * rho:
+            # Base point shifting — recentre the model if the best point is
+            # too far from the centre.
+            if _A.norm(XPT[kopt]) > 0.5 * rho:
                 shift = XPT[kopt].copy()
-                xbase = np.clip(xbase + shift, 0, 1)
+                xbase = _A.clip(xbase + shift, 0, 1)
                 for i in range(nused):
-                    XPT[i] -= shift
+                    XPT[i] = XPT[i] - shift
 
         return self.best_value, self.best_x
 
     def _build_robust_quadratic_model(self, XPT, FVAL, nused, n, kopt):
-        """Build quadratic model with SVD for numerical stability."""
+        """Build the quadratic model coefficients via SVD-based regression.
 
+        Returns (g, H) where g is the gradient at the base point and H
+        is the symmetric Hessian. Solves the over-/under-determined
+        Vandermonde-style system Aᵀ c = b with rank-tolerant pinv.
+        """
         if nused < n + 1:
-            raise ValueError("Insufficient points")
+            raise _PRIMALinAlgError("Insufficient points")
 
         ncoeffs = 1 + n + n * (n + 1) // 2
-        A = np.zeros((nused, ncoeffs))
-        b = FVAL[:nused] - FVAL[kopt]
+
+        # Build the design matrix A as list-of-rows.
+        A = _A.linalg.matrix_zeros(nused, ncoeffs)
+        b = [FVAL[i] - FVAL[kopt] for i in range(nused)]
 
         for i in range(nused):
             x = XPT[i]
+            row = A[i]
             col = 0
-            A[i, col] = 1.0
+            row[col] = 1.0
             col += 1
             for j in range(n):
-                A[i, col] = x[j]
+                row[col] = float(x[j])
                 col += 1
             for j in range(n):
                 for k in range(j, n):
-                    A[i, col] = 0.5 * x[j] * x[k] if j == k else x[j] * x[k]
+                    row[col] = (
+                        0.5 * float(x[j]) * float(x[k])
+                        if j == k
+                        else float(x[j]) * float(x[k])
+                    )
                     col += 1
 
         try:
-            U, s, Vt = np.linalg.svd(A, full_matrices=False)
-            s = np.maximum(s, s[0] * 1e-12)
-            coeffs = Vt.T @ np.diag(1 / s) @ U.T @ b
-        except np.linalg.LinAlgError:
-            coeffs = np.linalg.pinv(A) @ b
+            # Tikhonov-regularised SVD-based solve: pinv(A) @ b with floor
+            # on tiny singular values.
+            U, s, Vt = _A.linalg.svd(A, full_matrices=False)
+            s_floor = s[0] * 1e-12 if len(s) > 0 else 1e-12
+            s_safe = [max(float(si), s_floor) for si in s]
+            # coeffs = V @ diag(1/s_safe) @ Uᵀ @ b
+            UT = _A.linalg.transpose(U)
+            UTb = _A.linalg.matvec(UT, b)
+            scaled = [UTb[i] / s_safe[i] for i in range(len(s_safe))]
+            V = _A.linalg.transpose(Vt)
+            coeffs = list(_A.linalg.matvec(V, scaled))
+        except Exception:
+            coeffs = list(_A.linalg.matvec(_A.linalg.pinv(A), b))
 
-        g = coeffs[1 : n + 1]
-        H = np.zeros((n, n))
+        g = _A.asarray(coeffs[1 : n + 1])
+        H = _A.linalg.matrix_zeros(n, n)
         col = n + 1
         for i in range(n):
             for j in range(i, n):
                 if col < len(coeffs):
-                    H[i, j] = coeffs[col]
+                    H[i][j] = coeffs[col]
                     if i != j:
-                        H[j, i] = coeffs[col]
+                        H[j][i] = coeffs[col]
                     col += 1
 
         return g, H
 
     def _solve_trust_region_advanced(self, g, H, rho, n):
-        """Advanced trust region solver with More-Sorensen method."""
+        """Trust-region subproblem solve. Tries the Newton direction if H is
+        positive-definite; falls back to the Cauchy point otherwise."""
         try:
-            eigenvals, Q = np.linalg.eigh(H)
-            min_eigval = np.min(eigenvals)
-
+            eigenvals, _Q = _A.linalg.eigh(H)
+            min_eigval = min(eigenvals)
             if min_eigval > 1e-8:
-                d_newton = -np.linalg.solve(H, g)
-                if np.linalg.norm(d_newton) <= rho:
+                # H is SPD — try the Newton step.
+                d_newton = -_A.linalg.solve(H, g)
+                if _A.norm(d_newton) <= rho:
                     return d_newton
-        except:
+        except Exception:
             pass
-
         return self._cauchy_point(g, H, rho)
 
     def _cauchy_point(self, g, H, rho):
-        """Compute Cauchy point."""
-        g_norm = np.linalg.norm(g)
+        """Cauchy point along the steepest-descent direction."""
+        g_norm = _A.norm(g)
         if g_norm < 1e-12:
-            return np.zeros(len(g))
+            return _A.zeros(len(g))
 
-        gHg = g.T @ H @ g
+        Hg = _A.linalg.matvec(H, g)
+        gHg = _A.dot(g, Hg)
         if gHg > 0:
             tau = min(1, (g_norm**3) / (rho * gHg))
         else:
@@ -194,215 +218,75 @@ class PRIMA_UOBYQA(BaseOptimizer):
         return -tau * rho * g / g_norm
 
     def _initialize_interpolation_points(self, xbase, rho, npt, n):
-        """Initialize interpolation points with optimal geometric distribution."""
-        XPT = np.zeros((npt, n))
-        FVAL = np.zeros(npt)
+        """Lay out the initial interpolation set. Returns (XPT_list, FVAL_list)
+        where XPT is a list of length-n vectors (centred at xbase = 0) and
+        FVAL is a parallel list of objective values."""
+        XPT = []
+        FVAL = []
 
-        # Base point
-        XPT[0] = np.zeros(n)
-        FVAL[0] = self.evaluate(xbase)
+        # Base point at xbase (offset = 0).
+        XPT.append(_A.zeros(n))
+        FVAL.append(self.evaluate(xbase))
+        if len(FVAL) >= npt:
+            return XPT, FVAL
 
-        point_idx = 1
-
-        # Coordinate directions
+        # ±rho along each coordinate.
         for i in range(n):
-            if point_idx >= npt:
-                break
+            for sign in (+1, -1):
+                if len(FVAL) >= npt:
+                    return XPT, FVAL
+                offset = _A.zeros(n)
+                offset[i] = sign * rho
+                XPT.append(offset)
+                FVAL.append(self.evaluate(_A.clip(xbase + offset, 0, 1)))
 
-            # Positive direction
-            XPT[point_idx] = np.zeros(n)
-            XPT[point_idx][i] = rho
-            xpoint = np.clip(xbase + XPT[point_idx], 0, 1)
-            FVAL[point_idx] = self.evaluate(xpoint)
-            point_idx += 1
-
-            if point_idx >= npt:
-                break
-
-            # Negative direction
-            XPT[point_idx] = np.zeros(n)
-            XPT[point_idx][i] = -rho
-            xpoint = np.clip(xbase + XPT[point_idx], 0, 1)
-            FVAL[point_idx] = self.evaluate(xpoint)
-            point_idx += 1
-
-        # Cross-term points
+        # Cross-term diagonals at rho/sqrt(2) per coordinate.
+        diag_step = rho / math.sqrt(2)
         for i in range(n - 1):
             for j in range(i + 1, n):
-                if point_idx >= npt:
-                    break
-
-                XPT[point_idx] = np.zeros(n)
-                XPT[point_idx][i] = rho / np.sqrt(2)
-                XPT[point_idx][j] = rho / np.sqrt(2)
-                xpoint = np.clip(xbase + XPT[point_idx], 0, 1)
-                FVAL[point_idx] = self.evaluate(xpoint)
-                point_idx += 1
+                if len(FVAL) >= npt:
+                    return XPT, FVAL
+                offset = _A.zeros(n)
+                offset[i] = diag_step
+                offset[j] = diag_step
+                XPT.append(offset)
+                FVAL.append(self.evaluate(_A.clip(xbase + offset, 0, 1)))
 
         return XPT, FVAL
 
     def _fallback_step(self, g, rho, n):
-        """Fallback step."""
-        g_norm = np.linalg.norm(g)
+        """Fallback step when the trust-region solve fails: steepest descent
+        scaled to the trust radius, or a small random kick if g vanishes."""
+        g_norm = _A.norm(g)
         if g_norm > 1e-12:
             return -rho * g / g_norm
-        else:
-            return np.random.normal(0, rho / 3, n)
-
-    def _build_quadratic_model(self, XPT, FVAL, kopt, npt, n):
-        """Build quadratic model: q(d) = g^T d + 0.5 d^T H d"""
-
-        # Use only available points (count non-zero function values)
-        nused = min(npt, np.count_nonzero(FVAL != 0) + 1)  # +1 for base point
-        if nused < n + 1:
-            # Need at least n+1 points for quadratic model
-            nused = min(npt, len([f for f in FVAL if f != float("inf")]))
-
-        if nused < n + 1:
-            raise np.linalg.LinAlgError(
-                f"Not enough points for model: {nused} < {n + 1}"
-            )
-
-        # Build interpolation matrix A and RHS b
-        # For quadratic model: [1, x, 0.5*x*x, x_i*x_j for i<j]
-        nterms = (
-            1 + n + n + n * (n - 1) // 2
-        )  # Constant + linear + diagonal + cross terms
-        A = np.zeros((nused, nterms))
-        b = FVAL[:nused] - FVAL[kopt]  # Relative to best point
-
-        for k in range(nused):
-            x = XPT[k]
-            idx = 0
-
-            # Constant term
-            A[k, idx] = 1.0
-            idx += 1
-
-            # Linear terms
-            A[k, idx : idx + n] = x
-            idx += n
-
-            # Quadratic diagonal terms
-            A[k, idx : idx + n] = 0.5 * x * x
-            idx += n
-
-            # Cross terms
-            for i in range(n - 1):
-                for j in range(i + 1, n):
-                    A[k, idx] = x[i] * x[j]
-                    idx += 1
-
-        # Solve for model coefficients (regularized least squares)
-        try:
-            # Add small regularization for stability
-            reg = 1e-12 * np.eye(A.shape[1])
-            coeffs = np.linalg.solve(A.T @ A + reg, A.T @ b)
-        except np.linalg.LinAlgError:
-            # Fallback: use pseudoinverse
-            coeffs = np.linalg.pinv(A) @ b
-
-        # Extract gradient and Hessian
-        gq = coeffs[1 : 1 + n]
-        hq = np.zeros((n, n))
-
-        # Diagonal Hessian elements
-        for i in range(n):
-            hq[i, i] = coeffs[1 + n + i]
-
-        # Cross terms
-        idx = 1 + 2 * n
-        for i in range(n - 1):
-            for j in range(i + 1, n):
-                hq[i, j] = hq[j, i] = coeffs[idx]
-                idx += 1
-
-        return gq, hq
-
-    def _solve_trust_region_subproblem(self, gq, hq, rho, n):
-        """Solve trust region subproblem: min g^T d + 0.5 d^T H d s.t. ||d|| <= rho"""
-
-        # Try unconstrained step first
-        try:
-            d_newton = -np.linalg.solve(hq, gq)
-            if np.linalg.norm(d_newton) <= rho:
-                return d_newton
-        except np.linalg.LinAlgError:
-            pass
-
-        # Use dogleg approach for approximate solution
-        # Steepest descent direction
-        d_cauchy = -(gq.T @ gq) / (gq.T @ hq @ gq + 1e-12) * gq
-
-        if np.linalg.norm(d_cauchy) >= rho:
-            # Cauchy point is outside trust region
-            return -rho * gq / (np.linalg.norm(gq) + 1e-12)
-
-        # Find intersection of dogleg path with trust region boundary
-        try:
-            d_newton = -np.linalg.solve(hq, gq)
-            diff = d_newton - d_cauchy
-            a = np.dot(diff, diff)
-            b = 2 * np.dot(d_cauchy, diff)
-            c = np.dot(d_cauchy, d_cauchy) - rho**2
-
-            discriminant = b**2 - 4 * a * c
-            if discriminant >= 0:
-                tau = (-b + np.sqrt(discriminant)) / (2 * a)
-                return d_cauchy + tau * diff
-        except np.linalg.LinAlgError:
-            pass
-
-        # Fallback: scaled Cauchy step
-        return d_cauchy
-
-    def _predicted_reduction(self, gq, hq, d):
-        """Compute predicted reduction from quadratic model."""
-        return -(gq.T @ d + 0.5 * d.T @ hq @ d)
-
-    def _update_interpolation_set(self, XPT, FVAL, xnew_rel, fnew, kopt, npt):
-        """Update interpolation set with new point."""
-        # Find point to replace (furthest from new point or highest function value)
-        distances = [np.linalg.norm(XPT[i] - xnew_rel) for i in range(len(FVAL))]
-
-        # Replace worst point that's not the current best
-        candidates = [(i, FVAL[i]) for i in range(len(FVAL)) if i != kopt]
-        if candidates:
-            knew = max(candidates, key=lambda x: x[1])[0]
-            XPT[knew] = xnew_rel
-            FVAL[knew] = fnew
-            return knew
-
-        return -1
+        return (rho / 3.0) * _A.random_normal(n)
 
 
 class PRIMA_NEWUOA(BaseOptimizer):
-    """PRIMA NEWUOA - Advanced implementation with proper 2n+1 interpolation system."""
+    """PRIMA NEWUOA — 2n+1 underdetermined interpolation trust-region method.
 
-    def optimize(self) -> Tuple[float, np.ndarray]:
+    Pure-Python via the `humpday._array` shim — no direct numpy use.
+    XPT is stored as a list of length-n vectors; the interpolation matrix
+    A is a list-of-rows for the QR-based regression.
+    """
+
+    def optimize(self):
         n = self.n_dim
+        npt = 2 * n + 1  # NEWUOA's signature interpolation count
 
-        # NEWUOA uses 2n+1 interpolation points (not full quadratic like UOBYQA)
-        npt = 2 * n + 1
-
-        # Trust region parameters
         rhobeg = 0.5
         rhoend = 1e-8
         rho = rhobeg
 
-        # Initialize base point
-        xbase = np.clip(0.5 * np.ones(n), 0.1, 0.9)
-        fbase = self.evaluate(xbase)
+        xbase = _A.clip(0.5 * _A.ones(n), 0.1, 0.9)
+        _ = self.evaluate(xbase)
 
-        # Initialize NEWUOA interpolation system
         XPT, FVAL = self._initialize_newuoa_points(xbase, rho, npt, n)
-
-        # Build initial interpolation matrix
         A, b = self._build_interpolation_system(XPT, FVAL, npt, n)
 
-        kopt = np.argmin(FVAL)
+        kopt = min(range(len(FVAL)), key=FVAL.__getitem__)
 
-        # Main optimization loop
         iteration = 0
         max_iterations = min(100, self.n_trials // npt)
 
@@ -413,277 +297,225 @@ class PRIMA_NEWUOA(BaseOptimizer):
         ):
             iteration += 1
 
-            # Build NEWUOA model (underdetermined quadratic approximation)
             try:
                 g, H = self._build_newuoa_model(XPT, FVAL, A, b, kopt, n)
-            except Exception as e:
+            except Exception:
                 rho *= 0.5
                 continue
 
-            # Trust region step
             try:
                 d = self._solve_trust_region_newuoa(g, H, rho, n)
             except Exception:
                 d = self._fallback_step(g, rho, n)
 
-            # Evaluate new point
-            xnew = np.clip(xbase + XPT[kopt] + d, 0, 1)
+            xnew = _A.clip(xbase + XPT[kopt] + d, 0, 1)
 
             if self.evaluations >= self.n_trials:
                 break
 
             fnew = self.evaluate(xnew)
 
-            # NEWUOA model updating (key difference from UOBYQA)
             predicted_reduction = self._predict_reduction(g, H, d)
             actual_reduction = FVAL[kopt] - fnew
 
-            # Update interpolation set with NEWUOA strategy
             point_updated = self._update_newuoa_interpolation(
                 XPT, FVAL, A, b, xnew - xbase, fnew, kopt, npt, n
             )
 
             if point_updated:
-                kopt_new = np.argmin(FVAL)
+                kopt_new = min(range(len(FVAL)), key=FVAL.__getitem__)
                 if FVAL[kopt_new] < FVAL[kopt]:
                     kopt = kopt_new
 
-            # Trust region update
             rho = self._update_trust_region_radius(
                 predicted_reduction, actual_reduction, rho, rhobeg, rhoend
             )
 
-            # Base point shifting
-            if np.linalg.norm(XPT[kopt]) > 0.5 * rho:
-                self._shift_base_point(XPT, xbase, kopt, npt)
+            if _A.norm(XPT[kopt]) > 0.5 * rho:
+                xbase = self._shift_base_point(XPT, xbase, kopt, npt)
 
         return self.best_value, self.best_x
 
     def _initialize_newuoa_points(self, xbase, rho, npt, n):
-        """Initialize 2n+1 interpolation points for NEWUOA."""
-        XPT = np.zeros((npt, n))
-        FVAL = np.zeros(npt)
+        """Lay out the 2n+1 NEWUOA interpolation points. Returns
+        (XPT_list, FVAL_list) — XPT is a list of length-n offset vectors."""
+        XPT = []
+        FVAL = []
 
-        # Base point
-        XPT[0] = np.zeros(n)
-        FVAL[0] = self.evaluate(xbase)
+        # Base point at xbase (offset = 0).
+        XPT.append(_A.zeros(n))
+        FVAL.append(self.evaluate(xbase))
 
-        point_idx = 1
-
-        # 2n coordinate direction points (essential for gradient estimation)
+        # 2n coordinate directions (±rho along each axis).
         for i in range(n):
-            if point_idx >= npt:
-                break
+            for sign in (+1, -1):
+                if len(FVAL) >= npt:
+                    return XPT, FVAL
+                offset = _A.zeros(n)
+                offset[i] = sign * rho
+                XPT.append(offset)
+                FVAL.append(self.evaluate(_A.clip(xbase + offset, 0, 1)))
 
-            # Positive direction
-            XPT[point_idx] = np.zeros(n)
-            XPT[point_idx][i] = rho
-            xpoint = np.clip(xbase + XPT[point_idx], 0, 1)
-            FVAL[point_idx] = self.evaluate(xpoint)
-            point_idx += 1
-
-            if point_idx >= npt:
-                break
-
-            # Negative direction
-            XPT[point_idx] = np.zeros(n)
-            XPT[point_idx][i] = -rho
-            xpoint = np.clip(xbase + XPT[point_idx], 0, 1)
-            FVAL[point_idx] = self.evaluate(xpoint)
-            point_idx += 1
-
-        # One additional point for NEWUOA (makes it 2n+1)
-        if point_idx < npt:
-            # Strategic placement - diagonal direction
-            XPT[point_idx] = np.full(n, rho / np.sqrt(n))
-            xpoint = np.clip(xbase + XPT[point_idx], 0, 1)
-            FVAL[point_idx] = self.evaluate(xpoint)
+        # One extra point along the diagonal to bring count to 2n+1.
+        if len(FVAL) < npt:
+            diag_step = rho / math.sqrt(n)
+            offset = _A.full(n, diag_step)
+            XPT.append(offset)
+            FVAL.append(self.evaluate(_A.clip(xbase + offset, 0, 1)))
 
         return XPT, FVAL
 
     def _build_interpolation_system(self, XPT, FVAL, npt, n):
-        """Build NEWUOA interpolation system matrix."""
-        # For NEWUOA, we build a minimal interpolation system
-        # We don't try to fit a full quadratic (would need (n+1)(n+2)/2 points)
-        # Instead, we fit what we can with 2n+1 points
+        """Build the NEWUOA interpolation system: 2n+1 rows, (1 + 2n) cols
+        (constant + linear + diagonal quadratic)."""
+        nterms = 1 + n + n
 
-        # Linear terms + some quadratic diagonal terms
-        nterms = 1 + n + n  # constant + linear + diagonal quadratic
-
-        A = np.zeros((npt, nterms))
-        b = FVAL.copy()
+        A = _A.linalg.matrix_zeros(npt, nterms)
+        b = list(FVAL)
 
         for k in range(npt):
             x = XPT[k]
+            row = A[k]
             col = 0
-
-            # Constant term
-            A[k, col] = 1.0
+            row[col] = 1.0
             col += 1
-
-            # Linear terms
             for i in range(n):
-                A[k, col] = x[i]
+                row[col] = float(x[i])
                 col += 1
-
-            # Diagonal quadratic terms
             for i in range(n):
-                A[k, col] = 0.5 * x[i] * x[i]
+                row[col] = 0.5 * float(x[i]) * float(x[i])
                 col += 1
 
         return A, b
 
     def _build_newuoa_model(self, XPT, FVAL, A, b, kopt, n):
-        """Build NEWUOA model using underdetermined interpolation."""
+        """Build the NEWUOA quadratic model via QR factorisation."""
         try:
-            # Use QR decomposition for numerical stability
-            Q, R = np.linalg.qr(A, mode="reduced")
+            Q, R = _A.linalg.qr(A)
+            QT = _A.linalg.transpose(Q)
+            QTb = _A.linalg.matvec(QT, b)
+            coeffs = list(_A.linalg.solve(R, QTb))
 
-            # Solve R * coeffs = Q.T * b
-            coeffs = np.linalg.solve(R, Q.T @ b)
-
-            # Extract gradient (linear coefficients relative to best point)
-            g = coeffs[1 : n + 1]
-
-            # Build approximate Hessian (diagonal only for NEWUOA)
-            H = np.diag(coeffs[n + 1 : 2 * n + 1])
-
-            # Ensure positive definiteness for trust region
-            eigenvals = np.diag(H)
-            min_eigval = np.min(eigenvals)
+            g = _A.asarray(coeffs[1 : n + 1])
+            # Diagonal Hessian from the diagonal-quadratic coefficients.
+            diag_vals = list(coeffs[n + 1 : 2 * n + 1])
+            min_eigval = min(diag_vals) if diag_vals else 0.0
             if min_eigval <= 0:
-                H += (-min_eigval + 1e-6) * np.eye(n)
-
+                shift = -min_eigval + 1e-6
+                diag_vals = [v + shift for v in diag_vals]
+            H = _A.linalg.diag(diag_vals)
         except Exception:
-            # Fallback: finite difference gradient
             g = self._finite_difference_gradient(XPT, FVAL, kopt, n)
-            H = np.eye(n)  # Unit Hessian
+            H = _A.linalg.eye(n)
 
         return g, H
 
     def _finite_difference_gradient(self, XPT, FVAL, kopt, n):
-        """Fallback finite difference gradient estimation."""
-        g = np.zeros(n)
+        """Best-effort central-difference gradient at XPT[kopt], using
+        whichever coordinate-direction points are present in the set."""
+        g_list = [0.0] * n
 
         for i in range(n):
-            # Find points in positive/negative i-th direction
             pos_val = neg_val = FVAL[kopt]
+            step_size = 0.0
 
             for k in range(len(FVAL)):
                 if k == kopt:
                     continue
-
                 diff = XPT[k] - XPT[kopt]
-
-                # Check if this is a coordinate direction point
-                if abs(diff[i]) > 1e-6 and np.sum(np.abs(diff)) < 2 * abs(diff[i]):
-                    if diff[i] > 0:
+                # Heuristic: this is "the ith coordinate direction" if diff[i]
+                # is the dominant nonzero component.
+                if abs(diff[i]) > 1e-6 and sum(abs(float(v)) for v in diff) < 2 * abs(
+                    float(diff[i])
+                ):
+                    if float(diff[i]) > 0:
                         pos_val = FVAL[k]
                     else:
                         neg_val = FVAL[k]
+                    step_size = max(step_size, abs(float(diff[i])))
 
-            # Central difference approximation
-            if pos_val != FVAL[kopt] and neg_val != FVAL[kopt]:
-                step_size = max(
-                    abs(diff[i])
-                    for k in range(len(FVAL))
-                    if k != kopt and abs(XPT[k][i] - XPT[kopt][i]) > 1e-6
-                )
-                g[i] = (pos_val - neg_val) / (2 * step_size)
+            if pos_val != FVAL[kopt] and neg_val != FVAL[kopt] and step_size > 0:
+                g_list[i] = (pos_val - neg_val) / (2 * step_size)
 
-        return g
+        return _A.asarray(g_list)
 
     def _solve_trust_region_newuoa(self, g, H, rho, n):
-        """Solve trust region subproblem for NEWUOA."""
-        # Try Newton step first
+        """Newton step if H is SPD enough; dogleg otherwise."""
         try:
-            if np.all(np.linalg.eigvals(H) > 1e-8):
-                d_newton = -np.linalg.solve(H, g)
-                if np.linalg.norm(d_newton) <= rho:
+            eigvals, _ = _A.linalg.eigh(H)
+            if all(v > 1e-8 for v in eigvals):
+                d_newton = -_A.linalg.solve(H, g)
+                if _A.norm(d_newton) <= rho:
                     return d_newton
         except Exception:
             pass
-
-        # Dogleg method
         return self._dogleg_method(g, H, rho, n)
 
     def _dogleg_method(self, g, H, rho, n):
-        """Dogleg method for trust region solution."""
-        # Steepest descent direction
-        g_norm_sq = np.dot(g, g)
+        """Dogleg trust-region solver."""
+        g_norm_sq = _A.dot(g, g)
         if g_norm_sq < 1e-12:
-            return np.zeros(n)
+            return _A.zeros(n)
 
-        # Cauchy point
-        gHg = g.T @ H @ g
-        if gHg > 1e-12:
-            alpha_c = g_norm_sq / gHg
-        else:
-            alpha_c = 1.0
+        Hg = _A.linalg.matvec(H, g)
+        gHg = _A.dot(g, Hg)
+        alpha_c = g_norm_sq / gHg if gHg > 1e-12 else 1.0
 
         d_cauchy = -alpha_c * g
 
-        if np.linalg.norm(d_cauchy) >= rho:
-            # Cauchy point is outside trust region
-            return -rho * g / np.sqrt(g_norm_sq)
+        if _A.norm(d_cauchy) >= rho:
+            return -rho * g / math.sqrt(g_norm_sq)
 
-        # Newton point
         try:
-            d_newton = -np.linalg.solve(H, g)
-
-            if np.linalg.norm(d_newton) <= rho:
+            d_newton = -_A.linalg.solve(H, g)
+            if _A.norm(d_newton) <= rho:
                 return d_newton
 
-            # Dogleg path: find intersection with trust region boundary
+            # Dogleg path: solve for tau s.t. ||d_cauchy + tau (d_newton-d_cauchy)|| == rho.
             diff = d_newton - d_cauchy
-            a = np.dot(diff, diff)
-            b = 2 * np.dot(d_cauchy, diff)
-            c = np.dot(d_cauchy, d_cauchy) - rho**2
+            a = _A.dot(diff, diff)
+            b_coef = 2 * _A.dot(d_cauchy, diff)
+            c = _A.dot(d_cauchy, d_cauchy) - rho * rho
 
-            discriminant = b**2 - 4 * a * c
+            discriminant = b_coef * b_coef - 4 * a * c
             if discriminant >= 0 and a > 1e-12:
-                tau = (-b + np.sqrt(discriminant)) / (2 * a)
+                tau = (-b_coef + math.sqrt(discriminant)) / (2 * a)
                 return d_cauchy + tau * diff
-
         except Exception:
             pass
 
         return d_cauchy
 
     def _update_newuoa_interpolation(self, XPT, FVAL, A, b, d, fnew, kopt, npt, n):
-        """Update NEWUOA interpolation set with new point."""
-        # NEWUOA strategy: replace the point that is furthest from the new point
-        # among those that are not the current best
+        """Replace the point furthest from the new position (and ≠ kopt)
+        with `(XPT[kopt] + d, fnew)`, then rebuild the interpolation system."""
         candidates = [i for i in range(npt) if i != kopt]
+        if not candidates:
+            return False
 
-        if candidates:
-            # Find point furthest from new position
-            distances = []
-            new_pos = XPT[kopt] + d
+        new_pos = XPT[kopt] + d
+        # `distances[k]` paired with `k`; pick the largest.
+        furthest_idx = max(candidates, key=lambda i: float(_A.norm(XPT[i] - new_pos)))
 
-            for i in candidates:
-                dist = np.linalg.norm(XPT[i] - new_pos)
-                distances.append((i, dist))
+        XPT[furthest_idx] = new_pos
+        FVAL[furthest_idx] = fnew
 
-            # Replace the furthest point
-            furthest_idx = max(distances, key=lambda x: x[1])[0]
+        # Rebuild A and b in place.
+        new_A, new_b = self._build_interpolation_system(XPT, FVAL, npt, n)
+        # `A` and `b` are the local references passed in; mutate them so
+        # the caller's references stay valid.
+        for row_i in range(len(A)):
+            A[row_i] = new_A[row_i]
+        for j in range(len(b)):
+            b[j] = new_b[j]
 
-            XPT[furthest_idx] = new_pos
-            FVAL[furthest_idx] = fnew
-
-            # Update interpolation system
-            A, b = self._build_interpolation_system(XPT, FVAL, npt, n)
-
-            return True
-
-        return False
+        return True
 
     def _predict_reduction(self, g, H, d):
-        """Predict reduction from quadratic model."""
-        return -(g.T @ d + 0.5 * d.T @ H @ d)
+        Hd = _A.linalg.matvec(H, d)
+        return -(_A.dot(g, d) + 0.5 * _A.dot(d, Hd))
 
     def _update_trust_region_radius(self, pred_red, actual_red, rho, rhobeg, rhoend):
-        """Update trust region radius."""
         if abs(pred_red) < 1e-12:
             ratio = 0 if actual_red <= 0 else 10
         else:
@@ -699,43 +531,41 @@ class PRIMA_NEWUOA(BaseOptimizer):
             return max(rho * 0.5, rhoend)
 
     def _shift_base_point(self, XPT, xbase, kopt, npt):
-        """Shift base point for numerical stability."""
+        """Recentre XPT so the best point sits at the origin. Returns the
+        new xbase (the input xbase is treated as immutable to keep the
+        list-of-vectors semantics simple)."""
         shift = XPT[kopt].copy()
-        xbase += shift
-        np.clip(xbase, 0, 1, out=xbase)
-
+        new_xbase = _A.clip(xbase + shift, 0, 1)
         for i in range(npt):
-            XPT[i] -= shift
+            XPT[i] = XPT[i] - shift
+        return new_xbase
 
 
 class PRIMA_BOBYQA(BaseOptimizer):
-    """PRIMA BOBYQA - Advanced Bound Constrained Optimization BY Quadratic Approximation."""
+    """PRIMA BOBYQA — Bound-constrained derivative-free trust-region method.
 
-    def optimize(self) -> Tuple[float, np.ndarray]:
+    Pure-Python via the `humpday._array` shim — no direct numpy use.
+    Bounds for humpday's [0, 1]^n cube are tracked explicitly via xl, xu
+    lists; XPT is a list of length-n offset vectors.
+    """
+
+    def optimize(self):
         n = self.n_dim
-
-        # BOBYQA uses 2n+1 interpolation points like NEWUOA
         npt = 2 * n + 1
 
-        # Bounds for unit hypercube [0,1]^n
-        xl = np.zeros(n)
-        xu = np.ones(n)
+        xl = _A.zeros(n)
+        xu = _A.ones(n)
 
-        # Trust region parameters
         rhobeg = 0.5
         rhoend = 1e-8
         rho = rhobeg
 
-        # Initialize base point away from boundaries
-        xbase = np.clip(0.5 * np.ones(n), 0.1, 0.9)
-        fbase = self.evaluate(xbase)
+        xbase = _A.clip(0.5 * _A.ones(n), 0.1, 0.9)
+        _ = self.evaluate(xbase)
 
-        # Initialize BOBYQA interpolation system with bound awareness
         XPT, FVAL = self._initialize_bobyqa_points(xbase, rho, npt, n, xl, xu)
+        kopt = min(range(len(FVAL)), key=FVAL.__getitem__)
 
-        kopt = np.argmin(FVAL)
-
-        # Main optimization loop
         iteration = 0
         max_iterations = min(100, self.n_trials // npt)
 
@@ -746,14 +576,12 @@ class PRIMA_BOBYQA(BaseOptimizer):
         ):
             iteration += 1
 
-            # Build bound-constrained quadratic model
             try:
                 g, H = self._build_bobyqa_model(XPT, FVAL, kopt, n)
-            except Exception as e:
+            except Exception:
                 rho *= 0.5
                 continue
 
-            # Solve bound-constrained trust region subproblem
             try:
                 d = self._solve_bound_constrained_tr(
                     g, H, rho, n, xbase + XPT[kopt], xl, xu
@@ -761,296 +589,251 @@ class PRIMA_BOBYQA(BaseOptimizer):
             except Exception:
                 d = self._fallback_bound_step(g, rho, n, xbase + XPT[kopt], xl, xu)
 
-            # Evaluate new point
-            xnew = np.clip(xbase + XPT[kopt] + d, xl, xu)
+            xnew = _A.clip(xbase + XPT[kopt] + d, 0, 1)
 
             if self.evaluations >= self.n_trials:
                 break
 
             fnew = self.evaluate(xnew)
 
-            # Model updating with bound awareness
             predicted_reduction = self._predict_reduction(g, H, d)
             actual_reduction = FVAL[kopt] - fnew
 
-            # Update interpolation set
             point_updated = self._update_bobyqa_interpolation(
                 XPT, FVAL, xnew - xbase, fnew, kopt, npt, n
             )
 
             if point_updated:
-                kopt_new = np.argmin(FVAL)
+                kopt_new = min(range(len(FVAL)), key=FVAL.__getitem__)
                 if FVAL[kopt_new] < FVAL[kopt]:
                     kopt = kopt_new
 
-            # Trust region update
             rho = self._update_trust_region_radius(
                 predicted_reduction, actual_reduction, rho, rhobeg, rhoend
             )
 
-            # Base point shifting with bound awareness
-            if np.linalg.norm(XPT[kopt]) > 0.5 * rho:
-                self._shift_base_point_bounded(XPT, xbase, kopt, npt, xl, xu)
+            if _A.norm(XPT[kopt]) > 0.5 * rho:
+                xbase = self._shift_base_point_bounded(XPT, xbase, kopt, npt, xl, xu)
 
         return self.best_value, self.best_x
 
     def _initialize_bobyqa_points(self, xbase, rho, npt, n, xl, xu):
-        """Initialize interpolation points for BOBYQA with bound constraints."""
-        XPT = np.zeros((npt, n))
-        FVAL = np.zeros(npt)
+        """Lay out the initial interpolation set, respecting [xl, xu] bounds.
+        Returns (XPT_list, FVAL_list)."""
+        XPT = []
+        FVAL = []
 
-        # Base point
-        XPT[0] = np.zeros(n)
-        FVAL[0] = self.evaluate(xbase)
+        XPT.append(_A.zeros(n))
+        FVAL.append(self.evaluate(xbase))
 
-        point_idx = 1
-
-        # Coordinate directions respecting bounds
+        # Coordinate directions, clipped to bound-feasible step sizes.
         for i in range(n):
-            if point_idx >= npt:
-                break
-
-            # Positive direction - check upper bound
-            step_pos = min(rho, xu[i] - xbase[i])
+            if len(FVAL) >= npt:
+                return XPT, FVAL
+            step_pos = min(rho, float(xu[i]) - float(xbase[i]))
             if step_pos > 1e-10:
-                XPT[point_idx] = np.zeros(n)
-                XPT[point_idx][i] = step_pos
-                xpoint = np.clip(xbase + XPT[point_idx], xl, xu)
-                FVAL[point_idx] = self.evaluate(xpoint)
-                point_idx += 1
+                offset = _A.zeros(n)
+                offset[i] = step_pos
+                XPT.append(offset)
+                FVAL.append(self.evaluate(_A.clip(xbase + offset, 0, 1)))
 
-            if point_idx >= npt:
-                break
-
-            # Negative direction - check lower bound
-            step_neg = max(-rho, xl[i] - xbase[i])
+            if len(FVAL) >= npt:
+                return XPT, FVAL
+            step_neg = max(-rho, float(xl[i]) - float(xbase[i]))
             if step_neg < -1e-10:
-                XPT[point_idx] = np.zeros(n)
-                XPT[point_idx][i] = step_neg
-                xpoint = np.clip(xbase + XPT[point_idx], xl, xu)
-                FVAL[point_idx] = self.evaluate(xpoint)
-                point_idx += 1
+                offset = _A.zeros(n)
+                offset[i] = step_neg
+                XPT.append(offset)
+                FVAL.append(self.evaluate(_A.clip(xbase + offset, 0, 1)))
 
-        # Additional diagonal point if space available
-        if point_idx < npt:
-            # Diagonal direction respecting bounds
-            diagonal_step = np.full(n, rho / np.sqrt(n))
-
-            # Adjust for bounds
+        # Optional diagonal-direction point, clipped to bounds.
+        if len(FVAL) < npt:
+            diagonal_step = [rho / math.sqrt(n)] * n
             for i in range(n):
-                if xbase[i] + diagonal_step[i] > xu[i]:
-                    diagonal_step[i] = xu[i] - xbase[i]
-                elif xbase[i] + diagonal_step[i] < xl[i]:
-                    diagonal_step[i] = xl[i] - xbase[i]
-
-            XPT[point_idx] = diagonal_step
-            xpoint = np.clip(xbase + XPT[point_idx], xl, xu)
-            FVAL[point_idx] = self.evaluate(xpoint)
+                xi_target = float(xbase[i]) + diagonal_step[i]
+                if xi_target > float(xu[i]):
+                    diagonal_step[i] = float(xu[i]) - float(xbase[i])
+                elif xi_target < float(xl[i]):
+                    diagonal_step[i] = float(xl[i]) - float(xbase[i])
+            offset = _A.asarray(diagonal_step)
+            XPT.append(offset)
+            FVAL.append(self.evaluate(_A.clip(xbase + offset, 0, 1)))
 
         return XPT, FVAL
 
     def _build_bobyqa_model(self, XPT, FVAL, kopt, n):
-        """Build quadratic model for BOBYQA."""
-        # Use similar approach to NEWUOA but with bound awareness
+        """Quadratic model via QR-based regression with diagonal Hessian."""
         try:
-            # Build minimal interpolation system
-            nterms = 1 + n + n  # constant + linear + diagonal quadratic
-            A = np.zeros((len(FVAL), nterms))
-            b = FVAL - FVAL[kopt]
+            nterms = 1 + n + n
+            nrows = len(FVAL)
+            A = _A.linalg.matrix_zeros(nrows, nterms)
+            b = [FVAL[i] - FVAL[kopt] for i in range(nrows)]
 
-            for k in range(len(FVAL)):
+            for k in range(nrows):
                 x = XPT[k]
+                row = A[k]
                 col = 0
-
-                # Constant term
-                A[k, col] = 1.0
+                row[col] = 1.0
                 col += 1
-
-                # Linear terms
                 for i in range(n):
-                    A[k, col] = x[i]
+                    row[col] = float(x[i])
+                    col += 1
+                for i in range(n):
+                    row[col] = 0.5 * float(x[i]) * float(x[i])
                     col += 1
 
-                # Diagonal quadratic terms
-                for i in range(n):
-                    A[k, col] = 0.5 * x[i] * x[i]
-                    col += 1
+            Q, R = _A.linalg.qr(A)
+            QT = _A.linalg.transpose(Q)
+            QTb = _A.linalg.matvec(QT, b)
+            coeffs = list(_A.linalg.solve(R, QTb))
 
-            # Solve using QR decomposition
-            Q, R = np.linalg.qr(A, mode="reduced")
-            coeffs = np.linalg.solve(R, Q.T @ b)
-
-            # Extract gradient and Hessian
-            g = coeffs[1 : n + 1]
-            H = np.diag(coeffs[n + 1 : 2 * n + 1])
-
-            # Ensure positive definiteness
-            eigenvals = np.diag(H)
-            min_eigval = np.min(eigenvals)
+            g = _A.asarray(coeffs[1 : n + 1])
+            diag_vals = list(coeffs[n + 1 : 2 * n + 1])
+            min_eigval = min(diag_vals) if diag_vals else 0.0
             if min_eigval <= 0:
-                H += (-min_eigval + 1e-6) * np.eye(n)
-
+                shift = -min_eigval + 1e-6
+                diag_vals = [v + shift for v in diag_vals]
+            H = _A.linalg.diag(diag_vals)
         except Exception:
-            # Fallback: finite differences
             g = self._finite_difference_gradient_bounded(XPT, FVAL, kopt, n)
-            H = np.eye(n)
+            H = _A.linalg.eye(n)
 
         return g, H
 
     def _finite_difference_gradient_bounded(self, XPT, FVAL, kopt, n):
-        """Finite difference gradient with bound awareness."""
-        g = np.zeros(n)
+        """Coordinate-wise finite-difference gradient using whichever
+        positive/negative axis points are present."""
+        g_list = [0.0] * n
 
         for i in range(n):
             pos_val = neg_val = FVAL[kopt]
-            pos_step = neg_step = 0
+            pos_step = neg_step = 0.0
 
             for k in range(len(FVAL)):
                 if k == kopt:
                     continue
-
                 diff = XPT[k] - XPT[kopt]
-
-                # Look for coordinate direction points
-                if abs(diff[i]) > 1e-6 and np.sum(np.abs(diff)) < 2 * abs(diff[i]):
-                    if diff[i] > 0:
+                if abs(float(diff[i])) > 1e-6 and sum(
+                    abs(float(v)) for v in diff
+                ) < 2 * abs(float(diff[i])):
+                    if float(diff[i]) > 0:
                         pos_val = FVAL[k]
-                        pos_step = diff[i]
+                        pos_step = float(diff[i])
                     else:
                         neg_val = FVAL[k]
-                        neg_step = abs(diff[i])
+                        neg_step = abs(float(diff[i]))
 
-            # Finite difference approximation
             if pos_step > 0 and neg_step > 0:
-                g[i] = (pos_val - neg_val) / (pos_step + neg_step)
+                g_list[i] = (pos_val - neg_val) / (pos_step + neg_step)
             elif pos_step > 0:
-                g[i] = (pos_val - FVAL[kopt]) / pos_step
+                g_list[i] = (pos_val - FVAL[kopt]) / pos_step
             elif neg_step > 0:
-                g[i] = (FVAL[kopt] - neg_val) / neg_step
+                g_list[i] = (FVAL[kopt] - neg_val) / neg_step
 
-        return g
+        return _A.asarray(g_list)
 
     def _solve_bound_constrained_tr(self, g, H, rho, n, x_current, xl, xu):
-        """Solve bound-constrained trust region subproblem."""
-
-        # First try unconstrained solution
+        """Bound-constrained trust-region solve. Tries the Newton step
+        first and falls back to projected-Cauchy if Newton is infeasible
+        or H isn't SPD enough."""
         try:
-            if np.all(np.linalg.eigvals(H) > 1e-8):
-                d_newton = -np.linalg.solve(H, g)
-
-                # Check if it satisfies bounds
+            eigvals, _ = _A.linalg.eigh(H)
+            if all(v > 1e-8 for v in eigvals):
+                d_newton = -_A.linalg.solve(H, g)
                 x_new = x_current + d_newton
                 if (
-                    np.all(x_new >= xl)
-                    and np.all(x_new <= xu)
-                    and np.linalg.norm(d_newton) <= rho
+                    all(float(x_new[i]) >= float(xl[i]) for i in range(n))
+                    and all(float(x_new[i]) <= float(xu[i]) for i in range(n))
+                    and _A.norm(d_newton) <= rho
                 ):
                     return d_newton
         except Exception:
             pass
-
-        # Projected gradient method for bound-constrained case
         return self._projected_cauchy_point(g, H, rho, n, x_current, xl, xu)
 
     def _projected_cauchy_point(self, g, H, rho, n, x_current, xl, xu):
-        """Compute projected Cauchy point for bound constraints."""
+        """Projected Cauchy point — direction is steepest descent with
+        active-bound components zeroed, then projected onto the trust
+        region and the bound box."""
+        if _A.norm(g) < 1e-12:
+            return _A.zeros(n)
 
-        # Start with steepest descent direction
-        if np.linalg.norm(g) < 1e-12:
-            return np.zeros(n)
-
-        # Project gradient to feasible directions
+        # p = -g, with components zeroed if they'd push outside the bounds.
         p = -g.copy()
-
-        # Adjust for active bounds
         for i in range(n):
-            if x_current[i] <= xl[i] + 1e-10 and p[i] < 0:
-                p[i] = 0  # Can't go below lower bound
-            elif x_current[i] >= xu[i] - 1e-10 and p[i] > 0:
-                p[i] = 0  # Can't go above upper bound
+            if float(x_current[i]) <= float(xl[i]) + 1e-10 and float(p[i]) < 0:
+                p[i] = 0.0
+            elif float(x_current[i]) >= float(xu[i]) - 1e-10 and float(p[i]) > 0:
+                p[i] = 0.0
 
-        if np.linalg.norm(p) < 1e-12:
-            return np.zeros(n)
+        if _A.norm(p) < 1e-12:
+            return _A.zeros(n)
 
-        # Compute step length
-        gHg = g.T @ H @ g
-        if gHg > 1e-12:
-            alpha = np.dot(g, g) / gHg
-        else:
-            alpha = 1.0
+        Hg = _A.linalg.matvec(H, g)
+        gHg = _A.dot(g, Hg)
+        alpha = _A.dot(g, g) / gHg if gHg > 1e-12 else 1.0
 
         d = alpha * p
 
-        # Project to trust region
-        if np.linalg.norm(d) > rho:
-            d = rho * d / np.linalg.norm(d)
+        d_norm = _A.norm(d)
+        if d_norm > rho:
+            d = rho * d / d_norm
 
-        # Project to satisfy bounds
-        x_new = x_current + d
+        # Final projection: pull any out-of-bounds component back to the box.
         for i in range(n):
-            if x_new[i] < xl[i]:
-                d[i] = xl[i] - x_current[i]
-            elif x_new[i] > xu[i]:
-                d[i] = xu[i] - x_current[i]
+            xi_new = float(x_current[i]) + float(d[i])
+            if xi_new < float(xl[i]):
+                d[i] = float(xl[i]) - float(x_current[i])
+            elif xi_new > float(xu[i]):
+                d[i] = float(xu[i]) - float(x_current[i])
 
         return d
 
     def _update_bobyqa_interpolation(self, XPT, FVAL, d, fnew, kopt, npt, n):
-        """Update BOBYQA interpolation set."""
-        # Similar to NEWUOA but with bound awareness
+        """Replace the point furthest from the new position with `(new, fnew)`."""
         candidates = [i for i in range(npt) if i != kopt]
-
-        if candidates:
-            # Replace furthest point
-            new_pos = XPT[kopt] + d
-            distances = [(i, np.linalg.norm(XPT[i] - new_pos)) for i in candidates]
-            furthest_idx = max(distances, key=lambda x: x[1])[0]
-
-            XPT[furthest_idx] = new_pos
-            FVAL[furthest_idx] = fnew
-            return True
-
-        return False
+        if not candidates:
+            return False
+        new_pos = XPT[kopt] + d
+        furthest_idx = max(candidates, key=lambda i: float(_A.norm(XPT[i] - new_pos)))
+        XPT[furthest_idx] = new_pos
+        FVAL[furthest_idx] = fnew
+        return True
 
     def _shift_base_point_bounded(self, XPT, xbase, kopt, npt, xl, xu):
-        """Shift base point with bound constraints."""
+        """Recentre XPT so the best point sits at the origin, with the
+        new base clipped to the bound box."""
         shift = XPT[kopt].copy()
-
-        # Ensure new base point is within bounds
-        new_base = xbase + shift
-        np.clip(new_base, xl, xu, out=new_base)
-
-        # Adjust shift if clipping occurred
+        new_base = _A.clip(xbase + shift, 0, 1)
+        # Use the realised shift (might differ from `shift` if clipping
+        # truncated it) so XPT stays consistent.
         actual_shift = new_base - xbase
-        xbase[:] = new_base
-
-        # Shift all interpolation points
         for i in range(npt):
-            XPT[i] -= actual_shift
+            XPT[i] = XPT[i] - actual_shift
+        return new_base
 
     def _fallback_bound_step(self, g, rho, n, x_current, xl, xu):
-        """Fallback step with bound constraints."""
-        if np.linalg.norm(g) > 1e-12:
-            d = -rho * g / np.linalg.norm(g)
+        """Bound-aware fallback step: scaled steepest descent or random
+        kick, then projected onto the bound box."""
+        if _A.norm(g) > 1e-12:
+            d = -rho * g / _A.norm(g)
         else:
-            d = np.random.normal(0, rho / 3, n)
+            d = (rho / 3.0) * _A.random_normal(n)
 
-        # Project to satisfy bounds
-        x_new = x_current + d
         for i in range(n):
-            if x_new[i] < xl[i]:
-                d[i] = xl[i] - x_current[i]
-            elif x_new[i] > xu[i]:
-                d[i] = xu[i] - x_current[i]
+            xi_new = float(x_current[i]) + float(d[i])
+            if xi_new < float(xl[i]):
+                d[i] = float(xl[i]) - float(x_current[i])
+            elif xi_new > float(xu[i]):
+                d[i] = float(xu[i]) - float(x_current[i])
 
         return d
 
     def _predict_reduction(self, g, H, d):
-        """Predict reduction from quadratic model."""
-        return -(g.T @ d + 0.5 * d.T @ H @ d)
+        Hd = _A.linalg.matvec(H, d)
+        return -(_A.dot(g, d) + 0.5 * _A.dot(d, Hd))
 
     def _update_trust_region_radius(self, pred_red, actual_red, rho, rhobeg, rhoend):
-        """Update trust region radius."""
         if abs(pred_red) < 1e-12:
             ratio = 0 if actual_red <= 0 else 10
         else:

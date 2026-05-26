@@ -51,6 +51,9 @@ PORTED = [
     ("evolutionary_algorithms", "AntColonyOpt"),
     ("evolutionary_algorithms", "CMAEvolutionStrategy"),
     ("evolutionary_algorithms", "BayesianOpt"),
+    ("prima_algorithms", "PRIMA_UOBYQA"),
+    ("prima_algorithms", "PRIMA_NEWUOA"),
+    ("prima_algorithms", "PRIMA_BOBYQA"),
 ]
 
 
@@ -102,6 +105,9 @@ def test_pure_backend_works_for_ported_algorithms(tmp_path):
             AdaptiveRandomSearch, CoordinateDescent, PatternSearch,
         )
         from humpday.optimizers.scipy_algorithms import NelderMead, Powell, LBFGSB
+        from humpday.optimizers.prima_algorithms import (
+            PRIMA_UOBYQA, PRIMA_NEWUOA, PRIMA_BOBYQA,
+        )
 
         def sphere(x):
             return float(sum((xi - 0.5) ** 2 for xi in x))
@@ -115,6 +121,7 @@ def test_pure_backend_works_for_ported_algorithms(tmp_path):
             AntColonyOpt, CMAEvolutionStrategy, BayesianOpt,
             AdaptiveRandomSearch, CoordinateDescent, PatternSearch,
             NelderMead, Powell, LBFGSB,
+            PRIMA_UOBYQA, PRIMA_NEWUOA, PRIMA_BOBYQA,
         ]
         # Subprocess uses a smaller budget than the numpy-backend tests
         # because pure-Python CMA-ES (Jacobi eigh per generation) and
