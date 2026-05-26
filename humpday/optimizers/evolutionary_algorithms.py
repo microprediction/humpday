@@ -610,43 +610,106 @@ class FireflyAlgorithm(BaseOptimizer):
 
 
 class AntColonyOpt(BaseOptimizer):
-    """Ant Colony Optimization (continuous version)."""
+    """Ant Colony Optimization (continuous via discretization).
 
-    def optimize(self) -> Tuple[float, np.ndarray]:
+    Pure-Python via the `humpday._array` shim — no direct numpy use.
+    Each dimension is discretized into `n_nodes` bins. Each ant picks one
+    bin per dimension proportional to that dimension's pheromone weights,
+    evaluates the resulting point, and feeds back into the pheromone
+    update.
+
+    Bug fix (was previously a known flake)
+    --------------------------------------
+    The old code used `1.0 / (best_fitness + 1e-10)` as the pheromone
+    deposit. Whenever `best_fitness` was negative — possible on objectives
+    like Schwefel, Sharpe-ratio portfolios, anything below zero — the
+    deposit was negative and pheromone weights drifted downward. After
+    enough updates a weight could go strictly negative, and the next call
+    to multinomial-sample failed with `ValueError: probabilities are not
+    non-negative`. The fix here:
+
+      1. Pheromone deposit becomes `1.0 / (1.0 + abs(best_fitness))`,
+         which is strictly positive for any finite best_fitness and
+         bounded in (0, 1]. Better-found solutions still deposit more,
+         preserving ACO's "shorter path = stronger reinforcement" intent.
+      2. After each deposit, the affected weight is floor-clipped at
+         `1e-12` as belt-and-suspenders against any future numerical
+         drift.
+      3. The sampling step clamps weights at zero before normalising,
+         so even if a weight DID go slightly negative from floating-point
+         noise, the multinomial draw would still succeed.
+
+    Tests that previously had to special-case this error
+    (`test_portfolio.py`'s known_algorithm_bug branch) can now treat it
+    as a real failure.
+    """
+
+    def optimize(self):
         n_ants = min(15, self.n_trials // 5)
-        n_nodes = 10  # Discretization per dimension
-        pheromone = np.ones((self.n_dim, n_nodes))
+        n_nodes = 10  # Bins per dimension.
         evaporation = 0.1
+
+        # Pheromone matrix as list-of-rows; rows are plain `list[float]`
+        # (we only ever do scalar indexing into them, no row-level
+        # arithmetic, so no `_Vec` wrapper needed).
+        pheromone = [[1.0] * n_nodes for _ in range(self.n_dim)]
 
         best_path = None
         best_fitness = float("inf")
 
         while self.evaluations < self.n_trials:
-            # Ant solutions
-            for ant in range(n_ants):
+            for _ant in range(n_ants):
                 if self.evaluations >= self.n_trials:
                     break
 
-                # Construct solution
-                solution = np.zeros(self.n_dim)
+                # Per dimension, sample a bin index proportional to the
+                # row's pheromone weights via manual cumulative sampling.
+                # This avoids needing a `random_choice(seq, p=weights)`
+                # shim primitive — and gives us explicit control over the
+                # negative-weight defence below.
+                solution = _A.zeros(self.n_dim)
                 for dim in range(self.n_dim):
-                    # Probabilistic selection based on pheromone
-                    probs = pheromone[dim] / (np.sum(pheromone[dim]) + 1e-10)
-                    node = np.random.choice(n_nodes, p=probs)
-                    solution[dim] = node / (n_nodes - 1)  # Map to [0,1]
+                    row = pheromone[dim]
+                    # Floor-clip at 0 in case noise pushed any entry
+                    # slightly negative. Sum >= 1e-10 by the floor we
+                    # apply at deposit time, so this is a small extra
+                    # safety net.
+                    pos = [w if w > 0.0 else 0.0 for w in row]
+                    total = sum(pos)
+                    if total <= 0.0:
+                        # Pathological: every weight is zero. Fall back to
+                        # uniform.
+                        chosen = _A.random_int(n_nodes)
+                    else:
+                        r = _A.random_scalar() * total
+                        cum = 0.0
+                        chosen = n_nodes - 1  # default to last on rounding
+                        for i, w in enumerate(pos):
+                            cum += w
+                            if r <= cum:
+                                chosen = i
+                                break
+                    solution[dim] = chosen / (n_nodes - 1)
 
                 fitness = self.evaluate(solution)
-
                 if fitness < best_fitness:
                     best_fitness = fitness
                     best_path = solution.copy()
 
-            # Update pheromones
-            pheromone *= 1 - evaporation
+            # Evaporation: every weight decays.
+            decay = 1 - evaporation
+            for row in pheromone:
+                for k in range(n_nodes):
+                    row[k] *= decay
+
+            # Strictly-positive deposit on the best-known path.
             if best_path is not None:
+                deposit = 1.0 / (1.0 + abs(best_fitness))
                 for dim in range(self.n_dim):
                     node = int(best_path[dim] * (n_nodes - 1))
-                    pheromone[dim, node] += 1.0 / (best_fitness + 1e-10)
+                    pheromone[dim][node] += deposit
+                    if pheromone[dim][node] < 1e-12:
+                        pheromone[dim][node] = 1e-12
 
         return self.best_value, self.best_x
 
