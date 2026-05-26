@@ -107,31 +107,36 @@ class CoordinateDescent(BaseOptimizer):
 
 
 class PatternSearch(BaseOptimizer):
-    """Pattern Search algorithm."""
+    """Pattern Search algorithm.
 
-    def optimize(self) -> Tuple[float, np.ndarray]:
-        x = np.random.random(self.n_dim)
+    Pure-Python via the `humpday._array` shim — no direct numpy use.
+    Probes both signs of each coordinate axis at the current step size;
+    grows the step when it succeeds, halves it when no probe improves;
+    restarts when the step gets too small.
+    """
+
+    def optimize(self):
+        x = _A.random_uniform(self.n_dim)
         f = self.evaluate(x)
         step_size = 0.1
 
         while self.evaluations < self.n_trials:
             improved = False
 
-            # Pattern directions (coordinate directions + diagonals)
+            # Pattern directions: +/- each coordinate axis.
             directions = []
-            # Coordinate directions
             for i in range(self.n_dim):
-                direction = np.zeros(self.n_dim)
+                direction = _A.zeros(self.n_dim)
                 direction[i] = 1
                 directions.append(direction)
                 directions.append(-direction)
 
-            # Try each direction
+            # First-improvement: take the first direction that helps.
             for direction in directions:
                 if self.evaluations >= self.n_trials:
                     break
 
-                x_trial = np.clip(x + step_size * direction, 0, 1)
+                x_trial = _A.clip(x + step_size * direction, 0, 1)
                 f_trial = self.evaluate(x_trial)
 
                 if f_trial < f:
@@ -145,8 +150,8 @@ class PatternSearch(BaseOptimizer):
             else:
                 step_size *= 0.5
                 if step_size < 1e-6:
-                    # Random restart
-                    x = np.random.random(self.n_dim)
+                    # Random restart.
+                    x = _A.random_uniform(self.n_dim)
                     if self.evaluations < self.n_trials:
                         f = self.evaluate(x)
                     step_size = 0.1
