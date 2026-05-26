@@ -290,6 +290,27 @@ def random_scalar() -> float:
     return _rng.random()
 
 
+def random_int(low: int, high: int = None) -> int:
+    """Random integer in `[low, high)`. If `high` is None, range is `[0, low)`.
+    Matches `numpy.random.randint`'s default semantics."""
+    if high is None:
+        low, high = 0, low
+    return _rng.randrange(int(low), int(high))
+
+
+def random_choice(seq, k=None, replace=True):
+    """Sample from `seq`. If `seq` is an int N, sample from `range(N)`.
+    `k=None` returns a single item; otherwise returns a length-`k` list,
+    with or without replacement to match `numpy.random.choice`."""
+    if isinstance(seq, int):
+        seq = list(range(seq))
+    if k is None:
+        return _rng.choice(seq)
+    if replace:
+        return [_rng.choice(seq) for _ in range(k)]
+    return _rng.sample(seq, k)
+
+
 def seed(s):
     _rng.seed(s)
 
@@ -323,5 +344,7 @@ __all__ = [
     "random_uniform",
     "random_normal",
     "random_scalar",
+    "random_int",
+    "random_choice",
     "seed",
 ]

@@ -17,45 +17,49 @@ from .base import BaseOptimizer
 
 
 class DifferentialEvolution(BaseOptimizer):
-    """Differential Evolution algorithm."""
+    """Differential Evolution.
 
-    def optimize(self) -> Tuple[float, np.ndarray]:
-        # Ensure minimum population size for DE (need at least 4: current + 3 others)
+    Pure-Python via the `humpday._array` shim — no direct numpy use.
+    Population stored as a Python list of 1-D vectors.
+    """
+
+    def optimize(self):
+        # DE needs at least 4 members (current + 3 others for mutation).
         pop_size = max(10, min(20, self.n_trials // 5))
         F = 0.8  # Scaling factor
         CR = 0.9  # Crossover probability
 
-        # Initialize population
-        population = np.random.random((pop_size, self.n_dim))
-        fitness = np.array([self.evaluate(ind) for ind in population])
+        # Initialize population as list-of-vectors.
+        population = [_A.random_uniform(self.n_dim) for _ in range(pop_size)]
+        fitness = [self.evaluate(ind) for ind in population]
 
         while self.evaluations < self.n_trials:
             for i in range(pop_size):
                 if self.evaluations >= self.n_trials:
                     break
 
-                # Select three random individuals (different from current)
-                # Ensure we have enough candidates
-                candidates = list(range(pop_size))
-                candidates.remove(i)
-
+                # Pick three indices distinct from `i`.
+                candidates = [k for k in range(pop_size) if k != i]
                 if len(candidates) < 3:
-                    # Fallback: allow replacement if population too small
-                    a, b, c = np.random.choice(candidates, 3, replace=True)
+                    a, b, c = _A.random_choice(candidates, k=3, replace=True)
                 else:
-                    a, b, c = np.random.choice(candidates, 3, replace=False)
+                    a, b, c = _A.random_choice(candidates, k=3, replace=False)
+                a, b, c = int(a), int(b), int(c)
 
-                # Mutation
-                mutant = population[a] + F * (population[b] - population[c])
-                mutant = np.clip(mutant, 0, 1)
+                # Mutation: v = x_a + F * (x_b - x_c), clipped to bounds.
+                mutant = _A.clip(
+                    population[a] + F * (population[b] - population[c]), 0, 1
+                )
 
-                # Crossover
+                # Binomial crossover. `j_guaranteed` ensures at least one
+                # coordinate of the mutant survives — standard DE.
                 trial = population[i].copy()
+                j_guaranteed = _A.random_int(self.n_dim)
                 for j in range(self.n_dim):
-                    if np.random.random() < CR or j == np.random.randint(self.n_dim):
+                    if _A.random_scalar() < CR or j == j_guaranteed:
                         trial[j] = mutant[j]
 
-                # Selection
+                # (1+1) selection.
                 trial_fitness = self.evaluate(trial)
                 if trial_fitness < fitness[i]:
                     population[i] = trial
@@ -65,25 +69,30 @@ class DifferentialEvolution(BaseOptimizer):
 
 
 class ParticleSwarm(BaseOptimizer):
-    """Particle Swarm Optimization algorithm."""
+    """Particle Swarm Optimization.
 
-    def optimize(self) -> Tuple[float, np.ndarray]:
+    Pure-Python via the `humpday._array` shim — no direct numpy use.
+    Swarm stored as Python lists of 1-D vectors (FireflyAlgorithm pattern).
+    """
+
+    def optimize(self):
         swarm_size = min(40, max(15, self.n_dim * 3))
 
-        # Initialize swarm
-        positions = np.random.random((swarm_size, self.n_dim))
-        velocities = (np.random.random((swarm_size, self.n_dim)) - 0.5) * 0.2
-        personal_best_pos = positions.copy()
-        personal_best_fit = np.array([self.evaluate(pos) for pos in positions])
+        # Initialize swarm — list-of-vectors instead of 2-D arrays.
+        positions = [_A.random_uniform(self.n_dim) for _ in range(swarm_size)]
+        velocities = [
+            (_A.random_uniform(self.n_dim) - 0.5) * 0.2 for _ in range(swarm_size)
+        ]
+        personal_best_pos = [p.copy() for p in positions]
+        personal_best_fit = [self.evaluate(p) for p in positions]
 
-        # PSO parameters
         max_iterations = self.n_trials // swarm_size
 
         for iteration in range(max_iterations):
             if self.evaluations >= self.n_trials:
                 break
 
-            # Adaptive parameters
+            # Adaptive coefficients (anneal inertia / explore-exploit balance).
             w = 0.9 - 0.5 * (iteration / max_iterations)  # Inertia weight
             c1 = 2.5 - 1.0 * (iteration / max_iterations)  # Cognitive
             c2 = 1.5 + 1.0 * (iteration / max_iterations)  # Social
@@ -92,25 +101,26 @@ class ParticleSwarm(BaseOptimizer):
                 if self.evaluations >= self.n_trials:
                     break
 
-                # Update velocity
-                r1, r2 = np.random.random(self.n_dim), np.random.random(self.n_dim)
+                # Update velocity (elementwise: r1, r2 are length-n_dim
+                # uniform vectors; _Vec/ndarray both support these ops).
+                r1 = _A.random_uniform(self.n_dim)
+                r2 = _A.random_uniform(self.n_dim)
                 velocities[i] = (
                     w * velocities[i]
                     + c1 * r1 * (personal_best_pos[i] - positions[i])
                     + c2 * r2 * (self.best_x - positions[i])
                 )
 
-                # Velocity clamping
+                # Velocity clamping to [-vmax, +vmax].
                 vmax = 0.2 * (1 - 0.5 * iteration / max_iterations)
-                velocities[i] = np.clip(velocities[i], -vmax, vmax)
+                velocities[i] = _A.clip(velocities[i], -vmax, vmax)
 
-                # Update position
-                positions[i] = np.clip(positions[i] + velocities[i], 0, 1)
+                # Update position with bounds clipping.
+                positions[i] = _A.clip(positions[i] + velocities[i], 0, 1)
 
-                # Evaluate fitness
                 fitness = self.evaluate(positions[i])
 
-                # Update personal best
+                # Personal-best bookkeeping.
                 if fitness < personal_best_fit[i]:
                     personal_best_fit[i] = fitness
                     personal_best_pos[i] = positions[i].copy()
@@ -178,58 +188,75 @@ class SimulatedAnnealing(BaseOptimizer):
 
 
 class GeneticAlgorithm(BaseOptimizer):
-    """Genetic Algorithm."""
+    """Genetic Algorithm.
 
-    def optimize(self) -> Tuple[float, np.ndarray]:
+    Pure-Python via the `humpday._array` shim — no direct numpy use.
+    Population stored as a Python list of 1-D vectors. Selection is
+    tournament-of-3; crossover is one-point; mutation is per-coordinate
+    Bernoulli with uniform noise.
+    """
+
+    def optimize(self):
         pop_size = min(50, max(20, self.n_dim * 4))
         mutation_rate = 0.1
         crossover_rate = 0.8
 
-        # Initialize population
-        population = np.random.random((pop_size, self.n_dim))
-        fitness = np.array([self.evaluate(ind) for ind in population])
+        # Initialize population.
+        population = [_A.random_uniform(self.n_dim) for _ in range(pop_size)]
+        fitness = [self.evaluate(ind) for ind in population]
 
         generations = self.n_trials // pop_size
 
-        for gen in range(generations):
+        for _gen in range(generations):
             if self.evaluations >= self.n_trials:
                 break
 
             new_population = []
+            new_fitness = []
 
-            for i in range(pop_size):
+            for _i in range(pop_size):
                 if self.evaluations >= self.n_trials:
                     break
 
-                # Tournament selection
                 parent1 = self.tournament_selection(population, fitness)
                 parent2 = self.tournament_selection(population, fitness)
 
                 child = parent1.copy()
 
-                # Crossover
-                if np.random.random() < crossover_rate:
-                    cross_point = np.random.randint(self.n_dim)
-                    child[cross_point:] = parent2[cross_point:]
+                # One-point crossover.
+                if _A.random_scalar() < crossover_rate:
+                    cross_point = _A.random_int(self.n_dim)
+                    for j in range(cross_point, self.n_dim):
+                        child[j] = parent2[j]
 
-                # Mutation
-                mutation_mask = np.random.random(self.n_dim) < mutation_rate
-                child[mutation_mask] += (
-                    np.random.random(np.sum(mutation_mask)) - 0.5
-                ) * 0.2
-                child = np.clip(child, 0, 1)
+                # Per-coordinate mutation with uniform [-0.1, 0.1] noise.
+                # Rewritten from numpy boolean-indexing (`child[mask] += ...`)
+                # to an explicit loop for backend independence.
+                for j in range(self.n_dim):
+                    if _A.random_scalar() < mutation_rate:
+                        child[j] = max(
+                            0.0,
+                            min(1.0, child[j] + (_A.random_scalar() - 0.5) * 0.2),
+                        )
 
-                new_population.append(child)
                 fitness_val = self.evaluate(child)
+                new_population.append(child)
+                new_fitness.append(fitness_val)
 
-            population = np.array(new_population)
+            population = new_population
+            fitness = new_fitness
 
         return self.best_value, self.best_x
 
     def tournament_selection(self, population, fitness):
+        """Tournament-of-3: pick 3 distinct individuals, return a copy of
+        the one with the lowest fitness."""
         tournament_size = 3
-        competitors = np.random.choice(len(population), tournament_size, replace=False)
-        best_idx = competitors[np.argmin(fitness[competitors])]
+        competitors = _A.random_choice(
+            len(population), k=tournament_size, replace=False
+        )
+        competitors = [int(c) for c in competitors]
+        best_idx = min(competitors, key=lambda c: fitness[c])
         return population[best_idx].copy()
 
 
@@ -625,27 +652,31 @@ class AntColonyOpt(BaseOptimizer):
 
 
 class EvolutionStrategy(BaseOptimizer):
-    """Evolution Strategy (ES) algorithm."""
+    """(μ + λ)-Evolution Strategy.
 
-    def optimize(self) -> Tuple[float, np.ndarray]:
+    Pure-Python via the `humpday._array` shim — no direct numpy use.
+    Population is a Python list of 1-D vectors (always was, even in the
+    pre-port version), so this port is mostly substituting RNG calls.
+    """
+
+    def optimize(self):
         mu = 10  # Parents
         lambda_ = min(30, self.n_trials // 3)  # Offspring
         sigma = 0.2  # Mutation strength
 
-        # Initialize population
+        # Initialize μ parents.
         population = []
         fitness = []
-
         for _ in range(mu):
             if self.evaluations >= self.n_trials:
                 break
-            individual = np.random.random(self.n_dim)
+            individual = _A.random_uniform(self.n_dim)
             f = self.evaluate(individual)
             population.append(individual)
             fitness.append(f)
 
         while self.evaluations < self.n_trials:
-            # Generate offspring
+            # Generate λ offspring by mutating randomly-chosen parents.
             offspring = []
             offspring_fitness = []
 
@@ -653,25 +684,24 @@ class EvolutionStrategy(BaseOptimizer):
                 if self.evaluations >= self.n_trials:
                     break
 
-                # Select random parent
-                parent_idx = np.random.randint(len(population))
+                parent_idx = _A.random_int(len(population))
                 parent = population[parent_idx]
 
-                # Mutate
-                child = parent + np.random.normal(0, sigma, self.n_dim)
-                child = np.clip(child, 0, 1)
+                child = _A.clip(parent + sigma * _A.random_normal(self.n_dim), 0, 1)
 
                 child_fitness = self.evaluate(child)
                 offspring.append(child)
                 offspring_fitness.append(child_fitness)
 
-            if len(offspring) > 0:
-                # (μ + λ) selection: combine parents and offspring
+            if offspring:
+                # (μ + λ) selection: keep the best μ across both pools.
+                # Replaces numpy's `np.argsort(all_fitness)[:mu]` with a
+                # standard-library equivalent — no shim primitive needed.
                 all_individuals = population + offspring
                 all_fitness = fitness + offspring_fitness
-
-                # Select best μ individuals
-                indices = np.argsort(all_fitness)[:mu]
+                indices = sorted(range(len(all_fitness)), key=all_fitness.__getitem__)[
+                    :mu
+                ]
                 population = [all_individuals[i] for i in indices]
                 fitness = [all_fitness[i] for i in indices]
 

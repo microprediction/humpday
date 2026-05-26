@@ -190,6 +190,64 @@ def test_random_scalar_shares_state_with_random_uniform(A):
 
 
 @pytest.mark.parametrize("A", BACKENDS)
+def test_random_int_range(A):
+    A.seed(0)
+    # `random_int(N)` -> 0 <= x < N
+    for _ in range(50):
+        v = A.random_int(7)
+        assert isinstance(v, int) or isinstance(v, type(A.random_int(7)))
+        assert 0 <= int(v) < 7
+    # `random_int(low, high)` -> low <= x < high
+    for _ in range(50):
+        v = A.random_int(10, 20)
+        assert 10 <= int(v) < 20
+
+
+@pytest.mark.parametrize("A", BACKENDS)
+def test_random_choice_single(A):
+    """Default `k=None` returns one item from the sequence."""
+    A.seed(0)
+    pool = [10, 20, 30, 40]
+    for _ in range(50):
+        v = A.random_choice(pool)
+        assert int(v) in pool
+
+
+@pytest.mark.parametrize("A", BACKENDS)
+def test_random_choice_with_replacement(A):
+    A.seed(0)
+    pool = [1, 2, 3]
+    out = A.random_choice(pool, k=10, replace=True)
+    assert len(out) == 10
+    for v in out:
+        assert int(v) in pool
+
+
+@pytest.mark.parametrize("A", BACKENDS)
+def test_random_choice_without_replacement(A):
+    A.seed(0)
+    pool = [1, 2, 3, 4, 5]
+    out = A.random_choice(pool, k=3, replace=False)
+    assert len(out) == 3
+    seen = [int(v) for v in out]
+    assert len(set(seen)) == 3, f"duplicate in without-replacement sample: {seen}"
+    for v in seen:
+        assert v in pool
+
+
+@pytest.mark.parametrize("A", BACKENDS)
+def test_random_choice_from_int(A):
+    """numpy convention: passing an int N samples from `range(N)`."""
+    A.seed(0)
+    out = A.random_choice(5, k=3, replace=False)
+    assert len(out) == 3
+    seen = [int(v) for v in out]
+    for v in seen:
+        assert 0 <= v < 5
+    assert len(set(seen)) == 3
+
+
+@pytest.mark.parametrize("A", BACKENDS)
 def test_seed_is_reproducible(A):
     A.seed(42)
     a = list(A.random_uniform(10))
