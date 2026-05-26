@@ -16,9 +16,16 @@ from __future__ import annotations
 import math
 
 import pytest
+from numpy.linalg import LinAlgError
 
 from humpday import _array_numpy_linalg as L_np
 from humpday import _array_pure_linalg as L_pure
+
+# Both backends raise on singular / non-SPD matrices, but with different
+# exception types: numpy uses `numpy.linalg.LinAlgError`, the pure backend
+# uses `ValueError`. Tests below `pytest.raises` against this tuple instead
+# of bare `Exception` (ruff B017).
+_LINALG_ERRORS = (LinAlgError, ValueError)
 
 BACKENDS = [
     pytest.param(L_pure, id="pure"),
@@ -131,9 +138,8 @@ def test_solve_singular_raises(L):
     # Row 2 is twice row 1 — singular.
     A = [[1.0, 2.0], [2.0, 4.0]]
     b = [3.0, 6.0]
-    # Both backends should raise — the type differs (numpy raises LinAlgError,
-    # pure raises ValueError) so we accept the union via base Exception.
-    with pytest.raises(Exception, match="(?i)singular|matrix"):
+    # Both backends should raise — see `_LINALG_ERRORS` for the type union.
+    with pytest.raises(_LINALG_ERRORS, match="(?i)singular|matrix"):
         L.solve(A, b)
 
 
@@ -184,7 +190,7 @@ def test_cholesky_roundtrip(L):
 def test_cholesky_non_spd_raises(L):
     # Negative diagonal — not positive definite.
     A = [[1.0, 2.0], [2.0, 1.0]]  # eigenvalues 3 and -1
-    with pytest.raises(Exception):
+    with pytest.raises(_LINALG_ERRORS):
         L.cholesky(A)
 
 
