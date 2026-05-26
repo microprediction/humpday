@@ -24,7 +24,7 @@
         }
 
         .header {
-            background: #f39c12;
+            background: #34495e;
             color: white;
             padding: 30px;
             text-align: center;
@@ -158,23 +158,16 @@
             display: none;
             margin-top: 20px;
         }
-
-        .validation-pending {
-            background: #ffeaa7;
-            border: 1px solid #fdcb6e;
-            border-radius: 8px;
-            padding: 15px;
-            margin: 20px 0;
-        }
-
-        .validation-pending h3 {
-            margin-top: 0;
-            color: #d63031;
-        }
-    </style>
+</style>
     <!-- Three.js for 3D visualization -->
     <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/controls/OrbitControls.js"></script>
+    <script src="../js/modules/base-optimizer.js"></script>
+    <script src="../js/modules/prima-algorithms.js"></script>
+    <script src="../js/modules/scipy-algorithms.js"></script>
+    <script src="../js/modules/evolutionary-algorithms.js"></script>
+    <script src="../js/modules/search-algorithms.js"></script>
+
 </head>
 <body>
     <div class="container">
@@ -228,7 +221,7 @@
                             <em>Developed: 1950s-1990s (Hooke-Jeeves, Torczon, etc.)</em>
                         </td>
                         <td>
-                            <a href="https://epubs.siam.org/doi/book/10.1137/1.9781611971200" target="_blank" class="link-button paper">📖 Direct Search Book</a>
+                            <a href="https://epubs.siam.org/doi/book/10.1137/1.9781611971200" target="_blank" class="link-button paper">Direct Search Book</a>
                         </td>
                     </tr>
                     <tr>
@@ -240,23 +233,23 @@
                             <em>Reference: MATLAB/Octave implementations</em>
                         </td>
                         <td>
-                            <a href="https://www.mathworks.com/help/gads/patternsearch.html" target="_blank" class="link-button info">🔍 MATLAB Docs</a>
+                            <a href="https://www.mathworks.com/help/gads/patternsearch.html" target="_blank" class="link-button info">MATLAB Docs</a>
                         </td>
                     </tr>
                     <tr>
-                        <td class="category">Humpday Python Wrapper</td>
+                        <td class="category">Humpday Python</td>
                         <td>
-                            <strong>Humpday Integration</strong><br>
+                            <strong>HumpDay Python Implementation</strong><br>
                             Custom pattern search implementation<br>
                             Coordinate-based polling with adaptive mesh<br>
                             <em>File: humpday/optimizers/search_algorithms.py</em>
                         </td>
                         <td>
-                            <a href="https://github.com/microprediction/humpday" target="_blank" class="link-button python">🐍 Custom Implementation</a>
+                            <a href="https://github.com/microprediction/humpday" target="_blank" class="link-button python">Custom Implementation</a>
                         </td>
                     </tr>
                     <tr>
-                        <td class="category">Humpday JavaScript Port</td>
+                        <td class="category">Humpday JavaScript</td>
                         <td>
                             <strong>Browser Implementation</strong><br>
                             JavaScript pattern search with coordinate polling<br>
@@ -264,25 +257,14 @@
                             <em>Class: PatternSearch</em>
                         </td>
                         <td>
-                            <a href="https://github.com/microprediction/humpday/blob/main/docs/js/optimizers.js" target="_blank" class="link-button javascript">🌐 JS Port</a>
+                            <a href="https://github.com/microprediction/humpday/blob/main/docs/js/optimizers.js" target="_blank" class="link-button javascript">JS Port</a>
                         </td>
                     </tr>
-                    <tr>
-                        <td class="category">Dependencies</td>
-                        <td>
-                            <strong>Reference:</strong> MATLAB Global Optimization Toolbox<br>
-                            <strong>Humpday Python:</strong> numpy (custom implementation)<br>
-                            <strong>Humpday JS:</strong> None (standalone port)
-                        </td>
-                        <td>
-                            <a href="https://www.mathworks.com/products/global-optimization.html" target="_blank" class="link-button info">📦 MATLAB Toolbox</a>
-                        </td>
-                    </tr>
-                </tbody>
+</tbody>
             </table>
 
             <div class="performance-notes">
-                <h3>🏁 Performance Characteristics</h3>
+                <h3>Performance Characteristics</h3>
                 <ul>
                     <li><strong>Best for:</strong> Discontinuous functions, noisy problems, constrained optimization</li>
                     <li><strong>Dimensions:</strong> Works well up to moderate dimensions (~50)</li>
@@ -292,22 +274,11 @@
                 </ul>
             </div>
 
-            <div class="validation-pending">
-                <h3>⏳ Validation Status: PENDING</h3>
-                <p><strong>Validation against reference pattern search implementations in progress.</strong></p>
-                <ul>
-                    <li>📋 Test framework: Comparing JavaScript vs MATLAB patternsearch() or custom Python</li>
-                    <li>🎯 Target: Similar convergence behavior and mesh adaptation</li>
-                    <li>📊 Metrics: Final objective values, mesh size evolution, polling efficiency</li>
-                    <li>🔧 Challenge: Multiple pattern search variants - need to specify which reference</li>
-                </ul>
-                <p><em>Full validation results will be displayed here once testing is complete.</em></p>
-            </div>
 
             <div class="more-section">
-                <button class="more-toggle" onclick="toggleMore()">📚 More Resources</button>
+                <button class="more-toggle" onclick="toggleMore()">More Resources</button>
                 <div id="moreContent" class="more-content">
-                    <h3>📚 Educational Resources</h3>
+                    <h3>Educational Resources</h3>
                     <ul>
                         <li><a href="https://en.wikipedia.org/wiki/Pattern_search_(optimization)" target="_blank">Pattern Search Wikipedia</a></li>
                         <li><a href="https://www.mathworks.com/help/gads/patternsearch.html" target="_blank">MATLAB Pattern Search Documentation</a></li>
@@ -315,7 +286,7 @@
                         <li><a href="https://link.springer.com/article/10.1007/BF01585997" target="_blank">Hooke-Jeeves Original Paper</a></li>
                     </ul>
 
-                    <h3>🔬 Algorithm Components</h3>
+                    <h3>Algorithm Components</h3>
                     <ul>
                         <li><strong>Mesh:</strong> Discrete set of points where function is evaluated</li>
                         <li><strong>Pattern:</strong> Set of directions defining search pattern</li>
@@ -324,7 +295,7 @@
                         <li><strong>Mesh Coarsening:</strong> Increase mesh size after successful iterations</li>
                     </ul>
 
-                    <h3>📐 Pattern Types</h3>
+                    <h3>Pattern Types</h3>
                     <ul>
                         <li><strong>Coordinate Patterns:</strong> ±eᵢ directions (axis-aligned)</li>
                         <li><strong>Maximal Basis:</strong> 2n directions ensuring positive spanning</li>
@@ -333,7 +304,7 @@
                         <li><strong>Custom Patterns:</strong> Problem-specific direction sets</li>
                     </ul>
 
-                    <h3>⚙️ Pattern Search Variants</h3>
+                    <h3>️ Pattern Search Variants</h3>
                     <ul>
                         <li><strong>Hooke-Jeeves:</strong> Exploratory + pattern moves</li>
                         <li><strong>Coordinate Search:</strong> Simple alternating coordinate directions</li>
@@ -342,7 +313,7 @@
                         <li><strong>GSS (Generating Set Search):</strong> Positive basis guarantee</li>
                     </ul>
 
-                    <h3>🎯 Convergence Theory</h3>
+                    <h3>Convergence Theory</h3>
                     <ul>
                         <li><strong>Clarke Stationarity:</strong> GPS converges to Clarke stationary points</li>
                         <li><strong>Mesh Size Limit:</strong> lim inf Δₘ = 0 under standard conditions</li>
@@ -350,7 +321,7 @@
                         <li><strong>Positive Spanning:</strong> Pattern directions must positively span ℝⁿ</li>
                     </ul>
 
-                    <h3>🚀 Applications</h3>
+                    <h3>Applications</h3>
                     <ul>
                         <li><strong>Engineering Design:</strong> When objective function has discontinuities</li>
                         <li><strong>Simulation Optimization:</strong> Noisy, expensive function evaluations</li>
@@ -359,7 +330,7 @@
                         <li><strong>Environmental Modeling:</strong> Parameter estimation in climate models</li>
                     </ul>
 
-                    <h3>⚙️ Implementation Details</h3>
+                    <h3>️ Implementation Details</h3>
                     <ul>
                         <li><strong>Initial Mesh Size:</strong> Δ₀ typically 1.0 or problem-scaled</li>
                         <li><strong>Mesh Expansion:</strong> Δₖ₊₁ = τΔₖ where τ > 1 (often τ = 2)</li>
@@ -368,7 +339,7 @@
                         <li><strong>Termination:</strong> Δₖ < tolerance or max evaluations</li>
                     </ul>
 
-                    <h3>💡 When to Use Pattern Search</h3>
+                    <h3>When to Use Pattern Search</h3>
                     <ul>
                         <li><strong>Discontinuous Objectives:</strong> Traditional methods fail on non-smooth functions</li>
                         <li><strong>Expensive Evaluations:</strong> Systematic exploration reduces waste</li>
@@ -388,10 +359,10 @@
 
             if (content.style.display === 'none' || content.style.display === '') {
                 content.style.display = 'block';
-                button.textContent = '📚 Less Resources';
+                button.textContent = 'Less Resources';
             } else {
                 content.style.display = 'none';
-                button.textContent = '📚 More Resources';
+                button.textContent = 'More Resources';
             }
         // Initialize 3D visualization when page loads
         document.addEventListener('DOMContentLoaded', function() {

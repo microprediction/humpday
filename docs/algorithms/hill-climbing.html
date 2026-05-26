@@ -24,7 +24,7 @@
         }
 
         .header {
-            background: #e74c3c;
+            background: #34495e;
             color: white;
             padding: 30px;
             text-align: center;
@@ -158,21 +158,7 @@
             display: none;
             margin-top: 20px;
         }
-
-        .validation-pending {
-            background: #ffeaa7;
-            border: 1px solid #fdcb6e;
-            border-radius: 8px;
-            padding: 15px;
-            margin: 20px 0;
-        }
-
-        .validation-pending h3 {
-            margin-top: 0;
-            color: #d63031;
-        }
-
-        .local-search-note {
+.local-search-note {
             background: #fff5f5;
             border: 1px solid #fed7d7;
             border-radius: 8px;
@@ -188,6 +174,12 @@
     <!-- Three.js for 3D visualization -->
     <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/controls/OrbitControls.js"></script>
+    <script src="../js/modules/base-optimizer.js"></script>
+    <script src="../js/modules/prima-algorithms.js"></script>
+    <script src="../js/modules/scipy-algorithms.js"></script>
+    <script src="../js/modules/evolutionary-algorithms.js"></script>
+    <script src="../js/modules/search-algorithms.js"></script>
+
 </head>
 <body>
     <div class="container">
@@ -206,13 +198,13 @@
             </div>
 
             <div class="local-search-note">
-                <h3>⚠️ Local Search Algorithm Notice</h3>
+                <h3>️ Local Search Algorithm Notice</h3>
                 <p><strong>Hill Climbing is a pure local search method:</strong></p>
                 <ul>
-                    <li>🎯 <strong>Local Optima:</strong> Gets trapped in local minima - no global search capability</li>
-                    <li>🔄 <strong>Starting Point Dependent:</strong> Final solution depends heavily on initialization</li>
-                    <li>⚡ <strong>Fast Convergence:</strong> Very efficient for local refinement</li>
-                    <li>🔧 <strong>Baseline Method:</strong> Useful as starting point or component in hybrid algorithms</li>
+                    <li><strong>Local Optima:</strong> Gets trapped in local minima - no global search capability</li>
+                    <li><strong>Starting Point Dependent:</strong> Final solution depends heavily on initialization</li>
+                    <li><strong>Fast Convergence:</strong> Very efficient for local refinement</li>
+                    <li><strong>Baseline Method:</strong> Useful as starting point or component in hybrid algorithms</li>
                 </ul>
             </div>
             <div class="visualization-section">
@@ -252,7 +244,7 @@
                             <em>Concept: Ancient (1950s AI research)</em>
                         </td>
                         <td>
-                            <a href="https://en.wikipedia.org/wiki/Hill_climbing" target="_blank" class="link-button info">📖 Wikipedia</a>
+                            <a href="https://en.wikipedia.org/wiki/Hill_climbing" target="_blank" class="link-button info">Wikipedia</a>
                         </td>
                     </tr>
                     <tr>
@@ -264,7 +256,7 @@
                             <em>Self-reference: Algorithm-specific implementation</em>
                         </td>
                         <td>
-                            <a href="https://artint.info/html/ArtInt_71.html" target="_blank" class="link-button info">🎓 AI Textbook</a>
+                            <a href="https://artint.info/html/ArtInt_71.html" target="_blank" class="link-button info">AI Textbook</a>
                         </td>
                     </tr>
                     <tr>
@@ -276,11 +268,11 @@
                             <em>File: humpday/optimizers/localsearch*.py</em>
                         </td>
                         <td>
-                            <a href="https://github.com/microprediction/humpday" target="_blank" class="link-button python">🐍 Source</a>
+                            <a href="https://github.com/microprediction/humpday" target="_blank" class="link-button python">Source</a>
                         </td>
                     </tr>
                     <tr>
-                        <td class="category">Humpday JavaScript Port</td>
+                        <td class="category">Humpday JavaScript</td>
                         <td>
                             <strong>Browser Implementation</strong><br>
                             Pure JavaScript hill climbing with random neighbors<br>
@@ -288,25 +280,14 @@
                             <em>Class: HillClimbing</em>
                         </td>
                         <td>
-                            <a href="https://github.com/microprediction/humpday/blob/main/docs/js/optimizers.js" target="_blank" class="link-button javascript">🌐 JS Implementation</a>
+                            <a href="https://github.com/microprediction/humpday/blob/main/docs/js/optimizers.js" target="_blank" class="link-button javascript">JS Implementation</a>
                         </td>
                     </tr>
-                    <tr>
-                        <td class="category">Dependencies</td>
-                        <td>
-                            <strong>Reference:</strong> None (custom implementation)<br>
-                            <strong>Humpday Python:</strong> numpy (for vector operations)<br>
-                            <strong>Humpday JS:</strong> None (pure JavaScript)
-                        </td>
-                        <td>
-                            <span style="color: #95a5a6;">✨ No external dependencies</span>
-                        </td>
-                    </tr>
-                </tbody>
+</tbody>
             </table>
 
             <div class="performance-notes">
-                <h3>🏁 Performance Characteristics</h3>
+                <h3>Performance Characteristics</h3>
                 <ul>
                     <li><strong>Best for:</strong> Local refinement, unimodal functions, quick improvements</li>
                     <li><strong>Dimensions:</strong> Scalable to any dimension</li>
@@ -316,29 +297,18 @@
                 </ul>
             </div>
 
-            <div class="validation-pending">
-                <h3>⏳ Validation Status: PENDING</h3>
-                <p><strong>Validation of hill climbing implementation in progress.</strong></p>
-                <ul>
-                    <li>📋 Test framework: Comparing behavior against theoretical expectations</li>
-                    <li>🎯 Target: Proper local search behavior and convergence to local optima</li>
-                    <li>📊 Metrics: Local optimality verification, convergence speed</li>
-                    <li>🔧 Reference: Self-validation against algorithm specification</li>
-                </ul>
-                <p><em>Hill climbing is simple enough that correct implementation is the primary validation.</em></p>
-            </div>
 
             <div class="more-section">
-                <button class="more-toggle" onclick="toggleMore()">📚 More Resources</button>
+                <button class="more-toggle" onclick="toggleMore()">More Resources</button>
                 <div id="moreContent" class="more-content">
-                    <h3>📚 Educational Resources</h3>
+                    <h3>Educational Resources</h3>
                     <ul>
                         <li><a href="https://en.wikipedia.org/wiki/Hill_climbing" target="_blank">Hill Climbing Wikipedia</a></li>
                         <li><a href="https://artint.info/html/ArtInt_71.html" target="_blank">Artificial Intelligence: Foundations of Computational Agents</a></li>
                         <li><a href="http://aima.cs.berkeley.edu/" target="_blank">AI: A Modern Approach (Russell & Norvig)</a></li>
                         </ul>
 
-                    <h3>🔬 Algorithm Variants</h3>
+                    <h3>Algorithm Variants</h3>
                     <ul>
                         <li><strong>Simple Hill Climbing:</strong> Move to first improving neighbor</li>
                         <li><strong>Steepest-Ascent:</strong> Evaluate all neighbors, choose best improvement</li>
@@ -347,7 +317,7 @@
                         <li><strong>Sideways Move:</strong> Allow plateau moves to escape flat regions</li>
                     </ul>
 
-                    <h3>📐 Neighborhood Definitions</h3>
+                    <h3>Neighborhood Definitions</h3>
                     <ul>
                         <li><strong>Continuous:</strong> Small perturbations in real-valued variables</li>
                         <li><strong>Discrete:</strong> Bit-flips, swaps, insertions for combinatorial problems</li>
@@ -356,7 +326,7 @@
                         <li><strong>Adaptive:</strong> Step size changes based on success rate</li>
                     </ul>
 
-                    <h3>⚙️ Algorithm Pseudocode</h3>
+                    <h3>️ Algorithm Pseudocode</h3>
                     <pre style="background: #f8f9fa; padding: 15px; border-radius: 8px; font-family: monospace;">
 function hillClimbing(problem, initialSolution):
     current = initialSolution
@@ -375,7 +345,7 @@ function hillClimbing(problem, initialSolution):
     return current
                     </pre>
 
-                    <h3>💡 When Hill Climbing Works Well</h3>
+                    <h3>When Hill Climbing Works Well</h3>
                     <ul>
                         <li><strong>Unimodal Problems:</strong> Single global optimum with no local optima</li>
                         <li><strong>Local Refinement:</strong> Polishing solutions from other algorithms</li>
@@ -384,7 +354,7 @@ function hillClimbing(problem, initialSolution):
                         <li><strong>Component in Hybrids:</strong> Local search phase in metaheuristics</li>
                     </ul>
 
-                    <h3>🚧 Hill Climbing Limitations</h3>
+                    <h3>Hill Climbing Limitations</h3>
                     <ul>
                         <li><strong>Local Optima:</strong> Cannot escape local minima</li>
                         <li><strong>Plateaus:</strong> Gets stuck on flat regions</li>
@@ -393,7 +363,7 @@ function hillClimbing(problem, initialSolution):
                         <li><strong>No Global View:</strong> Purely greedy approach</li>
                     </ul>
 
-                    <h3>🔧 Improvements and Extensions</h3>
+                    <h3>Improvements and Extensions</h3>
                     <ul>
                         <li><strong>Random Restart:</strong> Run multiple times with different starts</li>
                         <li><strong>Simulated Annealing:</strong> Allow occasional uphill moves</li>
@@ -402,7 +372,7 @@ function hillClimbing(problem, initialSolution):
                         <li><strong>Iterated Local Search:</strong> Perturb and restart periodically</li>
                     </ul>
 
-                    <h3>🎯 Applications</h3>
+                    <h3>Applications</h3>
                     <ul>
                         <li><strong>Traveling Salesman:</strong> 2-opt, 3-opt local search moves</li>
                         <li><strong>Scheduling:</strong> Local improvements to task assignments</li>
@@ -423,10 +393,10 @@ function hillClimbing(problem, initialSolution):
 
             if (content.style.display === 'none' || content.style.display === '') {
                 content.style.display = 'block';
-                button.textContent = '📚 Less Resources';
+                button.textContent = 'Less Resources';
             } else {
                 content.style.display = 'none';
-                button.textContent = '📚 More Resources';
+                button.textContent = 'More Resources';
             }
         // Initialize 3D visualization when page loads
         document.addEventListener('DOMContentLoaded', function() {

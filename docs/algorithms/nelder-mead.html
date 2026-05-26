@@ -24,7 +24,7 @@
         }
 
         .header {
-            background: #2c3e50;
+            background: #34495e;
             color: white;
             padding: 30px;
             text-align: center;
@@ -161,6 +161,12 @@
     <!-- Three.js for 3D visualization -->
     <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/controls/OrbitControls.js"></script>
+    <script src="../js/modules/base-optimizer.js"></script>
+    <script src="../js/modules/prima-algorithms.js"></script>
+    <script src="../js/modules/scipy-algorithms.js"></script>
+    <script src="../js/modules/evolutionary-algorithms.js"></script>
+    <script src="../js/modules/search-algorithms.js"></script>
+
 </head>
 <body>
     <div class="container">
@@ -214,19 +220,19 @@
                             <em>Published: 1965</em>
                         </td>
                         <td>
-                            <a href="https://doi.org/10.1093/comjnl/7.4.308" target="_blank" class="link-button paper">📄 Paper</a>
+                            <a href="https://doi.org/10.1093/comjnl/7.4.308" target="_blank" class="link-button paper">Paper</a>
                         </td>
                     </tr>
                     <tr>
                         <td class="category">Humpday Python</td>
                         <td>
-                            <strong>Python Implementation</strong><br>
-                            Uses SciPy's optimize.minimize with method='Nelder-Mead'<br>
-                            Well-tested and numerically stable implementation<br>
+                            <strong>HumpDay Python Implementation</strong><br>
+                            Pure-Python simplex method, faithful to SciPy's parameters (rho=1, chi=2, psi=sigma=0.5)<br>
+                            No required dependencies<br>
                             <em>File: humpday/optimizers/scipy_algorithms.py</em>
                         </td>
                         <td>
-                            <a href="https://github.com/microprediction/humpday/blob/main/humpday/optimizers/scipy_algorithms.py" target="_blank" class="link-button python">🐍 Python Code</a>
+                            <a href="https://github.com/microprediction/humpday/blob/main/humpday/optimizers/scipy_algorithms.py" target="_blank" class="link-button python">Python Code</a>
                         </td>
                     </tr>
                     <tr>
@@ -238,24 +244,14 @@
                             <em>Class: NelderMead</em>
                         </td>
                         <td>
-                            <a href="https://github.com/microprediction/humpday/blob/main/docs/js/modules/scipy-algorithms.js" target="_blank" class="link-button javascript">🌐 JavaScript Code</a>
+                            <a href="https://github.com/microprediction/humpday/blob/main/docs/js/modules/scipy-algorithms.js" target="_blank" class="link-button javascript">JavaScript Code</a>
                         </td>
                     </tr>
-                    <tr>
-                        <td class="category">Library Dependencies</td>
-                        <td>
-                            <strong>Python:</strong> scipy.optimize<br>
-                            <strong>JavaScript:</strong> None (pure JS implementation)
-                        </td>
-                        <td>
-                            <a href="https://docs.scipy.org/doc/scipy/reference/optimize.minimize-neldermead.html" target="_blank" class="link-button python">📖 SciPy Docs</a>
-                        </td>
-                    </tr>
-                </tbody>
+</tbody>
             </table>
 
             <div class="performance-notes">
-                <h3>🏁 Performance Characteristics</h3>
+                <h3>Performance Characteristics</h3>
                 <ul>
                     <li><strong>Best for:</strong> Low to medium dimensions (2-20D), robust across function types</li>
                     <li><strong>Dimensions:</strong> Performance degrades significantly above 10-20 dimensions</li>
@@ -266,16 +262,16 @@
             </div>
 
             <div class="more-section">
-                <button class="more-toggle" onclick="toggleMore()">📚 More Resources</button>
+                <button class="more-toggle" onclick="toggleMore()">More Resources</button>
                 <div id="moreContent" class="more-content">
-                    <h3>📚 Educational Resources</h3>
+                    <h3>Educational Resources</h3>
                     <ul>
                         <li><a href="https://en.wikipedia.org/wiki/Nelder%E2%80%93Mead_method" target="_blank">Nelder-Mead Wikipedia</a></li>
                         <li><a href="https://codesachin.wordpress.com/2016/01/16/nelder-mead-optimization/" target="_blank">Visual Tutorial</a></li>
                         <li><a href="https://www.mathworks.com/help/matlab/math/optimizing-nonlinear-functions.html" target="_blank">MATLAB Documentation</a></li>
                     </ul>
 
-                    <h4>🔍 Algorithm Visualization</h4>
+                    <h4>Algorithm Visualization</h4>
                     <p>The Nelder-Mead method is one of the most visually intuitive optimization algorithms. The simplex (triangle in 2D) moves through the parameter space by:</p>
                     <ul>
                         <li><strong>Reflection:</strong> Mirror the worst point across the centroid</li>
@@ -295,10 +291,10 @@
 
             if (content.style.display === 'none' || content.style.display === '') {
                 content.style.display = 'block';
-                button.textContent = '📚 Less Resources';
+                button.textContent = 'Less Resources';
             } else {
                 content.style.display = 'none';
-                button.textContent = '📚 More Resources';
+                button.textContent = 'More Resources';
             }
         // Initialize 3D visualization when page loads
         document.addEventListener('DOMContentLoaded', function() {

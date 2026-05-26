@@ -24,7 +24,7 @@
         }
 
         .header {
-            background: #2c3e50;
+            background: #34495e;
             color: white;
             padding: 30px;
             text-align: center;
@@ -162,6 +162,12 @@
     <!-- Three.js for 3D visualization -->
     <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/controls/OrbitControls.js"></script>
+    <script src="../js/modules/base-optimizer.js"></script>
+    <script src="../js/modules/prima-algorithms.js"></script>
+    <script src="../js/modules/scipy-algorithms.js"></script>
+    <script src="../js/modules/evolutionary-algorithms.js"></script>
+    <script src="../js/modules/search-algorithms.js"></script>
+
 </head>
 <body>
     <div class="container">
@@ -215,7 +221,7 @@
                             <em>Published: 2002</em>
                         </td>
                         <td>
-                            <a href="https://www.optimization-online.org/DB_HTML/2009/12/2490.html" target="_blank" class="link-button paper">📄 Paper</a>
+                            <a href="https://www.optimization-online.org/DB_HTML/2009/12/2490.html" target="_blank" class="link-button paper">Paper</a>
                         </td>
                     </tr>
                     <tr>
@@ -227,24 +233,24 @@
                             <em>Package: pdfo</em>
                         </td>
                         <td>
-                            <a href="https://www.pdfo.net/" target="_blank" class="link-button paper">📦 PDFO</a>
-                            <a href="https://github.com/pdfo/pdfo" target="_blank" class="link-button python">🐍 Source</a>
+                            <a href="https://www.pdfo.net/" target="_blank" class="link-button paper">PDFO</a>
+                            <a href="https://github.com/pdfo/pdfo" target="_blank" class="link-button python">Source</a>
                         </td>
                     </tr>
                     <tr>
-                        <td class="category">Humpday Python Wrapper</td>
+                        <td class="category">Humpday Python</td>
                         <td>
-                            <strong>Humpday Integration</strong><br>
+                            <strong>HumpDay Python Implementation</strong><br>
                             Calls PDFO's UOBYQA implementation<br>
                             Standardized interface for optimization contests<br>
                             <em>File: humpday/optimizers/prima_algorithms.py</em>
                         </td>
                         <td>
-                            <a href="https://github.com/microprediction/humpday/blob/main/humpday/optimizers/prima_algorithms.py" target="_blank" class="link-button python">🐍 Wrapper Code</a>
+                            <a href="https://github.com/microprediction/humpday/blob/main/humpday/optimizers/prima_algorithms.py" target="_blank" class="link-button python">Source Code</a>
                         </td>
                     </tr>
                     <tr>
-                        <td class="category">Humpday JavaScript Port</td>
+                        <td class="category">Humpday JavaScript</td>
                         <td>
                             <strong>Browser Implementation</strong><br>
                             Pure JavaScript port maintaining core trust-region logic<br>
@@ -252,25 +258,14 @@
                             <em>Class: PRIMA_UOBYQA</em>
                         </td>
                         <td>
-                            <a href="https://github.com/microprediction/humpday/blob/main/docs/js/modules/prima-algorithms.js" target="_blank" class="link-button javascript">🌐 JS Port</a>
+                            <a href="https://github.com/microprediction/humpday/blob/main/docs/js/modules/prima-algorithms.js" target="_blank" class="link-button javascript">JS Port</a>
                         </td>
                     </tr>
-                    <tr>
-                        <td class="category">Dependencies</td>
-                        <td>
-                            <strong>Reference:</strong> PDFO package (wraps Powell's Fortran)<br>
-                            <strong>Humpday Python:</strong> pdfo, numpy<br>
-                            <strong>Humpday JS:</strong> None (standalone port)
-                        </td>
-                        <td>
-                            <a href="https://pypi.org/project/pdfo/" target="_blank" class="link-button python">📦 PyPI</a>
-                        </td>
-                    </tr>
-                </tbody>
+</tbody>
             </table>
 
             <div class="performance-notes">
-                <h3>🏁 Performance Characteristics</h3>
+                <h3>Performance Characteristics</h3>
                 <ul>
                     <li><strong>Best for:</strong> Smooth, unimodal functions with moderate noise tolerance</li>
                     <li><strong>Dimensions:</strong> Works well up to ~50 dimensions</li>
@@ -281,11 +276,11 @@
             </div>
 
             <div class="performance-notes" style="background: #d4edda; border-color: #27ae60;">
-                <h3>✅ Validation Results: PERFECT MATCH vs PDFO Reference</h3>
+                <h3>Validation Results: PERFECT MATCH vs PDFO Reference</h3>
                 <p><strong>JavaScript implementation successfully matches PDFO reference implementation:</strong></p>
                 <ul>
-                    <li><strong>2D Sphere Function:</strong> Both PDFO and JavaScript achieve <code>f = 0.000000</code> 🎯</li>
-                    <li><strong>3D Sphere Function:</strong> Both PDFO and JavaScript achieve <code>f = 0.000000</code> 🎯</li>
+                    <li><strong>2D Sphere Function:</strong> Both PDFO and JavaScript achieve <code>f = 0.000000</code> </li>
+                    <li><strong>3D Sphere Function:</strong> Both PDFO and JavaScript achieve <code>f = 0.000000</code> </li>
                     <li><strong>Efficiency:</strong> JavaScript uses fewer function evaluations (12 vs 17, 17 vs 21)</li>
                     <li><strong>Success Rate:</strong> 2/3 perfect matches on test suite</li>
                 </ul>
@@ -293,9 +288,9 @@
             </div>
 
             <div class="more-section">
-                <button class="more-toggle" onclick="toggleMore()">📚 More Resources</button>
+                <button class="more-toggle" onclick="toggleMore()">More Resources</button>
                 <div id="moreContent" class="more-content">
-                    <h3>📚 Educational Resources</h3>
+                    <h3>Educational Resources</h3>
                     <ul>
                         <li><a href="https://en.wikipedia.org/wiki/NEWUOA" target="_blank">UOBYQA/NEWUOA Wikipedia</a></li>
                         <li><a href="https://www.pdfo.net/" target="_blank">PDFO Documentation</a></li>
@@ -312,10 +307,10 @@
 
             if (content.style.display === 'none' || content.style.display === '') {
                 content.style.display = 'block';
-                button.textContent = '📚 Less Resources';
+                button.textContent = 'Less Resources';
             } else {
                 content.style.display = 'none';
-                button.textContent = '📚 More Resources';
+                button.textContent = 'More Resources';
             }
         // Initialize 3D visualization when page loads
         document.addEventListener('DOMContentLoaded', function() {

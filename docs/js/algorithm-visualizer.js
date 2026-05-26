@@ -447,7 +447,7 @@ class AlgorithmVisualizer {
             // SciPy algorithms
             { value: 'SciPy_NelderMead', text: 'Nelder-Mead (SciPy)' },
             { value: 'SciPy_Powell', text: 'Powell Method' },
-            { value: 'SciPy_BFGS', text: 'BFGS (SciPy)' },
+            { value: 'SciPy_BFGS', text: 'L-BFGS-B (SciPy)' },
             { value: 'DifferentialEvolution', text: 'Differential Evolution' },
             { value: 'SimulatedAnnealing', text: 'Simulated Annealing' },
 
@@ -483,9 +483,37 @@ class AlgorithmVisualizer {
             algorithmSelect.appendChild(option);
         });
 
-        // Default to Harmony Search if we're on the harmony search page
-        if (document.title.includes('Harmony Search')) {
-            algorithmSelect.value = 'HarmonySearch';
+        // Default to the page's own algorithm when the page title matches one.
+        // Map each algorithm page's <title> keyword to its selector value.
+        const titleToAlgo = {
+            'UOBYQA':                 'PRIMA_UOBYQA',
+            'NEWUOA':                 'PRIMA_NEWUOA',
+            'BOBYQA':                 'PRIMA_BOBYQA',
+            "Nelder-Mead":            'SciPy_NelderMead',
+            "Powell":                 'SciPy_Powell',
+            'L-BFGS':                 'SciPy_BFGS',
+            'Differential Evolution': 'DifferentialEvolution',
+            'Particle Swarm':         'ParticleSwarm',
+            'Simulated Annealing':    'SimulatedAnnealing',
+            'Genetic Algorithm':      'GeneticAlgorithm',
+            'Random Search':          'RandomSearch',
+            'Bayesian Optimization':  'BayesianOpt',
+            'CMA':                    'CMAEvolutionStrategy',
+            'Tabu Search':            'TabuSearch',
+            'Firefly':                'FireflyAlgorithm',
+            'Ant Colony':             'AntColonyOpt',
+            'Evolution Strategy':     'EvolutionStrategy',
+            'Hill Climbing':          'HillClimbing',
+            'Harmony Search':         'HarmonySearch',
+            'Adaptive Random':        'AdaptiveRandomSearch',
+            'Coordinate Descent':     'CoordinateDescent',
+            'Pattern Search':         'PatternSearch',
+        };
+        for (const [keyword, algo] of Object.entries(titleToAlgo)) {
+            if (document.title.includes(keyword)) {
+                algorithmSelect.value = algo;
+                break;
+            }
         }
 
         // Control buttons container

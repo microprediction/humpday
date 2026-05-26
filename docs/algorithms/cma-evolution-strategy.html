@@ -24,7 +24,7 @@
         }
 
         .header {
-            background: #16a085;
+            background: #34495e;
             color: white;
             padding: 30px;
             text-align: center;
@@ -158,23 +158,16 @@
             display: none;
             margin-top: 20px;
         }
-
-        .validation-pending {
-            background: #ffeaa7;
-            border: 1px solid #fdcb6e;
-            border-radius: 8px;
-            padding: 15px;
-            margin: 20px 0;
-        }
-
-        .validation-pending h3 {
-            margin-top: 0;
-            color: #d63031;
-        }
-    </style>
+</style>
     <!-- Three.js for 3D visualization -->
     <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/controls/OrbitControls.js"></script>
+    <script src="../js/modules/base-optimizer.js"></script>
+    <script src="../js/modules/prima-algorithms.js"></script>
+    <script src="../js/modules/scipy-algorithms.js"></script>
+    <script src="../js/modules/evolutionary-algorithms.js"></script>
+    <script src="../js/modules/search-algorithms.js"></script>
+
 </head>
 <body>
     <div class="container">
@@ -228,7 +221,7 @@
                             <em>Published: 1996-2001</em>
                         </td>
                         <td>
-                            <a href="https://arxiv.org/abs/1604.00772" target="_blank" class="link-button paper">📄 Tutorial</a>
+                            <a href="https://arxiv.org/abs/1604.00772" target="_blank" class="link-button paper">Tutorial</a>
                         </td>
                     </tr>
                     <tr>
@@ -240,24 +233,24 @@
                             <em>Package: cmaes</em>
                         </td>
                         <td>
-                            <a href="https://github.com/CMA-ES/pycma" target="_blank" class="link-button python">🐍 pycma</a>
-                            <a href="https://pypi.org/project/cmaes/" target="_blank" class="link-button python">📦 cmaes</a>
+                            <a href="https://github.com/CMA-ES/pycma" target="_blank" class="link-button python">pycma</a>
+                            <a href="https://pypi.org/project/cmaes/" target="_blank" class="link-button python">cmaes</a>
                         </td>
                     </tr>
                     <tr>
-                        <td class="category">Humpday Python Wrapper</td>
+                        <td class="category">Humpday Python</td>
                         <td>
-                            <strong>Humpday Integration</strong><br>
+                            <strong>HumpDay Python Implementation</strong><br>
                             Uses cmaes or DEAP implementation<br>
                             Configured for optimization contests<br>
                             <em>File: humpday/optimizers/cmaopt.py</em>
                         </td>
                         <td>
-                            <a href="https://github.com/microprediction/humpday" target="_blank" class="link-button python">🐍 Wrapper Code</a>
+                            <a href="https://github.com/microprediction/humpday" target="_blank" class="link-button python">Source Code</a>
                         </td>
                     </tr>
                     <tr>
-                        <td class="category">Humpday JavaScript Port</td>
+                        <td class="category">Humpday JavaScript</td>
                         <td>
                             <strong>Browser Implementation</strong><br>
                             JavaScript port of core CMA-ES algorithm<br>
@@ -265,25 +258,14 @@
                             <em>Class: CMAEvolutionStrategy</em>
                         </td>
                         <td>
-                            <a href="https://github.com/microprediction/humpday/blob/main/docs/js/optimizers.js" target="_blank" class="link-button javascript">🌐 JS Port</a>
+                            <a href="https://github.com/microprediction/humpday/blob/main/docs/js/optimizers.js" target="_blank" class="link-button javascript">JS Port</a>
                         </td>
                     </tr>
-                    <tr>
-                        <td class="category">Dependencies</td>
-                        <td>
-                            <strong>Reference:</strong> cmaes or pycma package<br>
-                            <strong>Humpday Python:</strong> cmaes, numpy<br>
-                            <strong>Humpday JS:</strong> None (standalone port)
-                        </td>
-                        <td>
-                            <a href="https://pypi.org/project/cmaes/" target="_blank" class="link-button python">📦 PyPI</a>
-                        </td>
-                    </tr>
-                </tbody>
+</tbody>
             </table>
 
             <div class="performance-notes">
-                <h3>🏁 Performance Characteristics</h3>
+                <h3>Performance Characteristics</h3>
                 <ul>
                     <li><strong>Best for:</strong> Continuous optimization, ill-conditioned problems, noisy functions</li>
                     <li><strong>Dimensions:</strong> Excellent from 2D up to hundreds of dimensions</li>
@@ -293,22 +275,11 @@
                 </ul>
             </div>
 
-            <div class="validation-pending">
-                <h3>⏳ Validation Status: PENDING</h3>
-                <p><strong>Validation against cmaes reference implementation in progress.</strong></p>
-                <ul>
-                    <li>📋 Test framework: Comparing JavaScript vs cmaes.CMA() or pycma</li>
-                    <li>🎯 Target: Statistical equivalence with proper covariance adaptation</li>
-                    <li>📊 Metrics: Convergence rate, final objective values, covariance evolution</li>
-                    <li>🔧 Challenge: Complex matrix operations and parameter updates in JavaScript</li>
-                </ul>
-                <p><em>Full validation results will be displayed here once testing is complete.</em></p>
-            </div>
 
             <div class="more-section">
-                <button class="more-toggle" onclick="toggleMore()">📚 More Resources</button>
+                <button class="more-toggle" onclick="toggleMore()">More Resources</button>
                 <div id="moreContent" class="more-content">
-                    <h3>📚 Educational Resources</h3>
+                    <h3>Educational Resources</h3>
                     <ul>
                         <li><a href="https://arxiv.org/abs/1604.00772" target="_blank">CMA-ES Tutorial (Hansen, 2016)</a></li>
                         <li><a href="https://github.com/CMA-ES/pycma" target="_blank">pycma - Official Python Implementation</a></li>
@@ -317,7 +288,7 @@
                         <li><a href="https://link.springer.com/article/10.1007/s001000050217" target="_blank">Original CMA-ES Paper (2001)</a></li>
                     </ul>
 
-                    <h3>🔬 Core Algorithm Components</h3>
+                    <h3>Core Algorithm Components</h3>
                     <ul>
                         <li><strong>Population:</strong> λ offspring generated from multivariate normal distribution</li>
                         <li><strong>Selection:</strong> μ best individuals become parents for next generation</li>
@@ -327,7 +298,7 @@
                         <li><strong>Evolution Paths:</strong> Track search direction over generations</li>
                     </ul>
 
-                    <h3>📐 Mathematical Foundation</h3>
+                    <h3>Mathematical Foundation</h3>
                     <ul>
                         <li><strong>Multivariate Normal:</strong> x ~ N(m, σ²C) sampling distribution</li>
                         <li><strong>Rank-μ Update:</strong> C_μ = Σᵢ wᵢ yᵢyᵢᵀ (rank-μ covariance update)</li>
@@ -336,7 +307,7 @@
                         <li><strong>Invariance:</strong> Transformation-invariant under affine coordinate changes</li>
                     </ul>
 
-                    <h3>⚙️ Key Parameters</h3>
+                    <h3>️ Key Parameters</h3>
                     <ul>
                         <li><strong>Population Size:</strong> λ = 4 + ⌊3ln(n)⌋</li>
                         <li><strong>Parents:</strong> μ = ⌊λ/2⌋</li>
@@ -345,7 +316,7 @@
                         <li><strong>Damping:</strong> d_σ ≈ 1 + 2max(0, √((μ_eff-1)/(n+1)) - 1)</li>
                     </ul>
 
-                    <h3>🎯 CMA-ES Variants</h3>
+                    <h3>CMA-ES Variants</h3>
                     <ul>
                         <li><strong>CMA-ES:</strong> Standard algorithm with full covariance adaptation</li>
                         <li><strong>BIPOP-CMA-ES:</strong> Bi-population restart strategy</li>
@@ -355,7 +326,7 @@
                         <li><strong>xNES:</strong> Natural Evolution Strategy variant</li>
                     </ul>
 
-                    <h3>🚀 Applications & Success Stories</h3>
+                    <h3>Applications & Success Stories</h3>
                     <ul>
                         <li><strong>Engineering Design:</strong> Antenna design, aerodynamics optimization</li>
                         <li><strong>Machine Learning:</strong> Neural network hyperparameter optimization</li>
@@ -365,7 +336,7 @@
                         <li><strong>Black-Box Challenges:</strong> Consistent top performer in BBOB competitions</li>
                     </ul>
 
-                    <h3>🏆 Why CMA-ES is Special</h3>
+                    <h3>Why CMA-ES is Special</h3>
                     <ul>
                         <li><strong>Invariance Properties:</strong> Rotation and scaling invariant</li>
                         <li><strong>Self-Adaptation:</strong> Learns problem structure automatically</li>
@@ -386,10 +357,10 @@
 
             if (content.style.display === 'none' || content.style.display === '') {
                 content.style.display = 'block';
-                button.textContent = '📚 Less Resources';
+                button.textContent = 'Less Resources';
             } else {
                 content.style.display = 'none';
-                button.textContent = '📚 More Resources';
+                button.textContent = 'More Resources';
             }
         }
 

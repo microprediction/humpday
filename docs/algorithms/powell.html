@@ -24,7 +24,7 @@
         }
 
         .header {
-            background: #27ae60;
+            background: #34495e;
             color: white;
             padding: 30px;
             text-align: center;
@@ -158,23 +158,16 @@
             display: none;
             margin-top: 20px;
         }
-
-        .validation-pending {
-            background: #ffeaa7;
-            border: 1px solid #fdcb6e;
-            border-radius: 8px;
-            padding: 15px;
-            margin: 20px 0;
-        }
-
-        .validation-pending h3 {
-            margin-top: 0;
-            color: #d63031;
-        }
-    </style>
+</style>
     <!-- Three.js for 3D visualization -->
     <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/controls/OrbitControls.js"></script>
+    <script src="../js/modules/base-optimizer.js"></script>
+    <script src="../js/modules/prima-algorithms.js"></script>
+    <script src="../js/modules/scipy-algorithms.js"></script>
+    <script src="../js/modules/evolutionary-algorithms.js"></script>
+    <script src="../js/modules/search-algorithms.js"></script>
+
 </head>
 <body>
     <div class="container">
@@ -228,7 +221,7 @@
                             <em>Published: 1964</em>
                         </td>
                         <td>
-                            <a href="https://en.wikipedia.org/wiki/Powell%27s_method" target="_blank" class="link-button info">📖 Wikipedia</a>
+                            <a href="https://en.wikipedia.org/wiki/Powell%27s_method" target="_blank" class="link-button info">Wikipedia</a>
                         </td>
                     </tr>
                     <tr>
@@ -240,24 +233,24 @@
                             <em>Package: scipy</em>
                         </td>
                         <td>
-                            <a href="https://docs.scipy.org/doc/scipy/reference/optimize.minimize-powell.html" target="_blank" class="link-button python">🐍 SciPy Docs</a>
-                            <a href="https://github.com/scipy/scipy/blob/main/scipy/optimize/_optimize.py" target="_blank" class="link-button python">🔍 Source</a>
+                            <a href="https://docs.scipy.org/doc/scipy/reference/optimize.minimize-powell.html" target="_blank" class="link-button python">SciPy Docs</a>
+                            <a href="https://github.com/scipy/scipy/blob/main/scipy/optimize/_optimize.py" target="_blank" class="link-button python">Source</a>
                         </td>
                     </tr>
                     <tr>
-                        <td class="category">Humpday Python Wrapper</td>
+                        <td class="category">Humpday Python</td>
                         <td>
-                            <strong>Humpday Integration</strong><br>
-                            Calls scipy.optimize.minimize(method='powell')<br>
-                            Standardized interface for optimization contests<br>
+                            <strong>HumpDay Python Implementation</strong><br>
+                            Pure-Python conjugate-direction method with bounded golden-section line search<br>
+                            No required dependencies<br>
                             <em>File: humpday/optimizers/scipy_algorithms.py</em>
                         </td>
                         <td>
-                            <a href="https://github.com/microprediction/humpday/blob/main/humpday/optimizers/scipy_algorithms.py" target="_blank" class="link-button python">🐍 Wrapper Code</a>
+                            <a href="https://github.com/microprediction/humpday/blob/main/humpday/optimizers/scipy_algorithms.py" target="_blank" class="link-button python">Source Code</a>
                         </td>
                     </tr>
                     <tr>
-                        <td class="category">Humpday JavaScript Port</td>
+                        <td class="category">Humpday JavaScript</td>
                         <td>
                             <strong>Browser Implementation</strong><br>
                             Pure JavaScript port of Powell's conjugate direction method<br>
@@ -265,25 +258,14 @@
                             <em>Class: Powell</em>
                         </td>
                         <td>
-                            <a href="https://github.com/microprediction/humpday/blob/main/docs/js/optimizers.js" target="_blank" class="link-button javascript">🌐 JS Port</a>
+                            <a href="https://github.com/microprediction/humpday/blob/main/docs/js/optimizers.js" target="_blank" class="link-button javascript">JS Port</a>
                         </td>
                     </tr>
-                    <tr>
-                        <td class="category">Dependencies</td>
-                        <td>
-                            <strong>Reference:</strong> scipy.optimize<br>
-                            <strong>Humpday Python:</strong> scipy, numpy<br>
-                            <strong>Humpday JS:</strong> None (standalone port)
-                        </td>
-                        <td>
-                            <a href="https://pypi.org/project/scipy/" target="_blank" class="link-button python">📦 PyPI</a>
-                        </td>
-                    </tr>
-                </tbody>
+</tbody>
             </table>
 
             <div class="performance-notes">
-                <h3>🏁 Performance Characteristics</h3>
+                <h3>Performance Characteristics</h3>
                 <ul>
                     <li><strong>Best for:</strong> Quadratic functions and smooth, unimodal problems</li>
                     <li><strong>Dimensions:</strong> Works well up to moderate dimensions (~20-50)</li>
@@ -293,28 +275,18 @@
                 </ul>
             </div>
 
-            <div class="validation-pending">
-                <h3>⏳ Validation Status: PENDING</h3>
-                <p><strong>Validation against SciPy reference implementation in progress.</strong></p>
-                <ul>
-                    <li>📋 Test framework: Comparing JavaScript vs scipy.optimize.minimize(method='powell')</li>
-                    <li>🎯 Target: Perfect match or statistical equivalence on benchmark functions</li>
-                    <li>📊 Metrics: Convergence accuracy, function evaluations, solution quality</li>
-                </ul>
-                <p><em>Full validation results will be displayed here once testing is complete.</em></p>
-            </div>
 
             <div class="more-section">
-                <button class="more-toggle" onclick="toggleMore()">📚 More Resources</button>
+                <button class="more-toggle" onclick="toggleMore()">More Resources</button>
                 <div id="moreContent" class="more-content">
-                    <h3>📚 Educational Resources</h3>
+                    <h3>Educational Resources</h3>
                     <ul>
                         <li><a href="https://en.wikipedia.org/wiki/Powell%27s_method" target="_blank">Powell's Method Wikipedia</a></li>
                         <li><a href="https://docs.scipy.org/doc/scipy/reference/optimize.html" target="_blank">SciPy Optimization Guide</a></li>
                         <li><a href="https://numerical.recipes/" target="_blank">Numerical Recipes (Chapter on Multidimensional Minimization)</a></li>
                         </ul>
 
-                    <h3>🔬 Algorithm Theory</h3>
+                    <h3>Algorithm Theory</h3>
                     <ul>
                         <li><strong>Conjugate Directions:</strong> Method builds orthogonal search directions</li>
                         <li><strong>Line Search:</strong> Uses golden section or Brent's method for 1D optimization</li>
@@ -333,10 +305,10 @@
 
             if (content.style.display === 'none' || content.style.display === '') {
                 content.style.display = 'block';
-                button.textContent = '📚 Less Resources';
+                button.textContent = 'Less Resources';
             } else {
                 content.style.display = 'none';
-                button.textContent = '📚 More Resources';
+                button.textContent = 'More Resources';
             }
         // Initialize 3D visualization when page loads
         document.addEventListener('DOMContentLoaded', function() {
