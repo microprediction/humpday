@@ -9,9 +9,9 @@ Legend: ✅ done · 🟡 partial / in-progress · ❌ not done · ❓ unknown / 
 
 | Algorithm | 3rd party | JS | no-numpy | demo | contests | int links | ext links | logic | perf |
 |---|---|---|---|---|---|---|---|---|---|
-| PRIMA_UOBYQA | ✅ | ❓ | ❌ | 🟡 | ✅ | ❓ | ❓ | ✅ | ❓ |
-| PRIMA_NEWUOA | ✅ | ❓ | ❌ | 🟡 | ✅ | ❓ | ❓ | ✅ | ❓ |
-| PRIMA_BOBYQA | ✅ | ❓ | ❌ | 🟡 | ✅ | ❓ | ❓ | ✅ | ❓ |
+| PRIMA_UOBYQA | ✅ | ❓ | ✅ | 🟡 | ✅ | ❓ | ❓ | ✅ | ❓ |
+| PRIMA_NEWUOA | ✅ | ❓ | ✅ | 🟡 | ✅ | ❓ | ❓ | ✅ | ❓ |
+| PRIMA_BOBYQA | ✅ | ❓ | ✅ | 🟡 | ✅ | ❓ | ❓ | ✅ | ❓ |
 | NelderMead | ✅ | ❓ | ✅ | 🟡 | ✅ | ❓ | ❓ | ✅ | ❓ |
 | Powell | ✅ | ❓ | ✅ | 🟡 | ✅ | ❓ | ❓ | ✅ | ❓ |
 | LBFGSB | ✅ | ❓ | ✅ | 🟡 | ✅ | ❓ | ❓ | 🟡 | ❓ |
