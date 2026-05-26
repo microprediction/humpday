@@ -220,7 +220,7 @@ class TestOptimizerValidation:
 
     def test_random_search_optimizer(self):
         """Test RandomSearch optimizer Python vs JavaScript."""
-        from humpday.optimizers.optimizers import RandomSearch
+        from humpday.optimizers.alloptimizers import RandomSearch
 
         # Simple objective function (sphere)
         def objective(x):
@@ -265,7 +265,7 @@ class TestOptimizerValidation:
 
     def test_nelder_mead_deterministic(self):
         """Test Nelder-Mead with deterministic initialization."""
-        from humpday.optimizers.optimizers import NelderMead
+        from humpday.optimizers.alloptimizers import NelderMead
 
         # Simple quadratic function
         def objective(x):

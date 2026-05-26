@@ -149,7 +149,7 @@ class TestOptimizerImplementations:
 
     def test_all_optimizers_importable(self):
         """Test that all 22 optimizers can be imported and instantiated."""
-        from humpday.optimizers.optimizers import PURE_OPTIMIZERS
+        from humpday.optimizers.alloptimizers import PURE_OPTIMIZERS
 
         # Simple test objective
         def test_obj(x):
@@ -172,7 +172,7 @@ class TestOptimizerImplementations:
 
     def test_optimizer_basic_functionality(self):
         """Test basic optimizer functionality on simple problems."""
-        from humpday.optimizers.optimizers import NelderMead, RandomSearch
+        from humpday.optimizers.alloptimizers import NelderMead, RandomSearch
 
         # Simple quadratic with known minimum at [0.3, 0.7]
         def quadratic(x):
@@ -205,7 +205,7 @@ class TestOptimizerImplementations:
 
     def test_optimizers_respect_bounds(self):
         """Test that optimizers respect unit hypercube bounds."""
-        from humpday.optimizers.optimizers import PURE_OPTIMIZERS
+        from humpday.optimizers.alloptimizers import PURE_OPTIMIZERS
 
         # Objective that heavily penalizes going outside [0,1]
         def bounded_objective(x):
@@ -236,7 +236,7 @@ class TestOptimizerImplementations:
 
     def test_optimizer_consistency(self):
         """Test that optimizers give consistent results with same random seed."""
-        from humpday.optimizers.optimizers import RandomSearch
+        from humpday.optimizers.alloptimizers import RandomSearch
 
         def test_objective(x):
             return np.sum(np.asarray(x) ** 2)

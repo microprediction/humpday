@@ -59,7 +59,7 @@ class TestOptimizersCoverage:
 
     def test_optimizer_edge_cases(self):
         """Test edge cases and error conditions in optimizers."""
-        from humpday.optimizers.optimizers import (
+        from humpday.optimizers.alloptimizers import (
             PRIMA_UOBYQA,
             NelderMead,
             RandomSearch,
@@ -80,7 +80,7 @@ class TestOptimizersCoverage:
 
     def test_optimizer_path_tracking(self):
         """Test path tracking functionality in optimizers."""
-        from humpday.optimizers.optimizers import RandomSearch
+        from humpday.optimizers.alloptimizers import RandomSearch
 
         def objective(x):
             return sum((xi - 0.5) ** 2 for xi in x)
@@ -95,7 +95,7 @@ class TestOptimizersCoverage:
 
     def test_algorithm_specific_branches(self):
         """Test algorithm-specific code branches."""
-        from humpday.optimizers.optimizers import (
+        from humpday.optimizers.alloptimizers import (
             FireflyAlgorithm,
             HarmonySearch,
             HillClimbing,

@@ -34,7 +34,7 @@ class TestComprehensiveCoverage:
 
     def test_optimizer_classes_basic(self):
         """Test basic optimizer class functionality."""
-        from humpday.optimizers.optimizers import (
+        from humpday.optimizers.alloptimizers import (
             DifferentialEvolution,
             HillClimbing,
             NelderMead,
@@ -188,7 +188,7 @@ class TestComprehensiveCoverage:
 
     def test_various_optimizer_edge_cases(self):
         """Test various optimizer edge cases."""
-        from humpday.optimizers.optimizers import (
+        from humpday.optimizers.alloptimizers import (
             PRIMA_UOBYQA,
             FireflyAlgorithm,
             GeneticAlgorithm,

@@ -11,7 +11,7 @@ class TestOptimizerEdgeCases:
 
     def test_prima_uobyqa_specific_conditions(self):
         """Test specific conditions in PRIMA_UOBYQA that aren't covered."""
-        from humpday.optimizers.optimizers import PRIMA_UOBYQA
+        from humpday.optimizers.alloptimizers import PRIMA_UOBYQA
 
         # Create an objective that will trigger specific code paths
         def difficult_objective(x):
@@ -30,7 +30,7 @@ class TestOptimizerEdgeCases:
 
     def test_algorithm_specific_edge_cases(self):
         """Test specific algorithms with conditions that trigger missing lines."""
-        from humpday.optimizers.optimizers import (
+        from humpday.optimizers.alloptimizers import (
             AdaptiveRandomSearch,
             BayesianOpt,
             CMAEvolutionStrategy,
@@ -76,7 +76,7 @@ class TestOptimizerEdgeCases:
 
     def test_optimizer_extreme_parameters(self):
         """Test optimizers with extreme parameters to hit edge cases."""
-        from humpday.optimizers.optimizers import HillClimbing, RandomSearch
+        from humpday.optimizers.alloptimizers import HillClimbing, RandomSearch
 
         def simple_objective(x):
             return sum(x**2)

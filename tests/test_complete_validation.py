@@ -218,7 +218,7 @@ class TestPythonVs3rdParty:
 
     def test_differential_evolution_vs_scipy(self):
         """Test our Differential Evolution against SciPy's version on same problem."""
-        from humpday.optimizers.optimizers import DifferentialEvolution
+        from humpday.optimizers.alloptimizers import DifferentialEvolution
 
         # Simple quadratic function
         def objective(x):
@@ -259,7 +259,7 @@ class TestPythonVs3rdParty:
 
     def test_nelder_mead_vs_scipy(self):
         """Test our Nelder-Mead against SciPy's version."""
-        from humpday.optimizers.optimizers import NelderMead
+        from humpday.optimizers.alloptimizers import NelderMead
 
         def objective(x):
             return np.sum((np.asarray(x) - 0.4) ** 2)
@@ -470,7 +470,7 @@ class TestOptimizerConsistency:
 
     def test_all_optimizers_functional(self):
         """Test that all 22 optimizers work on a simple problem."""
-        from humpday.optimizers.optimizers import PURE_OPTIMIZERS
+        from humpday.optimizers.alloptimizers import PURE_OPTIMIZERS
 
         # Simple quadratic with known minimum
         def objective(x):
@@ -505,7 +505,7 @@ class TestOptimizerConsistency:
 
     def test_optimizer_convergence_quality(self):
         """Test that key optimizers converge well on known problems."""
-        from humpday.optimizers.optimizers import (
+        from humpday.optimizers.alloptimizers import (
             DifferentialEvolution,
             NelderMead,
             ParticleSwarm,
