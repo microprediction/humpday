@@ -47,6 +47,7 @@ PORTED = [
     ("search_algorithms", "PatternSearch"),
     ("scipy_algorithms", "NelderMead"),
     ("scipy_algorithms", "Powell"),
+    ("evolutionary_algorithms", "AntColonyOpt"),
 ]
 
 
@@ -92,6 +93,7 @@ def test_pure_backend_works_for_ported_algorithms(tmp_path):
             TabuSearch, FireflyAlgorithm,
             ParticleSwarm, DifferentialEvolution, GeneticAlgorithm,
             EvolutionStrategy,
+            AntColonyOpt,
         )
         from humpday.optimizers.search_algorithms import (
             AdaptiveRandomSearch, CoordinateDescent, PatternSearch,
@@ -107,6 +109,7 @@ def test_pure_backend_works_for_ported_algorithms(tmp_path):
             TabuSearch, FireflyAlgorithm,
             ParticleSwarm, DifferentialEvolution, GeneticAlgorithm,
             EvolutionStrategy,
+            AntColonyOpt,
             AdaptiveRandomSearch, CoordinateDescent, PatternSearch,
             NelderMead, Powell,
         ]
