@@ -258,6 +258,109 @@ def test_eigh_reconstruction(L):
         _close_vec(Av, lam_v, tol=1e-8)
 
 
+# ---------------------------------------------------------------------------
+# QR decomposition
+# ---------------------------------------------------------------------------
+
+
+@pytest.mark.parametrize("L", BACKENDS)
+def test_qr_identity(L):
+    Q, R = L.qr(L.eye(3))
+    # Q should be the identity (up to sign of columns) and R upper-triangular.
+    # Check that Q @ R reconstructs the identity.
+    _close_matrix(L.matmul(Q, R), L.eye(3))
+
+
+@pytest.mark.parametrize("L", BACKENDS)
+def test_qr_reconstruction(L):
+    A = [[12.0, -51.0, 4.0], [6.0, 167.0, -68.0], [-4.0, 24.0, -41.0]]
+    Q, R = L.qr(A)
+    # Reconstruction: A = Q @ R
+    _close_matrix(L.matmul(Q, R), A, tol=1e-9)
+    # Q^T Q = I (orthonormal columns) — Q is 3x3 here, so Q^T Q is 3x3 identity.
+    QtQ = L.matmul(L.transpose(Q), Q)
+    _close_matrix(QtQ, L.eye(3), tol=1e-9)
+    # R is upper-triangular: every below-diagonal entry is zero.
+    for i in range(3):
+        for j in range(i):
+            assert abs(float(R[i][j])) < 1e-9, f"R[{i}][{j}] not zero: {R[i][j]}"
+
+
+@pytest.mark.parametrize("L", BACKENDS)
+def test_qr_tall_matrix(L):
+    # 4x2 — reduced QR returns 4x2 Q, 2x2 R.
+    A = [[1.0, 1.0], [1.0, -1.0], [1.0, 1.0], [1.0, -1.0]]
+    Q, R = L.qr(A)
+    _close_matrix(L.matmul(Q, R), A, tol=1e-9)
+
+
+# ---------------------------------------------------------------------------
+# SVD
+# ---------------------------------------------------------------------------
+
+
+@pytest.mark.parametrize("L", BACKENDS)
+def test_svd_diagonal(L):
+    # SVD of a diagonal matrix with distinct positive entries:
+    # singular values are the diagonal entries sorted descending.
+    A = [[3.0, 0.0, 0.0], [0.0, 1.0, 0.0], [0.0, 0.0, 2.0]]
+    U, s, Vt = L.svd(A, full_matrices=False)
+    _close_vec(list(s), [3.0, 2.0, 1.0], tol=1e-9)
+
+
+@pytest.mark.parametrize("L", BACKENDS)
+def test_svd_reconstruction(L):
+    A = [[1.0, 0.5, 0.3], [0.5, 2.0, 0.7], [0.3, 0.7, 1.5]]
+    U, s, Vt = L.svd(A, full_matrices=False)
+    # A ≈ U @ diag(s) @ Vt
+    n = len(s)
+    diag_s = L.diag(list(s))
+    reconstructed = L.matmul(L.matmul(U, diag_s), Vt)
+    _close_matrix(reconstructed, A, tol=1e-8)
+
+
+@pytest.mark.parametrize("L", BACKENDS)
+def test_svd_rectangular(L):
+    # 4x2 — reduced SVD returns U (4x2), s (length 2), Vt (2x2).
+    A = [[1.0, 0.0], [0.0, 1.0], [1.0, 1.0], [1.0, -1.0]]
+    U, s, Vt = L.svd(A, full_matrices=False)
+    assert len(U) == 4
+    assert len(U[0]) == 2
+    assert len(s) == 2
+    assert len(Vt) == 2
+    assert len(Vt[0]) == 2
+    # Reconstruction
+    diag_s = L.diag(list(s))
+    reconstructed = L.matmul(L.matmul(U, diag_s), Vt)
+    _close_matrix(reconstructed, A, tol=1e-8)
+
+
+# ---------------------------------------------------------------------------
+# Pseudo-inverse
+# ---------------------------------------------------------------------------
+
+
+@pytest.mark.parametrize("L", BACKENDS)
+def test_pinv_square_invertible(L):
+    # For invertible square A, pinv(A) == inv(A).
+    A = [[4.0, 7.0], [2.0, 6.0]]
+    Ap = L.pinv(A)
+    # A @ pinv(A) should be the 2x2 identity.
+    _close_matrix(L.matmul(A, Ap), [[1, 0], [0, 1]], tol=1e-8)
+
+
+@pytest.mark.parametrize("L", BACKENDS)
+def test_pinv_rank_deficient(L):
+    # Rank-1 matrix: only one nonzero singular value. pinv should still
+    # exist and yield a valid Moore-Penrose pseudo-inverse.
+    # A = u v^T with u = [1, 2], v = [1, 0, 1] -> rank 1.
+    A = [[1.0, 0.0, 1.0], [2.0, 0.0, 2.0]]
+    Ap = L.pinv(A)
+    # MP-1: A @ pinv(A) @ A == A
+    AAA = L.matmul(L.matmul(A, Ap), A)
+    _close_matrix(AAA, A, tol=1e-8)
+
+
 def test_pure_eigh_non_symmetric_raises():
     # The numpy backend silently symmetrises (it reads only the lower
     # triangle by default), so this guarantee is pure-only.

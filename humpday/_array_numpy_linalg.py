@@ -61,6 +61,7 @@ def transpose(A):
 solve = _np.linalg.solve
 inv = _np.linalg.inv
 cholesky = _np.linalg.cholesky
+pinv = _np.linalg.pinv
 
 
 def eigh(A):
@@ -68,6 +69,20 @@ def eigh(A):
     where eigenvectors is a 2-D array whose columns are the unit eigenvectors,
     matching `numpy.linalg.eigh`."""
     return _np.linalg.eigh(A)
+
+
+def svd(A, full_matrices=False):
+    """Singular value decomposition. Returns (U, s, Vt) such that
+    `A ≈ U @ diag(s) @ Vt`. Matches `numpy.linalg.svd(A, full_matrices=False)`
+    by default — the thin / reduced form, which is what every humpday
+    caller wants."""
+    return _np.linalg.svd(A, full_matrices=full_matrices)
+
+
+def qr(A):
+    """QR factorisation. Returns (Q, R) such that `A = Q @ R`,
+    matching `numpy.linalg.qr(A, mode='reduced')`."""
+    return _np.linalg.qr(A)
 
 
 __all__ = [
@@ -81,6 +96,9 @@ __all__ = [
     "transpose",
     "solve",
     "inv",
+    "pinv",
     "cholesky",
     "eigh",
+    "svd",
+    "qr",
 ]
