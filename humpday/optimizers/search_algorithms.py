@@ -10,24 +10,30 @@ from typing import Tuple
 
 import numpy as np
 
+from humpday import _array as _A
+
 from .base import BaseOptimizer
 
 
 class AdaptiveRandomSearch(BaseOptimizer):
-    """Adaptive Random Search with step size adaptation."""
+    """Adaptive Random Search with step size adaptation.
 
-    def optimize(self) -> Tuple[float, np.ndarray]:
-        x = np.random.random(self.n_dim)
+    Pure-Python via the `humpday._array` shim — no direct numpy use.
+    Implements a (1+1)-ES with a global, multiplicatively-adapted step size.
+    """
+
+    def optimize(self):
+        x = _A.random_uniform(self.n_dim)
         f = self.evaluate(x)
         step_size = 0.1
         success_rate = 0.5
 
         while self.evaluations < self.n_trials:
-            # Random step
-            direction = np.random.randn(self.n_dim)
-            direction = direction / (np.linalg.norm(direction) + 1e-10)
+            # Random unit-direction step.
+            direction = _A.random_normal(self.n_dim)
+            direction = direction / (_A.norm(direction) + 1e-10)
 
-            x_new = np.clip(x + step_size * direction, 0, 1)
+            x_new = _A.clip(x + step_size * direction, 0, 1)
 
             if self.evaluations < self.n_trials:
                 f_new = self.evaluate(x_new)
@@ -39,7 +45,7 @@ class AdaptiveRandomSearch(BaseOptimizer):
                 else:
                     success_rate = 0.8 * success_rate + 0.2 * 0.0
 
-                # Adapt step size
+                # 1/5-rule-ish: grow when succeeding, shrink when stalling.
                 if success_rate > 0.2:
                     step_size = min(0.3, step_size * 1.1)
                 else:
@@ -49,37 +55,47 @@ class AdaptiveRandomSearch(BaseOptimizer):
 
 
 class CoordinateDescent(BaseOptimizer):
-    """Coordinate Descent optimization."""
+    """Coordinate Descent optimization.
 
-    def optimize(self) -> Tuple[float, np.ndarray]:
-        x = np.random.random(self.n_dim)
+    Pure-Python via the `humpday._array` shim — no direct numpy use.
+    Cycles through axes; for each, takes a step in both directions and
+    keeps the better. Step size halves when a full sweep makes no progress;
+    resets when it gets too small.
+    """
+
+    def optimize(self):
+        x = _A.random_uniform(self.n_dim)
         f = self.evaluate(x)
         step_size = 0.1
 
         while self.evaluations < self.n_trials:
             improved = False
 
-            # Cycle through coordinates
+            # Cycle through coordinates.
             for i in range(self.n_dim):
                 if self.evaluations >= self.n_trials:
                     break
 
-                best_x = x[i]
+                best_xi = x[i]
                 best_f = f
 
-                # Try steps in both directions
+                # Try steps in both directions along axis `i`.
                 for direction in [-1, 1]:
                     x_trial = x.copy()
-                    x_trial[i] = np.clip(x[i] + direction * step_size, 0, 1)
+                    # Clip the single perturbed coordinate to [0, 1].
+                    xi_new = x[i] + direction * step_size
+                    x_trial[i] = (
+                        0.0 if xi_new < 0.0 else (1.0 if xi_new > 1.0 else xi_new)
+                    )
 
                     if self.evaluations < self.n_trials:
                         f_trial = self.evaluate(x_trial)
                         if f_trial < best_f:
-                            best_x = x_trial[i]
+                            best_xi = x_trial[i]
                             best_f = f_trial
                             improved = True
 
-                x[i] = best_x
+                x[i] = best_xi
                 f = best_f
 
             if not improved:

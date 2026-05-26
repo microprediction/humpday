@@ -11,6 +11,8 @@ from typing import Tuple
 
 import numpy as np
 
+from humpday import _array as _A
+
 from .base import BaseOptimizer
 
 
@@ -227,11 +229,14 @@ class GeneticAlgorithm(BaseOptimizer):
 
 
 class RandomSearch(BaseOptimizer):
-    """Random Search algorithm."""
+    """Random Search algorithm.
 
-    def optimize(self) -> Tuple[float, np.ndarray]:
+    Pure-Python via the `humpday._array` shim — no direct numpy use.
+    """
+
+    def optimize(self):
         while self.evaluations < self.n_trials:
-            x = np.random.random(self.n_dim)
+            x = _A.random_uniform(self.n_dim)
             self.evaluate(x)
 
         return self.best_value, self.best_x
@@ -663,27 +668,29 @@ class EvolutionStrategy(BaseOptimizer):
 
 
 class HillClimbing(BaseOptimizer):
-    """Hill climbing with random restarts."""
+    """Hill climbing with random restarts.
 
-    def optimize(self) -> Tuple[float, np.ndarray]:
-        current = np.random.random(self.n_dim)
+    Pure-Python via the `humpday._array` shim — no direct numpy use.
+    """
+
+    def optimize(self):
+        current = _A.random_uniform(self.n_dim)
         current_value = self.evaluate(current)
         step_size = 0.1
 
         while self.evaluations < self.n_trials:
-            # Random neighbor
-            neighbor = current + np.random.normal(0, step_size, self.n_dim)
-            neighbor = np.clip(neighbor, 0, 1)
-
+            # Random neighbor: standard-normal step scaled by step_size.
+            # `_Vec`/ndarray both support `+` and scalar `*` elementwise.
+            neighbor = _A.clip(current + step_size * _A.random_normal(self.n_dim), 0, 1)
             neighbor_value = self.evaluate(neighbor)
 
             if neighbor_value < current_value:
                 current = neighbor
                 current_value = neighbor_value
             else:
-                # Random restart occasionally
-                if np.random.random() < 0.1:
-                    current = np.random.random(self.n_dim)
+                # 10% chance of a random restart.
+                if _A.random_scalar() < 0.1:
+                    current = _A.random_uniform(self.n_dim)
                     if self.evaluations < self.n_trials:
                         current_value = self.evaluate(current)
 

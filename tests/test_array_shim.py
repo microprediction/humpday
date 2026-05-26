@@ -165,6 +165,31 @@ def test_random_normal_shape(A):
 
 
 @pytest.mark.parametrize("A", BACKENDS)
+def test_random_scalar_shape_and_range(A):
+    A.seed(0)
+    for _ in range(50):
+        v = A.random_scalar()
+        assert isinstance(v, float)
+        assert 0.0 <= v < 1.0
+
+
+@pytest.mark.parametrize("A", BACKENDS)
+def test_random_scalar_shares_state_with_random_uniform(A):
+    """random_scalar() consuming one draw must shift the next random_uniform
+    output. Confirms both helpers share the same RNG (the seed() contract)."""
+    A.seed(7)
+    a = list(A.random_uniform(3))
+    A.seed(7)
+    _ = A.random_scalar()
+    b = list(A.random_uniform(3))
+    # `a` is the first three uniforms after the seed; `b` is the second,
+    # third, fourth (because random_scalar() consumed the first). They
+    # cannot be equal — that would mean random_scalar() didn't advance the
+    # RNG, which would break reproducibility.
+    assert a != b
+
+
+@pytest.mark.parametrize("A", BACKENDS)
 def test_seed_is_reproducible(A):
     A.seed(42)
     a = list(A.random_uniform(10))
