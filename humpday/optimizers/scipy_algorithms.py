@@ -328,30 +328,33 @@ class Powell(BaseOptimizer):
 
 
 class LBFGSB(BaseOptimizer):
-    """L-BFGS-B algorithm - Simplified implementation optimized for test compatibility."""
+    """L-BFGS-B (simplified): finite-difference gradient + momentum.
 
-    def optimize(self) -> Tuple[float, np.ndarray]:
-        """Simplified L-BFGS-B optimized for test reliability."""
-        x = 0.3 + 0.4 * np.random.random(self.n_dim)  # Start interior
+    Pure-Python via the `humpday._array` shim — no direct numpy use.
+    This implementation is the original LBFGSB code path, retained as-is
+    apart from the numpy-to-shim rename. It is named after L-BFGS-B but
+    is structurally closer to gradient descent with adaptive step size
+    and momentum — see the docstring of the legacy class for context.
+    """
+
+    def optimize(self):
+        x = 0.3 + 0.4 * _A.random_uniform(self.n_dim)  # Interior start
         f = self.evaluate(x)
 
-        # Simple gradient-based optimization with momentum
         step_size = 0.1
-        momentum = np.zeros(self.n_dim)
+        momentum = _A.zeros(self.n_dim)
         beta = 0.9
 
-        # Finite difference step size
+        # Finite-difference step.
         eps = 1e-5
 
         while self.evaluations < self.n_trials:
-            # Compute gradient using finite differences
-            grad = np.zeros(self.n_dim)
-
+            # Central-difference gradient.
+            grad = _A.zeros(self.n_dim)
             for i in range(self.n_dim):
                 if self.evaluations >= self.n_trials:
                     break
 
-                # Forward difference
                 x_plus = x.copy()
                 x_plus[i] = min(1.0, x[i] + eps)
                 f_plus = self.evaluate(x_plus)
@@ -359,38 +362,35 @@ class LBFGSB(BaseOptimizer):
                 if self.evaluations >= self.n_trials:
                     break
 
-                # Backward difference
                 x_minus = x.copy()
                 x_minus[i] = max(0.0, x[i] - eps)
                 f_minus = self.evaluate(x_minus)
 
-                # Central difference
                 grad[i] = (f_plus - f_minus) / (x_plus[i] - x_minus[i])
 
-            # Check convergence
-            grad_norm = np.linalg.norm(grad)
+            # Convergence check.
+            grad_norm = _A.norm(grad)
             if grad_norm < 1e-4:
                 break
 
-            # Update with momentum
+            # Momentum update.
             momentum = beta * momentum - step_size * grad
-            x_new = np.clip(x + momentum, 0, 1)
+            x_new = _A.clip(x + momentum, 0, 1)
 
             if self.evaluations >= self.n_trials:
                 break
 
             f_new = self.evaluate(x_new)
 
-            # Adaptive step size
+            # Adaptive step size.
             if f_new < f:
-                step_size = min(step_size * 1.05, 0.5)  # Increase step
+                step_size = min(step_size * 1.05, 0.5)
                 x = x_new
                 f = f_new
             else:
-                step_size *= 0.7  # Decrease step
-                momentum *= 0.5  # Reduce momentum
+                step_size *= 0.7
+                momentum = momentum * 0.5  # damp momentum on rejection
 
-            # Prevent step size from becoming too small
             if step_size < 1e-6:
                 break
 
