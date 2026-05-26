@@ -49,8 +49,12 @@ experimental = [
     # Note: ax-platform, nlopt, dlib, hyperopt have compatibility issues
 ]
 
-# Development dependencies
+# Development dependencies. Includes numpy because much of the test
+# suite imports numpy directly (parity tests, reference checks, etc.)
+# — `[fast]` is the *runtime* numpy opt-in for end-users; `[dev]` is
+# the superset needed to develop and run the full test suite.
 dev = [
+    "numpy>=1.21.5",
     "pytest>=7.0.0",
     "pytest-cov>=4.0.0",
     "black>=23.0.0",
