@@ -45,6 +45,8 @@ PORTED = [
     ("search_algorithms", "AdaptiveRandomSearch"),
     ("search_algorithms", "CoordinateDescent"),
     ("search_algorithms", "PatternSearch"),
+    ("scipy_algorithms", "NelderMead"),
+    ("scipy_algorithms", "Powell"),
 ]
 
 
@@ -94,6 +96,7 @@ def test_pure_backend_works_for_ported_algorithms(tmp_path):
         from humpday.optimizers.search_algorithms import (
             AdaptiveRandomSearch, CoordinateDescent, PatternSearch,
         )
+        from humpday.optimizers.scipy_algorithms import NelderMead, Powell
 
         def sphere(x):
             return float(sum((xi - 0.5) ** 2 for xi in x))
@@ -105,6 +108,7 @@ def test_pure_backend_works_for_ported_algorithms(tmp_path):
             ParticleSwarm, DifferentialEvolution, GeneticAlgorithm,
             EvolutionStrategy,
             AdaptiveRandomSearch, CoordinateDescent, PatternSearch,
+            NelderMead, Powell,
         ]
         for cls in ALGORITHMS:
             opt = cls(sphere, n_trials=200, n_dim=5)
