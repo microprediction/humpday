@@ -119,10 +119,13 @@ class ParticleSwarm(BaseOptimizer):
 
 
 class SimulatedAnnealing(BaseOptimizer):
-    """Simulated Annealing algorithm."""
+    """Simulated Annealing with multi-restart.
 
-    def optimize(self) -> Tuple[float, np.ndarray]:
-        # Multi-restart approach
+    Pure-Python via the `humpday._array` shim — no direct numpy use.
+    """
+
+    def optimize(self):
+        # Multi-restart approach.
         num_restarts = max(3, self.n_trials // 30)
         trials_per_restart = self.n_trials // num_restarts
 
@@ -130,42 +133,44 @@ class SimulatedAnnealing(BaseOptimizer):
             if self.evaluations >= self.n_trials:
                 break
 
-            # Initialize
+            # Warm-start the first restart near the centre of the cube;
+            # subsequent restarts roll the dice anywhere.
             if restart == 0:
-                x = 0.5 + (np.random.random(self.n_dim) - 0.5) * 0.4
+                x = 0.5 + (_A.random_uniform(self.n_dim) - 0.5) * 0.4
             else:
-                x = np.random.random(self.n_dim)
+                x = _A.random_uniform(self.n_dim)
 
             fx = self.evaluate(x)
             best_x, best_fx = x.copy(), fx
 
-            # Temperature schedule
+            # Temperature schedule.
             temp = max(1.0, best_fx * 2)
             final_temp = 1e-8
 
-            for iteration in range(trials_per_restart):
+            for _iteration in range(trials_per_restart):
                 if self.evaluations >= self.n_trials:
                     break
 
-                # Generate neighbor
+                # Generate neighbor.
                 step_size = 0.3 * (temp / max(1.0, best_fx * 2))
-                new_x = x + (np.random.random(self.n_dim) - 0.5) * 2 * step_size
-                new_x = np.clip(new_x, 0, 1)
+                new_x = _A.clip(
+                    x + (_A.random_uniform(self.n_dim) - 0.5) * 2 * step_size, 0, 1
+                )
 
                 new_fx = self.evaluate(new_x)
 
-                # Update best
+                # Update best.
                 if new_fx < best_fx:
                     best_x, best_fx = new_x.copy(), new_fx
 
-                # Metropolis criterion
+                # Metropolis criterion.
                 delta = new_fx - fx
                 if delta < 0 or (
-                    temp > final_temp and np.random.random() < np.exp(-delta / temp)
+                    temp > final_temp and _A.random_scalar() < _A.exp(-delta / temp)
                 ):
                     x, fx = new_x, new_fx
 
-                # Cool down
+                # Cool down.
                 temp *= 0.99
                 temp = max(temp, final_temp)
 
@@ -484,10 +489,15 @@ class CMAEvolutionStrategy(BaseOptimizer):
 
 
 class TabuSearch(BaseOptimizer):
-    """Tabu Search algorithm."""
+    """Tabu Search algorithm.
 
-    def optimize(self) -> Tuple[float, np.ndarray]:
-        x = np.random.random(self.n_dim)
+    Pure-Python via the `humpday._array` shim — no direct numpy use.
+    Maintains a small FIFO list of recently-visited points and rejects
+    neighbours that are within 0.05 (L2) of any of them.
+    """
+
+    def optimize(self):
+        x = _A.random_uniform(self.n_dim)
         f = self.evaluate(x)
 
         tabu_list = []
@@ -498,19 +508,16 @@ class TabuSearch(BaseOptimizer):
             best_neighbor = None
             best_neighbor_f = float("inf")
 
-            # Generate neighbors
+            # Generate neighbours and accept the best non-tabu one.
             for _ in range(min(10, self.n_trials - self.evaluations)):
                 if self.evaluations >= self.n_trials:
                     break
 
-                # Random neighbor
-                neighbor = x + np.random.normal(0, step_size, self.n_dim)
-                neighbor = np.clip(neighbor, 0, 1)
+                # Random neighbour with sigma = step_size.
+                neighbor = _A.clip(x + step_size * _A.random_normal(self.n_dim), 0, 1)
 
-                # Check if tabu
-                is_tabu = any(
-                    np.linalg.norm(neighbor - tabu_x) < 0.05 for tabu_x in tabu_list
-                )
+                # Check tabu: reject if too close to any recently-visited point.
+                is_tabu = any(_A.norm(neighbor - tabu_x) < 0.05 for tabu_x in tabu_list)
 
                 if not is_tabu:
                     neighbor_f = self.evaluate(neighbor)
@@ -522,7 +529,7 @@ class TabuSearch(BaseOptimizer):
                 x = best_neighbor
                 f = best_neighbor_f
 
-                # Update tabu list
+                # Update tabu list (FIFO).
                 tabu_list.append(x.copy())
                 if len(tabu_list) > tabu_tenure:
                     tabu_list.pop(0)
@@ -531,16 +538,22 @@ class TabuSearch(BaseOptimizer):
 
 
 class FireflyAlgorithm(BaseOptimizer):
-    """Firefly Algorithm."""
+    """Firefly Algorithm.
 
-    def optimize(self) -> Tuple[float, np.ndarray]:
+    Pure-Python via the `humpday._array` shim — no direct numpy use.
+    Population stored as a Python list of 1-D vectors (numpy.ndarray or
+    `_Vec` depending on the active backend); all pairwise operations are
+    elementwise.
+    """
+
+    def optimize(self):
         n_fireflies = min(15, self.n_trials // 5)
-        alpha = 0.2  # Randomness
-        beta0 = 1.0  # Attractiveness
-        gamma = 1.0  # Absorption
+        alpha = 0.2  # Randomness coefficient.
+        beta0 = 1.0  # Attractiveness at zero distance.
+        gamma = 1.0  # Light-absorption coefficient.
 
-        # Initialize fireflies
-        fireflies = [np.random.random(self.n_dim) for _ in range(n_fireflies)]
+        # Initialize fireflies — list-of-vectors, NOT a 2-D array.
+        fireflies = [_A.random_uniform(self.n_dim) for _ in range(n_fireflies)]
         intensities = [self.evaluate(f) for f in fireflies]
 
         while self.evaluations < self.n_trials:
@@ -550,20 +563,18 @@ class FireflyAlgorithm(BaseOptimizer):
                         break
 
                     if intensities[j] < intensities[i]:  # j is brighter
-                        # Distance
-                        r = np.linalg.norm(fireflies[i] - fireflies[j])
+                        r = _A.norm(fireflies[i] - fireflies[j])
+                        beta = beta0 * _A.exp(-gamma * r * r)
 
-                        # Attractiveness
-                        beta = beta0 * np.exp(-gamma * r**2)
-
-                        # Move towards brighter firefly
-                        fireflies[i] = (
+                        # Move firefly i toward the brighter firefly j,
+                        # with a small random jitter.
+                        fireflies[i] = _A.clip(
                             fireflies[i]
                             + beta * (fireflies[j] - fireflies[i])
-                            + alpha * np.random.randn(self.n_dim)
+                            + alpha * _A.random_normal(self.n_dim),
+                            0,
+                            1,
                         )
-
-                        fireflies[i] = np.clip(fireflies[i], 0, 1)
 
                         if self.evaluations < self.n_trials:
                             intensities[i] = self.evaluate(fireflies[i])
@@ -698,43 +709,49 @@ class HillClimbing(BaseOptimizer):
 
 
 class HarmonySearch(BaseOptimizer):
-    """Harmony Search algorithm."""
+    """Harmony Search algorithm.
 
-    def optimize(self) -> Tuple[float, np.ndarray]:
+    Pure-Python via the `humpday._array` shim — no direct numpy use.
+    """
+
+    def optimize(self):
         HMS = min(20, max(5, self.n_dim * 2))  # Harmony Memory Size
         HMCR = 0.9  # Harmony Memory Considering Rate
         PAR = 0.3  # Pitch Adjusting Rate
 
-        # Initialize harmony memory
+        # Initialize harmony memory.
         harmony_memory = []
         for _ in range(HMS):
             if self.evaluations >= self.n_trials:
                 break
-            harmony = np.random.random(self.n_dim)
+            harmony = _A.random_uniform(self.n_dim)
             fitness = self.evaluate(harmony)
             harmony_memory.append({"harmony": harmony, "fitness": fitness})
 
         while self.evaluations < self.n_trials:
-            new_harmony = np.zeros(self.n_dim)
+            new_harmony = _A.zeros(self.n_dim)
 
             for j in range(self.n_dim):
-                if np.random.random() < HMCR:
-                    # Pick from harmony memory
+                if _A.random_scalar() < HMCR:
+                    # Pick from harmony memory.
                     selected = random.choice(harmony_memory)
                     value = selected["harmony"][j]
 
-                    # Pitch adjustment
-                    if np.random.random() < PAR:
-                        value = np.clip(value + np.random.normal(0, 0.1), 0, 1)
+                    # Pitch adjustment.
+                    if _A.random_scalar() < PAR:
+                        # Add a single Gaussian-distributed nudge with sigma=0.1.
+                        # `random_normal(1)[0]` is one draw from the shim's RNG;
+                        # `0.1 *` scales it.
+                        value = max(0.0, min(1.0, value + 0.1 * _A.random_normal(1)[0]))
 
                     new_harmony[j] = value
                 else:
-                    # Random selection
-                    new_harmony[j] = np.random.random()
+                    # Random selection along this dimension.
+                    new_harmony[j] = _A.random_scalar()
 
             new_fitness = self.evaluate(new_harmony)
 
-            # Update harmony memory (replace worst if new harmony is better)
+            # Update harmony memory (replace worst if new harmony is better).
             harmony_memory.sort(key=lambda x: x["fitness"])
             if new_fitness < harmony_memory[-1]["fitness"]:
                 harmony_memory[-1] = {

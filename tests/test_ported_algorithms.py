@@ -34,8 +34,13 @@ import pytest
 PORTED = [
     ("evolutionary_algorithms", "RandomSearch"),
     ("evolutionary_algorithms", "HillClimbing"),
+    ("evolutionary_algorithms", "SimulatedAnnealing"),
+    ("evolutionary_algorithms", "HarmonySearch"),
+    ("evolutionary_algorithms", "TabuSearch"),
+    ("evolutionary_algorithms", "FireflyAlgorithm"),
     ("search_algorithms", "AdaptiveRandomSearch"),
     ("search_algorithms", "CoordinateDescent"),
+    ("search_algorithms", "PatternSearch"),
 ]
 
 
@@ -77,17 +82,23 @@ def test_pure_backend_works_for_ported_algorithms(tmp_path):
         assert A.BACKEND == "pure", f"expected pure, got {A.BACKEND}"
 
         from humpday.optimizers.evolutionary_algorithms import (
-            RandomSearch, HillClimbing,
+            RandomSearch, HillClimbing, SimulatedAnnealing, HarmonySearch,
+            TabuSearch, FireflyAlgorithm,
         )
         from humpday.optimizers.search_algorithms import (
-            AdaptiveRandomSearch, CoordinateDescent,
+            AdaptiveRandomSearch, CoordinateDescent, PatternSearch,
         )
 
         def sphere(x):
             return float(sum((xi - 0.5) ** 2 for xi in x))
 
         results = {}
-        for cls in [RandomSearch, HillClimbing, AdaptiveRandomSearch, CoordinateDescent]:
+        ALGORITHMS = [
+            RandomSearch, HillClimbing, SimulatedAnnealing, HarmonySearch,
+            TabuSearch, FireflyAlgorithm,
+            AdaptiveRandomSearch, CoordinateDescent, PatternSearch,
+        ]
+        for cls in ALGORITHMS:
             opt = cls(sphere, n_trials=200, n_dim=5)
             best_value, best_x = opt.optimize()
             results[cls.__name__] = {
@@ -126,12 +137,10 @@ def test_pure_backend_works_for_ported_algorithms(tmp_path):
     import json
 
     results = json.loads(completed.stdout.strip().splitlines()[-1])
-    assert set(results) == {
-        "RandomSearch",
-        "HillClimbing",
-        "AdaptiveRandomSearch",
-        "CoordinateDescent",
-    }
+    expected = {name for _, name in PORTED}
+    assert set(results) == expected, (
+        f"missing or extra results: expected {expected}, got {set(results)}"
+    )
     for name, r in results.items():
         assert r["evaluations"] <= 200, f"{name}: {r['evaluations']} > 200"
         assert r["best_x_len"] == 5, f"{name}: best_x len {r['best_x_len']}"
