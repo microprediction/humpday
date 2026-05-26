@@ -24,7 +24,7 @@
         }
 
         .header {
-            background: #e67e22;
+            background: #34495e;
             color: white;
             padding: 30px;
             text-align: center;
@@ -158,23 +158,16 @@
             display: none;
             margin-top: 20px;
         }
-
-        .validation-pending {
-            background: #ffeaa7;
-            border: 1px solid #fdcb6e;
-            border-radius: 8px;
-            padding: 15px;
-            margin: 20px 0;
-        }
-
-        .validation-pending h3 {
-            margin-top: 0;
-            color: #d63031;
-        }
-    </style>
+</style>
     <!-- Three.js for 3D visualization -->
     <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/controls/OrbitControls.js"></script>
+    <script src="../js/modules/base-optimizer.js"></script>
+    <script src="../js/modules/prima-algorithms.js"></script>
+    <script src="../js/modules/scipy-algorithms.js"></script>
+    <script src="../js/modules/evolutionary-algorithms.js"></script>
+    <script src="../js/modules/search-algorithms.js"></script>
+
 </head>
 <body>
     <div class="container">
@@ -228,7 +221,7 @@
                             <em>Published: 1983</em>
                         </td>
                         <td>
-                            <a href="https://science.sciencemag.org/content/220/4598/671" target="_blank" class="link-button paper">📄 Original Paper</a>
+                            <a href="https://science.sciencemag.org/content/220/4598/671" target="_blank" class="link-button paper">Original Paper</a>
                         </td>
                     </tr>
                     <tr>
@@ -240,24 +233,24 @@
                             <em>Package: scipy</em>
                         </td>
                         <td>
-                            <a href="https://docs.scipy.org/doc/scipy/reference/generated/scipy.optimize.dual_annealing.html" target="_blank" class="link-button python">🐍 SciPy Docs</a>
-                            <a href="https://github.com/scipy/scipy/blob/main/scipy/optimize/_dual_annealing.py" target="_blank" class="link-button python">🔍 Source</a>
+                            <a href="https://docs.scipy.org/doc/scipy/reference/generated/scipy.optimize.dual_annealing.html" target="_blank" class="link-button python">SciPy Docs</a>
+                            <a href="https://github.com/scipy/scipy/blob/main/scipy/optimize/_dual_annealing.py" target="_blank" class="link-button python">Source</a>
                         </td>
                     </tr>
                     <tr>
-                        <td class="category">Humpday Python Wrapper</td>
+                        <td class="category">Humpday Python</td>
                         <td>
-                            <strong>Humpday Integration</strong><br>
-                            Calls scipy.optimize.dual_annealing()<br>
-                            Standardized interface for optimization contests<br>
+                            <strong>HumpDay Python Implementation</strong><br>
+                            Pure-Python simulated annealing with Metropolis acceptance and geometric cooling<br>
+                            No required dependencies<br>
                             <em>File: humpday/optimizers/evolutionary_algorithms.py</em>
                         </td>
                         <td>
-                            <a href="https://github.com/microprediction/humpday" target="_blank" class="link-button python">🐍 Wrapper Code</a>
+                            <a href="https://github.com/microprediction/humpday" target="_blank" class="link-button python">Source Code</a>
                         </td>
                     </tr>
                     <tr>
-                        <td class="category">Humpday JavaScript Port</td>
+                        <td class="category">Humpday JavaScript</td>
                         <td>
                             <strong>Browser Implementation</strong><br>
                             Classical simulated annealing with cooling schedule<br>
@@ -265,25 +258,14 @@
                             <em>Class: SimulatedAnnealing</em>
                         </td>
                         <td>
-                            <a href="https://github.com/microprediction/humpday/blob/main/docs/js/optimizers.js" target="_blank" class="link-button javascript">🌐 JS Port</a>
+                            <a href="https://github.com/microprediction/humpday/blob/main/docs/js/optimizers.js" target="_blank" class="link-button javascript">JS Port</a>
                         </td>
                     </tr>
-                    <tr>
-                        <td class="category">Dependencies</td>
-                        <td>
-                            <strong>Reference:</strong> scipy.optimize<br>
-                            <strong>Humpday Python:</strong> scipy, numpy<br>
-                            <strong>Humpday JS:</strong> None (standalone port)
-                        </td>
-                        <td>
-                            <a href="https://pypi.org/project/scipy/" target="_blank" class="link-button python">📦 PyPI</a>
-                        </td>
-                    </tr>
-                </tbody>
+</tbody>
             </table>
 
             <div class="performance-notes">
-                <h3>🏁 Performance Characteristics</h3>
+                <h3>Performance Characteristics</h3>
                 <ul>
                     <li><strong>Best for:</strong> Discrete optimization, traveling salesman, combinatorial problems</li>
                     <li><strong>Dimensions:</strong> Scalable to moderate dimensions, works on any space</li>
@@ -293,22 +275,11 @@
                 </ul>
             </div>
 
-            <div class="validation-pending">
-                <h3>⏳ Validation Status: PENDING</h3>
-                <p><strong>Validation against SciPy dual_annealing reference implementation in progress.</strong></p>
-                <ul>
-                    <li>📋 Test framework: Comparing JavaScript vs scipy.optimize.dual_annealing()</li>
-                    <li>🎯 Target: Similar optimization performance and cooling behavior</li>
-                    <li>📊 Metrics: Final objective value, temperature schedule, acceptance rates</li>
-                    <li>🔧 Challenge: Matching advanced cooling schedules and neighborhood generation</li>
-                </ul>
-                <p><em>Full validation results will be displayed here once testing is complete.</em></p>
-            </div>
 
             <div class="more-section">
-                <button class="more-toggle" onclick="toggleMore()">📚 More Resources</button>
+                <button class="more-toggle" onclick="toggleMore()">More Resources</button>
                 <div id="moreContent" class="more-content">
-                    <h3>📚 Educational Resources</h3>
+                    <h3>Educational Resources</h3>
                     <ul>
                         <li><a href="https://en.wikipedia.org/wiki/Simulated_annealing" target="_blank">Simulated Annealing Wikipedia</a></li>
                         <li><a href="https://docs.scipy.org/doc/scipy/reference/generated/scipy.optimize.dual_annealing.html" target="_blank">SciPy Dual Annealing</a></li>
@@ -316,7 +287,7 @@
                         <li><a href="http://mathworld.wolfram.com/SimulatedAnnealing.html" target="_blank">Wolfram MathWorld SA</a></li>
                         </ul>
 
-                    <h3>🔬 Algorithm Components</h3>
+                    <h3>Algorithm Components</h3>
                     <ul>
                         <li><strong>Temperature Schedule:</strong> T(k) = T₀ × α^k (geometric cooling)</li>
                         <li><strong>Metropolis Criterion:</strong> P(accept) = exp(-ΔE/T) if ΔE > 0</li>
@@ -325,7 +296,7 @@
                         <li><strong>Stopping Criteria:</strong> Temperature threshold or equilibrium detection</li>
                     </ul>
 
-                    <h3>🌡️ Cooling Schedules</h3>
+                    <h3>️ Cooling Schedules</h3>
                     <ul>
                         <li><strong>Linear:</strong> T(k) = T₀ - α × k</li>
                         <li><strong>Geometric:</strong> T(k) = T₀ × α^k (most common)</li>
@@ -334,7 +305,7 @@
                         <li><strong>Adaptive:</strong> Temperature adjusted based on acceptance rates</li>
                     </ul>
 
-                    <h3>🎯 SA Variants</h3>
+                    <h3>SA Variants</h3>
                     <ul>
                         <li><strong>Classical SA:</strong> Single-point neighborhood search</li>
                         <li><strong>Fast SA:</strong> Modified acceptance probability for faster cooling</li>
@@ -343,7 +314,7 @@
                         <li><strong>Hybrid SA:</strong> Combined with local search or GA</li>
                     </ul>
 
-                    <h3>🚀 Applications</h3>
+                    <h3>Applications</h3>
                     <ul>
                         <li><strong>Traveling Salesman:</strong> Classic combinatorial optimization</li>
                         <li><strong>VLSI Design:</strong> Circuit layout and placement</li>
@@ -353,7 +324,7 @@
                         <li><strong>Network Design:</strong> Communication and transportation networks</li>
                     </ul>
 
-                    <h3>📐 Theoretical Foundation</h3>
+                    <h3>Theoretical Foundation</h3>
                     <ul>
                         <li><strong>Statistical Mechanics:</strong> Boltzmann distribution and thermal equilibrium</li>
                         <li><strong>Markov Chains:</strong> Detailed balance and ergodicity</li>
@@ -361,7 +332,7 @@
                         <li><strong>Finite-Time Analysis:</strong> Approximation guarantees for practical schedules</li>
                     </ul>
 
-                    <h3>⚙️ Parameter Tuning</h3>
+                    <h3>️ Parameter Tuning</h3>
                     <ul>
                         <li><strong>Initial Temperature:</strong> Set to accept 80-95% of initial moves</li>
                         <li><strong>Cooling Rate:</strong> α = 0.85-0.95 for geometric schedule</li>
@@ -380,10 +351,10 @@
 
             if (content.style.display === 'none' || content.style.display === '') {
                 content.style.display = 'block';
-                button.textContent = '📚 Less Resources';
+                button.textContent = 'Less Resources';
             } else {
                 content.style.display = 'none';
-                button.textContent = '📚 More Resources';
+                button.textContent = 'More Resources';
             }
         // Initialize 3D visualization when page loads
         document.addEventListener('DOMContentLoaded', function() {

@@ -24,7 +24,7 @@
         }
 
         .header {
-            background: #f8f9fa;
+            background: #34495e;
             padding: 20px;
             border-bottom: 1px solid #ddd;
         }
@@ -145,20 +145,7 @@
             display: none;
             margin-top: 15px;
         }
-
-        .validation-pending {
-            background: #f8f9fa;
-            border: 1px solid #ddd;
-            padding: 15px;
-            margin: 20px 0;
-        }
-
-        .validation-pending h3 {
-            margin-top: 0;
-            color: #333;
-        }
-
-        .harmony-note {
+.harmony-note {
             background: #f8f9fa;
             border: 1px solid #ddd;
             padding: 15px;
@@ -173,6 +160,12 @@
     <!-- Three.js for 3D visualization -->
     <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/controls/OrbitControls.js"></script>
+    <script src="../js/modules/base-optimizer.js"></script>
+    <script src="../js/modules/prima-algorithms.js"></script>
+    <script src="../js/modules/scipy-algorithms.js"></script>
+    <script src="../js/modules/evolutionary-algorithms.js"></script>
+    <script src="../js/modules/search-algorithms.js"></script>
+
 </head>
 <body>
     <div class="container">
@@ -237,7 +230,7 @@
                             <em>Published: 2001</em>
                         </td>
                         <td>
-                            <a href="https://link.springer.com/article/10.1023/A:1010928611306" target="_blank" class="link-button paper">📄 Original Paper</a>
+                            <a href="https://link.springer.com/article/10.1023/A:1010928611306" target="_blank" class="link-button paper">Original Paper</a>
                         </td>
                     </tr>
                     <tr>
@@ -261,11 +254,11 @@
                             <em>File: humpday/optimizers/harmonysearch.py</em>
                         </td>
                         <td>
-                            <a href="https://github.com/microprediction/humpday" target="_blank" class="link-button python">🐍 Source</a>
+                            <a href="https://github.com/microprediction/humpday" target="_blank" class="link-button python">Source</a>
                         </td>
                     </tr>
                     <tr>
-                        <td class="category">Humpday JavaScript Port</td>
+                        <td class="category">Humpday JavaScript</td>
                         <td>
                             <strong>Browser Implementation</strong><br>
                             Pure JavaScript harmony search<br>
@@ -273,21 +266,10 @@
                             <em>Class: HarmonySearch</em>
                         </td>
                         <td>
-                            <a href="https://github.com/microprediction/humpday/blob/main/docs/js/optimizers.js" target="_blank" class="link-button javascript">🌐 JS Implementation</a>
+                            <a href="https://github.com/microprediction/humpday/blob/main/docs/js/optimizers.js" target="_blank" class="link-button javascript">JS Implementation</a>
                         </td>
                     </tr>
-                    <tr>
-                        <td class="category">Dependencies</td>
-                        <td>
-                            <strong>Reference:</strong> None (custom research implementations)<br>
-                            <strong>Humpday Python:</strong> numpy (for array operations)<br>
-                            <strong>Humpday JS:</strong> None (pure JavaScript)
-                        </td>
-                        <td>
-                            <span style="color: #95a5a6;">✨ No external dependencies</span>
-                        </td>
-                    </tr>
-                </tbody>
+</tbody>
             </table>
 
             <div class="performance-notes">
@@ -301,22 +283,11 @@
                 </ul>
             </div>
 
-            <div class="validation-pending">
-                <h3>Validation Status: PASSED</h3>
-                <p><strong>Harmony search implementation validated against SciPy reference.</strong></p>
-                <ul>
-                    <li>Test framework: 20 runs across 4 benchmark functions</li>
-                    <li>Target: Statistical performance comparison vs SciPy</li>
-                    <li>Metrics: Win rate, solution quality, convergence consistency</li>
-                    <li>Reference: SciPy differential_evolution implementation</li>
-                </ul>
-                <p><em>Validation rate: 95.5% overall (21/22 algorithms passed)</em></p>
-            </div>
 
             <div class="more-section">
                 <button class="more-toggle" onclick="toggleMore()">More Resources</button>
                 <div id="moreContent" class="more-content">
-                    <h3>📚 Educational Resources</h3>
+                    <h3>Educational Resources</h3>
                     <ul>
                         <li><a href="https://en.wikipedia.org/wiki/Harmony_search" target="_blank">Harmony Search Wikipedia</a></li>
                         <li><a href="https://link.springer.com/article/10.1023/A:1010928611306" target="_blank">Original HS Paper (Geem et al., 2001)</a></li>
@@ -325,7 +296,7 @@
                         <li><a href="https://link.springer.com/journal/10287" target="_blank">International Journal of Optimization</a></li>
                     </ul>
 
-                    <h3>🔬 Core Algorithm Components</h3>
+                    <h3>Core Algorithm Components</h3>
                     <ul>
                         <li><strong>Harmony Memory (HM):</strong> Population of HMS best solutions found</li>
                         <li><strong>Harmony Memory Size (HMS):</strong> Number of solutions stored</li>
@@ -335,7 +306,7 @@
                         <li><strong>Random Selection:</strong> Generate completely new value</li>
                     </ul>
 
-                    <h3>📐 Mathematical Formulation</h3>
+                    <h3>Mathematical Formulation</h3>
                     <ul>
                         <li><strong>Memory Selection:</strong> x'ᵢ = HMⱼ(i) with probability HMCR</li>
                         <li><strong>Pitch Adjustment:</strong> x'ᵢ = x'ᵢ ± rand() × bw with probability PAR</li>
@@ -343,7 +314,7 @@
                         <li><strong>Memory Update:</strong> Replace worst harmony if new harmony is better</li>
                     </ul>
 
-                    <h3>⚙️ Key Parameters</h3>
+                    <h3>️ Key Parameters</h3>
                     <ul>
                         <li><strong>HMS:</strong> Harmony Memory Size, typically 10-50</li>
                         <li><strong>HMCR:</strong> Memory Consideration Rate, usually 0.7-0.95</li>
@@ -352,7 +323,7 @@
                         <li><strong>Termination:</strong> Maximum iterations or convergence criteria</li>
                     </ul>
 
-                    <h3>🎯 Harmony Search Algorithm Pseudocode</h3>
+                    <h3>Harmony Search Algorithm Pseudocode</h3>
                     <pre style="background: #f8f9fa; padding: 15px; border-radius: 8px; font-family: monospace;">
 function harmonySearch(objectiveFunction, HMS, HMCR, PAR, maxIter):
     // Step 1: Initialize Harmony Memory
@@ -392,7 +363,7 @@ function harmonySearch(objectiveFunction, HMS, HMCR, PAR, maxIter):
     return HM[0]  // Best harmony
                     </pre>
 
-                    <h3>🔧 Harmony Search Variants</h3>
+                    <h3>Harmony Search Variants</h3>
                     <ul>
                         <li><strong>Classical HS:</strong> Original algorithm with fixed parameters</li>
                         <li><strong>Improved HS (IHS):</strong> Dynamic PAR and bandwidth adjustment</li>
@@ -402,7 +373,7 @@ function harmonySearch(objectiveFunction, HMS, HMCR, PAR, maxIter):
                         <li><strong>Multi-Objective HS:</strong> Pareto-based harmony search</li>
                     </ul>
 
-                    <h3>🎼 Musical Analogy Details</h3>
+                    <h3>Musical Analogy Details</h3>
                     <ul>
                         <li><strong>Musician:</strong> Decision variable (instrument)</li>
                         <li><strong>Musical Note:</strong> Value of decision variable</li>
@@ -412,7 +383,7 @@ function harmonySearch(objectiveFunction, HMS, HMCR, PAR, maxIter):
                         <li><strong>Aesthetic Quality:</strong> Objective function value</li>
                     </ul>
 
-                    <h3>🚀 Applications</h3>
+                    <h3>Applications</h3>
                     <ul>
                         <li><strong>Engineering Design:</strong> Structural optimization, water distribution</li>
                         <li><strong>Energy Systems:</strong> Power system optimization, renewable energy</li>
@@ -422,7 +393,7 @@ function harmonySearch(objectiveFunction, HMS, HMCR, PAR, maxIter):
                         <li><strong>Economics:</strong> Portfolio optimization, supply chain management</li>
                     </ul>
 
-                    <h3>💡 Advantages of Harmony Search</h3>
+                    <h3>Advantages of Harmony Search</h3>
                     <ul>
                         <li><strong>Simplicity:</strong> Easy to understand and implement</li>
                         <li><strong>Few Parameters:</strong> Only HMS, HMCR, PAR to tune</li>
@@ -432,7 +403,7 @@ function harmonySearch(objectiveFunction, HMS, HMCR, PAR, maxIter):
                         <li><strong>No Gradient Needed:</strong> Works with black-box functions</li>
                     </ul>
 
-                    <h3>⚠️ Limitations</h3>
+                    <h3>️ Limitations</h3>
                     <ul>
                         <li><strong>Parameter Sensitivity:</strong> Performance depends on HMCR and PAR</li>
                         <li><strong>Premature Convergence:</strong> May converge too quickly with wrong parameters</li>
@@ -441,7 +412,7 @@ function harmonySearch(objectiveFunction, HMS, HMCR, PAR, maxIter):
                         <li><strong>Memory Management:</strong> Fixed memory size may be suboptimal</li>
                     </ul>
 
-                    <h3>🔄 Parameter Guidelines</h3>
+                    <h3>Parameter Guidelines</h3>
                     <ul>
                         <li><strong>HMCR = 0.9:</strong> High memory consideration for exploitation</li>
                         <li><strong>HMCR = 0.1:</strong> Low memory consideration for exploration</li>
@@ -451,7 +422,7 @@ function harmonySearch(objectiveFunction, HMS, HMCR, PAR, maxIter):
                         <li><strong>Dynamic Parameters:</strong> Adapt HMCR, PAR during search</li>
                     </ul>
 
-                    <h3>🎨 Creative Aspects</h3>
+                    <h3>Creative Aspects</h3>
                     <ul>
                         <li><strong>Artistic Inspiration:</strong> Based on human creativity and musical composition</li>
                         <li><strong>Improvisation Process:</strong> Mimics how musicians create new melodies</li>
@@ -460,7 +431,7 @@ function harmonySearch(objectiveFunction, HMS, HMCR, PAR, maxIter):
                         <li><strong>Intuitive Understanding:</strong> Easy to explain through musical metaphor</li>
                     </ul>
 
-                    <h3>📊 Comparison with Other Metaheuristics</h3>
+                    <h3>Comparison with Other Metaheuristics</h3>
                     <ul>
                         <li><strong>vs GA:</strong> Memory-based vs generation-based evolution</li>
                         <li><strong>vs PSO:</strong> Discrete memory vs continuous population movement</li>

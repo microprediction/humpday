@@ -24,7 +24,7 @@
         }
 
         .header {
-            background: #2c3e50;
+            background: #34495e;
             color: white;
             padding: 30px;
             text-align: center;
@@ -158,6 +158,14 @@
             margin-top: 20px;
         }
     </style>
+    <!-- Three.js for 3D visualization -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/controls/OrbitControls.js"></script>
+    <script src="../js/modules/base-optimizer.js"></script>
+    <script src="../js/modules/prima-algorithms.js"></script>
+    <script src="../js/modules/scipy-algorithms.js"></script>
+    <script src="../js/modules/evolutionary-algorithms.js"></script>
+    <script src="../js/modules/search-algorithms.js"></script>
 </head>
 <body>
     <div class="container">
@@ -173,6 +181,20 @@
 
             <div class="algorithm-description">
                 <strong>Evolution Strategy</strong> is one of the oldest evolutionary algorithms, dating to Rechenberg and Schwefel's work in 1960s Berlin. The (μ+λ) variant maintains μ parents, generates λ mutated offspring each generation, and selects the best μ individuals from the combined parent+offspring pool to form the next generation. It is the conceptual ancestor of CMA-ES.
+            </div>
+
+            <div class="visualization-section">
+                <h3>Interactive 3D Visualization</h3>
+                <p>See Evolution Strategy in action on 3D optimization surfaces:</p>
+                <div id="algorithmDemo" style="width: 100%; height: 600px; border: 1px solid #ddd; border-radius: 4px; margin: 15px 0; position: relative; background: #fafafa;">
+                    <div id="loadingMessage" style="position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%); text-align: center; color: #666; z-index: 10; background: rgba(255,255,255,0.9); padding: 20px; border-radius: 4px;">
+                        <p>Loading 3D visualization...</p>
+                        <p style="font-size: 0.9em;">Requires WebGL support</p>
+                    </div>
+                </div>
+                <div id="visualizationControls" style="background: #f8f9fa; padding: 15px; border: 1px solid #ddd; border-radius: 4px; margin-top: 10px;">
+                    <!-- Controls will be inserted here by the visualizer -->
+                </div>
             </div>
 
             <h2>Implementation Details</h2>
@@ -194,7 +216,7 @@
                             <em>Published: 1965 (Rechenberg), 1975 (Schwefel)</em>
                         </td>
                         <td>
-                            <a href="https://en.wikipedia.org/wiki/Evolution_strategy" target="_blank" class="link-button paper">📖 Wikipedia</a>
+                            <a href="https://en.wikipedia.org/wiki/Evolution_strategy" target="_blank" class="link-button paper">Wikipedia</a>
                         </td>
                     </tr>
                     <tr>
@@ -206,23 +228,14 @@
                             <em>File: humpday/optimizers/evolutionary_algorithms.py</em>
                         </td>
                         <td>
-                            <a href="https://github.com/microprediction/humpday/blob/main/humpday/optimizers/evolutionary_algorithms.py" target="_blank" class="link-button python">🐍 Python Code</a>
+                            <a href="https://github.com/microprediction/humpday/blob/main/humpday/optimizers/evolutionary_algorithms.py" target="_blank" class="link-button python">Python Code</a>
                         </td>
                     </tr>
-                    <tr>
-                        <td class="category">Library Dependencies</td>
-                        <td>
-                            <strong>Python:</strong> none required; numpy used transparently via <code>humpday._array</code> when installed via <code>pip install humpday[fast]</code>
-                        </td>
-                        <td>
-                            <a href="https://github.com/microprediction/humpday#optional-numpy-acceleration" target="_blank" class="link-button python">📖 Backends</a>
-                        </td>
-                    </tr>
-                </tbody>
+</tbody>
             </table>
 
             <div class="performance-notes">
-                <h3>🏁 Performance Characteristics</h3>
+                <h3>Performance Characteristics</h3>
                 <ul>
                     <li><strong>Best for:</strong> Continuous unconstrained optimization on moderate-dimensional problems</li>
                     <li><strong>Dimensions:</strong> Works well from 2 up to a few dozen; favoured for "high-dimensional complex" routing in HumpDay's adaptive optimizer</li>
@@ -233,15 +246,15 @@
             </div>
 
             <div class="more-section">
-                <button class="more-toggle" onclick="toggleMore()">📚 More Resources</button>
+                <button class="more-toggle" onclick="toggleMore()">More Resources</button>
                 <div id="moreContent" class="more-content">
-                    <h3>📚 Educational Resources</h3>
+                    <h3>Educational Resources</h3>
                     <ul>
                         <li><a href="https://en.wikipedia.org/wiki/Evolution_strategy" target="_blank">Evolution Strategy Wikipedia</a></li>
                         <li><a href="https://en.wikipedia.org/wiki/CMA-ES" target="_blank">CMA-ES (a self-adaptive descendant)</a></li>
                     </ul>
 
-                    <h4>🧬 Algorithm Overview</h4>
+                    <h4>Algorithm Overview</h4>
                     <ol>
                         <li><strong>Initialize</strong> μ parents uniformly at random in the unit cube.</li>
                         <li><strong>Mutate:</strong> pick a parent at random, perturb by σ·𝒩(0,I), clip to the unit cube. Repeat λ times.</li>
@@ -262,12 +275,41 @@
 
             if (content.style.display === 'none' || content.style.display === '') {
                 content.style.display = 'block';
-                button.textContent = '📚 Less Resources';
+                button.textContent = 'Less Resources';
             } else {
                 content.style.display = 'none';
-                button.textContent = '📚 More Resources';
+                button.textContent = 'More Resources';
             }
         }
+
+        // Initialize 3D visualization when page loads
+        document.addEventListener('DOMContentLoaded', function() {
+            const script = document.createElement('script');
+            script.src = '../js/algorithm-visualizer.js';
+            script.onload = function() {
+                function webglAvailable() {
+                    try {
+                        const canvas = document.createElement('canvas');
+                        return !!(window.WebGLRenderingContext && canvas.getContext('webgl'));
+                    } catch (e) {
+                        return false;
+                    }
+                }
+                if (webglAvailable()) {
+                    new AlgorithmVisualizer('algorithmDemo', {
+                        onReady: () => {
+                            const loadingMsg = document.getElementById('loadingMessage');
+                            if (loadingMsg) loadingMsg.style.display = 'none';
+                        }
+                    });
+                } else {
+                    document.getElementById('loadingMessage').innerHTML =
+                        '<h4>WebGL Not Supported</h4>' +
+                        '<p>Your browser does not support WebGL for 3D visualization.</p>';
+                }
+            };
+            document.head.appendChild(script);
+        });
     </script>
 </body>
 </html>

@@ -24,7 +24,7 @@
         }
 
         .header {
-            background: #3498db;
+            background: #34495e;
             color: white;
             padding: 30px;
             text-align: center;
@@ -158,23 +158,16 @@
             display: none;
             margin-top: 20px;
         }
-
-        .validation-pending {
-            background: #ffeaa7;
-            border: 1px solid #fdcb6e;
-            border-radius: 8px;
-            padding: 15px;
-            margin: 20px 0;
-        }
-
-        .validation-pending h3 {
-            margin-top: 0;
-            color: #d63031;
-        }
-    </style>
+</style>
     <!-- Three.js for 3D visualization -->
     <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/controls/OrbitControls.js"></script>
+    <script src="../js/modules/base-optimizer.js"></script>
+    <script src="../js/modules/prima-algorithms.js"></script>
+    <script src="../js/modules/scipy-algorithms.js"></script>
+    <script src="../js/modules/evolutionary-algorithms.js"></script>
+    <script src="../js/modules/search-algorithms.js"></script>
+
 </head>
 <body>
     <div class="container">
@@ -228,7 +221,7 @@
                             <em>Developed: 1960s-70s (Kushner, Močkus)</em>
                         </td>
                         <td>
-                            <a href="https://arxiv.org/abs/1807.02811" target="_blank" class="link-button paper">📄 Tutorial Paper</a>
+                            <a href="https://arxiv.org/abs/1807.02811" target="_blank" class="link-button paper">Tutorial Paper</a>
                         </td>
                     </tr>
                     <tr>
@@ -240,24 +233,24 @@
                             <em>Package: scikit-optimize</em>
                         </td>
                         <td>
-                            <a href="https://scikit-optimize.github.io/stable/" target="_blank" class="link-button python">📦 Skopt Docs</a>
-                            <a href="https://github.com/scikit-optimize/scikit-optimize" target="_blank" class="link-button python">🔍 GitHub</a>
+                            <a href="https://scikit-optimize.github.io/stable/" target="_blank" class="link-button python">Skopt Docs</a>
+                            <a href="https://github.com/scikit-optimize/scikit-optimize" target="_blank" class="link-button python">GitHub</a>
                         </td>
                     </tr>
                     <tr>
-                        <td class="category">Humpday Python Wrapper</td>
+                        <td class="category">Humpday Python</td>
                         <td>
-                            <strong>Humpday Integration</strong><br>
-                            Uses skopt.gp_minimize() with Expected Improvement<br>
-                            Automatic hyperparameter optimization for GP<br>
-                            <em>File: humpday/optimizers/bayesianopt.py</em>
+                            <strong>HumpDay Python Implementation</strong><br>
+                            Pure-Python Gaussian-Process surrogate with Expected-Improvement acquisition<br>
+                            No required dependencies; numpy used transparently when installed via <code>humpday[fast]</code><br>
+                            <em>File: humpday/optimizers/evolutionary_algorithms.py</em>
                         </td>
                         <td>
-                            <a href="https://github.com/microprediction/humpday" target="_blank" class="link-button python">🐍 Wrapper Code</a>
+                            <a href="https://github.com/microprediction/humpday" target="_blank" class="link-button python">Source Code</a>
                         </td>
                     </tr>
                     <tr>
-                        <td class="category">Humpday JavaScript Port</td>
+                        <td class="category">Humpday JavaScript</td>
                         <td>
                             <strong>Browser Implementation</strong><br>
                             Simplified Bayesian optimization with GP approximation<br>
@@ -265,25 +258,14 @@
                             <em>Class: BayesianOpt</em>
                         </td>
                         <td>
-                            <a href="https://github.com/microprediction/humpday/blob/main/docs/js/optimizers.js" target="_blank" class="link-button javascript">🌐 JS Port</a>
+                            <a href="https://github.com/microprediction/humpday/blob/main/docs/js/optimizers.js" target="_blank" class="link-button javascript">JS Port</a>
                         </td>
                     </tr>
-                    <tr>
-                        <td class="category">Dependencies</td>
-                        <td>
-                            <strong>Reference:</strong> scikit-optimize, scikit-learn<br>
-                            <strong>Humpday Python:</strong> scikit-optimize, numpy<br>
-                            <strong>Humpday JS:</strong> None (simplified GP approximation)
-                        </td>
-                        <td>
-                            <a href="https://pypi.org/project/scikit-optimize/" target="_blank" class="link-button python">📦 PyPI</a>
-                        </td>
-                    </tr>
-                </tbody>
+</tbody>
             </table>
 
             <div class="performance-notes">
-                <h3>🏁 Performance Characteristics</h3>
+                <h3>Performance Characteristics</h3>
                 <ul>
                     <li><strong>Best for:</strong> Expensive function evaluations, black-box optimization</li>
                     <li><strong>Dimensions:</strong> Typically 1-20 dimensions (GP scaling limitations)</li>
@@ -293,22 +275,11 @@
                 </ul>
             </div>
 
-            <div class="validation-pending">
-                <h3>⏳ Validation Status: PENDING</h3>
-                <p><strong>Validation against scikit-optimize reference implementation in progress.</strong></p>
-                <ul>
-                    <li>📋 Test framework: Comparing JavaScript vs skopt.gp_minimize()</li>
-                    <li>🎯 Target: Similar optimization performance with limited budgets</li>
-                    <li>📊 Metrics: Sample efficiency, convergence quality, acquisition behavior</li>
-                    <li>🔧 Challenge: Approximating full GP functionality in JavaScript</li>
-                </ul>
-                <p><em>Full validation results will be displayed here once testing is complete.</em></p>
-            </div>
 
             <div class="more-section">
-                <button class="more-toggle" onclick="toggleMore()">📚 More Resources</button>
+                <button class="more-toggle" onclick="toggleMore()">More Resources</button>
                 <div id="moreContent" class="more-content">
-                    <h3>📚 Educational Resources</h3>
+                    <h3>Educational Resources</h3>
                     <ul>
                         <li><a href="https://scikit-optimize.github.io/stable/" target="_blank">scikit-optimize Documentation</a></li>
                         <li><a href="https://arxiv.org/abs/1807.02811" target="_blank">Bayesian Optimization Tutorial (Frazier)</a></li>
@@ -317,7 +288,7 @@
                         <li><a href="https://www.cs.ox.ac.uk/people/nando.defreitas/publications/BayesOptLoop.pdf" target="_blank">Practical Bayesian Optimization (Snoek et al.)</a></li>
                     </ul>
 
-                    <h3>🔬 Core Components</h3>
+                    <h3>Core Components</h3>
                     <ul>
                         <li><strong>Surrogate Model:</strong> Gaussian Process regression with uncertainty</li>
                         <li><strong>Acquisition Function:</strong> Expected Improvement, Upper Confidence Bound, Entropy Search</li>
@@ -326,7 +297,7 @@
                         <li><strong>Multi-Point Selection:</strong> Batch acquisition for parallel evaluation</li>
                     </ul>
 
-                    <h3>🎯 Acquisition Functions</h3>
+                    <h3>Acquisition Functions</h3>
                     <ul>
                         <li><strong>Expected Improvement (EI):</strong> E[max(f(x) - f_best, 0)]</li>
                         <li><strong>Upper Confidence Bound (UCB):</strong> μ(x) + β*σ(x)</li>
@@ -335,7 +306,7 @@
                         <li><strong>Knowledge Gradient:</strong> Expected value of perfect information</li>
                     </ul>
 
-                    <h3>🚀 Applications</h3>
+                    <h3>Applications</h3>
                     <ul>
                         <li><strong>Hyperparameter Optimization:</strong> Machine learning model tuning</li>
                         <li><strong>Experimental Design:</strong> Scientific experiments and A/B testing</li>
@@ -345,7 +316,7 @@
                         <li><strong>AutoML:</strong> Architecture search and pipeline optimization</li>
                     </ul>
 
-                    <h3>🔧 Advanced Techniques</h3>
+                    <h3>Advanced Techniques</h3>
                     <ul>
                         <li><strong>Multi-Task GP:</strong> Transfer learning between related problems</li>
                         <li><strong>Multi-Objective BO:</strong> Pareto optimization with GP models</li>
@@ -354,7 +325,7 @@
                         <li><strong>Distributed BO:</strong> Asynchronous parallel optimization</li>
                     </ul>
 
-                    <h3>📐 Mathematical Foundation</h3>
+                    <h3>Mathematical Foundation</h3>
                     <ul>
                         <li><strong>Gaussian Processes:</strong> Non-parametric Bayesian regression</li>
                         <li><strong>Regret Bounds:</strong> Theoretical convergence guarantees</li>
@@ -373,10 +344,10 @@
 
             if (content.style.display === 'none' || content.style.display === '') {
                 content.style.display = 'block';
-                button.textContent = '📚 Less Resources';
+                button.textContent = 'Less Resources';
             } else {
                 content.style.display = 'none';
-                button.textContent = '📚 More Resources';
+                button.textContent = 'More Resources';
             }
         }
 

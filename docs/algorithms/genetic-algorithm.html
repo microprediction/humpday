@@ -24,7 +24,7 @@
         }
 
         .header {
-            background: #8e44ad;
+            background: #34495e;
             color: white;
             padding: 30px;
             text-align: center;
@@ -158,23 +158,16 @@
             display: none;
             margin-top: 20px;
         }
-
-        .validation-pending {
-            background: #ffeaa7;
-            border: 1px solid #fdcb6e;
-            border-radius: 8px;
-            padding: 15px;
-            margin: 20px 0;
-        }
-
-        .validation-pending h3 {
-            margin-top: 0;
-            color: #d63031;
-        }
-    </style>
+</style>
     <!-- Three.js for 3D visualization -->
     <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/controls/OrbitControls.js"></script>
+    <script src="../js/modules/base-optimizer.js"></script>
+    <script src="../js/modules/prima-algorithms.js"></script>
+    <script src="../js/modules/scipy-algorithms.js"></script>
+    <script src="../js/modules/evolutionary-algorithms.js"></script>
+    <script src="../js/modules/search-algorithms.js"></script>
+
 </head>
 <body>
     <div class="container">
@@ -228,7 +221,7 @@
                             <em>Published: 1970s</em>
                         </td>
                         <td>
-                            <a href="https://mitpress.mit.edu/9780262581110/adaptation-in-natural-and-artificial-systems/" target="_blank" class="link-button paper">📖 Holland's Book</a>
+                            <a href="https://mitpress.mit.edu/9780262581110/adaptation-in-natural-and-artificial-systems/" target="_blank" class="link-button paper">Holland's Book</a>
                         </td>
                     </tr>
                     <tr>
@@ -240,24 +233,24 @@
                             <em>Package: deap</em>
                         </td>
                         <td>
-                            <a href="https://deap.readthedocs.io/" target="_blank" class="link-button python">📦 DEAP Docs</a>
-                            <a href="https://github.com/DEAP/deap" target="_blank" class="link-button python">🔍 GitHub</a>
+                            <a href="https://deap.readthedocs.io/" target="_blank" class="link-button python">DEAP Docs</a>
+                            <a href="https://github.com/DEAP/deap" target="_blank" class="link-button python">GitHub</a>
                         </td>
                     </tr>
                     <tr>
-                        <td class="category">Humpday Python Wrapper</td>
+                        <td class="category">Humpday Python</td>
                         <td>
-                            <strong>Humpday Integration</strong><br>
+                            <strong>HumpDay Python Implementation</strong><br>
                             Uses DEAP's genetic algorithm framework<br>
                             Pre-configured for continuous optimization<br>
                             <em>File: humpday/optimizers/deapopt.py</em>
                         </td>
                         <td>
-                            <a href="https://github.com/microprediction/humpday" target="_blank" class="link-button python">🐍 Wrapper Code</a>
+                            <a href="https://github.com/microprediction/humpday" target="_blank" class="link-button python">Source Code</a>
                         </td>
                     </tr>
                     <tr>
-                        <td class="category">Humpday JavaScript Port</td>
+                        <td class="category">Humpday JavaScript</td>
                         <td>
                             <strong>Browser Implementation</strong><br>
                             Pure JavaScript GA with selection, crossover, mutation<br>
@@ -265,25 +258,14 @@
                             <em>Class: GeneticAlgorithm</em>
                         </td>
                         <td>
-                            <a href="https://github.com/microprediction/humpday/blob/main/docs/js/optimizers.js" target="_blank" class="link-button javascript">🌐 JS Port</a>
+                            <a href="https://github.com/microprediction/humpday/blob/main/docs/js/optimizers.js" target="_blank" class="link-button javascript">JS Port</a>
                         </td>
                     </tr>
-                    <tr>
-                        <td class="category">Dependencies</td>
-                        <td>
-                            <strong>Reference:</strong> DEAP package<br>
-                            <strong>Humpday Python:</strong> deap, numpy<br>
-                            <strong>Humpday JS:</strong> None (standalone port)
-                        </td>
-                        <td>
-                            <a href="https://pypi.org/project/deap/" target="_blank" class="link-button python">📦 PyPI</a>
-                        </td>
-                    </tr>
-                </tbody>
+</tbody>
             </table>
 
             <div class="performance-notes">
-                <h3>🏁 Performance Characteristics</h3>
+                <h3>Performance Characteristics</h3>
                 <ul>
                     <li><strong>Best for:</strong> Combinatorial optimization, multimodal landscapes, large search spaces</li>
                     <li><strong>Dimensions:</strong> Scales to hundreds of dimensions</li>
@@ -293,22 +275,11 @@
                 </ul>
             </div>
 
-            <div class="validation-pending">
-                <h3>⏳ Validation Status: PENDING</h3>
-                <p><strong>Validation against DEAP reference implementation in progress.</strong></p>
-                <ul>
-                    <li>📋 Test framework: Comparing JavaScript vs DEAP GA implementation</li>
-                    <li>🎯 Target: Statistical equivalence with standard GA operators</li>
-                    <li>📊 Metrics: Population diversity, convergence rate, final fitness values</li>
-                    <li>🔧 Challenge: Matching DEAP's operator implementations and parameters</li>
-                </ul>
-                <p><em>Full validation results will be displayed here once testing is complete.</em></p>
-            </div>
 
             <div class="more-section">
-                <button class="more-toggle" onclick="toggleMore()">📚 More Resources</button>
+                <button class="more-toggle" onclick="toggleMore()">More Resources</button>
                 <div id="moreContent" class="more-content">
-                    <h3>📚 Educational Resources</h3>
+                    <h3>Educational Resources</h3>
                     <ul>
                         <li><a href="https://en.wikipedia.org/wiki/Genetic_algorithm" target="_blank">Genetic Algorithm Wikipedia</a></li>
                         <li><a href="https://deap.readthedocs.io/" target="_blank">DEAP Documentation</a></li>
@@ -317,7 +288,7 @@
                         <li><a href="https://www.obitko.com/tutorials/genetic-algorithms/" target="_blank">GA Tutorial by Marek Obitko</a></li>
                     </ul>
 
-                    <h3>🔬 Algorithm Components</h3>
+                    <h3>Algorithm Components</h3>
                     <ul>
                         <li><strong>Selection:</strong> Tournament, roulette wheel, rank-based selection</li>
                         <li><strong>Crossover:</strong> Single/multi-point, uniform, simulated binary (SBX)</li>
@@ -326,7 +297,7 @@
                         <li><strong>Encoding:</strong> Binary, real-valued, permutation representations</li>
                     </ul>
 
-                    <h3>🧬 GA Variants</h3>
+                    <h3>GA Variants</h3>
                     <ul>
                         <li><strong>Simple GA:</strong> Holland's original binary-encoded GA</li>
                         <li><strong>Real-Coded GA:</strong> Direct real number representation</li>
@@ -336,7 +307,7 @@
                         <li><strong>Multi-Objective GA:</strong> NSGA-II, SPEA-2 for Pareto optimization</li>
                     </ul>
 
-                    <h3>🎯 GA Applications</h3>
+                    <h3>GA Applications</h3>
                     <ul>
                         <li><strong>Scheduling:</strong> Job shop, vehicle routing, timetabling</li>
                         <li><strong>Design Optimization:</strong> Antenna design, circuit layout</li>
@@ -346,7 +317,7 @@
                         <li><strong>Game AI:</strong> Strategy evolution, procedural content generation</li>
                     </ul>
 
-                    <h3>📐 Mathematical Foundation</h3>
+                    <h3>Mathematical Foundation</h3>
                     <ul>
                         <li><strong>Schema Theory:</strong> Building blocks and convergence analysis</li>
                         <li><strong>No Free Lunch:</strong> Performance bounds across problem classes</li>
@@ -365,10 +336,10 @@
 
             if (content.style.display === 'none' || content.style.display === '') {
                 content.style.display = 'block';
-                button.textContent = '📚 Less Resources';
+                button.textContent = 'Less Resources';
             } else {
                 content.style.display = 'none';
-                button.textContent = '📚 More Resources';
+                button.textContent = 'More Resources';
             }
         // Initialize 3D visualization when page loads
         document.addEventListener('DOMContentLoaded', function() {

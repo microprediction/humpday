@@ -25,7 +25,7 @@ Legend: ✅ done · 🟡 partial / in-progress · ❌ not done · ❓ unknown / 
 | TabuSearch | ✅ | ❓ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ❓ |
 | FireflyAlgorithm | ✅ | ❓ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ❓ |
 | AntColonyOpt | ✅ | ❓ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ❓ |
-| EvolutionStrategy | ✅ | ❓ | ✅ | 🟡 | ✅ | ✅ | ✅ | ✅ | ✅ | ❓ |
+| EvolutionStrategy | ✅ | ❓ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ❓ |
 | HillClimbing | ✅ | ❓ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ❓ |
 | HarmonySearch | ✅ | ❓ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ❓ |
 | AdaptiveRandomSearch | ✅ | ❓ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ❓ |
@@ -52,7 +52,7 @@ Legend: ✅ done · 🟡 partial / in-progress · ❌ not done · ❓ unknown / 
 - **PRIMA trio · no-numpy** — three algorithms remain numpy-dependent; need `svd` added to the shim first. See "PRIMA trio port" below.
 - **All algorithms · JS** — the JavaScript port exists at `docs/js/modules/*.js`, but I am unaware of an automated Python↔JS parity sweep that runs in CI. `tests/test_python_js_validation.py` exists; most of its cases are skipped (10 skips in the test inventory). Mark every cell as ❓ until that gap is verified.
 - **All algorithms · demo** — `docs/index.html` Algorithm Categories section was fixed in PR #49 to list all 22 algorithms, and the 9 wrong `<em>Not in Python core</em>` rows were replaced with proper Python source links in PR #57. The visualizer panel on each `docs/algorithms/<algo>.html` was broken in PR #60 and earlier — the page's script depends on `THREE.Scene`/`OrbitControls` but never loaded three.min.js. PR #61 injects the missing `<script src="https://cdnjs.cloudflare.com/.../three.min.js">` + OrbitControls into every page that uses the visualizer; only `harmony-search.html` had this previously. **EvolutionStrategy** is 🟡 because the page (added in PR #61) currently has no embedded 3D demo panel — the algorithm class exists in the visualizer's selector but the page template was minimal.
-- **All algorithms · academic** — every algorithm page restored in PR #61 uses the canonical academic template established by `b9b91ce` and `c05fd86`. Pages built on this template were briefly destroyed by `fc6a046`'s regex rot (CSS `{}` braces stripped, `padding: 20px` → `padding: 2p`, etc.) and restored in PR #61 commit `475342a`.
+- **All algorithms · academic** — every algorithm page restored in PR #61 uses the canonical academic template established by `b9b91ce` and `c05fd86`. Pages built on this template were briefly destroyed by `fc6a046`'s regex rot (CSS `{}` braces stripped, `padding: 20px` → `padding: 2p`, etc.) and restored in PR #61 commit `475342a`. A later cleanup pass forced the per-page brand-color header into a single slate-gray house style (`#34495e`, matching `contest.html`), removed every emoji, deleted the "Validation Status: PENDING" boxes and the misleading "Dependencies" rows, and rewrote the false "Uses skopt / Calls scipy" claims with truthful pure-Python descriptions.
 - **LBFGSB · logic** — 🟡 because the class is named L-BFGS-B but is structurally finite-difference gradient + momentum (no actual L-BFGS quasi-Newton). Naming is misleading; behaviour is reasonable for a derivative-free baseline. Either rename the class or genuinely implement L-BFGS quasi-Newton updates.
 - **BayesianOpt · logic** — 🟡 because the GP kernel had broadcasting tricks (numpy path) and a separate pure-Python path with explicit loops, gated on `_A.BACKEND`. Both paths verified against the sphere, but no rigorous validation against `scikit-optimize` or `BoTorch`.
 - **All algorithms · int links / ext links / perf** — ❓ across the board pending a sweep.

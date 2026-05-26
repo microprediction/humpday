@@ -24,7 +24,7 @@
         }
 
         .header {
-            background: #2c3e50;
+            background: #34495e;
             color: white;
             padding: 30px;
             text-align: center;
@@ -161,6 +161,12 @@
     <!-- Three.js for 3D visualization -->
     <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/controls/OrbitControls.js"></script>
+    <script src="../js/modules/base-optimizer.js"></script>
+    <script src="../js/modules/prima-algorithms.js"></script>
+    <script src="../js/modules/scipy-algorithms.js"></script>
+    <script src="../js/modules/evolutionary-algorithms.js"></script>
+    <script src="../js/modules/search-algorithms.js"></script>
+
 </head>
 <body>
     <div class="container">
@@ -214,19 +220,19 @@
                             <em>Published: 1997</em>
                         </td>
                         <td>
-                            <a href="https://doi.org/10.1023/A:1008202821328" target="_blank" class="link-button paper">📄 Paper</a>
+                            <a href="https://doi.org/10.1023/A:1008202821328" target="_blank" class="link-button paper">Paper</a>
                         </td>
                     </tr>
                     <tr>
                         <td class="category">Humpday Python</td>
                         <td>
-                            <strong>Python Implementation</strong><br>
-                            Uses SciPy's optimize.differential_evolution<br>
-                            Highly optimized with multiple DE variants<br>
-                            <em>File: humpday/optimizers/scipy_algorithms.py</em>
+                            <strong>HumpDay Python Implementation</strong><br>
+                            Pure-Python DE/rand/1/bin with mutation, crossover and selection<br>
+                            No required dependencies<br>
+                            <em>File: humpday/optimizers/evolutionary_algorithms.py</em>
                         </td>
                         <td>
-                            <a href="https://github.com/microprediction/humpday/blob/main/humpday/optimizers/scipy_algorithms.py" target="_blank" class="link-button python">🐍 Python Code</a>
+                            <a href="https://github.com/microprediction/humpday/blob/main/humpday/optimizers/scipy_algorithms.py" target="_blank" class="link-button python">Python Code</a>
                         </td>
                     </tr>
                     <tr>
@@ -238,24 +244,14 @@
                             <em>Class: DifferentialEvolution</em>
                         </td>
                         <td>
-                            <a href="https://github.com/microprediction/humpday/blob/main/docs/js/modules/evolutionary-algorithms.js" target="_blank" class="link-button javascript">🌐 JavaScript Code</a>
+                            <a href="https://github.com/microprediction/humpday/blob/main/docs/js/modules/evolutionary-algorithms.js" target="_blank" class="link-button javascript">JavaScript Code</a>
                         </td>
                     </tr>
-                    <tr>
-                        <td class="category">Library Dependencies</td>
-                        <td>
-                            <strong>Python:</strong> scipy.optimize, numpy<br>
-                            <strong>JavaScript:</strong> None (pure JS implementation)
-                        </td>
-                        <td>
-                            <a href="https://docs.scipy.org/doc/scipy/reference/generated/scipy.optimize.differential_evolution.html" target="_blank" class="link-button python">📖 SciPy Docs</a>
-                        </td>
-                    </tr>
-                </tbody>
+</tbody>
             </table>
 
             <div class="performance-notes">
-                <h3>🏁 Performance Characteristics</h3>
+                <h3>Performance Characteristics</h3>
                 <ul>
                     <li><strong>Best for:</strong> Global optimization, multimodal and noisy functions</li>
                     <li><strong>Dimensions:</strong> Scales well from 2D to 100+ dimensions</li>
@@ -266,16 +262,16 @@
             </div>
 
             <div class="more-section">
-                <button class="more-toggle" onclick="toggleMore()">📚 More Resources</button>
+                <button class="more-toggle" onclick="toggleMore()">More Resources</button>
                 <div id="moreContent" class="more-content">
-                    <h3>📚 Educational Resources</h3>
+                    <h3>Educational Resources</h3>
                     <ul>
                         <li><a href="https://en.wikipedia.org/wiki/Differential_evolution" target="_blank">Differential Evolution Wikipedia</a></li>
                         <li><a href="https://pablormier.github.io/2017/09/05/a-tutorial-on-differential-evolution-with-python/" target="_blank">Python Tutorial</a></li>
                         <li><a href="http://www.icsi.berkeley.edu/~storn/code.html" target="_blank">Original Author's Code</a></li>
                     </ul>
 
-                    <h4>🧬 Algorithm Overview</h4>
+                    <h4>Algorithm Overview</h4>
                     <p>Differential Evolution uses a simple yet powerful strategy:</p>
                     <ul>
                         <li><strong>Population:</strong> Maintains multiple candidate solutions</li>
@@ -299,10 +295,10 @@
 
             if (content.style.display === 'none' || content.style.display === '') {
                 content.style.display = 'block';
-                button.textContent = '📚 Less Resources';
+                button.textContent = 'Less Resources';
             } else {
                 content.style.display = 'none';
-                button.textContent = '📚 More Resources';
+                button.textContent = 'More Resources';
             }
         // Initialize 3D visualization when page loads
         document.addEventListener('DOMContentLoaded', function() {

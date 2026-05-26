@@ -24,7 +24,7 @@
         }
 
         .header {
-            background: #2c3e50;
+            background: #34495e;
             color: white;
             padding: 30px;
             text-align: center;
@@ -175,6 +175,12 @@
     <!-- Three.js for 3D visualization -->
     <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/controls/OrbitControls.js"></script>
+    <script src="../js/modules/base-optimizer.js"></script>
+    <script src="../js/modules/prima-algorithms.js"></script>
+    <script src="../js/modules/scipy-algorithms.js"></script>
+    <script src="../js/modules/evolutionary-algorithms.js"></script>
+    <script src="../js/modules/search-algorithms.js"></script>
+
 </head>
 <body>
     <div class="container">
@@ -228,7 +234,7 @@
                             <em>Published: 2004</em>
                         </td>
                         <td>
-                            <a href="https://www.damtp.cam.ac.uk/user/na/NA_papers/NA2004_08.pdf" target="_blank" class="link-button paper">📄 Paper</a>
+                            <a href="https://www.damtp.cam.ac.uk/user/na/NA_papers/NA2004_08.pdf" target="_blank" class="link-button paper">Paper</a>
                         </td>
                     </tr>
                     <tr>
@@ -240,24 +246,24 @@
                             <em>Package: pdfo</em>
                         </td>
                         <td>
-                            <a href="https://www.pdfo.net/" target="_blank" class="link-button paper">📦 PDFO</a>
-                            <a href="https://github.com/pdfo/pdfo" target="_blank" class="link-button python">🐍 Source</a>
+                            <a href="https://www.pdfo.net/" target="_blank" class="link-button paper">PDFO</a>
+                            <a href="https://github.com/pdfo/pdfo" target="_blank" class="link-button python">Source</a>
                         </td>
                     </tr>
                     <tr>
-                        <td class="category">Humpday Python Wrapper</td>
+                        <td class="category">Humpday Python</td>
                         <td>
-                            <strong>Humpday Integration</strong><br>
+                            <strong>HumpDay Python Implementation</strong><br>
                             Calls PDFO's NEWUOA implementation<br>
                             Standardized interface for optimization contests<br>
                             <em>File: humpday/optimizers/prima_algorithms.py</em>
                         </td>
                         <td>
-                            <a href="https://github.com/microprediction/humpday/blob/main/humpday/optimizers/prima_algorithms.py" target="_blank" class="link-button python">🐍 Wrapper Code</a>
+                            <a href="https://github.com/microprediction/humpday/blob/main/humpday/optimizers/prima_algorithms.py" target="_blank" class="link-button python">Source Code</a>
                         </td>
                     </tr>
                     <tr>
-                        <td class="category">Humpday JavaScript Port</td>
+                        <td class="category">Humpday JavaScript</td>
                         <td>
                             <strong>Browser Implementation</strong><br>
                             JavaScript port attempting to match PDFO behavior<br>
@@ -265,25 +271,14 @@
                             <em>Class: PRIMA_NEWUOA</em>
                         </td>
                         <td>
-                            <a href="https://github.com/microprediction/humpday/blob/main/docs/js/optimizers.js" target="_blank" class="link-button javascript">🌐 JS Port</a>
+                            <a href="https://github.com/microprediction/humpday/blob/main/docs/js/optimizers.js" target="_blank" class="link-button javascript">JS Port</a>
                         </td>
                     </tr>
-                    <tr>
-                        <td class="category">Dependencies</td>
-                        <td>
-                            <strong>Reference:</strong> PDFO package (wraps Powell's Fortran)<br>
-                            <strong>Humpday Python:</strong> pdfo, numpy<br>
-                            <strong>Humpday JS:</strong> None (standalone port)
-                        </td>
-                        <td>
-                            <a href="https://pypi.org/project/pdfo/" target="_blank" class="link-button python">📦 PyPI</a>
-                        </td>
-                    </tr>
-                </tbody>
+</tbody>
             </table>
 
             <div class="performance-notes">
-                <h3>🏁 Performance Characteristics</h3>
+                <h3>Performance Characteristics</h3>
                 <ul>
                     <li><strong>Best for:</strong> Smooth, unconstrained problems in moderate to high dimensions</li>
                     <li><strong>Dimensions:</strong> Particularly effective for n > 10 where UOBYQA becomes expensive</li>
@@ -294,7 +289,7 @@
             </div>
 
             <div class="validation-issues">
-                <h3>❌ Validation Status: IMPLEMENTATION ISSUES</h3>
+                <h3>Validation Status: IMPLEMENTATION ISSUES</h3>
                 <p><strong>JavaScript implementation currently has errors preventing proper validation:</strong></p>
                 <ul>
                     <li><strong>Error Detected:</strong> "xPts is not defined" in JavaScript implementation</li>
@@ -306,16 +301,16 @@
             </div>
 
             <div class="more-section">
-                <button class="more-toggle" onclick="toggleMore()">📚 More Resources</button>
+                <button class="more-toggle" onclick="toggleMore()">More Resources</button>
                 <div id="moreContent" class="more-content">
-                    <h3>📚 Educational Resources</h3>
+                    <h3>Educational Resources</h3>
                     <ul>
                         <li><a href="https://en.wikipedia.org/wiki/NEWUOA" target="_blank">NEWUOA Wikipedia</a></li>
                         <li><a href="https://www.pdfo.net/" target="_blank">PDFO Documentation</a></li>
                         <li><a href="https://link.springer.com/chapter/10.1007/978-0-387-30065-5_17" target="_blank">Derivative-Free Optimization Methods</a></li>
                     </ul>
 
-                    <h3>🔬 Algorithm Theory</h3>
+                    <h3>Algorithm Theory</h3>
                     <ul>
                         <li><strong>Interpolation Set:</strong> 2n+1 points vs UOBYQA's (n+1)(n+2)/2 points</li>
                         <li><strong>Quadratic Models:</strong> Underdetermined system solved with minimum Frobenius norm</li>
@@ -324,7 +319,7 @@
                         <li><strong>Geometry Improvement:</strong> Automatic point replacement for better conditioning</li>
                     </ul>
 
-                    <h3>⚖️ NEWUOA vs UOBYQA Trade-offs</h3>
+                    <h3>️ NEWUOA vs UOBYQA Trade-offs</h3>
                     <ul>
                         <li><strong>Efficiency:</strong> NEWUOA scales better - O(n) vs O(n²) interpolation points</li>
                         <li><strong>Model Quality:</strong> UOBYQA has fully determined models, NEWUOA underdetermined</li>
@@ -333,7 +328,7 @@
                         <li><strong>Dimension Limit:</strong> NEWUOA practical for much higher dimensions</li>
                     </ul>
 
-                    <h3>🎯 When to Use NEWUOA</h3>
+                    <h3>When to Use NEWUOA</h3>
                     <ul>
                         <li><strong>High Dimensions:</strong> n > 10 where UOBYQA becomes prohibitive</li>
                         <li><strong>Limited Budget:</strong> When function evaluations are very expensive</li>
@@ -342,7 +337,7 @@
                         <li><strong>Global Search:</strong> Combined with multi-start for global optimization</li>
                     </ul>
 
-                    <h3>🔧 Implementation Details</h3>
+                    <h3>Implementation Details</h3>
                     <ul>
                         <li><strong>Initial Geometry:</strong> 2n+1 points around starting point</li>
                         <li><strong>Model Building:</strong> Minimum norm solution for underdetermined system</li>
@@ -362,10 +357,10 @@
 
             if (content.style.display === 'none' || content.style.display === '') {
                 content.style.display = 'block';
-                button.textContent = '📚 Less Resources';
+                button.textContent = 'Less Resources';
             } else {
                 content.style.display = 'none';
-                button.textContent = '📚 More Resources';
+                button.textContent = 'More Resources';
             }
         // Initialize 3D visualization when page loads
         document.addEventListener('DOMContentLoaded', function() {
