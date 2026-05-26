@@ -1,183 +1,183 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-    <meta charset="UT-8">
-    <meta name="viewport" content="width=device-width, initial-scale=.">
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' 'unsafe-inline' https://cdnjs.cloudflare.com https://cdn.jsdelivr.net; style-src 'self' 'unsafe-inline';">
     <title>NEWUOA (Prima) - Implementation Details</title>
     <style>
-        body 
+        body {
             font-family: 'Georgia', 'Times New Roman', serif;
-            margin: ;
-            padding: 2p;
+            margin: 0;
+            padding: 20px;
             background: #f8f9fa;
-            color: #2c3e5;
-        
+            color: #2c3e50;
+        }
 
-        .container 
-            ma-width: p;
-            margin:  auto;
+        .container {
+            max-width: 1000px;
+            margin: 0 auto;
             background: white;
-            border-radius: 5p;
-            bo-shadow:  2p p rgba(,,,.);
+            border-radius: 15px;
+            box-shadow: 0 20px 40px rgba(0,0,0,0.1);
             overflow: hidden;
-        
+        }
 
-        .header 
-            background: #2c3e5;
+        .header {
+            background: #2c3e50;
             color: white;
-            padding: 3p;
-            tet-align: center;
-        
+            padding: 30px;
+            text-align: center;
+        }
 
-        .header h 
-            margin:   p ;
+        .header h1 {
+            margin: 0 0 10px 0;
             font-size: 2.2em;
-        
+        }
 
-        .header p 
-            margin: ;
-            font-size: .em;
-            opacity: .9;
-        
+        .header p {
+            margin: 0;
+            font-size: 1.1em;
+            opacity: 0.9;
+        }
 
-        .content 
-            padding: p;
-        
+        .content {
+            padding: 40px;
+        }
 
-        .implementation-table 
-            width: %;
+        .implementation-table {
+            width: 100%;
             border-collapse: collapse;
-            margin: 3p ;
-            border-radius: p;
+            margin: 30px 0;
+            border-radius: 10px;
             overflow: hidden;
-            bo-shadow:  p 8p rgba(,,,.);
-        
+            box-shadow: 0 4px 8px rgba(0,0,0,0.1);
+        }
 
-        .implementation-table th 
-            background: #395e;
+        .implementation-table th {
+            background: #34495e;
             color: white;
-            padding: 5p;
-            tet-align: left;
-            font-weight: ;
-        
+            padding: 15px;
+            text-align: left;
+            font-weight: 600;
+        }
 
-        .implementation-table td 
-            padding: 5p;
-            border-bottom: p solid #eee;
+        .implementation-table td {
+            padding: 15px;
+            border-bottom: 1px solid #eee;
             vertical-align: top;
-        
+        }
 
-        .implementation-table tr:hover 
+        .implementation-table tr:hover {
             background: #f8f9fa;
-        
+        }
 
-        .implementation-table .category 
-            font-weight: ;
-            color: #395e;
-            background: #ecff;
-        
+        .implementation-table .category {
+            font-weight: 600;
+            color: #34495e;
+            background: #ecf0f1;
+        }
 
-        .link-button 
+        .link-button {
             display: inline-block;
-            padding: 8p p;
-            background: #398db;
+            padding: 8px 16px;
+            background: #3498db;
             color: white;
-            tet-decoration: none;
-            border-radius: p;
-            font-size: .9em;
-            margin: 2p p;
-            transition: background .2s;
-        
+            text-decoration: none;
+            border-radius: 4px;
+            font-size: 0.9em;
+            margin: 2px 4px;
+            transition: background 0.2s;
+        }
 
-        .link-button:hover 
-            background: #298b9;
-        
+        .link-button:hover {
+            background: #2980b9;
+        }
 
-        .link-button.paper  background: #e7c3c; 
-        .link-button.python  background: #27ae; 
-        .link-button.javascript  background: #f39c2; 
-        .link-button.info  background: #9b59b; 
+        .link-button.paper { background: #e74c3c; }
+        .link-button.python { background: #27ae60; }
+        .link-button.javascript { background: #f39c12; }
+        .link-button.info { background: #9b59b6; }
 
-        .algorithm-description 
-            background: #e8ff3;
-            border-left: p solid #27ae;
-            padding: 2p;
-            border-radius: 5p;
-            margin: 2p ;
-        
+        .algorithm-description {
+            background: #e8f6f3;
+            border-left: 4px solid #27ae60;
+            padding: 20px;
+            border-radius: 5px;
+            margin: 20px 0;
+        }
 
-        .back-nav 
-            margin-bottom: 2p;
-        
+        .back-nav {
+            margin-bottom: 20px;
+        }
 
-        .back-nav a 
-            color: #398db;
-            tet-decoration: none;
-            font-size: .em;
-        
+        .back-nav a {
+            color: #3498db;
+            text-decoration: none;
+            font-size: 1.1em;
+        }
 
-        .back-nav a:hover 
-            tet-decoration: underline;
-        
+        .back-nav a:hover {
+            text-decoration: underline;
+        }
 
-        .performance-notes 
+        .performance-notes {
             background: #fff3cd;
-            border: p solid #ffc7;
-            border-radius: 8p;
-            padding: 5p;
-            margin: 2p ;
-        
+            border: 1px solid #ffc107;
+            border-radius: 8px;
+            padding: 15px;
+            margin: 20px 0;
+        }
 
-        .performance-notes h3 
-            margin-top: ;
-            color: #85;
-        
+        .performance-notes h3 {
+            margin-top: 0;
+            color: #856404;
+        }
 
-        .more-section 
-            margin-top: 3p;
-            border-top: 2p solid #ecff;
-            padding-top: 2p;
-        
+        .more-section {
+            margin-top: 30px;
+            border-top: 2px solid #ecf0f1;
+            padding-top: 20px;
+        }
 
-        .more-toggle 
-            background: #398db;
+        .more-toggle {
+            background: #3498db;
             color: white;
             border: none;
-            padding: p 2p;
-            border-radius: p;
+            padding: 10px 20px;
+            border-radius: 4px;
             cursor: pointer;
-            font-size: em;
-        
+            font-size: 1em;
+        }
 
-        .more-toggle:hover 
-            background: #298b9;
-        
+        .more-toggle:hover {
+            background: #2980b9;
+        }
 
-        .more-content 
+        .more-content {
             display: none;
-            margin-top: 2p;
-        
+            margin-top: 20px;
+        }
 
-        .validation-issues 
+        .validation-issues {
             background: #f8d7da;
-            border: p solid #dc355;
-            border-radius: 8p;
-            padding: 5p;
-            margin: 2p ;
-        
+            border: 1px solid #dc3545;
+            border-radius: 8px;
+            padding: 15px;
+            margin: 20px 0;
+        }
 
-        .validation-issues h3 
-            margin-top: ;
-            color: #72c2;
-        
+        .validation-issues h3 {
+            margin-top: 0;
+            color: #721c24;
+        }
     </style>
 </head>
 <body>
     <div class="container">
         <div class="header">
-            <h>NEWUOA (PDO)</h>
-            <p>New Unconstrained Optimization by Quadratic Approimation</p>
+            <h1>NEWUOA (PDFO)</h1>
+            <p>New Unconstrained Optimization by Quadratic Approximation</p>
         </div>
 
         <div class="content">
@@ -186,21 +186,21 @@
             </div>
 
             <div class="algorithm-description">
-                <strong>NEWUOA</strong> is an advanced trust-region method that builds underdetermined quadratic models using fewer interpolation points than UOBYQA. Developed by M.J.D. Powell as an improvement over UOBYQA, it uses 2n+ interpolation points instead of the full (n+)(n+2)/2, making it more efficient for higher-dimensional problems while maintaining good approimation quality.
+                <strong>NEWUOA</strong> is an advanced trust-region method that builds underdetermined quadratic models using fewer interpolation points than UOBYQA. Developed by M.J.D. Powell as an improvement over UOBYQA, it uses 2n+1 interpolation points instead of the full (n+1)(n+2)/2, making it more efficient for higher-dimensional problems while maintaining good approximation quality.
             </div>
             <div class="visualization-section">
                 <h3>Interactive 3D Visualization</h3>
                 <p>See NEWUOA in action on 3D optimization surfaces:</p>
-                <div id="algorithmDemo" style="width: %; height: p; border: p solid #ddd; border-radius: p; margin: 5p ; position: relative; background: #fafafa;">
-                    <div id="loadingMessage" style="position: absolute; top: 5%; left: 5%; transform: translate(-5%, -5%); tet-align: center; color: #; z-inde: ; background: rgba(255,255,255,.9); padding: 2p; border-radius: p;">
+                <div id="algorithmDemo" style="width: 100%; height: 600px; border: 1px solid #ddd; border-radius: 4px; margin: 15px 0; position: relative; background: #fafafa;">
+                    <div id="loadingMessage" style="position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%); text-align: center; color: #666; z-index: 10; background: rgba(255,255,255,0.9); padding: 20px; border-radius: 4px;">
                         <p>Loading 3D visualization...</p>
-                        <p style="font-size: .9em;">Requires WebGL support</p>
+                        <p style="font-size: 0.9em;">Requires WebGL support</p>
                     </div>
                 </div>
-                <div id="visualizationControls" style="background: #f8f9fa; padding: 5p; border: p solid #ddd; border-radius: p; margin-top: p;">
+                <div id="visualizationControls" style="background: #f8f9fa; padding: 15px; border: 1px solid #ddd; border-radius: 4px; margin-top: 10px;">
                     <!-- Controls will be inserted here by the visualizer -->
                 </div>
-                <p style="font-size: .9em; color: #; margin-top: p;">
+                <p style="font-size: 0.9em; color: #666; margin-top: 10px;">
                     <strong>Instructions:</strong> Choose a test function and algorithm, then click Start to watch the step-by-step optimization process.
                 </p>
             </div>
@@ -222,53 +222,53 @@
                             <strong>M.J.D. Powell</strong><br>
                             Underdetermined quadratic models with trust regions<br>
                             Improved efficiency over UOBYQA for higher dimensions<br>
-                            <em>Published: 2</em>
+                            <em>Published: 2004</em>
                         </td>
                         <td>
-                            <a href="https://www.damtp.cam.ac.uk/user/na/NA_papers/NA2_8.pdf" target="_blank" class="link-button paper">📄 Paper</a>
+                            <a href="https://www.damtp.cam.ac.uk/user/na/NA_papers/NA2004_08.pdf" target="_blank" class="link-button paper">📄 Paper</a>
                         </td>
                     </tr>
                     <tr>
                         <td class="category">Reference Package</td>
                         <td>
-                            <strong>PDO (Python Derivative-ree Optimization)</strong><br>
-                            Wraps Powell's original ortran implementation<br>
+                            <strong>PDFO (Python Derivative-Free Optimization)</strong><br>
+                            Wraps Powell's original Fortran implementation<br>
                             Authoritative implementation with numerical robustness<br>
                             <em>Package: pdfo</em>
                         </td>
                         <td>
-                            <a href="https://www.pdfo.net/" target="_blank" class="link-button paper">📦 PDO</a>
-                            <a href="https://github.com/pdfo/pdfo" target="_blank" class="link-button python"> Source</a>
+                            <a href="https://www.pdfo.net/" target="_blank" class="link-button paper">📦 PDFO</a>
+                            <a href="https://github.com/pdfo/pdfo" target="_blank" class="link-button python">🐍 Source</a>
                         </td>
                     </tr>
                     <tr>
-                        <td class="category">HumpDay Python Implementation</td>
+                        <td class="category">Humpday Python Wrapper</td>
                         <td>
                             <strong>Humpday Integration</strong><br>
-                            Calls PDO's NEWUOA implementation<br>
+                            Calls PDFO's NEWUOA implementation<br>
                             Standardized interface for optimization contests<br>
-                            <em>ile: humpday/optimizers/prima_algorithms.py</em>
+                            <em>File: humpday/optimizers/prima_algorithms.py</em>
                         </td>
                         <td>
-                            <a href="https://github.com/microprediction/humpday/blob/main/humpday/optimizers/prima_algorithms.py" target="_blank" class="link-button python"> Implementation</a>
+                            <a href="https://github.com/microprediction/humpday/blob/main/humpday/optimizers/prima_algorithms.py" target="_blank" class="link-button python">🐍 Wrapper Code</a>
                         </td>
                     </tr>
                     <tr>
                         <td class="category">Humpday JavaScript Port</td>
                         <td>
                             <strong>Browser Implementation</strong><br>
-                            JavaScript port attempting to match PDO behavior<br>
+                            JavaScript port attempting to match PDFO behavior<br>
                             Underdetermined quadratic model building<br>
                             <em>Class: PRIMA_NEWUOA</em>
                         </td>
                         <td>
-                            <a href="https://github.com/microprediction/humpday/blob/main/docs/js/optimizers.js" target="_blank" class="link-button javascript"> JS Port</a>
+                            <a href="https://github.com/microprediction/humpday/blob/main/docs/js/optimizers.js" target="_blank" class="link-button javascript">🌐 JS Port</a>
                         </td>
                     </tr>
                     <tr>
                         <td class="category">Dependencies</td>
                         <td>
-                            <strong>Reference:</strong> PDO package (wraps Powell's ortran)<br>
+                            <strong>Reference:</strong> PDFO package (wraps Powell's Fortran)<br>
                             <strong>Humpday Python:</strong> pdfo, numpy<br>
                             <strong>Humpday JS:</strong> None (standalone port)
                         </td>
@@ -283,10 +283,10 @@
                 <h3>🏁 Performance Characteristics</h3>
                 <ul>
                     <li><strong>Best for:</strong> Smooth, unconstrained problems in moderate to high dimensions</li>
-                    <li><strong>Dimensions:</strong> Particularly effective for n >  where UOBYQA becomes epensive</li>
-                    <li><strong>unction evaluations:</strong> Uses 2n+ points, more efficient than UOBYQA's (n+)(n+2)/2</li>
-                    <li><strong>Convergence:</strong> Ecellent convergence on smooth functions</li>
-                    <li><strong>Robustness:</strong> Handles moderate noise, good balance of eploration and eploitation</li>
+                    <li><strong>Dimensions:</strong> Particularly effective for n > 10 where UOBYQA becomes expensive</li>
+                    <li><strong>Function evaluations:</strong> Uses 2n+1 points, more efficient than UOBYQA's (n+1)(n+2)/2</li>
+                    <li><strong>Convergence:</strong> Excellent convergence on smooth functions</li>
+                    <li><strong>Robustness:</strong> Handles moderate noise, good balance of exploration and exploitation</li>
                 </ul>
             </div>
 
@@ -294,12 +294,12 @@
                 <h3>❌ Validation Status: IMPLEMENTATION ISSUES</h3>
                 <p><strong>JavaScript implementation currently has errors preventing proper validation:</strong></p>
                 <ul>
-                    <li><strong>Error Detected:</strong> "Pts is not defined" in JavaScript implementation</li>
-                    <li><strong>Test Results:</strong> /3 test functions complete successfully</li>
-                    <li><strong>PDO Reference:</strong> Working perfectly (achieves f = . on test functions)</li>
-                    <li><strong>Required i:</strong> Variable naming and initialization issues need resolution</li>
+                    <li><strong>Error Detected:</strong> "xPts is not defined" in JavaScript implementation</li>
+                    <li><strong>Test Results:</strong> 0/3 test functions complete successfully</li>
+                    <li><strong>PDFO Reference:</strong> Working perfectly (achieves f = 0.000000 on test functions)</li>
+                    <li><strong>Required Fix:</strong> Variable naming and initialization issues need resolution</li>
                 </ul>
-                <p><em>Latest test: 22-5-2 - JavaScript implementation needs debugging before validation possible</em></p>
+                <p><em>Latest test: 2026-05-21 - JavaScript implementation needs debugging before validation possible</em></p>
             </div>
 
             <div class="more-section">
@@ -308,16 +308,14 @@
                     <h3>📚 Educational Resources</h3>
                     <ul>
                         <li><a href="https://en.wikipedia.org/wiki/NEWUOA" target="_blank">NEWUOA Wikipedia</a></li>
-                        <li><a href="https://www.pdfo.net/docs/" target="_blank">PDO Documentation</a></li>
-                        <li><a href="https://www.damtp.cam.ac.uk/user/na/NA_papers/NA2_8.pdf" target="_blank">Powell's NEWUOA Paper (2)</a></li>
-                        <li><a href="https://optimization.mccormick.northwestern.edu/inde.php/Trust_region_methods" target="_blank">Trust Region Methods Overview</a></li>
-                        <li><a href="https://link.springer.com/chapter/.7/978--387-35-5_7" target="_blank">Derivative-ree Optimization Methods</a></li>
+                        <li><a href="https://www.pdfo.net/" target="_blank">PDFO Documentation</a></li>
+                        <li><a href="https://link.springer.com/chapter/10.1007/978-0-387-30065-5_17" target="_blank">Derivative-Free Optimization Methods</a></li>
                     </ul>
 
-                    <h3> Algorithm Theory</h3>
+                    <h3>🔬 Algorithm Theory</h3>
                     <ul>
-                        <li><strong>Interpolation Set:</strong> 2n+ points vs UOBYQA's (n+)(n+2)/2 points</li>
-                        <li><strong>Quadratic Models:</strong> Underdetermined system solved with minimum robenius norm</li>
+                        <li><strong>Interpolation Set:</strong> 2n+1 points vs UOBYQA's (n+1)(n+2)/2 points</li>
+                        <li><strong>Quadratic Models:</strong> Underdetermined system solved with minimum Frobenius norm</li>
                         <li><strong>Trust Region:</strong> Adaptive radius based on model agreement</li>
                         <li><strong>Lagrange Basis:</strong> Efficient update of interpolation functions</li>
                         <li><strong>Geometry Improvement:</strong> Automatic point replacement for better conditioning</li>
@@ -332,18 +330,18 @@
                         <li><strong>Dimension Limit:</strong> NEWUOA practical for much higher dimensions</li>
                     </ul>
 
-                    <h3> When to Use NEWUOA</h3>
+                    <h3>🎯 When to Use NEWUOA</h3>
                     <ul>
-                        <li><strong>High Dimensions:</strong> n >  where UOBYQA becomes prohibitive</li>
-                        <li><strong>Limited Budget:</strong> When function evaluations are very epensive</li>
-                        <li><strong>Smooth unctions:</strong> Continuous, differentiable (but derivatives unknown)</li>
+                        <li><strong>High Dimensions:</strong> n > 10 where UOBYQA becomes prohibitive</li>
+                        <li><strong>Limited Budget:</strong> When function evaluations are very expensive</li>
+                        <li><strong>Smooth Functions:</strong> Continuous, differentiable (but derivatives unknown)</li>
                         <li><strong>Unconstrained:</strong> No bounds or constraints (use BOBYQA for bounds)</li>
                         <li><strong>Global Search:</strong> Combined with multi-start for global optimization</li>
                     </ul>
 
-                    <h3> Implementation Details</h3>
+                    <h3>🔧 Implementation Details</h3>
                     <ul>
-                        <li><strong>Initial Geometry:</strong> 2n+ points around starting point</li>
+                        <li><strong>Initial Geometry:</strong> 2n+1 points around starting point</li>
                         <li><strong>Model Building:</strong> Minimum norm solution for underdetermined system</li>
                         <li><strong>Trust Region Subproblem:</strong> Dogleg or conjugate gradient methods</li>
                         <li><strong>Point Replacement:</strong> Replace worst-conditioned points</li>
@@ -355,65 +353,65 @@
     </div>
 
     <script>
-        function toggleMore() 
+        function toggleMore() {
             const content = document.getElementById('moreContent');
             const button = document.querySelector('.more-toggle');
 
-            if (content.style.display === 'none' || content.style.display === '') 
+            if (content.style.display === 'none' || content.style.display === '') {
                 content.style.display = 'block';
-                button.tetContent = '📚 Less Resources';
-             else 
+                button.textContent = '📚 Less Resources';
+            } else {
                 content.style.display = 'none';
-                button.tetContent = '📚 More Resources';
-            
+                button.textContent = '📚 More Resources';
+            }
         // Initialize 3D visualization when page loads
-        document.addEventListener('DOMContentLoaded', function() 
+        document.addEventListener('DOMContentLoaded', function() {
             // Load optimizers first, then visualizer
             const optimizersScript = document.createElement('script');
-            optimizersScript.src = '../js/modules/inde.js';
-            optimizersScript.onload = function() 
+            optimizersScript.src = '../js/modules/index.js';
+            optimizersScript.onload = function() {
                 // Load algorithm visualizer after optimizers are loaded
                 const script = document.createElement('script');
                 script.src = '../js/algorithm-visualizer.js';
-                script.onload = function() 
+                script.onload = function() {
                     // Check for WebGL support
-                    function webglAvailable() 
-                        try 
+                    function webglAvailable() {
+                        try {
                             const canvas = document.createElement('canvas');
-                            return !!(window.WebGLRenderingContet && canvas.getContet('webgl'));
-                         catch (e) 
+                            return !!(window.WebGLRenderingContext && canvas.getContext('webgl'));
+                        } catch (e) {
                             return false;
-                        
-                    
+                        }
+                    }
 
-                    if (webglAvailable()) 
-                        const visualizer = new AlgorithmVisualizer('algorithmDemo', 
-                            onReady: () => 
+                    if (webglAvailable()) {
+                        const visualizer = new AlgorithmVisualizer('algorithmDemo', {
+                            onReady: () => {
                                 // Clear loading message once visualization is ready
                                 const loadingMsg = document.getElementById('loadingMessage');
-                                if (loadingMsg) 
+                                if (loadingMsg) {
                                     loadingMsg.style.display = 'none';
-                                
-                            
-                        );
-                     else 
+                                }
+                            }
+                        });
+                    } else {
                         document.getElementById('loadingMessage').innerHTML =
-                            '<h>WebGL Not Supported</h>' +
+                            '<h4>WebGL Not Supported</h4>' +
                             '<p>Your browser does not support WebGL for 3D visualization.</p>' +
-                            '<p>Try a modern browser like Chrome, irefo, or Safari.</p>';
-                    
-                ;
-                script.onerror = function() 
+                            '<p>Try a modern browser like Chrome, Firefox, or Safari.</p>';
+                    }
+                };
+                script.onerror = function() {
                     document.getElementById('algorithmDemo').innerHTML =
-                        '<div style="position: absolute; top: 5%; left: 5%; transform: translate(-5%, -5%); tet-align: center;">' +
-                        '<h>Visualization Unavailable</h>' +
+                        '<div style="position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%); text-align: center;">' +
+                        '<h4>Visualization Unavailable</h4>' +
                         '<p>Could not load 3D visualization component.</p>' +
                         '</div>';
-                ;
+                };
                 document.head.appendChild(script);
-            ;
+            };
             document.head.appendChild(optimizersScript);
-        );
+        });
     </script>
 </body>
 </html>

@@ -1,164 +1,197 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-    <meta charset="UT-8">
-    <meta name="viewport" content="width=device-width, initial-scale=.">
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' 'unsafe-inline' https://cdnjs.cloudflare.com https://cdn.jsdelivr.net; style-src 'self' 'unsafe-inline';">
     <title>Coordinate Descent - Implementation Details</title>
     <style>
-        body 
+        body {
             font-family: 'Georgia', 'Times New Roman', serif;
-            margin: ;
-            padding: 2p;
+            margin: 0;
+            padding: 20px;
             background: #f8f9fa;
-            color: #2c3e5;
-        
+            color: #2c3e50;
+        }
 
-        .container 
-            ma-width: p;
-            margin:  auto;
+        .container {
+            max-width: 1000px;
+            margin: 0 auto;
             background: white;
-            border-radius: 5p;
-            bo-shadow:  2p p rgba(,,,.);
+            border-radius: 15px;
+            box-shadow: 0 20px 40px rgba(0,0,0,0.1);
             overflow: hidden;
-        
+        }
 
-        .header 
-            background: #395e;
+        .header {
+            background: #34495e;
             color: white;
-            padding: 3p;
-            tet-align: center;
-        
+            padding: 30px;
+            text-align: center;
+        }
 
-        .header h 
-            margin:   p ;
+        .header h1 {
+            margin: 0 0 10px 0;
             font-size: 2.2em;
-        
+        }
 
-        .header p 
-            margin: ;
-            font-size: .em;
-            opacity: .9;
-        
+        .header p {
+            margin: 0;
+            font-size: 1.1em;
+            opacity: 0.9;
+        }
 
-        .content 
-            padding: p;
-        
+        .content {
+            padding: 40px;
+        }
 
-        .implementation-table 
-            width: %;
+        .implementation-table {
+            width: 100%;
             border-collapse: collapse;
-            margin: 3p ;
-            border-radius: p;
+            margin: 30px 0;
+            border-radius: 10px;
             overflow: hidden;
-            bo-shadow:  p 8p rgba(,,,.);
-        
+            box-shadow: 0 4px 8px rgba(0,0,0,0.1);
+        }
 
-        .implementation-table th 
-            background: #395e;
+        .implementation-table th {
+            background: #34495e;
             color: white;
-            padding: 5p;
-            tet-align: left;
-            font-weight: ;
-        
+            padding: 15px;
+            text-align: left;
+            font-weight: 600;
+        }
 
-        .implementation-table td 
-            padding: 5p;
-            border-bottom: p solid #eee;
+        .implementation-table td {
+            padding: 15px;
+            border-bottom: 1px solid #eee;
             vertical-align: top;
-        
+        }
 
-        .implementation-table tr:hover 
+        .implementation-table tr:hover {
             background: #f8f9fa;
-        
+        }
 
-        .implementation-table .category 
-            font-weight: ;
-            color: #395e;
-            background: #ecff;
-        
+        .implementation-table .category {
+            font-weight: 600;
+            color: #34495e;
+            background: #ecf0f1;
+        }
 
-        .link-button 
+        .link-button {
             display: inline-block;
-            padding: 8p p;
-            background: #398db;
+            padding: 8px 16px;
+            background: #3498db;
             color: white;
-            tet-decoration: none;
-            border-radius: p;
-            font-size: .9em;
-            margin: 2p p;
-            transition: background .2s;
-        
+            text-decoration: none;
+            border-radius: 4px;
+            font-size: 0.9em;
+            margin: 2px 4px;
+            transition: background 0.2s;
+        }
 
-        .link-button:hover 
-            background: #298b9;
-        
+        .link-button:hover {
+            background: #2980b9;
+        }
 
-        .link-button.paper  background: #e7c3c; 
-        .link-button.python  background: #27ae; 
-        .link-button.javascript  background: #f39c2; 
-        .link-button.info  background: #9b59b; 
+        .link-button.paper { background: #e74c3c; }
+        .link-button.python { background: #27ae60; }
+        .link-button.javascript { background: #f39c12; }
+        .link-button.info { background: #9b59b6; }
 
-        .algorithm-description 
+        .algorithm-description {
             background: #f7f9fc;
-            border-left: p solid #395e;
-            padding: 2p;
-            border-radius: 5p;
-            margin: 2p ;
-        
+            border-left: 4px solid #34495e;
+            padding: 20px;
+            border-radius: 5px;
+            margin: 20px 0;
+        }
 
-        .back-nav 
-            margin-bottom: 2p;
-        
+        .back-nav {
+            margin-bottom: 20px;
+        }
 
-        .back-nav a 
-            color: #398db;
-            tet-decoration: none;
-            font-size: .em;
-        
+        .back-nav a {
+            color: #3498db;
+            text-decoration: none;
+            font-size: 1.1em;
+        }
 
-        .back-nav a:hover 
-            tet-decoration: underline;
-        
+        .back-nav a:hover {
+            text-decoration: underline;
+        }
 
-        .performance-notes 
+        .performance-notes {
             background: #fff3cd;
-            border: p solid #ffc7;
-            border-radius: 8p;
-            padding: 5p;
-            margin: 2p ;
-        
+            border: 1px solid #ffc107;
+            border-radius: 8px;
+            padding: 15px;
+            margin: 20px 0;
+        }
 
-        .performance-notes h3 
-            margin-top: ;
-            color: #85;
-        
+        .performance-notes h3 {
+            margin-top: 0;
+            color: #856404;
+        }
 
-        .more-section 
-            margin-top: 3p;
-            border-top: 2p solid #ecff;
-            padding-top: 2p;
-        
+        .more-section {
+            margin-top: 30px;
+            border-top: 2px solid #ecf0f1;
+            padding-top: 20px;
+        }
 
-        .more-toggle 
-            background: #398db;
+        .more-toggle {
+            background: #3498db;
             color: white;
             border: none;
-            padding: p 2p;
-            border-radius: p;
+            padding: 10px 20px;
+            border-radius: 4px;
             cursor: pointer;
-            font-size: em;
-        
+            font-size: 1em;
+        }
 
-        .more-toggle:hover 
-            background: #298b9;
-        
+        .more-toggle:hover {
+            background: #2980b9;
+        }
 
-        .more-content 
+        .more-content {
             display: none;
-            margin-top: 2p;
-        
+            margin-top: 20px;
+        }
 
+        .validation-pending {
+            background: #ffeaa7;
+            border: 1px solid #fdcb6e;
+            border-radius: 8px;
+            padding: 15px;
+            margin: 20px 0;
+        }
+
+        .validation-pending h3 {
+            margin-top: 0;
+            color: #d63031;
+        }
+
+        .coordinate-note {
+            background: #e8f4fd;
+            border: 1px solid #bee5eb;
+            border-radius: 8px;
+            padding: 15px;
+            margin: 20px 0;
+        }
+
+        .coordinate-note h3 {
+            margin-top: 0;
+            color: #0c5460;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <h1>Coordinate Descent (Custom)</h1>
+            <p>Alternating Single-Variable Optimization</p>
+        </div>
 
         <div class="content">
             <div class="back-nav">
@@ -166,32 +199,32 @@
             </div>
 
             <div class="algorithm-description">
-                <strong>Coordinate Descent</strong> is a fundamental optimization algorithm that cyclically optimizes along individual coordinate directions. At each iteration, it minimizes the objective function with respect to one coordinate while keeping all others fied. This simple approach is surprisingly effective for many problems and forms the basis for more sophisticated optimization methods.
+                <strong>Coordinate Descent</strong> is a fundamental optimization algorithm that cyclically optimizes along individual coordinate directions. At each iteration, it minimizes the objective function with respect to one coordinate while keeping all others fixed. This simple approach is surprisingly effective for many problems and forms the basis for more sophisticated optimization methods.
             </div>
 
             <div class="coordinate-note">
                 <h3>📐 Coordinate-Wise Optimization</h3>
                 <p><strong>Coordinate descent alternates between variables systematically:</strong></p>
                 <ul>
-                    <li> <strong>One Variable at a Time:</strong> Optimize ₁, then ₂, then ₃, etc.</li>
-                    <li>🔄 <strong>Cyclical Updates:</strong> Return to ₁ after reaching ₙ</li>
-                    <li>📏 <strong>Line Search:</strong> Eact or approimate minimization along each ais</li>
-                    <li> <strong>Simplicity:</strong> Reduces n-dimensional to many -dimensional problems</li>
+                    <li>🎯 <strong>One Variable at a Time:</strong> Optimize x₁, then x₂, then x₃, etc.</li>
+                    <li>🔄 <strong>Cyclical Updates:</strong> Return to x₁ after reaching xₙ</li>
+                    <li>📏 <strong>Line Search:</strong> Exact or approximate minimization along each axis</li>
+                    <li>⚡ <strong>Simplicity:</strong> Reduces n-dimensional to many 1-dimensional problems</li>
                 </ul>
             </div>
             <div class="visualization-section">
                 <h3>Interactive 3D Visualization</h3>
                 <p>See Coordinate Descent in action on 3D optimization surfaces:</p>
-                <div id="algorithmDemo" style="width: %; height: p; border: p solid #ddd; border-radius: p; margin: 5p ; position: relative; background: #fafafa;">
-                    <div id="loadingMessage" style="position: absolute; top: 5%; left: 5%; transform: translate(-5%, -5%); tet-align: center; color: #; z-inde: ; background: rgba(255,255,255,.9); padding: 2p; border-radius: p;">
+                <div id="algorithmDemo" style="width: 100%; height: 600px; border: 1px solid #ddd; border-radius: 4px; margin: 15px 0; position: relative; background: #fafafa;">
+                    <div id="loadingMessage" style="position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%); text-align: center; color: #666; z-index: 10; background: rgba(255,255,255,0.9); padding: 20px; border-radius: 4px;">
                         <p>Loading 3D visualization...</p>
-                        <p style="font-size: .9em;">Requires WebGL support</p>
+                        <p style="font-size: 0.9em;">Requires WebGL support</p>
                     </div>
                 </div>
-                <div id="visualizationControls" style="background: #f8f9fa; padding: 5p; border: p solid #ddd; border-radius: p; margin-top: p;">
+                <div id="visualizationControls" style="background: #f8f9fa; padding: 15px; border: 1px solid #ddd; border-radius: 4px; margin-top: 10px;">
                     <!-- Controls will be inserted here by the visualizer -->
                 </div>
-                <p style="font-size: .9em; color: #; margin-top: p;">
+                <p style="font-size: 0.9em; color: #666; margin-top: 10px;">
                     <strong>Instructions:</strong> Choose a test function and algorithm, then click Start to watch the step-by-step optimization process.
                 </p>
             </div>
@@ -208,12 +241,12 @@
                 </thead>
                 <tbody>
                     <tr>
-                        <td class="category">Algorithm oundation</td>
+                        <td class="category">Algorithm Foundation</td>
                         <td>
                             <strong>Classic Optimization Method</strong><br>
-                            Alternating minimization along coordinate aes<br>
+                            Alternating minimization along coordinate axes<br>
                             Gauss-Seidel style iterative updates<br>
-                            <em>Historical: Early numerical optimization (95s+)</em>
+                            <em>Historical: Early numerical optimization (1950s+)</em>
                         </td>
                         <td>
                             <a href="https://en.wikipedia.org/wiki/Coordinate_descent" target="_blank" class="link-button info">📖 Wikipedia</a>
@@ -228,7 +261,7 @@
                             <em>Self-reference: Algorithm-specific variants</em>
                         </td>
                         <td>
-                            <a href="https://web.stanford.edu/~boyd/papers/pro_algs.html" target="_blank" class="link-button info">📚 Boyd et al.</a>
+                            <a href="https://web.stanford.edu/~boyd/papers/prox_algs.html" target="_blank" class="link-button info">📚 Boyd et al.</a>
                         </td>
                     </tr>
                     <tr>
@@ -237,10 +270,10 @@
                             <strong>Humpday Coordinate Descent</strong><br>
                             Custom implementation with line search<br>
                             Cyclical coordinate selection<br>
-                            <em>ile: humpday/optimizers/coordinatedescent.py</em>
+                            <em>File: humpday/optimizers/coordinatedescent.py</em>
                         </td>
                         <td>
-                            <a href="https://github.com/microprediction/humpday" target="_blank" class="link-button python"> Source</a>
+                            <a href="https://github.com/microprediction/humpday" target="_blank" class="link-button python">🐍 Source</a>
                         </td>
                     </tr>
                     <tr>
@@ -252,7 +285,7 @@
                             <em>Class: CoordinateDescent</em>
                         </td>
                         <td>
-                            <a href="https://github.com/microprediction/humpday/blob/main/docs/js/optimizers.js" target="_blank" class="link-button javascript"> JS Implementation</a>
+                            <a href="https://github.com/microprediction/humpday/blob/main/docs/js/optimizers.js" target="_blank" class="link-button javascript">🌐 JS Implementation</a>
                         </td>
                     </tr>
                     <tr>
@@ -263,7 +296,7 @@
                             <strong>Humpday JS:</strong> None (pure JavaScript)
                         </td>
                         <td>
-                            <span style="color: #95a5a;">✨ No eternal dependencies</span>
+                            <span style="color: #95a5a6;">✨ No external dependencies</span>
                         </td>
                     </tr>
                 </tbody>
@@ -273,13 +306,24 @@
                 <h3>🏁 Performance Characteristics</h3>
                 <ul>
                     <li><strong>Best for:</strong> Separable problems, sparse optimization, large-scale problems</li>
-                    <li><strong>Dimensions:</strong> Ecellent scalability to high dimensions</li>
-                    <li><strong>unction evaluations:</strong> Efficient, especially with eact line search</li>
-                    <li><strong>Convergence:</strong> Linear convergence on smooth, strongly conve problems</li>
+                    <li><strong>Dimensions:</strong> Excellent scalability to high dimensions</li>
+                    <li><strong>Function evaluations:</strong> Efficient, especially with exact line search</li>
+                    <li><strong>Convergence:</strong> Linear convergence on smooth, strongly convex problems</li>
                     <li><strong>Robustness:</strong> Simple, stable, handles non-smooth functions reasonably</li>
                 </ul>
             </div>
 
+            <div class="validation-pending">
+                <h3>⏳ Validation Status: PENDING</h3>
+                <p><strong>Validation of coordinate descent implementation in progress.</strong></p>
+                <ul>
+                    <li>📋 Test framework: Comparing against theoretical convergence behavior</li>
+                    <li>🎯 Target: Proper cyclical coordinate optimization and convergence</li>
+                    <li>📊 Metrics: Coordinate-wise improvements, convergence rate</li>
+                    <li>🔧 Reference: Self-validation against algorithmic specification</li>
+                </ul>
+                <p><em>Coordinate descent behavior is well-defined - implementation correctness is key validation.</em></p>
+            </div>
 
             <div class="more-section">
                 <button class="more-toggle" onclick="toggleMore()">📚 More Resources</button>
@@ -287,88 +331,87 @@
                     <h3>📚 Educational Resources</h3>
                     <ul>
                         <li><a href="https://en.wikipedia.org/wiki/Coordinate_descent" target="_blank">Coordinate Descent Wikipedia</a></li>
-                        <li><a href="https://web.stanford.edu/~boyd/papers/pro_algs.html" target="_blank">Proimal Algorithms (Boyd et al.)</a></li>
-                        <li><a href="https://optimization.mccormick.northwestern.edu/inde.php/Coordinate_descent" target="_blank">Coordinate Descent Tutorial</a></li>
-                        <li><a href="https://ariv.org/abs/52.759" target="_blank">Coordinate Descent Converges aster with Gauss-Southwell Rule</a></li>
-                        <li><a href="https://www.stat.cmu.edu/~ryantibs/conveopt/" target="_blank">CMU Conve Optimization Notes</a></li>
+                        <li><a href="https://web.stanford.edu/~boyd/papers/prox_algs.html" target="_blank">Proximal Algorithms (Boyd et al.)</a></li>
+                        <li><a href="https://arxiv.org/abs/1502.04759" target="_blank">Coordinate Descent Converges Faster with Gauss-Southwell Rule</a></li>
+                        <li><a href="https://www.stat.cmu.edu/~ryantibs/convexopt/" target="_blank">CMU Convex Optimization Notes</a></li>
                     </ul>
 
-                    <h3> Algorithm Variants</h3>
+                    <h3>🔬 Algorithm Variants</h3>
                     <ul>
-                        <li><strong>Cyclic Coordinate Descent:</strong> ied order through coordinates</li>
+                        <li><strong>Cyclic Coordinate Descent:</strong> Fixed order through coordinates</li>
                         <li><strong>Random Coordinate Descent:</strong> Random coordinate selection</li>
                         <li><strong>Gauss-Southwell:</strong> Choose coordinate with largest gradient component</li>
                         <li><strong>Block Coordinate Descent:</strong> Update blocks of coordinates simultaneously</li>
                         <li><strong>Accelerated Coordinate Descent:</strong> Momentum-based improvements</li>
                     </ul>
 
-                    <h3>📐 Mathematical oundation</h3>
+                    <h3>📐 Mathematical Foundation</h3>
                     <ul>
-                        <li><strong>Update Rule:</strong> _i^(k+) = arg min_z f(_^(k+), ..., _i-^(k+), z, _i+^k, ..., _n^k)</li>
-                        <li><strong>Separability:</strong> f() = Σᵢ fᵢ(ᵢ) + interaction terms</li>
-                        <li><strong>Convergence Rate:</strong> O(/k) for conve, linear for strongly conve</li>
-                        <li><strong>Line Search:</strong> Eact or Armijo backtracking along coordinate</li>
+                        <li><strong>Update Rule:</strong> x_i^(k+1) = arg min_z f(x_1^(k+1), ..., x_{i-1}^(k+1), z, x_{i+1}^k, ..., x_n^k)</li>
+                        <li><strong>Separability:</strong> f(x) = Σᵢ fᵢ(xᵢ) + interaction terms</li>
+                        <li><strong>Convergence Rate:</strong> O(1/k) for convex, linear for strongly convex</li>
+                        <li><strong>Line Search:</strong> Exact or Armijo backtracking along coordinate</li>
                     </ul>
 
                     <h3>⚙️ Coordinate Selection Strategies</h3>
                     <ul>
-                        <li><strong>Cyclic (Round-Robin):</strong> i = (k mod n) + </li>
-                        <li><strong>Random:</strong> i ~ Uniform, 2, ..., n</li>
-                        <li><strong>Gauss-Southwell:</strong> i = arg ma_j |∂f/∂_j|</li>
+                        <li><strong>Cyclic (Round-Robin):</strong> i = (k mod n) + 1</li>
+                        <li><strong>Random:</strong> i ~ Uniform{1, 2, ..., n}</li>
+                        <li><strong>Gauss-Southwell:</strong> i = arg max_j |∂f/∂x_j|</li>
                         <li><strong>Lipschitz-Based:</strong> Probability ∝ Lipschitz constants</li>
-                        <li><strong>Greedy:</strong> Choose coordinate with maimum epected decrease</li>
+                        <li><strong>Greedy:</strong> Choose coordinate with maximum expected decrease</li>
                     </ul>
 
-                    <h3> Algorithm Pseudocode</h3>
-                    <pre style="background: #f8f9fa; padding: 5p; border-radius: 8p; font-family: monospace;">
-function coordinateDescent(f, , maIter, tolerance):
-     = .copy()
-    n = length()
+                    <h3>🎯 Algorithm Pseudocode</h3>
+                    <pre style="background: #f8f9fa; padding: 15px; border-radius: 8px; font-family: monospace;">
+function coordinateDescent(f, x0, maxIter, tolerance):
+    x = x0.copy()
+    n = length(x)
 
-    for k in  to maIter:
-        _old = .copy()
+    for k in 1 to maxIter:
+        x_old = x.copy()
 
-        for i in  to n:  // Cyclic coordinate selection
+        for i in 1 to n:  // Cyclic coordinate selection
             // Optimize f along coordinate i
-            [i] = lineSearch(lambda t: f(..., [i-], t, [i+], ...))
+            x[i] = lineSearch(lambda t: f(..., x[i-1], t, x[i+1], ...))
 
-        if || - _old|| < tolerance:
+        if ||x - x_old|| < tolerance:
             break
 
-    return 
+    return x
                     </pre>
 
-                    <h3> When Coordinate Descent Ecels</h3>
+                    <h3>💡 When Coordinate Descent Excels</h3>
                     <ul>
-                        <li><strong>Separable unctions:</strong> f() = Σᵢ fᵢ(ᵢ) with minimal coupling</li>
+                        <li><strong>Separable Functions:</strong> f(x) = Σᵢ fᵢ(xᵢ) with minimal coupling</li>
                         <li><strong>Sparse Problems:</strong> Most coordinates have little impact</li>
                         <li><strong>Large Scale:</strong> Memory efficient, good for high dimensions</li>
-                        <li><strong>Non-smooth unctions:</strong> Handles piecewise linear objectives</li>
-                        <li><strong>Constrained Problems:</strong> Easy to handle bo constraints</li>
+                        <li><strong>Non-smooth Functions:</strong> Handles piecewise linear objectives</li>
+                        <li><strong>Constrained Problems:</strong> Easy to handle box constraints</li>
                     </ul>
 
                     <h3>⚠️ Limitations</h3>
                     <ul>
                         <li><strong>Coupling:</strong> Slow on strongly coupled variables</li>
                         <li><strong>Conditioning:</strong> Poor performance on ill-conditioned problems</li>
-                        <li><strong>Non-Conve:</strong> Can get trapped in local minima</li>
+                        <li><strong>Non-Convex:</strong> Can get trapped in local minima</li>
                         <li><strong>Step Size:</strong> May require careful line search tuning</li>
                         <li><strong>Coordinate System:</strong> Performance depends on variable scaling</li>
                     </ul>
 
-                    <h3> Applications</h3>
+                    <h3>🚀 Applications</h3>
                     <ul>
-                        <li><strong>Lasso Regression:</strong> L-regularized least squares</li>
+                        <li><strong>Lasso Regression:</strong> L1-regularized least squares</li>
                         <li><strong>SVM Training:</strong> Sequential minimal optimization (SMO)</li>
-                        <li><strong>Matri actorization:</strong> Alternating least squares</li>
+                        <li><strong>Matrix Factorization:</strong> Alternating least squares</li>
                         <li><strong>Deep Learning:</strong> Per-layer parameter updates</li>
                         <li><strong>Game Theory:</strong> Best response dynamics</li>
                         <li><strong>Signal Processing:</strong> Sparse coding and denoising</li>
                     </ul>
 
-                    <h3> Modern Etensions</h3>
+                    <h3>🔧 Modern Extensions</h3>
                     <ul>
-                        <li><strong>Proimal Coordinate Descent:</strong> Handle non-smooth regularizers</li>
+                        <li><strong>Proximal Coordinate Descent:</strong> Handle non-smooth regularizers</li>
                         <li><strong>Stochastic Coordinate Descent:</strong> Random sampling with convergence guarantees</li>
                         <li><strong>Parallel Coordinate Descent:</strong> Update multiple coordinates simultaneously</li>
                         <li><strong>Adaptive Methods:</strong> Automatically adjust step sizes</li>
@@ -380,65 +423,65 @@ function coordinateDescent(f, , maIter, tolerance):
     </div>
 
     <script>
-        function toggleMore() 
+        function toggleMore() {
             const content = document.getElementById('moreContent');
             const button = document.querySelector('.more-toggle');
 
-            if (content.style.display === 'none' || content.style.display === '') 
+            if (content.style.display === 'none' || content.style.display === '') {
                 content.style.display = 'block';
-                button.tetContent = '📚 Less Resources';
-             else 
+                button.textContent = '📚 Less Resources';
+            } else {
                 content.style.display = 'none';
-                button.tetContent = '📚 More Resources';
-            
+                button.textContent = '📚 More Resources';
+            }
         // Initialize 3D visualization when page loads
-        document.addEventListener('DOMContentLoaded', function() 
+        document.addEventListener('DOMContentLoaded', function() {
             // Load optimizers first, then visualizer
             const optimizersScript = document.createElement('script');
-            optimizersScript.src = '../js/modules/inde.js';
-            optimizersScript.onload = function() 
+            optimizersScript.src = '../js/modules/index.js';
+            optimizersScript.onload = function() {
                 // Load algorithm visualizer after optimizers are loaded
                 const script = document.createElement('script');
                 script.src = '../js/algorithm-visualizer.js';
-                script.onload = function() 
+                script.onload = function() {
                     // Check for WebGL support
-                    function webglAvailable() 
-                        try 
+                    function webglAvailable() {
+                        try {
                             const canvas = document.createElement('canvas');
-                            return !!(window.WebGLRenderingContet && canvas.getContet('webgl'));
-                         catch (e) 
+                            return !!(window.WebGLRenderingContext && canvas.getContext('webgl'));
+                        } catch (e) {
                             return false;
-                        
-                    
+                        }
+                    }
 
-                    if (webglAvailable()) 
-                        const visualizer = new AlgorithmVisualizer('algorithmDemo', 
-                            onReady: () => 
+                    if (webglAvailable()) {
+                        const visualizer = new AlgorithmVisualizer('algorithmDemo', {
+                            onReady: () => {
                                 // Clear loading message once visualization is ready
                                 const loadingMsg = document.getElementById('loadingMessage');
-                                if (loadingMsg) 
+                                if (loadingMsg) {
                                     loadingMsg.style.display = 'none';
-                                
-                            
-                        );
-                     else 
+                                }
+                            }
+                        });
+                    } else {
                         document.getElementById('loadingMessage').innerHTML =
-                            '<h>WebGL Not Supported</h>' +
+                            '<h4>WebGL Not Supported</h4>' +
                             '<p>Your browser does not support WebGL for 3D visualization.</p>' +
-                            '<p>Try a modern browser like Chrome, irefo, or Safari.</p>';
-                    
-                ;
-                script.onerror = function() 
+                            '<p>Try a modern browser like Chrome, Firefox, or Safari.</p>';
+                    }
+                };
+                script.onerror = function() {
                     document.getElementById('algorithmDemo').innerHTML =
-                        '<div style="position: absolute; top: 5%; left: 5%; transform: translate(-5%, -5%); tet-align: center;">' +
-                        '<h>Visualization Unavailable</h>' +
+                        '<div style="position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%); text-align: center;">' +
+                        '<h4>Visualization Unavailable</h4>' +
                         '<p>Could not load 3D visualization component.</p>' +
                         '</div>';
-                ;
+                };
                 document.head.appendChild(script);
-            ;
+            };
             document.head.appendChild(optimizersScript);
-        );
+        });
     </script>
 </body>
 </html>
