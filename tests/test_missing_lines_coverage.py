@@ -11,7 +11,7 @@ class TestMissingLinesCoverage:
 
     def test_prima_uobyqa_interpolation_set_expansion(self):
         """Test PRIMA_UOBYQA with conditions that trigger interpolation set expansion."""
-        from humpday.optimizers.optimizers import PRIMA_UOBYQA
+        from humpday.optimizers.alloptimizers import PRIMA_UOBYQA
 
         # Create objective that will cause improvement and trigger line 106-107
         def tricky_objective(x):
@@ -34,7 +34,7 @@ class TestMissingLinesCoverage:
 
     def test_prima_uobyqa_early_termination(self):
         """Test PRIMA_UOBYQA early termination condition (line 113)."""
-        from humpday.optimizers.optimizers import PRIMA_UOBYQA
+        from humpday.optimizers.alloptimizers import PRIMA_UOBYQA
 
         def early_term_objective(x):
             # Create condition where rho becomes very small quickly
@@ -47,7 +47,7 @@ class TestMissingLinesCoverage:
 
     def test_nelder_mead_evaluation_limit_break(self):
         """Test NelderMead evaluation limit break condition (line 154)."""
-        from humpday.optimizers.optimizers import NelderMead
+        from humpday.optimizers.alloptimizers import NelderMead
 
         def counting_objective(x):
             return sum(x**2)
@@ -59,7 +59,7 @@ class TestMissingLinesCoverage:
 
     def test_differential_evolution_missing_branches(self):
         """Test DifferentialEvolution edge cases (line 212)."""
-        from humpday.optimizers.optimizers import DifferentialEvolution
+        from humpday.optimizers.alloptimizers import DifferentialEvolution
 
         def simple_objective(x):
             return sum((xi - 0.7) ** 2 for xi in x)
@@ -71,7 +71,7 @@ class TestMissingLinesCoverage:
 
     def test_particle_swarm_boundary_conditions(self):
         """Test ParticleSwarm boundary and update conditions (lines 220-235)."""
-        from humpday.optimizers.optimizers import ParticleSwarm
+        from humpday.optimizers.alloptimizers import ParticleSwarm
 
         def boundary_objective(x):
             # Objective that pushes particles to boundaries
@@ -87,7 +87,7 @@ class TestMissingLinesCoverage:
 
     def test_cma_evolution_strategy_edge_cases(self):
         """Test CMAEvolutionStrategy specific conditions (line 258)."""
-        from humpday.optimizers.optimizers import CMAEvolutionStrategy
+        from humpday.optimizers.alloptimizers import CMAEvolutionStrategy
 
         def multimodal_objective(x):
             # Create multiple local minima
@@ -101,7 +101,7 @@ class TestMissingLinesCoverage:
 
     def test_bayesian_optimization_edge_cases(self):
         """Test BayesianOpt edge conditions (line 366)."""
-        from humpday.optimizers.optimizers import BayesianOpt
+        from humpday.optimizers.alloptimizers import BayesianOpt
 
         def noisy_objective(x):
             return sum(x**2) + 0.01 * np.random.random()
@@ -112,7 +112,7 @@ class TestMissingLinesCoverage:
 
     def test_hill_climbing_step_conditions(self):
         """Test HillClimbing step acceptance conditions (lines 481-482)."""
-        from humpday.optimizers.optimizers import HillClimbing
+        from humpday.optimizers.alloptimizers import HillClimbing
 
         def step_objective(x):
             # Objective designed to trigger both acceptance and rejection
@@ -132,7 +132,7 @@ class TestMissingLinesCoverage:
 
     def test_simulated_annealing_acceptance_conditions(self):
         """Test SimulatedAnnealing acceptance probability conditions (line 556)."""
-        from humpday.optimizers.optimizers import SimulatedAnnealing
+        from humpday.optimizers.alloptimizers import SimulatedAnnealing
 
         def sa_objective(x):
             return sum((xi - 0.3) ** 2 for xi in x)
@@ -143,7 +143,7 @@ class TestMissingLinesCoverage:
 
     def test_adaptive_random_search_improvement_conditions(self):
         """Test AdaptiveRandomSearch improvement conditions (line 591, 600)."""
-        from humpday.optimizers.optimizers import AdaptiveRandomSearch
+        from humpday.optimizers.alloptimizers import AdaptiveRandomSearch
 
         def adaptive_objective(x):
             # Create valleys that require adaptive step sizing
@@ -155,7 +155,7 @@ class TestMissingLinesCoverage:
 
     def test_pattern_search_expansion_conditions(self):
         """Test PatternSearch mesh expansion conditions (line 643, 654)."""
-        from humpday.optimizers.optimizers import PatternSearch
+        from humpday.optimizers.alloptimizers import PatternSearch
 
         def pattern_objective(x):
             # Smooth objective that allows pattern expansion
@@ -167,7 +167,7 @@ class TestMissingLinesCoverage:
 
     def test_evolution_strategy_selection_conditions(self):
         """Test EvolutionStrategy selection conditions (lines 665-666)."""
-        from humpday.optimizers.optimizers import EvolutionStrategy
+        from humpday.optimizers.alloptimizers import EvolutionStrategy
 
         def evolution_objective(x):
             return sum((xi - 0.6) ** 2 for xi in x)
@@ -178,7 +178,7 @@ class TestMissingLinesCoverage:
 
     def test_harmony_search_harmony_conditions(self):
         """Test HarmonySearch harmony memory conditions (line 743)."""
-        from humpday.optimizers.optimizers import HarmonySearch
+        from humpday.optimizers.alloptimizers import HarmonySearch
 
         def harmony_objective(x):
             return sum((xi - 0.4) ** 2 for xi in x)
@@ -189,7 +189,7 @@ class TestMissingLinesCoverage:
 
     def test_firefly_algorithm_movement_conditions(self):
         """Test FireflyAlgorithm movement conditions (lines 788-791)."""
-        from humpday.optimizers.optimizers import FireflyAlgorithm
+        from humpday.optimizers.alloptimizers import FireflyAlgorithm
 
         def firefly_objective(x):
             # Multi-peak objective to trigger firefly movements
@@ -203,7 +203,7 @@ class TestMissingLinesCoverage:
 
     def test_tabu_search_tabu_conditions(self):
         """Test TabuSearch tabu list conditions (line 814, 836)."""
-        from humpday.optimizers.optimizers import TabuSearch
+        from humpday.optimizers.alloptimizers import TabuSearch
 
         def tabu_objective(x):
             return sum((xi - 0.25) ** 2 for xi in x)
@@ -214,7 +214,7 @@ class TestMissingLinesCoverage:
 
     def test_genetic_algorithm_selection_conditions(self):
         """Test GeneticAlgorithm selection conditions (line 896)."""
-        from humpday.optimizers.optimizers import GeneticAlgorithm
+        from humpday.optimizers.alloptimizers import GeneticAlgorithm
 
         def genetic_objective(x):
             return sum(xi**2 for xi in x) + sum((xi - 0.8) ** 2 for xi in x)
@@ -225,7 +225,7 @@ class TestMissingLinesCoverage:
 
     def test_ant_colony_pheromone_conditions(self):
         """Test AntColonyOpt pheromone conditions (line 936, lines 944-971)."""
-        from humpday.optimizers.optimizers import AntColonyOpt
+        from humpday.optimizers.alloptimizers import AntColonyOpt
 
         def ant_objective(x):
             # Discrete-like objective for ant colony
