@@ -1,21 +1,21 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-    <meta charset="UT-8">
-    <meta name="viewport" content="width=device-width, initial-scale=.">
-    <title>UOBYQA (PDO) - HumpDay Optimization</title>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>UOBYQA (PDFO) - HumpDay Optimization</title>
     <link rel="stylesheet" href="../academic.css">
 </head>
 <body>
     <nav class="breadcrumb">
-        <a href="../inde.html">HumpDay</a> >
+        <a href="../index.html">HumpDay</a> >
         <a href="../contest.html">Contest</a> >
         <span>UOBYQA</span>
     </nav>
 
     <div class="container">
-        <h>UOBYQA (PDO)</h>
-        <h2>Unconstrained Optimization BY Quadratic Approimation</h2>
+        <h1>UOBYQA (PDFO)</h1>
+        <h2>Unconstrained Optimization BY Quadratic Approximation</h2>
 
         <div class="algorithm-meta">
             <div class="meta-grid">
@@ -23,7 +23,7 @@
                     <strong>Author:</strong> M.J.D. Powell
                 </div>
                 <div class="meta-item">
-                    <strong>Year:</strong> 22
+                    <strong>Year:</strong> 2002
                 </div>
                 <div class="meta-item">
                     <strong>Type:</strong> Model-based derivative-free
@@ -36,21 +36,21 @@
 
         <section>
             <h3>Overview</h3>
-            <p>UOBYQA is a derivative-free optimization algorithm that constructs quadratic models using interpolation. It belongs to the PRIMA (Powell's Recent Interpolation Methods) family and is particularly effective for smooth, small-scale optimization problems where derivatives are not available or epensive to compute.</p>
+            <p>UOBYQA is a derivative-free optimization algorithm that constructs quadratic models using interpolation. It belongs to the PRIMA (Powell's Recent Interpolation Methods) family and is particularly effective for smooth, small-scale optimization problems where derivatives are not available or expensive to compute.</p>
         </section>
 
         <section>
-            <h3>Mathematical oundation</h3>
+            <h3>Mathematical Foundation</h3>
             <p>The algorithm constructs quadratic models of the objective function using interpolation points:</p>
             <div class="math-block">
-                m<sub>k</sub>() = a + g<sup>T</sup> + ½<sup>T</sup>G
+                m<sub>k</sub>(x) = a + g<sup>T</sup>x + ½x<sup>T</sup>Gx
             </div>
             <p>where the model is built from function values at carefully chosen interpolation points within a trust region of radius ρ.</p>
         </section>
 
         <section>
             <h3>Algorithm Characteristics</h3>
-            <h>Strengths:</h>
+            <h4>Strengths:</h4>
             <ul>
                 <li>Mathematically rigorous convergence guarantees</li>
                 <li>Efficient for smooth, well-behaved functions</li>
@@ -58,9 +58,9 @@
                 <li>Automatic trust region management</li>
             </ul>
 
-            <h>Limitations:</h>
+            <h4>Limitations:</h4>
             <ul>
-                <li>Scales poorly with dimension (best for n ≤ 5)</li>
+                <li>Scales poorly with dimension (best for n ≤ 50)</li>
                 <li>Sensitive to noise in function evaluations</li>
                 <li>Requires O(n²) interpolation points</li>
                 <li>May struggle with highly multimodal functions</li>
@@ -71,44 +71,44 @@
             <h3>Implementation Details</h3>
             <p>Our HumpDay implementation includes:</p>
             <ul>
-                <li><strong>Python:</strong> <a href="https://github.com/microprediction/humpday/blob/main/humpday/optimizers/prima_algorithms.py#L" target="_blank">Pure Python implementation</a></li>
+                <li><strong>Python:</strong> <a href="https://github.com/microprediction/humpday/blob/main/humpday/optimizers/prima_algorithms.py#L16" target="_blank">Pure Python implementation</a></li>
                 <li><strong>JavaScript:</strong> <a href="../js/optimizers.js" target="_blank">Browser-compatible version</a></li>
-                <li><strong>Validation:</strong> Cross-validated against <a href="https://www.pdfo.net/" target="_blank">PDO reference</a></li>
+                <li><strong>Validation:</strong> Cross-validated against <a href="https://www.pdfo.net/" target="_blank">PDFO reference</a></li>
             </ul>
         </section>
 
         <section>
             <h3>References</h3>
             <div class="references">
-                <p><strong>Primary Paper:</strong> Powell, M.J.D. (22). "UOBYQA: unconstrained optimization by quadratic approimation." Mathematical Programming, 92(3), 555-582. <a href="https://doi.org/.7/s729" target="_blank">[DOI]</a></p>
+                <p><strong>Primary Paper:</strong> Powell, M.J.D. (2002). "UOBYQA: unconstrained optimization by quadratic approximation." Mathematical Programming, 92(3), 555-582. <a href="https://doi.org/10.1007/s101070100290" target="_blank">[DOI]</a></p>
 
-                <p><strong>Reference Implementation:</strong> <a href="https://www.pdfo.net/" target="_blank">PDO - Powell's Derivative-ree Optimization solvers</a></p>
+                <p><strong>Reference Implementation:</strong> <a href="https://www.pdfo.net/" target="_blank">PDFO - Powell's Derivative-Free Optimization solvers</a></p>
 
                 <p><strong>Additional Resources:</strong></p>
                 <ul>
-                    <li><a href="https://ariv.org/abs/232.32" target="_blank">PDO: A Cross-Platform Package for Powell's Derivative-ree Optimization Solvers</a></li>
-                    <li><a href="https://github.com/pdfo/pdfo" target="_blank">PDO GitHub Repository</a></li>
+                    <li><a href="https://arxiv.org/abs/2302.13246" target="_blank">PDFO: A Cross-Platform Package for Powell's Derivative-Free Optimization Solvers</a></li>
+                    <li><a href="https://github.com/pdfo/pdfo" target="_blank">PDFO GitHub Repository</a></li>
                 </ul>
             </div>
         </section>
 
         <section>
-            <h3>Usage Eample</h3>
+            <h3>Usage Example</h3>
             <div class="code-block">
                 <pre><code>from humpday import minimize
 
 # Optimize a simple quadratic function
-def objective():
-    return sum((i - .3)**2 for i in )
+def objective(x):
+    return sum((xi - 0.3)**2 for xi in x)
 
 # Use UOBYQA via HumpDay interface
 result = minimize(objective,
-                 =[., .2],
+                 x0=[0.1, 0.2],
                  method='PRIMA_UOBYQA',
-                 options='mafev': )
+                 options={'maxfev': 100})
 
-print(f"Optimum: result.")
-print(f"Value: result.fun")</code></pre>
+print(f"Optimum: {result.x}")
+print(f"Value: {result.fun}")</code></pre>
             </div>
         </section>
 

@@ -1,164 +1,184 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-    <meta charset="UT-8">
-    <meta name="viewport" content="width=device-width, initial-scale=.">
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' 'unsafe-inline' https://cdnjs.cloudflare.com https://cdn.jsdelivr.net; style-src 'self' 'unsafe-inline';">
     <title>Pattern Search - Implementation Details</title>
     <style>
-        body 
+        body {
             font-family: 'Georgia', 'Times New Roman', serif;
-            margin: ;
-            padding: 2p;
+            margin: 0;
+            padding: 20px;
             background: #f8f9fa;
-            color: #2c3e5;
-        
+            color: #2c3e50;
+        }
 
-        .container 
-            ma-width: p;
-            margin:  auto;
+        .container {
+            max-width: 1000px;
+            margin: 0 auto;
             background: white;
-            border-radius: 5p;
-            bo-shadow:  2p p rgba(,,,.);
+            border-radius: 15px;
+            box-shadow: 0 20px 40px rgba(0,0,0,0.1);
             overflow: hidden;
-        
+        }
 
-        .header 
-            background: #f39c2;
+        .header {
+            background: #f39c12;
             color: white;
-            padding: 3p;
-            tet-align: center;
-        
+            padding: 30px;
+            text-align: center;
+        }
 
-        .header h 
-            margin:   p ;
+        .header h1 {
+            margin: 0 0 10px 0;
             font-size: 2.2em;
-        
+        }
 
-        .header p 
-            margin: ;
-            font-size: .em;
-            opacity: .9;
-        
+        .header p {
+            margin: 0;
+            font-size: 1.1em;
+            opacity: 0.9;
+        }
 
-        .content 
-            padding: p;
-        
+        .content {
+            padding: 40px;
+        }
 
-        .implementation-table 
-            width: %;
+        .implementation-table {
+            width: 100%;
             border-collapse: collapse;
-            margin: 3p ;
-            border-radius: p;
+            margin: 30px 0;
+            border-radius: 10px;
             overflow: hidden;
-            bo-shadow:  p 8p rgba(,,,.);
-        
+            box-shadow: 0 4px 8px rgba(0,0,0,0.1);
+        }
 
-        .implementation-table th 
-            background: #395e;
+        .implementation-table th {
+            background: #34495e;
             color: white;
-            padding: 5p;
-            tet-align: left;
-            font-weight: ;
-        
+            padding: 15px;
+            text-align: left;
+            font-weight: 600;
+        }
 
-        .implementation-table td 
-            padding: 5p;
-            border-bottom: p solid #eee;
+        .implementation-table td {
+            padding: 15px;
+            border-bottom: 1px solid #eee;
             vertical-align: top;
-        
+        }
 
-        .implementation-table tr:hover 
+        .implementation-table tr:hover {
             background: #f8f9fa;
-        
+        }
 
-        .implementation-table .category 
-            font-weight: ;
-            color: #395e;
-            background: #ecff;
-        
+        .implementation-table .category {
+            font-weight: 600;
+            color: #34495e;
+            background: #ecf0f1;
+        }
 
-        .link-button 
+        .link-button {
             display: inline-block;
-            padding: 8p p;
-            background: #398db;
+            padding: 8px 16px;
+            background: #3498db;
             color: white;
-            tet-decoration: none;
-            border-radius: p;
-            font-size: .9em;
-            margin: 2p p;
-            transition: background .2s;
-        
+            text-decoration: none;
+            border-radius: 4px;
+            font-size: 0.9em;
+            margin: 2px 4px;
+            transition: background 0.2s;
+        }
 
-        .link-button:hover 
-            background: #298b9;
-        
+        .link-button:hover {
+            background: #2980b9;
+        }
 
-        .link-button.paper  background: #e7c3c; 
-        .link-button.python  background: #27ae; 
-        .link-button.javascript  background: #f39c2; 
-        .link-button.info  background: #9b59b; 
+        .link-button.paper { background: #e74c3c; }
+        .link-button.python { background: #27ae60; }
+        .link-button.javascript { background: #f39c12; }
+        .link-button.info { background: #9b59b6; }
 
-        .algorithm-description 
+        .algorithm-description {
             background: #fef9e7;
-            border-left: p solid #f39c2;
-            padding: 2p;
-            border-radius: 5p;
-            margin: 2p ;
-        
+            border-left: 4px solid #f39c12;
+            padding: 20px;
+            border-radius: 5px;
+            margin: 20px 0;
+        }
 
-        .back-nav 
-            margin-bottom: 2p;
-        
+        .back-nav {
+            margin-bottom: 20px;
+        }
 
-        .back-nav a 
-            color: #398db;
-            tet-decoration: none;
-            font-size: .em;
-        
+        .back-nav a {
+            color: #3498db;
+            text-decoration: none;
+            font-size: 1.1em;
+        }
 
-        .back-nav a:hover 
-            tet-decoration: underline;
-        
+        .back-nav a:hover {
+            text-decoration: underline;
+        }
 
-        .performance-notes 
+        .performance-notes {
             background: #fff3cd;
-            border: p solid #ffc7;
-            border-radius: 8p;
-            padding: 5p;
-            margin: 2p ;
-        
+            border: 1px solid #ffc107;
+            border-radius: 8px;
+            padding: 15px;
+            margin: 20px 0;
+        }
 
-        .performance-notes h3 
-            margin-top: ;
-            color: #85;
-        
+        .performance-notes h3 {
+            margin-top: 0;
+            color: #856404;
+        }
 
-        .more-section 
-            margin-top: 3p;
-            border-top: 2p solid #ecff;
-            padding-top: 2p;
-        
+        .more-section {
+            margin-top: 30px;
+            border-top: 2px solid #ecf0f1;
+            padding-top: 20px;
+        }
 
-        .more-toggle 
-            background: #398db;
+        .more-toggle {
+            background: #3498db;
             color: white;
             border: none;
-            padding: p 2p;
-            border-radius: p;
+            padding: 10px 20px;
+            border-radius: 4px;
             cursor: pointer;
-            font-size: em;
-        
+            font-size: 1em;
+        }
 
-        .more-toggle:hover 
-            background: #298b9;
-        
+        .more-toggle:hover {
+            background: #2980b9;
+        }
 
-        .more-content 
+        .more-content {
             display: none;
-            margin-top: 2p;
-        
+            margin-top: 20px;
+        }
 
+        .validation-pending {
+            background: #ffeaa7;
+            border: 1px solid #fdcb6e;
+            border-radius: 8px;
+            padding: 15px;
+            margin: 20px 0;
+        }
+
+        .validation-pending h3 {
+            margin-top: 0;
+            color: #d63031;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <h1>Pattern Search (MATLAB/Custom)</h1>
+            <p>Direct Search with Coordinate Patterns</p>
+        </div>
 
         <div class="content">
             <div class="back-nav">
@@ -166,21 +186,21 @@
             </div>
 
             <div class="algorithm-description">
-                <strong>Pattern Search</strong> is a family of derivative-free optimization methods that eplore the search space using a structured pattern of points around the current best solution. These algorithms use a set of polling directions to systematically search for improvements, making them particularly effective for problems with discontinuities or noise where gradient information is unreliable.
+                <strong>Pattern Search</strong> is a family of derivative-free optimization methods that explore the search space using a structured pattern of points around the current best solution. These algorithms use a set of polling directions to systematically search for improvements, making them particularly effective for problems with discontinuities or noise where gradient information is unreliable.
             </div>
             <div class="visualization-section">
                 <h3>Interactive 3D Visualization</h3>
                 <p>See Pattern Search in action on 3D optimization surfaces:</p>
-                <div id="algorithmDemo" style="width: %; height: p; border: p solid #ddd; border-radius: p; margin: 5p ; position: relative; background: #fafafa;">
-                    <div id="loadingMessage" style="position: absolute; top: 5%; left: 5%; transform: translate(-5%, -5%); tet-align: center; color: #; z-inde: ; background: rgba(255,255,255,.9); padding: 2p; border-radius: p;">
+                <div id="algorithmDemo" style="width: 100%; height: 600px; border: 1px solid #ddd; border-radius: 4px; margin: 15px 0; position: relative; background: #fafafa;">
+                    <div id="loadingMessage" style="position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%); text-align: center; color: #666; z-index: 10; background: rgba(255,255,255,0.9); padding: 20px; border-radius: 4px;">
                         <p>Loading 3D visualization...</p>
-                        <p style="font-size: .9em;">Requires WebGL support</p>
+                        <p style="font-size: 0.9em;">Requires WebGL support</p>
                     </div>
                 </div>
-                <div id="visualizationControls" style="background: #f8f9fa; padding: 5p; border: p solid #ddd; border-radius: p; margin-top: p;">
+                <div id="visualizationControls" style="background: #f8f9fa; padding: 15px; border: 1px solid #ddd; border-radius: 4px; margin-top: 10px;">
                     <!-- Controls will be inserted here by the visualizer -->
                 </div>
-                <p style="font-size: .9em; color: #; margin-top: p;">
+                <p style="font-size: 0.9em; color: #666; margin-top: 10px;">
                     <strong>Instructions:</strong> Choose a test function and algorithm, then click Start to watch the step-by-step optimization process.
                 </p>
             </div>
@@ -197,40 +217,40 @@
                 </thead>
                 <tbody>
                     <tr>
-                        <td class="category">Algorithmic amily</td>
+                        <td class="category">Algorithmic Family</td>
                         <td>
                             <strong>Direct Search Methods</strong><br>
                             Generalized Pattern Search (GPS), Mesh Adaptive Direct Search<br>
                             Coordinate search with adaptive step sizes<br>
-                            <em>Developed: 95s-99s (Hooke-Jeeves, Torczon, etc.)</em>
+                            <em>Developed: 1950s-1990s (Hooke-Jeeves, Torczon, etc.)</em>
                         </td>
                         <td>
-                            <a href="https://epubs.siam.org/doi/book/.37/.978972" target="_blank" class="link-button paper">📖 Direct Search Book</a>
+                            <a href="https://epubs.siam.org/doi/book/10.1137/1.9781611971200" target="_blank" class="link-button paper">📖 Direct Search Book</a>
                         </td>
                     </tr>
                     <tr>
                         <td class="category">Reference Implementation</td>
                         <td>
-                            <strong>MATLAB Global Optimization Toolbo</strong><br>
+                            <strong>MATLAB Global Optimization Toolbox</strong><br>
                             patternsearch() function with multiple pattern types<br>
                             Also available in specialized direct search packages<br>
                             <em>Reference: MATLAB/Octave implementations</em>
                         </td>
                         <td>
-                            <a href="https://www.mathworks.com/help/gads/patternsearch.html" target="_blank" class="link-button info"> MATLAB Docs</a>
-                            <a href="https://github.com/PythonOptimizers/pysearch" target="_blank" class="link-button python"> PySearch</a>
+                            <a href="https://www.mathworks.com/help/gads/patternsearch.html" target="_blank" class="link-button info">🔍 MATLAB Docs</a>
+                            <a href="https://github.com/PythonOptimizers/pysearch" target="_blank" class="link-button python">🐍 PySearch</a>
                         </td>
                     </tr>
                     <tr>
-                        <td class="category">HumpDay Python Implementation</td>
+                        <td class="category">Humpday Python Wrapper</td>
                         <td>
                             <strong>Humpday Integration</strong><br>
                             Custom pattern search implementation<br>
                             Coordinate-based polling with adaptive mesh<br>
-                            <em>ile: humpday/optimizers/patternsearch.py</em>
+                            <em>File: humpday/optimizers/patternsearch.py</em>
                         </td>
                         <td>
-                            <a href="https://github.com/microprediction/humpday" target="_blank" class="link-button python"> Custom Implementation</a>
+                            <a href="https://github.com/microprediction/humpday" target="_blank" class="link-button python">🐍 Custom Implementation</a>
                         </td>
                     </tr>
                     <tr>
@@ -238,22 +258,22 @@
                         <td>
                             <strong>Browser Implementation</strong><br>
                             JavaScript pattern search with coordinate polling<br>
-                            Adaptive mesh refinement and pattern epansion<br>
+                            Adaptive mesh refinement and pattern expansion<br>
                             <em>Class: PatternSearch</em>
                         </td>
                         <td>
-                            <a href="https://github.com/microprediction/humpday/blob/main/docs/js/optimizers.js" target="_blank" class="link-button javascript"> JS Port</a>
+                            <a href="https://github.com/microprediction/humpday/blob/main/docs/js/optimizers.js" target="_blank" class="link-button javascript">🌐 JS Port</a>
                         </td>
                     </tr>
                     <tr>
                         <td class="category">Dependencies</td>
                         <td>
-                            <strong>Reference:</strong> MATLAB Global Optimization Toolbo<br>
+                            <strong>Reference:</strong> MATLAB Global Optimization Toolbox<br>
                             <strong>Humpday Python:</strong> numpy (custom implementation)<br>
                             <strong>Humpday JS:</strong> None (standalone port)
                         </td>
                         <td>
-                            <a href="https://www.mathworks.com/products/global-optimization.html" target="_blank" class="link-button info">📦 MATLAB Toolbo</a>
+                            <a href="https://www.mathworks.com/products/global-optimization.html" target="_blank" class="link-button info">📦 MATLAB Toolbox</a>
                         </td>
                     </tr>
                 </tbody>
@@ -263,13 +283,24 @@
                 <h3>🏁 Performance Characteristics</h3>
                 <ul>
                     <li><strong>Best for:</strong> Discontinuous functions, noisy problems, constrained optimization</li>
-                    <li><strong>Dimensions:</strong> Works well up to moderate dimensions (~5)</li>
-                    <li><strong>unction evaluations:</strong> Typically 2n evaluations per iteration</li>
+                    <li><strong>Dimensions:</strong> Works well up to moderate dimensions (~50)</li>
+                    <li><strong>Function evaluations:</strong> Typically 2n evaluations per iteration</li>
                     <li><strong>Convergence:</strong> Reliable local convergence, mesh refinement guarantees</li>
-                    <li><strong>Robustness:</strong> Ecellent for problems where gradients don't eist</li>
+                    <li><strong>Robustness:</strong> Excellent for problems where gradients don't exist</li>
                 </ul>
             </div>
 
+            <div class="validation-pending">
+                <h3>⏳ Validation Status: PENDING</h3>
+                <p><strong>Validation against reference pattern search implementations in progress.</strong></p>
+                <ul>
+                    <li>📋 Test framework: Comparing JavaScript vs MATLAB patternsearch() or custom Python</li>
+                    <li>🎯 Target: Similar convergence behavior and mesh adaptation</li>
+                    <li>📊 Metrics: Final objective values, mesh size evolution, polling efficiency</li>
+                    <li>🔧 Challenge: Multiple pattern search variants - need to specify which reference</li>
+                </ul>
+                <p><em>Full validation results will be displayed here once testing is complete.</em></p>
+            </div>
 
             <div class="more-section">
                 <button class="more-toggle" onclick="toggleMore()">📚 More Resources</button>
@@ -278,12 +309,12 @@
                     <ul>
                         <li><a href="https://en.wikipedia.org/wiki/Pattern_search_(optimization)" target="_blank">Pattern Search Wikipedia</a></li>
                         <li><a href="https://www.mathworks.com/help/gads/patternsearch.html" target="_blank">MATLAB Pattern Search Documentation</a></li>
-                        <li><a href="https://epubs.siam.org/doi/book/.37/.978972" target="_blank">Introduction to Derivative-ree Optimization</a></li>
-                        <li><a href="https://optimization.mccormick.northwestern.edu/inde.php/Pattern_search_methods" target="_blank">Pattern Search Methods Tutorial</a></li>
-                        <li><a href="https://link.springer.com/article/.7/B585997" target="_blank">Hooke-Jeeves Original Paper</a></li>
+                        <li><a href="https://epubs.siam.org/doi/book/10.1137/1.9781611971200" target="_blank">Introduction to Derivative-Free Optimization</a></li>
+                        <li><a href="https://optimization.mccormick.northwestern.edu/index.php/Pattern_search_methods" target="_blank">Pattern Search Methods Tutorial</a></li>
+                        <li><a href="https://link.springer.com/article/10.1007/BF01585997" target="_blank">Hooke-Jeeves Original Paper</a></li>
                     </ul>
 
-                    <h3> Algorithm Components</h3>
+                    <h3>🔬 Algorithm Components</h3>
                     <ul>
                         <li><strong>Mesh:</strong> Discrete set of points where function is evaluated</li>
                         <li><strong>Pattern:</strong> Set of directions defining search pattern</li>
@@ -294,55 +325,55 @@
 
                     <h3>📐 Pattern Types</h3>
                     <ul>
-                        <li><strong>Coordinate Patterns:</strong> ±eᵢ directions (ais-aligned)</li>
-                        <li><strong>Maimal Basis:</strong> 2n directions ensuring positive spanning</li>
-                        <li><strong>Minimal Basis:</strong> n+ directions forming simple</li>
+                        <li><strong>Coordinate Patterns:</strong> ±eᵢ directions (axis-aligned)</li>
+                        <li><strong>Maximal Basis:</strong> 2n directions ensuring positive spanning</li>
+                        <li><strong>Minimal Basis:</strong> n+1 directions forming simplex</li>
                         <li><strong>GPS Patterns:</strong> Generalized pattern search conforming patterns</li>
                         <li><strong>Custom Patterns:</strong> Problem-specific direction sets</li>
                     </ul>
 
                     <h3>⚙️ Pattern Search Variants</h3>
                     <ul>
-                        <li><strong>Hooke-Jeeves:</strong> Eploratory + pattern moves</li>
+                        <li><strong>Hooke-Jeeves:</strong> Exploratory + pattern moves</li>
                         <li><strong>Coordinate Search:</strong> Simple alternating coordinate directions</li>
                         <li><strong>GPS (Generalized Pattern Search):</strong> Theoretical framework</li>
                         <li><strong>MADS (Mesh Adaptive Direct Search):</strong> Dense direction sets</li>
                         <li><strong>GSS (Generating Set Search):</strong> Positive basis guarantee</li>
                     </ul>
 
-                    <h3> Convergence Theory</h3>
+                    <h3>🎯 Convergence Theory</h3>
                     <ul>
                         <li><strong>Clarke Stationarity:</strong> GPS converges to Clarke stationary points</li>
-                        <li><strong>Mesh Size Limit:</strong> lim inf Δₘ =  under standard conditions</li>
+                        <li><strong>Mesh Size Limit:</strong> lim inf Δₘ = 0 under standard conditions</li>
                         <li><strong>Sufficient Decrease:</strong> Armijo-like conditions for step acceptance</li>
                         <li><strong>Positive Spanning:</strong> Pattern directions must positively span ℝⁿ</li>
                     </ul>
 
-                    <h3> Applications</h3>
+                    <h3>🚀 Applications</h3>
                     <ul>
                         <li><strong>Engineering Design:</strong> When objective function has discontinuities</li>
-                        <li><strong>Simulation Optimization:</strong> Noisy, epensive function evaluations</li>
+                        <li><strong>Simulation Optimization:</strong> Noisy, expensive function evaluations</li>
                         <li><strong>Control System Tuning:</strong> Parameter optimization with constraints</li>
-                        <li><strong>inancial Modeling:</strong> Portfolio optimization with discrete constraints</li>
+                        <li><strong>Financial Modeling:</strong> Portfolio optimization with discrete constraints</li>
                         <li><strong>Environmental Modeling:</strong> Parameter estimation in climate models</li>
                     </ul>
 
                     <h3>⚙️ Implementation Details</h3>
                     <ul>
-                        <li><strong>Initial Mesh Size:</strong> Δ₀ typically . or problem-scaled</li>
-                        <li><strong>Mesh Epansion:</strong> Δₖ₊₁ = τΔₖ where τ >  (often τ = 2)</li>
+                        <li><strong>Initial Mesh Size:</strong> Δ₀ typically 1.0 or problem-scaled</li>
+                        <li><strong>Mesh Expansion:</strong> Δₖ₊₁ = τΔₖ where τ > 1 (often τ = 2)</li>
                         <li><strong>Mesh Contraction:</strong> Δₖ₊₁ = Δₖ/τ when no improvement</li>
                         <li><strong>Polling Order:</strong> Opportunistic vs complete polling</li>
-                        <li><strong>Termination:</strong> Δₖ < tolerance or ma evaluations</li>
+                        <li><strong>Termination:</strong> Δₖ < tolerance or max evaluations</li>
                     </ul>
 
-                    <h3> When to Use Pattern Search</h3>
+                    <h3>💡 When to Use Pattern Search</h3>
                     <ul>
                         <li><strong>Discontinuous Objectives:</strong> Traditional methods fail on non-smooth functions</li>
-                        <li><strong>Epensive Evaluations:</strong> Systematic eploration reduces waste</li>
+                        <li><strong>Expensive Evaluations:</strong> Systematic exploration reduces waste</li>
                         <li><strong>Constrained Problems:</strong> Natural handling of bound constraints</li>
-                        <li><strong>Black-Bo unctions:</strong> No gradient or Hessian information available</li>
-                        <li><strong>Integer Variables:</strong> Can be adapted for mied-integer problems</li>
+                        <li><strong>Black-Box Functions:</strong> No gradient or Hessian information available</li>
+                        <li><strong>Integer Variables:</strong> Can be adapted for mixed-integer problems</li>
                     </ul>
                 </div>
             </div>
@@ -350,65 +381,65 @@
     </div>
 
     <script>
-        function toggleMore() 
+        function toggleMore() {
             const content = document.getElementById('moreContent');
             const button = document.querySelector('.more-toggle');
 
-            if (content.style.display === 'none' || content.style.display === '') 
+            if (content.style.display === 'none' || content.style.display === '') {
                 content.style.display = 'block';
-                button.tetContent = '📚 Less Resources';
-             else 
+                button.textContent = '📚 Less Resources';
+            } else {
                 content.style.display = 'none';
-                button.tetContent = '📚 More Resources';
-            
+                button.textContent = '📚 More Resources';
+            }
         // Initialize 3D visualization when page loads
-        document.addEventListener('DOMContentLoaded', function() 
+        document.addEventListener('DOMContentLoaded', function() {
             // Load optimizers first, then visualizer
             const optimizersScript = document.createElement('script');
-            optimizersScript.src = '../js/modules/inde.js';
-            optimizersScript.onload = function() 
+            optimizersScript.src = '../js/modules/index.js';
+            optimizersScript.onload = function() {
                 // Load algorithm visualizer after optimizers are loaded
                 const script = document.createElement('script');
                 script.src = '../js/algorithm-visualizer.js';
-                script.onload = function() 
+                script.onload = function() {
                     // Check for WebGL support
-                    function webglAvailable() 
-                        try 
+                    function webglAvailable() {
+                        try {
                             const canvas = document.createElement('canvas');
-                            return !!(window.WebGLRenderingContet && canvas.getContet('webgl'));
-                         catch (e) 
+                            return !!(window.WebGLRenderingContext && canvas.getContext('webgl'));
+                        } catch (e) {
                             return false;
-                        
-                    
+                        }
+                    }
 
-                    if (webglAvailable()) 
-                        const visualizer = new AlgorithmVisualizer('algorithmDemo', 
-                            onReady: () => 
+                    if (webglAvailable()) {
+                        const visualizer = new AlgorithmVisualizer('algorithmDemo', {
+                            onReady: () => {
                                 // Clear loading message once visualization is ready
                                 const loadingMsg = document.getElementById('loadingMessage');
-                                if (loadingMsg) 
+                                if (loadingMsg) {
                                     loadingMsg.style.display = 'none';
-                                
-                            
-                        );
-                     else 
+                                }
+                            }
+                        });
+                    } else {
                         document.getElementById('loadingMessage').innerHTML =
-                            '<h>WebGL Not Supported</h>' +
+                            '<h4>WebGL Not Supported</h4>' +
                             '<p>Your browser does not support WebGL for 3D visualization.</p>' +
-                            '<p>Try a modern browser like Chrome, irefo, or Safari.</p>';
-                    
-                ;
-                script.onerror = function() 
+                            '<p>Try a modern browser like Chrome, Firefox, or Safari.</p>';
+                    }
+                };
+                script.onerror = function() {
                     document.getElementById('algorithmDemo').innerHTML =
-                        '<div style="position: absolute; top: 5%; left: 5%; transform: translate(-5%, -5%); tet-align: center;">' +
-                        '<h>Visualization Unavailable</h>' +
+                        '<div style="position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%); text-align: center;">' +
+                        '<h4>Visualization Unavailable</h4>' +
                         '<p>Could not load 3D visualization component.</p>' +
                         '</div>';
-                ;
+                };
                 document.head.appendChild(script);
-            ;
+            };
             document.head.appendChild(optimizersScript);
-        );
+        });
     </script>
 </body>
 </html>

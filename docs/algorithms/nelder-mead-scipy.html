@@ -1,21 +1,21 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-    <meta charset="UT-8">
-    <meta name="viewport" content="width=device-width, initial-scale=.">
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Nelder-Mead (SciPy) - HumpDay Optimization</title>
     <link rel="stylesheet" href="../academic.css">
 </head>
 <body>
     <nav class="breadcrumb">
-        <a href="../inde.html">HumpDay</a> >
+        <a href="../index.html">HumpDay</a> >
         <a href="../contest.html">Contest</a> >
         <span>Nelder-Mead</span>
     </nav>
 
     <div class="container">
-        <h>Nelder-Mead (SciPy)</h>
-        <h2>Simple Method for Unconstrained Optimization</h2>
+        <h1>Nelder-Mead (SciPy)</h1>
+        <h2>Simplex Method for Unconstrained Optimization</h2>
 
         <div class="algorithm-meta">
             <div class="meta-grid">
@@ -23,7 +23,7 @@
                     <strong>Authors:</strong> Nelder & Mead
                 </div>
                 <div class="meta-item">
-                    <strong>Year:</strong> 95
+                    <strong>Year:</strong> 1965
                 </div>
                 <div class="meta-item">
                     <strong>Type:</strong> Geometric derivative-free
@@ -36,39 +36,39 @@
 
         <section>
             <h3>Overview</h3>
-            <p>The Nelder-Mead method, also known as the simple method, is one of the most widely used derivative-free optimization algorithms. It maintains a simple (a geometric shape with n+ vertices in n dimensions) and iteratively improves it through reflection, epansion, contraction, and shrinkage operations.</p>
+            <p>The Nelder-Mead method, also known as the simplex method, is one of the most widely used derivative-free optimization algorithms. It maintains a simplex (a geometric shape with n+1 vertices in n dimensions) and iteratively improves it through reflection, expansion, contraction, and shrinkage operations.</p>
         </section>
 
         <section>
             <h3>Algorithm Operations</h3>
-            <p>The method uses four fundamental operations to transform the simple:</p>
+            <p>The method uses four fundamental operations to transform the simplex:</p>
 
             <div class="algorithm-operations">
                 <div class="operation">
                     <strong>Reflection:</strong> Mirror the worst point through the centroid
-                    <div class="math-block"><sub>r</sub> = ̄ + α(̄ - <sub>n+</sub>)</div>
+                    <div class="math-block">x<sub>r</sub> = x̄ + α(x̄ - x<sub>n+1</sub>)</div>
                 </div>
 
                 <div class="operation">
-                    <strong>Epansion:</strong> Etend further if reflection is successful
-                    <div class="math-block"><sub>e</sub> = ̄ + γ(<sub>r</sub> - ̄)</div>
+                    <strong>Expansion:</strong> Extend further if reflection is successful
+                    <div class="math-block">x<sub>e</sub> = x̄ + γ(x<sub>r</sub> - x̄)</div>
                 </div>
 
                 <div class="operation">
                     <strong>Contraction:</strong> Pull back toward centroid if needed
-                    <div class="math-block"><sub>c</sub> = ̄ + β(<sub>worst</sub> - ̄)</div>
+                    <div class="math-block">x<sub>c</sub> = x̄ + β(x<sub>worst</sub> - x̄)</div>
                 </div>
 
                 <div class="operation">
-                    <strong>Shrinkage:</strong> Reduce entire simple toward best point
-                    <div class="math-block"><sub>i</sub> = <sub></sub> + σ(<sub>i</sub> - <sub></sub>)</div>
+                    <strong>Shrinkage:</strong> Reduce entire simplex toward best point
+                    <div class="math-block">x<sub>i</sub> = x<sub>1</sub> + σ(x<sub>i</sub> - x<sub>1</sub>)</div>
                 </div>
             </div>
         </section>
 
         <section>
             <h3>Algorithm Characteristics</h3>
-            <h>Strengths:</h>
+            <h4>Strengths:</h4>
             <ul>
                 <li>Simple to implement and understand</li>
                 <li>Robust across many problem types</li>
@@ -77,11 +77,11 @@
                 <li>Good general-purpose performance</li>
             </ul>
 
-            <h>Limitations:</h>
+            <h4>Limitations:</h4>
             <ul>
                 <li>No convergence guarantees</li>
                 <li>Can be slow near optimum</li>
-                <li>Sensitive to initial simple construction</li>
+                <li>Sensitive to initial simplex construction</li>
                 <li>May struggle with high-dimensional problems</li>
                 <li>Can stagnate on ridges or valleys</li>
             </ul>
@@ -91,47 +91,47 @@
             <h3>Implementation Details</h3>
             <p>Our HumpDay implementation includes:</p>
             <ul>
-                <li><strong>Python:</strong> <a href="https://github.com/microprediction/humpday/blob/main/humpday/optimizers/scipy_algorithms.py#L7" target="_blank">Pure Python implementation</a></li>
+                <li><strong>Python:</strong> <a href="https://github.com/microprediction/humpday/blob/main/humpday/optimizers/scipy_algorithms.py#L17" target="_blank">Pure Python implementation</a></li>
                 <li><strong>JavaScript:</strong> <a href="../js/optimizers.js" target="_blank">Browser-compatible version</a></li>
                 <li><strong>Validation:</strong> Cross-validated against <a href="https://docs.scipy.org/doc/scipy/reference/optimize.minimize-neldermead.html" target="_blank">SciPy reference</a></li>
-                <li><strong>Parameters:</strong> α=., γ=2., β=.5, σ=.5 (standard values)</li>
+                <li><strong>Parameters:</strong> α=1.0, γ=2.0, β=0.5, σ=0.5 (standard values)</li>
             </ul>
         </section>
 
         <section>
             <h3>References</h3>
             <div class="references">
-                <p><strong>Primary Paper:</strong> Nelder, J.A., and Mead, R. (95). "A simple method for function minimization." The Computer Journal, 7(), 38-33. <a href="https://doi.org/.93/comjnl/7..38" target="_blank">[DOI]</a></p>
+                <p><strong>Primary Paper:</strong> Nelder, J.A., and Mead, R. (1965). "A simplex method for function minimization." The Computer Journal, 7(4), 308-313. <a href="https://doi.org/10.1093/comjnl/7.4.308" target="_blank">[DOI]</a></p>
 
                 <p><strong>Reference Implementation:</strong> <a href="https://docs.scipy.org/doc/scipy/reference/optimize.minimize-neldermead.html" target="_blank">SciPy optimize.minimize</a></p>
 
                 <p><strong>Additional Resources:</strong></p>
                 <ul>
                     <li><a href="https://github.com/scipy/scipy" target="_blank">SciPy GitHub Repository</a></li>
-                    <li><a href="https://optimization.mccormick.northwestern.edu/inde.php/Nelder-Mead_method" target="_blank">Northwestern Optimization Course Notes</a></li>
+                    <li><a href="https://optimization.mccormick.northwestern.edu/index.php/Nelder-Mead_method" target="_blank">Northwestern Optimization Course Notes</a></li>
                 </ul>
             </div>
         </section>
 
         <section>
-            <h3>Usage Eample</h3>
+            <h3>Usage Example</h3>
             <div class="code-block">
                 <pre><code>from humpday import minimize
 import numpy as np
 
 # Optimize Rosenbrock function
-def rosenbrock():
-    return sum(.*([:] - [:-]**2)**2 + ( - [:-])**2)
+def rosenbrock(x):
+    return sum(100.0*(x[1:] - x[:-1]**2)**2 + (1 - x[:-1])**2)
 
 # Use Nelder-Mead via HumpDay interface
 result = minimize(rosenbrock,
-                 =np.array([-.2, .]),
+                 x0=np.array([-1.2, 1.0]),
                  method='NelderMead',
-                 options='mafev': 2)
+                 options={'maxfev': 200})
 
-print(f"Optimum: result.")
-print(f"Value: result.fun")
-print(f"Iterations: result.nfev")</code></pre>
+print(f"Optimum: {result.x}")
+print(f"Value: {result.fun}")
+print(f"Iterations: {result.nfev}")</code></pre>
             </div>
         </section>
 

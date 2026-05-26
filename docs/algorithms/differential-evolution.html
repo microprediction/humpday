@@ -1,168 +1,168 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-    <meta charset="UT-8">
-    <meta name="viewport" content="width=device-width, initial-scale=.">
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' 'unsafe-inline' https://cdnjs.cloudflare.com https://cdn.jsdelivr.net; style-src 'self' 'unsafe-inline';">
     <title>Differential Evolution (SciPy) - Implementation Details</title>
     <style>
-        body 
+        body {
             font-family: 'Georgia', 'Times New Roman', serif;
-            margin: ;
-            padding: 2p;
+            margin: 0;
+            padding: 20px;
             background: #f8f9fa;
-            color: #2c3e5;
-        
+            color: #2c3e50;
+        }
 
-        .container 
-            ma-width: p;
-            margin:  auto;
+        .container {
+            max-width: 1000px;
+            margin: 0 auto;
             background: white;
-            border-radius: 5p;
-            bo-shadow:  2p p rgba(,,,.);
+            border-radius: 15px;
+            box-shadow: 0 20px 40px rgba(0,0,0,0.1);
             overflow: hidden;
-        
+        }
 
-        .header 
-            background: #2c3e5;
+        .header {
+            background: #2c3e50;
             color: white;
-            padding: 3p;
-            tet-align: center;
-        
+            padding: 30px;
+            text-align: center;
+        }
 
-        .header h 
-            margin:   p ;
+        .header h1 {
+            margin: 0 0 10px 0;
             font-size: 2.2em;
-        
+        }
 
-        .header p 
-            margin: ;
-            font-size: .em;
-            opacity: .9;
-        
+        .header p {
+            margin: 0;
+            font-size: 1.1em;
+            opacity: 0.9;
+        }
 
-        .content 
-            padding: p;
-        
+        .content {
+            padding: 40px;
+        }
 
-        .implementation-table 
-            width: %;
+        .implementation-table {
+            width: 100%;
             border-collapse: collapse;
-            margin: 3p ;
-            border-radius: p;
+            margin: 30px 0;
+            border-radius: 10px;
             overflow: hidden;
-            bo-shadow:  p 8p rgba(,,,.);
-        
+            box-shadow: 0 4px 8px rgba(0,0,0,0.1);
+        }
 
-        .implementation-table th 
-            background: #395e;
+        .implementation-table th {
+            background: #34495e;
             color: white;
-            padding: 5p;
-            tet-align: left;
-            font-weight: ;
-        
+            padding: 15px;
+            text-align: left;
+            font-weight: 600;
+        }
 
-        .implementation-table td 
-            padding: 5p;
-            border-bottom: p solid #eee;
+        .implementation-table td {
+            padding: 15px;
+            border-bottom: 1px solid #eee;
             vertical-align: top;
-        
+        }
 
-        .implementation-table tr:hover 
+        .implementation-table tr:hover {
             background: #f8f9fa;
-        
+        }
 
-        .implementation-table .category 
-            font-weight: ;
-            color: #395e;
-            background: #ecff;
-        
+        .implementation-table .category {
+            font-weight: 600;
+            color: #34495e;
+            background: #ecf0f1;
+        }
 
-        .link-button 
+        .link-button {
             display: inline-block;
-            padding: 8p p;
-            background: #398db;
+            padding: 8px 16px;
+            background: #3498db;
             color: white;
-            tet-decoration: none;
-            border-radius: p;
-            font-size: .9em;
-            margin: 2p p;
-            transition: background .2s;
-        
+            text-decoration: none;
+            border-radius: 4px;
+            font-size: 0.9em;
+            margin: 2px 4px;
+            transition: background 0.2s;
+        }
 
-        .link-button:hover 
-            background: #298b9;
-        
+        .link-button:hover {
+            background: #2980b9;
+        }
 
-        .link-button.paper  background: #e7c3c; 
-        .link-button.python  background: #27ae; 
-        .link-button.javascript  background: #f39c2; 
+        .link-button.paper { background: #e74c3c; }
+        .link-button.python { background: #27ae60; }
+        .link-button.javascript { background: #f39c12; }
 
-        .algorithm-description 
-            background: #e8ff3;
-            border-left: p solid #27ae;
-            padding: 2p;
-            border-radius: 5p;
-            margin: 2p ;
-        
+        .algorithm-description {
+            background: #e8f6f3;
+            border-left: 4px solid #27ae60;
+            padding: 20px;
+            border-radius: 5px;
+            margin: 20px 0;
+        }
 
-        .back-nav 
-            margin-bottom: 2p;
-        
+        .back-nav {
+            margin-bottom: 20px;
+        }
 
-        .back-nav a 
-            color: #398db;
-            tet-decoration: none;
-            font-size: .em;
-        
+        .back-nav a {
+            color: #3498db;
+            text-decoration: none;
+            font-size: 1.1em;
+        }
 
-        .back-nav a:hover 
-            tet-decoration: underline;
-        
+        .back-nav a:hover {
+            text-decoration: underline;
+        }
 
-        .performance-notes 
+        .performance-notes {
             background: #fff3cd;
-            border: p solid #ffc7;
-            border-radius: 8p;
-            padding: 5p;
-            margin: 2p ;
-        
+            border: 1px solid #ffc107;
+            border-radius: 8px;
+            padding: 15px;
+            margin: 20px 0;
+        }
 
-        .performance-notes h3 
-            margin-top: ;
-            color: #85;
-        
+        .performance-notes h3 {
+            margin-top: 0;
+            color: #856404;
+        }
 
-        .more-section 
-            margin-top: 3p;
-            border-top: 2p solid #ecff;
-            padding-top: 2p;
-        
+        .more-section {
+            margin-top: 30px;
+            border-top: 2px solid #ecf0f1;
+            padding-top: 20px;
+        }
 
-        .more-toggle 
-            background: #398db;
+        .more-toggle {
+            background: #3498db;
             color: white;
             border: none;
-            padding: p 2p;
-            border-radius: p;
+            padding: 10px 20px;
+            border-radius: 4px;
             cursor: pointer;
-            font-size: em;
-        
+            font-size: 1em;
+        }
 
-        .more-toggle:hover 
-            background: #298b9;
-        
+        .more-toggle:hover {
+            background: #2980b9;
+        }
 
-        .more-content 
+        .more-content {
             display: none;
-            margin-top: 2p;
-        
+            margin-top: 20px;
+        }
     </style>
 </head>
 <body>
     <div class="container">
         <div class="header">
-            <h>Differential Evolution (SciPy)</h>
+            <h1>Differential Evolution (SciPy)</h1>
             <p>Population-based Global Optimization</p>
         </div>
 
@@ -172,21 +172,21 @@
             </div>
 
             <div class="algorithm-description">
-                <strong>Differential Evolution</strong> is a population-based evolutionary algorithm that uses vector differences to eplore the search space. It's particularly effective on multimodal and noisy functions, making it one of the most reliable global optimization methods available.
+                <strong>Differential Evolution</strong> is a population-based evolutionary algorithm that uses vector differences to explore the search space. It's particularly effective on multimodal and noisy functions, making it one of the most reliable global optimization methods available.
             </div>
             <div class="visualization-section">
                 <h3>Interactive 3D Visualization</h3>
                 <p>See Differential Evolution in action on 3D optimization surfaces:</p>
-                <div id="algorithmDemo" style="width: %; height: p; border: p solid #ddd; border-radius: p; margin: 5p ; position: relative; background: #fafafa;">
-                    <div id="loadingMessage" style="position: absolute; top: 5%; left: 5%; transform: translate(-5%, -5%); tet-align: center; color: #; z-inde: ; background: rgba(255,255,255,.9); padding: 2p; border-radius: p;">
+                <div id="algorithmDemo" style="width: 100%; height: 600px; border: 1px solid #ddd; border-radius: 4px; margin: 15px 0; position: relative; background: #fafafa;">
+                    <div id="loadingMessage" style="position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%); text-align: center; color: #666; z-index: 10; background: rgba(255,255,255,0.9); padding: 20px; border-radius: 4px;">
                         <p>Loading 3D visualization...</p>
-                        <p style="font-size: .9em;">Requires WebGL support</p>
+                        <p style="font-size: 0.9em;">Requires WebGL support</p>
                     </div>
                 </div>
-                <div id="visualizationControls" style="background: #f8f9fa; padding: 5p; border: p solid #ddd; border-radius: p; margin-top: p;">
+                <div id="visualizationControls" style="background: #f8f9fa; padding: 15px; border: 1px solid #ddd; border-radius: 4px; margin-top: 10px;">
                     <!-- Controls will be inserted here by the visualizer -->
                 </div>
-                <p style="font-size: .9em; color: #; margin-top: p;">
+                <p style="font-size: 0.9em; color: #666; margin-top: 10px;">
                     <strong>Instructions:</strong> Choose a test function and algorithm, then click Start to watch the step-by-step optimization process.
                 </p>
             </div>
@@ -208,10 +208,10 @@
                             <strong>Rainer Storn & Kenneth Price</strong><br>
                             Evolutionary algorithm using vector differences<br>
                             Population-based with mutation, crossover, and selection<br>
-                            <em>Published: 997</em>
+                            <em>Published: 1997</em>
                         </td>
                         <td>
-                            <a href="https://doi.org/.23/A:82282328" target="_blank" class="link-button paper">📄 Paper</a>
+                            <a href="https://doi.org/10.1023/A:1008202821328" target="_blank" class="link-button paper">📄 Paper</a>
                         </td>
                     </tr>
                     <tr>
@@ -220,22 +220,22 @@
                             <strong>Python Implementation</strong><br>
                             Uses SciPy's optimize.differential_evolution<br>
                             Highly optimized with multiple DE variants<br>
-                            <em>ile: humpday/optimizers/scipy_algorithms.py</em>
+                            <em>File: humpday/optimizers/scipy_algorithms.py</em>
                         </td>
                         <td>
-                            <a href="https://github.com/microprediction/humpday/blob/main/humpday/optimizers/scipy_algorithms.py" target="_blank" class="link-button python"> Python Code</a>
+                            <a href="https://github.com/microprediction/humpday/blob/main/humpday/optimizers/scipy_algorithms.py" target="_blank" class="link-button python">🐍 Python Code</a>
                         </td>
                     </tr>
                     <tr>
                         <td class="category">Humpday JavaScript</td>
                         <td>
                             <strong>Browser Implementation</strong><br>
-                            Pure JavaScript DE with classic DE/rand//bin strategy<br>
+                            Pure JavaScript DE with classic DE/rand/1/bin strategy<br>
                             Population management and vector operations<br>
                             <em>Class: DifferentialEvolution</em>
                         </td>
                         <td>
-                            <a href="https://github.com/microprediction/humpday/blob/main/docs/js/modules/evolutionary-algorithms.js" target="_blank" class="link-button javascript"> JavaScript Code</a>
+                            <a href="https://github.com/microprediction/humpday/blob/main/docs/js/modules/evolutionary-algorithms.js" target="_blank" class="link-button javascript">🌐 JavaScript Code</a>
                         </td>
                     </tr>
                     <tr>
@@ -255,10 +255,10 @@
                 <h3>🏁 Performance Characteristics</h3>
                 <ul>
                     <li><strong>Best for:</strong> Global optimization, multimodal and noisy functions</li>
-                    <li><strong>Dimensions:</strong> Scales well from 2D to + dimensions</li>
-                    <li><strong>unction evaluations:</strong> Population-based, typically + evaluations</li>
+                    <li><strong>Dimensions:</strong> Scales well from 2D to 100+ dimensions</li>
+                    <li><strong>Function evaluations:</strong> Population-based, typically 1000+ evaluations</li>
                     <li><strong>Convergence:</strong> Reliable global convergence but can be slow</li>
-                    <li><strong>Robustness:</strong> Ecellent on discontinuous and highly multimodal landscapes</li>
+                    <li><strong>Robustness:</strong> Excellent on discontinuous and highly multimodal landscapes</li>
                 </ul>
             </div>
 
@@ -268,12 +268,12 @@
                     <h3>📚 Educational Resources</h3>
                     <ul>
                         <li><a href="https://en.wikipedia.org/wiki/Differential_evolution" target="_blank">Differential Evolution Wikipedia</a></li>
-                        <li><a href="https://optimization.mccormick.northwestern.edu/inde.php/Differential_evolution" target="_blank">Northwestern Optimization Course</a></li>
-                        <li><a href="https://pablormier.github.io/27/9/5/a-tutorial-on-differential-evolution-with-python/" target="_blank">Python Tutorial</a></li>
+                        <li><a href="https://optimization.mccormick.northwestern.edu/index.php/Differential_evolution" target="_blank">Northwestern Optimization Course</a></li>
+                        <li><a href="https://pablormier.github.io/2017/09/05/a-tutorial-on-differential-evolution-with-python/" target="_blank">Python Tutorial</a></li>
                         <li><a href="http://www.icsi.berkeley.edu/~storn/code.html" target="_blank">Original Author's Code</a></li>
                     </ul>
 
-                    <h> Algorithm Overview</h>
+                    <h4>🧬 Algorithm Overview</h4>
                     <p>Differential Evolution uses a simple yet powerful strategy:</p>
                     <ul>
                         <li><strong>Population:</strong> Maintains multiple candidate solutions</li>
@@ -282,74 +282,74 @@
                         <li><strong>Selection:</strong> Keeps the better of target vs. trial</li>
                     </ul>
 
-                    <p><strong>Classic DE/rand//bin strategy:</strong></p>
-                    <p>Trial = X_a +  × (X_b - X_c)</p>
-                    <p>Where X_a, X_b, X_c are random population members and  is the scaling factor.</p>
+                    <p><strong>Classic DE/rand/1/bin strategy:</strong></p>
+                    <p>Trial = X_a + F × (X_b - X_c)</p>
+                    <p>Where X_a, X_b, X_c are random population members and F is the scaling factor.</p>
                 </div>
             </div>
         </div>
     </div>
 
     <script>
-        function toggleMore() 
+        function toggleMore() {
             const content = document.getElementById('moreContent');
             const button = document.querySelector('.more-toggle');
 
-            if (content.style.display === 'none' || content.style.display === '') 
+            if (content.style.display === 'none' || content.style.display === '') {
                 content.style.display = 'block';
-                button.tetContent = '📚 Less Resources';
-             else 
+                button.textContent = '📚 Less Resources';
+            } else {
                 content.style.display = 'none';
-                button.tetContent = '📚 More Resources';
-            
+                button.textContent = '📚 More Resources';
+            }
         // Initialize 3D visualization when page loads
-        document.addEventListener('DOMContentLoaded', function() 
+        document.addEventListener('DOMContentLoaded', function() {
             // Load optimizers first, then visualizer
             const optimizersScript = document.createElement('script');
-            optimizersScript.src = '../js/modules/inde.js';
-            optimizersScript.onload = function() 
+            optimizersScript.src = '../js/modules/index.js';
+            optimizersScript.onload = function() {
                 // Load algorithm visualizer after optimizers are loaded
                 const script = document.createElement('script');
                 script.src = '../js/algorithm-visualizer.js';
-                script.onload = function() 
+                script.onload = function() {
                     // Check for WebGL support
-                    function webglAvailable() 
-                        try 
+                    function webglAvailable() {
+                        try {
                             const canvas = document.createElement('canvas');
-                            return !!(window.WebGLRenderingContet && canvas.getContet('webgl'));
-                         catch (e) 
+                            return !!(window.WebGLRenderingContext && canvas.getContext('webgl'));
+                        } catch (e) {
                             return false;
-                        
-                    
+                        }
+                    }
 
-                    if (webglAvailable()) 
-                        const visualizer = new AlgorithmVisualizer('algorithmDemo', 
-                            onReady: () => 
+                    if (webglAvailable()) {
+                        const visualizer = new AlgorithmVisualizer('algorithmDemo', {
+                            onReady: () => {
                                 // Clear loading message once visualization is ready
                                 const loadingMsg = document.getElementById('loadingMessage');
-                                if (loadingMsg) 
+                                if (loadingMsg) {
                                     loadingMsg.style.display = 'none';
-                                
-                            
-                        );
-                     else 
+                                }
+                            }
+                        });
+                    } else {
                         document.getElementById('loadingMessage').innerHTML =
-                            '<h>WebGL Not Supported</h>' +
+                            '<h4>WebGL Not Supported</h4>' +
                             '<p>Your browser does not support WebGL for 3D visualization.</p>' +
-                            '<p>Try a modern browser like Chrome, irefo, or Safari.</p>';
-                    
-                ;
-                script.onerror = function() 
+                            '<p>Try a modern browser like Chrome, Firefox, or Safari.</p>';
+                    }
+                };
+                script.onerror = function() {
                     document.getElementById('algorithmDemo').innerHTML =
-                        '<div style="position: absolute; top: 5%; left: 5%; transform: translate(-5%, -5%); tet-align: center;">' +
-                        '<h>Visualization Unavailable</h>' +
+                        '<div style="position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%); text-align: center;">' +
+                        '<h4>Visualization Unavailable</h4>' +
                         '<p>Could not load 3D visualization component.</p>' +
                         '</div>';
-                ;
+                };
                 document.head.appendChild(script);
-            ;
+            };
             document.head.appendChild(optimizersScript);
-        );
+        });
     </script>
 </body>
 </html>
