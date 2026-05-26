@@ -119,7 +119,9 @@ def solve(A, b: Sequence) -> _Vec:
     if any(len(row) != n for row in A):
         raise ValueError("solve: A must be square")
     if len(b) != n:
-        raise ValueError(f"solve: dimension mismatch, A is {n}x{n} but b has length {len(b)}")
+        raise ValueError(
+            f"solve: dimension mismatch, A is {n}x{n} but b has length {len(b)}"
+        )
 
     # Working copy. Use list of lists; flatten for cache-friendly traversal
     # is overkill at the sizes we target.
@@ -258,7 +260,9 @@ def _jacobi_rotate(A, V, p: int, q: int) -> None:
         V[i][q] = s * v_ip + c * v_iq
 
 
-def eigh(A, tol: float = 1e-12, max_sweeps: int = 100) -> Tuple[_Vec, List[List[float]]]:
+def eigh(
+    A, tol: float = 1e-12, max_sweeps: int = 100
+) -> Tuple[_Vec, List[List[float]]]:
     """Symmetric eigendecomposition of `A` via cyclic Jacobi rotations.
 
     Returns `(eigenvalues, eigenvectors)` with eigenvalues sorted ascending,
