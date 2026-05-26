@@ -198,18 +198,6 @@
             display: none;
             margin-top: 20px;
         }
-.gradient-note {
-            background: #fff5f5;
-            border: 1px solid #fed7d7;
-            border-radius: 8px;
-            padding: 15px;
-            margin: 20px 0;
-        }
-
-        .gradient-note h3 {
-            margin-top: 0;
-            color: #c53030;
-        }
     </style>
     <!-- Three.js for 3D visualization -->
     <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
@@ -235,8 +223,8 @@
     </nav>
     <div class="container">
         <div class="header">
-            <h1>L-BFGS-B (SciPy)</h1>
-            <p>Limited-memory BFGS with Box Constraints</p>
+            <h1>Finite-Difference Quasi-Newton</h1>
+            <p>(HumpDay's <code>LBFGSB</code> class — a derivative-free baseline)</p>
         </div>
 
         <div class="content">
@@ -245,18 +233,7 @@
             </div>
 
             <div class="algorithm-description">
-                <strong>L-BFGS-B</strong> is a limited-memory quasi-Newton method for bound-constrained optimization. Developed by Byrd, Lu, Nocedal, and Zhu, it extends the popular L-BFGS algorithm to handle simple bounds on variables. The algorithm is widely used for large-scale optimization problems where gradient information is available or can be approximated.
-            </div>
-
-            <div class="gradient-note">
-                <h3>️ Gradient-Based Algorithm Notice</h3>
-                <p><strong>L-BFGS-B requires gradient information:</strong></p>
-                <ul>
-                    <li><strong>Analytical Gradients:</strong> Best performance with exact gradients</li>
-                    <li><strong>Finite Differences:</strong> Can approximate gradients automatically</li>
-                    <li><strong>Optimization Context:</strong> May not be suitable for black-box problems without gradients</li>
-                    <li><strong>Humpday Usage:</strong> Likely uses finite difference approximation in [0,1]ⁿ hypercube</li>
-                </ul>
+                HumpDay is a <strong>derivative-free</strong> library: every algorithm sees only <code>f(x)</code>, never an analytical gradient. This one estimates a descent direction by central finite differences from function calls, then moves along it with an adaptive step size and momentum. It is named <code>LBFGSB</code> in the codebase as a nod to the limited-memory BFGS family it sits closest to in spirit, but it is <em>not</em> a faithful Byrd–Lu–Nocedal–Zhu L-BFGS-B implementation — that algorithm needs true gradients, which HumpDay does not have. Think of this as a finite-difference gradient-descent baseline.
             </div>
             <div class="visualization-section">
                 <h3>Interactive 3D Visualization</h3>
@@ -433,6 +410,8 @@
                 content.style.display = 'none';
                 button.textContent = 'More Resources';
             }
+        }
+
         // Initialize 3D visualization when page loads
         document.addEventListener('DOMContentLoaded', function() {
             // Load optimizers first, then visualizer
