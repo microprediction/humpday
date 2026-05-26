@@ -79,9 +79,22 @@ def random_scalar():
     return float(_np.random.random())
 
 
+def random_int(low, high=None):
+    """Random integer in `[low, high)` (numpy.random.randint semantics).
+    If `high` is None, the range is `[0, low)`."""
+    return int(_np.random.randint(low, high))
+
+
+def random_choice(seq, k=None, replace=True):
+    """Sample `k` items from `seq` (or `range(seq)` if `seq` is an int).
+    Matches numpy.random.choice: `k=None` returns a single item; otherwise
+    returns a 1-D ndarray of `k` samples."""
+    return _np.random.choice(seq, size=k, replace=replace)
+
+
 def seed(s):
     """Seed the global RNG used by `random_uniform` / `random_normal` /
-    `random_scalar`."""
+    `random_scalar` / `random_int` / `random_choice`."""
     _np.random.seed(s)
 
 
@@ -114,5 +127,7 @@ __all__ = [
     "random_uniform",
     "random_normal",
     "random_scalar",
+    "random_int",
+    "random_choice",
     "seed",
 ]

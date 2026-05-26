@@ -38,6 +38,10 @@ PORTED = [
     ("evolutionary_algorithms", "HarmonySearch"),
     ("evolutionary_algorithms", "TabuSearch"),
     ("evolutionary_algorithms", "FireflyAlgorithm"),
+    ("evolutionary_algorithms", "ParticleSwarm"),
+    ("evolutionary_algorithms", "DifferentialEvolution"),
+    ("evolutionary_algorithms", "GeneticAlgorithm"),
+    ("evolutionary_algorithms", "EvolutionStrategy"),
     ("search_algorithms", "AdaptiveRandomSearch"),
     ("search_algorithms", "CoordinateDescent"),
     ("search_algorithms", "PatternSearch"),
@@ -84,6 +88,8 @@ def test_pure_backend_works_for_ported_algorithms(tmp_path):
         from humpday.optimizers.evolutionary_algorithms import (
             RandomSearch, HillClimbing, SimulatedAnnealing, HarmonySearch,
             TabuSearch, FireflyAlgorithm,
+            ParticleSwarm, DifferentialEvolution, GeneticAlgorithm,
+            EvolutionStrategy,
         )
         from humpday.optimizers.search_algorithms import (
             AdaptiveRandomSearch, CoordinateDescent, PatternSearch,
@@ -96,6 +102,8 @@ def test_pure_backend_works_for_ported_algorithms(tmp_path):
         ALGORITHMS = [
             RandomSearch, HillClimbing, SimulatedAnnealing, HarmonySearch,
             TabuSearch, FireflyAlgorithm,
+            ParticleSwarm, DifferentialEvolution, GeneticAlgorithm,
+            EvolutionStrategy,
             AdaptiveRandomSearch, CoordinateDescent, PatternSearch,
         ]
         for cls in ALGORITHMS:
