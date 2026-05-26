@@ -7,30 +7,30 @@ Legend: ✅ done · 🟡 partial / in-progress · ❌ not done · ❓ unknown / 
 
 ## Status matrix
 
-| Algorithm | 3rd party | JS | no-numpy | demo | contests | int links | ext links | logic | perf |
-|---|---|---|---|---|---|---|---|---|---|
-| PRIMA_UOBYQA | ✅ | ❓ | ✅ | 🟡 | ✅ | ❓ | ❓ | ✅ | ❓ |
-| PRIMA_NEWUOA | ✅ | ❓ | ✅ | 🟡 | ✅ | ❓ | ❓ | ✅ | ❓ |
-| PRIMA_BOBYQA | ✅ | ❓ | ✅ | 🟡 | ✅ | ❓ | ❓ | ✅ | ❓ |
-| NelderMead | ✅ | ❓ | ✅ | 🟡 | ✅ | ❓ | ❓ | ✅ | ❓ |
-| Powell | ✅ | ❓ | ✅ | 🟡 | ✅ | ❓ | ❓ | ✅ | ❓ |
-| LBFGSB | ✅ | ❓ | ✅ | 🟡 | ✅ | ❓ | ❓ | 🟡 | ❓ |
-| DifferentialEvolution | ✅ | ❓ | ✅ | ✅ | ✅ | ❓ | ❓ | ✅ | ❓ |
-| ParticleSwarm | ✅ | ❓ | ✅ | ✅ | ✅ | ❓ | ❓ | ✅ | ❓ |
-| SimulatedAnnealing | ✅ | ❓ | ✅ | ✅ | ✅ | ❓ | ❓ | ✅ | ❓ |
-| GeneticAlgorithm | ✅ | ❓ | ✅ | ✅ | ✅ | ❓ | ❓ | ✅ | ❓ |
-| RandomSearch | ✅ | ❓ | ✅ | ✅ | ✅ | ❓ | ❓ | ✅ | ❓ |
-| BayesianOpt | ✅ | ❓ | ✅ | ✅ | ✅ | ❓ | ❓ | 🟡 | ❓ |
-| CMAEvolutionStrategy | ✅ | ❓ | ✅ | ✅ | ✅ | ❓ | ❓ | ✅ | ❓ |
-| TabuSearch | ✅ | ❓ | ✅ | ✅ | ✅ | ❓ | ❓ | ✅ | ❓ |
-| FireflyAlgorithm | ✅ | ❓ | ✅ | ✅ | ✅ | ❓ | ❓ | ✅ | ❓ |
-| AntColonyOpt | ✅ | ❓ | ✅ | ✅ | ✅ | ❓ | ❓ | ✅ | ❓ |
-| EvolutionStrategy | ✅ | ❓ | ✅ | ✅ | ✅ | ❓ | ❓ | ✅ | ❓ |
-| HillClimbing | ✅ | ❓ | ✅ | ✅ | ✅ | ❓ | ❓ | ✅ | ❓ |
-| HarmonySearch | ✅ | ❓ | ✅ | ✅ | ✅ | ❓ | ❓ | ✅ | ❓ |
-| AdaptiveRandomSearch | ✅ | ❓ | ✅ | ✅ | ✅ | ❓ | ❓ | ✅ | ❓ |
-| CoordinateDescent | ✅ | ❓ | ✅ | ✅ | ✅ | ❓ | ❓ | ✅ | ❓ |
-| PatternSearch | ✅ | ❓ | ✅ | ✅ | ✅ | ❓ | ❓ | ✅ | ❓ |
+| Algorithm | 3rd party | JS | no-numpy | demo | academic | contests | int links | ext links | logic | perf |
+|---|---|---|---|---|---|---|---|---|---|---|
+| PRIMA_UOBYQA | ✅ | ❓ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ❓ |
+| PRIMA_NEWUOA | ✅ | ❓ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ❓ |
+| PRIMA_BOBYQA | ✅ | ❓ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ❓ |
+| NelderMead | ✅ | ❓ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ❓ |
+| Powell | ✅ | ❓ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ❓ |
+| LBFGSB | ✅ | ❓ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | 🟡 | ❓ |
+| DifferentialEvolution | ✅ | ❓ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ❓ |
+| ParticleSwarm | ✅ | ❓ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ❓ |
+| SimulatedAnnealing | ✅ | ❓ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ❓ |
+| GeneticAlgorithm | ✅ | ❓ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ❓ |
+| RandomSearch | ✅ | ❓ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ❓ |
+| BayesianOpt | ✅ | ❓ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | 🟡 | ❓ |
+| CMAEvolutionStrategy | ✅ | ❓ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ❓ |
+| TabuSearch | ✅ | ❓ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ❓ |
+| FireflyAlgorithm | ✅ | ❓ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ❓ |
+| AntColonyOpt | ✅ | ❓ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ❓ |
+| EvolutionStrategy | ✅ | ❓ | ✅ | 🟡 | ✅ | ✅ | ✅ | ✅ | ✅ | ❓ |
+| HillClimbing | ✅ | ❓ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ❓ |
+| HarmonySearch | ✅ | ❓ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ❓ |
+| AdaptiveRandomSearch | ✅ | ❓ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ❓ |
+| CoordinateDescent | ✅ | ❓ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ❓ |
+| PatternSearch | ✅ | ❓ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ❓ |
 
 ## Column meanings
 
@@ -39,7 +39,8 @@ Legend: ✅ done · 🟡 partial / in-progress · ❌ not done · ❓ unknown / 
 | **3rd party** | Algorithm has been validated against a reference implementation (SciPy / PRIMA / etc.). | `tests/test_implementation_validation.py`, `tests/test_complete_validation.py`, PR #43 fidelity-audit notes |
 | **JS** | Python output cross-validated against the JavaScript port at the same seed / inputs. | `tests/test_python_js_validation.py`, `docs/js/modules/*.js` |
 | **no-numpy** | Algorithm works under `HUMPDAY_FORCE_PURE_ARRAY=1` (the shim's pure-Python backend). | `tests/test_ported_algorithms.py::PORTED` |
-| **demo** | Algorithm appears correctly in `docs/algorithm-visualization-demo.html` and the visualizer's algorithm selector. The "demo" status reflects whether the algorithm is listed AND whether the docs/index.html table shows the proper Python source link (not the wrong "Not in Python core" label). | `docs/algorithm-visualization-demo.html`, `docs/js/algorithm-visualizer.js`, `docs/index.html` |
+| **demo** | The page's "Interactive 3D Visualization" panel actually loads — Three.js + visualizer scripts wire up, `onReady` fires, the loading overlay clears. Pages that don't include a visualization panel get 🟡. | `docs/algorithms/<algorithm>.html`, `docs/js/algorithm-visualizer.js` |
+| **academic** | Page uses the canonical academic-styled template (Georgia/Times serif, container card, implementation table, performance-notes box, expandable resources). Visual sanity: the `<style>` block parses (no rot), brand colors are intentional, no broken/half-stripped text. | `docs/algorithms/<algorithm>.html` |
 | **contests** | Algorithm is registered in the contest framework and runnable from the live contest page. | `docs/contest.html`, `humpday/optimizers/adaptive_optimizer.py` |
 | **int links** | Every internal anchor / file link on the algorithm's docs page resolves. | `docs/algorithms/<algorithm>.html`, `docs/index.html` |
 | **ext links** | Every external paper / repo link still returns 200. | algorithm docs pages, `humpday/optimizers/*.py` docstrings |
@@ -50,7 +51,8 @@ Legend: ✅ done · 🟡 partial / in-progress · ❌ not done · ❓ unknown / 
 
 - **PRIMA trio · no-numpy** — three algorithms remain numpy-dependent; need `svd` added to the shim first. See "PRIMA trio port" below.
 - **All algorithms · JS** — the JavaScript port exists at `docs/js/modules/*.js`, but I am unaware of an automated Python↔JS parity sweep that runs in CI. `tests/test_python_js_validation.py` exists; most of its cases are skipped (10 skips in the test inventory). Mark every cell as ❓ until that gap is verified.
-- **All algorithms · demo** — `docs/index.html` Algorithm Categories section was fixed in PR #49 to list all 22 algorithms, and the 9 wrong `<em>Not in Python core</em>` rows were replaced with proper Python source links in PR #57. The 🟡 marks on the trust-region / classic-numerical rows reflect that the live visualizer demo at <https://humpday.microprediction.org/algorithm-visualization-demo.html> has not been individually verified against each algorithm; the docs index is good.
+- **All algorithms · demo** — `docs/index.html` Algorithm Categories section was fixed in PR #49 to list all 22 algorithms, and the 9 wrong `<em>Not in Python core</em>` rows were replaced with proper Python source links in PR #57. The visualizer panel on each `docs/algorithms/<algo>.html` was broken in PR #60 and earlier — the page's script depends on `THREE.Scene`/`OrbitControls` but never loaded three.min.js. PR #61 injects the missing `<script src="https://cdnjs.cloudflare.com/.../three.min.js">` + OrbitControls into every page that uses the visualizer; only `harmony-search.html` had this previously. **EvolutionStrategy** is 🟡 because the page (added in PR #61) currently has no embedded 3D demo panel — the algorithm class exists in the visualizer's selector but the page template was minimal.
+- **All algorithms · academic** — every algorithm page restored in PR #61 uses the canonical academic template established by `b9b91ce` and `c05fd86`. Pages built on this template were briefly destroyed by `fc6a046`'s regex rot (CSS `{}` braces stripped, `padding: 20px` → `padding: 2p`, etc.) and restored in PR #61 commit `475342a`.
 - **LBFGSB · logic** — 🟡 because the class is named L-BFGS-B but is structurally finite-difference gradient + momentum (no actual L-BFGS quasi-Newton). Naming is misleading; behaviour is reasonable for a derivative-free baseline. Either rename the class or genuinely implement L-BFGS quasi-Newton updates.
 - **BayesianOpt · logic** — 🟡 because the GP kernel had broadcasting tricks (numpy path) and a separate pure-Python path with explicit loops, gated on `_A.BACKEND`. Both paths verified against the sphere, but no rigorous validation against `scikit-optimize` or `BoTorch`.
 - **All algorithms · int links / ext links / perf** — ❓ across the board pending a sweep.
