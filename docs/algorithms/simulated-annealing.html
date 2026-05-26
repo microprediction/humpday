@@ -6,6 +6,46 @@
     <meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' 'unsafe-inline' https://cdnjs.cloudflare.com https://cdn.jsdelivr.net; style-src 'self' 'unsafe-inline';">
     <title>Simulated Annealing - Implementation Details</title>
     <style>
+        .site-nav {
+            position: sticky;
+            top: 0;
+            z-index: 1000;
+            background: #34495e;
+            color: white;
+            padding: 12px 24px;
+            font-family: 'Times New Roman', Times, serif;
+            box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+        }
+        .site-nav-inner {
+            max-width: 1100px;
+            margin: 0 auto;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            gap: 16px;
+            flex-wrap: wrap;
+        }
+        .site-nav-brand {
+            color: white;
+            text-decoration: none;
+            font-weight: 700;
+            font-size: 1.25em;
+            letter-spacing: 0.02em;
+        }
+        .site-nav-links {
+            display: flex;
+            gap: 24px;
+        }
+        .site-nav-links a {
+            color: #ecf0f1;
+            text-decoration: none;
+            font-size: 1em;
+        }
+        .site-nav-links a:hover {
+            color: white;
+            text-decoration: underline;
+        }
+
         body {
             font-family: 'Georgia', 'Times New Roman', serif;
             margin: 0;
@@ -170,6 +210,17 @@
 
 </head>
 <body>
+    <nav class="site-nav" data-site-nav="v1">
+        <div class="site-nav-inner">
+            <a href="../index.html" class="site-nav-brand">HumpDay</a>
+            <div class="site-nav-links">
+                <a href="../index.html">Home</a>
+                <a href="../contest.html">Contest</a>
+                <a href="../algorithms.html">Algorithms</a>
+                <a href="https://github.com/microprediction/humpday" target="_blank" rel="noopener">GitHub</a>
+            </div>
+        </div>
+    </nav>
     <div class="container">
         <div class="header">
             <h1>Simulated Annealing (SciPy)</h1>
