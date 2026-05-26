@@ -380,29 +380,47 @@ print(f"Solution: {result.x}")  # [2.0, 3.0]</code></pre>
             <p>Model-based algorithms using quadratic approximations:</p>
             <ul>
                 <li><strong>PRIMA UOBYQA:</strong> Unconstrained optimization by quadratic approximation</li>
-                <li><strong>PRIMA NEWUOA:</strong> Powell's method without derivatives</li>
-                <li><strong>PRIMA BOBYQA:</strong> Bound constrained optimization</li>
+                <li><strong>PRIMA NEWUOA:</strong> Derivative-free trust-region method (improved UOBYQA)</li>
+                <li><strong>PRIMA BOBYQA:</strong> Bound-constrained derivative-free optimization</li>
+            </ul>
+
+            <h3>Classic Numerical Methods</h3>
+            <p>Workhorse non-derivative-free methods, ported to pure Python:</p>
+            <ul>
                 <li><strong>Nelder-Mead:</strong> Simplex-based direct search</li>
                 <li><strong>Powell:</strong> Conjugate direction method</li>
+                <li><strong>LBFGSB:</strong> Limited-memory quasi-Newton with box bounds</li>
             </ul>
 
-            <h3>Evolutionary Algorithms</h3>
-            <p>Population-based stochastic optimization methods:</p>
+            <h3>Evolutionary &amp; Swarm</h3>
+            <p>Population-based stochastic methods:</p>
             <ul>
-                <li><strong>Differential Evolution:</strong> Vector-based evolutionary strategy</li>
-                <li><strong>Particle Swarm:</strong> Swarm intelligence optimization</li>
+                <li><strong>Differential Evolution:</strong> Vector-difference mutation with crossover</li>
+                <li><strong>Particle Swarm:</strong> Swarm intelligence with velocity updates</li>
                 <li><strong>CMA Evolution Strategy:</strong> Covariance matrix adaptation</li>
+                <li><strong>Evolution Strategy:</strong> (μ/λ) population search with self-adaptation</li>
                 <li><strong>Genetic Algorithm:</strong> Selection, crossover, and mutation operators</li>
+                <li><strong>Firefly Algorithm:</strong> Bioluminescence-attraction swarm method</li>
+                <li><strong>Ant Colony Optimization:</strong> Pheromone-based pathfinding</li>
             </ul>
 
-            <h3>Metaheuristic Methods</h3>
-            <p>Nature-inspired and local search algorithms:</p>
+            <h3>Metaheuristics</h3>
+            <p>Acceptance-rule and memory-based search:</p>
             <ul>
                 <li><strong>Simulated Annealing:</strong> Probabilistic acceptance with cooling schedule</li>
                 <li><strong>Tabu Search:</strong> Memory-based local search with prohibition</li>
-                <li><strong>Harmony Search:</strong> Music-inspired optimization</li>
-                <li><strong>Firefly Algorithm:</strong> Bioluminescence-based swarm method</li>
-                <li><strong>Ant Colony:</strong> Pheromone-based pathfinding optimization</li>
+                <li><strong>Harmony Search:</strong> Music-inspired pitch-adjustment optimization</li>
+                <li><strong>Bayesian Optimization:</strong> Gaussian-process surrogate with expected improvement</li>
+            </ul>
+
+            <h3>Local &amp; Pattern Search</h3>
+            <p>Lightweight baselines and direct-search workhorses:</p>
+            <ul>
+                <li><strong>Hill Climbing:</strong> Greedy steepest-ascent local search</li>
+                <li><strong>Random Search:</strong> Uniform i.i.d. sampling baseline</li>
+                <li><strong>Adaptive Random Search:</strong> (1+1)-ES with adaptive step size</li>
+                <li><strong>Coordinate Descent:</strong> Axis-aligned line search</li>
+                <li><strong>Pattern Search:</strong> Mesh-based direct search without derivatives</li>
             </ul>
         </section>
     </div>
