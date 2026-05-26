@@ -74,8 +74,14 @@ def random_normal(n):
     return _np.random.randn(n)
 
 
+def random_scalar():
+    """A single uniform [0, 1) sample. Shares RNG state with `random_uniform`."""
+    return float(_np.random.random())
+
+
 def seed(s):
-    """Seed the global RNG used by `random_uniform` / `random_normal`."""
+    """Seed the global RNG used by `random_uniform` / `random_normal` /
+    `random_scalar`."""
     _np.random.seed(s)
 
 
@@ -107,5 +113,6 @@ __all__ = [
     # Random
     "random_uniform",
     "random_normal",
+    "random_scalar",
     "seed",
 ]

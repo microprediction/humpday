@@ -58,6 +58,13 @@ class _Vec(list):
             return _Vec(result)
         return result
 
+    def copy(self):
+        """Return an independent `_Vec` with the same elements. Overriding
+        `list.copy` (which returns a plain `list`) keeps the type stable
+        across `current = vec.copy()` round-trips, so arithmetic operators
+        survive."""
+        return _Vec(self)
+
     # ---- operator helpers ----
 
     def _binop(self, other, op):
@@ -278,6 +285,11 @@ def random_normal(n: int) -> _Vec:
     return _Vec(_rng.gauss(0.0, 1.0) for _ in range(int(n)))
 
 
+def random_scalar() -> float:
+    """A single uniform [0, 1) sample. Shares RNG state with `random_uniform`."""
+    return _rng.random()
+
+
 def seed(s):
     _rng.seed(s)
 
@@ -310,5 +322,6 @@ __all__ = [
     # Random
     "random_uniform",
     "random_normal",
+    "random_scalar",
     "seed",
 ]
