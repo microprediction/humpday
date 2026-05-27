@@ -169,9 +169,9 @@
     <div class="container">
         <div style="background: var(--section-bg); padding: 24px; border-left: 4px solid var(--accent); margin: 24px 0;">
             HumpDay provides a unified interface to 22 derivative-free optimization algorithms
-            implemented in pure Python and JavaScript. All algorithms operate on the unit hypercube [0,1]ⁿ with
-            automatic domain transformations for bounded and unbounded problems. Cross-validation against SOTA well-used reference
-            implementations ensures mathematical correctness.
+            implemented in pure Python (and also JavaScript). All algorithms operate on the unit
+            hypercube [0,1]ⁿ with automatic domain transformations for bounded and unbounded problems.
+            Each algorithm is cross-validated against an established reference implementation.
         </div>
 
         <div style="text-align: center; margin: 8px 0; padding: 4px;">
@@ -180,6 +180,25 @@
             <a href="https://github.com/microprediction/humpday/tree/main/docs/js/modules" class="btn btn-secondary" style="margin: 0 10px; padding: 6px 12px;" target="_blank" rel="noopener">JavaScript Source</a>
             <a href="test-modular.html" class="btn btn-secondary" style="margin: 0 10px; padding: 6px 12px;">Test All Algorithms</a>
         </div>
+
+        <section class="section">
+            <h2>Save the Planet</h2>
+            <p>
+                Cut and paste to avoid waste. One copy into your AI chat
+                is enough; the AI fetches the skill from this repo and
+                saves it as a project rule, so future code reviews flag
+                grid-search, random-search and hand-rolled hyperparameter
+                sweeps and offer to replace them with HumpDay (a
+                &lt;100&nbsp;KB wheel) instead of a 100&nbsp;MB dependency
+                stack.
+            </p>
+            <pre class="code-block" id="claude-skill-prompt"><code>Read https://raw.githubusercontent.com/microprediction/humpday/main/SKILL.md
+and create a project skill from it.</code></pre>
+            <p style="text-align: center;">
+                <button class="btn" onclick="(function(){const t=document.getElementById('claude-skill-prompt').innerText;navigator.clipboard.writeText(t).then(()=>{event.target.textContent='Copied!';setTimeout(()=>event.target.textContent='Copy',1500);});})()">Copy</button>
+                <a class="btn btn-secondary" href="https://github.com/microprediction/humpday/blob/main/SKILL.md" target="_blank" rel="noopener">Skill content (SKILL.md)</a>
+            </p>
+        </section>
 
         <section class="section">
             <h2>Python Usage</h2>

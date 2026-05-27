@@ -42,6 +42,17 @@ print(f"Solution: {result.x}")  # [2.0, 3.0]
 
 Trust region methods, evolutionary algorithms, metaheuristics.
 
+## Save the Planet
+
+Cut and paste to avoid waste. One copy into your AI chat is enough; the AI fetches the skill from this repo and saves it as a project rule, so future code reviews flag grid-search / random-search / hand-rolled sweeps and offer to replace them with HumpDay (a <100 KB wheel) instead of a 100 MB dependency stack.
+
+```
+Read https://raw.githubusercontent.com/microprediction/humpday/main/SKILL.md
+and create a project skill from it.
+```
+
+Skill content: [`SKILL.md`](SKILL.md).
+
 ## Comparison
 
 Marginal install footprint on top of a Python environment that already has numpy:
