@@ -120,8 +120,7 @@ def test_test_modular_shows_22_of_22(http_server, browser):
 
     assert not errors, "Page-level JS errors:\n  " + "\n  ".join(errors)
     assert "22/22 algorithms working" in body, (
-        f"test-modular.html did not report 22/22 — body excerpt: "
-        f"{body[:400]}"
+        f"test-modular.html did not report 22/22 — body excerpt: {body[:400]}"
     )
 
 
@@ -149,9 +148,7 @@ def test_contest_page_loads_optimizer_factory(http_server, browser):
     page.close()
 
     assert not errors, "Page-level JS errors:\n  " + "\n  ".join(errors)
-    assert probe.get("name") == "NelderMead", (
-        f"OptimizerFactory probe failed: {probe}"
-    )
+    assert probe.get("name") == "NelderMead", f"OptimizerFactory probe failed: {probe}"
 
 
 @pytest.mark.browser
@@ -164,9 +161,7 @@ def test_visualizer_page_loads_and_clears_overlay(http_server, browser):
     the earlier `toggleMore()` brace-balance break (PR #65 root cause)
     on every visualizer-bearing page at once.
     """
-    page, errors = _open(
-        browser, f"{http_server}/algorithms/uobyqa.html", wait_ms=4000
-    )
+    page, errors = _open(browser, f"{http_server}/algorithms/uobyqa.html", wait_ms=4000)
     state = page.evaluate(
         """
         () => ({
