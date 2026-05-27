@@ -11,6 +11,17 @@ The goal is **alignment**: HumpDay's port should behave indistinguishably
 from the reference within floating-point reason. Today most algorithms
 deviate substantially — those gaps are what this test makes visible.
 
+Fairness of starting points
+---------------------------
+HumpDay's algorithms initialise from `0.3 + 0.4 * U[0, 1]^n` (a random
+interior point in the unit cube). To compare apples-to-apples we draw
+each trial's x0 from the **same distribution**, seeded by the trial
+index, and use it on both sides — `_array.seed(seed)` for HumpDay
+(plus the stdlib `random.seed`, which the evolutionary algorithms use)
+and an explicit `x0` for any local-search reference that takes one.
+Global-search references (DE, dual annealing, gp_minimize, cmaes) get
+the same integer seed via their own RNG parameter.
+
 The test always *passes* (it's a characterisation harness, not a gate).
 The point is the printed table and the persisted snapshot at
 `benchmarks/reference_alignment.json`. Run with stdout visible:
@@ -26,15 +37,34 @@ from __future__ import annotations
 import importlib
 import json
 import math
+import random
 import time
 from pathlib import Path
 
 import pytest
 
+import humpday._array as _humpday_array
 from humpday.optimizers.alloptimizers import PURE_OPTIMIZERS
 
 REPO_ROOT = Path(__file__).parent.parent
 N_RUNS = 4
+
+# Same distribution HumpDay's optimisers use internally. Draw `n_dim`
+# coordinates in [0.3, 0.7] via a seeded `random.Random` so a given
+# trial index produces a reproducible x0 across calls.
+X0_LO, X0_HI = 0.3, 0.7
+
+
+def _draw_x0(seed, n_dim):
+    rng = random.Random(seed)
+    return [X0_LO + (X0_HI - X0_LO) * rng.random() for _ in range(n_dim)]
+
+
+def _seed_humpday(seed):
+    """Seed every RNG HumpDay's algorithms might draw from."""
+    _humpday_array.seed(seed)
+    random.seed(seed)
+
 
 # Cap n_trials per reference. Some references (e.g. skopt's gp_minimize)
 # scale cubically with n_calls; running them at the full HumpDay budget
@@ -109,7 +139,8 @@ def _can_load_pdfo():
         return False
 
 
-def _run_humpday(algorithm: str, func, n_trials: int, n_dim: int):
+def _run_humpday(algorithm: str, func, n_trials: int, n_dim: int, seed: int):
+    _seed_humpday(seed)
     cls = PURE_OPTIMIZERS[algorithm]
     opt = cls(func, n_trials=n_trials, n_dim=n_dim)
     res = opt.optimize()
@@ -122,11 +153,13 @@ def _run_humpday(algorithm: str, func, n_trials: int, n_dim: int):
 
 # ---------- reference adapters ----------
 # Each adapter returns {best_value, evals} on the same problem the HumpDay
-# port saw. References themselves can use different conventions (some
-# count evals differently); we report what the reference reports.
+# port saw, started from a seed-determined x0 drawn from the same
+# distribution HumpDay uses. References themselves can use different
+# conventions (some count evals differently); we report what the
+# reference reports.
 
 
-def _ref_scipy_neldermead(func, n_trials, n_dim):
+def _ref_scipy_neldermead(func, n_trials, n_dim, seed):
     from scipy.optimize import minimize
 
     counter = {"n": 0}
@@ -135,17 +168,16 @@ def _ref_scipy_neldermead(func, n_trials, n_dim):
         counter["n"] += 1
         return func(list(x))
 
-    x0 = [0.5] * n_dim
     r = minimize(
         wrapped,
-        x0,
+        _draw_x0(seed, n_dim),
         method="Nelder-Mead",
         options={"maxfev": n_trials, "xatol": 1e-8, "fatol": 1e-8},
     )
     return {"best_value": float(r.fun), "evals": counter["n"]}
 
 
-def _ref_scipy_powell(func, n_trials, n_dim):
+def _ref_scipy_powell(func, n_trials, n_dim, seed):
     from scipy.optimize import minimize
 
     counter = {"n": 0}
@@ -154,17 +186,16 @@ def _ref_scipy_powell(func, n_trials, n_dim):
         counter["n"] += 1
         return func(list(x))
 
-    x0 = [0.5] * n_dim
     r = minimize(
         wrapped,
-        x0,
+        _draw_x0(seed, n_dim),
         method="Powell",
         options={"maxfev": n_trials, "xtol": 1e-8, "ftol": 1e-8},
     )
     return {"best_value": float(r.fun), "evals": counter["n"]}
 
 
-def _ref_scipy_de(func, n_trials, n_dim):
+def _ref_scipy_de(func, n_trials, n_dim, seed):
     from scipy.optimize import differential_evolution
 
     counter = {"n": 0}
@@ -180,12 +211,12 @@ def _ref_scipy_de(func, n_trials, n_dim):
         maxiter=max(1, n_trials // (10 * n_dim)),
         popsize=10,
         tol=1e-8,
-        seed=0,
+        seed=seed,
     )
     return {"best_value": float(r.fun), "evals": counter["n"]}
 
 
-def _ref_scipy_dual_annealing(func, n_trials, n_dim):
+def _ref_scipy_dual_annealing(func, n_trials, n_dim, seed):
     from scipy.optimize import dual_annealing
 
     counter = {"n": 0}
@@ -195,11 +226,11 @@ def _ref_scipy_dual_annealing(func, n_trials, n_dim):
         return func(list(x))
 
     bounds = [(0, 1)] * n_dim
-    r = dual_annealing(wrapped, bounds, maxiter=max(1, n_trials // 10), seed=0)
+    r = dual_annealing(wrapped, bounds, maxiter=max(1, n_trials // 10), seed=seed)
     return {"best_value": float(r.fun), "evals": counter["n"]}
 
 
-def _ref_skopt_gp(func, n_trials, n_dim):
+def _ref_skopt_gp(func, n_trials, n_dim, seed):
     from skopt import gp_minimize
 
     counter = {"n": 0}
@@ -213,13 +244,13 @@ def _ref_skopt_gp(func, n_trials, n_dim):
         wrapped,
         bounds,
         n_calls=n_trials,
-        random_state=0,
+        random_state=seed,
         n_initial_points=min(10, n_trials // 2),
     )
     return {"best_value": float(r.fun), "evals": counter["n"]}
 
 
-def _ref_cmaes(func, n_trials, n_dim):
+def _ref_cmaes(func, n_trials, n_dim, seed):
     """CyberAgent `cmaes` reference. The library's `ask/tell` API expects
     exactly `population_size` solutions per `tell` call — partial
     generations (e.g. due to budget exhaustion) cause it to raise. We
@@ -235,7 +266,10 @@ def _ref_cmaes(func, n_trials, n_dim):
         return func(list(x))
 
     es = CMA(
-        mean=np.full(n_dim, 0.5), sigma=0.2, bounds=np.array([[0, 1]] * n_dim), seed=0
+        mean=np.asarray(_draw_x0(seed, n_dim)),
+        sigma=0.2,
+        bounds=np.array([[0, 1]] * n_dim),
+        seed=seed,
     )
     best = float("inf")
     while counter["n"] + es.population_size <= n_trials:
@@ -250,7 +284,7 @@ def _ref_cmaes(func, n_trials, n_dim):
     return {"best_value": float(best), "evals": counter["n"]}
 
 
-def _ref_pybobyqa(func, n_trials, n_dim):
+def _ref_pybobyqa(func, n_trials, n_dim, seed):
     import numpy as np
     import pybobyqa
 
@@ -260,22 +294,21 @@ def _ref_pybobyqa(func, n_trials, n_dim):
         counter["n"] += 1
         return func(list(x))
 
-    x0 = np.full(n_dim, 0.5)
     bounds = (np.zeros(n_dim), np.ones(n_dim))
     r = pybobyqa.solve(
         wrapped,
-        x0,
+        np.asarray(_draw_x0(seed, n_dim)),
         bounds=bounds,
         maxfun=n_trials,
         seek_global_minimum=False,
-        rhobeg=0.3,
+        rhobeg=0.2,
         rhoend=1e-8,
         print_progress=False,
     )
     return {"best_value": float(r.f), "evals": counter["n"]}
 
 
-def _ref_pdfo_newuoa(func, n_trials, n_dim):
+def _ref_pdfo_newuoa(func, n_trials, n_dim, seed):
     import numpy as np
     from pdfo import newuoa
 
@@ -287,13 +320,13 @@ def _ref_pdfo_newuoa(func, n_trials, n_dim):
 
     r = newuoa(
         wrapped,
-        np.full(n_dim, 0.5),
-        options={"maxfev": n_trials, "rhobeg": 0.3, "rhoend": 1e-8},
+        np.asarray(_draw_x0(seed, n_dim)),
+        options={"maxfev": n_trials, "rhobeg": 0.2, "rhoend": 1e-8},
     )
     return {"best_value": float(r.fun), "evals": counter["n"]}
 
 
-def _ref_pdfo_uobyqa(func, n_trials, n_dim):
+def _ref_pdfo_uobyqa(func, n_trials, n_dim, seed):
     import numpy as np
     from pdfo import uobyqa
 
@@ -305,8 +338,8 @@ def _ref_pdfo_uobyqa(func, n_trials, n_dim):
 
     r = uobyqa(
         wrapped,
-        np.full(n_dim, 0.5),
-        options={"maxfev": n_trials, "rhobeg": 0.3, "rhoend": 1e-8},
+        np.asarray(_draw_x0(seed, n_dim)),
+        options={"maxfev": n_trials, "rhobeg": 0.2, "rhoend": 1e-8},
     )
     return {"best_value": float(r.fun), "evals": counter["n"]}
 
@@ -367,15 +400,19 @@ def test_reference_alignment():
             opt_value = problem["opt"]
 
             hd_vals = []
-            for _ in range(N_RUNS):
+            for trial in range(N_RUNS):
                 hd_vals.append(
-                    _run_humpday(algorithm, func, n_trials, n_dim)["best_value"]
+                    _run_humpday(algorithm, func, n_trials, n_dim, seed=trial)[
+                        "best_value"
+                    ]
                 )
 
             ref_vals = []
-            for _ in range(N_RUNS):
+            for trial in range(N_RUNS):
                 try:
-                    ref_vals.append(ref_fn(func, n_trials, n_dim)["best_value"])
+                    ref_vals.append(
+                        ref_fn(func, n_trials, n_dim, seed=trial)["best_value"]
+                    )
                 except Exception as e:
                     print(f"    reference error on {problem_id}: {e}")
                     ref_vals.append(float("inf"))
