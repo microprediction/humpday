@@ -193,59 +193,15 @@
         <div class="section">
             <div class="embed-section">
                 <h3>Embed This in Your Own Web Page</h3>
-                <p>Want to add interactive 3D optimization visualization to your website? It's just a few lines of code!</p>
-                <button class="btn" onclick="showEmbedCode()">
-                    Show Embed Code
-                </button>
-            </div>
-        </div>
-
-        <div id="embedCodeModal" class="embed-modal">
-            <div class="embed-modal-content">
-                <div class="embed-modal-header">
-                    <h3>Embed Interactive 3D Optimization</h3>
-                    <button class="close-button" onclick="hideEmbedCode()">×</button>
-                </div>
-
-                <p>Copy and paste this code into your HTML page:</p>
-
-                <pre class="code-block">&lt;!-- Three.js CDN --&gt;
-&lt;script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"&gt;&lt;/script&gt;
-&lt;script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/controls/OrbitControls.js"&gt;&lt;/script&gt;
-
-&lt;!-- HumpDay optimization algorithms --&gt;
-&lt;script src="https://microprediction.github.io/humpday/js/modules/base-optimizer.js"&gt;&lt;/script&gt;
-&lt;script src="https://microprediction.github.io/humpday/js/modules/prima-algorithms.js"&gt;&lt;/script&gt;
-&lt;script src="https://microprediction.github.io/humpday/js/modules/scipy-algorithms.js"&gt;&lt;/script&gt;
-&lt;script src="https://microprediction.github.io/humpday/js/modules/evolutionary-algorithms.js"&gt;&lt;/script&gt;
-&lt;script src="https://microprediction.github.io/humpday/js/modules/index.js"&gt;&lt;/script&gt;
-&lt;script src="https://microprediction.github.io/humpday/js/algorithm-visualizer.js"&gt;&lt;/script&gt;
-
-&lt;!-- Container for the 3D visualization --&gt;
-&lt;div id="optimizationDemo" style="width: 100%; height: 500px; border: 1px solid #ddd;"&gt;&lt;/div&gt;
-
-&lt;!-- Initialize the visualizer --&gt;
-&lt;script&gt;
-document.addEventListener('DOMContentLoaded', function() {
-    const visualizer = new AlgorithmVisualizer('optimizationDemo');
-});
-&lt;/script&gt;</pre>
-
-                <div class="embed-features">
-                    <h4>Features Included:</h4>
-                    <ul>
-                        <li>22 optimization algorithms (PRIMA, SciPy, evolutionary, metaheuristic)</li>
-                        <li>12 test functions (Sphere, Rosenbrock, Ackley, Rastrigin, etc.)</li>
-                        <li>Interactive 3D visualization with rotation, zoom, pan</li>
-                        <li>Speed controls and real-time algorithm comparison</li>
-                        <li>Educational step-by-step optimization path display</li>
-                    </ul>
-                </div>
-
-                <div class="text-center">
-                    <button class="btn" onclick="copyEmbedCode()">Copy to Clipboard</button>
-                    <button class="btn btn-secondary" onclick="hideEmbedCode()">Close</button>
-                </div>
+                <p>
+                    The 3D visualizer is a handful of <code>&lt;script&gt;</code> tags plus a
+                    <code>&lt;div&gt;</code>. Copy-paste instructions live in the repo:
+                </p>
+                <p>
+                    <a class="btn" href="https://github.com/microprediction/humpday/blob/main/docs/EMBED.md" target="_blank" rel="noopener">
+                        Embedding instructions on GitHub →
+                    </a>
+                </p>
             </div>
         </div>
     </div>
@@ -269,84 +225,5 @@ document.addEventListener('DOMContentLoaded', function() {
 
     <script src="js/demo-controller.js"></script>
 
-    <script>
-        function showEmbedCode() {
-            console.log('showEmbedCode called'); // Debug log
-            const modal = document.getElementById('embedCodeModal');
-            if (modal) {
-                modal.style.display = 'block';
-                console.log('Modal shown');
-            } else {
-                console.error('embedCodeModal not found');
-            }
-        }
-
-        function hideEmbedCode() {
-            console.log('hideEmbedCode called'); // Debug log
-            const modal = document.getElementById('embedCodeModal');
-            if (modal) {
-                modal.style.display = 'none';
-                console.log('Modal hidden');
-            } else {
-                console.error('embedCodeModal not found');
-            }
-        }
-
-        // Make functions globally available
-        window.showEmbedCode = showEmbedCode;
-        window.hideEmbedCode = hideEmbedCode;
-
-        function copyEmbedCode() {
-            console.log('copyEmbedCode called'); // Debug log
-            // Each `</script>` below is written as `<\/script>` so the HTML
-            // parser does not prematurely close this enclosing <script> block.
-            // JavaScript treats the backslash-slash as an ordinary forward
-            // slash inside string/template literals, so the copy-to-clipboard
-            // output is exactly the closing tag a downstream HTML page needs.
-            const embedCode = `<!-- Three.js CDN -->
-<script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"><\/script>
-<script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/controls/OrbitControls.js"><\/script>
-
-<!-- Humpday optimization algorithms -->
-<script src="https://microprediction.github.io/humpday/js/modules/base-optimizer.js"><\/script>
-<script src="https://microprediction.github.io/humpday/js/modules/prima-algorithms.js"><\/script>
-<script src="https://microprediction.github.io/humpday/js/modules/scipy-algorithms.js"><\/script>
-<script src="https://microprediction.github.io/humpday/js/modules/evolutionary-algorithms.js"><\/script>
-<script src="https://microprediction.github.io/humpday/js/modules/index.js"><\/script>
-<script src="https://microprediction.github.io/humpday/js/algorithm-visualizer.js"><\/script>
-
-<!-- Container for the 3D visualization -->
-<div id="optimizationDemo" style="width: 100%; height: 500px; border: 1px solid #ddd;"></div>
-
-<!-- Initialize the visualizer -->
-<script>
-document.addEventListener('DOMContentLoaded', function() {
-    const visualizer = new AlgorithmVisualizer('optimizationDemo');
-});
-<\/script>`;
-
-            navigator.clipboard.writeText(embedCode).then(() => {
-                const button = event.target;
-                const originalText = button.textContent;
-                button.textContent = 'Copied!';
-                button.style.background = '#27ae60';
-                setTimeout(() => {
-                    button.textContent = originalText;
-                    button.style.background = '';
-                }, 2000);
-            });
-        }
-
-        // Make copyEmbedCode globally available too
-        window.copyEmbedCode = copyEmbedCode;
-
-        // Close modal when clicking outside
-        document.addEventListener('click', function(event) {
-            const modal = document.getElementById('embedCodeModal');
-            if (event.target === modal) {
-                hideEmbedCode();
-            }
-        });
-    </script>
 </body>
 </html>
