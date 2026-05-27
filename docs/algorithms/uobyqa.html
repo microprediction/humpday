@@ -45,6 +45,16 @@
             color: white;
             text-decoration: underline;
         }
+        .site-nav-brand {
+            display: inline-flex;
+            align-items: center;
+            gap: 8px;
+        }
+        .site-nav-camel {
+            flex-shrink: 0;
+            vertical-align: middle;
+        }
+
 
         body {
             font-family: 'Georgia', 'Times New Roman', serif;
@@ -212,7 +222,7 @@
 <body>
     <nav class="site-nav" data-site-nav="v1">
         <div class="site-nav-inner">
-            <a href="../index.html" class="site-nav-brand">HumpDay</a>
+            <a href="../index.html" class="site-nav-brand"><svg class="site-nav-camel" data-site-logo="camel-v1" viewBox="0 0 100 50" width="44" height="22" xmlns="http://www.w3.org/2000/svg" aria-hidden="true"><path fill="white" fill-opacity="0.85" d="M 10 44 L 10 32 C 8 28 12 22 18 22 C 22 14 30 14 32 22 C 36 24 42 24 46 22 C 50 14 58 14 60 22 C 64 24 68 24 70 20 C 72 14 76 10 80 6 C 84 4 90 4 92 8 L 92 14 L 96 14 L 96 18 L 88 20 C 84 22 80 26 78 30 C 74 32 70 32 68 30 L 68 44 L 62 44 L 62 30 L 56 30 L 56 44 L 50 44 L 50 28 L 26 28 L 26 44 L 20 44 L 20 30 L 16 30 L 16 44 Z"/></svg>HumpDay</a>
             <div class="site-nav-links">
                 <a href="../index.html">Home</a>
                 <a href="../contest.html">Contest</a>
@@ -272,7 +282,7 @@
                             <em>Published: 2002</em>
                         </td>
                         <td>
-                            <a href="https://www.optimization-online.org/DB_HTML/2009/12/2490.html" target="_blank" class="link-button paper">Paper</a>
+                            <a href="https://doi.org/10.1007/s101070100290" target="_blank" class="link-button paper">Paper</a>
                         </td>
                     </tr>
                     <tr>
@@ -292,8 +302,8 @@
                         <td class="category">Humpday Python</td>
                         <td>
                             <strong>HumpDay Python Implementation</strong><br>
-                            Calls PDFO's UOBYQA implementation<br>
-                            Standardized interface for optimization contests<br>
+                            Pure-Python port of UOBYQA — quadratic-model trust region, no PDFO/Fortran call<br>
+                            No required dependencies<br>
                             <em>File: humpday/optimizers/prima_algorithms.py</em>
                         </td>
                         <td>
@@ -324,18 +334,6 @@
                     <li><strong>Convergence:</strong> Fast local convergence on quadratic-like functions</li>
                     <li><strong>Robustness:</strong> Handles discontinuous derivatives but sensitive to high noise</li>
                 </ul>
-            </div>
-
-            <div class="performance-notes" style="background: #d4edda; border-color: #27ae60;">
-                <h3>Validation Results: PERFECT MATCH vs PDFO Reference</h3>
-                <p><strong>JavaScript implementation successfully matches PDFO reference implementation:</strong></p>
-                <ul>
-                    <li><strong>2D Sphere Function:</strong> Both PDFO and JavaScript achieve <code>f = 0.000000</code> </li>
-                    <li><strong>3D Sphere Function:</strong> Both PDFO and JavaScript achieve <code>f = 0.000000</code> </li>
-                    <li><strong>Efficiency:</strong> JavaScript uses fewer function evaluations (12 vs 17, 17 vs 21)</li>
-                    <li><strong>Success Rate:</strong> 2/3 perfect matches on test suite</li>
-                </ul>
-                <p><em>Test performed: 2026-05-21 using PDFO vs JavaScript PRIMA_UOBYQA implementation</em></p>
             </div>
 
             <div class="more-section">
