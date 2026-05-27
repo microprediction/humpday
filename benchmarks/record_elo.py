@@ -40,6 +40,7 @@ def main() -> int:
     random.seed(20260526)
     try:
         import numpy as np
+
         np.random.seed(20260526)
     except ImportError:
         pass
@@ -50,7 +51,9 @@ def main() -> int:
 
     elo = EloRatingSystem()
 
-    print(f"Sphere family — {n_problems_per_family} problems, {trials_per_problem} trials each, n_dim={n_dim}")
+    print(
+        f"Sphere family — {n_problems_per_family} problems, {trials_per_problem} trials each, n_dim={n_dim}"
+    )
     elo = run_algorithm_tournament(
         sphere_variants_generator(n_dim=n_dim),
         trials_per_problem=trials_per_problem,
@@ -59,7 +62,9 @@ def main() -> int:
         elo_system=elo,
     )
 
-    print(f"\nRosenbrock family — {n_problems_per_family} problems, {trials_per_problem} trials each")
+    print(
+        f"\nRosenbrock family — {n_problems_per_family} problems, {trials_per_problem} trials each"
+    )
     elo = run_algorithm_tournament(
         rosenbrock_variants_generator(n_dim=n_dim),
         trials_per_problem=trials_per_problem,
