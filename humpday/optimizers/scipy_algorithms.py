@@ -226,13 +226,27 @@ class Powell(BaseOptimizer):
         return self.best_value, self.best_x
 
     def _linesearch_powell(self, p, xi, fval):
-        """Bounded golden-section line search along direction `xi` from
-        point `p`. Returns `(best_f, best_x, scaled_direction)`."""
+        """Bounded Brent-method line search along direction `xi` from
+        point `p`. Returns `(best_f, best_x, scaled_direction)`.
+
+        Ported from scipy.optimize._optimize.Brent.optimize and the
+        downhill-walk `bracket` routine that initialises it. Compared
+        to the previous bounded golden-section, Brent reaches superlinear
+        convergence on smooth landscapes by interleaving inverse
+        quadratic interpolation with golden-section fallbacks, and is
+        what gives scipy's Powell its sharpness on convex problems.
+
+        Adaptations:
+          - The bracket-grow step stops at the alpha bounds (so we stay
+            inside `[0, 1]^n`) instead of growing freely as scipy does.
+          - Every function evaluation is gated by the remaining budget.
+          - On budget exhaustion we return the best alpha seen so far,
+            which preserves the caller's invariant that the line search
+            never worsens `fval`.
+        """
 
         def myfunc(alpha):
             x_trial = _A.clip(p + alpha * xi, 0, 1)
-            if self.evaluations >= self.n_trials:
-                return float("inf")
             return self.evaluate(x_trial)
 
         # If direction is essentially zero, skip the search.
@@ -240,91 +254,189 @@ class Powell(BaseOptimizer):
             return fval, p, xi
 
         # Clamp alpha so p + alpha * xi stays in [0, 1]^n.
-        alpha_bounds = []
+        # Each non-zero `xi[i]` gives two alpha values where the
+        # corresponding coordinate hits 0 or 1; the intersection of all
+        # such intervals is [alpha_min, alpha_max].
+        alpha_lo = float("-inf")
+        alpha_hi = float("inf")
         for i in range(len(xi)):
             xi_i = float(xi[i])
-            if abs(xi_i) > 1e-12:
-                bound1 = -float(p[i]) / xi_i
-                bound2 = (1.0 - float(p[i])) / xi_i
-                alpha_bounds.extend([bound1, bound2])
+            if abs(xi_i) <= 1e-12:
+                continue
+            b1 = -float(p[i]) / xi_i
+            b2 = (1.0 - float(p[i])) / xi_i
+            lo, hi = (b1, b2) if b1 < b2 else (b2, b1)
+            if lo > alpha_lo:
+                alpha_lo = lo
+            if hi < alpha_hi:
+                alpha_hi = hi
 
-        if not alpha_bounds:
+        if alpha_hi <= alpha_lo:
+            return fval, p, xi
+        # Cap to a sensible range. The original bounded golden-section
+        # used [-1, 1] so the magnitude of `xi_new` stayed comparable to
+        # `xi`'s; keep that convention.
+        alpha_lo = max(alpha_lo, -1.0)
+        alpha_hi = min(alpha_hi, 1.0)
+        if alpha_hi <= alpha_lo:
             return fval, p, xi
 
-        alpha_min = max(min(alpha_bounds), -1.0)
-        alpha_max = min(max(alpha_bounds), 1.0)
+        # Track the best alpha seen across bracket + Brent so that on
+        # budget exhaustion we still return progress.
+        best_alpha = 0.0
+        best_f = fval
 
-        if alpha_max <= alpha_min:
-            return fval, p, xi
+        def evaluate(alpha):
+            """Run `myfunc(alpha)` with budget check, updating best_*."""
+            nonlocal best_alpha, best_f
+            if self.evaluations >= self.n_trials:
+                return None
+            f = myfunc(alpha)
+            if f < best_f:
+                best_alpha = alpha
+                best_f = f
+            return f
 
-        # Golden-section search.
-        golden_ratio = (3.0 - math.sqrt(5.0)) / 2.0
-        tol = 1e-6
-        max_evals = min(10, self.n_trials - self.evaluations)
+        # ---- Bracket the minimum (scipy.optimize.bracket adaptation) ----
+        # Start two points apart inside the bounded interval. Use a step
+        # one decimal of the interval width — tiny enough that a smooth
+        # function shows curvature, large enough not to look constant.
+        span = alpha_hi - alpha_lo
+        xa = 0.0 if alpha_lo < 0 < alpha_hi else alpha_lo
+        xb = xa + min(span * 0.1, 1e-1)
+        if xb >= alpha_hi:
+            xb = alpha_lo + 0.5 * (alpha_hi - alpha_lo)
 
-        if abs(alpha_min) < abs(alpha_max):
-            a, c = alpha_min, alpha_max
+        fa = evaluate(xa)
+        if fa is None:
+            return self._linesearch_result(p, xi, fval, best_alpha, best_f)
+        fb = evaluate(xb)
+        if fb is None:
+            return self._linesearch_result(p, xi, fval, best_alpha, best_f)
+
+        if fa < fb:
+            xa, xb = xb, xa
+            fa, fb = fb, fa
+
+        # Step in the downhill direction (golden-ratio expansion).
+        gold = 1.618033988749895
+        xc = xb + gold * (xb - xa)
+        if xc > alpha_hi:
+            xc = alpha_hi
+        if xc < alpha_lo:
+            xc = alpha_lo
+
+        fc = evaluate(xc)
+        if fc is None:
+            return self._linesearch_result(p, xi, fval, best_alpha, best_f)
+
+        # Grow the bracket until f starts increasing on the far side
+        # or we hit a bound. Capped at a small constant to keep the
+        # cost predictable.
+        for _ in range(20):
+            if fc >= fb:
+                break
+            # We have a downhill triple — keep walking.
+            new_xc = xc + gold * (xc - xb)
+            if new_xc > alpha_hi or new_xc < alpha_lo:
+                new_xc = alpha_hi if (xc - xb) > 0 else alpha_lo
+                if new_xc == xc:
+                    break
+            xa, xb = xb, xc
+            fa, fb = fb, fc
+            xc = new_xc
+            fc = evaluate(xc)
+            if fc is None:
+                return self._linesearch_result(p, xi, fval, best_alpha, best_f)
+
+        # If we couldn't bracket (e.g. flat or boundary-attached), bail
+        # out gracefully with whatever the best evaluation was.
+        if not ((xa < xb < xc) or (xc < xb < xa)) or not (fb <= fa and fb <= fc):
+            return self._linesearch_result(p, xi, fval, best_alpha, best_f)
+
+        # ---- Brent's method inside the bracket --------------------------
+        if xa > xc:
+            a_, b_ = xc, xa
         else:
-            a, c = alpha_max, alpha_min
+            a_, b_ = xa, xc
 
-        b = a + golden_ratio * (c - a)
+        x = w = v = xb
+        fx = fw = fv = fb
+        deltax = 0.0
+        rat = 0.0
+        cg = 0.3819660  # 1 - 1/phi (scipy's _cg)
+        brent_tol = 1.48e-8
+        mintol = 1.0e-11
 
-        if self.evaluations >= self.n_trials:
-            return fval, p, xi
-        fa = fval if abs(a) < 1e-10 else myfunc(a)
+        for _ in range(50):
+            tol1 = brent_tol * abs(x) + mintol
+            tol2 = 2.0 * tol1
+            xmid = 0.5 * (a_ + b_)
+            if abs(x - xmid) < (tol2 - 0.5 * (b_ - a_)):
+                break
 
-        if self.evaluations >= self.n_trials:
-            return fval, p, xi
-        fc = myfunc(c)
-
-        if self.evaluations >= self.n_trials:
-            return fval, p, xi
-        fb = myfunc(b)
-
-        best_alpha = a
-        best_f = fa
-        if fb < best_f:
-            best_alpha = b
-            best_f = fb
-        if fc < best_f:
-            best_alpha = c
-            best_f = fc
-
-        evaluations_used = 3
-        while (
-            evaluations_used < max_evals
-            and abs(c - a) > tol
-            and self.evaluations < self.n_trials
-        ):
-            if c - b > b - a:
-                # Larger interval is on the right.
-                x = b + golden_ratio * (c - b)
-                fx = myfunc(x)
-                evaluations_used += 1
-                if fx < fb:
-                    a, b = b, x
-                    fa, fb = fb, fx
-                    if fx < best_f:
-                        best_alpha = x
-                        best_f = fx
-                else:
-                    c = x
-                    fc = fx
+            if abs(deltax) <= tol1:
+                # Take a golden-section step.
+                deltax = (a_ - x) if x >= xmid else (b_ - x)
+                rat = cg * deltax
             else:
-                # Larger interval is on the left.
-                x = b - golden_ratio * (b - a)
-                fx = myfunc(x)
-                evaluations_used += 1
-                if fx < fb:
-                    c, b = b, x
-                    fc, fb = fb, fx
-                    if fx < best_f:
-                        best_alpha = x
-                        best_f = fx
+                # Try an inverse parabolic step.
+                tmp1 = (x - w) * (fx - fv)
+                tmp2 = (x - v) * (fx - fw)
+                p_ = (x - v) * tmp2 - (x - w) * tmp1
+                tmp2 = 2.0 * (tmp2 - tmp1)
+                if tmp2 > 0.0:
+                    p_ = -p_
+                tmp2 = abs(tmp2)
+                dx_temp = deltax
+                deltax = rat
+                if (
+                    (p_ > tmp2 * (a_ - x))
+                    and (p_ < tmp2 * (b_ - x))
+                    and (abs(p_) < abs(0.5 * tmp2 * dx_temp))
+                ):
+                    rat = p_ / tmp2
+                    u = x + rat
+                    if (u - a_) < tol2 or (b_ - u) < tol2:
+                        rat = tol1 if (xmid - x) >= 0 else -tol1
                 else:
-                    a = x
-                    fa = fx
+                    deltax = (a_ - x) if x >= xmid else (b_ - x)
+                    rat = cg * deltax
 
+            # Ensure the step is at least tol1.
+            if abs(rat) < tol1:
+                u = x + (tol1 if rat >= 0 else -tol1)
+            else:
+                u = x + rat
+
+            fu = evaluate(u)
+            if fu is None:
+                break
+
+            if fu > fx:
+                if u < x:
+                    a_ = u
+                else:
+                    b_ = u
+                if fu <= fw or w == x:
+                    v, fv = w, fw
+                    w, fw = u, fu
+                elif fu <= fv or v == x or v == w:
+                    v, fv = u, fu
+            else:
+                if u >= x:
+                    a_ = x
+                else:
+                    b_ = x
+                v, fv = w, fw
+                w, fw = x, fx
+                x, fx = u, fu
+
+        return self._linesearch_result(p, xi, fval, best_alpha, best_f)
+
+    def _linesearch_result(self, p, xi, fval, best_alpha, best_f):
+        """Translate the best (alpha, f) pair from the line search back
+        into the (f, x, direction) tuple Powell's outer loop expects."""
         if best_f < fval:
             x_new = _A.clip(p + best_alpha * xi, 0, 1)
             xi_new = best_alpha * xi
