@@ -168,11 +168,15 @@ def _ref_scipy_neldermead(func, n_trials, n_dim, seed):
         counter["n"] += 1
         return func(list(x))
 
+    # Tolerances match HumpDay's NelderMead (xatol=fatol=1e-12). With
+    # scipy's default 1e-4 the reference stops far below its potential;
+    # at 1e-12 both implementations run until budget exhaustion or
+    # genuine numerical convergence.
     r = minimize(
         wrapped,
         _draw_x0(seed, n_dim),
         method="Nelder-Mead",
-        options={"maxfev": n_trials, "xatol": 1e-8, "fatol": 1e-8},
+        options={"maxfev": n_trials, "xatol": 1e-12, "fatol": 1e-12},
     )
     return {"best_value": float(r.fun), "evals": counter["n"]}
 
@@ -186,11 +190,13 @@ def _ref_scipy_powell(func, n_trials, n_dim, seed):
         counter["n"] += 1
         return func(list(x))
 
+    # Tolerances match HumpDay's Powell (ftol=1e-12) — see the
+    # NelderMead adapter above for rationale.
     r = minimize(
         wrapped,
         _draw_x0(seed, n_dim),
         method="Powell",
-        options={"maxfev": n_trials, "xtol": 1e-8, "ftol": 1e-8},
+        options={"maxfev": n_trials, "xtol": 1e-12, "ftol": 1e-12},
     )
     return {"best_value": float(r.fun), "evals": counter["n"]}
 

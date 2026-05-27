@@ -66,9 +66,15 @@ class NelderMead(BaseOptimizer):
         sim = [sim[i] for i in order]
         fsim = [fsim[i] for i in order]
 
-        # SciPy tolerances.
-        xatol = 1e-4
-        fatol = 1e-4
+        # Convergence tolerances. scipy's defaults are 1e-4, but those
+        # cause termination well before the budget is exhausted on easy
+        # landscapes — on sphere this stops at f ≈ 1e-9 after ~45 evals
+        # of a 200-budget. Tightening to 1e-12 lets the algorithm use its
+        # budget where the landscape permits, with no downside on hard
+        # problems (it just stays in the contraction phase a little
+        # longer before terminating on its own at the budget cap).
+        xatol = 1e-12
+        fatol = 1e-12
 
         while self.evaluations < self.n_trials:
             # SciPy convergence check, restated without numpy broadcasting:
@@ -155,7 +161,10 @@ class Powell(BaseOptimizer):
         # Initial direction set: identity matrix (coordinate directions).
         direc = _A.linalg.eye(n)
 
-        ftol = 1e-4
+        # As with NelderMead, scipy's default ftol=1e-4 stops the
+        # iteration far before the budget is exhausted on smooth
+        # problems. Tightening to 1e-12 lets Powell use its budget.
+        ftol = 1e-12
         maxiter = n * 20
 
         fval = self.evaluate(x)
