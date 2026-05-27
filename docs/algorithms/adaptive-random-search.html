@@ -45,6 +45,16 @@
             color: white;
             text-decoration: underline;
         }
+        .site-nav-brand {
+            display: inline-flex;
+            align-items: center;
+            gap: 8px;
+        }
+        .site-nav-camel {
+            flex-shrink: 0;
+            vertical-align: middle;
+        }
+
 
         body {
             font-family: 'Georgia', 'Times New Roman', serif;
@@ -224,7 +234,7 @@
 <body>
     <nav class="site-nav" data-site-nav="v1">
         <div class="site-nav-inner">
-            <a href="../index.html" class="site-nav-brand">HumpDay</a>
+            <a href="../index.html" class="site-nav-brand"><svg class="site-nav-camel" data-site-logo="camel-v1" viewBox="0 0 100 50" width="44" height="22" xmlns="http://www.w3.org/2000/svg" aria-hidden="true"><path fill="white" fill-opacity="0.85" d="M 10 44 L 10 32 C 8 28 12 22 18 22 C 22 14 30 14 32 22 C 36 24 42 24 46 22 C 50 14 58 14 60 22 C 64 24 68 24 70 20 C 72 14 76 10 80 6 C 84 4 90 4 92 8 L 92 14 L 96 14 L 96 18 L 88 20 C 84 22 80 26 78 30 C 74 32 70 32 68 30 L 68 44 L 62 44 L 62 30 L 56 30 L 56 44 L 50 44 L 50 28 L 26 28 L 26 44 L 20 44 L 20 30 L 16 30 L 16 44 Z"/></svg>HumpDay</a>
             <div class="site-nav-links">
                 <a href="../index.html">Home</a>
                 <a href="../contest.html">Contest</a>
@@ -295,7 +305,7 @@
                             <em>Developed: Various researchers, 1970s-80s</em>
                         </td>
                         <td>
-                            <a href="https://link.springer.com/article/10.1023/A:1008358414138" target="_blank" class="link-button paper">ARS Survey</a>
+                            <a href="https://doi.org/10.1287/moor.6.1.19" target="_blank" class="link-button paper">ARS Survey</a>
                         </td>
                     </tr>
                     <tr>
@@ -354,7 +364,7 @@
                 <div id="moreContent" class="more-content">
                     <h3>Educational Resources</h3>
                     <ul>
-                        <li><a href="https://link.springer.com/article/10.1023/A:1008358414138" target="_blank">Adaptive Random Search Methods (Spall)</a></li>
+                        <li><a href="https://doi.org/10.1287/moor.6.1.19" target="_blank">Adaptive Random Search Methods (Spall)</a></li>
                         <li><a href="https://en.wikipedia.org/wiki/Random_search" target="_blank">Random Search Wikipedia</a></li>
                         <li><a href="https://www.jmlr.org/papers/volume13/bergstra12a/bergstra12a.pdf" target="_blank">Random Search for Hyper-Parameter Optimization</a></li>
                         <li><a href="https://arxiv.org/abs/1803.07055" target="_blank">Simple random search provides competitive approach</a></li>
