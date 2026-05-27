@@ -70,6 +70,13 @@ docs = [
     "mkdocs-material>=9.0.0",
 ]
 
+# Headless-browser smoke tests (tests/test_browser_smoke.py). Installs
+# Playwright; the test fixture auto-skips if Chromium hasn't also been
+# fetched via `playwright install chromium`.
+browser = [
+    "playwright>=1.40.0",
+]
+
 # Paper writing (JSS submission)
 paper = [
     "jinja2>=3.0.0",      # For LaTeX templating
@@ -150,12 +157,13 @@ addopts = [
     "--strict-markers",
     "--strict-config",
     "--verbose",
-    "-m", "not validation and not slow",
+    "-m", "not validation and not slow and not browser",
 ]
 
 markers = [
     "validation: opt-in algorithm-validation regression tests (slow, run with -m validation)",
     "slow: tests that take seconds-to-minutes (run with -m slow or skip with -m 'not slow')",
+    "browser: headless-browser smoke tests; requires `pip install playwright && playwright install chromium`",
 ]
 
 
