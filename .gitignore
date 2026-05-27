@@ -48,3 +48,5 @@ ehthumbs.db
 htmlcov/
 .coverage
 .coverage.*
+# Generated artifacts from run_comprehensive_validation.py
+validation_results/
