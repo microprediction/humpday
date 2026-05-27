@@ -269,8 +269,16 @@ class AlgorithmVisualizer {
         const func = this.functions[this.currentFunction];
         const range = func.range;
 
-        // Normalize all surfaces to the same visual size (8x8 units)
-        const visualSize = 8;
+        // Normalize all surfaces to the same visual size (12x12 units).
+        // The same `visualSize` is reused in `addOptimumMarker` and
+        // `addToPath` for dot placement, so all three must match — and
+        // there must NOT be a separate `surface.scale.setScalar(...)`
+        // below, otherwise the dots fall short of where the surface
+        // dimple actually renders. (Previous bug: visualSize=8 here +
+        // surface.scale.setScalar(1.5) — surface rendered at 12, dots
+        // placed at 8, so e.g. Easom's optimum dot appeared 4 units
+        // closer to centre than the surface minimum it was tracking.)
+        const visualSize = 12;
         const geometry = new THREE.PlaneGeometry(visualSize, visualSize, this.resolution - 1, this.resolution - 1);
 
         const vertices = geometry.attributes.position.array;
@@ -333,9 +341,6 @@ class AlgorithmVisualizer {
         this.surface.receiveShadow = true;
         this.surface.castShadow = true;
 
-        // Make the surface bigger by default for better visibility
-        this.surface.scale.setScalar(1.5);
-
         this.scene.add(this.surface);
 
         // Add optimum marker
@@ -361,8 +366,9 @@ class AlgorithmVisualizer {
         });
         const marker = new THREE.Mesh(geometry, material);
 
-        // Map mathematical coordinates to visual coordinates
-        const visualSize = 8;
+        // Map mathematical coordinates to visual coordinates.
+        // visualSize must match the value used in createSurface().
+        const visualSize = 12;
         const sceneX = ((optimum.x - (range.max + range.min) / 2) / (range.max - range.min)) * visualSize;
         const sceneY = ((optimum.y - (range.max + range.min) / 2) / (range.max - range.min)) * visualSize;
 
@@ -881,8 +887,9 @@ class AlgorithmVisualizer {
         const func = this.functions[this.currentFunction];
         const range = func.range;
 
-        // Convert mathematical coordinates to visual coordinates
-        const visualSize = 8;
+        // Convert mathematical coordinates to visual coordinates.
+        // visualSize must match the value used in createSurface().
+        const visualSize = 12;
         const sceneX = ((position.x - (range.max + range.min) / 2) / (range.max - range.min)) * visualSize;
         const sceneY = ((position.y - (range.max + range.min) / 2) / (range.max - range.min)) * visualSize;
 
