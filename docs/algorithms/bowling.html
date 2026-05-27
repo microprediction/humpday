@@ -312,40 +312,51 @@ class Pin {
   }
 }
 
-// Visual + collision sizes. Originally pins were 12×18 px which made them
-// look like grains of rice on an 800×500 canvas. Bumped up so a strike
-// actually feels like one.
-const PIN_RADIUS_HEAD = 11;     // bowling-pin head visual radius
-const PIN_BODY_W = 20;          // pin body visual width
-const PIN_BODY_H = 32;          // pin body visual height
-const PIN_COLLISION_R = 14;     // pin collision-circle radius (slightly under visual)
-const BALL_RADIUS = 14;         // ball visual + collision radius (was 11)
+// Visual + collision sizes. Pin formation has been scaled up to 100+ pins,
+// so per-pin dimensions are smaller to fit the canvas. Ball is large
+// enough to plow through a wide swath of the formation on a good throw.
+const PIN_RADIUS_HEAD = 7;      // bowling-pin head visual radius
+const PIN_BODY_W = 12;          // pin body visual width
+const PIN_BODY_H = 20;          // pin body visual height
+const PIN_COLLISION_R = 9;      // pin collision-circle radius
+const BALL_RADIUS = 18;         // ball larger relative to pins for visible plow
 
-// Physics constants. Tuned so a well-placed throw can produce a strike
-// via pin-pin chain reactions but a misaligned one leaves a spare.
-const MASS_BALL = 6;            // bowling ball ~ 6× heavier than a pin
+// Physics constants. Tuned so a well-placed throw produces a chain
+// reaction across the dense formation but most random throws leave
+// many pins standing.
+const MASS_BALL = 8;            // ball roughly 8× heavier than a pin
 const MASS_PIN = 1;
-const RESTITUTION_BALL_PIN = 0.55;
-const RESTITUTION_PIN_PIN = 0.45;
-const PIN_FRICTION = 0.86;      // pins decelerate fast on the deck
-const BALL_FRICTION_X = 0.985;
-const BALL_FRICTION_Y = 0.985;
+const RESTITUTION_BALL_PIN = 0.6;
+const RESTITUTION_PIN_PIN = 0.4;
+const PIN_FRICTION = 0.88;      // pins decelerate on the deck
+const BALL_FRICTION_X = 0.99;   // ball stays energetic longer to plow through
+const BALL_FRICTION_Y = 0.99;
 
-// Standard 10-pin formation: rows of 1, 2, 3, 4 pins arranged in a triangle.
-// Wider spacing so the bigger pins don't overlap.
+// Extended pin formation — 6-row triangle (1+2+3+4+5+6 = 21 pins) instead
+// of standard 10-pin. More pins means more chain-reaction potential, a
+// noisier integer score (so harder to optimise), and a denser landing
+// area that the optimiser has to actually aim into.
+//
+// Triangle orientation: row 0 is the single headpin, CLOSEST to the
+// bowler (largest y in the canvas, since the ball starts at y=460 and
+// travels toward smaller y). The wide back row sits farthest away.
+// That's the standard real-world bowling pin layout.
+const PIN_ROWS = 14;                          // 1+2+...+14 = 105 pins
 const PINS = (() => {
   const pins = [];
-  const spacing = 42;
-  const startY = 140;
-  for (let row = 0; row < 4; row++) {
+  const spacing = 24;                         // shrunk to fit dense formation
+  const headpinY = 380;                       // closest pin to bowler (largest y)
+  for (let row = 0; row < PIN_ROWS; row++) {
     for (let i = 0; i <= row; i++) {
       const x = 400 + (i - row / 2) * spacing;
-      const y = startY + row * spacing * 0.866;
+      // Each subsequent row sits FURTHER from the bowler (smaller y).
+      const y = headpinY - row * spacing * 0.866;
       pins.push(new Pin(x, y));
     }
   }
   return pins;
 })();
+const TOTAL_PINS = PINS.length;
 
 function decode(u) {
   // [0,1]^4  ->  (speed, angleDeg, spin, releaseX)
@@ -659,9 +670,13 @@ function drawStaticPins() {
 
 // Animate a single throw using its per-frame snapshots. Returns a Promise
 // that resolves when the animation finishes (or is cancelled by another
-// run starting).
+// run starting). Playback is deliberately slow — `stride=1` advances one
+// simulation frame per browser tick, and we use setTimeout(45) instead
+// of requestAnimationFrame so the effective frame rate is ~22 fps. With
+// 100-200 simulation frames per throw, that gives 4-9 seconds of slow
+// playback so the ball/pin crashes are individually visible.
 let animationToken = 0;
-function animateThrow(throwResult, stride = 2) {
+function animateThrow(throwResult, stride = 1) {
   const myToken = ++animationToken;
   return new Promise((resolve) => {
     const frames = throwResult.frames;
@@ -672,7 +687,6 @@ function animateThrow(throwResult, stride = 2) {
     function tick() {
       if (myToken !== animationToken) return resolve();
       if (idx >= frames.length) {
-        // Settle on the final state.
         const last = frames[frames.length - 1];
         drawState({ pinStates: last.pins, trail: traj, ball: last.ball });
         return resolve();
@@ -684,7 +698,7 @@ function animateThrow(throwResult, stride = 2) {
         ball: f.ball,
       });
       idx += stride;
-      requestAnimationFrame(tick);
+      setTimeout(tick, 45);
     }
     tick();
   });
@@ -785,9 +799,13 @@ async function animateSearchMontage() {
   const total = searchHistory.length;
   if (total === 0) return;
 
-  // Target total montage time ~ 6 seconds. Each browser animation frame
-  // is ~16 ms, so frames-per-throw = max(1, total / 360).
-  const framesPerThrow = Math.max(1, Math.round(360 / total));
+  // Target total montage time ~ 30 seconds regardless of budget — slow
+  // enough that the eye can actually catch each result. For 200 throws
+  // that's ~150ms per throw; for 50 throws ~600ms (visible holds);
+  // for 500 throws ~60ms (a fast-forward feel but still readable).
+  const totalAnimMs = 30000;
+  const msPerFrame = 16;
+  const framesPerThrow = Math.max(2, Math.round(totalAnimMs / (total * msPerFrame)));
   let bestSoFar = -1;
   let bestIdxSoFar = -1;
 
@@ -860,7 +878,7 @@ function renderLeaderboard() {
     const [sp, an, sn, rx] = row.params;
     return `<tr>
       <td>${row.name}</td>
-      <td>${row.score} / 10</td>
+      <td>${row.score} / ${TOTAL_PINS}</td>
       <td>${row.evals}</td>
       <td>${sp.toFixed(1)} / ${an.toFixed(1)}° / ${sn.toFixed(1)} / ${rx.toFixed(0)}</td>
     </tr>`;
