@@ -1,21 +1,36 @@
-# HumpDay Cross-Validation Framework - Delivery Summary
+# HumpDay Cross-Validation Framework
 
-## 🎯 Project Overview
+> **How it runs.** As of 2026-05-27 the framework is wired into pytest as
+> **opt-in regression tests** behind the `validation` marker.
+> Default `pytest` does NOT execute it (the tests would deselect themselves
+> via `-m "not validation"` in `pyproject.toml`). To run on demand:
+>
+> ```bash
+> pytest -m validation                       # both regression tests
+> pytest tests/test_validation_framework.py -m validation -v
+> ```
+>
+> The pytest wrapper lives in `tests/test_validation_framework.py` and
+> calls into the framework files described below. The thresholds it asserts
+> against are calibrated to the current measured pass rates; tighten them
+> as failing algorithms are fixed.
 
-Delivered a comprehensive cross-validation framework for HumpDay algorithms that provides mathematical rigor and equivalence testing across:
+## Project Overview
 
-1. **Python vs 3rd Party**: Validates Python implementations against external references (SciPy, PRIMA, etc.)
-2. **JavaScript vs Python**: Cross-language validation for algorithm equivalence
-3. **Mathematical Correctness**: Verifies implementations match literature and mathematical theory
+A cross-validation framework for HumpDay algorithms that provides mathematical-correctness and equivalence testing across:
 
-## 📦 Delivered Components
+1. **Python vs 3rd Party**: Validates Python implementations against external references (SciPy, PRIMA, etc.) where available.
+2. **JavaScript vs Python**: Cross-language validation for algorithm equivalence (a faster soundness test for this lives in `tests/test_js_parity.py`).
+3. **Mathematical Correctness**: Verifies algorithm-specific properties (simplex validity, trust-region behaviour, monotone convergence on unimodal targets, bounds compliance, parameter consistency).
+
+## Delivered Components
 
 ### Core Framework Files
 
 1. **`cross_validation_framework.py`** (850+ lines)
    - Main CrossValidationFramework class
    - Python vs 3rd party validation
-   - JavaScript cross-language validation  
+   - JavaScript cross-language validation
    - Mathematical correctness verification
    - Comprehensive reporting system
 
@@ -51,7 +66,7 @@ Delivered a comprehensive cross-validation framework for HumpDay algorithms that
    - Mathematical validation approach
    - API documentation and examples
 
-## 🔬 Mathematical Rigor Implemented
+## Mathematical Rigor Implemented
 
 ### Statistical Tests
 - **Kolmogorov-Smirnov Test**: Distribution similarity testing
@@ -71,7 +86,7 @@ Delivered a comprehensive cross-validation framework for HumpDay algorithms that
 - **Parameter Consistency**: Deterministic results with fixed seeds
 - **Domain Handling**: Proper unit cube constraint compliance
 
-## 🎯 Benchmark Problems Implemented
+## Benchmark Problems Implemented
 
 ### Standard Test Suite
 1. **Sphere Functions** (2D, 5D, 10D)
@@ -89,7 +104,7 @@ Delivered a comprehensive cross-validation framework for HumpDay algorithms that
    - Many local optima
    - Tests global search capability
 
-4. **Ackley Function** (2D)  
+4. **Ackley Function** (2D)
    - Multimodal with exponential terms
    - Nearly flat outer region
    - Tests exploration vs exploitation
@@ -104,7 +119,7 @@ Delivered a comprehensive cross-validation framework for HumpDay algorithms that
    - Additive Gaussian noise
    - Algorithm stability assessment
 
-## 🧪 Validation Categories
+## Validation Categories
 
 ### 1. Python vs 3rd Party (Framework Core)
 ```python
@@ -149,7 +164,7 @@ results = suite.evaluate_algorithm(algorithm_func, n_runs=5)
 - Success rate analysis
 - Comparative algorithm assessment
 
-## 🚀 Usage Examples
+## Usage Examples
 
 ### Quick Demo
 ```bash
@@ -166,33 +181,33 @@ python run_comprehensive_validation.py --trials 100 --runs 5
 python run_comprehensive_validation.py --quick --skip-js
 ```
 
-## 📊 Sample Output
+## Sample Output
 
 ```
-🎯 COMPREHENSIVE VALIDATION SUMMARY
+COMPREHENSIVE VALIDATION SUMMARY
 ==================================================
 Total tests executed: 29
 Tests passed: 20
 Overall pass rate: 69.0%
 
-📊 VALIDATION CATEGORIES
+VALIDATION CATEGORIES
   Framework Validation: 87.0%
   Benchmark Validation: 44.4%
   Mathematical Correctness: 91.3%
 
-🔢 ALGORITHM PERFORMANCE
-  🏆 NelderMead: 44.4%
-  ✅ PRIMA_NEWUOA: 14.8%
-  ⚠️ Powell: 11.1%
-  ❌ LBFGSB: 11.1%
+ALGORITHM PERFORMANCE
+  NelderMead: 44.4%
+  PRIMA_NEWUOA: 14.8%
+  ️ Powell: 11.1%
+  LBFGSB: 11.1%
 
-💡 RECOMMENDATIONS
-  ⚠️ MODERATE: Some significant validation issues found
-  🛠️ Review and improve failing algorithms
-  🏆 Best performing algorithms: NelderMead, PRIMA_NEWUOA
+RECOMMENDATIONS
+  ️ MODERATE: Some significant validation issues found
+  ️ Review and improve failing algorithms
+  Best performing algorithms: NelderMead, PRIMA_NEWUOA
 ```
 
-## 🔧 Technical Implementation
+## Technical Implementation
 
 ### Framework Architecture
 - **Modular Design**: Separate concerns for different validation types
@@ -211,16 +226,16 @@ Overall pass rate: 69.0%
 - **Optional matplotlib**: Skip plotting if unavailable
 - **Optional Node.js**: Skip JavaScript validation if missing
 
-## ✅ Validation Results
+## Validation Results
 
 ### Framework Testing
 The delivered framework successfully:
-- ✅ Runs mathematical correctness validation (91.3% pass rate)
-- ✅ Performs algorithm benchmarking across standard problems
-- ✅ Generates comprehensive JSON reports
-- ✅ Provides statistical analysis and recommendations
-- ✅ Handles missing dependencies gracefully
-- ✅ Works with existing HumpDay algorithm implementations
+- Runs mathematical correctness validation (91.3% pass rate)
+- Performs algorithm benchmarking across standard problems
+- Generates comprehensive JSON reports
+- Provides statistical analysis and recommendations
+- Handles missing dependencies gracefully
+- Works with existing HumpDay algorithm implementations
 
 ### Key Findings from Testing
 1. **NelderMead** shows best overall performance (44.4% success)
@@ -228,60 +243,60 @@ The delivered framework successfully:
 3. **PRIMA algorithms** need convergence parameter tuning
 4. **Statistical equivalence** framework operational and effective
 
-## 🎯 Critical Requirements Met
+## Critical Requirements Met
 
-### ✅ Python vs 3rd Party Validation
+### Python vs 3rd Party Validation
 - Implemented comparison against SciPy references
 - Statistical validation across multiple runs
 - Convergence behavior analysis (not just final results)
 - Cross-reference testing framework
 
-### ✅ JavaScript vs Python Cross-Validation  
+### JavaScript vs Python Cross-Validation
 - Node.js execution framework for JS algorithms
 - Statistical comparison of cross-language results
 - Tolerance for implementation differences
 - Automated consistency checking
 
-### ✅ Mathematical Correctness Verification
+### Mathematical Correctness Verification
 - Algorithm-specific property testing
 - Parameter consistency validation
 - Bounds handling compliance
 - Theoretical convergence verification
 
-### ✅ Scientific Rigor
+### Scientific Rigor
 - Multiple statistical tests (KS, Mann-Whitney U)
 - Proper significance thresholds
 - Multiple runs for statistical validity
 - Convergence path analysis (not just endpoints)
 
-## 📋 Deliverables Summary
+## Deliverables Summary
 
 | Component | Lines of Code | Purpose | Status |
 |-----------|---------------|---------|---------|
-| CrossValidationFramework | 850+ | Main validation orchestration | ✅ Complete |
-| StatisticalValidator | 400+ | Advanced statistical analysis | ✅ Complete |
-| BenchmarkSuite | 600+ | Standard problem management | ✅ Complete |
-| ComprehensiveRunner | 400+ | Complete test execution | ✅ Complete |
-| Demo Script | 200+ | Framework demonstration | ✅ Complete |
-| Documentation | Comprehensive | Usage and API guide | ✅ Complete |
+| CrossValidationFramework | 850+ | Main validation orchestration | Complete |
+| StatisticalValidator | 400+ | Advanced statistical analysis | Complete |
+| BenchmarkSuite | 600+ | Standard problem management | Complete |
+| ComprehensiveRunner | 400+ | Complete test execution | Complete |
+| Demo Script | 200+ | Framework demonstration | Complete |
+| Documentation | Comprehensive | Usage and API guide | Complete |
 
 **Total: ~2500+ lines of production-quality code**
 
-## 🎉 Project Success Criteria
+## Project Success Criteria
 
-### ✅ Mathematical Equivalence Focus
+### Mathematical Equivalence Focus
 The framework prioritizes mathematical correctness over performance comparison, ensuring implementations are scientifically sound.
 
-### ✅ Cross-Language Consistency
+### Cross-Language Consistency
 Validates that algorithms behave consistently across JavaScript and Python implementations.
 
-### ✅ Statistical Rigor
+### Statistical Rigor
 Uses proper statistical methods for equivalence testing with appropriate significance thresholds.
 
-### ✅ Comprehensive Coverage
+### Comprehensive Coverage
 Tests multiple aspects: numerical accuracy, convergence behavior, mathematical properties, and cross-platform consistency.
 
-### ✅ Production Ready
+### Production Ready
 Includes error handling, graceful dependency management, comprehensive documentation, and extensible architecture.
 
 This comprehensive cross-validation framework ensures HumpDay algorithms maintain mathematical rigor and scientific correctness across all implementations and deployment scenarios.
