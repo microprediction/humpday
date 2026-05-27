@@ -59,6 +59,12 @@ Legend: ✅ done · 🟡 partial / in-progress · ❌ not done · ❓ unknown / 
 
 ## Project-level work items (separate from per-algorithm goals)
 
+### Algorithm quality
+
+1. **PRIMA trio underperformance in the Elo benchmark.** `benchmarks/elo_ratings.json` (the 2-D sphere + Rosenbrock sweep, 100 trials per problem) has UOBYQA at 1466, BOBYQA at 1177, and NEWUOA at 1120 — bottom-three among the 22 algorithms. That's surprising: PRIMA is a sophisticated trust-region family designed to dominate on smooth surfaces in low dimensions, exactly the regime the benchmark covers. Investigate whether (a) the pure-Python ports have a numerical regression vs. the Fortran references, (b) 100 trials is below the budget where PRIMA pays off in 2-D, or (c) the Rosenbrock variants' ill-conditioning is hitting a PRIMA-specific failure mode. Re-running with `trials_per_problem=500` and a smooth-only objective family would help isolate which.
+
+2. **Recommendation should consider trials AND dimension, not just dimension.** Today `humpday.minimize(...)` auto-selects via `suggest_pure(n_dim, n_trials)`. Inspection shows the heuristic in `suggest_pure` collapses to dimension buckets only (NelderMead ≤2, DE 3–10, CMA-ES 11–50, AdaptiveRandomSearch >50). Trials should matter: e.g. BayesianOpt is the right choice for tight budgets on any reasonable dimension, but is currently never recommended by `minimize()`. The Elo sweep itself is dimension- and budget-conditioned, so the recorded ratings are a natural input. Replace the heuristic with an Elo-table lookup that conditions on `(n_dim_bucket, n_trials_bucket)`.
+
 ### Documentation bugs
 
 1. **`docs/RESUME.md`** — older session notes; delete or move to a historical folder once this `GOALS.md` is fully established as the canonical doc.
@@ -67,7 +73,6 @@ Legend: ✅ done · 🟡 partial / in-progress · ❌ not done · ❓ unknown / 
 
 1. **`test_compendium`** and **`test_portfolio`** rely on seeded `random.choice` to avoid pre-existing algorithm flakes. Keep the seeds + the `BudgetExceeded` guard in `test_compendium` — both protect against future regressions.
 2. **Pure-backend subprocess test** runs all 22 ported algorithms in one forked process with `HUMPDAY_FORCE_PURE_ARRAY=1`. Currently uses `n_trials=50` to fit a 180s timeout on CI hardware; numpy-backend tests still use 200.
-3. **Python↔JS parity** — `tests/test_python_js_validation.py` has 10 skipped cases. Either resurrect them or replace with a clean reference suite.
 
 ### CI sanity
 
