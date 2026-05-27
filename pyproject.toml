@@ -77,6 +77,21 @@ browser = [
     "playwright>=1.40.0",
 ]
 
+# Trusted third-party reference implementations for the
+# tests/test_reference_alignment.py characterisation harness.
+# Each algorithm in PURE_OPTIMIZERS that has a reference equivalent
+# can be cross-checked when these are installed.
+reference = [
+    "scipy>=1.7.0",
+    "scikit-optimize>=0.9.0",
+    "cmaes>=0.10.0",
+    "pyswarms>=1.3.0",
+    "Py-BOBYQA>=1.4",
+    "deap>=1.3.0",
+    # PDFO requires a compiler; install separately if needed:
+    #     pip install pdfo
+]
+
 # Paper writing (JSS submission)
 paper = [
     "jinja2>=3.0.0",      # For LaTeX templating
@@ -157,13 +172,14 @@ addopts = [
     "--strict-markers",
     "--strict-config",
     "--verbose",
-    "-m", "not validation and not slow and not browser",
+    "-m", "not validation and not slow and not browser and not reference",
 ]
 
 markers = [
     "validation: opt-in algorithm-validation regression tests (slow, run with -m validation)",
     "slow: tests that take seconds-to-minutes (run with -m slow or skip with -m 'not slow')",
     "browser: headless-browser smoke tests; requires `pip install playwright && playwright install chromium`",
+    "reference: cross-checks HumpDay ports against third-party reference implementations (scipy, scikit-optimize, cmaes, pyswarms, Py-BOBYQA, DEAP, PDFO). Install with `pip install humpday[reference]`.",
 ]
 
 
