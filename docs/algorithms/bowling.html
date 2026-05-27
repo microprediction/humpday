@@ -1,0 +1,668 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' 'unsafe-inline'; style-src 'self' 'unsafe-inline';">
+<title>🎳 Bowling Optimizer — HumpDay</title>
+<style>
+  :root {
+    --bg: #1a1a22;
+    --panel: #2d2d3a;
+    --accent: #ffcc00;
+    --text: #e8e8ea;
+    --muted: #9a9aac;
+    --lane: #444466;
+    --pin-up: #f5f5f0;
+    --pin-down: #b5b5a8;
+    --ball: #ff6600;
+  }
+  body {
+    margin: 0;
+    background: var(--bg);
+    color: var(--text);
+    font-family: -apple-system, 'Segoe UI', 'Helvetica Neue', Helvetica, Arial, sans-serif;
+  }
+  .site-nav {
+    background: #34495e;
+    padding: 12px 24px;
+    font-family: 'Times New Roman', Times, serif;
+    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+  }
+  .site-nav-inner {
+    max-width: 1100px;
+    margin: 0 auto;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+  }
+  .site-nav a {
+    color: #ecf0f1;
+    text-decoration: none;
+    margin: 0 12px;
+  }
+  .site-nav a:hover { color: white; text-decoration: underline; }
+  .site-nav-brand { font-weight: 700; font-size: 1.25em; }
+
+  .container {
+    max-width: 1100px;
+    margin: 0 auto;
+    padding: 32px 24px 64px;
+  }
+  h1 { font-size: 2.2em; margin: 0.2em 0; }
+  h2 { font-size: 1.4em; margin-top: 1.4em; color: var(--accent); }
+  p { line-height: 1.55; max-width: 70ch; }
+  .intro { color: var(--muted); }
+
+  .stage {
+    display: grid;
+    grid-template-columns: 1fr 320px;
+    gap: 24px;
+    align-items: start;
+    margin-top: 24px;
+  }
+  @media (max-width: 800px) {
+    .stage { grid-template-columns: 1fr; }
+  }
+  canvas {
+    background: var(--lane);
+    border: 3px solid var(--accent);
+    border-radius: 6px;
+    display: block;
+    width: 100%;
+    height: auto;
+  }
+  .panel {
+    background: var(--panel);
+    padding: 18px;
+    border-radius: 6px;
+    border: 1px solid #404054;
+  }
+  .panel h3 {
+    margin: 0 0 12px;
+    font-size: 1.05em;
+    text-transform: uppercase;
+    letter-spacing: 0.06em;
+    color: var(--accent);
+  }
+  label { display: block; margin: 10px 0 6px; font-size: 0.9em; color: var(--muted); }
+  select, input, button {
+    width: 100%;
+    box-sizing: border-box;
+    padding: 8px 10px;
+    border-radius: 4px;
+    border: 1px solid #404054;
+    background: #1a1a22;
+    color: var(--text);
+    font-size: 0.95em;
+  }
+  button {
+    background: var(--accent);
+    color: #1a1a22;
+    font-weight: 700;
+    cursor: pointer;
+    margin-top: 6px;
+    transition: opacity 0.15s;
+  }
+  button:hover { opacity: 0.88; }
+  button.secondary {
+    background: #404054;
+    color: var(--text);
+    font-weight: 400;
+  }
+  button:disabled { opacity: 0.5; cursor: not-allowed; }
+  .stats {
+    margin-top: 16px;
+    padding-top: 14px;
+    border-top: 1px solid #404054;
+    font-size: 0.92em;
+    line-height: 1.6;
+  }
+  .stats .score { font-size: 2.6em; color: var(--accent); font-weight: 700; }
+  .stat-row { display: flex; justify-content: space-between; }
+  .stat-row span:last-child { color: var(--text); font-family: 'SF Mono', Menlo, monospace; }
+
+  .leaderboard {
+    margin-top: 24px;
+  }
+  .leaderboard table {
+    width: 100%;
+    border-collapse: collapse;
+    background: var(--panel);
+    border-radius: 6px;
+    overflow: hidden;
+  }
+  .leaderboard th, .leaderboard td {
+    padding: 10px 14px;
+    text-align: left;
+    border-bottom: 1px solid #404054;
+  }
+  .leaderboard th { background: #1a1a22; color: var(--muted); text-transform: uppercase; font-size: 0.78em; letter-spacing: 0.08em; }
+  .leaderboard td:nth-child(2) { text-align: center; font-size: 1.3em; font-weight: 700; color: var(--accent); }
+  .leaderboard td:nth-child(3), .leaderboard td:nth-child(4) { font-family: 'SF Mono', Menlo, monospace; color: var(--muted); }
+</style>
+</head>
+<body>
+<nav class="site-nav">
+  <div class="site-nav-inner">
+    <a class="site-nav-brand" href="../index.html">HumpDay 🎳</a>
+    <div>
+      <a href="../index.html">Home</a>
+      <a href="../contest.html">Contest</a>
+      <a href="../README.html">Docs</a>
+    </div>
+  </div>
+</nav>
+
+<div class="container">
+  <h1>🎳 Bowling Optimizer</h1>
+  <p class="intro">
+    Watch a derivative-free optimizer learn how to bowl. Each throw is a
+    point in a 4-D parameter space (speed, angle, spin, release position);
+    the score is the number of pins knocked down. Pick an algorithm and
+    let it search.
+  </p>
+
+  <div class="stage">
+    <canvas id="canvas" width="800" height="500"></canvas>
+
+    <div class="panel">
+      <h3>Algorithm</h3>
+      <label for="algorithm">Pick a HumpDay optimizer:</label>
+      <select id="algorithm">
+        <optgroup label="Trust-region / interpolation">
+          <option value="PRIMA_BOBYQA">PRIMA_BOBYQA</option>
+          <option value="PRIMA_NEWUOA">PRIMA_NEWUOA</option>
+          <!-- PRIMA_UOBYQA has a known JS-side bug on 4-D problems
+               at this budget (terminates after ~24 evals with a
+               Lagrange-interpolation fallback that doesn't recover).
+               Tracked separately under the reference-alignment work. -->
+        </optgroup>
+        <optgroup label="Local / classical">
+          <option value="NelderMead">Nelder-Mead</option>
+          <option value="Powell">Powell</option>
+          <option value="LBFGSB">L-BFGS-B (simplified)</option>
+        </optgroup>
+        <optgroup label="Population-based">
+          <option value="DifferentialEvolution" selected>Differential Evolution</option>
+          <option value="ParticleSwarm">Particle Swarm</option>
+          <option value="CMAEvolutionStrategy">CMA-Evolution Strategy</option>
+          <option value="GeneticAlgorithm">Genetic Algorithm</option>
+          <option value="EvolutionStrategy">Evolution Strategy</option>
+          <option value="HarmonySearch">Harmony Search</option>
+        </optgroup>
+        <optgroup label="Other">
+          <option value="SimulatedAnnealing">Simulated Annealing</option>
+          <option value="BayesianOpt">Bayesian Optimization</option>
+          <option value="FireflyAlgorithm">Firefly Algorithm</option>
+          <option value="AntColonyOpt">Ant Colony</option>
+          <option value="TabuSearch">Tabu Search</option>
+          <option value="RandomSearch">Random Search</option>
+        </optgroup>
+      </select>
+
+      <label for="budget">Evaluation budget:</label>
+      <select id="budget">
+        <option value="50">50 throws</option>
+        <option value="100" selected>100 throws</option>
+        <option value="200">200 throws</option>
+        <option value="500">500 throws</option>
+      </select>
+
+      <button id="run-btn" onclick="runOptimization()">▶ Optimize this throw</button>
+      <button class="secondary" onclick="replayBest()">🔁 Replay best throw</button>
+      <button class="secondary" onclick="resetEverything()">⟲ Reset leaderboard</button>
+
+      <div class="stats">
+        <div class="stat-row"><span>Score</span><span class="score" id="score-now">0</span></div>
+        <div class="stat-row"><span>Throws used</span><span id="evals">0</span></div>
+        <div class="stat-row"><span>Best so far</span><span id="best-score">—</span></div>
+        <div class="stat-row"><span>Speed</span><span id="param-speed">—</span></div>
+        <div class="stat-row"><span>Angle</span><span id="param-angle">—</span></div>
+        <div class="stat-row"><span>Spin</span><span id="param-spin">—</span></div>
+        <div class="stat-row"><span>Release X</span><span id="param-release">—</span></div>
+      </div>
+    </div>
+  </div>
+
+  <div class="leaderboard">
+    <h2>Leaderboard (this session)</h2>
+    <p style="color: var(--muted);">
+      Each row records the best throw a given algorithm found in a single
+      run. Run several algorithms to compare — there's no single best
+      derivative-free method, but the ranking on this 4-D mostly-flat
+      landscape with a sharp scoring peak is itself informative.
+    </p>
+    <table>
+      <thead>
+        <tr><th>Algorithm</th><th>Best pins</th><th>Throws used</th><th>Best params (speed / angle / spin / release)</th></tr>
+      </thead>
+      <tbody id="leaderboard-body">
+        <tr><td colspan="4" style="color: var(--muted); text-align: center;">— no runs yet —</td></tr>
+      </tbody>
+    </table>
+  </div>
+
+  <h2>What's happening</h2>
+  <p>
+    The throw simulator runs a simplified rigid-body model: a ball moves
+    down the lane, curves under the influence of its <em>spin</em>, hits
+    pins, transfers momentum to them, bounces off walls. Each throw takes
+    a few hundred simulated frames; the optimiser sees only the final
+    score (number of fallen pins).
+  </p>
+  <p>
+    The 4 parameters are mapped from the unit cube
+    <code>[0, 1]<sup>4</sup></code> — HumpDay's convention — to physical units:
+  </p>
+  <ul>
+    <li><strong>Speed</strong>: 14 – 23 (lane units / frame)</li>
+    <li><strong>Angle</strong>: −8° – +8° (positive = aim right)</li>
+    <li><strong>Spin</strong>: −2.5 – +2.5 (positive = hook right)</li>
+    <li><strong>Release X</strong>: 340 – 460 (canvas pixels)</li>
+  </ul>
+  <p>
+    The optimiser <strong>does not know</strong> what those parameters mean. It
+    only sees a 4-D black-box function returning the number of fallen pins
+    (negated, since HumpDay minimises). This is exactly the situation
+    derivative-free methods are designed for: noisy, non-differentiable,
+    no gradient available, evaluation moderately expensive.
+  </p>
+  <p>
+    Why is this surface hard? Most random throws miss the pins entirely
+    and score zero — a vast flat plateau with no gradient signal. The
+    optimiser must find any kind of contact at all before fine-tuning
+    matters. Algorithms that explore broadly (population-based methods
+    like CMA-ES, DE, PSO) tend to find first contact faster than
+    purely-local searchers; trust-region methods like PRIMA_BOBYQA
+    excel once they've found a feasible basin.
+  </p>
+</div>
+
+<script src="../js/modules/base-optimizer.js"></script>
+<script src="../js/modules/prima-algorithms.js"></script>
+<script src="../js/modules/scipy-algorithms.js"></script>
+<script src="../js/modules/evolutionary-algorithms.js"></script>
+<script src="../js/modules/search-algorithms.js"></script>
+
+<script>
+// ============================================================================
+// Bowling physics — simplified rigid-body model. Self-contained, deterministic
+// given the parameters (no rng inside the throw, so the objective is a
+// pure function of the parameter vector and the optimiser can reason about
+// repeatability).
+// ============================================================================
+
+const canvas = document.getElementById('canvas');
+const ctx = canvas.getContext('2d');
+const W = canvas.width, H = canvas.height;
+
+class Pin {
+  constructor(x, y) {
+    this.x = x; this.y = y;
+    this.x0 = x; this.y0 = y;
+    this.fallen = false;
+    this.angle = 0;
+  }
+  reset() {
+    this.x = this.x0; this.y = this.y0; this.fallen = false; this.angle = 0;
+  }
+}
+
+// Standard 10-pin formation: rows of 1, 2, 3, 4 pins arranged in a triangle.
+const PINS = (() => {
+  const pins = [];
+  const spacing = 28;
+  const startY = 110;
+  for (let row = 0; row < 4; row++) {
+    for (let i = 0; i <= row; i++) {
+      const x = 400 + (i - row / 2) * spacing;
+      const y = startY + row * spacing * 0.866;
+      pins.push(new Pin(x, y));
+    }
+  }
+  return pins;
+})();
+
+function decode(u) {
+  // [0,1]^4  ->  (speed, angleDeg, spin, releaseX)
+  return [
+    14 + 9 * u[0],
+    -8 + 16 * u[1],
+    -2.5 + 5 * u[2],
+    340 + 120 * u[3],
+  ];
+}
+
+// Run a full throw with no rendering; return { score, trajectory, pinStates }.
+// `trajectory` is a polyline of [x, y] points so we can replay/animate.
+function simulateThrow(params) {
+  // Reset every pin (we share the global PINS array to avoid allocations
+  // during the optimiser's hot loop).
+  for (const p of PINS) p.reset();
+  const [speed, angleDeg, spin, releaseX] = params;
+  const angle = angleDeg * Math.PI / 180;
+
+  const ball = {
+    x: releaseX,
+    y: 460,
+    vx: speed * Math.sin(angle),
+    vy: -speed * Math.cos(angle),
+    spin: spin,
+    r: 11,
+  };
+
+  const trajectory = [[ball.x, ball.y]];
+
+  for (let frame = 0; frame < 240; frame++) {
+    if (ball.y < 30) break;
+
+    ball.x += ball.vx;
+    ball.y += ball.vy;
+    ball.vy += 0.05;                  // mild downward drift
+    ball.vx += ball.spin * 0.012;     // Magnus curve
+    ball.spin *= 0.985;
+    ball.vx *= 0.985;
+    ball.vy *= 0.99;
+
+    // Lane walls.
+    if (ball.x < 30) { ball.x = 30; ball.vx *= -0.55; }
+    if (ball.x > W - 30) { ball.x = W - 30; ball.vx *= -0.55; }
+
+    // Pin collisions.
+    for (const pin of PINS) {
+      if (pin.fallen) continue;
+      const dx = ball.x - pin.x, dy = ball.y - pin.y;
+      const dist = Math.sqrt(dx * dx + dy * dy);
+      if (dist < ball.r + 13) {
+        pin.fallen = true;
+        pin.angle = Math.atan2(dy, dx) * 0.8;
+        // Ball deflection from impact.
+        const f = 0.5;
+        ball.vx += dx * f / Math.max(dist, 1);
+        ball.vy += dy * f / Math.max(dist, 1);
+      }
+    }
+
+    trajectory.push([ball.x, ball.y]);
+  }
+
+  const fallen = PINS.filter(p => p.fallen).length;
+  const finalPinState = PINS.map(p => ({ x: p.x, y: p.y, fallen: p.fallen, angle: p.angle }));
+  return { score: fallen, trajectory, finalPinState, params };
+}
+
+// ============================================================================
+// HumpDay-style objective. HumpDay minimises, so we negate the score.
+// A small "near-miss" term gives a tiny gradient signal across the otherwise-
+// flat zero region — without it, a strict GA on integer pin counts has no
+// way to distinguish "missed by inches" from "rolled into the gutter".
+// ============================================================================
+function objective(u) {
+  const result = simulateThrow(decode(u));
+  let nearMiss = 0;
+  // Use trajectory + pin positions to give a tiny smoothness term.
+  // For each pin that didn't fall, the minimum distance from any trajectory
+  // point contributes a soft penalty (so getting close is rewarded).
+  for (let i = 0; i < PINS.length; i++) {
+    if (result.finalPinState[i].fallen) continue;
+    let minD = Infinity;
+    const px = PINS[i].x, py = PINS[i].y;
+    for (let k = 0; k < result.trajectory.length; k += 4) {
+      const [tx, ty] = result.trajectory[k];
+      const d = Math.hypot(tx - px, ty - py);
+      if (d < minD) minD = d;
+    }
+    nearMiss += 1 / (1 + minD * 0.1);
+  }
+  return -result.score - 0.05 * nearMiss;
+}
+
+// ============================================================================
+// Rendering. The canvas shows the lane, pins, ball trail, and current ball.
+// ============================================================================
+function drawState(state) {
+  ctx.clearRect(0, 0, W, H);
+
+  // Lane texture.
+  const grad = ctx.createLinearGradient(0, 0, 0, H);
+  grad.addColorStop(0, '#3a3a52');
+  grad.addColorStop(1, '#252538');
+  ctx.fillStyle = grad;
+  ctx.fillRect(20, 0, W - 40, H);
+
+  // Foul line.
+  ctx.strokeStyle = 'rgba(255, 204, 0, 0.4)';
+  ctx.lineWidth = 2;
+  ctx.beginPath();
+  ctx.moveTo(20, 430); ctx.lineTo(W - 20, 430);
+  ctx.stroke();
+
+  // Pin deck guides.
+  ctx.strokeStyle = 'rgba(255, 255, 255, 0.07)';
+  for (const p of state.pinStates) {
+    ctx.beginPath();
+    ctx.arc(p.x0 || p.x, p.y0 || p.y, 14, 0, Math.PI * 2);
+    ctx.stroke();
+  }
+
+  // Trail.
+  if (state.trail && state.trail.length > 1) {
+    ctx.strokeStyle = 'rgba(255, 102, 0, 0.35)';
+    ctx.lineWidth = 3;
+    ctx.beginPath();
+    ctx.moveTo(state.trail[0][0], state.trail[0][1]);
+    for (let i = 1; i < state.trail.length; i++) {
+      ctx.lineTo(state.trail[i][0], state.trail[i][1]);
+    }
+    ctx.stroke();
+  }
+
+  // Pins.
+  for (const p of state.pinStates) {
+    ctx.save();
+    ctx.translate(p.x, p.y);
+    if (p.fallen) {
+      ctx.rotate(p.angle);
+      ctx.fillStyle = 'var(--pin-down)';
+      ctx.fillStyle = '#b5b5a8';
+    } else {
+      ctx.fillStyle = '#f5f5f0';
+    }
+    // Pin body (bowling-pin shape: bottle + neck).
+    ctx.beginPath();
+    ctx.arc(0, -10, 6, 0, Math.PI * 2);
+    ctx.fill();
+    ctx.fillRect(-6, -6, 12, 18);
+    ctx.restore();
+  }
+
+  // Ball.
+  if (state.ball) {
+    const b = state.ball;
+    ctx.fillStyle = '#ff6600';
+    ctx.beginPath();
+    ctx.arc(b.x, b.y, 11, 0, Math.PI * 2);
+    ctx.fill();
+    // Finger holes.
+    ctx.fillStyle = '#000';
+    ctx.beginPath();
+    ctx.arc(b.x + 3, b.y - 3, 2, 0, Math.PI * 2);
+    ctx.arc(b.x - 3, b.y - 3, 2, 0, Math.PI * 2);
+    ctx.fill();
+  }
+}
+
+function drawStaticPins() {
+  drawState({
+    pinStates: PINS.map(p => ({ x: p.x0, y: p.y0, x0: p.x0, y0: p.y0, fallen: false, angle: 0 })),
+    trail: null,
+    ball: null,
+  });
+}
+
+// Animate a single throw. Returns a Promise that resolves when the
+// animation completes (or is cancelled).
+let animationToken = 0;
+function animateThrow(throwResult) {
+  const myToken = ++animationToken;
+  return new Promise((resolve) => {
+    const traj = throwResult.trajectory;
+    let frame = 0;
+
+    function tick() {
+      if (myToken !== animationToken) return resolve();   // cancelled
+      if (frame >= traj.length) {
+        // Show the final state with all fallen pins.
+        drawState({
+          pinStates: throwResult.finalPinState.map((p, i) => ({
+            ...p, x0: PINS[i].x0, y0: PINS[i].y0,
+          })),
+          trail: traj,
+          ball: { x: traj[traj.length - 1][0], y: traj[traj.length - 1][1] },
+        });
+        return resolve();
+      }
+
+      // Reconstruct partial pin state — pins fall progressively as the
+      // ball reaches them, so simulate forward up to `frame` for pin
+      // states. Cheap to recompute; gives proper animation.
+      const partialPins = throwResult.finalPinState.map((p, i) => {
+        const dx = traj[frame][0] - PINS[i].x0;
+        const dy = traj[frame][1] - PINS[i].y0;
+        const dist = Math.hypot(dx, dy);
+        const passedThrough = (() => {
+          for (let k = 0; k <= frame; k++) {
+            const tdx = traj[k][0] - PINS[i].x0;
+            const tdy = traj[k][1] - PINS[i].y0;
+            if (Math.hypot(tdx, tdy) < 24) return true;
+          }
+          return false;
+        })();
+        return {
+          x: PINS[i].x0, y: PINS[i].y0, x0: PINS[i].x0, y0: PINS[i].y0,
+          fallen: p.fallen && passedThrough,
+          angle: p.angle,
+        };
+      });
+
+      drawState({
+        pinStates: partialPins,
+        trail: traj.slice(0, frame + 1),
+        ball: { x: traj[frame][0], y: traj[frame][1] },
+      });
+      frame += 2;  // step 2 frames per animation tick for speed
+      requestAnimationFrame(tick);
+    }
+    tick();
+  });
+}
+
+// ============================================================================
+// Optimisation runner — wires the dropdown to the HumpDay JS optimizer
+// classes loaded in the <script> tags above. Each runs *synchronously*
+// (HumpDay's JS optimizers are not yielding), so we kick it off via
+// setTimeout so the UI repaints in between.
+// ============================================================================
+let lastBestThrow = null;
+
+function getOptimizerClass(name) {
+  // The HumpDay modules attach their classes to globalThis in browsers.
+  return globalThis[name];
+}
+
+function runOptimization() {
+  const algoName = document.getElementById('algorithm').value;
+  const budget = parseInt(document.getElementById('budget').value, 10);
+  const cls = getOptimizerClass(algoName);
+  if (!cls) {
+    alert(`Optimizer '${algoName}' not found — check the JS console.`);
+    return;
+  }
+
+  const runBtn = document.getElementById('run-btn');
+  runBtn.disabled = true;
+  runBtn.textContent = `Running ${algoName}...`;
+
+  // Defer so the disabled state renders before we block.
+  setTimeout(() => {
+    try {
+      const opt = new cls(objective, budget, 4);
+      opt.optimize();
+
+      const bestThrow = simulateThrow(decode(opt.bestX));
+      lastBestThrow = bestThrow;
+
+      // Update stats panel.
+      document.getElementById('score-now').textContent = bestThrow.score;
+      document.getElementById('evals').textContent = opt.evaluations;
+      document.getElementById('best-score').textContent =
+        `${bestThrow.score} pins (${algoName})`;
+      const [sp, an, sn, rx] = decode(opt.bestX);
+      document.getElementById('param-speed').textContent = sp.toFixed(2);
+      document.getElementById('param-angle').textContent = `${an.toFixed(2)}°`;
+      document.getElementById('param-spin').textContent = sn.toFixed(2);
+      document.getElementById('param-release').textContent = rx.toFixed(0);
+
+      addLeaderboardEntry(algoName, bestThrow, opt.evaluations);
+      animateThrow(bestThrow);
+    } catch (e) {
+      console.error(e);
+      alert(`${algoName} threw an error: ${e.message}`);
+    } finally {
+      runBtn.disabled = false;
+      runBtn.textContent = '▶ Optimize this throw';
+    }
+  }, 50);
+}
+
+function replayBest() {
+  if (lastBestThrow) animateThrow(lastBestThrow);
+}
+
+// ============================================================================
+// Leaderboard — stores results from each run in this session.
+// ============================================================================
+const leaderboard = [];
+function addLeaderboardEntry(algoName, throwResult, evals) {
+  leaderboard.push({
+    name: algoName,
+    score: throwResult.score,
+    evals,
+    params: throwResult.params,
+  });
+  leaderboard.sort((a, b) => b.score - a.score || a.evals - b.evals);
+  renderLeaderboard();
+}
+function renderLeaderboard() {
+  const body = document.getElementById('leaderboard-body');
+  if (leaderboard.length === 0) {
+    body.innerHTML = '<tr><td colspan="4" style="color: var(--muted); text-align: center;">— no runs yet —</td></tr>';
+    return;
+  }
+  body.innerHTML = leaderboard.map(row => {
+    const [sp, an, sn, rx] = row.params;
+    return `<tr>
+      <td>${row.name}</td>
+      <td>${row.score} / 10</td>
+      <td>${row.evals}</td>
+      <td>${sp.toFixed(1)} / ${an.toFixed(1)}° / ${sn.toFixed(1)} / ${rx.toFixed(0)}</td>
+    </tr>`;
+  }).join('');
+}
+function resetEverything() {
+  leaderboard.length = 0;
+  lastBestThrow = null;
+  animationToken++;
+  ['score-now', 'evals'].forEach(id => document.getElementById(id).textContent = '0');
+  ['best-score', 'param-speed', 'param-angle', 'param-spin', 'param-release'].forEach(id =>
+    document.getElementById(id).textContent = '—');
+  renderLeaderboard();
+  drawStaticPins();
+}
+
+// Initial render.
+drawStaticPins();
+</script>
+</body>
+</html>
