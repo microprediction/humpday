@@ -1,0 +1,32 @@
+# Pre-commit hooks: keep local lint/format in sync with what CI runs.
+#
+# One-time setup:
+#     pipx install pre-commit          # (or: pip install --user pre-commit)
+#     pre-commit install
+#
+# After that, `git commit` runs the hooks below on the staged files
+# and aborts if anything's off. To run manually against the whole repo:
+#     pre-commit run --all-files
+#
+# Versions intentionally pinned. Bump with `pre-commit autoupdate`
+# when CI's ruff version changes.
+
+repos:
+  - repo: https://github.com/astral-sh/ruff-pre-commit
+    rev: v0.15.14
+    hooks:
+      - id: ruff
+        args: [--fix]
+      - id: ruff-format
+
+  # Catch the small stuff CI doesn't care about but reviewers shouldn't
+  # have to either — trailing whitespace, missing final newlines,
+  # accidentally-committed merge conflict markers.
+  - repo: https://github.com/pre-commit/pre-commit-hooks
+    rev: v5.0.0
+    hooks:
+      - id: trailing-whitespace
+      - id: end-of-file-fixer
+      - id: check-merge-conflict
+      - id: check-yaml
+      - id: check-toml
