@@ -2,29 +2,51 @@
 
 Working notes for issue [#78](https://github.com/microprediction/humpday/issues/78).
 
-**Goal: all three of (a) the canonical reference algorithm, (b) the HumpDay
-Python port, and (c) the HumpDay JavaScript port are equivalent within
-reason.** Not just "Python == JS" — the **published reference** is the
-target. A bug in the Python port mirrored faithfully in the JS port is
-*not* done. Both ports must track the published algorithm.
+**Goal: all three of (a) a reliable, trusted, third-party reference
+implementation, (b) the HumpDay Python port, and (c) the HumpDay JavaScript
+port are equivalent within reason.** Not just "Python == JS" — the
+**reference implementation** is the target. A bug in the Python port
+mirrored faithfully in the JS port is *not* done. Both ports must track
+the reference.
 
-For each algorithm the work is:
+## Rule of thumb (read this carefully)
 
-1. **Read the reference.** Powell's BOBYQA / NEWUOA / UOBYQA papers and the
-   PRIMA Fortran source; SciPy's Nelder-Mead implementation; scikit-optimize's
-   `gp_minimize`; etc. Pin down the parameters, initialisation, control
-   flow, fallback rules. The reference defines the algorithm.
-2. **Read the HumpDay Python port** with the reference open in another
-   pane. Note every deviation. Decide whether the deviation is intentional
-   (and worth keeping) or a bug to fix.
-3. **Read the HumpDay JavaScript port** the same way. Note deviations from
-   either the reference or the Python port.
-4. **Bring all three into alignment** — usually that means patching Python
-   to track the reference more closely, then patching JS to match the
-   (improved) Python.
+**Do not implement from a paper.** Find a trusted reference implementation
+and port that. A published paper hand-waves over corner cases that the
+reference code has had to deal with; a port from the paper will reproduce
+the paper's claims but lose the years of bug-fix history baked into the
+reference.
+
+For each algorithm, the trusted reference is one of:
+
+| Family | Reference implementation |
+|---|---|
+| Nelder-Mead, Powell (conj. dir.), L-BFGS-B, Differential Evolution, dual annealing | [SciPy](https://github.com/scipy/scipy/tree/main/scipy/optimize) (read the actual Python/Fortran source under `scipy/optimize/`) |
+| Bayesian optimisation (GP-based) | [scikit-optimize](https://github.com/scikit-optimize/scikit-optimize) — `gp_minimize` |
+| BOBYQA | [Py-BOBYQA](https://github.com/numericalalgorithmsgroup/pybobyqa) — pure-Python, MIT, by Cartis & Roberts. NAG-sponsored. |
+| NEWUOA, UOBYQA, BOBYQA (alternative) | [libprima/prima](https://github.com/libprima/prima) — Zaikun Zhang's modern Fortran rewrite of Powell's code. Use as a Fortran reference to port the *structure* into Python. |
+| CMA-ES | [`cmaes`](https://github.com/CyberAgentAILab/cmaes) — pure-Python, MIT, or Hansen's [`pycma`](https://github.com/CMA-ES/pycma) |
+| Particle Swarm | [`pyswarms`](https://github.com/ljvmiranda921/pyswarms) — pure-Python, MIT |
+| Genetic Algorithm | [DEAP](https://github.com/DEAP/deap), [pymoo](https://github.com/anyoptimization/pymoo) — both pure-Python |
+| Simulated Annealing | [`scipy.optimize.dual_annealing`](https://github.com/scipy/scipy/blob/main/scipy/optimize/_dual_annealing.py) |
+| Firefly, Tabu, Harmony, Ant Colony | various pure-Python packages, quality varies; pick the most-cited / best-maintained |
+
+## For each algorithm
+
+1. **Identify the reference implementation** from the table above. If
+   none of the listed packages fits, find one (Google Scholar for cites,
+   PyPI for downloads, GitHub stars for community vetting).
+2. **Read the reference implementation's source code**, not the paper.
+   Pin down its parameters, initialisation, control flow, and fallback
+   rules from the code.
+3. **Read the HumpDay Python port** with the reference source open in
+   another pane. Note every deviation. Patch Python to match.
+4. **Read the HumpDay JavaScript port** the same way. Patch JS to match
+   the (now-aligned) Python.
 5. **Verify** with `tests/test_port_behavior.py` and trace inspection.
 
-Python is not the authoritative source. The published algorithm is.
+The published paper is useful **only** as background. Implementation
+detail comes from the reference codebase.
 
 ---
 
@@ -52,58 +74,62 @@ Remaining algorithms (13) are already equivalent within ~2× both ways.
 
 ## The recipe (validated on PRIMA_BOBYQA, PR #83)
 
-1. **Read the reference algorithm first.** Pull up the paper / canonical
-   implementation (PRIMA Fortran, scipy source, skopt source) and write
-   down: initialisation, model form, trust-region rule, point-replacement
-   rule, fallback paths, parameter values. The reference is what we're
-   chasing — neither the Python nor JS port is authoritative.
+1. **Find the reference implementation** from the table at the top of this
+   file (or, if not listed, locate a trusted, well-cited, well-maintained
+   one). Clone or `pip install`. **Do not work from a paper** — paper
+   pseudocode hand-waves over corner cases that the reference code has
+   solved over years. The code is the reference, not the prose.
 
-2. **Read the HumpDay Python port** with the reference next to it. Note
+2. **Read the reference source code** — actual `.py` or `.f90` — and
+   write down: parameter defaults, initialisation, control flow,
+   fallback rules, point-update rule.
+
+3. **Read the HumpDay Python port** with the reference next to it. Note
    every deviation. If the deviation looks like a simplification (e.g.
-   diagonal Hessian instead of full symmetric), decide whether to keep it
-   for tractability or upgrade Python to match the reference. If the
-   deviation looks like a bug (e.g. arithmetic that double-counts a term),
-   patch Python first.
+   diagonal Hessian instead of full symmetric), decide whether to keep
+   it for tractability or upgrade Python to match the reference. If the
+   deviation looks like a bug, patch Python to match the reference.
 
-3. **Trace a single Python run** with `evaluate()` monkey-patched to
+4. **Trace a single Python run** with `evaluate()` monkey-patched to
    capture `(x, value)` pairs. Look at the first 20 calls. This catches
    non-obvious behaviour — base-point shifts, fallback-step kicks,
-   model-fit failures — that won't be visible from reading the code alone.
+   model-fit failures — that won't be visible from reading the code
+   alone.
 
-4. **Read the HumpDay JavaScript port** with both the reference and the
+5. **Read the HumpDay JavaScript port** with both the reference and the
    (now-aligned) Python port open. Note deviations from either.
 
-5. **Port method-for-method**. Use the same function names with a
+6. **Port method-for-method**. Use the same function names with a
    `_camelCase` prefix in JS (e.g. `_initBOBYQAPoints`, `_buildBOBYQAModel`,
    `_solveBoundConstrainedTR`). One-to-one mapping makes review easier and
    catches missed methods.
 
-6. **Match the arithmetic verbatim** with whichever port has been brought
+7. **Match the arithmetic verbatim** with whichever port has been brought
    into alignment with the reference. If Python has a peculiarity that
-   matches the reference (e.g. BOBYQA's `new_pos = XPT[kopt] + (xnew - xbase)`
-   if that's what Powell's Fortran does), JS must do the same. If the
-   peculiarity is a Python bug that drifts from the reference, fix
-   Python *and* don't propagate it to JS.
+   matches the reference, JS must do the same. If the peculiarity is a
+   Python bug that drifts from the reference, fix Python *and* don't
+   propagate it to JS.
 
-7. **Mirror the exception fallbacks**. The Python ports use
+8. **Mirror the exception fallbacks**. The Python ports use
    `except Exception:` to fall back from a failing surrogate fit to a
-   finite-difference gradient + identity Hessian. JS's Gaussian elimination
-   returns `null` instead of throwing — the JS port has to check for that
-   and route to the same fallback. **This was the single largest fix in
-   PR #83** — without it the JS BOBYQA terminated after 8 evals while
-   Python continued to 66.
+   finite-difference gradient + identity Hessian. JS's Gaussian
+   elimination returns `null` instead of throwing — the JS port has to
+   check for that and route to the same fallback. **This was the single
+   largest fix in PR #83** — without it the JS BOBYQA terminated after
+   8 evals while Python continued to 66.
 
-8. **Avoid normal-equations conditioning loss**. When the regression matrix
-   is exactly square (`npt == n_terms == 2n + 1` in BOBYQA, common in 2-D),
-   solve `A · x = b` directly via Gauss elim. The normal-equations path
-   `(AᵀA) x = Aᵀb` squares the condition number and silently produces
-   wrong coefficients once the interpolation set starts clustering.
+9. **Avoid normal-equations conditioning loss**. When the regression
+   matrix is exactly square (`npt == n_terms == 2n + 1` in BOBYQA, common
+   in 2-D), solve `A · x = b` directly via Gauss elim. The normal-equations
+   path `(AᵀA) x = Aᵀb` squares the condition number and silently
+   produces wrong coefficients once the interpolation set starts
+   clustering.
 
-9. **Verify with the characterisation harness**. Run
-   `pytest tests/test_port_behavior.py -m slow -s` and compare the new row
-   for the algorithm against the baseline in
-   `benchmarks/port_characterisation.json`. The ratio is a sanity check,
-   not the criterion — see "How to know we're done" below.
+10. **Verify with the characterisation harness**. Run
+    `pytest tests/test_port_behavior.py -m slow -s` and compare the new
+    row for the algorithm against the baseline in
+    `benchmarks/port_characterisation.json`. The ratio is a sanity check,
+    not the criterion — see "How to know we're done" below.
 
 ---
 
@@ -126,25 +152,39 @@ Remaining algorithms (13) are already equivalent within ~2× both ways.
 
 ---
 
-## Next target: PRIMA_NEWUOA
+## Next targets — and where the reference lives
 
-Picked next because:
+The list below pairs each algorithm with the **trusted reference** to port
+from. No paper implementations. If the only reference is Fortran, that's
+the source — we port the Fortran structure, not the paper's pseudocode.
 
-- Shares infrastructure with PRIMA_BOBYQA (the same `_solveLeastSquaresStatic`,
-  same fallback pattern, same model structure modulo bounds).
-- Current 20× gap is the largest remaining among algorithms with healthy
-  Python ports.
-- NEWUOA's interpolation set is also 2n+1 points but **without** bound
-  constraints, so the model fit is simpler than BOBYQA's — should be a
-  more localised change.
+| Algorithm | Reference to port from |
+|---|---|
+| **PRIMA_BOBYQA** ← done (PR #83) | (was: ad-hoc, before the rule existed). Re-do later from [Py-BOBYQA](https://github.com/numericalalgorithmsgroup/pybobyqa) — pure-Python, MIT — or [libprima](https://github.com/libprima/prima/blob/main/fortran/bobyqa) Fortran. |
+| **PRIMA_NEWUOA** ← next | [libprima Fortran NEWUOA](https://github.com/libprima/prima/tree/main/fortran/newuoa). No pure-Python reference exists; libprima's Fortran is the canonical modern implementation. |
+| PRIMA_UOBYQA | [libprima Fortran UOBYQA](https://github.com/libprima/prima/tree/main/fortran/uobyqa). |
+| Powell (conj. dir.) | [scipy `_minimize_powell`](https://github.com/scipy/scipy/blob/main/scipy/optimize/_optimize.py) (search for `_minimize_powell`). |
+| NelderMead | [scipy `_minimize_neldermead`](https://github.com/scipy/scipy/blob/main/scipy/optimize/_optimize.py). |
+| LBFGSB | Decide: rename our class (it's not L-BFGS-B) per #80, or port [scipy's `_lbfgsb_py.py`](https://github.com/scipy/scipy/tree/main/scipy/optimize) which itself wraps Zhu/Byrd/Lu/Nocedal Fortran. |
+| BayesianOpt | [`scikit-optimize gp_minimize`](https://github.com/scikit-optimize/scikit-optimize/blob/master/skopt/optimizer/gp.py). |
+| SimulatedAnnealing | [`scipy.optimize._dual_annealing`](https://github.com/scipy/scipy/blob/main/scipy/optimize/_dual_annealing.py). |
+| DifferentialEvolution | [`scipy.optimize._differentialevolution`](https://github.com/scipy/scipy/blob/main/scipy/optimize/_differentialevolution.py). |
+| CMAEvolutionStrategy | [`cmaes`](https://github.com/CyberAgentAILab/cmaes) — pure-Python, MIT. |
+| ParticleSwarm | [`pyswarms`](https://github.com/ljvmiranda921/pyswarms). |
+| GeneticAlgorithm | [DEAP](https://github.com/DEAP/deap) — pure-Python, LGPL. |
+| HillClimbing / TabuSearch / FireflyAlgorithm / AntColonyOpt / HarmonySearch / AdaptiveRandomSearch / CoordinateDescent / PatternSearch / EvolutionStrategy / RandomSearch | Pick the most-cited / best-maintained pure-Python implementation in each case. |
 
-Estimated effort: ~half of BOBYQA's, since most of the helpers
-(`_solveLeastSquaresStatic`, `_finiteDifferenceGradient*`) already exist
-on the BOBYQA class and can be lifted to a module-scope helper or copied.
+Order of attack (driven by which divergent ports are blocking issue #78):
 
-After NEWUOA: **PRIMA_UOBYQA** (small gap, but trivially same recipe);
-**Powell** and **BayesianOpt** are larger rewrites because their JS ports
-diverge structurally, not just numerically.
+1. **PRIMA_NEWUOA** — Read libprima's Fortran `newuoa.f90` and friends.
+   Port the Fortran logic into pure Python. Mirror to JS.
+2. **PRIMA_UOBYQA** — Same procedure with libprima's UOBYQA.
+3. **PRIMA_BOBYQA** revisit — PR #83 aligned Python and JS but predates
+   this rule. Re-align both against Py-BOBYQA (pure-Python reference).
+4. **LBFGSB** — pending decision on rename vs. reimplementation.
+5. **Powell, BayesianOpt** — port from scipy / scikit-optimize sources.
+6. **AntColonyOpt, TabuSearch, HillClimbing** — pick pure-Python references,
+   port both Python and JS to them.
 
 The Python-dominant-JS trio (AntColonyOpt, TabuSearch, HillClimbing) is
 deferred to the end — fixing those means improving the **Python** port to
