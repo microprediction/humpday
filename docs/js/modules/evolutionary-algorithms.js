@@ -6,13 +6,16 @@
  * They excel at global optimization and handling multimodal landscapes.
  */
 
-// Import base classes and utilities
-if (typeof module !== 'undefined' && module.exports) {
-    // Node.js environment
-    const { Optimizer, MathUtils } = require('./base-optimizer.js');
-} else {
-    // Browser environment - base classes already loaded
-}class DifferentialEvolution extends Optimizer {
+// Import base classes and utilities.
+// In the browser, base-optimizer.js (loaded as a <script> before this
+// file) attaches Optimizer and MathUtils to window. In Node we
+// require() them. Either way they end up as module-scope bindings.
+const Optimizer = (typeof require !== 'undefined' && typeof module !== 'undefined' && module.exports)
+    ? require('./base-optimizer.js').Optimizer
+    : (typeof window !== 'undefined' ? window.Optimizer : undefined);
+const MathUtils = (typeof require !== 'undefined' && typeof module !== 'undefined' && module.exports)
+    ? require('./base-optimizer.js').MathUtils
+    : (typeof window !== 'undefined' ? window.MathUtils : undefined);class DifferentialEvolution extends Optimizer {
     constructor(objective, nTrials, nDim) {
         super(objective, nTrials, nDim);
         this.name = 'DifferentialEvolution';
