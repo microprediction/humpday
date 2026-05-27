@@ -1069,432 +1069,396 @@ class PRIMA_NEWUOA extends Optimizer {
     }
 }
 
-// PRIMA BOBYQA - Bound constrained Optimization BY Quadratic Approximation
+// PRIMA BOBYQA - Bound-constrained Optimization BY Quadratic Approximation.
+// Pure-JS port mirroring humpday/optimizers/prima_algorithms.py::PRIMA_BOBYQA
+// step-for-step, so the two ports give the same answer up to RNG drift.
+// All values come from this.evaluate(x) — function values only,
+// no analytical gradients (BOBYQA fits a quadratic *surrogate*
+// m(s) = c + g.s + 0.5 * sum(diag_i * s_i^2) to recorded FVAL values
+// and trust-region-minimises that, never the user's f).
 class PRIMA_BOBYQA extends Optimizer {
     constructor(objective, nTrials, nDim) {
         super(objective, nTrials, nDim);
         this.name = 'PRIMA_BOBYQA';
-        // BOBYQA for bound constraints, typically uses 2n+1 points like NEWUOA
-        this.nPts = Math.min(2 * nDim + 1, Math.max(nDim + 2, Math.floor(nTrials / 3)));
-        this.lowerBounds = new Array(nDim).fill(0);  // Lower bounds [0,0,...,0]
-        this.upperBounds = new Array(nDim).fill(1);  // Upper bounds [1,1,...,1]
     }
 
     optimize() {
-        // Copy UOBYQA's proven structure exactly, with bound projection at evaluation
         const n = this.nDim;
+        const npt = 2 * n + 1;
+        const xl = new Array(n).fill(0);
+        const xu = new Array(n).fill(1);
 
-        // UOBYQA initialization adapted for bounds - consistent start near corner
-        let xBase = Array(n).fill(0.15); // Start consistently at [0.15, 0.15, ...]
-        let XPT = [Array(n).fill(0)]; // First point at origin in shifted coordinates
-        let FVAL = [this.evaluate(xBase)];
+        const rhobeg = 0.5;
+        const rhoend = 1e-8;
+        let rho = rhobeg;
 
-        // Build interpolation set exactly like UOBYQA with larger initial step
-        const step0 = 0.2;
-        for (let i = 0; i < n && XPT.length < this.nPts && this.evaluations < this.nTrials; i++) {
-            // Coordinate directions with bound respect
-            for (let dir = -1; dir <= 1; dir += 2) {
-                if (XPT.length >= this.nPts) break;
+        // Centre start, clipped a hair away from the bound so the initial
+        // coordinate-axis points have headroom on both sides.
+        let xbase = new Array(n).fill(0.5).map(v => Math.min(0.9, Math.max(0.1, v)));
+        this.evaluate(xbase);
 
-                const shift = Array(n).fill(0);
-                shift[i] = step0 * dir;
+        let { XPT, FVAL } = this._initBOBYQAPoints(xbase, rho, npt, n, xl, xu);
+        let kopt = this._argmin(FVAL);
 
-                const xNew = MathUtils.add(xBase, shift);
+        let iteration = 0;
+        const maxIter = Math.min(100, Math.floor(this.nTrials / npt));
 
-                // Apply bounds at evaluation
-                const xBounded = xNew.map(x => Math.max(0, Math.min(1, x)));
-                const actualShift = MathUtils.subtract(xBounded, xBase);
+        while (this.evaluations < this.nTrials && rho > rhoend && iteration < maxIter) {
+            iteration += 1;
 
-                XPT.push(actualShift);
-                FVAL.push(this.evaluate(xBounded));
-            }
-        }
-
-        // Fill remaining points with deterministic pattern for consistency
-        let pointIndex = 0;
-        while (XPT.length < this.nPts && this.evaluations < this.nTrials) {
-            const shift = Array(n).fill(0);
-
-            // Deterministic radial pattern
-            const angle = (pointIndex * 2.0 * Math.PI) / Math.max(1, this.nPts - 2 * n - 1);
-            const radius = 0.1;
-
-            if (n >= 2) {
-                shift[0] = radius * Math.cos(angle);
-                shift[1] = radius * Math.sin(angle);
-            } else if (n === 1) {
-                shift[0] = radius * (pointIndex % 2 === 0 ? 1 : -1);
+            let g, Hdiag;
+            try {
+                ({ g, Hdiag } = this._buildBOBYQAModel(XPT, FVAL, kopt, n));
+            } catch (e) {
+                rho *= 0.5;
+                continue;
             }
 
-            const xNew = MathUtils.add(xBase, shift);
-            const xBounded = xNew.map(x => Math.max(0, Math.min(1, x)));
-            const actualShift = MathUtils.subtract(xBounded, xBase);
-
-            XPT.push(actualShift);
-            FVAL.push(this.evaluate(xBounded));
-            pointIndex++;
-        }
-
-        // UOBYQA main loop with larger initial trust region for better reach
-        let rho = 0.3;
-        const rhoEnd = 1e-8;
-
-        while (this.evaluations < this.nTrials && rho > rhoEnd) {
-            // Find best point
-            let kOpt = 0;
-            for (let k = 1; k < FVAL.length; k++) {
-                if (FVAL[k] < FVAL[kOpt]) kOpt = k;
+            const xCurr = this._addVec(xbase, XPT[kopt]);
+            let d;
+            try {
+                d = this._solveBoundConstrainedTR(g, Hdiag, rho, n, xCurr, xl, xu);
+            } catch (e) {
+                d = this._fallbackBoundStep(g, rho, n, xCurr, xl, xu);
             }
 
-            // Use UOBYQA's proven Lagrange model (simplified version)
-            const model = { g: Array(n).fill(0) };
-
-            // Compute gradient using coordinate differences (UOBYQA style)
-            for (let i = 0; i < n; i++) {
-                let forwardVal = FVAL[kOpt], backwardVal = FVAL[kOpt];
-                let forwardStep = 0, backwardStep = 0;
-                let hasForward = false, hasBackward = false;
-
-                for (let k = 0; k < XPT.length; k++) {
-                    const s = XPT[k];
-                    if (Math.abs(s[i]) > 1e-8) {
-                        // Check if primarily coordinate direction
-                        let maxOther = 0;
-                        for (let j = 0; j < n; j++) {
-                            if (j !== i) maxOther = Math.max(maxOther, Math.abs(s[j]));
-                        }
-
-                        if (maxOther < 0.1 * Math.abs(s[i])) {
-                            if (s[i] > 0 && !hasForward) {
-                                forwardVal = FVAL[k]; forwardStep = s[i]; hasForward = true;
-                            } else if (s[i] < 0 && !hasBackward) {
-                                backwardVal = FVAL[k]; backwardStep = s[i]; hasBackward = true;
-                            }
-                        }
-                    }
-                }
-
-                // Compute derivative
-                if (hasForward && hasBackward) {
-                    model.g[i] = (forwardVal - backwardVal) / (forwardStep - backwardStep);
-                } else if (hasForward) {
-                    model.g[i] = (forwardVal - FVAL[kOpt]) / forwardStep;
-                } else if (hasBackward) {
-                    model.g[i] = (FVAL[kOpt] - backwardVal) / (-backwardStep);
-                }
-            }
-
-            // UOBYQA trust region step
-            let step = model.g.map(gi => -gi);
-            const stepNorm = MathUtils.norm(step);
-            if (stepNorm > rho) {
-                step = MathUtils.scale(step, rho / stepNorm);
-            }
+            const xnew = this._clip01(this._addVec(xCurr, d));
 
             if (this.evaluations >= this.nTrials) break;
+            const fnew = this.evaluate(xnew);
 
-            // Apply bounds at trial point evaluation
-            const xTrial = MathUtils.add(MathUtils.add(xBase, XPT[kOpt]), step);
-            const xTrialBounded = xTrial.map(x => Math.max(0, Math.min(1, x)));
-            const fTrial = this.evaluate(xTrialBounded);
+            const predRed = this._predictReduction(g, Hdiag, d);
+            const actualRed = FVAL[kopt] - fnew;
 
-            // UOBYQA acceptance test
-            const actualRed = FVAL[kOpt] - fTrial;
-            const predRed = -MathUtils.dot(model.g, step);
-            const ratio = predRed > 0 ? actualRed / predRed : -1;
-
-            if (ratio > 0.01) {
-                // Update interpolation set - replace worst point
-                let worstK = 0;
-                for (let k = 1; k < FVAL.length; k++) {
-                    if (FVAL[k] > FVAL[worstK]) worstK = k;
-                }
-                XPT[worstK] = MathUtils.subtract(xTrialBounded, xBase);
-                FVAL[worstK] = fTrial;
+            const updated = this._updateBOBYQAInterpolation(
+                XPT, FVAL, this._subVec(xnew, xbase), fnew, kopt, npt
+            );
+            if (updated) {
+                const koptNew = this._argmin(FVAL);
+                if (FVAL[koptNew] < FVAL[kopt]) kopt = koptNew;
             }
 
-            // UOBYQA trust region updates
-            if (ratio < 0.1) {
-                rho *= 0.5;
-            } else if (ratio > 0.75 && stepNorm > 0.9 * rho) {
-                rho = Math.min(rho * 2, 0.5);
+            rho = this._updateTrustRegionRadius(predRed, actualRed, rho, rhobeg, rhoend);
+
+            if (this._norm(XPT[kopt]) > 0.5 * rho) {
+                xbase = this._shiftBasePointBounded(XPT, xbase, kopt, npt, xl, xu);
             }
         }
 
-        // Find final best point
-        let kBest = 0;
-        for (let k = 1; k < FVAL.length; k++) {
-            if (FVAL[k] < FVAL[kBest]) kBest = k;
-        }
-
-        return {
-            bestValue: FVAL[kBest],
-            bestX: MathUtils.add(xBase, XPT[kBest]),
-            evaluations: this.evaluations,
-            success: true,
-            path: this.trackPath ? this.path : null
-        };
+        return { bestValue: this.bestValue, bestX: this.bestX };
     }
 
-    buildBoundedInterpolationSet(xPts, fVals, xBase, rho) {
-        const n = this.nDim;
+    // ----- helpers (named to mirror the Python implementation) -----
 
-        // Add bound-respecting coordinate directions with adequate step sizes
-        for (let i = 0; i < n && xPts.length < this.nPts && this.evaluations < this.nTrials; i++) {
-            // Positive direction - ensure minimum step size for good derivatives
-            const distToUpper = this.upperBounds[i] - xBase[i];
-            const minStep = Math.max(rho * 0.1, 1e-3); // Ensure minimum step size
-            const stepUp = Math.min(rho * 0.5, Math.max(minStep, distToUpper * 0.8));
-            if (stepUp > 1e-8) {
-                const xUp = xBase.slice();
-                xUp[i] = Math.min(this.upperBounds[i], xBase[i] + stepUp);
-                xPts.push(xUp);
-                fVals.push(this.evaluate(xUp));
+    _argmin(arr) {
+        let k = 0;
+        for (let i = 1; i < arr.length; i++) if (arr[i] < arr[k]) k = i;
+        return k;
+    }
+
+    _addVec(a, b) { return a.map((v, i) => v + b[i]); }
+    _subVec(a, b) { return a.map((v, i) => v - b[i]); }
+    _clip01(a)    { return a.map(v => Math.max(0, Math.min(1, v))); }
+    _norm(a)      { return Math.sqrt(a.reduce((s, v) => s + v * v, 0)); }
+
+    _initBOBYQAPoints(xbase, rho, npt, n, xl, xu) {
+        // Initial interpolation set, 2n+1 coordinate-axis points respecting bounds.
+        const XPT = [];
+        const FVAL = [];
+
+        XPT.push(new Array(n).fill(0));
+        FVAL.push(this.evaluate(xbase));
+
+        for (let i = 0; i < n; i++) {
+            if (FVAL.length >= npt) return { XPT, FVAL };
+            const step_pos = Math.min(rho, xu[i] - xbase[i]);
+            if (step_pos > 1e-10) {
+                const offset = new Array(n).fill(0);
+                offset[i] = step_pos;
+                XPT.push(offset);
+                FVAL.push(this.evaluate(this._clip01(this._addVec(xbase, offset))));
             }
 
-            if (xPts.length >= this.nPts || this.evaluations >= this.nTrials) break;
-
-            // Negative direction - ensure minimum step size
-            const distToLower = xBase[i] - this.lowerBounds[i];
-            const stepDown = Math.min(rho * 0.5, Math.max(minStep, distToLower * 0.8));
-            if (stepDown > 1e-8) {
-                const xDown = xBase.slice();
-                xDown[i] = Math.max(this.lowerBounds[i], xBase[i] - stepDown);
-                xPts.push(xDown);
-                fVals.push(this.evaluate(xDown));
+            if (FVAL.length >= npt) return { XPT, FVAL };
+            const step_neg = Math.max(-rho, xl[i] - xbase[i]);
+            if (step_neg < -1e-10) {
+                const offset = new Array(n).fill(0);
+                offset[i] = step_neg;
+                XPT.push(offset);
+                FVAL.push(this.evaluate(this._clip01(this._addVec(xbase, offset))));
             }
         }
 
-        // Add additional points that respect bounds
-        while (xPts.length < this.nPts && this.evaluations < this.nTrials) {
-            const xNew = xBase.slice();
+        // Optional diagonal-direction point.
+        if (FVAL.length < npt) {
+            const diag = new Array(n).fill(rho / Math.sqrt(n));
             for (let i = 0; i < n; i++) {
-                const range = this.upperBounds[i] - this.lowerBounds[i];
-                const maxPert = Math.min(rho, range * 0.3);
-                const pert = (Math.random() - 0.5) * 2 * maxPert;
-                xNew[i] = Math.min(this.upperBounds[i],
-                          Math.max(this.lowerBounds[i], xBase[i] + pert));
+                const xi = xbase[i] + diag[i];
+                if (xi > xu[i]) diag[i] = xu[i] - xbase[i];
+                else if (xi < xl[i]) diag[i] = xl[i] - xbase[i];
             }
-            xPts.push(xNew);
-            fVals.push(this.evaluate(xNew));
+            XPT.push(diag);
+            FVAL.push(this.evaluate(this._clip01(this._addVec(xbase, diag))));
         }
+
+        return { XPT, FVAL };
     }
 
-    buildBOBYQAQuadraticModel(xPts, fVals, xOpt) {
-        const n = this.nDim;
-        const nPts = xPts.length;
+    _buildBOBYQAModel(XPT, FVAL, kopt, n) {
+        // Quadratic surrogate m(s) = c + g.s + 0.5 * sum(d_i s_i^2)
+        // fit by least squares on the (FVAL - FVAL[kopt]) targets.
+        // Design matrix columns: [1, s_1..s_n, 0.5*s_1^2..0.5*s_n^2].
+        //
+        // When the interpolation set clusters in a subspace, the system
+        // is rank-deficient and the solver returns null. Python's BOBYQA
+        // catches its equivalent failure and falls back to a
+        // finite-difference gradient + identity Hessian; we mirror that
+        // here so the algorithm keeps making progress instead of
+        // stalling and shrinking rho to zero.
+        const nterms = 1 + 2 * n;
+        const nrows = FVAL.length;
+        const A = Array(nrows).fill().map(() => Array(nterms).fill(0));
+        const b = Array(nrows);
 
-        // Quadratic model: m(s) = c + g^T s + 0.5 s^T H s where s = x - xOpt
-        const model = {
-            c: 0,
-            g: new Array(n).fill(0),
-            H: Array(n).fill().map(() => new Array(n).fill(0))
-        };
-
-        // Find base point closest to xOpt
-        let kBase = 0;
-        let minDist = Infinity;
-        for (let k = 0; k < nPts; k++) {
-            const dist = MathUtils.norm(MathUtils.subtract(xPts[k], xOpt));
-            if (dist < minDist) {
-                minDist = dist;
-                kBase = k;
-            }
+        for (let k = 0; k < nrows; k++) {
+            const x = XPT[k];
+            let col = 0;
+            A[k][col++] = 1.0;
+            for (let i = 0; i < n; i++) A[k][col++] = x[i];
+            for (let i = 0; i < n; i++) A[k][col++] = 0.5 * x[i] * x[i];
+            b[k] = FVAL[k] - FVAL[kopt];
         }
-        model.c = fVals[kBase];
 
-        // Build model using finite differences with bound awareness
+        const coeffs = PRIMA_BOBYQA._solveLeastSquaresStatic(A, b);
+        if (!coeffs) {
+            // Mirror Python's `except Exception:` fallback.
+            const gFD = this._finiteDifferenceGradientBounded(XPT, FVAL, kopt, n);
+            return { g: gFD, Hdiag: new Array(n).fill(1.0) };
+        }
+
+        const g = coeffs.slice(1, n + 1);
+        const diagVals = coeffs.slice(n + 1, 2 * n + 1);
+
+        // Force the diagonal Hessian SPD (Python: shift by -min+1e-6 if needed).
+        let minDiag = diagVals[0];
+        for (let i = 1; i < diagVals.length; i++) if (diagVals[i] < minDiag) minDiag = diagVals[i];
+        if (minDiag <= 0) {
+            const shift = -minDiag + 1e-6;
+            for (let i = 0; i < diagVals.length; i++) diagVals[i] += shift;
+        }
+        return { g, Hdiag: diagVals };
+    }
+
+    _finiteDifferenceGradientBounded(XPT, FVAL, kopt, n) {
+        // Coordinate-wise FD using whichever positive/negative axis
+        // points are present. Mirrors Python's
+        // `_finite_difference_gradient_bounded` line-for-line.
+        const g = new Array(n).fill(0);
         for (let i = 0; i < n; i++) {
-            let forwardK = -1, backwardK = -1;
-            let minForwardDist = Infinity, minBackwardDist = Infinity;
+            let posVal = FVAL[kopt];
+            let negVal = FVAL[kopt];
+            let posStep = 0;
+            let negStep = 0;
+            for (let k = 0; k < FVAL.length; k++) {
+                if (k === kopt) continue;
+                const diff = this._subVec(XPT[k], XPT[kopt]);
+                const absI = Math.abs(diff[i]);
+                if (absI > 1e-6) {
+                    let sumAbs = 0;
+                    for (let j = 0; j < n; j++) sumAbs += Math.abs(diff[j]);
+                    if (sumAbs < 2 * absI) {
+                        if (diff[i] > 0) { posVal = FVAL[k]; posStep = diff[i]; }
+                        else              { negVal = FVAL[k]; negStep = -diff[i]; }
+                    }
+                }
+            }
+            if (posStep > 0 && negStep > 0) g[i] = (posVal - negVal) / (posStep + negStep);
+            else if (posStep > 0)            g[i] = (posVal - FVAL[kopt]) / posStep;
+            else if (negStep > 0)            g[i] = (FVAL[kopt] - negVal) / negStep;
+        }
+        return g;
+    }
 
-            for (let k = 0; k < nPts; k++) {
-                const s = MathUtils.subtract(xPts[k], xOpt);
+    // Solve A x = b for the BOBYQA quadratic-model regression.
+    //
+    // When npt == n_terms (exactly-determined) we solve A x = b directly
+    // via Gaussian elimination on A. Normal equations (A^T A) squares the
+    // condition number, which matters once the interpolation set starts
+    // to cluster (subsequent iterations after the initial layout). For
+    // overdetermined systems we fall back to normal equations, same as
+    // the JS UOBYQA does.
+    static _solveLeastSquaresStatic(A, b) {
+        const m = A.length;
+        const n = A[0].length;
 
-                // Check if point is along coordinate direction i
-                let isCoordDir = true;
+        // Direct path: m == n means the augmented matrix is square.
+        let M, rhs;
+        if (m === n) {
+            M = A.map(row => [...row]);
+            rhs = b.slice();
+        } else {
+            // Overdetermined → normal equations.
+            const AtA = Array(n).fill().map(() => Array(n).fill(0));
+            const Atb = Array(n).fill(0);
+            for (let i = 0; i < n; i++) {
                 for (let j = 0; j < n; j++) {
-                    if (j !== i && Math.abs(s[j]) > 0.1 * Math.abs(s[i])) {
-                        isCoordDir = false;
-                        break;
-                    }
+                    let s = 0;
+                    for (let k = 0; k < m; k++) s += A[k][i] * A[k][j];
+                    AtA[i][j] = s;
                 }
-
-                if (isCoordDir && Math.abs(s[i]) > 1e-8) {
-                    const dist = Math.abs(s[i]);
-                    if (s[i] > 0 && dist < minForwardDist) {
-                        forwardK = k;
-                        minForwardDist = dist;
-                    } else if (s[i] < 0 && dist < minBackwardDist) {
-                        backwardK = k;
-                        minBackwardDist = dist;
-                    }
-                }
+                let s = 0;
+                for (let k = 0; k < m; k++) s += A[k][i] * b[k];
+                Atb[i] = s;
             }
-
-            // Compute derivatives
-            if (forwardK >= 0 && backwardK >= 0) {
-                // Central difference
-                const h = xPts[forwardK][i] - xPts[backwardK][i];
-                model.g[i] = (fVals[forwardK] - fVals[backwardK]) / h;
-
-                // Second derivative
-                const hHalf = h / 2;
-                model.H[i][i] = (fVals[forwardK] - 2 * model.c + fVals[backwardK]) / (hHalf * hHalf);
-            } else if (forwardK >= 0) {
-                const h = xPts[forwardK][i] - xOpt[i];
-                model.g[i] = (fVals[forwardK] - model.c) / h;
-            } else if (backwardK >= 0) {
-                const h = xOpt[i] - xPts[backwardK][i];
-                model.g[i] = (model.c - fVals[backwardK]) / h;
-            }
+            M = AtA;
+            rhs = Atb;
         }
 
-        return model;
+        // Gaussian elimination with partial pivoting on [M | rhs].
+        const Aug = M.map((row, i) => [...row, rhs[i]]);
+        for (let i = 0; i < n; i++) {
+            let maxRow = i;
+            for (let k = i + 1; k < n; k++) {
+                if (Math.abs(Aug[k][i]) > Math.abs(Aug[maxRow][i])) maxRow = k;
+            }
+            [Aug[i], Aug[maxRow]] = [Aug[maxRow], Aug[i]];
+            if (Math.abs(Aug[i][i]) < 1e-12) return null;
+            for (let k = i + 1; k < n; k++) {
+                const factor = Aug[k][i] / Aug[i][i];
+                for (let j = i; j <= n; j++) Aug[k][j] -= factor * Aug[i][j];
+            }
+        }
+        const x = new Array(n).fill(0);
+        for (let i = n - 1; i >= 0; i--) {
+            let s = Aug[i][n];
+            for (let j = i + 1; j < n; j++) s -= Aug[i][j] * x[j];
+            x[i] = s / Aug[i][i];
+        }
+        return x;
     }
 
-    solveBoundedTrustRegion(model, xOpt, rho) {
-        const n = this.nDim;
-
-        // Solve: min m(s) = c + g^T s + 0.5 s^T H s subject to ||s|| ≤ rho and bounds
-
-        // Step 1: Compute Cauchy point (steepest descent to trust region boundary)
-        let cauchyStep = model.g.map(gi => -gi); // Negative gradient
-        let cauchyNorm = MathUtils.norm(cauchyStep);
-
-        if (cauchyNorm < 1e-12) {
-            // Zero gradient case - random exploration
-            cauchyStep = Array(n).fill(0).map(() => (Math.random() - 0.5) * 2 * rho * 0.1);
-            cauchyNorm = MathUtils.norm(cauchyStep);
-        }
-
-        // Scale Cauchy step to trust region boundary
-        if (cauchyNorm > rho) {
-            cauchyStep = MathUtils.scale(cauchyStep, rho / cauchyNorm);
-            cauchyNorm = rho;
-        }
-
-        // Apply bounds to Cauchy step
-        const cauchyTrial = MathUtils.add(xOpt, cauchyStep);
+    _solveBoundConstrainedTR(g, Hdiag, rho, n, xCurrent, xl, xu) {
+        // Try the Newton step on the surrogate (diagonal H → coordinate-wise
+        // solve). If it's feasible and inside the trust region, take it.
+        const dNewton = new Array(n);
+        let allPos = true;
         for (let i = 0; i < n; i++) {
-            cauchyTrial[i] = Math.max(this.lowerBounds[i], Math.min(this.upperBounds[i], cauchyTrial[i]));
+            if (Hdiag[i] <= 1e-8) { allPos = false; break; }
+            dNewton[i] = -g[i] / Hdiag[i];
         }
-        cauchyStep = MathUtils.subtract(cauchyTrial, xOpt);
-
-        // Step 2: Newton step if we can improve on Cauchy point
-        let newtonStep = Array(n).fill(0);
-
-        // Compute Hessian eigenvalue approximation for regularization
-        let hessianTrace = 0;
-        for (let i = 0; i < n; i++) {
-            hessianTrace += model.H[i][i];
-        }
-        const regularization = Math.max(1e-8, hessianTrace / n + 1e-6);
-
-        // Simple Newton step with regularized Hessian: (H + λI)^-1 g
-        for (let i = 0; i < n; i++) {
-            const diag = model.H[i][i] + regularization;
-            if (Math.abs(diag) > 1e-12) {
-                newtonStep[i] = -model.g[i] / diag;
-            } else {
-                newtonStep[i] = -model.g[i] * 100; // Treat as near-zero curvature
+        if (allPos) {
+            const xNew = this._addVec(xCurrent, dNewton);
+            let inBox = true;
+            for (let i = 0; i < n; i++) {
+                if (xNew[i] < xl[i] || xNew[i] > xu[i]) { inBox = false; break; }
             }
+            if (inBox && this._norm(dNewton) <= rho) return dNewton;
         }
-
-        // Scale Newton step to trust region
-        let newtonNorm = MathUtils.norm(newtonStep);
-        if (newtonNorm > rho) {
-            newtonStep = MathUtils.scale(newtonStep, rho / newtonNorm);
-        }
-
-        // Apply bounds to Newton step
-        const newtonTrial = MathUtils.add(xOpt, newtonStep);
-        for (let i = 0; i < n; i++) {
-            newtonTrial[i] = Math.max(this.lowerBounds[i], Math.min(this.upperBounds[i], newtonTrial[i]));
-        }
-        newtonStep = MathUtils.subtract(newtonTrial, xOpt);
-
-        // Step 3: Choose better of Cauchy vs Newton step
-        const cauchyPred = this.computeBOBYQAPrediction(model, cauchyStep);
-        const newtonPred = this.computeBOBYQAPrediction(model, newtonStep);
-
-        let step = newtonPred < cauchyPred ? newtonStep : cauchyStep;
-
-        // Project to satisfy bounds [0,1]
-        for (let i = 0; i < n; i++) {
-            const newPos = xOpt[i] + step[i];
-            if (newPos < this.lowerBounds[i]) {
-                step[i] = this.lowerBounds[i] - xOpt[i];
-            } else if (newPos > this.upperBounds[i]) {
-                step[i] = this.upperBounds[i] - xOpt[i];
-            }
-        }
-
-        // Re-scale if bound projection violated trust region
-        const finalNorm = MathUtils.norm(step);
-        if (finalNorm > rho * 1.01) {
-            step = MathUtils.scale(step, rho / finalNorm);
-        }
-
-        return step;
+        return this._projectedCauchy(g, Hdiag, rho, n, xCurrent, xl, xu);
     }
 
-    computeBOBYQAPrediction(model, step) {
-        // Same as other PRIMA methods
-        let pred = -MathUtils.dot(model.g, step);
+    _projectedCauchy(g, Hdiag, rho, n, xCurrent, xl, xu) {
+        // Steepest-descent on the surrogate with active-bound components
+        // zeroed, scaled to rho if needed, then projected onto the box.
+        if (this._norm(g) < 1e-12) return new Array(n).fill(0);
 
-        for (let i = 0; i < step.length; i++) {
-            for (let j = 0; j < step.length; j++) {
-                pred -= 0.5 * step[i] * model.H[i][j] * step[j];
-            }
+        const p = g.map(v => -v);
+        for (let i = 0; i < n; i++) {
+            if (xCurrent[i] <= xl[i] + 1e-10 && p[i] < 0) p[i] = 0;
+            else if (xCurrent[i] >= xu[i] - 1e-10 && p[i] > 0) p[i] = 0;
         }
+        if (this._norm(p) < 1e-12) return new Array(n).fill(0);
 
-        return pred;
+        // Cauchy α = (g·g) / (g·H·g) for diagonal H.
+        let gHg = 0;
+        for (let i = 0; i < n; i++) gHg += g[i] * Hdiag[i] * g[i];
+        const gg = g.reduce((s, v) => s + v * v, 0);
+        const alpha = gHg > 1e-12 ? gg / gHg : 1.0;
+
+        let d = p.map(v => alpha * v);
+        const dn = this._norm(d);
+        if (dn > rho) d = d.map(v => rho * v / dn);
+
+        for (let i = 0; i < n; i++) {
+            const xi = xCurrent[i] + d[i];
+            if (xi < xl[i]) d[i] = xl[i] - xCurrent[i];
+            else if (xi > xu[i]) d[i] = xu[i] - xCurrent[i];
+        }
+        return d;
     }
 
-    updateBOBYQAInterpolationSet(xPts, fVals, xNew, fNew) {
-        // Replace worst point
-        let worstK = 0;
-        for (let k = 1; k < fVals.length; k++) {
-            if (fVals[k] > fVals[worstK]) {
-                worstK = k;
-            }
-        }
+    _updateBOBYQAInterpolation(XPT, FVAL, dFromBase, fnew, kopt, npt) {
+        // Mirror Python's `new_pos = XPT[kopt] + d` where the caller passes
+        // d = xnew - xbase. The result is XPT[kopt] + (xnew - xbase), which
+        // is what gets stored. (Whether this is a Python bug or a feature
+        // we don't know — Powell's reference would store xnew - xbase
+        // directly — but matching it keeps the ports equivalent.)
+        const candidates = [];
+        for (let i = 0; i < npt; i++) if (i !== kopt) candidates.push(i);
+        if (!candidates.length) return false;
 
-        if (fNew < fVals[worstK]) {
-            xPts[worstK] = xNew.slice();
-            fVals[worstK] = fNew;
+        const newPos = XPT[kopt].map((v, i) => v + dFromBase[i]);
+
+        let furthest = candidates[0];
+        let furthestDist = this._norm(this._subVec(XPT[furthest], newPos));
+        for (const i of candidates) {
+            const dist = this._norm(this._subVec(XPT[i], newPos));
+            if (dist > furthestDist) { furthest = i; furthestDist = dist; }
         }
+        XPT[furthest] = newPos;
+        FVAL[furthest] = fnew;
+        return true;
     }
 
-    improveBoundedGeometry(xPts, fVals, xOpt, rho) {
-        // Add a geometry-improving point that respects bounds
-        const n = this.nDim;
+    _shiftBasePointBounded(XPT, xbase, kopt, npt, xl, xu) {
+        // Recentre XPT so the best point sits at the origin (Python verbatim).
+        const shift = XPT[kopt].slice();
+        const newBase = this._clip01(this._addVec(xbase, shift));
+        const actualShift = this._subVec(newBase, xbase);
+        for (let i = 0; i < npt; i++) {
+            XPT[i] = this._subVec(XPT[i], actualShift);
+        }
+        return newBase;
+    }
 
-        if (this.evaluations >= this.nTrials) return;
-
-        // Find direction that improves interpolation set geometry
-        let bestDir = Array(n).fill(0);
+    _fallbackBoundStep(g, rho, n, xCurrent, xl, xu) {
+        let d;
+        const gn = this._norm(g);
+        if (gn > 1e-12) {
+            d = g.map(v => -rho * v / gn);
+        } else {
+            // No model gradient — small random kick. Note this is the
+            // *algorithm's* tie-breaker, not a derivative of the user's f.
+            d = new Array(n).fill(0).map(() => (rho / 3.0) * (2 * Math.random() - 1));
+        }
         for (let i = 0; i < n; i++) {
-            // Bias toward center of feasible region
-            const center = (this.lowerBounds[i] + this.upperBounds[i]) / 2;
-            bestDir[i] = (center - xOpt[i]) + (Math.random() - 0.5) * rho;
+            const xi = xCurrent[i] + d[i];
+            if (xi < xl[i]) d[i] = xl[i] - xCurrent[i];
+            else if (xi > xu[i]) d[i] = xu[i] - xCurrent[i];
         }
+        return d;
+    }
 
-        // Normalize and scale
-        const dirNorm = MathUtils.norm(bestDir);
-        if (dirNorm > 1e-8) {
-            bestDir = MathUtils.scale(bestDir, rho / dirNorm);
+    _predictReduction(g, Hdiag, d) {
+        let gd = 0, dHd = 0;
+        for (let i = 0; i < g.length; i++) {
+            gd  += g[i] * d[i];
+            dHd += Hdiag[i] * d[i] * d[i];
         }
+        return -(gd + 0.5 * dHd);
+    }
 
-        // Apply bounds
-        const xTest = MathUtils.add(xOpt, bestDir);
-        for (let i = 0; i < n; i++) {
-            xTest[i] = Math.min(this.upperBounds[i], Math.max(this.lowerBounds[i], xTest[i]));
+    _updateTrustRegionRadius(predRed, actualRed, rho, rhobeg, rhoend) {
+        let ratio;
+        if (Math.abs(predRed) < 1e-12) {
+            ratio = actualRed <= 0 ? 0 : 10;
+        } else {
+            ratio = actualRed / predRed;
         }
-
-        const fTest = this.evaluate(xTest);
-        this.updateBOBYQAInterpolationSet(xPts, fVals, xTest, fTest);
+        if (ratio >= 0.75) return Math.min(rho * 2.0, rhobeg);
+        if (ratio >= 0.25) return rho;
+        if (ratio >= 0.1)  return rho * 0.8;
+        return Math.max(rho * 0.5, rhoend);
     }
 }
 
