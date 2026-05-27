@@ -1,12 +1,30 @@
-# Python ↔ JavaScript port-equivalence work
+# Reference ↔ Python ↔ JavaScript equivalence work
 
 Working notes for issue [#78](https://github.com/microprediction/humpday/issues/78).
-Goal: each of the 22 algorithms gives ≈ the same answer in Python and JavaScript
-on the same problem and budget.
 
-The Python ports are the authoritative reference. They're shorter, easier to
-read, well-tested in CI, and used by the documented `humpday.minimize()` entry
-point. JS ports follow.
+**Goal: all three of (a) the canonical reference algorithm, (b) the HumpDay
+Python port, and (c) the HumpDay JavaScript port are equivalent within
+reason.** Not just "Python == JS" — the **published reference** is the
+target. A bug in the Python port mirrored faithfully in the JS port is
+*not* done. Both ports must track the published algorithm.
+
+For each algorithm the work is:
+
+1. **Read the reference.** Powell's BOBYQA / NEWUOA / UOBYQA papers and the
+   PRIMA Fortran source; SciPy's Nelder-Mead implementation; scikit-optimize's
+   `gp_minimize`; etc. Pin down the parameters, initialisation, control
+   flow, fallback rules. The reference defines the algorithm.
+2. **Read the HumpDay Python port** with the reference open in another
+   pane. Note every deviation. Decide whether the deviation is intentional
+   (and worth keeping) or a bug to fix.
+3. **Read the HumpDay JavaScript port** the same way. Note deviations from
+   either the reference or the Python port.
+4. **Bring all three into alignment** — usually that means patching Python
+   to track the reference more closely, then patching JS to match the
+   (improved) Python.
+5. **Verify** with `tests/test_port_behavior.py` and trace inspection.
+
+Python is not the authoritative source. The published algorithm is.
 
 ---
 
@@ -34,43 +52,58 @@ Remaining algorithms (13) are already equivalent within ~2× both ways.
 
 ## The recipe (validated on PRIMA_BOBYQA, PR #83)
 
-1. **Read the Python implementation end-to-end** before touching JS. Take
-   notes on every helper method's role and arithmetic. The Python ports are
-   the source of truth; do not invent algorithmic detail.
+1. **Read the reference algorithm first.** Pull up the paper / canonical
+   implementation (PRIMA Fortran, scipy source, skopt source) and write
+   down: initialisation, model form, trust-region rule, point-replacement
+   rule, fallback paths, parameter values. The reference is what we're
+   chasing — neither the Python nor JS port is authoritative.
 
-2. **Trace a single Python run** with `evaluate()` monkey-patched to capture
-   `(x, value)` pairs. Look at the first 20 calls. This catches non-obvious
-   behaviour — base-point shifts, fallback-step kicks, model-fit failures.
+2. **Read the HumpDay Python port** with the reference next to it. Note
+   every deviation. If the deviation looks like a simplification (e.g.
+   diagonal Hessian instead of full symmetric), decide whether to keep it
+   for tractability or upgrade Python to match the reference. If the
+   deviation looks like a bug (e.g. arithmetic that double-counts a term),
+   patch Python first.
 
-3. **Port method-for-method**. Use the same function names with a `_camelCase`
-   prefix in JS (e.g. `_initBOBYQAPoints`, `_buildBOBYQAModel`,
+3. **Trace a single Python run** with `evaluate()` monkey-patched to
+   capture `(x, value)` pairs. Look at the first 20 calls. This catches
+   non-obvious behaviour — base-point shifts, fallback-step kicks,
+   model-fit failures — that won't be visible from reading the code alone.
+
+4. **Read the HumpDay JavaScript port** with both the reference and the
+   (now-aligned) Python port open. Note deviations from either.
+
+5. **Port method-for-method**. Use the same function names with a
+   `_camelCase` prefix in JS (e.g. `_initBOBYQAPoints`, `_buildBOBYQAModel`,
    `_solveBoundConstrainedTR`). One-to-one mapping makes review easier and
    catches missed methods.
 
-4. **Match the arithmetic verbatim**, even peculiarities. BOBYQA's Python
-   stores `XPT[kopt] + (xnew - xbase)` as the new position — geometrically
-   that double-counts `XPT[kopt]`, but it's what Python does, so JS must do
-   the same. Compatibility wins over correctness during Phase 1.
+6. **Match the arithmetic verbatim** with whichever port has been brought
+   into alignment with the reference. If Python has a peculiarity that
+   matches the reference (e.g. BOBYQA's `new_pos = XPT[kopt] + (xnew - xbase)`
+   if that's what Powell's Fortran does), JS must do the same. If the
+   peculiarity is a Python bug that drifts from the reference, fix
+   Python *and* don't propagate it to JS.
 
-5. **Mirror the exception fallbacks**. The Python ports use
+7. **Mirror the exception fallbacks**. The Python ports use
    `except Exception:` to fall back from a failing surrogate fit to a
    finite-difference gradient + identity Hessian. JS's Gaussian elimination
    returns `null` instead of throwing — the JS port has to check for that
-   and route to the same fallback. **This was the single largest fix in PR
-   #83** — without it the JS BOBYQA terminated after 8 evals while Python
-   continued to 66.
+   and route to the same fallback. **This was the single largest fix in
+   PR #83** — without it the JS BOBYQA terminated after 8 evals while
+   Python continued to 66.
 
-6. **Avoid normal-equations conditioning loss**. When the regression matrix
+8. **Avoid normal-equations conditioning loss**. When the regression matrix
    is exactly square (`npt == n_terms == 2n + 1` in BOBYQA, common in 2-D),
    solve `A · x = b` directly via Gauss elim. The normal-equations path
    `(AᵀA) x = Aᵀb` squares the condition number and silently produces
    wrong coefficients once the interpolation set starts clustering.
 
-7. **Verify with the characterisation harness**. Run
+9. **Verify with the characterisation harness**. Run
    `pytest tests/test_port_behavior.py -m slow -s` and compare the new row
    for the algorithm against the baseline in
-   `benchmarks/port_characterisation.json`. Within 2× both directions on
-   Rosenbrock @ 300 evals is the success threshold.
+   `benchmarks/port_characterisation.json`. The ratio is a sanity check,
+   not the criterion — see "How to know we're done" below.
 
 ---
 
