@@ -150,6 +150,11 @@ addopts = [
     "--strict-markers",
     "--strict-config",
     "--verbose",
+    "-m", "not slow",
+]
+
+markers = [
+    "slow: tests that take seconds-to-minutes (run with -m slow or skip with -m 'not slow')",
 ]
 
 [dependency-groups]
