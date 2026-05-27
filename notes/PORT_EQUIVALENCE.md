@@ -122,12 +122,42 @@ in the Python side.
 
 ## How to know we're done
 
-For each of the 9 remaining algorithms:
+**Definition of done: algorithmic equivalence within reason.** The JS port
+runs the same algorithm as the Python port — same control flow, same
+arithmetic, same fallbacks — and produces the same result up to
+floating-point noise from arithmetic-order or library differences.
 
-1. Characterisation harness shows |ratio − 1| < 0.10 on Rosenbrock @ 300 evals.
-2. Entry removed from `KNOWN_DIVERGENT_PORTS` in `tests/test_js_parity.py`
-   (or the comment updated to "deterministic equivalence" like BOBYQA).
-3. Single-run head-to-head with the same start point gives final values
-   within 2% of each other.
+The performance ratio in `benchmarks/port_characterisation.json` is a
+symptom, not the criterion. A port could pass an arbitrary ratio
+threshold by luck without being faithful; conversely a truly faithful
+port might land at ratio 1.02× because of floating-point order, and that
+should still pass.
 
-When all nine clear those bars, issue #78 closes.
+Concrete checks per algorithm, *all* required:
+
+1. **Same algorithm structure.** Public + private methods in JS map
+   1-to-1 to those in Python (same names, same responsibilities). No
+   helper exists in only one port unless it's a language-specific
+   plumbing concern (e.g. `_solveLeastSquaresStatic` replacing
+   `_A.linalg.qr` + `_A.linalg.solve`).
+
+2. **Same control flow on the same starting point.** Trace Python and JS
+   on the same objective with the same start. The number of evaluations
+   should match, and the first ~20 evaluated points should match in both
+   coordinates to ~3 significant figures.
+
+3. **Same fallback behaviour.** Each `except Exception:` in Python has a
+   parallel `if (!result) ...` or `try { ... } catch ...` in JS that
+   routes to the same fallback.
+
+4. **Final value within floating-point reason.** When step 2 holds, the
+   final reported `best_value` differs only by accumulated floating-point
+   noise (typically ≤ 1–2% relative). If the final value diverges by an
+   order of magnitude despite (1)–(3) above, there's a missing case.
+
+5. **Documented equivalence.** Either removed from
+   `KNOWN_DIVERGENT_PORTS` in `tests/test_js_parity.py`, or the comment
+   updated to "deterministic equivalence — both ports take the same
+   path, tied in pairwise comparisons" (as for PRIMA_BOBYQA).
+
+When all 9 algorithms satisfy (1)–(5), issue #78 closes.
