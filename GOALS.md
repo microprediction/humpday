@@ -9,28 +9,28 @@ Legend: ✅ done · 🟡 partial / in-progress · ❌ not done · ❓ unknown / 
 
 | Algorithm | 3rd party | JS | no-numpy | demo | academic | contests | int links | ext links | logic | perf |
 |---|---|---|---|---|---|---|---|---|---|---|
-| PRIMA_UOBYQA | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ❓ |
-| PRIMA_NEWUOA | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ❓ |
-| PRIMA_BOBYQA | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ❓ |
-| NelderMead | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ❓ |
-| Powell | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ❓ |
-| LBFGSB | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | 🟡 | ❓ |
-| DifferentialEvolution | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ❓ |
-| ParticleSwarm | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ❓ |
-| SimulatedAnnealing | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ❓ |
-| GeneticAlgorithm | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ❓ |
-| RandomSearch | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ❓ |
-| BayesianOpt | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | 🟡 | ❓ |
-| CMAEvolutionStrategy | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ❓ |
-| TabuSearch | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ❓ |
-| FireflyAlgorithm | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ❓ |
-| AntColonyOpt | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ❓ |
-| EvolutionStrategy | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ❓ |
-| HillClimbing | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ❓ |
-| HarmonySearch | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ❓ |
-| AdaptiveRandomSearch | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ❓ |
-| CoordinateDescent | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ❓ |
-| PatternSearch | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ❓ |
+| PRIMA_UOBYQA | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ |
+| PRIMA_NEWUOA | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ |
+| PRIMA_BOBYQA | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ |
+| NelderMead | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ |
+| Powell | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ |
+| LBFGSB | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | 🟡 | ✅ |
+| DifferentialEvolution | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ |
+| ParticleSwarm | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ |
+| SimulatedAnnealing | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ |
+| GeneticAlgorithm | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ |
+| RandomSearch | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ |
+| BayesianOpt | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | 🟡 | ✅ |
+| CMAEvolutionStrategy | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ |
+| TabuSearch | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ |
+| FireflyAlgorithm | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ |
+| AntColonyOpt | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ |
+| EvolutionStrategy | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ |
+| HillClimbing | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ |
+| HarmonySearch | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ |
+| AdaptiveRandomSearch | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ |
+| CoordinateDescent | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ |
+| PatternSearch | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ |
 
 ## Column meanings
 
@@ -55,7 +55,7 @@ Legend: ✅ done · 🟡 partial / in-progress · ❌ not done · ❓ unknown / 
 - **All algorithms · ext links** — ✅ verified by Crossref / direct-fetch audit. Six paper links that previously pointed to the WRONG paper were corrected: uobyqa (was a TSP paper → Powell 2002), bobyqa (was Hager–Zhang CG_DESCENT → Powell 2009 NA report), tabu-search (was Feo–Resende GRASP → Glover 1986), ant-colony (was the harmony-search paper → Dorigo 1996), harmony-search (replaced unresolvable Kluwer DOI → Geem 2001 canonical DOI), adaptive-random-search (dead Kluwer DOI → Solis & Wets 1981). Source-code buttons all anchor to specific class lines.
 - **LBFGSB · logic** — 🟡 because the class is named L-BFGS-B but is structurally finite-difference gradient + momentum, not a faithful L-BFGS-B (which would require analytical gradients HumpDay does not have). The page now says this honestly ("Finite-Difference Quasi-Newton — HumpDay's `LBFGSB` class, a derivative-free baseline"). Either rename the class or replace its body with a real quasi-Newton implementation.
 - **BayesianOpt · logic** — 🟡 because the GP kernel had broadcasting tricks (numpy path) and a separate pure-Python path with explicit loops, gated on `_A.BACKEND`. Both paths verified against the sphere, but no rigorous validation against `scikit-optimize` or `BoTorch`.
-- **All algorithms · perf** — ❓ until a current Elo benchmark sweep is recorded.
+- **All algorithms · perf** — Elo ratings recorded by `benchmarks/record_elo.py` and saved to `benchmarks/elo_ratings.json`. The current sweep ran 22 algorithms × 30 problems (15 sphere variants + 15 Rosenbrock variants) × 100 trials in 2 dimensions, generating ~7k pairwise match results. Re-run the script after any algorithm-logic change to refresh the file. As of the latest run, the top five are **DifferentialEvolution · SimulatedAnnealing · EvolutionStrategy · NelderMead · BayesianOpt**.
 
 ## Project-level work items (separate from per-algorithm goals)
 
