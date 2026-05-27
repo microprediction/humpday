@@ -61,12 +61,24 @@ results = sorted(
 
 ## When to reach for something heavier
 
-HumpDay is intentionally small (<100 KB, zero deps). If you outgrow it
-— very high dimensions, thousands of trials, gradient-aware methods,
-or you already have the dependencies anyway — consider:
+HumpDay is intentionally small (<100 KB, zero deps). If you outgrow it — very high dimensions, thousands of trials, gradient-aware methods, multi-objective, persistent studies — the natural progression depends on what you need:
 
-- [`scipy.optimize`](https://docs.scipy.org/doc/scipy/reference/optimize.html) — mature classical methods, gradient-aware, requires scipy + numpy.
-- [`nevergrad`](https://github.com/facebookresearch/nevergrad) — research-grade derivative-free optimizer library.
+**For ML hyperparameter tuning**
+- [Optuna](https://optuna.org/) — popular in ML; TPE, CMA-ES, pruning, parallel studies, dashboards.
+
+**For Bayesian optimization on expensive `f`**
+- [scikit-optimize / skopt](https://scikit-optimize.github.io/) — mature GP-based BO with multiple acquisition functions.
+- [BoTorch](https://botorch.org/) + [Ax](https://ax.dev/) — Facebook's PyTorch-backed BO stack; multi-fidelity, batch acquisition, research-grade.
+
+**For evolutionary algorithms with fine-grained control**
+- [DEAP](https://deap.readthedocs.io/) — comprehensive evolutionary-computing framework; custom operators and pipelines.
+- [pymoo](https://pymoo.org/) — multi-objective optimization (Pareto fronts, NSGA, etc.).
+- [cma](https://github.com/CMA-ES/pycma) — Hansen's canonical CMA-ES implementation.
+
+**For classical / general-purpose derivative-free**
+- [scipy.optimize](https://docs.scipy.org/doc/scipy/reference/optimize.html) — mature classical methods, gradient-aware, well-tested.
+- [NLopt](https://github.com/stevengj/nlopt) — fast C-backed library wrapping many derivative-free and gradient-aware solvers.
+- [nevergrad](https://github.com/facebookresearch/nevergrad) — research-grade derivative-free library from Facebook.
 
 ## Reference
 
