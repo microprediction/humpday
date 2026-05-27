@@ -150,7 +150,13 @@ addopts = [
     "--strict-markers",
     "--strict-config",
     "--verbose",
+    "-m", "not validation",
 ]
+markers = [
+    "validation: opt-in algorithm-validation regression tests (slow, run with -m validation)",
+    "slow: tests that take seconds-to-minutes",
+]
+
 
 [dependency-groups]
 dev = [
