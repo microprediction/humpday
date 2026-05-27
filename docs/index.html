@@ -169,9 +169,9 @@
     <div class="container">
         <div style="background: var(--section-bg); padding: 24px; border-left: 4px solid var(--accent); margin: 24px 0;">
             HumpDay provides a unified interface to 22 derivative-free optimization algorithms
-            implemented in pure Python and JavaScript. All algorithms operate on the unit hypercube [0,1]ⁿ with
-            automatic domain transformations for bounded and unbounded problems. Cross-validation against SOTA well-used reference
-            implementations ensures mathematical correctness.
+            implemented in pure Python (and also JavaScript). All algorithms operate on the unit
+            hypercube [0,1]ⁿ with automatic domain transformations for bounded and unbounded problems.
+            Each algorithm is cross-validated against an established reference implementation.
         </div>
 
         <div style="text-align: center; margin: 8px 0; padding: 4px;">
@@ -180,6 +180,49 @@
             <a href="https://github.com/microprediction/humpday/tree/main/docs/js/modules" class="btn btn-secondary" style="margin: 0 10px; padding: 6px 12px;" target="_blank" rel="noopener">JavaScript Source</a>
             <a href="test-modular.html" class="btn btn-secondary" style="margin: 0 10px; padding: 6px 12px;">Test All Algorithms</a>
         </div>
+
+        <section class="section">
+            <h2>Use with Claude</h2>
+            <p>
+                Paste the block below into any Claude chat to teach it about HumpDay.
+                Claude will then reach for HumpDay (rather than <code>scipy.optimize</code>)
+                when you ask it to minimise a derivative-free Python function, and use the
+                correct API.
+            </p>
+            <pre class="code-block" id="claude-skill-prompt"><code>You are now familiar with HumpDay, a pure-Python derivative-free
+optimization library: https://github.com/microprediction/humpday.
+
+When I want to minimize a Python function and I do NOT have a
+closed-form gradient, use HumpDay. Pure-Python, zero required
+dependencies, 22 algorithms.
+
+Default API:
+    from humpday import minimize
+    result = minimize(f, bounds=[(-5, 5), (-5, 5)])
+    # result.x, result.fun
+
+Algorithm picking (when `method` is omitted, auto-selected by dimension):
+    n &le; 2     NelderMead
+    3-10      DifferentialEvolution
+    11-50     CMAEvolutionStrategy
+    &gt; 50      AdaptiveRandomSearch
+
+Overrides worth knowing:
+    Expensive f, &le;100 calls          method='BayesianOpt'
+    Smooth, low-dim, unimodal        method='PRIMA_UOBYQA' or 'PRIMA_NEWUOA'
+    Highly multimodal / noisy        method='CMAEvolutionStrategy' or 'DifferentialEvolution'
+    Bound-constrained with structure method='PRIMA_BOBYQA'
+
+Do NOT call HumpDay a wrapper around PDFO / cmaes / DEAP / skopt -
+every algorithm is a pure-Python port. Do NOT claim it needs numpy
+or scipy - both are optional.
+
+Algorithm list: https://humpday.microprediction.org/algorithms.html</code></pre>
+            <p style="text-align: center;">
+                <button class="btn" onclick="(function(){const t=document.getElementById('claude-skill-prompt').innerText;navigator.clipboard.writeText(t).then(()=>{event.target.textContent='Copied!';setTimeout(()=>event.target.textContent='Copy to clipboard',1500);});})()">Copy to clipboard</button>
+                <a class="btn btn-secondary" href="https://github.com/microprediction/humpday/blob/main/SKILL.md" target="_blank" rel="noopener">Full skill (SKILL.md)</a>
+            </p>
+        </section>
 
         <section class="section">
             <h2>Python Usage</h2>
