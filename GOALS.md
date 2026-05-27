@@ -9,28 +9,28 @@ Legend: ✅ done · 🟡 partial / in-progress · ❌ not done · ❓ unknown / 
 
 | Algorithm | 3rd party | JS | no-numpy | demo | academic | contests | int links | ext links | logic | perf |
 |---|---|---|---|---|---|---|---|---|---|---|
-| PRIMA_UOBYQA | ✅ | ❓ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ❓ |
-| PRIMA_NEWUOA | ✅ | ❓ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ❓ |
-| PRIMA_BOBYQA | ✅ | ❓ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ❓ |
-| NelderMead | ✅ | ❓ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ❓ |
-| Powell | ✅ | ❓ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ❓ |
-| LBFGSB | ✅ | ❓ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | 🟡 | ❓ |
-| DifferentialEvolution | ✅ | ❓ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ❓ |
-| ParticleSwarm | ✅ | ❓ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ❓ |
-| SimulatedAnnealing | ✅ | ❓ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ❓ |
-| GeneticAlgorithm | ✅ | ❓ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ❓ |
-| RandomSearch | ✅ | ❓ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ❓ |
-| BayesianOpt | ✅ | ❓ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | 🟡 | ❓ |
-| CMAEvolutionStrategy | ✅ | ❓ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ❓ |
-| TabuSearch | ✅ | ❓ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ❓ |
-| FireflyAlgorithm | ✅ | ❓ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ❓ |
-| AntColonyOpt | ✅ | ❓ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ❓ |
-| EvolutionStrategy | ✅ | ❓ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ❓ |
-| HillClimbing | ✅ | ❓ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ❓ |
-| HarmonySearch | ✅ | ❓ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ❓ |
-| AdaptiveRandomSearch | ✅ | ❓ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ❓ |
-| CoordinateDescent | ✅ | ❓ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ❓ |
-| PatternSearch | ✅ | ❓ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ❓ |
+| PRIMA_UOBYQA | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ❓ |
+| PRIMA_NEWUOA | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ❓ |
+| PRIMA_BOBYQA | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ❓ |
+| NelderMead | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ❓ |
+| Powell | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ❓ |
+| LBFGSB | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | 🟡 | ❓ |
+| DifferentialEvolution | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ❓ |
+| ParticleSwarm | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ❓ |
+| SimulatedAnnealing | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ❓ |
+| GeneticAlgorithm | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ❓ |
+| RandomSearch | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ❓ |
+| BayesianOpt | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | 🟡 | ❓ |
+| CMAEvolutionStrategy | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ❓ |
+| TabuSearch | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ❓ |
+| FireflyAlgorithm | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ❓ |
+| AntColonyOpt | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ❓ |
+| EvolutionStrategy | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ❓ |
+| HillClimbing | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ❓ |
+| HarmonySearch | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ❓ |
+| AdaptiveRandomSearch | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ❓ |
+| CoordinateDescent | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ❓ |
+| PatternSearch | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ❓ |
 
 ## Column meanings
 
@@ -49,7 +49,7 @@ Legend: ✅ done · 🟡 partial / in-progress · ❌ not done · ❓ unknown / 
 
 ## Cell-status notes (where current marks deviate from a blanket ✅)
 
-- **All algorithms · JS** — the JavaScript port exists at `docs/js/modules/*.js`, but there is no automated Python↔JS parity sweep in CI. `tests/test_python_js_validation.py` has ~10 skipped cases. Until that gap is closed, every cell stays ❓ regardless of the port itself working.
+- **All algorithms · JS** — Python↔JS parity test landed in `tests/test_js_parity.py`. For each of the 22 algorithms it runs the Python port directly and the JS port via a Node subprocess (`tests/js_parity_runner.js`) on the same 2-D sphere objective and asserts both reach the optimum. Sweep runs in under 4 seconds. The old `test_python_js_validation.py` (which skipped because of `eval()`-loading issues) was deleted.
 - **EvolutionStrategy · demo** — ✅ as of PR #66: the embedded 3D demo panel was added (the page added in PR #61 was originally a minimal template). All 22 algorithms now have a working in-browser demo.
 - **All algorithms · int links** — ✅ verified by audit script. Site-wide top nav (Home · Contest · Algorithms · GitHub) added to all 36 docs pages in PR #66, plus a new `docs/algorithms.html` listing page grouped by family. No remaining `../js/optimizers.js` stale references, no `inde.html` typos.
 - **All algorithms · ext links** — ✅ verified by Crossref / direct-fetch audit. Six paper links that previously pointed to the WRONG paper were corrected: uobyqa (was a TSP paper → Powell 2002), bobyqa (was Hager–Zhang CG_DESCENT → Powell 2009 NA report), tabu-search (was Feo–Resende GRASP → Glover 1986), ant-colony (was the harmony-search paper → Dorigo 1996), harmony-search (replaced unresolvable Kluwer DOI → Geem 2001 canonical DOI), adaptive-random-search (dead Kluwer DOI → Solis & Wets 1981). Source-code buttons all anchor to specific class lines.
