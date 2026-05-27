@@ -491,31 +491,36 @@ class AlgorithmVisualizer {
 
         // Default to the page's own algorithm when the page title matches one.
         // Map each algorithm page's <title> keyword to its selector value.
-        const titleToAlgo = {
-            'UOBYQA':                 'PRIMA_UOBYQA',
-            'NEWUOA':                 'PRIMA_NEWUOA',
-            'BOBYQA':                 'PRIMA_BOBYQA',
-            "Nelder-Mead":            'SciPy_NelderMead',
-            "Powell":                 'SciPy_Powell',
-            'L-BFGS':                 'SciPy_BFGS',
-            'Differential Evolution': 'DifferentialEvolution',
-            'Particle Swarm':         'ParticleSwarm',
-            'Simulated Annealing':    'SimulatedAnnealing',
-            'Genetic Algorithm':      'GeneticAlgorithm',
-            'Random Search':          'RandomSearch',
-            'Bayesian Optimization':  'BayesianOpt',
-            'CMA':                    'CMAEvolutionStrategy',
-            'Tabu Search':            'TabuSearch',
-            'Firefly':                'FireflyAlgorithm',
-            'Ant Colony':             'AntColonyOpt',
-            'Evolution Strategy':     'EvolutionStrategy',
-            'Hill Climbing':          'HillClimbing',
-            'Harmony Search':         'HarmonySearch',
-            'Adaptive Random':        'AdaptiveRandomSearch',
-            'Coordinate Descent':     'CoordinateDescent',
-            'Pattern Search':         'PatternSearch',
-        };
-        for (const [keyword, algo] of Object.entries(titleToAlgo)) {
+        // Listed longest-first so a more-specific keyword wins over a
+        // shorter substring (e.g. 'Adaptive Random Search' must beat
+        // 'Random Search'; 'CMA Evolution Strategy' must beat plain
+        // 'Evolution Strategy').
+        const titleToAlgo = [
+            ['Adaptive Random Search',  'AdaptiveRandomSearch'],
+            ['CMA Evolution Strategy',  'CMAEvolutionStrategy'],
+            ['CMA-ES',                  'CMAEvolutionStrategy'],
+            ['Differential Evolution',  'DifferentialEvolution'],
+            ['Bayesian Optimization',   'BayesianOpt'],
+            ['Simulated Annealing',     'SimulatedAnnealing'],
+            ['Coordinate Descent',      'CoordinateDescent'],
+            ['Genetic Algorithm',       'GeneticAlgorithm'],
+            ['Evolution Strategy',      'EvolutionStrategy'],
+            ['Particle Swarm',          'ParticleSwarm'],
+            ['Pattern Search',          'PatternSearch'],
+            ['Harmony Search',          'HarmonySearch'],
+            ['Hill Climbing',           'HillClimbing'],
+            ['Random Search',           'RandomSearch'],
+            ['Ant Colony',              'AntColonyOpt'],
+            ['Tabu Search',             'TabuSearch'],
+            ['Nelder-Mead',             'SciPy_NelderMead'],
+            ['Firefly',                 'FireflyAlgorithm'],
+            ['L-BFGS',                  'SciPy_BFGS'],
+            ['Powell',                  'SciPy_Powell'],
+            ['UOBYQA',                  'PRIMA_UOBYQA'],
+            ['NEWUOA',                  'PRIMA_NEWUOA'],
+            ['BOBYQA',                  'PRIMA_BOBYQA'],
+        ];
+        for (const [keyword, algo] of titleToAlgo) {
             if (document.title.includes(keyword)) {
                 algorithmSelect.value = algo;
                 break;
