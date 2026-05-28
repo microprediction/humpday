@@ -241,13 +241,14 @@ const GREEN1_LEN = Math.hypot(
   GREEN1_RIGHT - GREEN1_LEFT, GREEN1_BACK_Y - GREEN1_FRONT_Y,
 );
 
-// Green 2 — real target. Higher, steeper slope, hole on the slope.
-// Reaching it requires more power AND a higher arc AND backspin to grip
-// the slope. Score 80+ when sunk or close.
+// Green 2 — real target. Steep enough that backspin is essential:
+// a fast-arriving ball will slide right off without grip. Front 110 px
+// elevated, back only 35 px, so the slope drops 75 px over ~180 px —
+// roughly a 22° downhill — much steeper than green 1's 7°.
 const GREEN2_LEFT = 590;
 const GREEN2_RIGHT = W - 30;              // 770
-const GREEN2_FRONT_Y = GROUND_Y - 100;
-const GREEN2_BACK_Y = GROUND_Y - 55;
+const GREEN2_FRONT_Y = GROUND_Y - 110;
+const GREEN2_BACK_Y = GROUND_Y - 35;
 const GREEN2_ANGLE = Math.atan2(
   GREEN2_BACK_Y - GREEN2_FRONT_Y, GREEN2_RIGHT - GREEN2_LEFT,
 );
@@ -260,12 +261,20 @@ const HOLE_X = GREEN2_LEFT + HOLE_FRAC * (GREEN2_RIGHT - GREEN2_LEFT);
 const HOLE_Y = GREEN2_FRONT_Y + HOLE_FRAC * (GREEN2_BACK_Y - GREEN2_FRONT_Y);
 const HOLE_R = 14;
 
-// Balloon overhead — static circular obstacle that blocks the "lob
-// everything sky-high" exploit. Positioned above the gap between the
-// two greens so a high arc has to thread either under it or around it.
-const BALLOON_X = 530;
-const BALLOON_Y = 130;
-const BALLOON_R = 28;
+// Balloons overhead — two static circular obstacles at similar height
+// that together block any "lob it sky-high" trajectory.
+//   Red balloon (mid-course): catches mid-flight apexes between the
+//     greens.
+//   Yellow balloon (near the tee): catches shots that try to arc up
+//     immediately after launch.
+// Both at similar y so the optimiser can't just thread between them in
+// altitude — it has to choose an x slot.
+const RED_BALLOON_X = 530;
+const RED_BALLOON_Y = 105;
+const RED_BALLOON_R = 28;
+const YELLOW_BALLOON_X = 200;
+const YELLOW_BALLOON_Y = 115;
+const YELLOW_BALLOON_R = 26;
 
 // Parameter ranges.
 // angle: 5..70° (low putts to high chips)
@@ -327,8 +336,11 @@ function buildWorld() {
 
   // Balloon — kills the cheap "lob it over everything" strategy by
   // making sufficiently-high arcs collide with a solid sky object.
-  const balloon = Bodies.circle(BALLOON_X, BALLOON_Y, BALLOON_R, {
-    isStatic: true, label: 'balloon', friction: 0.1, restitution: 0.6,
+  const redBalloon = Bodies.circle(RED_BALLOON_X, RED_BALLOON_Y, RED_BALLOON_R, {
+    isStatic: true, label: 'balloon-red', friction: 0.1, restitution: 0.6,
+  });
+  const yellowBalloon = Bodies.circle(YELLOW_BALLOON_X, YELLOW_BALLOON_Y, YELLOW_BALLOON_R, {
+    isStatic: true, label: 'balloon-yellow', friction: 0.1, restitution: 0.6,
   });
 
   // Hole sensor on green 2.
@@ -346,7 +358,8 @@ function buildWorld() {
   });
 
   Composite.add(world, [
-    ground, leftWall, rightWall, wall, green1, green2, balloon, hole, ball,
+    ground, leftWall, rightWall, wall, green1, green2,
+    redBalloon, yellowBalloon, hole, ball,
   ]);
   return { engine, ball, hole };
 }
@@ -377,7 +390,10 @@ function runShot(params, recordFrames = false) {
     if (!holed) {
       const dx = ball.position.x - HOLE_X;
       const dy = ball.position.y - HOLE_Y;
-      if (Math.hypot(dx, dy) < HOLE_R - 2 && Math.hypot(ball.velocity.x, ball.velocity.y) < 4) {
+      // Hole-capture velocity tightened (was < 4): a fast-arriving ball
+      // skips over the cup like in real golf. Only a ball that has
+      // been braked by friction (backspin or gentle approach) can drop.
+      if (Math.hypot(dx, dy) < HOLE_R - 2 && Math.hypot(ball.velocity.x, ball.velocity.y) < 1.8) {
         holed = true;
         Body.setPosition(ball, { x: HOLE_X, y: HOLE_Y + HOLE_R - BALL_R });
         Body.setVelocity(ball, { x: 0, y: 0 });
@@ -545,29 +561,32 @@ function drawCourse() {
   ctx.closePath();
   ctx.fill();
 
-  // Balloon overhead — circular body with string trailing down.
-  ctx.strokeStyle = 'rgba(255,255,255,0.5)';
-  ctx.lineWidth = 1;
-  ctx.beginPath();
-  ctx.moveTo(BALLOON_X, BALLOON_Y + BALLOON_R);
-  ctx.lineTo(BALLOON_X - 3, BALLOON_Y + BALLOON_R + 20);
-  ctx.stroke();
-  const bg = ctx.createRadialGradient(
-    BALLOON_X - 6, BALLOON_Y - 8, 2, BALLOON_X, BALLOON_Y, BALLOON_R,
-  );
-  bg.addColorStop(0, '#ff8888'); bg.addColorStop(1, '#cc2222');
-  ctx.fillStyle = bg;
-  ctx.beginPath();
-  ctx.arc(BALLOON_X, BALLOON_Y, BALLOON_R, 0, Math.PI * 2);
-  ctx.fill();
-  // Balloon knot.
-  ctx.fillStyle = '#aa1818';
-  ctx.beginPath();
-  ctx.moveTo(BALLOON_X - 3, BALLOON_Y + BALLOON_R);
-  ctx.lineTo(BALLOON_X + 3, BALLOON_Y + BALLOON_R);
-  ctx.lineTo(BALLOON_X, BALLOON_Y + BALLOON_R + 4);
-  ctx.closePath();
-  ctx.fill();
+  // Balloons overhead — small helper since there are two now.
+  function drawBalloon(bx, by, br, hiCol, loCol, knotCol) {
+    ctx.strokeStyle = 'rgba(255,255,255,0.5)';
+    ctx.lineWidth = 1;
+    ctx.beginPath();
+    ctx.moveTo(bx, by + br);
+    ctx.lineTo(bx - 3, by + br + 20);
+    ctx.stroke();
+    const bg = ctx.createRadialGradient(bx - 6, by - 8, 2, bx, by, br);
+    bg.addColorStop(0, hiCol); bg.addColorStop(1, loCol);
+    ctx.fillStyle = bg;
+    ctx.beginPath();
+    ctx.arc(bx, by, br, 0, Math.PI * 2);
+    ctx.fill();
+    ctx.fillStyle = knotCol;
+    ctx.beginPath();
+    ctx.moveTo(bx - 3, by + br);
+    ctx.lineTo(bx + 3, by + br);
+    ctx.lineTo(bx, by + br + 4);
+    ctx.closePath();
+    ctx.fill();
+  }
+  drawBalloon(RED_BALLOON_X, RED_BALLOON_Y, RED_BALLOON_R,
+              '#ff8888', '#cc2222', '#aa1818');
+  drawBalloon(YELLOW_BALLOON_X, YELLOW_BALLOON_Y, YELLOW_BALLOON_R,
+              '#fff390', '#e0b020', '#a87a10');
 }
 
 function drawBall(b) {
