@@ -817,16 +817,17 @@ async function animateSearchMontage() {
   const total = searchHistory.length;
   if (total === 0) return;
 
-  // Time budget per trial.
-  const TOTAL_ANIM_MS_TARGET = 60000;
-  const MIN_PER_THROW_MS = 120;
-  const perThrowMs = Math.max(MIN_PER_THROW_MS, TOTAL_ANIM_MS_TARGET / total);
-  // Browser-frame pacing: ~15 ms per shown step (~66 fps cap).
-  const msPerVisStep = 15;
-  // Stride chosen so the throw's ~120-180 sim frames play out within
-  // perThrowMs at the chosen visual step.
-  const AVG_SIM_FRAMES = 140;
-  const stride = Math.max(2, Math.ceil(AVG_SIM_FRAMES * msPerVisStep / perThrowMs));
+  // Smooth fast playback rather than frame-skip:
+  //   stride=2 keeps shown frames just one sim frame apart, so motion
+  //   stays continuous instead of teleporting. msPerVisStep=8 is faster
+  //   than the display refresh, so the browser just paints whichever
+  //   frame is latest at each vsync and the eye sees fast smooth motion.
+  // For typical ~120-frame throws: ~480 ms per throw, so a 200-launch
+  // run takes ~96 s total. Earlier code used stride=6 which made the
+  // ball appear to teleport — exactly the "skipping frames" the user
+  // objected to.
+  const stride = 2;
+  const msPerVisStep = 8;
 
   let bestSoFar = -1;
   let bestIdxSoFar = -1;
@@ -881,8 +882,9 @@ async function animateSearchMontage() {
     const last = re.frames[re.frames.length - 1];
     drawState({ pinStates: last.pins, trail, ball: last.ball, trailColor });
     drawHUD(i + 1, total, bestSoFar, isNewBest);
-    // Brief settle hold (≈80 ms) so the eye registers the outcome.
-    await new Promise((r) => setTimeout(r, 80));
+    // Brief settle hold (~40 ms) — just enough to register the outcome
+    // before the next throw begins.
+    await new Promise((r) => setTimeout(r, 40));
   }
   return bestIdxSoFar;
 }
