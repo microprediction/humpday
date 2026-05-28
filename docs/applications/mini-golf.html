@@ -279,7 +279,9 @@ function buildWorld() {
   // Ball.
   const ball = Bodies.circle(TEE_X, TEE_Y, BALL_R, {
     density: 0.005,
-    friction: 0.05,
+    // friction 0.05 was too low — spin barely transferred to roll.
+    // 0.35 lets sidespin meaningfully change the post-bounce trajectory.
+    friction: 0.35,
     frictionAir: 0.02,        // air drag — keeps things from rolling forever
     restitution: 0.55,
     label: 'ball',
@@ -449,11 +451,25 @@ function drawBall(b) {
   ctx.beginPath();
   ctx.arc(0, 0, BALL_R, 0, Math.PI * 2);
   ctx.fill();
-  // Dimples — just a couple to suggest a golf ball.
+  // Bold red stripe across the ball — rotates with `b.a` so the spin is
+  // unambiguously visible. Without an asymmetric mark the ball just
+  // looked like a static gradient circle.
+  ctx.strokeStyle = '#cc1818';
+  ctx.lineWidth = 2.2;
+  ctx.beginPath();
+  ctx.moveTo(-BALL_R + 1, 0);
+  ctx.lineTo(BALL_R - 1, 0);
+  ctx.stroke();
+  // Smaller perpendicular tick (so it's clear which way is "up").
+  ctx.lineWidth = 1.4;
+  ctx.beginPath();
+  ctx.moveTo(0, -BALL_R + 2);
+  ctx.lineTo(0, -BALL_R + 5);
+  ctx.stroke();
+  // Dimples — a couple to keep the golf-ball feel.
   ctx.fillStyle = 'rgba(0,0,0,0.18)';
-  ctx.beginPath(); ctx.arc(-2, -2, 1.2, 0, Math.PI * 2); ctx.fill();
-  ctx.beginPath(); ctx.arc(3, -1, 1.2, 0, Math.PI * 2); ctx.fill();
-  ctx.beginPath(); ctx.arc(1, 3, 1.2, 0, Math.PI * 2); ctx.fill();
+  ctx.beginPath(); ctx.arc(-4, -3, 1.0, 0, Math.PI * 2); ctx.fill();
+  ctx.beginPath(); ctx.arc(4, 3, 1.0, 0, Math.PI * 2); ctx.fill();
   ctx.restore();
 }
 
