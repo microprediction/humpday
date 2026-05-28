@@ -222,16 +222,38 @@ const ctx = canvas.getContext('2d');
 const W = canvas.width, H = canvas.height;
 
 // Course geometry.
-const GROUND_Y = H - 90;                  // top of the green
+const GROUND_Y = H - 90;                  // y of the flat ground surface
 const TEE_X = 90;                         // ball starting x
 const TEE_Y = GROUND_Y - 12;              // ball starting y
-const WALL_X = 370;                       // wall centre x
+const WALL_X = 370;                       // mid-fairway wall centre x
 const WALL_H = 80;                        // wall height
 const WALL_W = 14;
-const BUNKER_X1 = 440, BUNKER_X2 = 530;   // sand bunker x-range
-const HOLE_X = 690;
-const HOLE_R = 14;                        // visual + capture radius
+const BUNKER_X1 = 440, BUNKER_X2 = 530;   // sand bunker x-range (still bites energy)
 const BALL_R = 9;
+
+// Elevated green that slopes DOWNWARD away from the point of contact —
+// the ball must arc over the wall+bunker, LAND on the green, and STOP
+// before rolling off the back of the slope. Without backspin its
+// momentum will simply carry it down the slope and off the right
+// edge — a textbook case where backspin's roll-killing effect matters.
+const GREEN_LEFT = 580;
+const GREEN_RIGHT = W - 30;               // 770
+const GREEN_FRONT_Y = GROUND_Y - 60;      // higher (where ball lands first)
+const GREEN_BACK_Y = GROUND_Y - 25;       // lower (rolls down to here)
+const GREEN_SLOPE_ANGLE = Math.atan2(
+  GREEN_BACK_Y - GREEN_FRONT_Y,
+  GREEN_RIGHT - GREEN_LEFT,
+);
+const GREEN_LEN = Math.hypot(
+  GREEN_RIGHT - GREEN_LEFT,
+  GREEN_BACK_Y - GREEN_FRONT_Y,
+);
+
+// Hole position on the slope (60% down the green from its front edge).
+const HOLE_FRAC = 0.55;
+const HOLE_X = GREEN_LEFT + HOLE_FRAC * (GREEN_RIGHT - GREEN_LEFT);
+const HOLE_Y = GREEN_FRONT_Y + HOLE_FRAC * (GREEN_BACK_Y - GREEN_FRONT_Y);
+const HOLE_R = 14;
 
 // Parameter ranges.
 // angle: 5..70° (low putts to high chips)
@@ -251,7 +273,9 @@ function buildWorld() {
   const engine = Engine.create({ gravity: { x: 0, y: 1.0 } });
   const world = engine.world;
 
-  // Static green floor + walls.
+  // Flat ground spanning the whole canvas (under the green too, so the
+  // ball still has a surface to roll on if it falls off the green's
+  // right edge — that fairly counts as "missed the green").
   const ground = Bodies.rectangle(W / 2, GROUND_Y + 30, W, 60, {
     isStatic: true, label: 'ground', friction: 0.5,
   });
@@ -264,31 +288,40 @@ function buildWorld() {
     { isStatic: true, label: 'wall' },
   );
 
-  // Sand bunker — high-friction patch. We model it as a sensor body the
-  // physics step inspects each frame to bleed energy from the ball.
+  // Sand bunker — energy-bleeding patch checked manually each step.
   const bunker = Bodies.rectangle(
     (BUNKER_X1 + BUNKER_X2) / 2, GROUND_Y - 2, BUNKER_X2 - BUNKER_X1, 4,
     { isStatic: true, isSensor: true, label: 'bunker' },
   );
 
-  // Hole — represented as a sensor body the physics step also inspects.
-  const hole = Bodies.circle(HOLE_X, GROUND_Y - 2, HOLE_R, {
+  // Sloped elevated green — a rotated rectangle. Body centre lies along
+  // the slope's normal, offset 15 px below the slope line. Friction set
+  // high so backspin can grab and stop the ball.
+  const slopeCx = (GREEN_LEFT + GREEN_RIGHT) / 2;
+  const slopeCy = (GREEN_FRONT_Y + GREEN_BACK_Y) / 2;
+  const greenBodyCx = slopeCx + 15 * Math.sin(GREEN_SLOPE_ANGLE);
+  const greenBodyCy = slopeCy + 15 * Math.cos(GREEN_SLOPE_ANGLE);
+  const green = Bodies.rectangle(greenBodyCx, greenBodyCy, GREEN_LEN, 30, {
+    isStatic: true, friction: 0.6, restitution: 0.2, label: 'green',
+  });
+  Body.setAngle(green, GREEN_SLOPE_ANGLE);
+
+  // Hole sensor on the slope.
+  const hole = Bodies.circle(HOLE_X, HOLE_Y - 2, HOLE_R, {
     isStatic: true, isSensor: true, label: 'hole',
   });
 
   // Ball.
   const ball = Bodies.circle(TEE_X, TEE_Y, BALL_R, {
     density: 0.005,
-    // friction 0.05 was too low — spin barely transferred to roll.
-    // 0.35 lets sidespin meaningfully change the post-bounce trajectory.
     friction: 0.35,
-    frictionAir: 0.02,        // air drag — keeps things from rolling forever
+    frictionAir: 0.02,
     restitution: 0.55,
     label: 'ball',
   });
 
-  Composite.add(world, [ground, leftWall, rightWall, wall, bunker, hole, ball]);
-  return { engine, ball, hole, bunker };
+  Composite.add(world, [ground, leftWall, rightWall, wall, bunker, green, hole, ball]);
+  return { engine, ball, hole, bunker, green };
 }
 
 // Run one stroke. recordFrames=true keeps per-frame snapshots for animation.
@@ -320,14 +353,17 @@ function runShot(params, recordFrames = false) {
     }
 
     // Hole capture: ball centre inside the hole radius AND moving slowly.
+    // Hole is now on the sloped green, so the distance check uses
+    // HOLE_X/HOLE_Y (which sit on the slope), not the old ground-level
+    // coordinates.
     if (!holed) {
       const dx = ball.position.x - HOLE_X;
-      const dy = ball.position.y - (GROUND_Y - 2);
+      const dy = ball.position.y - HOLE_Y;
       if (Math.hypot(dx, dy) < HOLE_R - 2 && Math.hypot(ball.velocity.x, ball.velocity.y) < 4) {
         holed = true;
-        // Stop the ball at the hole bottom.
-        Body.setPosition(ball, { x: HOLE_X, y: GROUND_Y + HOLE_R - BALL_R });
+        Body.setPosition(ball, { x: HOLE_X, y: HOLE_Y + HOLE_R - BALL_R });
         Body.setVelocity(ball, { x: 0, y: 0 });
+        Body.setAngularVelocity(ball, 0);
       }
     }
 
@@ -340,6 +376,16 @@ function runShot(params, recordFrames = false) {
 
     // Early-out if ball is at rest.
     if (Math.hypot(ball.velocity.x, ball.velocity.y) < 0.15 && step > 30) break;
+  }
+
+  // If the ball is holed AND we're recording frames for animation, pad
+  // ~1 second of "ball sitting in the hole" frames so the playback
+  // visibly celebrates the sink before moving on. Doesn't affect score
+  // — purely a visual pause.
+  if (holed && recordFrames) {
+    const PAUSE_FRAMES = 60;
+    const finalFrame = frames[frames.length - 1];
+    for (let k = 0; k < PAUSE_FRAMES; k++) frames.push({ ...finalFrame });
   }
 
   // Scoring:
@@ -417,25 +463,64 @@ function drawCourse() {
   ctx.closePath();
   ctx.fill();
 
-  // Hole (cup).
+  // Elevated sloped green — a trapezoid with the top edge sloping
+  // downward from GREEN_FRONT_Y (left) to GREEN_BACK_Y (right).
+  ctx.fillStyle = '#5a3a1c';                     // brown pedestal/cliff side
+  ctx.beginPath();
+  ctx.moveTo(GREEN_LEFT, GREEN_FRONT_Y);
+  ctx.lineTo(GREEN_RIGHT, GREEN_BACK_Y);
+  ctx.lineTo(GREEN_RIGHT, GROUND_Y);
+  ctx.lineTo(GREEN_LEFT, GROUND_Y);
+  ctx.closePath();
+  ctx.fill();
+  // Bright top stripe — the putting surface.
+  ctx.fillStyle = '#7eb053';
+  ctx.beginPath();
+  ctx.moveTo(GREEN_LEFT, GREEN_FRONT_Y);
+  ctx.lineTo(GREEN_RIGHT, GREEN_BACK_Y);
+  ctx.lineTo(GREEN_RIGHT, GREEN_BACK_Y + 6);
+  ctx.lineTo(GREEN_LEFT, GREEN_FRONT_Y + 6);
+  ctx.closePath();
+  ctx.fill();
+  // Slope-direction arrow (tiny, just to suggest gradient).
+  ctx.strokeStyle = 'rgba(255,255,255,0.35)';
+  ctx.lineWidth = 1.5;
+  for (let i = 0; i < 4; i++) {
+    const fx = GREEN_LEFT + (0.15 + 0.2 * i) * (GREEN_RIGHT - GREEN_LEFT);
+    const fy = GREEN_FRONT_Y + (0.15 + 0.2 * i) * (GREEN_BACK_Y - GREEN_FRONT_Y) + 12;
+    ctx.beginPath();
+    ctx.moveTo(fx - 5, fy - 3);
+    ctx.lineTo(fx + 5, fy + 3);
+    ctx.lineTo(fx, fy + 3);
+    ctx.stroke();
+  }
+
+  // Hole (cup) — sits on the slope at (HOLE_X, HOLE_Y).
+  ctx.save();
+  ctx.translate(HOLE_X, HOLE_Y);
+  ctx.rotate(GREEN_SLOPE_ANGLE);
   ctx.fillStyle = '#1a1a1a';
   ctx.beginPath();
-  ctx.ellipse(HOLE_X, GROUND_Y, HOLE_R, 4, 0, 0, Math.PI * 2);
+  ctx.ellipse(0, 0, HOLE_R, 4, 0, 0, Math.PI * 2);
   ctx.fill();
   ctx.fillStyle = '#000';
   ctx.beginPath();
-  ctx.ellipse(HOLE_X, GROUND_Y + 2, HOLE_R - 3, 3, 0, 0, Math.PI * 2);
+  ctx.ellipse(0, 2, HOLE_R - 3, 3, 0, 0, Math.PI * 2);
   ctx.fill();
-  // Pin (flag pole).
+  ctx.restore();
+  // Pin (flag pole) — vertical, not tilted with slope.
   ctx.strokeStyle = '#ddd';
   ctx.lineWidth = 2;
-  ctx.beginPath(); ctx.moveTo(HOLE_X, GROUND_Y); ctx.lineTo(HOLE_X, GROUND_Y - 38); ctx.stroke();
+  ctx.beginPath();
+  ctx.moveTo(HOLE_X, HOLE_Y);
+  ctx.lineTo(HOLE_X, HOLE_Y - 42);
+  ctx.stroke();
   // Flag.
   ctx.fillStyle = '#ffcc00';
   ctx.beginPath();
-  ctx.moveTo(HOLE_X, GROUND_Y - 38);
-  ctx.lineTo(HOLE_X + 18, GROUND_Y - 32);
-  ctx.lineTo(HOLE_X, GROUND_Y - 26);
+  ctx.moveTo(HOLE_X, HOLE_Y - 42);
+  ctx.lineTo(HOLE_X + 18, HOLE_Y - 36);
+  ctx.lineTo(HOLE_X, HOLE_Y - 30);
   ctx.closePath();
   ctx.fill();
 }
