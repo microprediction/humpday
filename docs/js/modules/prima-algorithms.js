@@ -38,7 +38,11 @@ class PRIMA_UOBYQA extends Optimizer {
 
         // Trust region parameters EXACTLY matching PDFO's aggressive behavior
         let rho = 0.5;  // LARGER initial trust region radius like PDFO
-        const rhoend = 1e-3; // Relaxed final radius for better visualization
+        // Final trust-region radius. Was 1e-3 ("relaxed for visualization")
+        // which terminated UOBYQA at a coarse precision — well before the
+        // user's evaluation budget was exhausted on most problems.
+        // Matches NEWUOA and BOBYQA's 1e-8.
+        const rhoend = 1e-8;
         const eta1 = 0.01; // MORE AGGRESSIVE step acceptance (accept more steps)
         const eta2 = 0.25; // MORE AGGRESSIVE trust region expansion
         const gamma1 = 0.5; // Contraction factor
@@ -1101,7 +1105,14 @@ class PRIMA_BOBYQA extends Optimizer {
         let kopt = this._argmin(FVAL);
 
         let iteration = 0;
-        const maxIter = Math.min(100, Math.floor(this.nTrials / npt));
+        // Cap iteration count by budget directly rather than by
+        // floor(budget / npt) — the previous formula gave only
+        // floor(80/7) = 11 iterations on a 3-D problem with budget 80,
+        // so the trust-region loop terminated long before it should have.
+        // Each iteration uses ~1 evaluation, so the while-loop's own
+        // `this.evaluations < this.nTrials` check is sufficient; this
+        // cap just guards against pathological infinite loops.
+        const maxIter = this.nTrials;
 
         while (this.evaluations < this.nTrials && rho > rhoend && iteration < maxIter) {
             iteration += 1;
