@@ -64,31 +64,31 @@
       "algorithm": "DifferentialEvolution",
       "reference": "scipy differential_evolution",
       "problem": "sphere",
-      "humpday_median": 0.00027178102421698976,
+      "humpday_median": 1.2195613612335951e-05,
       "reference_median": 1.2692186333740483e-12,
-      "humpday_to_opt": 0.00027178102421698976,
+      "humpday_to_opt": 1.2195613612335951e-05,
       "reference_to_opt": 1.2692186333740483e-12,
-      "ratio_humpday_over_reference": 213963972.08885607
+      "ratio_humpday_over_reference": 9601192.497815171
     },
     {
       "algorithm": "DifferentialEvolution",
       "reference": "scipy differential_evolution",
       "problem": "rosenbrock",
-      "humpday_median": 0.35802570586317956,
+      "humpday_median": 0.010980246271619067,
       "reference_median": 1.3748802524684246e-10,
-      "humpday_to_opt": 0.35802570586317956,
+      "humpday_to_opt": 0.010980246271619067,
       "reference_to_opt": 1.3748802524684246e-10,
-      "ratio_humpday_over_reference": 2604031159.72635
+      "ratio_humpday_over_reference": 79862710.87387925
     },
     {
       "algorithm": "DifferentialEvolution",
       "reference": "scipy differential_evolution",
       "problem": "ackley",
-      "humpday_median": 0.18715697671839893,
+      "humpday_median": 0.10986175663369879,
       "reference_median": 0.02694823439503624,
-      "humpday_to_opt": 0.18715697671839893,
+      "humpday_to_opt": 0.10986175663369879,
       "reference_to_opt": 0.02694823439503624,
-      "ratio_humpday_over_reference": 6.945055248327013
+      "ratio_humpday_over_reference": 4.076770114999884
     },
     {
       "algorithm": "SimulatedAnnealing",
@@ -214,5 +214,5 @@
   "n_runs": 4,
   "n_trials": 200,
   "n_dim": 2,
-  "recorded_at": "2026-05-27T20:08:51Z"
+  "recorded_at": "2026-05-28T21:22:29Z"
 }
