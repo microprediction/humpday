@@ -217,6 +217,23 @@
         <span class="play">Open →</span>
       </div>
     </a>
+
+    <a class="card live" href="mini-golf.html" style="text-decoration:none;">
+      <div class="emoji">⛳</div>
+      <span class="tag">Live</span>
+      <h3>Mini-Golf</h3>
+      <p class="desc">
+        Sink a single putt over a wall, around a balloon, onto a
+        sloped elevated green. 3-D parameter space (angle, force,
+        backspin) with a deliberately bimodal landscape: a false
+        front green traps local methods; population methods find the
+        chip-and-grip line to the back green.
+      </p>
+      <div class="meta">
+        <span>n=3 · score 0–100</span>
+        <span class="play">Open →</span>
+      </div>
+    </a>
   </div>
 
   <h2>Coming soon</h2>
@@ -282,18 +299,6 @@
     faces — sparse rewards, hard physical constraints, regime change,
     expensive evaluation.
   </p>
-  <p>
-    Each application here is calibrated against one of those failure
-    modes:
-  </p>
-  <ul style="color: var(--muted); line-height: 1.6;">
-    <li><strong>Bowling, Slingshot</strong> — vast flat-zero region with a sharp scoring peak. Tests how fast an algorithm finds first contact.</li>
-    <li><strong>CartPole</strong> — stochastic objective with plateau / cliff topology. Punishes algorithms that over-trust a single low evaluation.</li>
-    <li><strong>Welded Beam</strong> — narrow feasible region carved out by seven nonlinear constraints. Tests constraint-cliff descent.</li>
-    <li><strong>Algo Trading</strong> — non-stationary objective; in-sample optimum ≠ out-of-sample optimum. Exposes regime-overfitting.</li>
-    <li><strong>Airfoil</strong> — severely limited budget; can't afford to fill a population. Bayesian / surrogate methods should dominate.</li>
-  </ul>
-
   <div class="skill-callout">
     <h3>🌱 Save the Planet</h3>
     <p>Cut and paste this into Claude or Cursor:</p>

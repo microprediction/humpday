@@ -168,8 +168,11 @@
       <select id="budget">
         <option value="10">10 launches</option>
         <option value="20" selected>20 launches</option>
-        <option value="40">40 launches</option>
-        <option value="80">80 launches</option>
+        <option value="50">50 launches</option>
+        <option value="100">100 launches</option>
+        <option value="200">200 launches</option>
+        <option value="500">500 launches</option>
+        <option value="1000">1000 launches</option>
       </select>
       <p style="margin: 8px 0 0; font-size: 0.78em; color: var(--muted);">
         Each launch is animated frame-by-frame at 2× the final-replay
@@ -320,8 +323,8 @@ const GROUP_B_LEFT = GAP_RIGHT;
 const GROUP_B_RIGHT = W - 30;
 const GROUP_B_PEDESTAL_H = 60;        // raised by this many px above ground
 const GROUP_B_TABLE_TOP = H - 80 - GROUP_B_PEDESTAL_H;
-const GROUP_B_COLS = 3;
-const GROUP_B_ROWS = 4;               // 12 blocks — same shape as Group A
+const GROUP_B_COLS = 2;               // narrower so blocks fall off more easily
+const GROUP_B_ROWS = 5;               // slimmer const GROUP_B_ROWS = 4;               // 12 blocks — same shape as Group A taller — 10 blocks total
 
 const TOTAL_BLOCKS = GROUP_A_COLS * GROUP_A_ROWS + GROUP_B_COLS * GROUP_B_ROWS;
 document.getElementById('block-count').textContent = TOTAL_BLOCKS;
@@ -667,6 +670,11 @@ async function animateSearchMontage() {
         entry, i + 1,
         { inPlace: liveLeaderboardIdx >= 0 },
       );
+      // Reflect the new best in the side panel — was previously only
+      // set after the montage finished, so the "Best so far" row sat
+      // on `—` for the whole search.
+      document.getElementById('best-score').textContent =
+        `${entry.score} blocks (${document.getElementById('algorithm').value})`;
     }
 
     await animateShot(
