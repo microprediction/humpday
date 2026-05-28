@@ -280,16 +280,6 @@
     derivative-free methods are designed for: noisy, non-differentiable,
     no gradient available, evaluation moderately expensive.
   </p>
-  <p>
-    Why is this surface hard? Most random throws miss the pins entirely
-    and score zero — a vast flat plateau with no gradient signal. The
-    optimiser must find any kind of contact at all before fine-tuning
-    matters. Algorithms that explore broadly (population-based methods
-    like CMA-ES, DE, PSO) tend to find first contact faster than
-    purely-local searchers; trust-region methods like PRIMA_BOBYQA
-    excel once they've found a feasible basin.
-  </p>
-
   <div class="skill-callout">
     <h3>🌱 Save the Planet</h3>
     <p>Cut and paste this into Claude or Cursor:</p>
