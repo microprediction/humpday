@@ -178,27 +178,23 @@
     </table>
   </div>
 
-  <h2>What's happening</h2>
+  <h2>The objective</h2>
   <p>
-    The course is a flat green with a vertical wall mid-fairway, a sand
-    bunker just past it that slows the ball, and a hole at the far right
-    end. The optimiser sets three numbers — angle, power, sidespin — and
-    a 2-D rigid-body simulator does the rest.
+    The course is deliberately bimodal. The lower green is reachable
+    with a low-arc, modest-power stroke but has no hole — the slope
+    bleeds the ball forward into the gap, so this basin caps at ~30-45
+    score. The upper green is steeper, higher, and farther; reaching
+    it needs the arc to clear both the wall and the balloon, the power
+    to make it that far, and enough backspin to brake on the downhill
+    surface. The balloon prevents a degenerate strategy of just lobbing
+    everything sky-high.
   </p>
   <p>
-    Multiple <strong>strategies</strong> exist for this layout:
-  </p>
-  <ul style="color: var(--muted); line-height: 1.6;">
-    <li><strong>Putt under the wall</strong> — too short and you hit the wall; too hard and you blast past the hole.</li>
-    <li><strong>Chip over the wall</strong> — high arc, moderate power; lands on the green between the wall and the bunker, rolls toward the hole.</li>
-    <li><strong>Sidespin hook</strong> — curve around the wall; needs precise spin + angle combination.</li>
-  </ul>
-  <p>
-    The integer-rounded distance term gives only a weak signal between
-    far-off shots; algorithms that explore broadly tend to find the
-    chip-over-wall basin sooner. Once they've found it, local refinement
-    methods (PRIMA_BOBYQA, NelderMead) close on the precise angle/power
-    quickly.
+    Local searchers (PRIMA_BOBYQA, Nelder-Mead) tend to settle on the
+    lower-green basin once they find any non-zero score there.
+    Population-based methods (CMA-ES, DE) sample broadly enough to
+    discover the upper-green basin and then refine inside it. The gap
+    between those two outcomes is what makes the leaderboard interesting.
   </p>
 
   <hr style="border: 0; border-top: 1px solid #404054; margin: 32px 0 16px;" />
@@ -221,39 +217,55 @@ const canvas = document.getElementById('canvas');
 const ctx = canvas.getContext('2d');
 const W = canvas.width, H = canvas.height;
 
-// Course geometry.
-const GROUND_Y = H - 90;                  // y of the flat ground surface
-const TEE_X = 90;                         // ball starting x
-const TEE_Y = GROUND_Y - 12;              // ball starting y
-const WALL_X = 370;                       // mid-fairway wall centre x
-const WALL_H = 80;                        // wall height
+// Course geometry — two sloping greens (a local trap + the real target)
+// plus a balloon overhead that blocks the high-lob exploit.
+const GROUND_Y = H - 90;
+const TEE_X = 90;
+const TEE_Y = GROUND_Y - 12;
+const WALL_X = 250;                       // moved earlier to make room for green1
+const WALL_H = 80;
 const WALL_W = 14;
-const BUNKER_X1 = 440, BUNKER_X2 = 530;   // sand bunker x-range (still bites energy)
 const BALL_R = 9;
 
-// Elevated green that slopes DOWNWARD away from the point of contact —
-// the ball must arc over the wall+bunker, LAND on the green, and STOP
-// before rolling off the back of the slope. Without backspin its
-// momentum will simply carry it down the slope and off the right
-// edge — a textbook case where backspin's roll-killing effect matters.
-const GREEN_LEFT = 580;
-const GREEN_RIGHT = W - 30;               // 770
-const GREEN_FRONT_Y = GROUND_Y - 60;      // higher (where ball lands first)
-const GREEN_BACK_Y = GROUND_Y - 25;       // lower (rolls down to here)
-const GREEN_SLOPE_ANGLE = Math.atan2(
-  GREEN_BACK_Y - GREEN_FRONT_Y,
-  GREEN_RIGHT - GREEN_LEFT,
+// Green 1 — false target. Lower, gentler slope, NO HOLE. Low-arc strokes
+// land here, trickle down the slope, and end up in the gap to the right.
+// Distance-only scoring caps shots that find this basin around 30–45.
+const GREEN1_LEFT = 320;
+const GREEN1_RIGHT = 490;
+const GREEN1_FRONT_Y = GROUND_Y - 50;
+const GREEN1_BACK_Y = GROUND_Y - 30;
+const GREEN1_ANGLE = Math.atan2(
+  GREEN1_BACK_Y - GREEN1_FRONT_Y, GREEN1_RIGHT - GREEN1_LEFT,
 );
-const GREEN_LEN = Math.hypot(
-  GREEN_RIGHT - GREEN_LEFT,
-  GREEN_BACK_Y - GREEN_FRONT_Y,
+const GREEN1_LEN = Math.hypot(
+  GREEN1_RIGHT - GREEN1_LEFT, GREEN1_BACK_Y - GREEN1_FRONT_Y,
 );
 
-// Hole position on the slope (60% down the green from its front edge).
-const HOLE_FRAC = 0.55;
-const HOLE_X = GREEN_LEFT + HOLE_FRAC * (GREEN_RIGHT - GREEN_LEFT);
-const HOLE_Y = GREEN_FRONT_Y + HOLE_FRAC * (GREEN_BACK_Y - GREEN_FRONT_Y);
+// Green 2 — real target. Higher, steeper slope, hole on the slope.
+// Reaching it requires more power AND a higher arc AND backspin to grip
+// the slope. Score 80+ when sunk or close.
+const GREEN2_LEFT = 590;
+const GREEN2_RIGHT = W - 30;              // 770
+const GREEN2_FRONT_Y = GROUND_Y - 100;
+const GREEN2_BACK_Y = GROUND_Y - 55;
+const GREEN2_ANGLE = Math.atan2(
+  GREEN2_BACK_Y - GREEN2_FRONT_Y, GREEN2_RIGHT - GREEN2_LEFT,
+);
+const GREEN2_LEN = Math.hypot(
+  GREEN2_RIGHT - GREEN2_LEFT, GREEN2_BACK_Y - GREEN2_FRONT_Y,
+);
+
+const HOLE_FRAC = 0.5;
+const HOLE_X = GREEN2_LEFT + HOLE_FRAC * (GREEN2_RIGHT - GREEN2_LEFT);
+const HOLE_Y = GREEN2_FRONT_Y + HOLE_FRAC * (GREEN2_BACK_Y - GREEN2_FRONT_Y);
 const HOLE_R = 14;
+
+// Balloon overhead — static circular obstacle that blocks the "lob
+// everything sky-high" exploit. Positioned above the gap between the
+// two greens so a high arc has to thread either under it or around it.
+const BALLOON_X = 530;
+const BALLOON_Y = 130;
+const BALLOON_R = 28;
 
 // Parameter ranges.
 // angle: 5..70° (low putts to high chips)
@@ -270,45 +282,50 @@ function decode(u) {
   ];
 }
 
+// Helper: build a sloped-rectangle body whose top edge runs from
+// (xa, ya) to (xb, yb). 30 px thick. Used for both greens.
+function makeSlopedGreen(xa, ya, xb, yb, label) {
+  const angle = Math.atan2(yb - ya, xb - xa);
+  const len = Math.hypot(xb - xa, yb - ya);
+  const cx = (xa + xb) / 2 + 15 * Math.sin(angle);
+  const cy = (ya + yb) / 2 + 15 * Math.cos(angle);
+  const body = Bodies.rectangle(cx, cy, len, 30, {
+    isStatic: true, friction: 0.6, restitution: 0.2, label,
+  });
+  Body.setAngle(body, angle);
+  return body;
+}
+
 // Build a fresh world per evaluation.
 function buildWorld() {
   const engine = Engine.create({ gravity: { x: 0, y: 1.0 } });
   const world = engine.world;
 
-  // Flat ground spanning the whole canvas (under the green too, so the
-  // ball still has a surface to roll on if it falls off the green's
-  // right edge — that fairly counts as "missed the green").
+  // Flat ground (the gutter under both greens) so a missed shot just
+  // ends up on flat grass with a measurable distance to the hole.
   const ground = Bodies.rectangle(W / 2, GROUND_Y + 30, W, 60, {
     isStatic: true, label: 'ground', friction: 0.5,
   });
   const leftWall = Bodies.rectangle(-10, H / 2, 20, H, { isStatic: true });
   const rightWall = Bodies.rectangle(W + 10, H / 2, 20, H, { isStatic: true });
 
-  // Mid-course wall — main obstacle.
+  // Mid-course wall — must be cleared by any non-trivial shot.
   const wall = Bodies.rectangle(
     WALL_X, GROUND_Y - WALL_H / 2, WALL_W, WALL_H,
     { isStatic: true, label: 'wall' },
   );
 
-  // Sand bunker — energy-bleeding patch checked manually each step.
-  const bunker = Bodies.rectangle(
-    (BUNKER_X1 + BUNKER_X2) / 2, GROUND_Y - 2, BUNKER_X2 - BUNKER_X1, 4,
-    { isStatic: true, isSensor: true, label: 'bunker' },
-  );
+  // Two sloped greens.
+  const green1 = makeSlopedGreen(GREEN1_LEFT, GREEN1_FRONT_Y, GREEN1_RIGHT, GREEN1_BACK_Y, 'green1');
+  const green2 = makeSlopedGreen(GREEN2_LEFT, GREEN2_FRONT_Y, GREEN2_RIGHT, GREEN2_BACK_Y, 'green2');
 
-  // Sloped elevated green — a rotated rectangle. Body centre lies along
-  // the slope's normal, offset 15 px below the slope line. Friction set
-  // high so backspin can grab and stop the ball.
-  const slopeCx = (GREEN_LEFT + GREEN_RIGHT) / 2;
-  const slopeCy = (GREEN_FRONT_Y + GREEN_BACK_Y) / 2;
-  const greenBodyCx = slopeCx + 15 * Math.sin(GREEN_SLOPE_ANGLE);
-  const greenBodyCy = slopeCy + 15 * Math.cos(GREEN_SLOPE_ANGLE);
-  const green = Bodies.rectangle(greenBodyCx, greenBodyCy, GREEN_LEN, 30, {
-    isStatic: true, friction: 0.6, restitution: 0.2, label: 'green',
+  // Balloon — kills the cheap "lob it over everything" strategy by
+  // making sufficiently-high arcs collide with a solid sky object.
+  const balloon = Bodies.circle(BALLOON_X, BALLOON_Y, BALLOON_R, {
+    isStatic: true, label: 'balloon', friction: 0.1, restitution: 0.6,
   });
-  Body.setAngle(green, GREEN_SLOPE_ANGLE);
 
-  // Hole sensor on the slope.
+  // Hole sensor on green 2.
   const hole = Bodies.circle(HOLE_X, HOLE_Y - 2, HOLE_R, {
     isStatic: true, isSensor: true, label: 'hole',
   });
@@ -322,8 +339,10 @@ function buildWorld() {
     label: 'ball',
   });
 
-  Composite.add(world, [ground, leftWall, rightWall, wall, bunker, green, hole, ball]);
-  return { engine, ball, hole, bunker, green };
+  Composite.add(world, [
+    ground, leftWall, rightWall, wall, green1, green2, balloon, hole, ball,
+  ]);
+  return { engine, ball, hole };
 }
 
 // Run one stroke. recordFrames=true keeps per-frame snapshots for animation.
@@ -344,15 +363,6 @@ function runShot(params, recordFrames = false) {
 
   for (let step = 0; step < N_SIM_STEPS; step++) {
     Engine.update(engine, SIM_DELTA);
-
-    // Bunker drag: if ball overlaps the bunker sensor's x-range and is
-    // near the ground, sap its velocity.
-    if (
-      ball.position.x > BUNKER_X1 && ball.position.x < BUNKER_X2 &&
-      ball.position.y > GROUND_Y - BALL_R - 4
-    ) {
-      Body.setVelocity(ball, { x: ball.velocity.x * 0.93, y: ball.velocity.y * 0.96 });
-    }
 
     // Hole capture: ball centre inside the hole radius AND moving slowly.
     // Hole is now on the sloped green, so the distance check uses
@@ -436,15 +446,6 @@ function drawCourse() {
   ctx.fillStyle = grass;
   ctx.fillRect(0, GROUND_Y, W, H - GROUND_Y);
 
-  // Bunker.
-  ctx.fillStyle = '#e0c878';
-  ctx.fillRect(BUNKER_X1, GROUND_Y, BUNKER_X2 - BUNKER_X1, 6);
-  // Bunker stipple.
-  ctx.fillStyle = 'rgba(0,0,0,0.18)';
-  for (let x = BUNKER_X1 + 4; x < BUNKER_X2; x += 8) {
-    ctx.fillRect(x, GROUND_Y + 1, 2, 2);
-  }
-
   // Tee marker.
   ctx.fillStyle = 'rgba(255,255,255,0.5)';
   ctx.fillRect(TEE_X - 12, GROUND_Y + 2, 24, 2);
@@ -468,42 +469,53 @@ function drawCourse() {
   ctx.closePath();
   ctx.fill();
 
-  // Elevated sloped green — a trapezoid with the top edge sloping
-  // downward from GREEN_FRONT_Y (left) to GREEN_BACK_Y (right).
-  ctx.fillStyle = '#5a3a1c';                     // brown pedestal/cliff side
-  ctx.beginPath();
-  ctx.moveTo(GREEN_LEFT, GREEN_FRONT_Y);
-  ctx.lineTo(GREEN_RIGHT, GREEN_BACK_Y);
-  ctx.lineTo(GREEN_RIGHT, GROUND_Y);
-  ctx.lineTo(GREEN_LEFT, GROUND_Y);
-  ctx.closePath();
-  ctx.fill();
-  // Bright top stripe — the putting surface.
-  ctx.fillStyle = '#7eb053';
-  ctx.beginPath();
-  ctx.moveTo(GREEN_LEFT, GREEN_FRONT_Y);
-  ctx.lineTo(GREEN_RIGHT, GREEN_BACK_Y);
-  ctx.lineTo(GREEN_RIGHT, GREEN_BACK_Y + 6);
-  ctx.lineTo(GREEN_LEFT, GREEN_FRONT_Y + 6);
-  ctx.closePath();
-  ctx.fill();
-  // Slope-direction arrow (tiny, just to suggest gradient).
-  ctx.strokeStyle = 'rgba(255,255,255,0.35)';
-  ctx.lineWidth = 1.5;
-  for (let i = 0; i < 4; i++) {
-    const fx = GREEN_LEFT + (0.15 + 0.2 * i) * (GREEN_RIGHT - GREEN_LEFT);
-    const fy = GREEN_FRONT_Y + (0.15 + 0.2 * i) * (GREEN_BACK_Y - GREEN_FRONT_Y) + 12;
+  // Helper to draw one sloped green.
+  function drawGreen(xa, ya, xb, yb, pedestalFill, surfaceFill) {
+    // Pedestal/cliff side.
+    ctx.fillStyle = pedestalFill;
     ctx.beginPath();
-    ctx.moveTo(fx - 5, fy - 3);
-    ctx.lineTo(fx + 5, fy + 3);
-    ctx.lineTo(fx, fy + 3);
-    ctx.stroke();
+    ctx.moveTo(xa, ya);
+    ctx.lineTo(xb, yb);
+    ctx.lineTo(xb, GROUND_Y);
+    ctx.lineTo(xa, GROUND_Y);
+    ctx.closePath();
+    ctx.fill();
+    // Putting-surface stripe.
+    ctx.fillStyle = surfaceFill;
+    ctx.beginPath();
+    ctx.moveTo(xa, ya);
+    ctx.lineTo(xb, yb);
+    ctx.lineTo(xb, yb + 6);
+    ctx.lineTo(xa, ya + 6);
+    ctx.closePath();
+    ctx.fill();
+    // Subtle direction arrows on the surface to show downhill direction.
+    ctx.strokeStyle = 'rgba(255,255,255,0.3)';
+    ctx.lineWidth = 1.2;
+    for (let i = 0; i < 3; i++) {
+      const t = 0.2 + 0.3 * i;
+      const fx = xa + t * (xb - xa);
+      const fy = ya + t * (yb - ya) + 12;
+      ctx.beginPath();
+      ctx.moveTo(fx - 4, fy - 2);
+      ctx.lineTo(fx + 4, fy + 2);
+      ctx.lineTo(fx, fy + 2);
+      ctx.stroke();
+    }
   }
 
-  // Hole (cup) — sits on the slope at (HOLE_X, HOLE_Y).
+  // Green 1 — false target. Slightly muted colour so green 2 reads as
+  // the "real" hole.
+  drawGreen(GREEN1_LEFT, GREEN1_FRONT_Y, GREEN1_RIGHT, GREEN1_BACK_Y,
+            '#5a3a1c', '#6e9748');
+  // Green 2 — real target. Brighter pedestal + putting surface.
+  drawGreen(GREEN2_LEFT, GREEN2_FRONT_Y, GREEN2_RIGHT, GREEN2_BACK_Y,
+            '#6b4226', '#7eb053');
+
+  // Hole + flag on green 2.
   ctx.save();
   ctx.translate(HOLE_X, HOLE_Y);
-  ctx.rotate(GREEN_SLOPE_ANGLE);
+  ctx.rotate(GREEN2_ANGLE);
   ctx.fillStyle = '#1a1a1a';
   ctx.beginPath();
   ctx.ellipse(0, 0, HOLE_R, 4, 0, 0, Math.PI * 2);
@@ -513,19 +525,41 @@ function drawCourse() {
   ctx.ellipse(0, 2, HOLE_R - 3, 3, 0, 0, Math.PI * 2);
   ctx.fill();
   ctx.restore();
-  // Pin (flag pole) — vertical, not tilted with slope.
   ctx.strokeStyle = '#ddd';
   ctx.lineWidth = 2;
   ctx.beginPath();
   ctx.moveTo(HOLE_X, HOLE_Y);
   ctx.lineTo(HOLE_X, HOLE_Y - 42);
   ctx.stroke();
-  // Flag.
   ctx.fillStyle = '#ffcc00';
   ctx.beginPath();
   ctx.moveTo(HOLE_X, HOLE_Y - 42);
   ctx.lineTo(HOLE_X + 18, HOLE_Y - 36);
   ctx.lineTo(HOLE_X, HOLE_Y - 30);
+  ctx.closePath();
+  ctx.fill();
+
+  // Balloon overhead — circular body with string trailing down.
+  ctx.strokeStyle = 'rgba(255,255,255,0.5)';
+  ctx.lineWidth = 1;
+  ctx.beginPath();
+  ctx.moveTo(BALLOON_X, BALLOON_Y + BALLOON_R);
+  ctx.lineTo(BALLOON_X - 3, BALLOON_Y + BALLOON_R + 20);
+  ctx.stroke();
+  const bg = ctx.createRadialGradient(
+    BALLOON_X - 6, BALLOON_Y - 8, 2, BALLOON_X, BALLOON_Y, BALLOON_R,
+  );
+  bg.addColorStop(0, '#ff8888'); bg.addColorStop(1, '#cc2222');
+  ctx.fillStyle = bg;
+  ctx.beginPath();
+  ctx.arc(BALLOON_X, BALLOON_Y, BALLOON_R, 0, Math.PI * 2);
+  ctx.fill();
+  // Balloon knot.
+  ctx.fillStyle = '#aa1818';
+  ctx.beginPath();
+  ctx.moveTo(BALLOON_X - 3, BALLOON_Y + BALLOON_R);
+  ctx.lineTo(BALLOON_X + 3, BALLOON_Y + BALLOON_R);
+  ctx.lineTo(BALLOON_X, BALLOON_Y + BALLOON_R + 4);
   ctx.closePath();
   ctx.fill();
 }
