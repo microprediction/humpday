@@ -140,6 +140,14 @@
   .leaderboard th { background: #1a1a22; color: var(--muted); text-transform: uppercase; font-size: 0.78em; letter-spacing: 0.08em; }
   .leaderboard td:nth-child(2) { text-align: center; font-size: 1.3em; font-weight: 700; color: var(--accent); }
   .leaderboard td:nth-child(3), .leaderboard td:nth-child(4) { font-family: 'SF Mono', Menlo, monospace; color: var(--muted); }
+
+  .skill-callout { margin-top: 36px; background: rgba(255, 204, 0, 0.06); border: 1px solid rgba(255, 204, 0, 0.3); border-radius: 8px; padding: 18px 22px; }
+  .skill-callout h3 { margin: 0 0 6px; color: var(--accent); font-size: 1.05em; text-transform: none; letter-spacing: 0; }
+  .skill-callout p { margin: 0 0 10px; color: var(--text); max-width: none; }
+  .skill-callout pre { background: #1a1a22; border: 1px solid #404054; border-radius: 4px; padding: 10px 14px; margin: 0; font-size: 0.84em; color: var(--accent); white-space: pre-wrap; word-break: break-all; font-family: 'SF Mono', Menlo, monospace; }
+  .skill-callout a { color: var(--accent); font-size: 0.85em; text-decoration: none; }
+  .skill-callout a:hover { text-decoration: underline; }
+
 </style>
 </head>
 <body>
@@ -278,6 +286,14 @@
     purely-local searchers; trust-region methods like PRIMA_BOBYQA
     excel once they've found a feasible basin.
   </p>
+
+  <div class="skill-callout">
+    <h3>🌱 Save the Planet</h3>
+    <p>Cut and paste this into a Claude Code project to install HumpDay as a skill — no install, no waste:</p>
+    <pre>Read https://raw.githubusercontent.com/microprediction/humpday/main/SKILL.md
+and create a project skill from it.</pre>
+    <p style="margin: 8px 0 0;"><a href="https://github.com/microprediction/humpday/blob/main/SKILL.md" target="_blank" rel="noopener">View SKILL.md →</a></p>
+  </div>
 </div>
 
 <script src="../js/modules/base-optimizer.js"></script>
