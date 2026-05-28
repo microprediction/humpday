@@ -350,13 +350,16 @@ const BALL_RADIUS = 18;         // ball larger relative to pins for visible plow
 // Physics constants. Tuned so a well-placed throw produces a chain
 // reaction across the dense formation but most random throws leave
 // many pins standing.
-const MASS_BALL = 8;            // ball roughly 8× heavier than a pin
+// Physics knobs tuned so a great launch can actually clear all 105 pins.
+// Before this set, the back-of-formation pins survived even on
+// well-placed strikes because the chain reaction lost energy too fast.
+const MASS_BALL = 12;           // heavier ball plows further (was 8)
 const MASS_PIN = 1;
-const RESTITUTION_BALL_PIN = 0.6;
-const RESTITUTION_PIN_PIN = 0.4;
-const PIN_FRICTION = 0.88;      // pins decelerate on the deck
-const BALL_FRICTION_X = 0.99;   // ball stays energetic longer to plow through
-const BALL_FRICTION_Y = 0.99;
+const RESTITUTION_BALL_PIN = 0.75;  // bouncier ball/pin collisions (was 0.6)
+const RESTITUTION_PIN_PIN = 0.6;    // pin-pin chain transfers more energy (was 0.4)
+const PIN_FRICTION = 0.93;      // pins slide further (was 0.88) — chain reaches the back
+const BALL_FRICTION_X = 0.992;  // ball decelerates slightly less (was 0.99)
+const BALL_FRICTION_Y = 0.992;
 
 // Extended pin formation — 6-row triangle (1+2+3+4+5+6 = 21 pins) instead
 // of standard 10-pin. More pins means more chain-reaction potential, a
