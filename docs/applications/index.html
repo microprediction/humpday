@@ -154,25 +154,15 @@
   <h1>Applications</h1>
   <div class="intro">
     <p>
-      Each card below is a single page where you pick one of HumpDay's
-      18 derivative-free optimisers, click <em>Run</em>, and watch it
-      tackle a domain-specific problem live in your browser. Same
-      algorithm code in every case — what changes is the
-      <code>objective(x)</code> function the optimiser sees.
+      Pick a HumpDay optimiser, click <em>Run</em>, and watch it tackle
+      a problem live in your browser. The algorithm code is identical
+      across every demo — only the <code>objective(x)</code> changes.
+      The optimiser sees a vector in <code>[0, 1]<sup>n</sup></code>
+      and a scalar score; it never knows what the parameters mean.
     </p>
     <p>
-      The optimisers don't know what the parameters mean. They see a
-      vector in the unit hypercube <code>[0, 1]<sup>n</sup></code> and
-      a scalar score. Yet the same handful of algorithms — CMA-ES,
-      Differential Evolution, PRIMA_BOBYQA, Nelder-Mead — produce
-      qualitatively different behaviour across these very different
-      domains. That's the point of the comparison.
-    </p>
-    <p>
-      Where it makes sense, the page also has a <strong>Human
-      Raphson</strong> panel: drag the sliders, hit <em>Throw</em>, and
-      see whether your intuition beats the algorithm. It usually
-      doesn't — but it's a useful baseline.
+      Most pages also include a <strong>Human Raphson</strong> panel —
+      drag the sliders and try the problem yourself.
     </p>
   </div>
 
@@ -213,10 +203,10 @@
       <span class="tag">Live</span>
       <h3>Slingshot</h3>
       <p class="desc">
-        Knock blocks off a stacked tower with a single launch.
-        Powered by <a href="https://brm.io/matter-js/" style="color: var(--accent);">Matter.js</a>
-        for real rigid-body physics. Includes a Human Raphson manual
-        mode — drag sliders, compete against the algorithms.
+        Knock blocks off a stacked tower with a single launch. Powered
+        by Matter.js for real rigid-body physics. Includes a Human
+        Raphson manual mode — drag sliders, compete against the
+        algorithms.
       </p>
       <div class="meta">
         <span>n=3 · score 0–20</span>
