@@ -1,0 +1,630 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' 'unsafe-inline'; style-src 'self' 'unsafe-inline';">
+<title>🛞 CartPole Policy Optimizer — HumpDay</title>
+<style>
+  :root {
+    --bg: #1a1a22;
+    --panel: #2d2d3a;
+    --accent: #ffcc00;
+    --text: #e8e8ea;
+    --muted: #9a9aac;
+    --lane: #2a2a3a;
+  }
+  body {
+    margin: 0;
+    background: var(--bg);
+    color: var(--text);
+    font-family: -apple-system, 'Segoe UI', 'Helvetica Neue', Helvetica, Arial, sans-serif;
+  }
+  .site-nav {
+    background: #34495e;
+    padding: 12px 24px;
+    font-family: 'Times New Roman', Times, serif;
+    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+  }
+  .site-nav-inner {
+    max-width: 1100px;
+    margin: 0 auto;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+  }
+  .site-nav a { color: #ecf0f1; text-decoration: none; margin: 0 12px; }
+  .site-nav a:hover { color: white; text-decoration: underline; }
+  .site-nav-brand { font-weight: 700; font-size: 1.25em; }
+
+  .container { max-width: 1100px; margin: 0 auto; padding: 32px 24px 64px; }
+  h1 { font-size: 2.2em; margin: 0.2em 0; }
+  h2 { font-size: 1.4em; margin-top: 1.4em; color: var(--accent); }
+  p { line-height: 1.55; max-width: 70ch; }
+  .intro { color: var(--muted); }
+
+  .stage {
+    display: grid;
+    grid-template-columns: 1fr 320px;
+    gap: 24px;
+    align-items: start;
+    margin-top: 24px;
+  }
+  @media (max-width: 800px) { .stage { grid-template-columns: 1fr; } }
+  canvas {
+    background: var(--lane);
+    border: 3px solid var(--accent);
+    border-radius: 6px;
+    display: block;
+    width: 100%;
+    height: auto;
+  }
+  .panel {
+    background: var(--panel);
+    padding: 18px;
+    border-radius: 6px;
+    border: 1px solid #404054;
+  }
+  .panel h3 {
+    margin: 0 0 12px;
+    font-size: 1.05em;
+    text-transform: uppercase;
+    letter-spacing: 0.06em;
+    color: var(--accent);
+  }
+  label { display: block; margin: 10px 0 6px; font-size: 0.9em; color: var(--muted); }
+  select, input, button {
+    width: 100%;
+    box-sizing: border-box;
+    padding: 8px 10px;
+    border-radius: 4px;
+    border: 1px solid #404054;
+    background: #1a1a22;
+    color: var(--text);
+    font-size: 0.95em;
+  }
+  button {
+    background: var(--accent);
+    color: #1a1a22;
+    font-weight: 700;
+    cursor: pointer;
+    margin-top: 6px;
+    transition: opacity 0.15s;
+  }
+  button:hover { opacity: 0.88; }
+  button.secondary { background: #404054; color: var(--text); font-weight: 400; }
+  button:disabled { opacity: 0.5; cursor: not-allowed; }
+  .stats { margin-top: 16px; padding-top: 14px; border-top: 1px solid #404054; font-size: 0.92em; line-height: 1.6; }
+  .stats .score { font-size: 2.6em; color: var(--accent); font-weight: 700; }
+  .stat-row { display: flex; justify-content: space-between; }
+  .stat-row span:last-child { color: var(--text); font-family: 'SF Mono', Menlo, monospace; }
+
+  .leaderboard { margin-top: 24px; }
+  .leaderboard table { width: 100%; border-collapse: collapse; background: var(--panel); border-radius: 6px; overflow: hidden; }
+  .leaderboard th, .leaderboard td { padding: 10px 14px; text-align: left; border-bottom: 1px solid #404054; }
+  .leaderboard th { background: #1a1a22; color: var(--muted); text-transform: uppercase; font-size: 0.78em; letter-spacing: 0.08em; }
+  .leaderboard td:nth-child(2) { text-align: center; font-size: 1.3em; font-weight: 700; color: var(--accent); }
+  .leaderboard td:nth-child(3), .leaderboard td:nth-child(4) { font-family: 'SF Mono', Menlo, monospace; color: var(--muted); }
+</style>
+</head>
+<body>
+<nav class="site-nav">
+  <div class="site-nav-inner">
+    <a class="site-nav-brand" href="../index.html">HumpDay 🛞</a>
+    <div>
+      <a href="../index.html">Home</a>
+      <a href="bowling.html">Bowling</a>
+      <a href="../contest.html">Contest</a>
+      <a href="../README.html">Docs</a>
+    </div>
+  </div>
+</nav>
+
+<div class="container">
+  <h1>🛞 CartPole Policy Optimizer</h1>
+  <p class="intro">
+    Train a 5-parameter linear controller to balance a pole on a moving
+    cart, by <strong>direct search over the policy weights</strong>.
+    No gradients, no value functions — just a black-box optimiser
+    hunting a 5-D parameter vector whose only signal is the average
+    survival time across a handful of stochastic episodes.
+  </p>
+
+  <div class="stage">
+    <canvas id="canvas" width="800" height="320"></canvas>
+
+    <div class="panel">
+      <h3>Algorithm</h3>
+      <label for="algorithm">Pick a HumpDay optimizer:</label>
+      <select id="algorithm">
+        <optgroup label="Trust-region / interpolation">
+          <option value="PRIMA_BOBYQA">PRIMA_BOBYQA</option>
+          <option value="PRIMA_NEWUOA">PRIMA_NEWUOA</option>
+        </optgroup>
+        <optgroup label="Local / classical">
+          <option value="NelderMead">Nelder-Mead</option>
+          <option value="Powell">Powell</option>
+          <option value="LBFGSB">L-BFGS-B (simplified)</option>
+        </optgroup>
+        <optgroup label="Population-based">
+          <option value="DifferentialEvolution">Differential Evolution</option>
+          <option value="ParticleSwarm">Particle Swarm</option>
+          <option value="CMAEvolutionStrategy" selected>CMA-Evolution Strategy</option>
+          <option value="GeneticAlgorithm">Genetic Algorithm</option>
+          <option value="EvolutionStrategy">Evolution Strategy</option>
+          <option value="HarmonySearch">Harmony Search</option>
+        </optgroup>
+        <optgroup label="Other">
+          <option value="SimulatedAnnealing">Simulated Annealing</option>
+          <option value="BayesianOpt">Bayesian Optimization</option>
+          <option value="FireflyAlgorithm">Firefly Algorithm</option>
+          <option value="AntColonyOpt">Ant Colony</option>
+          <option value="TabuSearch">Tabu Search</option>
+          <option value="RandomSearch">Random Search</option>
+        </optgroup>
+      </select>
+
+      <label for="budget">Evaluation budget:</label>
+      <select id="budget">
+        <option value="50">50 policies</option>
+        <option value="100" selected>100 policies</option>
+        <option value="200">200 policies</option>
+        <option value="500">500 policies</option>
+      </select>
+
+      <button id="run-btn" onclick="runOptimization()">▶ Train a balancer</button>
+      <button class="secondary" onclick="replayBest()">🔁 Replay best policy</button>
+      <button class="secondary" onclick="resetEverything()">⟲ Reset leaderboard</button>
+
+      <div class="stats">
+        <div class="stat-row"><span>Mean return</span><span class="score" id="score-now">0</span></div>
+        <div class="stat-row"><span>Policies tried</span><span id="evals">0</span></div>
+        <div class="stat-row"><span>Best so far</span><span id="best-score">—</span></div>
+        <div class="stat-row"><span>w<sub>x</sub></span><span id="param-w1">—</span></div>
+        <div class="stat-row"><span>w<sub>ẋ</sub></span><span id="param-w2">—</span></div>
+        <div class="stat-row"><span>w<sub>θ</sub></span><span id="param-w3">—</span></div>
+        <div class="stat-row"><span>w<sub>θ̇</sub></span><span id="param-w4">—</span></div>
+        <div class="stat-row"><span>bias</span><span id="param-b">—</span></div>
+      </div>
+    </div>
+  </div>
+
+  <div class="leaderboard">
+    <h2>Leaderboard (this session)</h2>
+    <p style="color: var(--muted);">
+      Each row records the mean return of the best policy a given algorithm
+      found in one run. The max possible is <strong>500</strong> (the
+      length of a CartPole-v1 episode). The gap between an algorithm's
+      best training return and an independent 20-episode test mean is the
+      noise-overfitting tax.
+    </p>
+    <table>
+      <thead>
+        <tr><th>Algorithm</th><th>Best mean return</th><th>Policies used</th><th>Test mean (20 fresh rollouts)</th></tr>
+      </thead>
+      <tbody id="leaderboard-body">
+        <tr><td colspan="4" style="color: var(--muted); text-align: center;">— no runs yet —</td></tr>
+      </tbody>
+    </table>
+  </div>
+
+  <h2>What's happening</h2>
+  <p>
+    The cart-pole simulator runs the same CartPole-v1 dynamics that the
+    OpenAI Gym ships (semi-implicit Euler integration of a 4-state
+    rigid-body system: cart position, cart velocity, pole angle, pole
+    rate). Each "policy" is a vector of 5 numbers — 4 weights and a bias
+    — defining a linear controller: <code>action = +push  if  w·state + b > 0</code>.
+  </p>
+  <p>
+    Each evaluation runs <strong>8 episodes</strong> from random initial
+    conditions and returns the mean number of frames the pole stayed up.
+    HumpDay minimises, so the objective is the
+    <em>negative</em> mean return. A policy that consistently keeps the
+    pole up for the full 500-step limit scores −500; one that crashes
+    after 10 frames scores −10.
+  </p>
+  <p>
+    Why is direct search effective here? The reward function — sum of
+    step indicators — is not differentiable in the policy parameters.
+    Policy-gradient estimators must approximate gradients by perturbation,
+    which has high variance. A well-chosen black-box optimiser exploring
+    a 5-D space can find a balanced policy in a few hundred episodes,
+    where REINFORCE typically needs millions.
+  </p>
+  <p>
+    Watch the search montage to see why <strong>population-based methods
+    (CMA-ES, DE, GA)</strong> tend to dominate this objective: the
+    landscape has a wide flat plateau where most policies crash within
+    20 steps (cost ≈ −20), then a sharp jump to "balanced for 500
+    steps". Local searchers struggle to escape the plateau; population
+    methods reach it via diversity.
+  </p>
+</div>
+
+<script src="../js/modules/base-optimizer.js"></script>
+<script src="../js/modules/prima-algorithms.js"></script>
+<script src="../js/modules/scipy-algorithms.js"></script>
+<script src="../js/modules/evolutionary-algorithms.js"></script>
+<script src="../js/modules/search-algorithms.js"></script>
+
+<script>
+// ============================================================================
+// CartPole-v1 physics — direct port of
+// example_applications/cart_pole_policy/problem.py and ultimately of
+// https://github.com/openai/gym/blob/master/gym/envs/classic_control/cartpole.py.
+// ============================================================================
+
+const canvas = document.getElementById('canvas');
+const ctx = canvas.getContext('2d');
+const W = canvas.width, H = canvas.height;
+
+const N_DIM = 5;
+const N_EPISODES = 8;             // rollouts per policy evaluation
+const MAX_STEPS = 500;
+const WEIGHT_RANGE = 5.0;         // [0,1]^5 -> [-5,5]^5
+
+const GRAVITY = 9.8;
+const MASS_CART = 1.0;
+const MASS_POLE = 0.1;
+const TOTAL_MASS = MASS_CART + MASS_POLE;
+const LENGTH = 0.5;               // half pole length (m)
+const POLEMASS_LENGTH = MASS_POLE * LENGTH;
+const FORCE_MAG = 10.0;
+const TAU = 0.02;                 // seconds per step
+
+const X_THRESHOLD = 2.4;
+const THETA_THRESHOLD = 12 * 2 * Math.PI / 360;
+
+function decode(u) {
+  return u.map((v) => WEIGHT_RANGE * (2.0 * v - 1.0));
+}
+
+// Mulberry32 — small deterministic PRNG so each seed produces the same
+// initial conditions on every run (matches Python's random.Random(seed)).
+function makeRng(seed) {
+  let s = (seed | 0) || 1;
+  return function () {
+    s |= 0; s = (s + 0x6D2B79F5) | 0;
+    let t = Math.imul(s ^ (s >>> 15), 1 | s);
+    t = (t + Math.imul(t ^ (t >>> 7), 61 | t)) ^ t;
+    return ((t ^ (t >>> 14)) >>> 0) / 4294967296;
+  };
+}
+
+function step(state, action) {
+  let [x, x_dot, theta, theta_dot] = state;
+  const force = action === 1 ? FORCE_MAG : -FORCE_MAG;
+  const cos = Math.cos(theta);
+  const sin = Math.sin(theta);
+  const temp = (force + POLEMASS_LENGTH * theta_dot * theta_dot * sin) / TOTAL_MASS;
+  const theta_acc = (GRAVITY * sin - cos * temp) /
+                    (LENGTH * (4.0 / 3.0 - MASS_POLE * cos * cos / TOTAL_MASS));
+  const x_acc = temp - POLEMASS_LENGTH * theta_acc * cos / TOTAL_MASS;
+  x += TAU * x_dot;
+  x_dot += TAU * x_acc;
+  theta += TAU * theta_dot;
+  theta_dot += TAU * theta_acc;
+  return [x, x_dot, theta, theta_dot];
+}
+
+// Run one episode, optionally recording every state for animation.
+function rolloutEpisode(policy, seed, recordStates = false) {
+  const rng = makeRng(seed);
+  let state = [
+    rng() * 0.1 - 0.05,
+    rng() * 0.1 - 0.05,
+    rng() * 0.1 - 0.05,
+    rng() * 0.1 - 0.05,
+  ];
+  const [w1, w2, w3, w4, bias] = policy;
+  const states = recordStates ? [state.slice()] : null;
+  let steps = 0;
+  for (let t = 0; t < MAX_STEPS; t++) {
+    const [x, x_dot, theta, theta_dot] = state;
+    const score = w1 * x + w2 * x_dot + w3 * theta + w4 * theta_dot + bias;
+    const action = score > 0 ? 1 : 0;
+    state = step(state, action);
+    if (recordStates) states.push(state.slice());
+    steps = t + 1;
+    if (Math.abs(state[0]) > X_THRESHOLD || Math.abs(state[2]) > THETA_THRESHOLD) {
+      break;
+    }
+  }
+  return { steps, states };
+}
+
+function evaluatePolicy(u, nEpisodes = N_EPISODES, seedOffset = 0) {
+  const policy = decode(u);
+  let total = 0;
+  const returns = [];
+  for (let i = 0; i < nEpisodes; i++) {
+    const r = rolloutEpisode(policy, seedOffset + i);
+    total += r.steps;
+    returns.push(r.steps);
+  }
+  return { mean: total / nEpisodes, returns };
+}
+
+// ============================================================================
+// HumpDay objective: minimise -(mean return) so a balanced policy gives
+// the most-negative value (-500 at best). Records every evaluation so the
+// montage can replay the search.
+// ============================================================================
+const searchHistory = [];
+
+function objective(u) {
+  const r = evaluatePolicy(u);
+  searchHistory.push({ params: decode(u), meanReturn: r.mean, returns: r.returns });
+  return -r.mean;
+}
+
+// ============================================================================
+// Rendering — the cart slides along a horizontal track at canvas y=210.
+// The pole pivots from the cart's top centre. Scale: 1 metre on the
+// CartPole grid maps to 130 canvas pixels.
+// ============================================================================
+const SCALE = 130;
+const TRACK_Y = 210;
+
+function drawScene(state, episodeSteps, episodeTotal, hudText) {
+  ctx.clearRect(0, 0, W, H);
+  const grad = ctx.createLinearGradient(0, 0, 0, H);
+  grad.addColorStop(0, '#34344a'); grad.addColorStop(1, '#1f1f30');
+  ctx.fillStyle = grad;
+  ctx.fillRect(0, 0, W, H);
+
+  // Track ground.
+  ctx.fillStyle = '#52527a';
+  ctx.fillRect(0, TRACK_Y, W, 4);
+
+  // Track boundaries (X_THRESHOLD).
+  ctx.strokeStyle = 'rgba(255, 204, 0, 0.35)';
+  ctx.setLineDash([6, 6]);
+  ctx.lineWidth = 2;
+  ctx.beginPath();
+  ctx.moveTo(W / 2 - X_THRESHOLD * SCALE, 0);
+  ctx.lineTo(W / 2 - X_THRESHOLD * SCALE, H);
+  ctx.moveTo(W / 2 + X_THRESHOLD * SCALE, 0);
+  ctx.lineTo(W / 2 + X_THRESHOLD * SCALE, H);
+  ctx.stroke();
+  ctx.setLineDash([]);
+
+  if (state) {
+    const [x, , theta] = state;
+    const cartCx = W / 2 + x * SCALE;
+    const cartCy = TRACK_Y - 18;
+    // Cart shadow.
+    ctx.fillStyle = 'rgba(0,0,0,0.35)';
+    ctx.fillRect(cartCx - 38, TRACK_Y + 4, 76, 5);
+    // Cart body.
+    ctx.fillStyle = '#ffcc00';
+    ctx.fillRect(cartCx - 36, cartCy - 12, 72, 24);
+    // Wheels.
+    ctx.fillStyle = '#222238';
+    ctx.beginPath(); ctx.arc(cartCx - 22, cartCy + 14, 7, 0, Math.PI * 2); ctx.fill();
+    ctx.beginPath(); ctx.arc(cartCx + 22, cartCy + 14, 7, 0, Math.PI * 2); ctx.fill();
+
+    // Pole — full length is 2*LENGTH metres; rotation around cart top.
+    const poleLen = 2 * LENGTH * SCALE;
+    const pivotX = cartCx;
+    const pivotY = cartCy - 12;
+    const tipX = pivotX + poleLen * Math.sin(theta);
+    const tipY = pivotY - poleLen * Math.cos(theta);
+    ctx.strokeStyle = '#ff6600';
+    ctx.lineWidth = 8;
+    ctx.lineCap = 'round';
+    ctx.beginPath();
+    ctx.moveTo(pivotX, pivotY);
+    ctx.lineTo(tipX, tipY);
+    ctx.stroke();
+    // Pivot bolt.
+    ctx.fillStyle = '#222238';
+    ctx.beginPath();
+    ctx.arc(pivotX, pivotY, 4, 0, Math.PI * 2);
+    ctx.fill();
+  }
+
+  // HUD top-left.
+  ctx.font = 'bold 16px -apple-system, Helvetica, Arial, sans-serif';
+  ctx.fillStyle = 'rgba(0,0,0,0.55)';
+  ctx.fillRect(20, 16, 280, episodeSteps != null ? 64 : 40);
+  ctx.fillStyle = '#ffcc00';
+  ctx.fillText(hudText || '', 32, 36);
+  if (episodeSteps != null) {
+    ctx.fillStyle = '#fff';
+    ctx.font = '14px -apple-system, Helvetica, Arial, sans-serif';
+    ctx.fillText(`Steps survived: ${episodeSteps} / ${MAX_STEPS}`, 32, 56);
+    if (episodeTotal != null) {
+      ctx.fillText(`Mean of ${N_EPISODES} eps so far: ${episodeTotal.toFixed(1)}`, 32, 74);
+    }
+  }
+}
+
+function drawIdleScene() {
+  drawScene([0, 0, 0.05, 0], null, null, 'Press "Train a balancer" to start');
+}
+
+// ============================================================================
+// Animations.
+// ============================================================================
+let animationToken = 0;
+
+// Play a single episode at ~22 fps so each pole wobble is visible.
+function animateEpisode(states, hudText) {
+  const myToken = ++animationToken;
+  return new Promise((resolve) => {
+    if (!states || states.length === 0) return resolve();
+    let i = 0;
+    function tick() {
+      if (myToken !== animationToken) return resolve();
+      if (i >= states.length) return resolve();
+      drawScene(states[i], i, null, hudText);
+      i += 1;
+      setTimeout(tick, 45);  // ~22 fps
+    }
+    tick();
+  });
+}
+
+// Walk through the search history showing each policy's *first episode*
+// as a static end-state (the canvas resets between policies). Pace
+// scaled so the whole montage is ~25 seconds.
+async function animateSearchMontage() {
+  const myToken = ++animationToken;
+  const total = searchHistory.length;
+  if (total === 0) return -1;
+  const totalAnimMs = 25000;
+  const msPerFrame = 16;
+  const framesPerPolicy = Math.max(2, Math.round(totalAnimMs / (total * msPerFrame)));
+
+  let bestSoFar = -Infinity;
+  let bestIdx = -1;
+  for (let i = 0; i < total; i++) {
+    if (myToken !== animationToken) return bestIdx;
+    const entry = searchHistory[i];
+    const isNew = entry.meanReturn > bestSoFar;
+    if (isNew) { bestSoFar = entry.meanReturn; bestIdx = i; }
+    // Show the final state of episode 0 with the policy's parameters.
+    const ep0 = rolloutEpisode(entry.params, /*seed=*/0, /*record=*/true);
+    drawScene(
+      ep0.states[ep0.states.length - 1],
+      ep0.steps,
+      entry.meanReturn,
+      `Policy ${i + 1} / ${total}    Best mean: ${bestSoFar.toFixed(1)}${isNew ? '  ★ NEW!' : ''}`,
+    );
+
+    document.getElementById('evals').textContent = i + 1;
+    document.getElementById('score-now').textContent = entry.meanReturn.toFixed(1);
+    if (isNew) updateBestParams(entry.params, entry.meanReturn);
+
+    for (let k = 0; k < framesPerPolicy; k++) {
+      if (myToken !== animationToken) return bestIdx;
+      await new Promise((r) => requestAnimationFrame(r));
+    }
+  }
+  return bestIdx;
+}
+
+// ============================================================================
+// Runner.
+// ============================================================================
+let lastBestPolicy = null;
+
+function getOptimizerClass(name) { return globalThis[name]; }
+
+async function runOptimization() {
+  const algoName = document.getElementById('algorithm').value;
+  const budget = parseInt(document.getElementById('budget').value, 10);
+  const cls = getOptimizerClass(algoName);
+  if (!cls) { alert(`Optimizer '${algoName}' not found.`); return; }
+
+  const runBtn = document.getElementById('run-btn');
+  runBtn.disabled = true;
+  runBtn.textContent = `Training ${algoName}...`;
+
+  animationToken++;
+  searchHistory.length = 0;
+  await new Promise((r) => setTimeout(r, 30));
+
+  try {
+    const opt = new cls(objective, budget, N_DIM);
+    opt.optimize();
+
+    // Stage 1: search montage.
+    const bestIdx = await animateSearchMontage();
+
+    // Stage 2: slow replay of one episode of the best policy.
+    const bestEntry = searchHistory[bestIdx];
+    lastBestPolicy = bestEntry;
+
+    const replay = rolloutEpisode(bestEntry.params, /*seed=*/0, /*record=*/true);
+    await animateEpisode(
+      replay.states,
+      `Best policy (mean ${bestEntry.meanReturn.toFixed(1)} / ${MAX_STEPS})`,
+    );
+
+    // Stage 3: independent test of the chosen policy on 20 fresh seeds.
+    const testEval = evaluatePolicy(
+      bestEntry.params.map((v) => (v / WEIGHT_RANGE + 1) / 2),   // inverse of decode
+      20,
+      10_000,
+    );
+    document.getElementById('best-score').textContent =
+      `${bestEntry.meanReturn.toFixed(0)} train · ${testEval.mean.toFixed(0)} test`;
+    addLeaderboardEntry(algoName, bestEntry, opt.evaluations, testEval.mean);
+  } catch (e) {
+    console.error(e);
+    alert(`${algoName} threw an error: ${e.message}`);
+  } finally {
+    runBtn.disabled = false;
+    runBtn.textContent = '▶ Train a balancer';
+  }
+}
+
+function updateBestParams(params, mean) {
+  const [w1, w2, w3, w4, b] = params;
+  document.getElementById('best-score').textContent = `${mean.toFixed(0)} (running)`;
+  document.getElementById('param-w1').textContent = w1.toFixed(2);
+  document.getElementById('param-w2').textContent = w2.toFixed(2);
+  document.getElementById('param-w3').textContent = w3.toFixed(2);
+  document.getElementById('param-w4').textContent = w4.toFixed(2);
+  document.getElementById('param-b').textContent = b.toFixed(2);
+}
+
+function replayBest() {
+  if (!lastBestPolicy) return;
+  const replay = rolloutEpisode(lastBestPolicy.params, /*seed=*/0, /*record=*/true);
+  animateEpisode(
+    replay.states,
+    `Best policy (mean ${lastBestPolicy.meanReturn.toFixed(1)} / ${MAX_STEPS})`,
+  );
+}
+
+// ============================================================================
+// Leaderboard.
+// ============================================================================
+const leaderboard = [];
+
+function addLeaderboardEntry(algoName, entry, evals, testMean) {
+  leaderboard.push({
+    name: algoName,
+    train: entry.meanReturn,
+    test: testMean,
+    evals,
+  });
+  leaderboard.sort((a, b) => b.train - a.train || a.evals - b.evals);
+  renderLeaderboard();
+}
+
+function renderLeaderboard() {
+  const body = document.getElementById('leaderboard-body');
+  if (leaderboard.length === 0) {
+    body.innerHTML = '<tr><td colspan="4" style="color: var(--muted); text-align: center;">— no runs yet —</td></tr>';
+    return;
+  }
+  body.innerHTML = leaderboard.map((row) => `
+    <tr>
+      <td>${row.name}</td>
+      <td>${row.train.toFixed(0)} / ${MAX_STEPS}</td>
+      <td>${row.evals}</td>
+      <td>${row.test.toFixed(0)}</td>
+    </tr>`).join('');
+}
+
+function resetEverything() {
+  leaderboard.length = 0;
+  lastBestPolicy = null;
+  animationToken++;
+  ['score-now', 'evals'].forEach((id) => document.getElementById(id).textContent = '0');
+  ['best-score', 'param-w1', 'param-w2', 'param-w3', 'param-w4', 'param-b'].forEach((id) =>
+    document.getElementById(id).textContent = '—');
+  renderLeaderboard();
+  drawIdleScene();
+}
+
+// Initial render.
+drawIdleScene();
+</script>
+</body>
+</html>
