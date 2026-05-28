@@ -123,8 +123,8 @@
           <label for="manual-angle">Angle <output id="manual-angle-out">40°</output></label>
           <input type="range" id="manual-angle" min="5" max="75" step="0.5" value="40">
 
-          <label for="manual-force">Force <output id="manual-force-out">50</output></label>
-          <input type="range" id="manual-force" min="25" max="80" step="0.5" value="50">
+          <label for="manual-force">Force <output id="manual-force-out">60</output></label>
+          <input type="range" id="manual-force" min="25" max="100" step="0.5" value="60">
 
           <label for="manual-spin">Spin <output id="manual-spin-out">0.00</output></label>
           <input type="range" id="manual-spin" min="-0.6" max="0.6" step="0.02" value="0">
@@ -328,12 +328,14 @@ document.getElementById('block-count').textContent = TOTAL_BLOCKS;
 
 // Parameter ranges — the optimiser sees [0, 1]^3 which we decode into:
 //   angle  : 5° to 75°  (above horizontal, aimed right)
-//   force  : 25 to 80   (impulse magnitude in Matter.js units)
+//   force  : 25 to 100  (impulse magnitude in Matter.js units —
+//            extended upward so a glancing blow off the front tower
+//            can ricochet onto the back pedestal)
 //   spin   : -0.6 to +0.6 rad/step
 function decode(u) {
   return [
     5 + 70 * u[0],
-    25 + 55 * u[1],
+    25 + 75 * u[1],
     -0.6 + 1.2 * u[2],
   ];
 }
