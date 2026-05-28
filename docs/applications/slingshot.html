@@ -579,7 +579,14 @@ const MONTAGE_MS_PER_FRAME = 12;
 let animationToken = 0;
 
 function animateShot(frames, hudText, msPerFrame = REPLAY_MS_PER_FRAME) {
-  const myToken = ++animationToken;
+  // CAPTURE the current token without incrementing — callers that want to
+  // cancel previous animations should do `animationToken++` themselves
+  // BEFORE calling animateShot. If we incremented here, calling animateShot
+  // from inside animateSearchMontage's loop would invalidate the outer
+  // loop's token on the very next iteration and the montage would stop
+  // after one launch — explaining the "stops after 2 guesses" symptom.
+  // (Setting `budget=80` and getting interrupted at i=1 looks like "2".)
+  const myToken = animationToken;
   return new Promise((resolve) => {
     if (!frames || frames.length === 0) return resolve();
     let i = 0;
@@ -615,9 +622,19 @@ async function animateSearchMontage() {
     document.getElementById('score-now').textContent = entry.score;
     if (isNew) updateBestParams(entry.params, entry.score);
 
+    if (isNew) {
+      // Update the running algorithm's leaderboard row in place so the
+      // table reflects progress as the search advances.
+      addLeaderboardEntry(
+        document.getElementById('algorithm').value,
+        entry, i + 1,
+        { inPlace: liveLeaderboardIdx >= 0 },
+      );
+    }
+
     await animateShot(
       reF.frames,
-      `Launch ${i + 1} / ${total}    Best so far: ${bestSoFar} blocks${isNew ? '  ★ NEW!' : ''}`,
+      `Launch ${i + 1}/${total}  ·  Best: ${bestSoFar} blocks${isNew ? '  ★ NEW!' : ''}`,
       MONTAGE_MS_PER_FRAME,
     );
   }
@@ -664,7 +681,14 @@ async function runOptimization() {
     document.getElementById('best-score').textContent =
       `${bestEntry.score} blocks (${algoName})`;
     updateBestParams(bestEntry.params, bestEntry.score);
-    addLeaderboardEntry(algoName, bestEntry, opt.evaluations);
+    // Final eval-count update — the live row already has the score from
+    // the montage's last isNew update; just bump evals to what the
+    // optimiser actually used. Then reset the live cursor so the next
+    // run starts a fresh row.
+    addLeaderboardEntry(algoName, bestEntry, opt.evaluations, {
+      inPlace: liveLeaderboardIdx >= 0,
+    });
+    liveLeaderboardIdx = -1;
   } catch (e) {
     console.error(e);
     alert(`${algoName} threw an error: ${e.message}`);
@@ -682,13 +706,27 @@ function updateBestParams(params, score) {
 }
 
 function replayBest() {
-  if (lastBest) animateShot(lastBest.frames, 'Replaying best launch');
+  if (!lastBest) return;
+  animationToken++;                       // cancel any in-flight animation
+  animateShot(lastBest.frames, 'Replaying best launch');
 }
 
 const leaderboard = [];
-function addLeaderboardEntry(algoName, entry, evals) {
-  leaderboard.push({ name: algoName, score: entry.score, evals, params: entry.params });
+let liveLeaderboardIdx = -1;              // index of the currently-running row
+
+function addLeaderboardEntry(algoName, entry, evals, { inPlace = false } = {}) {
+  const row = { name: algoName, score: entry.score, evals, params: entry.params };
+  if (inPlace && liveLeaderboardIdx >= 0) {
+    leaderboard[liveLeaderboardIdx] = row;
+  } else {
+    leaderboard.push(row);
+    liveLeaderboardIdx = leaderboard.length - 1;
+  }
+  // Track where the row ends up after sort so subsequent inPlace updates
+  // find it again.
+  const tracked = leaderboard[liveLeaderboardIdx];
   leaderboard.sort((a, b) => b.score - a.score || a.evals - b.evals);
+  liveLeaderboardIdx = leaderboard.indexOf(tracked);
   renderLeaderboard();
 }
 function renderLeaderboard() {
@@ -757,6 +795,7 @@ async function manualThrow() {
 }
 function resetEverything() {
   leaderboard.length = 0;
+  liveLeaderboardIdx = -1;
   lastBest = null;
   animationToken++;
   ['score-now', 'evals'].forEach((id) => document.getElementById(id).textContent = '0');
