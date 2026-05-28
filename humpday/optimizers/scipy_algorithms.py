@@ -365,7 +365,7 @@ class Powell(BaseOptimizer):
         deltax = 0.0
         rat = 0.0
         cg = 0.3819660  # 1 - 1/phi (scipy's _cg)
-        brent_tol = 1.48e-8
+        brent_tol = 1.48e-3
         mintol = 1.0e-11
 
         for _ in range(50):
