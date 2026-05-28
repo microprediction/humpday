@@ -319,12 +319,18 @@ const GAP_LEFT = GROUP_A_RIGHT;
 const GAP_RIGHT = 600;                // 60-px gap of empty ground
 
 // --- Group B (back, raised pedestal, more blocks) ---------------------
-const GROUP_B_LEFT = GAP_RIGHT;
-const GROUP_B_RIGHT = W - 30;
+// Pedestal is deliberately NARROWER than the block cluster sitting on it,
+// so the outer blocks overhang the edges. They balance at rest (centre of
+// mass is still inside the pedestal) but topple off easily once disturbed —
+// so a clean hit can clear all blocks, where before the back tower's outer
+// columns were unkillable.
+const GROUP_B_LEFT = 615;             // pedestal left edge — pulled inward
+const GROUP_B_RIGHT = 705;            // pedestal right edge — pulled inward
 const GROUP_B_PEDESTAL_H = 60;        // raised by this many px above ground
 const GROUP_B_TABLE_TOP = H - 80 - GROUP_B_PEDESTAL_H;
 const GROUP_B_COLS = 3;
 const GROUP_B_ROWS = 4;               // 12 blocks — same shape as Group A
+const GROUP_B_BLOCK_LEFT = 608;       // cluster overhangs pedestal by ~7px each side
 
 const TOTAL_BLOCKS = GROUP_A_COLS * GROUP_A_ROWS + GROUP_B_COLS * GROUP_B_ROWS;
 document.getElementById('block-count').textContent = TOTAL_BLOCKS;
@@ -389,8 +395,8 @@ function buildWorld() {
     }
   }
 
-  // Group B.
-  const bLeft = GROUP_B_LEFT + 12;
+  // Group B. Cluster intentionally overhangs the narrowed pedestal.
+  const bLeft = GROUP_B_BLOCK_LEFT;
   for (let row = 0; row < GROUP_B_ROWS; row++) {
     for (let col = 0; col < GROUP_B_COLS; col++) {
       const bx = bLeft + col * (BLOCK_W + 2) + BLOCK_W / 2;
