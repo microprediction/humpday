@@ -154,31 +154,31 @@
       "algorithm": "CMAEvolutionStrategy",
       "reference": "cmaes (CyberAgent)",
       "problem": "sphere",
-      "humpday_median": 1.0913455403979044e-09,
+      "humpday_median": 5.710464632404912e-10,
       "reference_median": 3.011116142866099e-08,
-      "humpday_to_opt": 1.0913455403979044e-09,
+      "humpday_to_opt": 5.710464632404912e-10,
       "reference_to_opt": 3.011116142866099e-08,
-      "ratio_humpday_over_reference": 0.036243919276896394
+      "ratio_humpday_over_reference": 0.018964643580048103
     },
     {
       "algorithm": "CMAEvolutionStrategy",
       "reference": "cmaes (CyberAgent)",
       "problem": "rosenbrock",
-      "humpday_median": 0.19034526443310745,
+      "humpday_median": 0.175323488505812,
       "reference_median": 0.04449886463650368,
-      "humpday_to_opt": 0.19034526443310745,
+      "humpday_to_opt": 0.175323488505812,
       "reference_to_opt": 0.04449886463650368,
-      "ratio_humpday_over_reference": 4.277530808661544
+      "ratio_humpday_over_reference": 3.939954197437798
     },
     {
       "algorithm": "CMAEvolutionStrategy",
       "reference": "cmaes (CyberAgent)",
       "problem": "ackley",
-      "humpday_median": 0.002443107399070943,
+      "humpday_median": 0.0009200915423055456,
       "reference_median": 0.004222755318054272,
-      "humpday_to_opt": 0.002443107399070943,
+      "humpday_to_opt": 0.0009200915423055456,
       "reference_to_opt": 0.004222755318054272,
-      "ratio_humpday_over_reference": 0.5785576513576165
+      "ratio_humpday_over_reference": 0.21788890736162286
     },
     {
       "algorithm": "PRIMA_BOBYQA",
@@ -214,5 +214,5 @@
   "n_runs": 4,
   "n_trials": 200,
   "n_dim": 2,
-  "recorded_at": "2026-05-28T21:31:01Z"
+  "recorded_at": "2026-05-28T22:04:05Z"
 }
