@@ -60,13 +60,19 @@
   .leaderboard td:nth-child(3), .leaderboard td:nth-child(4) { font-family: 'SF Mono', Menlo, monospace; color: var(--muted); }
   .leaderboard tr.human-raphson td:first-child { color: #ff9944; font-weight: 700; }
 
-  .slider-grid { display: grid; grid-template-columns: 1fr; gap: 8px 14px; }
-  .slider-grid label { margin: 0; display: flex; justify-content: space-between; align-items: baseline; }
-  .slider-grid label output { color: var(--accent); font-family: 'SF Mono', Menlo, monospace; font-size: 0.95em; }
-  .slider-grid input[type=range] { width: 100%; margin: 0; padding: 0; background: transparent; }
-  .slider-grid input[type=range]::-webkit-slider-runnable-track { background: #1a1a22; height: 6px; border-radius: 3px; }
-  .slider-grid input[type=range]::-webkit-slider-thumb { -webkit-appearance: none; appearance: none; background: var(--accent); width: 18px; height: 18px; border-radius: 50%; margin-top: -6px; cursor: pointer; }
-  .slider-grid button { background: #ff9944; color: #1a1a22; }
+  /* HR panel — sits under the canvas in the left column. Sliders laid out
+     in a 3-column grid so the whole panel stays short and the demo +
+     manual controls are visible together without scrolling. */
+  .left-stack { display: flex; flex-direction: column; gap: 16px; min-width: 0; }
+  .hr-panel { padding: 14px 16px; }
+  .hr-panel h3 { margin: 0 0 6px; }
+  .hr-sliders { display: grid; grid-template-columns: repeat(3, 1fr); gap: 6px 18px; margin-bottom: 10px; }
+  .hr-sliders label { margin: 0; display: flex; justify-content: space-between; align-items: baseline; font-size: 0.84em; grid-row: 1; }
+  .hr-sliders label output { color: var(--accent); font-family: 'SF Mono', Menlo, monospace; font-size: 0.92em; }
+  .hr-sliders input[type=range] { width: 100%; margin: 0; padding: 0; background: transparent; grid-row: 2; }
+  .hr-sliders input[type=range]::-webkit-slider-runnable-track { background: #1a1a22; height: 6px; border-radius: 3px; }
+  .hr-sliders input[type=range]::-webkit-slider-thumb { -webkit-appearance: none; appearance: none; background: var(--accent); width: 18px; height: 18px; border-radius: 50%; margin-top: -6px; cursor: pointer; }
+  .hr-panel button { background: #ff9944; color: #1a1a22; margin-top: 0; }
 </style>
 </head>
 <body>
@@ -90,15 +96,29 @@
     <strong>projectile spin</strong>; the score is the number of blocks
     that fall off the platform.
   </p>
-  <p class="intro" style="font-size: 0.92em;">
-    Physics are <a style="color: var(--accent);" href="https://brm.io/matter-js/">Matter.js</a> —
-    rigid-body collisions, gravity, friction, restitution — so the
-    behaviour matches what an actual 2-D physics engine would do, not a
-    hand-rolled approximation.
-  </p>
 
   <div class="stage">
-    <canvas id="canvas" width="800" height="450"></canvas>
+    <div class="left-stack">
+      <canvas id="canvas" width="800" height="450"></canvas>
+
+      <div class="panel hr-panel">
+        <h3>🧠 Human Raphson</h3>
+        <p style="color: var(--muted); margin: 0 0 12px; font-size: 0.86em;">
+          Try a manual launch — slide, throw, compete against the algorithms.
+        </p>
+        <div class="hr-sliders">
+          <label for="manual-angle">Angle <output id="manual-angle-out">40°</output></label>
+          <input type="range" id="manual-angle" min="5" max="75" step="0.5" value="40">
+
+          <label for="manual-force">Force <output id="manual-force-out">50</output></label>
+          <input type="range" id="manual-force" min="25" max="80" step="0.5" value="50">
+
+          <label for="manual-spin">Spin <output id="manual-spin-out">0.00</output></label>
+          <input type="range" id="manual-spin" min="-0.6" max="0.6" step="0.02" value="0">
+        </div>
+        <button id="manual-btn" onclick="manualThrow()">▶ Throw (Human Raphson)</button>
+      </div>
+    </div>
 
     <div class="panel">
       <h3>Algorithm</h3>
@@ -133,46 +153,28 @@
 
       <label for="budget">Evaluation budget:</label>
       <select id="budget">
-        <option value="50">50 launches</option>
-        <option value="100" selected>100 launches</option>
-        <option value="200">200 launches</option>
-        <option value="500">500 launches</option>
+        <option value="10">10 launches</option>
+        <option value="20" selected>20 launches</option>
+        <option value="30">30 launches</option>
       </select>
+      <p style="margin: 8px 0 0; font-size: 0.78em; color: var(--muted);">
+        Each launch is animated frame-by-frame at 2× the final-replay
+        speed. At 20 launches that's about a minute of watchable
+        search.
+      </p>
 
       <button id="run-btn" onclick="runOptimization()">▶ Find the best launch</button>
       <button class="secondary" onclick="replayBest()">🔁 Replay best launch</button>
       <button class="secondary" onclick="resetEverything()">⟲ Reset leaderboard</button>
 
       <div class="stats">
-        <div class="stat-row"><span>Blocks knocked off</span><span class="score" id="score-now">0</span></div>
+        <div class="stat-row"><span>Blocks toppled</span><span class="score" id="score-now">0</span></div>
         <div class="stat-row"><span>Launches tried</span><span id="evals">0</span></div>
         <div class="stat-row"><span>Best so far</span><span id="best-score">—</span></div>
         <div class="stat-row"><span>Angle</span><span id="param-angle">—</span></div>
         <div class="stat-row"><span>Force</span><span id="param-force">—</span></div>
         <div class="stat-row"><span>Spin</span><span id="param-spin">—</span></div>
       </div>
-    </div>
-  </div>
-
-  <div class="panel" style="margin-top: 20px;">
-    <h3>🧠 Human Raphson</h3>
-    <p style="color: var(--muted); margin: 0 0 16px; font-size: 0.92em;">
-      Try a manual launch yourself. Slide the parameters, hit
-      <em>Throw</em>, and your score lands on the leaderboard alongside
-      the optimisers. Named in honour of every gradient-descent
-      algorithm's most under-appreciated rival: a human eyeballing it.
-    </p>
-    <div class="slider-grid">
-      <label for="manual-angle">Angle: <output id="manual-angle-out">40°</output></label>
-      <input type="range" id="manual-angle" min="5" max="75" step="0.5" value="40">
-
-      <label for="manual-force">Force: <output id="manual-force-out">50</output></label>
-      <input type="range" id="manual-force" min="25" max="80" step="0.5" value="50">
-
-      <label for="manual-spin">Spin: <output id="manual-spin-out">0.00</output></label>
-      <input type="range" id="manual-spin" min="-0.6" max="0.6" step="0.02" value="0">
-
-      <button id="manual-btn" onclick="manualThrow()">▶ Throw (Human Raphson)</button>
     </div>
   </div>
 
@@ -187,7 +189,7 @@
     </p>
     <table>
       <thead>
-        <tr><th>Algorithm</th><th>Blocks fallen</th><th>Launches used</th><th>Best params (angle° / force / spin)</th></tr>
+        <tr><th>Algorithm</th><th>Blocks toppled</th><th>Launches used</th><th>Best params (angle° / force / spin)</th></tr>
       </thead>
       <tbody id="leaderboard-body">
         <tr><td colspan="4" style="color: var(--muted); text-align: center;">— no runs yet —</td></tr>
@@ -217,6 +219,11 @@
     score gives no gradient signal across the zero plateau. Algorithms
     that explore broadly (CMA-ES, DE, PSO) find first contact much
     faster than purely-local methods.
+  </p>
+
+  <hr style="border: 0; border-top: 1px solid #404054; margin: 32px 0 16px;" />
+  <p style="font-size: 0.78em; color: var(--muted);">
+    Physics powered by <a style="color: var(--muted); text-decoration: underline;" href="https://brm.io/matter-js/">Matter.js</a> — rigid-body collisions, gravity, friction, restitution.
   </p>
 </div>
 
@@ -291,6 +298,7 @@ function buildWorld() {
 
   // Stacked tower.
   const blocks = [];
+  const blockStarts = [];
   const towerLeft = TABLE_LEFT + 30;
   for (let row = 0; row < TOWER_ROWS; row++) {
     for (let col = 0; col < TOWER_COLS; col++) {
@@ -303,6 +311,7 @@ function buildWorld() {
         label: 'block',
       });
       blocks.push(block);
+      blockStarts.push({ x: bx, y: by });
     }
   }
 
@@ -315,7 +324,7 @@ function buildWorld() {
   });
 
   Composite.add(world, [ground, leftWall, rightWall, table, projectile, ...blocks]);
-  return { engine, projectile, blocks, table };
+  return { engine, projectile, blocks, blockStarts, table };
 }
 
 // Run one launch. Returns { score, frames? } — `frames` is recorded only
@@ -326,7 +335,7 @@ const SIM_DELTA = 1000 / 60;
 
 function runShot(params, recordFrames = false) {
   const [angleDeg, force, spin] = params;
-  const { engine, projectile, blocks } = buildWorld();
+  const { engine, projectile, blocks, blockStarts } = buildWorld();
   const angleRad = angleDeg * Math.PI / 180;
 
   // Apply launch velocity in one go — direction is angle above
@@ -344,11 +353,25 @@ function runShot(params, recordFrames = false) {
     if (recordFrames) frames.push(snapshot(projectile, blocks));
   }
 
-  // Score: number of blocks whose centre has fallen below the table top
-  // (i.e. fell off the edge — they're now on the ground or in the air).
+  // Score: a block counts as "knocked down" if it has either fallen off
+  // the platform, been displaced significantly from its home, OR tilted
+  // more than ~30° from upright. This matches what a real Angry Birds
+  // player would call a knocked block — including ones still sitting on
+  // the platform but lying on their side.
   let fallen = 0;
-  for (const b of blocks) {
-    if (b.position.y > TABLE_TOP + BLOCK_H * 0.6) fallen++;
+  const TILT_THRESHOLD = 0.5;            // radians, ~28°
+  const DISPLACE_THRESHOLD = BLOCK_W * 0.5;
+  for (let i = 0; i < blocks.length; i++) {
+    const b = blocks[i];
+    const start = blockStarts[i];
+    const fellOff = b.position.y > TABLE_TOP + BLOCK_H * 0.6;
+    const moved = Math.hypot(b.position.x - start.x, b.position.y - start.y);
+    // Distance from the nearest upright orientation (multiples of pi/2).
+    const a = b.angle;
+    const upright = Math.abs(((a + Math.PI / 4) % (Math.PI / 2)) - Math.PI / 4);
+    if (fellOff || moved > DISPLACE_THRESHOLD || upright > TILT_THRESHOLD) {
+      fallen++;
+    }
   }
 
   // Free Matter.js bodies (no API for full disposal in 0.19 — let GC
@@ -478,12 +501,21 @@ function drawIdleScene() {
 }
 
 // ============================================================================
-// Animations — slow per-frame replay for the chosen best, fast per-shot
-// montage for the search.
+// Animations.
+//
+// Two playback speeds:
+//   - REPLAY_MS_PER_FRAME (~25ms) is the slow final-best playback. Each
+//     simulation frame is held on screen so collisions are clear.
+//   - MONTAGE_MS_PER_FRAME (~12ms) is the search-montage playback —
+//     each launch is still animated frame-by-frame so the user sees
+//     the actual flight path, but at 2× the replay speed so 20 launches
+//     fit in roughly a minute.
 // ============================================================================
+const REPLAY_MS_PER_FRAME = 25;
+const MONTAGE_MS_PER_FRAME = 12;
 let animationToken = 0;
 
-function animateShot(frames, hudText) {
+function animateShot(frames, hudText, msPerFrame = REPLAY_MS_PER_FRAME) {
   const myToken = ++animationToken;
   return new Promise((resolve) => {
     if (!frames || frames.length === 0) return resolve();
@@ -493,7 +525,7 @@ function animateShot(frames, hudText) {
       if (i >= frames.length) return resolve();
       drawScene(frames[i], hudText);
       i += 1;
-      setTimeout(tick, 25);             // ~40 fps for the best replay
+      setTimeout(tick, msPerFrame);
     }
     tick();
   });
@@ -504,11 +536,6 @@ async function animateSearchMontage() {
   const total = searchHistory.length;
   if (total === 0) return -1;
 
-  // Target ~22 s total montage.
-  const totalAnimMs = 22000;
-  const msPerFrame = 16;
-  const framesPerShot = Math.max(2, Math.round(totalAnimMs / (total * msPerFrame)));
-
   let bestSoFar = -1;
   let bestIdx = -1;
   for (let i = 0; i < total; i++) {
@@ -517,26 +544,19 @@ async function animateSearchMontage() {
     const isNew = entry.score > bestSoFar;
     if (isNew) { bestSoFar = entry.score; bestIdx = i; }
 
-    // For the montage we recompute the final frame of this shot — cheap
-    // (Matter.js can simulate one launch in well under 10ms with these
-    // body counts).
-    const re = runShot(entry.params, /*recordFrames=*/false);
-    // Build a final-state visual from the bodies we no longer have a
-    // handle to: re-simulate WITH frames just to get the last one.
-    // Cheap; only done once per montage tick.
+    // Re-simulate this launch with per-frame snapshots so we can
+    // animate the actual flight, not just the resting end-state.
+    // Matter.js runs one launch in well under 10ms at this body count.
     const reF = runShot(entry.params, /*recordFrames=*/true);
-    const lastFrame = reF.frames[reF.frames.length - 1];
-    drawScene(lastFrame,
-      `Launch ${i + 1} / ${total}    Best so far: ${bestSoFar} blocks${isNew ? '  ★ NEW!' : ''}`);
-
     document.getElementById('evals').textContent = i + 1;
     document.getElementById('score-now').textContent = entry.score;
     if (isNew) updateBestParams(entry.params, entry.score);
 
-    for (let k = 0; k < framesPerShot; k++) {
-      if (myToken !== animationToken) return bestIdx;
-      await new Promise((r) => requestAnimationFrame(r));
-    }
+    await animateShot(
+      reF.frames,
+      `Launch ${i + 1} / ${total}    Best so far: ${bestSoFar} blocks${isNew ? '  ★ NEW!' : ''}`,
+      MONTAGE_MS_PER_FRAME,
+    );
   }
   return bestIdx;
 }
