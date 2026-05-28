@@ -102,7 +102,7 @@
           <input type="range" id="manual-power" min="15" max="130" step="1" value="75">
 
           <label for="manual-spin">Spin <output id="manual-spin-out">0.00</output></label>
-          <input type="range" id="manual-spin" min="-0.5" max="0.5" step="0.02" value="0">
+          <input type="range" id="manual-spin" min="-2.0" max="2.0" step="0.05" value="0">
         </div>
         <button id="manual-btn" onclick="manualShot()">▶ Putt (Human Raphson)</button>
       </div>
@@ -259,12 +259,14 @@ const HOLE_R = 14;
 // angle: 5..70° (low putts to high chips)
 // power: 15..160 (impulse magnitude — extended so a hard chip can
 //        actually reach the back of the course; 60 was too weak)
-// spin: -0.5..+0.5 (angular velocity affecting roll)
+// spin: -2.0..+2.0 (angular velocity affecting roll). Negative = back-
+//       spin, the grip needed to stop on the downhill green; positive
+//       = topspin which accelerates the ball down the slope.
 function decode(u) {
   return [
     5 + 65 * u[0],
     15 + 115 * u[1],
-    -0.5 + 1.0 * u[2],
+    -2.0 + 4.0 * u[2],
   ];
 }
 
