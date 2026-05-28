@@ -720,8 +720,12 @@ async function animateSearchMontage() {
     const reF = runShot(entry.params, /*recordFrames=*/true);
     document.getElementById('evals').textContent = i + 1;
     document.getElementById('score-now').textContent = entry.score.toFixed(2);
+    // ALWAYS reflect the current attempt's params in the side panel —
+    // the "Score" above is per-attempt, so the angle/power/backspin
+    // numbers should track it. Previously these only changed on a new
+    // best so they appeared frozen between non-improving attempts.
+    updateBestParams(entry.params, entry.score);
     if (isNew) {
-      updateBestParams(entry.params, entry.score);
       addLeaderboardEntry(
         document.getElementById('algorithm').value,
         entry, i + 1,
