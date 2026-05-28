@@ -99,7 +99,7 @@
           <input type="range" id="manual-angle" min="5" max="70" step="0.5" value="25">
 
           <label for="manual-power">Power <output id="manual-power-out">80</output></label>
-          <input type="range" id="manual-power" min="15" max="160" step="1" value="80">
+          <input type="range" id="manual-power" min="15" max="130" step="1" value="75">
 
           <label for="manual-spin">Spin <output id="manual-spin-out">0.00</output></label>
           <input type="range" id="manual-spin" min="-0.5" max="0.5" step="0.02" value="0">
@@ -241,7 +241,7 @@ const BALL_R = 9;
 function decode(u) {
   return [
     5 + 65 * u[0],
-    15 + 145 * u[1],
+    15 + 115 * u[1],
     -0.5 + 1.0 * u[2],
   ];
 }
@@ -299,9 +299,9 @@ function runShot(params, recordFrames = false) {
   const [angleDeg, power, spin] = params;
   const { engine, ball } = buildWorld();
   const rad = angleDeg * Math.PI / 180;
-  // Velocity multiplier 0.22 (was 0.18) gives a bit more travel per
-  // unit power so a mid-range stroke reaches the hole region.
-  Body.setVelocity(ball, { x: power * Math.cos(rad) * 0.22, y: -power * Math.sin(rad) * 0.22 });
+  // Velocity multiplier — 0.20 keeps mid-range strokes reaching the
+  // hole region without making max-power shots blast off-screen.
+  Body.setVelocity(ball, { x: power * Math.cos(rad) * 0.20, y: -power * Math.sin(rad) * 0.20 });
   Body.setAngularVelocity(ball, spin);
 
   const frames = recordFrames ? [] : null;
@@ -510,8 +510,8 @@ function drawIdleScene() {
 // ============================================================================
 // Animations.
 // ============================================================================
-const REPLAY_MS_PER_FRAME = 22;
-const MONTAGE_MS_PER_FRAME = 11;
+const REPLAY_MS_PER_FRAME = 32;          // ~30 fps for the final-best replay
+const MONTAGE_MS_PER_FRAME = 16;          // ~60 fps for the per-launch montage
 let animationToken = 0;
 
 function animateShot(frames, hudText, msPerFrame = REPLAY_MS_PER_FRAME) {
