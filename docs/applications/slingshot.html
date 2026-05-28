@@ -443,14 +443,14 @@ function runShot(params, recordFrames = false) {
     if (recordFrames) frames.push(snapshot(projectile, blocks));
   }
 
-  // Score: a block counts as "knocked down" if it has either fallen off
-  // the platform, been displaced significantly from its home, OR tilted
-  // more than ~30° from upright. This matches what a real Angry Birds
-  // player would call a knocked block — including ones still sitting on
-  // the platform but lying on their side.
+  // Score: a block counts as "toppled" only if it's CLEARLY out of place —
+  // either it fell off the platform, slid more than a block-width from
+  // home, OR ended up lying on its side (>= 60° off vertical). Earlier
+  // thresholds (½ block width, 28°) counted blocks that were just nudged
+  // — visually still in the formation — which made max scores trivial.
   let fallen = 0;
-  const TILT_THRESHOLD = 0.5;            // radians, ~28°
-  const DISPLACE_THRESHOLD = BLOCK_W * 0.5;
+  const TILT_THRESHOLD = Math.PI / 3;        // 60° — lying on its side, not just leaning
+  const DISPLACE_THRESHOLD = BLOCK_W * 1.2;  // must have slid out of the cluster
   for (let i = 0; i < blocks.length; i++) {
     const b = blocks[i];
     const start = blockStarts[i];
