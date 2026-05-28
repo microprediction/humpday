@@ -91,10 +91,12 @@
 <div class="container">
   <h1>🦅 Slingshot Tower Optimizer</h1>
   <p class="intro">
-    Knock blocks off a stacked tower with a single slingshot launch.
-    HumpDay's optimisers tune <strong>launch angle, force,</strong> and
-    <strong>projectile spin</strong>; the score is the number of blocks
-    that fall off the platform.
+    Knock down as many blocks as possible with a single slingshot launch.
+    There are <strong>two block groups</strong>: an easy front tower and
+    a larger one on a raised pedestal behind it. HumpDay's optimisers
+    tune launch <strong>angle, force,</strong> and <strong>spin</strong>;
+    population-based methods tend to find the bigger back-tower payoff,
+    while local methods often plateau on the easy front-tower basin.
   </p>
 
   <div class="stage">
@@ -200,26 +202,28 @@
 
   <h2>What's happening</h2>
   <p>
-    The world is a 2-D rigid-body simulation: a platform with a tower of
-    <strong id="block-count">…</strong> wooden blocks stacked at the right end,
-    a stone projectile sitting in a slingshot at the left end. Gravity
-    pulls everything down. The optimiser sets three numbers — launch
-    angle, force, and projectile spin — and watches the chaos resolve.
+    A 2-D rigid-body simulation: two block groups separated by a gap.
+    A <strong>front tower</strong> (6 blocks on a low platform, easy to
+    hit with a flat shot) and a <strong>back tower</strong> (16 blocks
+    sitting on a raised pedestal behind the gap, requiring more force
+    and a higher arc to reach). Total of <strong id="block-count">…</strong>
+    blocks. The optimiser sets <em>(angle, force, spin)</em> and the
+    score is the number of blocks knocked over.
   </p>
   <p>
-    A block is "knocked off" when its centre drops below the table top.
-    The optimiser doesn't know about gravity, blocks, or angles; it sees
-    a 3-D black-box function <em>f(angle, force, spin) → −blocks_fallen</em>.
-    HumpDay minimises, so a launch that knocks 8 blocks scores −8.
+    This layout creates a deliberate <strong>local-vs-global optima</strong>
+    setup. The front-tower basin gives a score around 4–6 with a flat
+    shot — easy to find, easy to refine. The back-tower basin gives
+    10+ but requires a high-arc trajectory that most random triples
+    don't sample. Algorithms that explore broadly (CMA-ES, DE, PSO)
+    typically find both basins; purely-local searchers tend to plateau
+    on the front tower.
   </p>
   <p>
-    Why is this surface hard? Most random parameter triples shoot the
-    projectile harmlessly into the sky, off the back wall, or into the
-    base of the tower at a shallow angle that bounces away — all of
-    those score zero. The non-zero region is narrow and the integer
-    score gives no gradient signal across the zero plateau. Algorithms
-    that explore broadly (CMA-ES, DE, PSO) find first contact much
-    faster than purely-local methods.
+    Try running PRIMA_BOBYQA or NelderMead and watch them settle into
+    a front-tower score around 5; then run Differential Evolution and
+    watch it discover the chip-shot trajectory that takes the back
+    tower for 10+.
   </p>
 
   <hr style="border: 0; border-top: 1px solid #404054; margin: 32px 0 16px;" />
