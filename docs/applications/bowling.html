@@ -350,16 +350,20 @@ const BALL_RADIUS = 18;         // ball larger relative to pins for visible plow
 // Physics constants. Tuned so a well-placed throw produces a chain
 // reaction across the dense formation but most random throws leave
 // many pins standing.
-// Physics knobs tuned so a great launch can actually clear all 105 pins.
-// Before this set, the back-of-formation pins survived even on
-// well-placed strikes because the chain reaction lost energy too fast.
-const MASS_BALL = 12;           // heavier ball plows further (was 8)
+//
+// Iterated twice: the first version (PR #117) over-cranked the restitutions
+// and felt harder — the ball ricocheted off the lead pin and pins sprayed
+// sideways instead of cascading forward. Smoke test on 2000 random throws:
+//   PR #117:   best 104, mean 90.8   (felt erratic, hard to predict)
+//   THIS set:  best 105, mean 94.4   (strike actually reachable)
+//   Pre-#117:  best  82, mean 62.9   (true strike impossible)
+const MASS_BALL = 10;               // heavy enough to plow, light enough to deflect (was 8 then 12)
 const MASS_PIN = 1;
-const RESTITUTION_BALL_PIN = 0.75;  // bouncier ball/pin collisions (was 0.6)
-const RESTITUTION_PIN_PIN = 0.6;    // pin-pin chain transfers more energy (was 0.4)
-const PIN_FRICTION = 0.93;      // pins slide further (was 0.88) — chain reaches the back
-const BALL_FRICTION_X = 0.992;  // ball decelerates slightly less (was 0.99)
-const BALL_FRICTION_Y = 0.992;
+const RESTITUTION_BALL_PIN = 0.5;   // ball plows through, no ricochet (was 0.6 then 0.75)
+const RESTITUTION_PIN_PIN = 0.5;    // pin-pin chain transfer (was 0.4 then 0.6)
+const PIN_FRICTION = 0.96;          // pins keep more velocity per step → slide further (was 0.88 then 0.93)
+const BALL_FRICTION_X = 0.991;      // ball decelerates slightly less (was 0.99 then 0.992)
+const BALL_FRICTION_Y = 0.991;
 
 // Extended pin formation — 6-row triangle (1+2+3+4+5+6 = 21 pins) instead
 // of standard 10-pin. More pins means more chain-reaction potential, a
