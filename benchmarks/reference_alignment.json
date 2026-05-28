@@ -44,21 +44,21 @@
       "algorithm": "Powell",
       "reference": "scipy.optimize Powell",
       "problem": "rosenbrock",
-      "humpday_median": 0.3078015365425487,
+      "humpday_median": 0.1367672785743428,
       "reference_median": 0.06758611872244405,
-      "humpday_to_opt": 0.3078015365425487,
+      "humpday_to_opt": 0.1367672785743428,
       "reference_to_opt": 0.06758611872244405,
-      "ratio_humpday_over_reference": 4.554212349529848
+      "ratio_humpday_over_reference": 2.0236001291330847
     },
     {
       "algorithm": "Powell",
       "reference": "scipy.optimize Powell",
       "problem": "ackley",
-      "humpday_median": 6.015143938498113e-11,
+      "humpday_median": 1.3244916274857133e-10,
       "reference_median": 1.4808820836265113e-10,
-      "humpday_to_opt": 6.015143938498113e-11,
+      "humpday_to_opt": 1.3244916274857133e-10,
       "reference_to_opt": 1.4808820836265113e-10,
-      "ratio_humpday_over_reference": 0.40619056614628973
+      "ratio_humpday_over_reference": 0.8943944276089192
     },
     {
       "algorithm": "DifferentialEvolution",
@@ -94,31 +94,31 @@
       "algorithm": "SimulatedAnnealing",
       "reference": "scipy dual_annealing",
       "problem": "sphere",
-      "humpday_median": 0.0007767336791690447,
+      "humpday_median": 1.72422016733603e-09,
       "reference_median": 4.411598234373943e-17,
-      "humpday_to_opt": 0.0007767336791690447,
+      "humpday_to_opt": 1.72422016733603e-09,
       "reference_to_opt": 4.411598234373943e-17,
-      "ratio_humpday_over_reference": 743915132327.0634
+      "ratio_humpday_over_reference": 1651369.3847168686
     },
     {
       "algorithm": "SimulatedAnnealing",
       "reference": "scipy dual_annealing",
       "problem": "rosenbrock",
-      "humpday_median": 0.17184828496753604,
+      "humpday_median": 0.05425842335976107,
       "reference_median": 1.4540795942913728e-10,
-      "humpday_to_opt": 0.17184828496753604,
+      "humpday_to_opt": 0.05425842335976107,
       "reference_to_opt": 1.4540795942913728e-10,
-      "ratio_humpday_over_reference": 1181827348.4811265
+      "ratio_humpday_over_reference": 373143605.2687251
     },
     {
       "algorithm": "SimulatedAnnealing",
       "reference": "scipy dual_annealing",
       "problem": "ackley",
-      "humpday_median": 2.479721243102784,
+      "humpday_median": 0.0014125135098272956,
       "reference_median": 2.5799275570300044,
-      "humpday_to_opt": 2.479721243102784,
+      "humpday_to_opt": 0.0014125135098272956,
       "reference_to_opt": 2.5799275570300044,
-      "ratio_humpday_over_reference": 0.9611592528425189
+      "ratio_humpday_over_reference": 0.0005475012296292425
     },
     {
       "algorithm": "BayesianOpt",
@@ -154,31 +154,31 @@
       "algorithm": "CMAEvolutionStrategy",
       "reference": "cmaes (CyberAgent)",
       "problem": "sphere",
-      "humpday_median": 1.0913455403979044e-09,
+      "humpday_median": 5.710464632404912e-10,
       "reference_median": 3.011116142866099e-08,
-      "humpday_to_opt": 1.0913455403979044e-09,
+      "humpday_to_opt": 5.710464632404912e-10,
       "reference_to_opt": 3.011116142866099e-08,
-      "ratio_humpday_over_reference": 0.036243919276896394
+      "ratio_humpday_over_reference": 0.018964643580048103
     },
     {
       "algorithm": "CMAEvolutionStrategy",
       "reference": "cmaes (CyberAgent)",
       "problem": "rosenbrock",
-      "humpday_median": 0.19034526443310745,
+      "humpday_median": 0.175323488505812,
       "reference_median": 0.04449886463650368,
-      "humpday_to_opt": 0.19034526443310745,
+      "humpday_to_opt": 0.175323488505812,
       "reference_to_opt": 0.04449886463650368,
-      "ratio_humpday_over_reference": 4.277530808661544
+      "ratio_humpday_over_reference": 3.939954197437798
     },
     {
       "algorithm": "CMAEvolutionStrategy",
       "reference": "cmaes (CyberAgent)",
       "problem": "ackley",
-      "humpday_median": 0.002443107399070943,
+      "humpday_median": 0.0009200915423055456,
       "reference_median": 0.004222755318054272,
-      "humpday_to_opt": 0.002443107399070943,
+      "humpday_to_opt": 0.0009200915423055456,
       "reference_to_opt": 0.004222755318054272,
-      "ratio_humpday_over_reference": 0.5785576513576165
+      "ratio_humpday_over_reference": 0.21788890736162286
     },
     {
       "algorithm": "PRIMA_BOBYQA",
@@ -214,5 +214,5 @@
   "n_runs": 4,
   "n_trials": 200,
   "n_dim": 2,
-  "recorded_at": "2026-05-28T21:22:29Z"
+  "recorded_at": "2026-05-28T22:21:45Z"
 }

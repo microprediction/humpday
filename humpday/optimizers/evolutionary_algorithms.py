@@ -147,60 +147,95 @@ class ParticleSwarm(BaseOptimizer):
 
 
 class SimulatedAnnealing(BaseOptimizer):
-    """Simulated Annealing with multi-restart.
+    """Simulated Annealing with multi-restart + coordinate-descent polish.
 
-    Pure-Python via the `humpday._array` shim — no direct numpy use.
+    Two-stage algorithm matching the spirit of scipy.optimize.dual_annealing:
+
+      1. Multi-restart Metropolis SA explores the parameter space
+         globally with a geometric cooling schedule.
+      2. A coordinate-descent polish from the best SA point refines
+         to high precision.
+
+    scipy's dual_annealing uses L-BFGS-B for stage 2; the closest
+    derivative-free equivalent is a coordinate descent with shrinking
+    step. Without the polish stage HumpDay's SA was 1e9-1e11× off scipy
+    on sphere and Rosenbrock; the global SA can't reach machine
+    precision because its proposals are noisy.
     """
 
     def optimize(self):
-        # Multi-restart approach.
-        num_restarts = max(3, self.n_trials // 30)
-        trials_per_restart = self.n_trials // num_restarts
+        # Reserve ~30% of the budget for the polish phase.
+        polish_budget = max(20, self.n_trials // 3)
+        sa_budget = self.n_trials - polish_budget
+
+        # --- Stage 1: multi-restart SA ---------------------------------
+        num_restarts = max(3, sa_budget // 30)
+        trials_per_restart = max(1, sa_budget // num_restarts)
 
         for restart in range(num_restarts):
-            if self.evaluations >= self.n_trials:
+            if self.evaluations >= sa_budget:
                 break
 
-            # Warm-start the first restart near the centre of the cube;
-            # subsequent restarts roll the dice anywhere.
             if restart == 0:
                 x = 0.5 + (_A.random_uniform(self.n_dim) - 0.5) * 0.4
             else:
                 x = _A.random_uniform(self.n_dim)
 
             fx = self.evaluate(x)
-            best_x, best_fx = x.copy(), fx
 
-            # Temperature schedule.
-            temp = max(1.0, best_fx * 2)
-            final_temp = 1e-8
+            # Fixed initial temperature, geometric cooling. Reaches
+            # final_temp by the end of the restart's iteration count.
+            initial_temp = 1.0
+            final_temp = 1e-6
+            cooling = (final_temp / initial_temp) ** (1.0 / max(1, trials_per_restart))
+            temp = initial_temp
 
             for _iteration in range(trials_per_restart):
-                if self.evaluations >= self.n_trials:
+                if self.evaluations >= sa_budget:
                     break
 
-                # Generate neighbor.
-                step_size = 0.3 * (temp / max(1.0, best_fx * 2))
+                # Neighbour proposal: step scales with current temp.
+                step_size = 0.4 * temp
                 new_x = _A.clip(
-                    x + (_A.random_uniform(self.n_dim) - 0.5) * 2 * step_size, 0, 1
+                    x + (_A.random_uniform(self.n_dim) - 0.5) * 2 * step_size,
+                    0,
+                    1,
                 )
-
                 new_fx = self.evaluate(new_x)
-
-                # Update best.
-                if new_fx < best_fx:
-                    best_x, best_fx = new_x.copy(), new_fx
 
                 # Metropolis criterion.
                 delta = new_fx - fx
-                if delta < 0 or (
-                    temp > final_temp and _A.random_scalar() < _A.exp(-delta / temp)
-                ):
+                if delta < 0 or _A.random_scalar() < _A.exp(-delta / max(temp, 1e-12)):
                     x, fx = new_x, new_fx
 
-                # Cool down.
-                temp *= 0.99
-                temp = max(temp, final_temp)
+                temp *= cooling
+
+        # --- Stage 2: coordinate-descent polish from best --------------
+        # Equivalent of scipy.dual_annealing's local-search refinement.
+        # Halves the step on each unimproved round; keeps stepping along
+        # each coordinate axis from the running best until the budget is
+        # exhausted or the step shrinks below machine precision.
+        center = self.best_x.copy()
+        center_fx = self.best_value
+        step = 0.05
+        while self.evaluations < self.n_trials and step > 1e-14:
+            improved = False
+            for j in range(self.n_dim):
+                for sign in (-1, 1):
+                    if self.evaluations >= self.n_trials:
+                        break
+                    trial = center.copy()
+                    trial[j] = max(0.0, min(1.0, trial[j] + sign * step))
+                    f_trial = self.evaluate(trial)
+                    if f_trial < center_fx:
+                        center = trial
+                        center_fx = f_trial
+                        improved = True
+                        break
+                if improved:
+                    break
+            if not improved:
+                step *= 0.5
 
         return self.best_value, self.best_x
 
@@ -525,9 +560,15 @@ class CMAEvolutionStrategy(BaseOptimizer):
         cmu = min(1 - c1, 2 * (mueff - 2 + 1 / mueff) / ((n + 2) ** 2 + mueff))
         damps = 1 + 2 * max(0, math.sqrt((mueff - 1) / (n + 1)) - 1) + cs
 
-        # State.
-        mean = 0.5 * _A.ones(n)
-        sigma = 0.3
+        # State. Initial mean is a random interior point in [0.3, 0.7]^n
+        # — same distribution the reference-alignment harness draws from
+        # via `_draw_x0`. The previous fixed-centre `0.5 * ones(n)` was a
+        # deterministic starting point that disadvantaged Rosenbrock
+        # (optimum at 0.75 ones, so distance 0.25) vs the reference's
+        # average of ~0.05. Also `sigma=0.2` to match the reference
+        # cmaes library's chosen initial step size (HumpDay was 0.3).
+        mean = 0.3 + 0.4 * _A.random_uniform(n)
+        sigma = 0.2
         C = _A.linalg.eye(n)
         pc = _A.zeros(n)
         ps = _A.zeros(n)
@@ -637,9 +678,15 @@ class CMAEvolutionStrategy(BaseOptimizer):
             except Exception:
                 invsqrtC = _A.linalg.eye(n)
 
-            # Step-size update.
+            # Step-size update. Cap sigma at 0.5 to keep proposals in the
+            # unit cube; do NOT floor at 1e-6 — that artificial floor was
+            # preventing the algorithm from converging to higher precision
+            # on smooth basins (Rosenbrock was 4.28× off the cmaes
+            # reference because sigma got pinned at 1e-6 rather than
+            # shrinking further). Reference cmaes library has no floor.
             sigma = sigma * math.exp((cs / damps) * (_A.norm(ps) / math.sqrt(n) - 1))
-            sigma = max(min(sigma, 0.5), 1e-6)
+            if sigma > 0.5:
+                sigma = 0.5
 
         return self.best_value, self.best_x
 
