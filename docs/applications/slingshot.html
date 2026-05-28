@@ -318,13 +318,18 @@ const GROUP_A_ROWS = 4;               // 12 blocks — top of stack is high
 const GAP_LEFT = GROUP_A_RIGHT;
 const GAP_RIGHT = 600;                // 60-px gap of empty ground
 
-// --- Group B (back, raised pedestal, more blocks) ---------------------
-const GROUP_B_LEFT = GAP_RIGHT;
-const GROUP_B_RIGHT = W - 30;
+// --- Group B (back, raised pedestal, slimmer/taller stack) ------------
+// Pedestal is sized to match the 2-column block cluster, so blocks at the
+// edges are nudged off the pedestal by the chain reaction. Cluster width
+// is 2 * BLOCK_W + 1 * 2 = 62 px; we give the pedestal a small margin so
+// the stack sits stably at rest but topples off easily once disturbed.
+const GROUP_B_BLOCK_LEFT = 612;       // left edge of the cluster
+const GROUP_B_LEFT = 608;             // pedestal — 4 px margin on the left
+const GROUP_B_RIGHT = 678;            // pedestal — 4 px margin on the right (was W - 30 = 770)
 const GROUP_B_PEDESTAL_H = 60;        // raised by this many px above ground
 const GROUP_B_TABLE_TOP = H - 80 - GROUP_B_PEDESTAL_H;
-const GROUP_B_COLS = 2;               // narrower so blocks fall off more easily
-const GROUP_B_ROWS = 5;               // slimmer const GROUP_B_ROWS = 4;               // 12 blocks — same shape as Group A taller — 10 blocks total
+const GROUP_B_COLS = 2;               // 2 columns
+const GROUP_B_ROWS = 5;               // 5 rows — 10 blocks total, slim & tall
 
 const TOTAL_BLOCKS = GROUP_A_COLS * GROUP_A_ROWS + GROUP_B_COLS * GROUP_B_ROWS;
 document.getElementById('block-count').textContent = TOTAL_BLOCKS;
@@ -390,7 +395,7 @@ function buildWorld() {
   }
 
   // Group B.
-  const bLeft = GROUP_B_LEFT + 12;
+  const bLeft = GROUP_B_BLOCK_LEFT;
   for (let row = 0; row < GROUP_B_ROWS; row++) {
     for (let col = 0; col < GROUP_B_COLS; col++) {
       const bx = bLeft + col * (BLOCK_W + 2) + BLOCK_W / 2;
