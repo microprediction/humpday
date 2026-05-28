@@ -134,11 +134,15 @@
 
       <label for="budget">Evaluation budget:</label>
       <select id="budget">
-        <option value="50">50 launches</option>
-        <option value="100" selected>100 launches</option>
-        <option value="200">200 launches</option>
-        <option value="500">500 launches</option>
+        <option value="10">10 launches</option>
+        <option value="20" selected>20 launches</option>
+        <option value="30">30 launches</option>
       </select>
+      <p style="margin: 8px 0 0; font-size: 0.78em; color: var(--muted);">
+        Each launch is animated frame-by-frame at 2× the final-replay
+        speed. At 20 launches that's about a minute of watchable
+        search.
+      </p>
 
       <button id="run-btn" onclick="runOptimization()">▶ Find the best launch</button>
       <button class="secondary" onclick="replayBest()">🔁 Replay best launch</button>
@@ -479,12 +483,21 @@ function drawIdleScene() {
 }
 
 // ============================================================================
-// Animations — slow per-frame replay for the chosen best, fast per-shot
-// montage for the search.
+// Animations.
+//
+// Two playback speeds:
+//   - REPLAY_MS_PER_FRAME (~25ms) is the slow final-best playback. Each
+//     simulation frame is held on screen so collisions are clear.
+//   - MONTAGE_MS_PER_FRAME (~12ms) is the search-montage playback —
+//     each launch is still animated frame-by-frame so the user sees
+//     the actual flight path, but at 2× the replay speed so 20 launches
+//     fit in roughly a minute.
 // ============================================================================
+const REPLAY_MS_PER_FRAME = 25;
+const MONTAGE_MS_PER_FRAME = 12;
 let animationToken = 0;
 
-function animateShot(frames, hudText) {
+function animateShot(frames, hudText, msPerFrame = REPLAY_MS_PER_FRAME) {
   const myToken = ++animationToken;
   return new Promise((resolve) => {
     if (!frames || frames.length === 0) return resolve();
@@ -494,7 +507,7 @@ function animateShot(frames, hudText) {
       if (i >= frames.length) return resolve();
       drawScene(frames[i], hudText);
       i += 1;
-      setTimeout(tick, 25);             // ~40 fps for the best replay
+      setTimeout(tick, msPerFrame);
     }
     tick();
   });
@@ -505,11 +518,6 @@ async function animateSearchMontage() {
   const total = searchHistory.length;
   if (total === 0) return -1;
 
-  // Target ~22 s total montage.
-  const totalAnimMs = 22000;
-  const msPerFrame = 16;
-  const framesPerShot = Math.max(2, Math.round(totalAnimMs / (total * msPerFrame)));
-
   let bestSoFar = -1;
   let bestIdx = -1;
   for (let i = 0; i < total; i++) {
@@ -518,26 +526,19 @@ async function animateSearchMontage() {
     const isNew = entry.score > bestSoFar;
     if (isNew) { bestSoFar = entry.score; bestIdx = i; }
 
-    // For the montage we recompute the final frame of this shot — cheap
-    // (Matter.js can simulate one launch in well under 10ms with these
-    // body counts).
-    const re = runShot(entry.params, /*recordFrames=*/false);
-    // Build a final-state visual from the bodies we no longer have a
-    // handle to: re-simulate WITH frames just to get the last one.
-    // Cheap; only done once per montage tick.
+    // Re-simulate this launch with per-frame snapshots so we can
+    // animate the actual flight, not just the resting end-state.
+    // Matter.js runs one launch in well under 10ms at this body count.
     const reF = runShot(entry.params, /*recordFrames=*/true);
-    const lastFrame = reF.frames[reF.frames.length - 1];
-    drawScene(lastFrame,
-      `Launch ${i + 1} / ${total}    Best so far: ${bestSoFar} blocks${isNew ? '  ★ NEW!' : ''}`);
-
     document.getElementById('evals').textContent = i + 1;
     document.getElementById('score-now').textContent = entry.score;
     if (isNew) updateBestParams(entry.params, entry.score);
 
-    for (let k = 0; k < framesPerShot; k++) {
-      if (myToken !== animationToken) return bestIdx;
-      await new Promise((r) => requestAnimationFrame(r));
-    }
+    await animateShot(
+      reF.frames,
+      `Launch ${i + 1} / ${total}    Best so far: ${bestSoFar} blocks${isNew ? '  ★ NEW!' : ''}`,
+      MONTAGE_MS_PER_FRAME,
+    );
   }
   return bestIdx;
 }
