@@ -268,24 +268,25 @@ const BLOCK_W = 30;
 const BLOCK_H = 24;
 const PROJECTILE_R = 16;
 
-// --- Group A (front, easy target, fewer blocks) -----------------------
-const GROUP_A_LEFT = 430;
-const GROUP_A_RIGHT = 560;
+// --- Group A (front, taller — its top sits ABOVE Group B's pedestal so
+//      a projectile that bounces off Group A can ricochet onto Group B) -
+const GROUP_A_LEFT = 410;
+const GROUP_A_RIGHT = 540;
 const GROUP_A_TABLE_TOP = H - 80;     // sits on the main platform
 const GROUP_A_COLS = 3;
-const GROUP_A_ROWS = 2;               // 6 blocks total
+const GROUP_A_ROWS = 4;               // 12 blocks — top of stack is high
 
-// --- Gap between groups ----------------------------------------------
+// --- Gap between groups (narrower than before so the ricochet is reachable)
 const GAP_LEFT = GROUP_A_RIGHT;
-const GAP_RIGHT = 620;                // 60-px gap of empty ground
+const GAP_RIGHT = 600;                // 60-px gap of empty ground
 
 // --- Group B (back, raised pedestal, more blocks) ---------------------
 const GROUP_B_LEFT = GAP_RIGHT;
 const GROUP_B_RIGHT = W - 30;
 const GROUP_B_PEDESTAL_H = 60;        // raised by this many px above ground
 const GROUP_B_TABLE_TOP = H - 80 - GROUP_B_PEDESTAL_H;
-const GROUP_B_COLS = 4;
-const GROUP_B_ROWS = 4;               // 16 blocks total
+const GROUP_B_COLS = 3;
+const GROUP_B_ROWS = 4;               // 12 blocks — same shape as Group A
 
 const TOTAL_BLOCKS = GROUP_A_COLS * GROUP_A_ROWS + GROUP_B_COLS * GROUP_B_ROWS;
 document.getElementById('block-count').textContent = TOTAL_BLOCKS;
@@ -542,13 +543,17 @@ function drawScene(state, hudText) {
     ctx.restore();
   }
 
-  // HUD.
+  // HUD — auto-sized background so longer status strings fit. The font
+  // MUST be set before measureText since metrics depend on it.
   if (hudText) {
-    ctx.font = 'bold 16px -apple-system, Helvetica, Arial, sans-serif';
-    ctx.fillStyle = 'rgba(0,0,0,0.55)';
-    ctx.fillRect(20, 16, 280, 28);
+    ctx.font = 'bold 15px -apple-system, Helvetica, Arial, sans-serif';
+    const padX = 12;
+    const metrics = ctx.measureText(hudText);
+    const boxW = Math.ceil(metrics.width) + 2 * padX;
+    ctx.fillStyle = 'rgba(0,0,0,0.6)';
+    ctx.fillRect(18, 14, boxW, 28);
     ctx.fillStyle = '#ffcc00';
-    ctx.fillText(hudText, 32, 36);
+    ctx.fillText(hudText, 18 + padX, 33);
   }
 }
 
