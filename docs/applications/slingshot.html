@@ -387,7 +387,7 @@ function buildWorld() {
       const bx = aLeft + col * (BLOCK_W + 2) + BLOCK_W / 2;
       const by = GROUP_A_TABLE_TOP - (row + 0.5) * BLOCK_H - row * 1;
       const block = Bodies.rectangle(bx, by, BLOCK_W, BLOCK_H, {
-        density: 0.001, friction: 0.6, restitution: 0.1, label: 'block',
+        density: 0.001, friction: 0.25, restitution: 0.15, label: 'block',
       });
       blocks.push(block);
       blockStarts.push({ x: bx, y: by });
@@ -401,7 +401,7 @@ function buildWorld() {
       const bx = bLeft + col * (BLOCK_W + 2) + BLOCK_W / 2;
       const by = GROUP_B_TABLE_TOP - (row + 0.5) * BLOCK_H - row * 1;
       const block = Bodies.rectangle(bx, by, BLOCK_W, BLOCK_H, {
-        density: 0.001, friction: 0.6, restitution: 0.1, label: 'block',
+        density: 0.001, friction: 0.25, restitution: 0.15, label: 'block',
       });
       blocks.push(block);
       blockStarts.push({ x: bx, y: by });
