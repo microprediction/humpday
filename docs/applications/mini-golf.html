@@ -80,7 +80,7 @@
   <h1>⛳ Mini-Golf Optimizer</h1>
   <p class="intro">
     Sink the ball with a single stroke. HumpDay's optimisers tune
-    <strong>aim angle, hit power,</strong> and <strong>sidespin</strong>;
+    <strong>aim angle, hit power,</strong> and <strong>backspin</strong>;
     the score is how close the ball comes to rest from the hole — plus
     a big bonus for actually sinking it.
   </p>
@@ -101,7 +101,7 @@
           <label for="manual-power">Power <output id="manual-power-out">80</output></label>
           <input type="range" id="manual-power" min="15" max="130" step="1" value="75">
 
-          <label for="manual-spin">Spin <output id="manual-spin-out">0.00</output></label>
+          <label for="manual-spin">Backspin <output id="manual-spin-out">0.00</output></label>
           <input type="range" id="manual-spin" min="-2.0" max="2.0" step="0.05" value="0">
         </div>
         <button id="manual-btn" onclick="manualShot()">▶ Putt (Human Raphson)</button>
@@ -160,7 +160,7 @@
         <div class="stat-row"><span>Best so far</span><span id="best-score">—</span></div>
         <div class="stat-row"><span>Angle</span><span id="param-angle">—</span></div>
         <div class="stat-row"><span>Power</span><span id="param-power">—</span></div>
-        <div class="stat-row"><span>Spin</span><span id="param-spin">—</span></div>
+        <div class="stat-row"><span>Backspin</span><span id="param-spin">—</span></div>
       </div>
     </div>
   </div>
@@ -170,7 +170,7 @@
     <p style="color: var(--muted);">Best stroke per algorithm. Holed putts beat near-misses; the obstacle-laden course rewards algorithms that find the chip-over-the-wall path.</p>
     <table>
       <thead>
-        <tr><th>Algorithm</th><th>Score</th><th>Strokes used</th><th>Best params (angle° / power / spin)</th></tr>
+        <tr><th>Algorithm</th><th>Score</th><th>Strokes used</th><th>Best params (angle° / power / backspin)</th></tr>
       </thead>
       <tbody id="leaderboard-body">
         <tr><td colspan="4" style="color: var(--muted); text-align: center;">— no runs yet —</td></tr>
@@ -271,9 +271,10 @@ const BALLOON_R = 28;
 // angle: 5..70° (low putts to high chips)
 // power: 15..160 (impulse magnitude — extended so a hard chip can
 //        actually reach the back of the course; 60 was too weak)
-// spin: -2.0..+2.0 (angular velocity affecting roll). Negative = back-
-//       spin, the grip needed to stop on the downhill green; positive
-//       = topspin which accelerates the ball down the slope.
+// backspin: -2.0..+2.0. Positive = backspin (ball spins backward
+//           relative to motion — friction-grip that brakes on landing).
+//           Negative = topspin (rolls forward, accelerates down the
+//           slope, useless on the downhill green).
 function decode(u) {
   return [
     5 + 65 * u[0],
@@ -287,9 +288,14 @@ function decode(u) {
 function makeSlopedGreen(xa, ya, xb, yb, label) {
   const angle = Math.atan2(yb - ya, xb - xa);
   const len = Math.hypot(xb - xa, yb - ya);
-  const cx = (xa + xb) / 2 + 15 * Math.sin(angle);
-  const cy = (ya + yb) / 2 + 15 * Math.cos(angle);
-  const body = Bodies.rectangle(cx, cy, len, 30, {
+  // 120-px-thick body so the green is a SOLID pedestal extending down
+  // to (past) the ground. Ball can no longer tunnel "under" the green
+  // — it has to either land on the slope or bounce off the front/back
+  // vertical face of the pedestal.
+  const thickness = 120;
+  const cx = (xa + xb) / 2 + (thickness / 2) * Math.sin(angle);
+  const cy = (ya + yb) / 2 + (thickness / 2) * Math.cos(angle);
+  const body = Bodies.rectangle(cx, cy, len, thickness, {
     isStatic: true, friction: 0.6, restitution: 0.2, label,
   });
   Body.setAngle(body, angle);
@@ -350,13 +356,13 @@ const N_SIM_STEPS = 360;
 const SIM_DELTA = 1000 / 60;
 
 function runShot(params, recordFrames = false) {
-  const [angleDeg, power, spin] = params;
+  const [angleDeg, power, backspin] = params;
   const { engine, ball } = buildWorld();
   const rad = angleDeg * Math.PI / 180;
   // Velocity multiplier — 0.20 keeps mid-range strokes reaching the
   // hole region without making max-power shots blast off-screen.
   Body.setVelocity(ball, { x: power * Math.cos(rad) * 0.20, y: -power * Math.sin(rad) * 0.20 });
-  Body.setAngularVelocity(ball, spin);
+  Body.setAngularVelocity(ball, -backspin);  // slider +ve => backspin (negate for Matter.js)
 
   const frames = recordFrames ? [] : null;
   let holed = false;
