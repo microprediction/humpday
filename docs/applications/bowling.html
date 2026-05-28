@@ -811,67 +811,89 @@ async function runOptimization() {
   }
 }
 
-// Walk through `searchHistory` showing each throw's result individually,
-// then clearing the frame for the next. The user sees the optimiser
-// trying different parameter vectors with the pins falling/standing for
-// each attempt.
+// Walk through `searchHistory` ANIMATING each throw's full ball flight —
+// each trial plays a quick frame-by-frame version of the same physics
+// the best-replay uses, just at a larger stride so the whole montage
+// fits in a reasonable wall-clock time.
 //
-// Per-throw display time scales inversely with budget so the whole
-// montage fits in ~6-10 seconds: 50-throw budgets get ~120 ms/throw
-// (slow enough to watch), 500-throw budgets get ~20 ms/throw (a
-// fast-forward feel).
+// Per-throw playback time scales inversely with the number of throws so
+// the total montage targets ~60 seconds:
+//   total = 50  -> ~1.2 s per throw (slow, very watchable)
+//   total = 200 -> ~0.3 s per throw (still shows the ball moving)
+//   total = 500 -> ~0.12 s per throw (fast forward but legible)
 async function animateSearchMontage() {
   const myToken = ++animationToken;
   const total = searchHistory.length;
   if (total === 0) return;
 
-  // Target total montage time ~ 30 seconds regardless of budget — slow
-  // enough that the eye can actually catch each result. For 200 throws
-  // that's ~150ms per throw; for 50 throws ~600ms (visible holds);
-  // for 500 throws ~60ms (a fast-forward feel but still readable).
-  const totalAnimMs = 30000;
-  const msPerFrame = 16;
-  const framesPerThrow = Math.max(2, Math.round(totalAnimMs / (total * msPerFrame)));
+  // Smooth fast playback rather than frame-skip:
+  //   stride=2 keeps shown frames just one sim frame apart, so motion
+  //   stays continuous instead of teleporting. msPerVisStep=8 is faster
+  //   than the display refresh, so the browser just paints whichever
+  //   frame is latest at each vsync and the eye sees fast smooth motion.
+  // For typical ~120-frame throws: ~480 ms per throw, so a 200-launch
+  // run takes ~96 s total. Earlier code used stride=6 which made the
+  // ball appear to teleport — exactly the "skipping frames" the user
+  // objected to.
+  const stride = 2;
+  const msPerVisStep = 8;
+
   let bestSoFar = -1;
   let bestIdxSoFar = -1;
 
   for (let i = 0; i < total; i++) {
-    if (myToken !== animationToken) return;
+    if (myToken !== animationToken) return bestIdxSoFar;
     const throwData = searchHistory[i];
     const isNewBest = throwData.score > bestSoFar;
     if (isNewBest) { bestSoFar = throwData.score; bestIdxSoFar = i; }
 
-    // Draw this throw's final state (trail + pin layout). The next
-    // iteration overwrites it — exactly the "show, then reset" feel.
-    drawState({
-      pinStates: throwData.finalPinState,
-      trail: throwData.trajectory,
-      ball: {
-        x: throwData.trajectory[throwData.trajectory.length - 1][0],
-        y: throwData.trajectory[throwData.trajectory.length - 1][1],
-      },
-      trailColor: isNewBest ? 'rgba(255, 204, 0, 0.85)' : 'rgba(255, 102, 0, 0.65)',
-    });
-    drawHUD(i + 1, total, bestSoFar, isNewBest);
-
-    // Update side panel during the run.
+    // Side-panel updates per attempt (always — so the user sees the
+    // optimiser's current params change, not just on new bests).
     document.getElementById('evals').textContent = i + 1;
     document.getElementById('score-now').textContent = throwData.score;
+    const [sp, an, sn, rx] = throwData.params;
+    document.getElementById('param-speed').textContent = sp.toFixed(2);
+    document.getElementById('param-angle').textContent = `${an.toFixed(2)}°`;
+    document.getElementById('param-spin').textContent = sn.toFixed(2);
+    document.getElementById('param-release').textContent = rx.toFixed(0);
     if (isNewBest) {
-      const [sp, an, sn, rx] = throwData.params;
       document.getElementById('best-score').textContent = `${throwData.score} pins (running)`;
-      document.getElementById('param-speed').textContent = sp.toFixed(2);
-      document.getElementById('param-angle').textContent = `${an.toFixed(2)}°`;
-      document.getElementById('param-spin').textContent = sn.toFixed(2);
-      document.getElementById('param-release').textContent = rx.toFixed(0);
     }
 
-    // Hold this frame for `framesPerThrow` browser ticks. Each iteration
-    // awaits requestAnimationFrame which resolves on the next paint.
-    for (let k = 0; k < framesPerThrow; k++) {
-      if (myToken !== animationToken) return;
-      await new Promise((r) => requestAnimationFrame(r));
+    // Re-simulate this throw with full per-frame snapshots so we can
+    // ANIMATE the ball flying down the lane and the pins falling, not
+    // just flash up the resting end-state. simulateThrow runs in well
+    // under 5 ms even with full recordFrames=true, so the re-sim cost
+    // is invisible against the playback time.
+    const re = simulateThrow(throwData.params, /*recordFrames=*/true);
+    const trail = re.trajectory;
+    const trailColor = isNewBest
+      ? 'rgba(255, 204, 0, 0.85)'
+      : 'rgba(255, 102, 0, 0.55)';
+
+    // Frame-stride animation, like a fast-forward of animateThrow.
+    let idx = 0;
+    while (idx < re.frames.length) {
+      if (myToken !== animationToken) return bestIdxSoFar;
+      const f = re.frames[idx];
+      drawState({
+        pinStates: f.pins,
+        trail: trail.slice(0, Math.min(idx + 1, trail.length)),
+        ball: f.ball,
+        trailColor,
+      });
+      drawHUD(i + 1, total, bestSoFar, isNewBest);
+      idx += stride;
+      await new Promise((r) => setTimeout(r, msPerVisStep));
     }
+    // Settle on the final frame so the user sees the result before the
+    // next throw begins.
+    const last = re.frames[re.frames.length - 1];
+    drawState({ pinStates: last.pins, trail, ball: last.ball, trailColor });
+    drawHUD(i + 1, total, bestSoFar, isNewBest);
+    // Brief settle hold (~40 ms) — just enough to register the outcome
+    // before the next throw begins.
+    await new Promise((r) => setTimeout(r, 40));
   }
   return bestIdxSoFar;
 }
