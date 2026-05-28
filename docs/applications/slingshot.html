@@ -127,7 +127,7 @@
           <input type="range" id="manual-force" min="25" max="100" step="0.5" value="60">
 
           <label for="manual-spin">Spin <output id="manual-spin-out">0.00</output></label>
-          <input type="range" id="manual-spin" min="-0.6" max="0.6" step="0.02" value="0">
+          <input type="range" id="manual-spin" min="-1.0" max="1.0" step="0.02" value="0">
         </div>
         <button id="manual-btn" onclick="manualThrow()">▶ Throw (Human Raphson)</button>
       </div>
@@ -339,12 +339,13 @@ document.getElementById('block-count').textContent = TOTAL_BLOCKS;
 //   force  : 25 to 100  (impulse magnitude in Matter.js units —
 //            extended upward so a glancing blow off the front tower
 //            can ricochet onto the back pedestal)
-//   spin   : -0.6 to +0.6 rad/step
+//   spin   : -1.0 to +1.0 rad/step (extended — more spin lets a glancing
+//            blow ricochet harder onto the back tower)
 function decode(u) {
   return [
     5 + 70 * u[0],
     25 + 75 * u[1],
-    -0.6 + 1.2 * u[2],
+    -1.0 + 2.0 * u[2],
   ];
 }
 
