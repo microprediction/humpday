@@ -80,7 +80,7 @@
   <h1>⛳ Mini-Golf Optimizer</h1>
   <p class="intro">
     Sink the ball with a single stroke. HumpDay's optimisers tune
-    <strong>aim angle, hit power,</strong> and <strong>sidespin</strong>;
+    <strong>aim angle, hit power,</strong> and <strong>backspin</strong>;
     the score is how close the ball comes to rest from the hole — plus
     a big bonus for actually sinking it.
   </p>
@@ -99,10 +99,10 @@
           <input type="range" id="manual-angle" min="5" max="70" step="0.5" value="25">
 
           <label for="manual-power">Power <output id="manual-power-out">80</output></label>
-          <input type="range" id="manual-power" min="15" max="160" step="1" value="80">
+          <input type="range" id="manual-power" min="15" max="130" step="1" value="75">
 
-          <label for="manual-spin">Spin <output id="manual-spin-out">0.00</output></label>
-          <input type="range" id="manual-spin" min="-0.5" max="0.5" step="0.02" value="0">
+          <label for="manual-spin">Backspin <output id="manual-spin-out">0.00</output></label>
+          <input type="range" id="manual-spin" min="-2.0" max="2.0" step="0.05" value="0">
         </div>
         <button id="manual-btn" onclick="manualShot()">▶ Putt (Human Raphson)</button>
       </div>
@@ -160,7 +160,7 @@
         <div class="stat-row"><span>Best so far</span><span id="best-score">—</span></div>
         <div class="stat-row"><span>Angle</span><span id="param-angle">—</span></div>
         <div class="stat-row"><span>Power</span><span id="param-power">—</span></div>
-        <div class="stat-row"><span>Spin</span><span id="param-spin">—</span></div>
+        <div class="stat-row"><span>Backspin</span><span id="param-spin">—</span></div>
       </div>
     </div>
   </div>
@@ -170,7 +170,7 @@
     <p style="color: var(--muted);">Best stroke per algorithm. Holed putts beat near-misses; the obstacle-laden course rewards algorithms that find the chip-over-the-wall path.</p>
     <table>
       <thead>
-        <tr><th>Algorithm</th><th>Score</th><th>Strokes used</th><th>Best params (angle° / power / spin)</th></tr>
+        <tr><th>Algorithm</th><th>Score</th><th>Strokes used</th><th>Best params (angle° / power / backspin)</th></tr>
       </thead>
       <tbody id="leaderboard-body">
         <tr><td colspan="4" style="color: var(--muted); text-align: center;">— no runs yet —</td></tr>
@@ -178,27 +178,23 @@
     </table>
   </div>
 
-  <h2>What's happening</h2>
+  <h2>The objective</h2>
   <p>
-    The course is a flat green with a vertical wall mid-fairway, a sand
-    bunker just past it that slows the ball, and a hole at the far right
-    end. The optimiser sets three numbers — angle, power, sidespin — and
-    a 2-D rigid-body simulator does the rest.
+    The course is deliberately bimodal. The lower green is reachable
+    with a low-arc, modest-power stroke but has no hole — the slope
+    bleeds the ball forward into the gap, so this basin caps at ~30-45
+    score. The upper green is steeper, higher, and farther; reaching
+    it needs the arc to clear both the wall and the balloon, the power
+    to make it that far, and enough backspin to brake on the downhill
+    surface. The balloon prevents a degenerate strategy of just lobbing
+    everything sky-high.
   </p>
   <p>
-    Multiple <strong>strategies</strong> exist for this layout:
-  </p>
-  <ul style="color: var(--muted); line-height: 1.6;">
-    <li><strong>Putt under the wall</strong> — too short and you hit the wall; too hard and you blast past the hole.</li>
-    <li><strong>Chip over the wall</strong> — high arc, moderate power; lands on the green between the wall and the bunker, rolls toward the hole.</li>
-    <li><strong>Sidespin hook</strong> — curve around the wall; needs precise spin + angle combination.</li>
-  </ul>
-  <p>
-    The integer-rounded distance term gives only a weak signal between
-    far-off shots; algorithms that explore broadly tend to find the
-    chip-over-wall basin sooner. Once they've found it, local refinement
-    methods (PRIMA_BOBYQA, NelderMead) close on the precise angle/power
-    quickly.
+    Local searchers (PRIMA_BOBYQA, Nelder-Mead) tend to settle on the
+    lower-green basin once they find any non-zero score there.
+    Population-based methods (CMA-ES, DE) sample broadly enough to
+    discover the upper-green basin and then refine inside it. The gap
+    between those two outcomes is what makes the leaderboard interesting.
   </p>
 
   <hr style="border: 0; border-top: 1px solid #404054; margin: 32px 0 16px;" />
@@ -215,35 +211,117 @@
 <script src="../js/modules/search-algorithms.js"></script>
 
 <script>
-const { Engine, World, Bodies, Body, Composite } = Matter;
+const { Engine, World, Bodies, Body, Composite, Vertices } = Matter;
 
 const canvas = document.getElementById('canvas');
 const ctx = canvas.getContext('2d');
 const W = canvas.width, H = canvas.height;
 
-// Course geometry.
-const GROUND_Y = H - 90;                  // top of the green
-const TEE_X = 90;                         // ball starting x
-const TEE_Y = GROUND_Y - 12;              // ball starting y
-const WALL_X = 370;                       // wall centre x
-const WALL_H = 80;                        // wall height
+// Course geometry — two sloping greens (a local trap + the real target)
+// plus a balloon overhead that blocks the high-lob exploit.
+const GROUND_Y = H - 90;
+const TEE_X = 90;
+const TEE_Y = GROUND_Y - 12;
+const WALL_X = 250;                       // moved earlier to make room for green1
+const WALL_H = 80;
 const WALL_W = 14;
-const BUNKER_X1 = 440, BUNKER_X2 = 530;   // sand bunker x-range
-const HOLE_X = 690;
-const HOLE_R = 14;                        // visual + capture radius
 const BALL_R = 9;
+
+// Green 1 — false target. Lower, gentler slope, NO HOLE. Low-arc strokes
+// land here, trickle down the slope, and end up in the gap to the right.
+// Distance-only scoring caps shots that find this basin around 30–45.
+const GREEN1_LEFT = 320;
+const GREEN1_RIGHT = 490;
+const GREEN1_FRONT_Y = GROUND_Y - 50;
+const GREEN1_BACK_Y = GROUND_Y - 30;
+const GREEN1_ANGLE = Math.atan2(
+  GREEN1_BACK_Y - GREEN1_FRONT_Y, GREEN1_RIGHT - GREEN1_LEFT,
+);
+const GREEN1_LEN = Math.hypot(
+  GREEN1_RIGHT - GREEN1_LEFT, GREEN1_BACK_Y - GREEN1_FRONT_Y,
+);
+
+// Green 2 — real target. Steep enough that backspin is essential:
+// a fast-arriving ball will slide right off without grip. Front 110 px
+// elevated, back only 35 px, so the slope drops 75 px over ~180 px —
+// roughly a 22° downhill — much steeper than green 1's 7°.
+const GREEN2_LEFT = 590;
+const GREEN2_RIGHT = W - 30;              // 770
+const GREEN2_FRONT_Y = GROUND_Y - 110;
+const GREEN2_BACK_Y = GROUND_Y - 35;
+const GREEN2_ANGLE = Math.atan2(
+  GREEN2_BACK_Y - GREEN2_FRONT_Y, GREEN2_RIGHT - GREEN2_LEFT,
+);
+const GREEN2_LEN = Math.hypot(
+  GREEN2_RIGHT - GREEN2_LEFT, GREEN2_BACK_Y - GREEN2_FRONT_Y,
+);
+
+const HOLE_FRAC = 0.5;
+const HOLE_X = GREEN2_LEFT + HOLE_FRAC * (GREEN2_RIGHT - GREEN2_LEFT);
+const HOLE_Y = GREEN2_FRONT_Y + HOLE_FRAC * (GREEN2_BACK_Y - GREEN2_FRONT_Y);
+const HOLE_R = 14;
+
+// Balloons overhead — two static circular obstacles at similar height
+// that together block any "lob it sky-high" trajectory.
+//   Red balloon (mid-course): catches mid-flight apexes between the
+//     greens.
+//   Yellow balloon (near the tee): catches shots that try to arc up
+//     immediately after launch.
+// Both at similar y so the optimiser can't just thread between them in
+// altitude — it has to choose an x slot.
+const RED_BALLOON_X = 530;
+const RED_BALLOON_Y = 105;
+const RED_BALLOON_R = 28;
+const YELLOW_BALLOON_X = 245;
+const YELLOW_BALLOON_Y = 115;
+const YELLOW_BALLOON_R = 26;
 
 // Parameter ranges.
 // angle: 5..70° (low putts to high chips)
 // power: 15..160 (impulse magnitude — extended so a hard chip can
 //        actually reach the back of the course; 60 was too weak)
-// spin: -0.5..+0.5 (angular velocity affecting roll)
+// backspin: -2.0..+2.0. Positive = backspin (ball spins backward
+//           relative to motion — friction-grip that brakes on landing).
+//           Negative = topspin (rolls forward, accelerates down the
+//           slope, useless on the downhill green).
 function decode(u) {
   return [
     5 + 65 * u[0],
-    15 + 145 * u[1],
-    -0.5 + 1.0 * u[2],
+    15 + 115 * u[1],
+    -2.0 + 4.0 * u[2],
   ];
+}
+
+// Helper: build a sloped-rectangle body whose top edge runs from
+// (xa, ya) to (xb, yb). 30 px thick. Used for both greens.
+function makeSlopedGreen(xa, ya, xb, yb, label) {
+  // Match the VISUAL shape exactly: a trapezoid with
+  //   - top edge: slope from (xa, ya) to (xb, yb)
+  //   - bottom edge: along the ground from xa to xb
+  //   - left/right edges: VERTICAL
+  //
+  // The previous version used a rotated rectangle for the body. After
+  // rotation by the slope angle, its left/right edges came out
+  // perpendicular to the slope — tilted, not vertical — so a ball
+  // approaching the front of the green hit the tilted physics body
+  // ~22 px to the left of where the visual pedestal starts. Using
+  // Bodies.fromVertices with the trapezoid corners makes the body
+  // shape identical to the rendered shape.
+  //
+  // Vertices in canvas coords, clockwise from top-left.
+  const verts = [
+    { x: xa, y: ya },
+    { x: xb, y: yb },
+    { x: xb, y: GROUND_Y },
+    { x: xa, y: GROUND_Y },
+  ];
+  // Matter.js fromVertices places the body's centroid at (x, y).
+  // Vertices.centre computes the centroid of the polygon so the body's
+  // vertices end up exactly at the world coords we specified.
+  const c = Vertices.centre(verts);
+  return Bodies.fromVertices(c.x, c.y, [verts], {
+    isStatic: true, friction: 0.6, restitution: 0.2, label,
+  });
 }
 
 // Build a fresh world per evaluation.
@@ -251,44 +329,52 @@ function buildWorld() {
   const engine = Engine.create({ gravity: { x: 0, y: 1.0 } });
   const world = engine.world;
 
-  // Static green floor + walls.
+  // Flat ground (the gutter under both greens) so a missed shot just
+  // ends up on flat grass with a measurable distance to the hole.
   const ground = Bodies.rectangle(W / 2, GROUND_Y + 30, W, 60, {
     isStatic: true, label: 'ground', friction: 0.5,
   });
   const leftWall = Bodies.rectangle(-10, H / 2, 20, H, { isStatic: true });
   const rightWall = Bodies.rectangle(W + 10, H / 2, 20, H, { isStatic: true });
 
-  // Mid-course wall — main obstacle.
+  // Mid-course wall — must be cleared by any non-trivial shot.
   const wall = Bodies.rectangle(
     WALL_X, GROUND_Y - WALL_H / 2, WALL_W, WALL_H,
     { isStatic: true, label: 'wall' },
   );
 
-  // Sand bunker — high-friction patch. We model it as a sensor body the
-  // physics step inspects each frame to bleed energy from the ball.
-  const bunker = Bodies.rectangle(
-    (BUNKER_X1 + BUNKER_X2) / 2, GROUND_Y - 2, BUNKER_X2 - BUNKER_X1, 4,
-    { isStatic: true, isSensor: true, label: 'bunker' },
-  );
+  // Two sloped greens.
+  const green1 = makeSlopedGreen(GREEN1_LEFT, GREEN1_FRONT_Y, GREEN1_RIGHT, GREEN1_BACK_Y, 'green1');
+  const green2 = makeSlopedGreen(GREEN2_LEFT, GREEN2_FRONT_Y, GREEN2_RIGHT, GREEN2_BACK_Y, 'green2');
 
-  // Hole — represented as a sensor body the physics step also inspects.
-  const hole = Bodies.circle(HOLE_X, GROUND_Y - 2, HOLE_R, {
+  // Balloon — kills the cheap "lob it over everything" strategy by
+  // making sufficiently-high arcs collide with a solid sky object.
+  const redBalloon = Bodies.circle(RED_BALLOON_X, RED_BALLOON_Y, RED_BALLOON_R, {
+    isStatic: true, label: 'balloon-red', friction: 0.1, restitution: 0.6,
+  });
+  const yellowBalloon = Bodies.circle(YELLOW_BALLOON_X, YELLOW_BALLOON_Y, YELLOW_BALLOON_R, {
+    isStatic: true, label: 'balloon-yellow', friction: 0.1, restitution: 0.6,
+  });
+
+  // Hole sensor on green 2.
+  const hole = Bodies.circle(HOLE_X, HOLE_Y - 2, HOLE_R, {
     isStatic: true, isSensor: true, label: 'hole',
   });
 
   // Ball.
   const ball = Bodies.circle(TEE_X, TEE_Y, BALL_R, {
     density: 0.005,
-    // friction 0.05 was too low — spin barely transferred to roll.
-    // 0.35 lets sidespin meaningfully change the post-bounce trajectory.
     friction: 0.35,
-    frictionAir: 0.02,        // air drag — keeps things from rolling forever
+    frictionAir: 0.02,
     restitution: 0.55,
     label: 'ball',
   });
 
-  Composite.add(world, [ground, leftWall, rightWall, wall, bunker, hole, ball]);
-  return { engine, ball, hole, bunker };
+  Composite.add(world, [
+    ground, leftWall, rightWall, wall, green1, green2,
+    redBalloon, yellowBalloon, hole, ball,
+  ]);
+  return { engine, ball, hole };
 }
 
 // Run one stroke. recordFrames=true keeps per-frame snapshots for animation.
@@ -296,13 +382,13 @@ const N_SIM_STEPS = 360;
 const SIM_DELTA = 1000 / 60;
 
 function runShot(params, recordFrames = false) {
-  const [angleDeg, power, spin] = params;
+  const [angleDeg, power, backspin] = params;
   const { engine, ball } = buildWorld();
   const rad = angleDeg * Math.PI / 180;
-  // Velocity multiplier 0.22 (was 0.18) gives a bit more travel per
-  // unit power so a mid-range stroke reaches the hole region.
-  Body.setVelocity(ball, { x: power * Math.cos(rad) * 0.22, y: -power * Math.sin(rad) * 0.22 });
-  Body.setAngularVelocity(ball, spin);
+  // Velocity multiplier — 0.20 keeps mid-range strokes reaching the
+  // hole region without making max-power shots blast off-screen.
+  Body.setVelocity(ball, { x: power * Math.cos(rad) * 0.20, y: -power * Math.sin(rad) * 0.20 });
+  Body.setAngularVelocity(ball, -backspin);  // slider +ve => backspin (negate for Matter.js)
 
   const frames = recordFrames ? [] : null;
   let holed = false;
@@ -310,24 +396,21 @@ function runShot(params, recordFrames = false) {
   for (let step = 0; step < N_SIM_STEPS; step++) {
     Engine.update(engine, SIM_DELTA);
 
-    // Bunker drag: if ball overlaps the bunker sensor's x-range and is
-    // near the ground, sap its velocity.
-    if (
-      ball.position.x > BUNKER_X1 && ball.position.x < BUNKER_X2 &&
-      ball.position.y > GROUND_Y - BALL_R - 4
-    ) {
-      Body.setVelocity(ball, { x: ball.velocity.x * 0.93, y: ball.velocity.y * 0.96 });
-    }
-
     // Hole capture: ball centre inside the hole radius AND moving slowly.
+    // Hole is now on the sloped green, so the distance check uses
+    // HOLE_X/HOLE_Y (which sit on the slope), not the old ground-level
+    // coordinates.
     if (!holed) {
       const dx = ball.position.x - HOLE_X;
-      const dy = ball.position.y - (GROUND_Y - 2);
-      if (Math.hypot(dx, dy) < HOLE_R - 2 && Math.hypot(ball.velocity.x, ball.velocity.y) < 4) {
+      const dy = ball.position.y - HOLE_Y;
+      // Hole-capture velocity tightened (was < 4): a fast-arriving ball
+      // skips over the cup like in real golf. Only a ball that has
+      // been braked by friction (backspin or gentle approach) can drop.
+      if (Math.hypot(dx, dy) < HOLE_R - 2 && Math.hypot(ball.velocity.x, ball.velocity.y) < 1.8) {
         holed = true;
-        // Stop the ball at the hole bottom.
-        Body.setPosition(ball, { x: HOLE_X, y: GROUND_Y + HOLE_R - BALL_R });
+        Body.setPosition(ball, { x: HOLE_X, y: HOLE_Y + HOLE_R - BALL_R });
         Body.setVelocity(ball, { x: 0, y: 0 });
+        Body.setAngularVelocity(ball, 0);
       }
     }
 
@@ -342,14 +425,37 @@ function runShot(params, recordFrames = false) {
     if (Math.hypot(ball.velocity.x, ball.velocity.y) < 0.15 && step > 30) break;
   }
 
-  // Scoring:
-  //   holed:   +100 (perfect)
-  //   else:    max(0, 100 - distance_to_hole)
-  // Distance is in canvas px from ball's final centre to the hole centre.
+  // If the ball is holed AND we're recording frames for animation, pad
+  // ~1 second of "ball sitting in the hole" frames so the playback
+  // visibly celebrates the sink before moving on. Doesn't affect score
+  // — purely a visual pause.
+  if (holed && recordFrames) {
+    const PAUSE_FRAMES = 60;
+    const finalFrame = frames[frames.length - 1];
+    for (let k = 0; k < PAUSE_FRAMES; k++) frames.push({ ...finalFrame });
+  }
+
+  // Scoring — smoothly-decaying score that's always positive so the
+  // optimiser gets gradient signal even from far-off shots.
+  //   holed:   100 (perfect)
+  //   else:    100 * 60 / (60 + dist)
+  //
+  // Sample values for the new formula:
+  //   dist=0    -> 100   (landed exactly on the hole)
+  //   dist=20   ->  75   (right next to it on the green)
+  //   dist=60   ->  50   (on the green but rolled away from hole)
+  //   dist=100  ->  37   (close but missed the green)
+  //   dist=200  ->  23   (stopped on green 1 — the local optimum)
+  //   dist=400  ->  13   (rolled out into the gutter)
+  //   dist=700  ->   8   (still on the tee region)
+  //
+  // The previous formula `max(0, 100 - dist)` clipped to 0 at 100 px
+  // and rounded to integer, so most of the parameter space was a flat
+  // zero plateau — purely-local optimisers had no signal to climb.
   const dx = ball.position.x - HOLE_X;
-  const dy = ball.position.y - (GROUND_Y - HOLE_R + 4);
+  const dy = ball.position.y - HOLE_Y;
   const dist = Math.hypot(dx, dy);
-  const score = holed ? 100 : Math.max(0, Math.round(100 - dist));
+  const score = holed ? 100 : 100 * 60 / (60 + dist);
 
   return { score, frames, params, holed, finalX: ball.position.x, finalY: ball.position.y };
 }
@@ -385,15 +491,6 @@ function drawCourse() {
   ctx.fillStyle = grass;
   ctx.fillRect(0, GROUND_Y, W, H - GROUND_Y);
 
-  // Bunker.
-  ctx.fillStyle = '#e0c878';
-  ctx.fillRect(BUNKER_X1, GROUND_Y, BUNKER_X2 - BUNKER_X1, 6);
-  // Bunker stipple.
-  ctx.fillStyle = 'rgba(0,0,0,0.18)';
-  for (let x = BUNKER_X1 + 4; x < BUNKER_X2; x += 8) {
-    ctx.fillRect(x, GROUND_Y + 1, 2, 2);
-  }
-
   // Tee marker.
   ctx.fillStyle = 'rgba(255,255,255,0.5)';
   ctx.fillRect(TEE_X - 12, GROUND_Y + 2, 24, 2);
@@ -417,27 +514,102 @@ function drawCourse() {
   ctx.closePath();
   ctx.fill();
 
-  // Hole (cup).
+  // Helper to draw one sloped green.
+  function drawGreen(xa, ya, xb, yb, pedestalFill, surfaceFill) {
+    // Pedestal/cliff side.
+    ctx.fillStyle = pedestalFill;
+    ctx.beginPath();
+    ctx.moveTo(xa, ya);
+    ctx.lineTo(xb, yb);
+    ctx.lineTo(xb, GROUND_Y);
+    ctx.lineTo(xa, GROUND_Y);
+    ctx.closePath();
+    ctx.fill();
+    // Putting-surface stripe.
+    ctx.fillStyle = surfaceFill;
+    ctx.beginPath();
+    ctx.moveTo(xa, ya);
+    ctx.lineTo(xb, yb);
+    ctx.lineTo(xb, yb + 6);
+    ctx.lineTo(xa, ya + 6);
+    ctx.closePath();
+    ctx.fill();
+    // Subtle direction arrows on the surface to show downhill direction.
+    ctx.strokeStyle = 'rgba(255,255,255,0.3)';
+    ctx.lineWidth = 1.2;
+    for (let i = 0; i < 3; i++) {
+      const t = 0.2 + 0.3 * i;
+      const fx = xa + t * (xb - xa);
+      const fy = ya + t * (yb - ya) + 12;
+      ctx.beginPath();
+      ctx.moveTo(fx - 4, fy - 2);
+      ctx.lineTo(fx + 4, fy + 2);
+      ctx.lineTo(fx, fy + 2);
+      ctx.stroke();
+    }
+  }
+
+  // Green 1 — false target. Slightly muted colour so green 2 reads as
+  // the "real" hole.
+  drawGreen(GREEN1_LEFT, GREEN1_FRONT_Y, GREEN1_RIGHT, GREEN1_BACK_Y,
+            '#5a3a1c', '#6e9748');
+  // Green 2 — real target. Brighter pedestal + putting surface.
+  drawGreen(GREEN2_LEFT, GREEN2_FRONT_Y, GREEN2_RIGHT, GREEN2_BACK_Y,
+            '#6b4226', '#7eb053');
+
+  // Hole + flag on green 2.
+  ctx.save();
+  ctx.translate(HOLE_X, HOLE_Y);
+  ctx.rotate(GREEN2_ANGLE);
   ctx.fillStyle = '#1a1a1a';
   ctx.beginPath();
-  ctx.ellipse(HOLE_X, GROUND_Y, HOLE_R, 4, 0, 0, Math.PI * 2);
+  ctx.ellipse(0, 0, HOLE_R, 4, 0, 0, Math.PI * 2);
   ctx.fill();
   ctx.fillStyle = '#000';
   ctx.beginPath();
-  ctx.ellipse(HOLE_X, GROUND_Y + 2, HOLE_R - 3, 3, 0, 0, Math.PI * 2);
+  ctx.ellipse(0, 2, HOLE_R - 3, 3, 0, 0, Math.PI * 2);
   ctx.fill();
-  // Pin (flag pole).
+  ctx.restore();
   ctx.strokeStyle = '#ddd';
   ctx.lineWidth = 2;
-  ctx.beginPath(); ctx.moveTo(HOLE_X, GROUND_Y); ctx.lineTo(HOLE_X, GROUND_Y - 38); ctx.stroke();
-  // Flag.
+  ctx.beginPath();
+  ctx.moveTo(HOLE_X, HOLE_Y);
+  ctx.lineTo(HOLE_X, HOLE_Y - 42);
+  ctx.stroke();
   ctx.fillStyle = '#ffcc00';
   ctx.beginPath();
-  ctx.moveTo(HOLE_X, GROUND_Y - 38);
-  ctx.lineTo(HOLE_X + 18, GROUND_Y - 32);
-  ctx.lineTo(HOLE_X, GROUND_Y - 26);
+  ctx.moveTo(HOLE_X, HOLE_Y - 42);
+  ctx.lineTo(HOLE_X + 18, HOLE_Y - 36);
+  ctx.lineTo(HOLE_X, HOLE_Y - 30);
   ctx.closePath();
   ctx.fill();
+
+  // Balloons overhead — small helper since there are two now.
+  function drawBalloon(bx, by, br, hiCol, loCol, knotCol) {
+    ctx.strokeStyle = 'rgba(255,255,255,0.5)';
+    ctx.lineWidth = 1;
+    ctx.beginPath();
+    ctx.moveTo(bx, by + br);
+    ctx.lineTo(bx - 3, by + br + 20);
+    ctx.stroke();
+    const bg = ctx.createRadialGradient(bx - 6, by - 8, 2, bx, by, br);
+    bg.addColorStop(0, hiCol); bg.addColorStop(1, loCol);
+    ctx.fillStyle = bg;
+    ctx.beginPath();
+    ctx.arc(bx, by, br, 0, Math.PI * 2);
+    ctx.fill();
+    ctx.fillStyle = knotCol;
+    ctx.beginPath();
+    ctx.moveTo(bx - 3, by + br);
+    ctx.lineTo(bx + 3, by + br);
+    ctx.lineTo(bx, by + br + 4);
+    ctx.closePath();
+    ctx.fill();
+  }
+  drawBalloon(RED_BALLOON_X, RED_BALLOON_Y, RED_BALLOON_R,
+              '#ff8888', '#cc2222', '#aa1818');
+  drawBalloon(YELLOW_BALLOON_X, YELLOW_BALLOON_Y, YELLOW_BALLOON_R,
+              '#fff390', '#e0b020', '#a87a10');
 }
 
 function drawBall(b) {
@@ -510,8 +682,8 @@ function drawIdleScene() {
 // ============================================================================
 // Animations.
 // ============================================================================
-const REPLAY_MS_PER_FRAME = 22;
-const MONTAGE_MS_PER_FRAME = 11;
+const REPLAY_MS_PER_FRAME = 32;          // ~30 fps for the final-best replay
+const MONTAGE_MS_PER_FRAME = 16;          // ~60 fps for the per-launch montage
 let animationToken = 0;
 
 function animateShot(frames, hudText, msPerFrame = REPLAY_MS_PER_FRAME) {
@@ -547,9 +719,13 @@ async function animateSearchMontage() {
 
     const reF = runShot(entry.params, /*recordFrames=*/true);
     document.getElementById('evals').textContent = i + 1;
-    document.getElementById('score-now').textContent = entry.score;
+    document.getElementById('score-now').textContent = entry.score.toFixed(2);
+    // ALWAYS reflect the current attempt's params in the side panel —
+    // the "Score" above is per-attempt, so the angle/power/backspin
+    // numbers should track it. Previously these only changed on a new
+    // best so they appeared frozen between non-improving attempts.
+    updateBestParams(entry.params, entry.score);
     if (isNew) {
-      updateBestParams(entry.params, entry.score);
       addLeaderboardEntry(
         document.getElementById('algorithm').value,
         entry, i + 1,
@@ -558,7 +734,7 @@ async function animateSearchMontage() {
     }
     await animateShot(
       reF.frames,
-      `Stroke ${i + 1}/${total}  ·  Best: ${bestSoFar}${entry.holed && isNew ? '  ★ HOLED!' : (isNew ? '  ★ NEW!' : '')}`,
+      `Stroke ${i + 1}/${total}  ·  Best: ${bestSoFar.toFixed(2)}${entry.holed && isNew ? '  ★ HOLED!' : (isNew ? '  ★ NEW!' : '')}`,
       MONTAGE_MS_PER_FRAME,
     );
   }
@@ -596,11 +772,11 @@ async function runOptimization() {
     lastBest = replay;
     await animateShot(
       replay.frames,
-      `Best stroke: ${bestEntry.score}${replay.holed ? ' (HOLED!)' : ''} (${algoName})`,
+      `Best stroke: ${bestEntry.score.toFixed(2)}${replay.holed ? ' (HOLED!)' : ''} (${algoName})`,
     );
 
     document.getElementById('best-score').textContent =
-      `${bestEntry.score}${replay.holed ? ' ⛳' : ''} (${algoName})`;
+      `${bestEntry.score.toFixed(2)}${replay.holed ? ' ⛳' : ''} (${algoName})`;
     updateBestParams(bestEntry.params, bestEntry.score);
     addLeaderboardEntry(algoName, bestEntry, opt.evaluations, {
       inPlace: liveLeaderboardIdx >= 0,
@@ -663,7 +839,7 @@ function renderLeaderboard() {
     const holed = row.holed ? ' ⛳' : '';
     return `<tr${cls}>
       <td>${row.name}${holed}</td>
-      <td>${row.score}</td>
+      <td>${row.score.toFixed(2)}</td>
       <td>${row.evals}</td>
       <td>${a.toFixed(1)}° / ${p.toFixed(1)} / ${s.toFixed(2)}</td>
     </tr>`;
@@ -710,11 +886,11 @@ async function manualShot() {
   await new Promise((r) => setTimeout(r, 30));
   try {
     const replay = runShot([a, p, s], /*recordFrames=*/true);
-    document.getElementById('score-now').textContent = replay.score;
+    document.getElementById('score-now').textContent = replay.score.toFixed(2);
     updateBestParams([a, p, s], replay.score);
     await animateShot(
       replay.frames,
-      `🧠 Human Raphson: ${replay.score}${replay.holed ? '  ⛳ HOLED!' : ''}`,
+      `🧠 Human Raphson: ${replay.score.toFixed(2)}${replay.holed ? '  ⛳ HOLED!' : ''}`,
     );
     addLeaderboardEntry(
       'Human Raphson',
@@ -722,7 +898,7 @@ async function manualShot() {
       1,
     );
     document.getElementById('best-score').textContent =
-      `${replay.score}${replay.holed ? ' ⛳' : ''} (Human Raphson)`;
+      `${replay.score.toFixed(2)}${replay.holed ? ' ⛳' : ''} (Human Raphson)`;
   } finally {
     btn.disabled = false;
     btn.textContent = '▶ Putt (Human Raphson)';
