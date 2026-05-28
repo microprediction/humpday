@@ -145,8 +145,11 @@
   .skill-callout h3 { margin: 0 0 6px; color: var(--accent); font-size: 1.05em; text-transform: none; letter-spacing: 0; }
   .skill-callout p { margin: 0 0 10px; color: var(--text); max-width: none; }
   .skill-callout pre { background: #1a1a22; border: 1px solid #404054; border-radius: 4px; padding: 10px 14px; margin: 0; font-size: 0.84em; color: var(--accent); white-space: pre-wrap; word-break: break-all; font-family: 'SF Mono', Menlo, monospace; }
-  .skill-callout a { color: var(--accent); font-size: 0.85em; text-decoration: none; }
-  .skill-callout a:hover { text-decoration: underline; }
+  .skill-actions { margin-top: 10px; display: flex; align-items: center; gap: 14px; }
+  .skill-actions button { width: auto; background: #404054; color: var(--text); border: 1px solid #404054; padding: 6px 12px; font-size: 0.85em; cursor: pointer; border-radius: 4px; margin: 0; font-weight: 500; }
+  .skill-actions button:hover { background: #4a4a60; }
+  .skill-actions a { color: var(--accent); font-size: 0.85em; text-decoration: none; }
+  .skill-actions a:hover { text-decoration: underline; }
 
 </style>
 </head>
@@ -290,10 +293,26 @@
   <div class="skill-callout">
     <h3>🌱 Save the Planet</h3>
     <p>Cut and paste this into a Claude Code project to install HumpDay as a skill — no install, no waste:</p>
-    <pre>Read https://raw.githubusercontent.com/microprediction/humpday/main/SKILL.md
+    <pre id="skill-snippet">Read https://raw.githubusercontent.com/microprediction/humpday/main/SKILL.md
 and create a project skill from it.</pre>
-    <p style="margin: 8px 0 0;"><a href="https://github.com/microprediction/humpday/blob/main/SKILL.md" target="_blank" rel="noopener">View SKILL.md →</a></p>
+    <div class="skill-actions">
+      <button type="button" onclick="copySkillSnippet(this)">📋 Copy</button>
+      <a href="https://github.com/microprediction/humpday/blob/main/SKILL.md" target="_blank" rel="noopener">View SKILL.md →</a>
+    </div>
   </div>
+
+  <script>
+    function copySkillSnippet(btn) {
+      const text = document.getElementById('skill-snippet').textContent;
+      navigator.clipboard.writeText(text).then(() => {
+        const orig = btn.textContent;
+        btn.textContent = '✓ Copied';
+        setTimeout(() => { btn.textContent = orig; }, 1500);
+      }).catch(() => {
+        btn.textContent = '✗ Copy failed';
+      });
+    }
+  </script>
 </div>
 
 <script src="../js/modules/base-optimizer.js"></script>
