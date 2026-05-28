@@ -391,9 +391,12 @@ function runShot(params, recordFrames = false) {
   // Scoring:
   //   holed:   +100 (perfect)
   //   else:    max(0, 100 - distance_to_hole)
-  // Distance is in canvas px from ball's final centre to the hole centre.
+  // Distance is in canvas px from ball's final centre to the hole centre
+  // ON THE SLOPED GREEN. Previously this used the old ground-level
+  // y-coordinate which misreported distance once the hole moved up onto
+  // the slope.
   const dx = ball.position.x - HOLE_X;
-  const dy = ball.position.y - (GROUND_Y - HOLE_R + 4);
+  const dy = ball.position.y - HOLE_Y;
   const dist = Math.hypot(dx, dy);
   const score = holed ? 100 : Math.max(0, Math.round(100 - dist));
 
