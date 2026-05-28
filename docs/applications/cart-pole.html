@@ -309,6 +309,13 @@ function step(state, action) {
 }
 
 // Run one episode, optionally recording every state for animation.
+// Number of "dramatic fall" frames we continue simulating after the
+// threshold is crossed, purely for visual effect. The score (steps
+// survived) is locked at the moment of failure — these extra frames
+// are recorded into `states` only when recordStates is on (so the
+// animation has something to play) and never affect the optimiser.
+const CRASH_DRAMA_FRAMES = 30;            // ~600 ms at 22 fps playback
+
 function rolloutEpisode(policy, seed, recordStates = false) {
   const rng = makeRng(seed);
   let state = [
@@ -320,6 +327,7 @@ function rolloutEpisode(policy, seed, recordStates = false) {
   const [w1, w2, w3, w4, bias] = policy;
   const states = recordStates ? [state.slice()] : null;
   let steps = 0;
+  let crashed = false;
   for (let t = 0; t < MAX_STEPS; t++) {
     const [x, x_dot, theta, theta_dot] = state;
     const score = w1 * x + w2 * x_dot + w3 * theta + w4 * theta_dot + bias;
@@ -328,10 +336,26 @@ function rolloutEpisode(policy, seed, recordStates = false) {
     if (recordStates) states.push(state.slice());
     steps = t + 1;
     if (Math.abs(state[0]) > X_THRESHOLD || Math.abs(state[2]) > THETA_THRESHOLD) {
+      crashed = true;
       break;
     }
   }
-  return { steps, states };
+
+  // Visual drama: keep stepping for a fraction of a second after the
+  // threshold crossing so the pole visibly tips well past 12° before
+  // we draw the CRASHED banner. Policy still decides actions in case
+  // the controller is fighting the fall, but the score is locked.
+  if (crashed && recordStates) {
+    for (let k = 0; k < CRASH_DRAMA_FRAMES; k++) {
+      const [x, x_dot, theta, theta_dot] = state;
+      const score = w1 * x + w2 * x_dot + w3 * theta + w4 * theta_dot + bias;
+      const action = score > 0 ? 1 : 0;
+      state = step(state, action);
+      states.push(state.slice());
+    }
+  }
+
+  return { steps, states, crashed };
 }
 
 function evaluatePolicy(u, nEpisodes = N_EPISODES, seedOffset = 0) {
@@ -367,7 +391,8 @@ function objective(u) {
 const SCALE = 130;
 const TRACK_Y = 210;
 
-function drawScene(state, episodeSteps, episodeTotal, hudText) {
+function drawScene(state, episodeSteps, episodeTotal, hudText, opts = {}) {
+  const { crashed = false } = opts;
   ctx.clearRect(0, 0, W, H);
   const grad = ctx.createLinearGradient(0, 0, 0, H);
   grad.addColorStop(0, '#34344a'); grad.addColorStop(1, '#1f1f30');
@@ -378,10 +403,17 @@ function drawScene(state, episodeSteps, episodeTotal, hudText) {
   ctx.fillStyle = '#52527a';
   ctx.fillRect(0, TRACK_Y, W, 4);
 
-  // Track boundaries (X_THRESHOLD).
-  ctx.strokeStyle = 'rgba(255, 204, 0, 0.35)';
+  // Track boundaries — turn red if the cart is past them on this frame.
+  let nearEdge = false;
+  if (state) {
+    const [x] = state;
+    if (Math.abs(x) > X_THRESHOLD * 0.85) nearEdge = true;
+  }
+  ctx.strokeStyle = (crashed || nearEdge)
+    ? 'rgba(255, 80, 80, 0.85)'
+    : 'rgba(255, 204, 0, 0.35)';
   ctx.setLineDash([6, 6]);
-  ctx.lineWidth = 2;
+  ctx.lineWidth = (crashed || nearEdge) ? 3 : 2;
   ctx.beginPath();
   ctx.moveTo(W / 2 - X_THRESHOLD * SCALE, 0);
   ctx.lineTo(W / 2 - X_THRESHOLD * SCALE, H);
@@ -394,24 +426,43 @@ function drawScene(state, episodeSteps, episodeTotal, hudText) {
     const [x, , theta] = state;
     const cartCx = W / 2 + x * SCALE;
     const cartCy = TRACK_Y - 18;
+
+    // Heat-up: pole tints from orange to red as it tips toward the
+    // failure angle. Cart tints similarly as it nears track edge.
+    const tiltFrac = Math.min(1, Math.abs(theta) / THETA_THRESHOLD);
+    const xFrac = Math.min(1, Math.abs(x) / X_THRESHOLD);
+    const stress = Math.max(tiltFrac, xFrac);
+
     // Cart shadow.
     ctx.fillStyle = 'rgba(0,0,0,0.35)';
     ctx.fillRect(cartCx - 38, TRACK_Y + 4, 76, 5);
-    // Cart body.
-    ctx.fillStyle = '#ffcc00';
+    // Cart body — yellow → red as stress increases.
+    const cartHue = crashed ? '#cc1818' : (stress > 0.7 ? '#ff6633' : '#ffcc00');
+    ctx.fillStyle = cartHue;
     ctx.fillRect(cartCx - 36, cartCy - 12, 72, 24);
     // Wheels.
     ctx.fillStyle = '#222238';
     ctx.beginPath(); ctx.arc(cartCx - 22, cartCy + 14, 7, 0, Math.PI * 2); ctx.fill();
     ctx.beginPath(); ctx.arc(cartCx + 22, cartCy + 14, 7, 0, Math.PI * 2); ctx.fill();
 
-    // Pole — full length is 2*LENGTH metres; rotation around cart top.
+    // Pole — colour heats from orange → red as it tips.
     const poleLen = 2 * LENGTH * SCALE;
     const pivotX = cartCx;
     const pivotY = cartCy - 12;
     const tipX = pivotX + poleLen * Math.sin(theta);
     const tipY = pivotY - poleLen * Math.cos(theta);
-    ctx.strokeStyle = '#ff6600';
+    let poleColor;
+    if (crashed) {
+      poleColor = '#cc1818';
+    } else if (tiltFrac > 0.6) {
+      // Lerp orange → red.
+      const r = Math.round(0xff - (0xff - 0xcc) * ((tiltFrac - 0.6) / 0.4));
+      const g = Math.round(0x66 - 0x66 * ((tiltFrac - 0.6) / 0.4));
+      poleColor = `rgb(${r}, ${g}, 24)`;
+    } else {
+      poleColor = '#ff6600';
+    }
+    ctx.strokeStyle = poleColor;
     ctx.lineWidth = 8;
     ctx.lineCap = 'round';
     ctx.beginPath();
@@ -423,6 +474,36 @@ function drawScene(state, episodeSteps, episodeTotal, hudText) {
     ctx.beginPath();
     ctx.arc(pivotX, pivotY, 4, 0, Math.PI * 2);
     ctx.fill();
+
+    // CRASHED — big red banner across the canvas.
+    if (crashed) {
+      ctx.fillStyle = 'rgba(204, 24, 24, 0.18)';
+      ctx.fillRect(0, 0, W, H);
+
+      ctx.font = 'bold 56px -apple-system, Helvetica, Arial, sans-serif';
+      const text = 'CRASHED';
+      const metrics = ctx.measureText(text);
+      const bannerW = metrics.width + 60;
+      const bannerH = 80;
+      const bannerX = (W - bannerW) / 2;
+      const bannerY = (H - bannerH) / 2 - 20;
+      ctx.fillStyle = 'rgba(0, 0, 0, 0.7)';
+      ctx.fillRect(bannerX, bannerY, bannerW, bannerH);
+      ctx.strokeStyle = '#cc1818';
+      ctx.lineWidth = 3;
+      ctx.strokeRect(bannerX, bannerY, bannerW, bannerH);
+      ctx.fillStyle = '#ff5050';
+      ctx.fillText(text, bannerX + 30, bannerY + 60);
+
+      // Failure reason underneath.
+      ctx.font = 'bold 14px -apple-system, Helvetica, Arial, sans-serif';
+      ctx.fillStyle = '#ffcccc';
+      const reason = Math.abs(theta) > THETA_THRESHOLD
+        ? `Pole tipped past ${(THETA_THRESHOLD * 180 / Math.PI).toFixed(0)}° at step ${episodeSteps}`
+        : `Cart left the track (x=${x.toFixed(2)} m) at step ${episodeSteps}`;
+      const rWidth = ctx.measureText(reason).width;
+      ctx.fillText(reason, (W - rWidth) / 2, bannerY + bannerH + 24);
+    }
   }
 
   // HUD top-left.
@@ -451,15 +532,35 @@ function drawIdleScene() {
 let animationToken = 0;
 
 // Play a single episode at ~22 fps so each pole wobble is visible.
-function animateEpisode(states, hudText) {
+// `crashed=true` paints the final frame with the big red CRASHED banner
+// and holds it for ~1.2 s so the failure is unmissable.
+function animateEpisode(states, hudText, opts = {}) {
+  const { crashed = false } = opts;
   const myToken = ++animationToken;
   return new Promise((resolve) => {
     if (!states || states.length === 0) return resolve();
     let i = 0;
     function tick() {
       if (myToken !== animationToken) return resolve();
-      if (i >= states.length) return resolve();
-      drawScene(states[i], i, null, hudText);
+      if (i >= states.length) {
+        if (crashed) {
+          // Show the CRASHED banner for exactly 2 s, then clear it
+          // (redraw the same final frame without the banner) so the
+          // canvas settles back to a normal rendering rather than
+          // leaving the red overlay up indefinitely.
+          drawScene(states[states.length - 1], states.length - 1, null, hudText, { crashed: true });
+          setTimeout(() => {
+            if (myToken !== animationToken) return resolve();
+            drawScene(states[states.length - 1], states.length - 1, null, hudText, { crashed: false });
+            resolve();
+          }, 2000);
+        } else {
+          resolve();
+        }
+        return;
+      }
+      const isLastFrame = i === states.length - 1;
+      drawScene(states[i], i, null, hudText, { crashed: crashed && isLastFrame });
       i += 1;
       setTimeout(tick, 45);  // ~22 fps
     }
@@ -486,6 +587,11 @@ async function animateSearchMontage() {
     const isNew = entry.meanReturn > bestSoFar;
     if (isNew) { bestSoFar = entry.meanReturn; bestIdx = i; }
     // Show the final state of episode 0 with the policy's parameters.
+    // We intentionally do NOT pass `crashed` here even when the episode
+    // crashed — the full CRASHED banner is too dominant in the rapid-fire
+    // montage (with N_EPISODES=8, most early policies will crash on
+    // episode 0 even if their mean return is decent). The HUD's steps
+    // and mean-return text already conveys the outcome.
     const ep0 = rolloutEpisode(entry.params, /*seed=*/0, /*record=*/true);
     drawScene(
       ep0.states[ep0.states.length - 1],
@@ -542,6 +648,7 @@ async function runOptimization() {
     await animateEpisode(
       replay.states,
       `Best policy (mean ${bestEntry.meanReturn.toFixed(1)} / ${MAX_STEPS})`,
+      { crashed: replay.crashed },
     );
 
     // Stage 3: independent test of the chosen policy on 20 fresh seeds.
@@ -578,6 +685,7 @@ function replayBest() {
   animateEpisode(
     replay.states,
     `Best policy (mean ${lastBestPolicy.meanReturn.toFixed(1)} / ${MAX_STEPS})`,
+    { crashed: replay.crashed },
   );
 }
 
