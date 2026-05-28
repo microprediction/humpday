@@ -309,6 +309,13 @@ function step(state, action) {
 }
 
 // Run one episode, optionally recording every state for animation.
+// Number of "dramatic fall" frames we continue simulating after the
+// threshold is crossed, purely for visual effect. The score (steps
+// survived) is locked at the moment of failure — these extra frames
+// are recorded into `states` only when recordStates is on (so the
+// animation has something to play) and never affect the optimiser.
+const CRASH_DRAMA_FRAMES = 30;            // ~600 ms at 22 fps playback
+
 function rolloutEpisode(policy, seed, recordStates = false) {
   const rng = makeRng(seed);
   let state = [
@@ -333,6 +340,21 @@ function rolloutEpisode(policy, seed, recordStates = false) {
       break;
     }
   }
+
+  // Visual drama: keep stepping for a fraction of a second after the
+  // threshold crossing so the pole visibly tips well past 12° before
+  // we draw the CRASHED banner. Policy still decides actions in case
+  // the controller is fighting the fall, but the score is locked.
+  if (crashed && recordStates) {
+    for (let k = 0; k < CRASH_DRAMA_FRAMES; k++) {
+      const [x, x_dot, theta, theta_dot] = state;
+      const score = w1 * x + w2 * x_dot + w3 * theta + w4 * theta_dot + bias;
+      const action = score > 0 ? 1 : 0;
+      state = step(state, action);
+      states.push(state.slice());
+    }
+  }
+
   return { steps, states, crashed };
 }
 
@@ -565,13 +587,17 @@ async function animateSearchMontage() {
     const isNew = entry.meanReturn > bestSoFar;
     if (isNew) { bestSoFar = entry.meanReturn; bestIdx = i; }
     // Show the final state of episode 0 with the policy's parameters.
+    // We intentionally do NOT pass `crashed` here even when the episode
+    // crashed — the full CRASHED banner is too dominant in the rapid-fire
+    // montage (with N_EPISODES=8, most early policies will crash on
+    // episode 0 even if their mean return is decent). The HUD's steps
+    // and mean-return text already conveys the outcome.
     const ep0 = rolloutEpisode(entry.params, /*seed=*/0, /*record=*/true);
     drawScene(
       ep0.states[ep0.states.length - 1],
       ep0.steps,
       entry.meanReturn,
       `Policy ${i + 1} / ${total}    Best mean: ${bestSoFar.toFixed(1)}${isNew ? '  ★ NEW!' : ''}`,
-      { crashed: ep0.crashed },
     );
 
     document.getElementById('evals').textContent = i + 1;
