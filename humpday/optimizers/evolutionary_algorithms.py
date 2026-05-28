@@ -22,35 +22,55 @@ class DifferentialEvolution(BaseOptimizer):
     """
 
     def optimize(self):
-        # DE needs at least 4 members (current + 3 others for mutation).
+        # Match scipy.optimize.differential_evolution defaults: `best1bin`
+        # mutation strategy (mutate around the population's best member,
+        # not a random one), dither-mutation F drawn per-generation in
+        # [0.5, 1.0], recombination probability 0.7.
+        #
+        # The previous implementation used the `rand1` strategy with a
+        # fixed F=0.8 and CR=0.9 — `rand1` is more exploratory but
+        # converges very slowly on smooth landscapes, which is exactly
+        # why this port was 1e8x off scipy's DE on the sphere benchmark.
+        # Reference: scipy/optimize/_differentialevolution.py.
         pop_size = max(10, min(20, self.n_trials // 5))
-        F = 0.8  # Scaling factor
-        CR = 0.9  # Crossover probability
+        CR = 0.7  # scipy default recombination probability.
 
-        # Initialize population as list-of-vectors.
         population = [_A.random_uniform(self.n_dim) for _ in range(pop_size)]
         fitness = [self.evaluate(ind) for ind in population]
 
         while self.evaluations < self.n_trials:
+            # Dither: pick F uniformly in [0.5, 1.0] per generation. This
+            # is scipy's default `mutation=(0.5, 1)` behaviour, which
+            # helps the population avoid stagnation by varying the
+            # mutation scale.
+            F = 0.5 + 0.5 * _A.random_scalar()
+
             for i in range(pop_size):
                 if self.evaluations >= self.n_trials:
                     break
 
-                # Pick three indices distinct from `i`.
-                candidates = [k for k in range(pop_size) if k != i]
-                if len(candidates) < 3:
-                    a, b, c = _A.random_choice(candidates, k=3, replace=True)
-                else:
-                    a, b, c = _A.random_choice(candidates, k=3, replace=False)
-                a, b, c = int(a), int(b), int(c)
+                # `best1bin`: base point is the current population best,
+                # not a random member. Find best index.
+                best_idx = min(range(pop_size), key=fitness.__getitem__)
 
-                # Mutation: v = x_a + F * (x_b - x_c), clipped to bounds.
+                # Two donors distinct from i and best_idx.
+                candidates = [k for k in range(pop_size) if k != i and k != best_idx]
+                if len(candidates) < 2:
+                    candidates = [k for k in range(pop_size) if k != i]
+                if len(candidates) < 2:
+                    b, c = _A.random_choice(candidates, k=2, replace=True)
+                else:
+                    b, c = _A.random_choice(candidates, k=2, replace=False)
+                b, c = int(b), int(c)
+
+                # Mutation: v = x_best + F * (x_b - x_c), clipped to bounds.
                 mutant = _A.clip(
-                    population[a] + F * (population[b] - population[c]), 0, 1
+                    population[best_idx] + F * (population[b] - population[c]),
+                    0,
+                    1,
                 )
 
-                # Binomial crossover. `j_guaranteed` ensures at least one
-                # coordinate of the mutant survives — standard DE.
+                # Binomial crossover with at least one guaranteed coord.
                 trial = population[i].copy()
                 j_guaranteed = _A.random_int(self.n_dim)
                 for j in range(self.n_dim):
