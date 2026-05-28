@@ -422,17 +422,27 @@ function runShot(params, recordFrames = false) {
     for (let k = 0; k < PAUSE_FRAMES; k++) frames.push({ ...finalFrame });
   }
 
-  // Scoring:
-  //   holed:   +100 (perfect)
-  //   else:    max(0, 100 - distance_to_hole)
-  // Distance is in canvas px from ball's final centre to the hole centre
-  // ON THE SLOPED GREEN. Previously this used the old ground-level
-  // y-coordinate which misreported distance once the hole moved up onto
-  // the slope.
+  // Scoring — smoothly-decaying score that's always positive so the
+  // optimiser gets gradient signal even from far-off shots.
+  //   holed:   100 (perfect)
+  //   else:    100 * 60 / (60 + dist)
+  //
+  // Sample values for the new formula:
+  //   dist=0    -> 100   (landed exactly on the hole)
+  //   dist=20   ->  75   (right next to it on the green)
+  //   dist=60   ->  50   (on the green but rolled away from hole)
+  //   dist=100  ->  37   (close but missed the green)
+  //   dist=200  ->  23   (stopped on green 1 — the local optimum)
+  //   dist=400  ->  13   (rolled out into the gutter)
+  //   dist=700  ->   8   (still on the tee region)
+  //
+  // The previous formula `max(0, 100 - dist)` clipped to 0 at 100 px
+  // and rounded to integer, so most of the parameter space was a flat
+  // zero plateau — purely-local optimisers had no signal to climb.
   const dx = ball.position.x - HOLE_X;
   const dy = ball.position.y - HOLE_Y;
   const dist = Math.hypot(dx, dy);
-  const score = holed ? 100 : Math.max(0, Math.round(100 - dist));
+  const score = holed ? 100 : 100 * 60 / (60 + dist);
 
   return { score, frames, params, holed, finalX: ball.position.x, finalY: ball.position.y };
 }
@@ -696,7 +706,7 @@ async function animateSearchMontage() {
 
     const reF = runShot(entry.params, /*recordFrames=*/true);
     document.getElementById('evals').textContent = i + 1;
-    document.getElementById('score-now').textContent = entry.score;
+    document.getElementById('score-now').textContent = entry.score.toFixed(2);
     if (isNew) {
       updateBestParams(entry.params, entry.score);
       addLeaderboardEntry(
@@ -707,7 +717,7 @@ async function animateSearchMontage() {
     }
     await animateShot(
       reF.frames,
-      `Stroke ${i + 1}/${total}  ·  Best: ${bestSoFar}${entry.holed && isNew ? '  ★ HOLED!' : (isNew ? '  ★ NEW!' : '')}`,
+      `Stroke ${i + 1}/${total}  ·  Best: ${bestSoFar.toFixed(2)}${entry.holed && isNew ? '  ★ HOLED!' : (isNew ? '  ★ NEW!' : '')}`,
       MONTAGE_MS_PER_FRAME,
     );
   }
@@ -745,11 +755,11 @@ async function runOptimization() {
     lastBest = replay;
     await animateShot(
       replay.frames,
-      `Best stroke: ${bestEntry.score}${replay.holed ? ' (HOLED!)' : ''} (${algoName})`,
+      `Best stroke: ${bestEntry.score.toFixed(2)}${replay.holed ? ' (HOLED!)' : ''} (${algoName})`,
     );
 
     document.getElementById('best-score').textContent =
-      `${bestEntry.score}${replay.holed ? ' ⛳' : ''} (${algoName})`;
+      `${bestEntry.score.toFixed(2)}${replay.holed ? ' ⛳' : ''} (${algoName})`;
     updateBestParams(bestEntry.params, bestEntry.score);
     addLeaderboardEntry(algoName, bestEntry, opt.evaluations, {
       inPlace: liveLeaderboardIdx >= 0,
@@ -812,7 +822,7 @@ function renderLeaderboard() {
     const holed = row.holed ? ' ⛳' : '';
     return `<tr${cls}>
       <td>${row.name}${holed}</td>
-      <td>${row.score}</td>
+      <td>${row.score.toFixed(2)}</td>
       <td>${row.evals}</td>
       <td>${a.toFixed(1)}° / ${p.toFixed(1)} / ${s.toFixed(2)}</td>
     </tr>`;
@@ -859,11 +869,11 @@ async function manualShot() {
   await new Promise((r) => setTimeout(r, 30));
   try {
     const replay = runShot([a, p, s], /*recordFrames=*/true);
-    document.getElementById('score-now').textContent = replay.score;
+    document.getElementById('score-now').textContent = replay.score.toFixed(2);
     updateBestParams([a, p, s], replay.score);
     await animateShot(
       replay.frames,
-      `🧠 Human Raphson: ${replay.score}${replay.holed ? '  ⛳ HOLED!' : ''}`,
+      `🧠 Human Raphson: ${replay.score.toFixed(2)}${replay.holed ? '  ⛳ HOLED!' : ''}`,
     );
     addLeaderboardEntry(
       'Human Raphson',
@@ -871,7 +881,7 @@ async function manualShot() {
       1,
     );
     document.getElementById('best-score').textContent =
-      `${replay.score}${replay.holed ? ' ⛳' : ''} (Human Raphson)`;
+      `${replay.score.toFixed(2)}${replay.holed ? ' ⛳' : ''} (Human Raphson)`;
   } finally {
     btn.disabled = false;
     btn.textContent = '▶ Putt (Human Raphson)';
