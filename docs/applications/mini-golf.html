@@ -98,8 +98,8 @@
           <label for="manual-angle">Angle <output id="manual-angle-out">25°</output></label>
           <input type="range" id="manual-angle" min="5" max="70" step="0.5" value="25">
 
-          <label for="manual-power">Power <output id="manual-power-out">35</output></label>
-          <input type="range" id="manual-power" min="10" max="60" step="0.5" value="35">
+          <label for="manual-power">Power <output id="manual-power-out">80</output></label>
+          <input type="range" id="manual-power" min="15" max="160" step="1" value="80">
 
           <label for="manual-spin">Spin <output id="manual-spin-out">0.00</output></label>
           <input type="range" id="manual-spin" min="-0.5" max="0.5" step="0.02" value="0">
@@ -235,12 +235,13 @@ const BALL_R = 9;
 
 // Parameter ranges.
 // angle: 5..70° (low putts to high chips)
-// power: 10..60 (impulse magnitude)
+// power: 15..160 (impulse magnitude — extended so a hard chip can
+//        actually reach the back of the course; 60 was too weak)
 // spin: -0.5..+0.5 (angular velocity affecting roll)
 function decode(u) {
   return [
     5 + 65 * u[0],
-    10 + 50 * u[1],
+    15 + 145 * u[1],
     -0.5 + 1.0 * u[2],
   ];
 }
@@ -296,7 +297,9 @@ function runShot(params, recordFrames = false) {
   const [angleDeg, power, spin] = params;
   const { engine, ball } = buildWorld();
   const rad = angleDeg * Math.PI / 180;
-  Body.setVelocity(ball, { x: power * Math.cos(rad) * 0.18, y: -power * Math.sin(rad) * 0.18 });
+  // Velocity multiplier 0.22 (was 0.18) gives a bit more travel per
+  // unit power so a mid-range stroke reaches the hole region.
+  Body.setVelocity(ball, { x: power * Math.cos(rad) * 0.22, y: -power * Math.sin(rad) * 0.22 });
   Body.setAngularVelocity(ball, spin);
 
   const frames = recordFrames ? [] : null;
