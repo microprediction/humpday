@@ -168,8 +168,11 @@
       <select id="budget">
         <option value="10">10 launches</option>
         <option value="20" selected>20 launches</option>
-        <option value="40">40 launches</option>
-        <option value="80">80 launches</option>
+        <option value="50">50 launches</option>
+        <option value="100">100 launches</option>
+        <option value="200">200 launches</option>
+        <option value="500">500 launches</option>
+        <option value="1000">1000 launches</option>
       </select>
       <p style="margin: 8px 0 0; font-size: 0.78em; color: var(--muted);">
         Each launch is animated frame-by-frame at 2× the final-replay
@@ -667,6 +670,11 @@ async function animateSearchMontage() {
         entry, i + 1,
         { inPlace: liveLeaderboardIdx >= 0 },
       );
+      // Reflect the new best in the side panel — was previously only
+      // set after the montage finished, so the "Best so far" row sat
+      // on `—` for the whole search.
+      document.getElementById('best-score').textContent =
+        `${entry.score} blocks (${document.getElementById('algorithm').value})`;
     }
 
     await animateShot(
