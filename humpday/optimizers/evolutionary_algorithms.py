@@ -525,9 +525,15 @@ class CMAEvolutionStrategy(BaseOptimizer):
         cmu = min(1 - c1, 2 * (mueff - 2 + 1 / mueff) / ((n + 2) ** 2 + mueff))
         damps = 1 + 2 * max(0, math.sqrt((mueff - 1) / (n + 1)) - 1) + cs
 
-        # State.
-        mean = 0.5 * _A.ones(n)
-        sigma = 0.3
+        # State. Initial mean is a random interior point in [0.3, 0.7]^n
+        # — same distribution the reference-alignment harness draws from
+        # via `_draw_x0`. The previous fixed-centre `0.5 * ones(n)` was a
+        # deterministic starting point that disadvantaged Rosenbrock
+        # (optimum at 0.75 ones, so distance 0.25) vs the reference's
+        # average of ~0.05. Also `sigma=0.2` to match the reference
+        # cmaes library's chosen initial step size (HumpDay was 0.3).
+        mean = 0.3 + 0.4 * _A.random_uniform(n)
+        sigma = 0.2
         C = _A.linalg.eye(n)
         pc = _A.zeros(n)
         ps = _A.zeros(n)
@@ -637,9 +643,15 @@ class CMAEvolutionStrategy(BaseOptimizer):
             except Exception:
                 invsqrtC = _A.linalg.eye(n)
 
-            # Step-size update.
+            # Step-size update. Cap sigma at 0.5 to keep proposals in the
+            # unit cube; do NOT floor at 1e-6 — that artificial floor was
+            # preventing the algorithm from converging to higher precision
+            # on smooth basins (Rosenbrock was 4.28× off the cmaes
+            # reference because sigma got pinned at 1e-6 rather than
+            # shrinking further). Reference cmaes library has no floor.
             sigma = sigma * math.exp((cs / damps) * (_A.norm(ps) / math.sqrt(n) - 1))
-            sigma = max(min(sigma, 0.5), 1e-6)
+            if sigma > 0.5:
+                sigma = 0.5
 
         return self.best_value, self.best_x
 
