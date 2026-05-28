@@ -1,0 +1,690 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' 'unsafe-inline' https://cdn.jsdelivr.net; style-src 'self' 'unsafe-inline';">
+<title>🦅 Slingshot Optimizer — HumpDay</title>
+<style>
+  :root {
+    --bg: #1a1a22;
+    --panel: #2d2d3a;
+    --accent: #ffcc00;
+    --text: #e8e8ea;
+    --muted: #9a9aac;
+  }
+  body { margin: 0; background: var(--bg); color: var(--text);
+    font-family: -apple-system, 'Segoe UI', 'Helvetica Neue', Helvetica, Arial, sans-serif; }
+  .site-nav { background: #34495e; padding: 12px 24px;
+    font-family: 'Times New Roman', Times, serif;
+    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1); }
+  .site-nav-inner { max-width: 1100px; margin: 0 auto;
+    display: flex; justify-content: space-between; align-items: center; }
+  .site-nav a { color: #ecf0f1; text-decoration: none; margin: 0 12px; }
+  .site-nav a:hover { color: white; text-decoration: underline; }
+  .site-nav-brand { font-weight: 700; font-size: 1.25em; }
+
+  .container { max-width: 1100px; margin: 0 auto; padding: 32px 24px 64px; }
+  h1 { font-size: 2.2em; margin: 0.2em 0; }
+  h2 { font-size: 1.4em; margin-top: 1.4em; color: var(--accent); }
+  p { line-height: 1.55; max-width: 70ch; }
+  .intro { color: var(--muted); }
+
+  .stage { display: grid; grid-template-columns: 1fr 320px; gap: 24px;
+    align-items: start; margin-top: 24px; }
+  @media (max-width: 800px) { .stage { grid-template-columns: 1fr; } }
+  canvas { background: linear-gradient(180deg, #4a6fa5 0%, #93b4d8 60%, #6a8d5a 60%, #4a6638 100%);
+    border: 3px solid var(--accent); border-radius: 6px; display: block;
+    width: 100%; height: auto; }
+
+  .panel { background: var(--panel); padding: 18px; border-radius: 6px; border: 1px solid #404054; }
+  .panel h3 { margin: 0 0 12px; font-size: 1.05em; text-transform: uppercase;
+    letter-spacing: 0.06em; color: var(--accent); }
+  label { display: block; margin: 10px 0 6px; font-size: 0.9em; color: var(--muted); }
+  select, input, button { width: 100%; box-sizing: border-box; padding: 8px 10px;
+    border-radius: 4px; border: 1px solid #404054; background: #1a1a22; color: var(--text); font-size: 0.95em; }
+  button { background: var(--accent); color: #1a1a22; font-weight: 700; cursor: pointer; margin-top: 6px; transition: opacity 0.15s; }
+  button:hover { opacity: 0.88; }
+  button.secondary { background: #404054; color: var(--text); font-weight: 400; }
+  button:disabled { opacity: 0.5; cursor: not-allowed; }
+  .stats { margin-top: 16px; padding-top: 14px; border-top: 1px solid #404054; font-size: 0.92em; line-height: 1.6; }
+  .stats .score { font-size: 2.6em; color: var(--accent); font-weight: 700; }
+  .stat-row { display: flex; justify-content: space-between; }
+  .stat-row span:last-child { color: var(--text); font-family: 'SF Mono', Menlo, monospace; }
+
+  .leaderboard { margin-top: 24px; }
+  .leaderboard table { width: 100%; border-collapse: collapse; background: var(--panel); border-radius: 6px; overflow: hidden; }
+  .leaderboard th, .leaderboard td { padding: 10px 14px; text-align: left; border-bottom: 1px solid #404054; }
+  .leaderboard th { background: #1a1a22; color: var(--muted); text-transform: uppercase; font-size: 0.78em; letter-spacing: 0.08em; }
+  .leaderboard td:nth-child(2) { text-align: center; font-size: 1.3em; font-weight: 700; color: var(--accent); }
+  .leaderboard td:nth-child(3), .leaderboard td:nth-child(4) { font-family: 'SF Mono', Menlo, monospace; color: var(--muted); }
+  .leaderboard tr.human-raphson td:first-child { color: #ff9944; font-weight: 700; }
+
+  .slider-grid { display: grid; grid-template-columns: 1fr; gap: 8px 14px; }
+  .slider-grid label { margin: 0; display: flex; justify-content: space-between; align-items: baseline; }
+  .slider-grid label output { color: var(--accent); font-family: 'SF Mono', Menlo, monospace; font-size: 0.95em; }
+  .slider-grid input[type=range] { width: 100%; margin: 0; padding: 0; background: transparent; }
+  .slider-grid input[type=range]::-webkit-slider-runnable-track { background: #1a1a22; height: 6px; border-radius: 3px; }
+  .slider-grid input[type=range]::-webkit-slider-thumb { -webkit-appearance: none; appearance: none; background: var(--accent); width: 18px; height: 18px; border-radius: 50%; margin-top: -6px; cursor: pointer; }
+  .slider-grid button { background: #ff9944; color: #1a1a22; }
+</style>
+</head>
+<body>
+<nav class="site-nav">
+  <div class="site-nav-inner">
+    <a class="site-nav-brand" href="../index.html">HumpDay 🦅</a>
+    <div>
+      <a href="../index.html">Home</a>
+      <a href="bowling.html">Bowling</a>
+      <a href="cart-pole.html">CartPole</a>
+      <a href="../contest.html">Contest</a>
+      <a href="../README.html">Docs</a>
+    </div>
+  </div>
+</nav>
+
+<div class="container">
+  <h1>🦅 Slingshot Tower Optimizer</h1>
+  <p class="intro">
+    Knock blocks off a stacked tower with a single slingshot launch.
+    HumpDay's optimisers tune <strong>launch angle, force,</strong> and
+    <strong>projectile spin</strong>; the score is the number of blocks
+    that fall off the platform.
+  </p>
+  <p class="intro" style="font-size: 0.92em;">
+    Physics are <a style="color: var(--accent);" href="https://brm.io/matter-js/">Matter.js</a> —
+    rigid-body collisions, gravity, friction, restitution — so the
+    behaviour matches what an actual 2-D physics engine would do, not a
+    hand-rolled approximation.
+  </p>
+
+  <div class="stage">
+    <canvas id="canvas" width="800" height="450"></canvas>
+
+    <div class="panel">
+      <h3>Algorithm</h3>
+      <label for="algorithm">Pick a HumpDay optimizer:</label>
+      <select id="algorithm">
+        <optgroup label="Trust-region / interpolation">
+          <option value="PRIMA_BOBYQA">PRIMA_BOBYQA</option>
+          <option value="PRIMA_NEWUOA">PRIMA_NEWUOA</option>
+        </optgroup>
+        <optgroup label="Local / classical">
+          <option value="NelderMead">Nelder-Mead</option>
+          <option value="Powell">Powell</option>
+          <option value="LBFGSB">L-BFGS-B (simplified)</option>
+        </optgroup>
+        <optgroup label="Population-based">
+          <option value="DifferentialEvolution" selected>Differential Evolution</option>
+          <option value="ParticleSwarm">Particle Swarm</option>
+          <option value="CMAEvolutionStrategy">CMA-Evolution Strategy</option>
+          <option value="GeneticAlgorithm">Genetic Algorithm</option>
+          <option value="EvolutionStrategy">Evolution Strategy</option>
+          <option value="HarmonySearch">Harmony Search</option>
+        </optgroup>
+        <optgroup label="Other">
+          <option value="SimulatedAnnealing">Simulated Annealing</option>
+          <option value="BayesianOpt">Bayesian Optimization</option>
+          <option value="FireflyAlgorithm">Firefly Algorithm</option>
+          <option value="AntColonyOpt">Ant Colony</option>
+          <option value="TabuSearch">Tabu Search</option>
+          <option value="RandomSearch">Random Search</option>
+        </optgroup>
+      </select>
+
+      <label for="budget">Evaluation budget:</label>
+      <select id="budget">
+        <option value="50">50 launches</option>
+        <option value="100" selected>100 launches</option>
+        <option value="200">200 launches</option>
+        <option value="500">500 launches</option>
+      </select>
+
+      <button id="run-btn" onclick="runOptimization()">▶ Find the best launch</button>
+      <button class="secondary" onclick="replayBest()">🔁 Replay best launch</button>
+      <button class="secondary" onclick="resetEverything()">⟲ Reset leaderboard</button>
+
+      <div class="stats">
+        <div class="stat-row"><span>Blocks knocked off</span><span class="score" id="score-now">0</span></div>
+        <div class="stat-row"><span>Launches tried</span><span id="evals">0</span></div>
+        <div class="stat-row"><span>Best so far</span><span id="best-score">—</span></div>
+        <div class="stat-row"><span>Angle</span><span id="param-angle">—</span></div>
+        <div class="stat-row"><span>Force</span><span id="param-force">—</span></div>
+        <div class="stat-row"><span>Spin</span><span id="param-spin">—</span></div>
+      </div>
+    </div>
+  </div>
+
+  <div class="panel" style="margin-top: 20px;">
+    <h3>🧠 Human Raphson</h3>
+    <p style="color: var(--muted); margin: 0 0 16px; font-size: 0.92em;">
+      Try a manual launch yourself. Slide the parameters, hit
+      <em>Throw</em>, and your score lands on the leaderboard alongside
+      the optimisers. Named in honour of every gradient-descent
+      algorithm's most under-appreciated rival: a human eyeballing it.
+    </p>
+    <div class="slider-grid">
+      <label for="manual-angle">Angle: <output id="manual-angle-out">40°</output></label>
+      <input type="range" id="manual-angle" min="5" max="75" step="0.5" value="40">
+
+      <label for="manual-force">Force: <output id="manual-force-out">50</output></label>
+      <input type="range" id="manual-force" min="25" max="80" step="0.5" value="50">
+
+      <label for="manual-spin">Spin: <output id="manual-spin-out">0.00</output></label>
+      <input type="range" id="manual-spin" min="-0.6" max="0.6" step="0.02" value="0">
+
+      <button id="manual-btn" onclick="manualThrow()">▶ Throw (Human Raphson)</button>
+    </div>
+  </div>
+
+  <div class="leaderboard">
+    <h2>Leaderboard (this session)</h2>
+    <p style="color: var(--muted);">
+      Each row is the best single launch a given algorithm found.
+      Algorithms that explore broadly tend to find the angle + spin
+      combination that knocks the most blocks off; pure-local methods
+      often plateau on a local mound (e.g. shots that knock 4 blocks
+      but never find the sweet spot for chain-toppling 10+).
+    </p>
+    <table>
+      <thead>
+        <tr><th>Algorithm</th><th>Blocks fallen</th><th>Launches used</th><th>Best params (angle° / force / spin)</th></tr>
+      </thead>
+      <tbody id="leaderboard-body">
+        <tr><td colspan="4" style="color: var(--muted); text-align: center;">— no runs yet —</td></tr>
+      </tbody>
+    </table>
+  </div>
+
+  <h2>What's happening</h2>
+  <p>
+    The world is a 2-D rigid-body simulation: a platform with a tower of
+    <strong id="block-count">…</strong> wooden blocks stacked at the right end,
+    a stone projectile sitting in a slingshot at the left end. Gravity
+    pulls everything down. The optimiser sets three numbers — launch
+    angle, force, and projectile spin — and watches the chaos resolve.
+  </p>
+  <p>
+    A block is "knocked off" when its centre drops below the table top.
+    The optimiser doesn't know about gravity, blocks, or angles; it sees
+    a 3-D black-box function <em>f(angle, force, spin) → −blocks_fallen</em>.
+    HumpDay minimises, so a launch that knocks 8 blocks scores −8.
+  </p>
+  <p>
+    Why is this surface hard? Most random parameter triples shoot the
+    projectile harmlessly into the sky, off the back wall, or into the
+    base of the tower at a shallow angle that bounces away — all of
+    those score zero. The non-zero region is narrow and the integer
+    score gives no gradient signal across the zero plateau. Algorithms
+    that explore broadly (CMA-ES, DE, PSO) find first contact much
+    faster than purely-local methods.
+  </p>
+</div>
+
+<script src="https://cdn.jsdelivr.net/npm/matter-js@0.19.0/build/matter.min.js"></script>
+<script src="../js/modules/base-optimizer.js"></script>
+<script src="../js/modules/prima-algorithms.js"></script>
+<script src="../js/modules/scipy-algorithms.js"></script>
+<script src="../js/modules/evolutionary-algorithms.js"></script>
+<script src="../js/modules/search-algorithms.js"></script>
+
+<script>
+// ============================================================================
+// Slingshot tower-knockdown — borrowing Matter.js for the rigid-body
+// physics so we don't reinvent collision resolution. The world is rebuilt
+// from scratch for each evaluation so every parameter vector starts from
+// the same initial conditions.
+// ============================================================================
+
+const { Engine, World, Bodies, Body, Composite } = Matter;
+
+const canvas = document.getElementById('canvas');
+const ctx = canvas.getContext('2d');
+const W = canvas.width, H = canvas.height;
+
+// World geometry.
+const GROUND_Y = H - 40;              // top of the ground band (visible green)
+const TABLE_LEFT = 480;               // x coord of left edge of the block platform
+const TABLE_TOP = H - 80;             // y coord of platform surface
+const TABLE_RIGHT = W - 30;
+const SLINGSHOT_X = 100;
+const SLINGSHOT_Y = H - 200;
+
+// Block tower — 4 wide × 5 tall = 20 blocks, sitting on the table.
+const BLOCK_W = 36;
+const BLOCK_H = 28;
+const TOWER_COLS = 4;
+const TOWER_ROWS = 5;
+const TOTAL_BLOCKS = TOWER_COLS * TOWER_ROWS;
+document.getElementById('block-count').textContent = TOTAL_BLOCKS;
+
+const PROJECTILE_R = 16;
+
+// Parameter ranges — the optimiser sees [0, 1]^3 which we decode into:
+//   angle  : 5° to 75°  (above horizontal, aimed right)
+//   force  : 25 to 80   (impulse magnitude in Matter.js units)
+//   spin   : -0.6 to +0.6 rad/step
+function decode(u) {
+  return [
+    5 + 70 * u[0],
+    25 + 55 * u[1],
+    -0.6 + 1.2 * u[2],
+  ];
+}
+
+// Build a fresh world with the table, the tower, and the slingshot anchor.
+// Returns { engine, projectile, blocks, table }.
+function buildWorld() {
+  const engine = Engine.create({ gravity: { x: 0, y: 1.0 } });
+  const world = engine.world;
+
+  // Static walls/floors.
+  const ground = Bodies.rectangle(W / 2, GROUND_Y + 40, W, 80, { isStatic: true });
+  const leftWall = Bodies.rectangle(-10, H / 2, 20, H, { isStatic: true });
+  const rightWall = Bodies.rectangle(W + 10, H / 2, 20, H, { isStatic: true });
+  const table = Bodies.rectangle(
+    (TABLE_LEFT + TABLE_RIGHT) / 2,
+    TABLE_TOP + 20,
+    TABLE_RIGHT - TABLE_LEFT,
+    40,
+    { isStatic: true, label: 'table' },
+  );
+
+  // Stacked tower.
+  const blocks = [];
+  const towerLeft = TABLE_LEFT + 30;
+  for (let row = 0; row < TOWER_ROWS; row++) {
+    for (let col = 0; col < TOWER_COLS; col++) {
+      const bx = towerLeft + col * (BLOCK_W + 2) + BLOCK_W / 2;
+      const by = TABLE_TOP - (row + 0.5) * BLOCK_H - row * 1;
+      const block = Bodies.rectangle(bx, by, BLOCK_W, BLOCK_H, {
+        density: 0.001,
+        friction: 0.6,
+        restitution: 0.1,
+        label: 'block',
+      });
+      blocks.push(block);
+    }
+  }
+
+  // Projectile at the slingshot pouch.
+  const projectile = Bodies.circle(SLINGSHOT_X, SLINGSHOT_Y, PROJECTILE_R, {
+    density: 0.015,
+    friction: 0.4,
+    restitution: 0.45,
+    label: 'projectile',
+  });
+
+  Composite.add(world, [ground, leftWall, rightWall, table, projectile, ...blocks]);
+  return { engine, projectile, blocks, table };
+}
+
+// Run one launch. Returns { score, frames? } — `frames` is recorded only
+// when `recordFrames=true` (for the final-best animation), to keep the
+// optimiser's hot loop fast.
+const N_SIM_STEPS = 240;              // ~4 s of physics at 60 fps
+const SIM_DELTA = 1000 / 60;
+
+function runShot(params, recordFrames = false) {
+  const [angleDeg, force, spin] = params;
+  const { engine, projectile, blocks } = buildWorld();
+  const angleRad = angleDeg * Math.PI / 180;
+
+  // Apply launch velocity in one go — direction is angle above
+  // horizontal aimed at the tower (positive x, negative y).
+  Body.setVelocity(projectile, {
+    x: force * Math.cos(angleRad) * 0.18,
+    y: -force * Math.sin(angleRad) * 0.18,
+  });
+  Body.setAngularVelocity(projectile, spin);
+
+  const frames = recordFrames ? [] : null;
+
+  for (let step = 0; step < N_SIM_STEPS; step++) {
+    Engine.update(engine, SIM_DELTA);
+    if (recordFrames) frames.push(snapshot(projectile, blocks));
+  }
+
+  // Score: number of blocks whose centre has fallen below the table top
+  // (i.e. fell off the edge — they're now on the ground or in the air).
+  let fallen = 0;
+  for (const b of blocks) {
+    if (b.position.y > TABLE_TOP + BLOCK_H * 0.6) fallen++;
+  }
+
+  // Free Matter.js bodies (no API for full disposal in 0.19 — let GC
+  // handle it; engine.world is dropped on next iteration's buildWorld).
+  return { score: fallen, frames, params, projectileEnd: { x: projectile.position.x, y: projectile.position.y } };
+}
+
+function snapshot(projectile, blocks) {
+  return {
+    proj: { x: projectile.position.x, y: projectile.position.y, a: projectile.angle },
+    blocks: blocks.map((b) => ({ x: b.position.x, y: b.position.y, a: b.angle })),
+  };
+}
+
+// ============================================================================
+// HumpDay objective.
+// ============================================================================
+const searchHistory = [];
+
+function objective(u) {
+  const r = runShot(decode(u));
+  searchHistory.push({
+    score: r.score,
+    params: r.params,
+    projectileEnd: r.projectileEnd,
+  });
+  return -r.score;
+}
+
+// ============================================================================
+// Rendering — pure canvas2d using positions from the Matter.js bodies.
+// ============================================================================
+function drawScene(state, hudText) {
+  ctx.clearRect(0, 0, W, H);
+
+  // Sky.
+  const sky = ctx.createLinearGradient(0, 0, 0, GROUND_Y);
+  sky.addColorStop(0, '#4a6fa5'); sky.addColorStop(1, '#a3c2e0');
+  ctx.fillStyle = sky;
+  ctx.fillRect(0, 0, W, GROUND_Y);
+
+  // Ground.
+  ctx.fillStyle = '#5a7d4a';
+  ctx.fillRect(0, GROUND_Y, W, H - GROUND_Y);
+  ctx.fillStyle = '#3a5530';
+  ctx.fillRect(0, GROUND_Y, W, 4);
+
+  // Table / platform.
+  ctx.fillStyle = '#6b4226';
+  ctx.fillRect(TABLE_LEFT, TABLE_TOP, TABLE_RIGHT - TABLE_LEFT, 40);
+  ctx.fillStyle = '#8a5934';
+  ctx.fillRect(TABLE_LEFT, TABLE_TOP, TABLE_RIGHT - TABLE_LEFT, 6);
+
+  // Slingshot Y-frame.
+  ctx.strokeStyle = '#3d2818'; ctx.lineWidth = 6; ctx.lineCap = 'round';
+  ctx.beginPath();
+  ctx.moveTo(SLINGSHOT_X, GROUND_Y);
+  ctx.lineTo(SLINGSHOT_X, SLINGSHOT_Y);
+  ctx.stroke();
+  ctx.lineWidth = 4;
+  ctx.beginPath();
+  ctx.moveTo(SLINGSHOT_X, SLINGSHOT_Y);
+  ctx.lineTo(SLINGSHOT_X - 14, SLINGSHOT_Y - 22);
+  ctx.moveTo(SLINGSHOT_X, SLINGSHOT_Y);
+  ctx.lineTo(SLINGSHOT_X + 14, SLINGSHOT_Y - 22);
+  ctx.stroke();
+
+  if (state) {
+    // Blocks.
+    for (const b of state.blocks) {
+      ctx.save();
+      ctx.translate(b.x, b.y);
+      ctx.rotate(b.a);
+      ctx.fillStyle = '#b07a47';
+      ctx.fillRect(-BLOCK_W / 2, -BLOCK_H / 2, BLOCK_W, BLOCK_H);
+      ctx.strokeStyle = '#5a3a1c'; ctx.lineWidth = 1.5;
+      ctx.strokeRect(-BLOCK_W / 2, -BLOCK_H / 2, BLOCK_W, BLOCK_H);
+      // Wood grain detail.
+      ctx.fillStyle = 'rgba(0,0,0,0.12)';
+      ctx.fillRect(-BLOCK_W / 2 + 3, -BLOCK_H / 2 + 4, BLOCK_W - 6, 1);
+      ctx.fillRect(-BLOCK_W / 2 + 3, BLOCK_H / 2 - 5, BLOCK_W - 6, 1);
+      ctx.restore();
+    }
+
+    // Projectile.
+    const p = state.proj;
+    ctx.save();
+    ctx.translate(p.x, p.y);
+    ctx.rotate(p.a);
+    // Body — red bird-ish circle.
+    const g = ctx.createRadialGradient(-PROJECTILE_R / 3, -PROJECTILE_R / 3, 2, 0, 0, PROJECTILE_R);
+    g.addColorStop(0, '#ff6b4a'); g.addColorStop(1, '#a01818');
+    ctx.fillStyle = g;
+    ctx.beginPath();
+    ctx.arc(0, 0, PROJECTILE_R, 0, Math.PI * 2);
+    ctx.fill();
+    // Beak.
+    ctx.fillStyle = '#ffcc00';
+    ctx.beginPath();
+    ctx.moveTo(PROJECTILE_R - 2, -2);
+    ctx.lineTo(PROJECTILE_R + 6, 0);
+    ctx.lineTo(PROJECTILE_R - 2, 4);
+    ctx.closePath();
+    ctx.fill();
+    // Eye.
+    ctx.fillStyle = '#fff';
+    ctx.beginPath(); ctx.arc(5, -4, 4, 0, Math.PI * 2); ctx.fill();
+    ctx.fillStyle = '#000';
+    ctx.beginPath(); ctx.arc(6, -4, 1.8, 0, Math.PI * 2); ctx.fill();
+    ctx.restore();
+  }
+
+  // HUD.
+  if (hudText) {
+    ctx.font = 'bold 16px -apple-system, Helvetica, Arial, sans-serif';
+    ctx.fillStyle = 'rgba(0,0,0,0.55)';
+    ctx.fillRect(20, 16, 280, 28);
+    ctx.fillStyle = '#ffcc00';
+    ctx.fillText(hudText, 32, 36);
+  }
+}
+
+function drawIdleScene() {
+  // Render the starting world state.
+  const { projectile, blocks } = buildWorld();
+  drawScene(snapshot(projectile, blocks), 'Press "Find the best launch" to start');
+}
+
+// ============================================================================
+// Animations — slow per-frame replay for the chosen best, fast per-shot
+// montage for the search.
+// ============================================================================
+let animationToken = 0;
+
+function animateShot(frames, hudText) {
+  const myToken = ++animationToken;
+  return new Promise((resolve) => {
+    if (!frames || frames.length === 0) return resolve();
+    let i = 0;
+    function tick() {
+      if (myToken !== animationToken) return resolve();
+      if (i >= frames.length) return resolve();
+      drawScene(frames[i], hudText);
+      i += 1;
+      setTimeout(tick, 25);             // ~40 fps for the best replay
+    }
+    tick();
+  });
+}
+
+async function animateSearchMontage() {
+  const myToken = ++animationToken;
+  const total = searchHistory.length;
+  if (total === 0) return -1;
+
+  // Target ~22 s total montage.
+  const totalAnimMs = 22000;
+  const msPerFrame = 16;
+  const framesPerShot = Math.max(2, Math.round(totalAnimMs / (total * msPerFrame)));
+
+  let bestSoFar = -1;
+  let bestIdx = -1;
+  for (let i = 0; i < total; i++) {
+    if (myToken !== animationToken) return bestIdx;
+    const entry = searchHistory[i];
+    const isNew = entry.score > bestSoFar;
+    if (isNew) { bestSoFar = entry.score; bestIdx = i; }
+
+    // For the montage we recompute the final frame of this shot — cheap
+    // (Matter.js can simulate one launch in well under 10ms with these
+    // body counts).
+    const re = runShot(entry.params, /*recordFrames=*/false);
+    // Build a final-state visual from the bodies we no longer have a
+    // handle to: re-simulate WITH frames just to get the last one.
+    // Cheap; only done once per montage tick.
+    const reF = runShot(entry.params, /*recordFrames=*/true);
+    const lastFrame = reF.frames[reF.frames.length - 1];
+    drawScene(lastFrame,
+      `Launch ${i + 1} / ${total}    Best so far: ${bestSoFar} blocks${isNew ? '  ★ NEW!' : ''}`);
+
+    document.getElementById('evals').textContent = i + 1;
+    document.getElementById('score-now').textContent = entry.score;
+    if (isNew) updateBestParams(entry.params, entry.score);
+
+    for (let k = 0; k < framesPerShot; k++) {
+      if (myToken !== animationToken) return bestIdx;
+      await new Promise((r) => requestAnimationFrame(r));
+    }
+  }
+  return bestIdx;
+}
+
+// ============================================================================
+// Runner.
+// ============================================================================
+let lastBest = null;
+
+function getOptimizerClass(name) { return globalThis[name]; }
+
+async function runOptimization() {
+  const algoName = document.getElementById('algorithm').value;
+  const budget = parseInt(document.getElementById('budget').value, 10);
+  const cls = getOptimizerClass(algoName);
+  if (!cls) { alert(`Optimizer '${algoName}' not found.`); return; }
+
+  const runBtn = document.getElementById('run-btn');
+  runBtn.disabled = true;
+  runBtn.textContent = `Aiming ${algoName}...`;
+
+  animationToken++;
+  searchHistory.length = 0;
+  await new Promise((r) => setTimeout(r, 30));
+
+  try {
+    const opt = new cls(objective, budget, 3);
+    opt.optimize();
+
+    const bestIdx = await animateSearchMontage();
+    const bestEntry = searchHistory[bestIdx];
+
+    // Slow replay of the best launch with full per-frame snapshots.
+    const replay = runShot(bestEntry.params, /*recordFrames=*/true);
+    lastBest = replay;
+
+    await animateShot(
+      replay.frames,
+      `Best launch: ${bestEntry.score} / ${TOTAL_BLOCKS} blocks (${algoName})`,
+    );
+
+    document.getElementById('best-score').textContent =
+      `${bestEntry.score} blocks (${algoName})`;
+    updateBestParams(bestEntry.params, bestEntry.score);
+    addLeaderboardEntry(algoName, bestEntry, opt.evaluations);
+  } catch (e) {
+    console.error(e);
+    alert(`${algoName} threw an error: ${e.message}`);
+  } finally {
+    runBtn.disabled = false;
+    runBtn.textContent = '▶ Find the best launch';
+  }
+}
+
+function updateBestParams(params, score) {
+  const [a, f, s] = params;
+  document.getElementById('param-angle').textContent = `${a.toFixed(1)}°`;
+  document.getElementById('param-force').textContent = f.toFixed(2);
+  document.getElementById('param-spin').textContent = s.toFixed(2);
+}
+
+function replayBest() {
+  if (lastBest) animateShot(lastBest.frames, 'Replaying best launch');
+}
+
+const leaderboard = [];
+function addLeaderboardEntry(algoName, entry, evals) {
+  leaderboard.push({ name: algoName, score: entry.score, evals, params: entry.params });
+  leaderboard.sort((a, b) => b.score - a.score || a.evals - b.evals);
+  renderLeaderboard();
+}
+function renderLeaderboard() {
+  const body = document.getElementById('leaderboard-body');
+  if (leaderboard.length === 0) {
+    body.innerHTML = '<tr><td colspan="4" style="color: var(--muted); text-align: center;">— no runs yet —</td></tr>';
+    return;
+  }
+  body.innerHTML = leaderboard.map((row) => {
+    const [a, f, s] = row.params;
+    const cls = row.name === 'Human Raphson' ? ' class="human-raphson"' : '';
+    return `<tr${cls}>
+      <td>${row.name}</td>
+      <td>${row.score} / ${TOTAL_BLOCKS}</td>
+      <td>${row.evals}</td>
+      <td>${a.toFixed(1)}° / ${f.toFixed(1)} / ${s.toFixed(2)}</td>
+    </tr>`;
+  }).join('');
+}
+
+// ============================================================================
+// Human Raphson — manual launch via sliders. Counts as 1 evaluation; goes
+// on the leaderboard so the user can compete against the optimisers.
+// ============================================================================
+const sliderInputs = ['manual-angle', 'manual-force', 'manual-spin'];
+const sliderOutputs = {
+  'manual-angle': (v) => `${parseFloat(v).toFixed(1)}°`,
+  'manual-force': (v) => parseFloat(v).toFixed(1),
+  'manual-spin': (v) => parseFloat(v).toFixed(2),
+};
+for (const id of sliderInputs) {
+  const slider = document.getElementById(id);
+  const output = document.getElementById(`${id}-out`);
+  const update = () => { output.textContent = sliderOutputs[id](slider.value); };
+  slider.addEventListener('input', update);
+  update();
+}
+
+async function manualThrow() {
+  const a = parseFloat(document.getElementById('manual-angle').value);
+  const f = parseFloat(document.getElementById('manual-force').value);
+  const s = parseFloat(document.getElementById('manual-spin').value);
+
+  const btn = document.getElementById('manual-btn');
+  btn.disabled = true;
+  btn.textContent = 'Launching...';
+  animationToken++;
+  await new Promise((r) => setTimeout(r, 30));
+
+  try {
+    const replay = runShot([a, f, s], /*recordFrames=*/true);
+    document.getElementById('score-now').textContent = replay.score;
+    document.getElementById('param-angle').textContent = `${a.toFixed(1)}°`;
+    document.getElementById('param-force').textContent = f.toFixed(2);
+    document.getElementById('param-spin').textContent = s.toFixed(2);
+    await animateShot(
+      replay.frames,
+      `🧠 Human Raphson: ${replay.score} / ${TOTAL_BLOCKS} blocks`,
+    );
+    addLeaderboardEntry('Human Raphson', { score: replay.score, params: [a, f, s] }, 1);
+    document.getElementById('best-score').textContent = `${replay.score} blocks (Human Raphson)`;
+  } finally {
+    btn.disabled = false;
+    btn.textContent = '▶ Throw (Human Raphson)';
+  }
+}
+function resetEverything() {
+  leaderboard.length = 0;
+  lastBest = null;
+  animationToken++;
+  ['score-now', 'evals'].forEach((id) => document.getElementById(id).textContent = '0');
+  ['best-score', 'param-angle', 'param-force', 'param-spin'].forEach((id) =>
+    document.getElementById(id).textContent = '—');
+  renderLeaderboard();
+  drawIdleScene();
+}
+
+drawIdleScene();
+</script>
+</body>
+</html>
