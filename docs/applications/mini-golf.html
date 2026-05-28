@@ -211,7 +211,7 @@
 <script src="../js/modules/search-algorithms.js"></script>
 
 <script>
-const { Engine, World, Bodies, Body, Composite } = Matter;
+const { Engine, World, Bodies, Body, Composite, Vertices } = Matter;
 
 const canvas = document.getElementById('canvas');
 const ctx = canvas.getContext('2d');
@@ -295,26 +295,33 @@ function decode(u) {
 // Helper: build a sloped-rectangle body whose top edge runs from
 // (xa, ya) to (xb, yb). 30 px thick. Used for both greens.
 function makeSlopedGreen(xa, ya, xb, yb, label) {
-  const angle = Math.atan2(yb - ya, xb - xa);
-  const len = Math.hypot(xb - xa, yb - ya);
-  // 120-px-thick body so the green is a SOLID pedestal extending down
-  // past the ground — ball can't tunnel "under" the green.
+  // Match the VISUAL shape exactly: a trapezoid with
+  //   - top edge: slope from (xa, ya) to (xb, yb)
+  //   - bottom edge: along the ground from xa to xb
+  //   - left/right edges: VERTICAL
   //
-  // Body centre placement: must sit `thickness/2` perpendicular to the
-  // slope IN THE +y (downward) direction so the body's top edge
-  // coincides with the visual slope line. Perpendicular to slope vector
-  // (cos, sin) rotated 90° CCW = (-sin, cos). Using `+sin` here puts
-  // the body offset to the RIGHT of where it should be — for green 2
-  // (~22° slope) that's a 46-px shift, and the ball was visibly
-  // bouncing off empty air above the rendered slope edge.
-  const thickness = 120;
-  const cx = (xa + xb) / 2 - (thickness / 2) * Math.sin(angle);
-  const cy = (ya + yb) / 2 + (thickness / 2) * Math.cos(angle);
-  const body = Bodies.rectangle(cx, cy, len, thickness, {
+  // The previous version used a rotated rectangle for the body. After
+  // rotation by the slope angle, its left/right edges came out
+  // perpendicular to the slope — tilted, not vertical — so a ball
+  // approaching the front of the green hit the tilted physics body
+  // ~22 px to the left of where the visual pedestal starts. Using
+  // Bodies.fromVertices with the trapezoid corners makes the body
+  // shape identical to the rendered shape.
+  //
+  // Vertices in canvas coords, clockwise from top-left.
+  const verts = [
+    { x: xa, y: ya },
+    { x: xb, y: yb },
+    { x: xb, y: GROUND_Y },
+    { x: xa, y: GROUND_Y },
+  ];
+  // Matter.js fromVertices places the body's centroid at (x, y).
+  // Vertices.centre computes the centroid of the polygon so the body's
+  // vertices end up exactly at the world coords we specified.
+  const c = Vertices.centre(verts);
+  return Bodies.fromVertices(c.x, c.y, [verts], {
     isStatic: true, friction: 0.6, restitution: 0.2, label,
   });
-  Body.setAngle(body, angle);
-  return body;
 }
 
 // Build a fresh world per evaluation.
