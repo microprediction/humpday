@@ -1,0 +1,304 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' 'unsafe-inline'; style-src 'self' 'unsafe-inline';">
+<title>Applications — HumpDay</title>
+<style>
+  :root {
+    --bg: #1a1a22;
+    --panel: #2d2d3a;
+    --accent: #ffcc00;
+    --accent-2: #ff9944;
+    --text: #e8e8ea;
+    --muted: #9a9aac;
+  }
+  body {
+    margin: 0;
+    background: var(--bg);
+    color: var(--text);
+    font-family: -apple-system, 'Segoe UI', 'Helvetica Neue', Helvetica, Arial, sans-serif;
+  }
+  .site-nav {
+    background: #34495e;
+    padding: 12px 24px;
+    font-family: 'Times New Roman', Times, serif;
+    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+  }
+  .site-nav-inner {
+    max-width: 1100px;
+    margin: 0 auto;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+  }
+  .site-nav a { color: #ecf0f1; text-decoration: none; margin: 0 12px; }
+  .site-nav a:hover { color: white; text-decoration: underline; }
+  .site-nav-brand { font-weight: 700; font-size: 1.25em; }
+
+  .container { max-width: 1100px; margin: 0 auto; padding: 32px 24px 64px; }
+  h1 { font-size: 2.4em; margin: 0.2em 0; }
+  h2 { font-size: 1.4em; margin-top: 2.2em; color: var(--accent); }
+  p { line-height: 1.55; max-width: 70ch; color: var(--muted); }
+  p strong { color: var(--text); }
+
+  .grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+    gap: 22px;
+    margin-top: 28px;
+  }
+  .card {
+    background: var(--panel);
+    border: 1px solid #404054;
+    border-radius: 8px;
+    padding: 22px;
+    display: flex;
+    flex-direction: column;
+    transition: transform 0.12s ease, border-color 0.12s ease;
+    min-height: 240px;
+  }
+  .card.live { cursor: pointer; }
+  .card.live:hover {
+    transform: translateY(-3px);
+    border-color: var(--accent);
+  }
+  .card a {
+    color: inherit;
+    text-decoration: none;
+    display: flex;
+    flex-direction: column;
+    height: 100%;
+  }
+  .card .emoji {
+    font-size: 2.6em;
+    line-height: 1;
+    margin-bottom: 8px;
+  }
+  .card h3 {
+    margin: 0 0 6px;
+    font-size: 1.2em;
+    color: var(--text);
+  }
+  .card .tag {
+    display: inline-block;
+    font-size: 0.72em;
+    text-transform: uppercase;
+    letter-spacing: 0.08em;
+    color: var(--accent);
+    background: rgba(255, 204, 0, 0.1);
+    border: 1px solid rgba(255, 204, 0, 0.3);
+    padding: 2px 8px;
+    border-radius: 11px;
+    margin-bottom: 12px;
+    width: max-content;
+  }
+  .card .tag.soon {
+    color: var(--muted);
+    background: rgba(155, 155, 172, 0.08);
+    border-color: rgba(155, 155, 172, 0.3);
+  }
+  .card.coming-soon {
+    opacity: 0.6;
+  }
+  .card .desc {
+    color: var(--muted);
+    font-size: 0.94em;
+    line-height: 1.5;
+    flex-grow: 1;
+  }
+  .card .meta {
+    margin-top: 14px;
+    padding-top: 12px;
+    border-top: 1px solid #404054;
+    font-size: 0.82em;
+    color: var(--muted);
+    font-family: 'SF Mono', Menlo, monospace;
+    display: flex;
+    justify-content: space-between;
+  }
+  .card .play {
+    color: var(--accent);
+    font-weight: 700;
+  }
+  .card.coming-soon .play { color: var(--muted); }
+
+  .intro p {
+    color: var(--text);
+    max-width: 72ch;
+  }
+  code {
+    background: rgba(255, 204, 0, 0.12);
+    color: var(--accent);
+    padding: 1px 6px;
+    border-radius: 3px;
+    font-size: 0.9em;
+  }
+</style>
+</head>
+<body>
+<nav class="site-nav">
+  <div class="site-nav-inner">
+    <a class="site-nav-brand" href="../index.html">HumpDay</a>
+    <div>
+      <a href="../index.html">Home</a>
+      <a href="index.html">Applications</a>
+      <a href="../contest.html">Contest</a>
+      <a href="../README.html">Docs</a>
+    </div>
+  </div>
+</nav>
+
+<div class="container">
+  <h1>Applications</h1>
+  <div class="intro">
+    <p>
+      Each card below is a single page where you pick one of HumpDay's
+      18 derivative-free optimisers, click <em>Run</em>, and watch it
+      tackle a domain-specific problem live in your browser. Same
+      algorithm code in every case — what changes is the
+      <code>objective(x)</code> function the optimiser sees.
+    </p>
+    <p>
+      The optimisers don't know what the parameters mean. They see a
+      vector in the unit hypercube <code>[0, 1]<sup>n</sup></code> and
+      a scalar score. Yet the same handful of algorithms — CMA-ES,
+      Differential Evolution, PRIMA_BOBYQA, Nelder-Mead — produce
+      qualitatively different behaviour across these very different
+      domains. That's the point of the comparison.
+    </p>
+    <p>
+      Where it makes sense, the page also has a <strong>Human
+      Raphson</strong> panel: drag the sliders, hit <em>Throw</em>, and
+      see whether your intuition beats the algorithm. It usually
+      doesn't — but it's a useful baseline.
+    </p>
+  </div>
+
+  <h2>Live demos</h2>
+  <div class="grid">
+    <a class="card live" href="bowling.html" style="text-decoration:none;">
+      <div class="emoji">🎳</div>
+      <span class="tag">Live</span>
+      <h3>Bowling</h3>
+      <p class="desc">
+        A 4-D search over (speed, angle, spin, release). The optimiser
+        bowls into a 105-pin triangle and tries to maximise the chain
+        reaction. Pure-JS rigid-body simulator built from scratch.
+      </p>
+      <div class="meta">
+        <span>n=4 · score 0–105</span>
+        <span class="play">Open →</span>
+      </div>
+    </a>
+
+    <a class="card live" href="cart-pole.html" style="text-decoration:none;">
+      <div class="emoji">🛞</div>
+      <span class="tag">Live</span>
+      <h3>CartPole</h3>
+      <p class="desc">
+        Direct policy search over a 5-D linear controller for the
+        classic CartPole-v1 task. The optimiser sees only the mean
+        survival time across 8 stochastic rollouts.
+      </p>
+      <div class="meta">
+        <span>n=5 · score 0–500</span>
+        <span class="play">Open →</span>
+      </div>
+    </a>
+
+    <a class="card live" href="slingshot.html" style="text-decoration:none;">
+      <div class="emoji">🦅</div>
+      <span class="tag">Live</span>
+      <h3>Slingshot</h3>
+      <p class="desc">
+        Knock blocks off a stacked tower with a single launch.
+        Powered by <a href="https://brm.io/matter-js/" style="color: var(--accent);">Matter.js</a>
+        for real rigid-body physics. Includes a Human Raphson manual
+        mode — drag sliders, compete against the algorithms.
+      </p>
+      <div class="meta">
+        <span>n=3 · score 0–20</span>
+        <span class="play">Open →</span>
+      </div>
+    </a>
+  </div>
+
+  <h2>Coming soon</h2>
+  <p>
+    The Python reference implementations of these live under
+    <code>example_applications/</code> in the repo today. Each will get
+    a matching browser demo following the same algorithm-dropdown +
+    Human Raphson pattern.
+  </p>
+  <div class="grid">
+    <div class="card coming-soon">
+      <div class="emoji">🏗️</div>
+      <span class="tag soon">Coming</span>
+      <h3>Welded Beam</h3>
+      <p class="desc">
+        A 4-D constrained structural engineering benchmark. Find the
+        cheapest weld geometry that survives a 6000-lb load under
+        seven nonlinear physical constraints.
+      </p>
+      <div class="meta">
+        <span>n=4 · cost ≥ 1.725</span>
+        <span class="play">— soon —</span>
+      </div>
+    </div>
+
+    <div class="card coming-soon">
+      <div class="emoji">📈</div>
+      <span class="tag soon">Coming</span>
+      <h3>Algo Trading</h3>
+      <p class="desc">
+        Walk-forward Sharpe optimisation of a z-score channel strategy
+        on a two-regime synthetic price series. Reports in-sample vs
+        out-of-sample so you see who overfits.
+      </p>
+      <div class="meta">
+        <span>n=4 · Sharpe</span>
+        <span class="play">— soon —</span>
+      </div>
+    </div>
+
+    <div class="card coming-soon">
+      <div class="emoji">✈️</div>
+      <span class="tag soon">Coming</span>
+      <h3>Airfoil Shape</h3>
+      <p class="desc">
+        Hicks-Henne bump perturbations of a NACA-0012 baseline with a
+        low-fidelity drag surrogate. Run on a tiny budget (50 evals)
+        — the regime where Bayesian methods dominate.
+      </p>
+      <div class="meta">
+        <span>n=6 · low budget</span>
+        <span class="play">— soon —</span>
+      </div>
+    </div>
+  </div>
+
+  <h2>Why this pattern</h2>
+  <p>
+    The classical benchmark functions (Rastrigin, Griewank, Salomon)
+    are great for stress-testing algorithms on known mathematical
+    pathologies. They're less great as predictors of how an algorithm
+    will behave on the kind of objective an industrial user actually
+    faces — sparse rewards, hard physical constraints, regime change,
+    expensive evaluation.
+  </p>
+  <p>
+    Each application here is calibrated against one of those failure
+    modes:
+  </p>
+  <ul style="color: var(--muted); line-height: 1.6;">
+    <li><strong>Bowling, Slingshot</strong> — vast flat-zero region with a sharp scoring peak. Tests how fast an algorithm finds first contact.</li>
+    <li><strong>CartPole</strong> — stochastic objective with plateau / cliff topology. Punishes algorithms that over-trust a single low evaluation.</li>
+    <li><strong>Welded Beam</strong> — narrow feasible region carved out by seven nonlinear constraints. Tests constraint-cliff descent.</li>
+    <li><strong>Algo Trading</strong> — non-stationary objective; in-sample optimum ≠ out-of-sample optimum. Exposes regime-overfitting.</li>
+    <li><strong>Airfoil</strong> — severely limited budget; can't afford to fill a population. Bayesian / surrogate methods should dominate.</li>
+  </ul>
+</div>
+</body>
+</html>
