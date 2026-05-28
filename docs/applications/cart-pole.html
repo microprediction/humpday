@@ -522,9 +522,16 @@ function animateEpisode(states, hudText, opts = {}) {
       if (myToken !== animationToken) return resolve();
       if (i >= states.length) {
         if (crashed) {
-          // Final crash hold: ~1.2 s on the failure frame.
+          // Show the CRASHED banner for exactly 2 s, then clear it
+          // (redraw the same final frame without the banner) so the
+          // canvas settles back to a normal rendering rather than
+          // leaving the red overlay up indefinitely.
           drawScene(states[states.length - 1], states.length - 1, null, hudText, { crashed: true });
-          setTimeout(resolve, 1200);
+          setTimeout(() => {
+            if (myToken !== animationToken) return resolve();
+            drawScene(states[states.length - 1], states.length - 1, null, hudText, { crashed: false });
+            resolve();
+          }, 2000);
         } else {
           resolve();
         }
