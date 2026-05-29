@@ -437,12 +437,11 @@ function runJump(params, recordFrames = false) {
   // rate), which made them effectively burnout-spin at standstill;
   // the high-friction wheel surface then dragged the chassis into a
   // wheelie on launch, which read as "the car lifts off on its own".
-  // 1.0× multiplier (was 0.6) — the previous wheel-burnout bug was
-  // accidentally providing thrust via friction reaction, so a 0.6
-  // chassis velocity was enough to climb the ramp. With the wheels
-  // now rolling cleanly, the chassis needs its own genuine forward
-  // momentum, which means a bigger speed multiplier.
-  const vxPxs = speed * 1.0;                    // chassis forward speed (px/step)
+  // 1.3× multiplier — without the air-torque parameter the car has
+  // no way to recover its angle in flight, so it needs enough forward
+  // velocity that the launch arc both clears the gap AND lands close
+  // to wheels-down before the chassis starts rotating significantly.
+  const vxPxs = speed * 1.3;                    // chassis forward speed (px/step)
   const omega = vxPxs / WHEEL_R;                // rolling-no-slip angular rate
   Body.setVelocity(chassis, { x: vxPxs, y: 0 });
   Body.setVelocity(wheelL, { x: vxPxs, y: 0 });
