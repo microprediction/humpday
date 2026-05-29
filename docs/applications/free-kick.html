@@ -560,6 +560,29 @@ function runKick(params, recordFrames = false) {
     }
   }
 
+  // Speed bonus — small reward for hitting the ball hard, so a
+  // crashing-but-narrowly-wide effort still beats a soft-but-narrowly-
+  // wide one. Caps at 5 pt so it never overrides the main outcome.
+  const speedBonus = Math.min(5, Math.max(0, (powerMps - 20) * 0.3));
+  score += speedBonus;
+
+  // Woodwork bonus — extra credit if the ball passed within 10 cm of
+  // a post or the crossbar at goal-line crossing. Doesn't change the
+  // outcome ("GOAL" / "wide" / "over" stays as it was) but adds 5 pt
+  // and tags the result so the player knows they hit the woodwork.
+  if (crossedGoalLine && goalCrossing) {
+    const POST_HIT_PX = 0.10 * PX_PER_M;     // 10 cm
+    const BAR_HIT_M = 0.10;
+    const hitLeftPost = Math.abs(goalCrossing.x - GOAL_LEFT) < POST_HIT_PX;
+    const hitRightPost = Math.abs(goalCrossing.x - GOAL_RIGHT) < POST_HIT_PX;
+    const hitBar = Math.abs(goalCrossing.z - GOAL_HEIGHT_M) < BAR_HIT_M;
+    if (hitLeftPost || hitRightPost || hitBar) {
+      score += 5;
+      const part = hitBar ? 'bar' : 'post';
+      result = `${result} · off the ${part}`;
+    }
+  }
+
   return {
     score, result,
     crossedWall, wallBlocked, wallHeightAtCross,
@@ -768,15 +791,15 @@ function drawKeeperProjected(pitchX, diveVx = 0, ballState = null) {
   const w = Math.max(4, feet.scale * 10);
   const headR = Math.max(2.5, feet.scale * 3.6);
 
-  // 1) Extend timing — arms only stretch out as the ball approaches
-  //    the goal line (60 %+ of the flight). User feedback: "have the
-  //    keeper extend a little later".
+  // 1) Extend timing — arms only stretch out RIGHT before the ball
+  //    arrives. User feedback: "Arm extension much later please".
+  //    Was kicking in at 55 % of flight; now waits until 85 %.
   let flightProgress = 0;
   if (ballState && ballState.y != null) {
     flightProgress = Math.max(0, Math.min(1,
       (KICK_SPOT.y - ballState.y) / (KICK_SPOT.y - GOAL_Y)));
   }
-  const extendRamp = Math.max(0, Math.min(1, (flightProgress - 0.55) / 0.4));
+  const extendRamp = Math.max(0, Math.min(1, (flightProgress - 0.85) / 0.15));
 
   // 2) Arm direction — if the ball is high the arms reach UP; if low
   //    they extend OUT laterally. User feedback: "if the ball is high
@@ -797,11 +820,12 @@ function drawKeeperProjected(pitchX, diveVx = 0, ballState = null) {
   ctx.fillStyle = '#f3d233';
   ctx.fillRect(feet.x - w / 2, head.y + headR * 0.7, w, feet.y - (head.y + headR * 0.7));
 
-  // Arms — drawn as a rotated rectangle. Always have a base length
-  // (so the keeper isn't a torso in idle), plus an extension that
-  // grows late in the flight as the dive ramps up.
-  const baseArmLen = w * 1.4;                              // always-on resting span
-  const reachLen = baseArmLen + w * 2.2 * extendRamp;      // grows late in flight
+  // Arms — drawn as a rotated rectangle. Always have a small base
+  // length so the keeper isn't a torso in idle; the extension is
+  // intentionally small (was 2.2 × w — looked like a vertical
+  // pillar reaching out of the top of the canvas).
+  const baseArmLen = w * 1.1;                              // always-on resting span
+  const reachLen = baseArmLen + w * 0.7 * extendRamp;      // small late-flight extension
   // Direction from keeper to where the ball will be: biased up if
   // the ball is high, biased sideways by the dive direction.
   const sgn = (diveSign === 0 ? 1 : diveSign);    // default reach to the right
