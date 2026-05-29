@@ -1197,7 +1197,13 @@ class PRIMA_BOBYQA extends Optimizer {
             }
         }
 
-        return { bestValue: this.bestValue, bestX: this.bestX };
+        return {
+            bestValue: this.bestValue,
+            bestX: this.bestX,
+            evaluations: this.evaluations,
+            success: rho <= rhoend,
+            path: this.trackPath ? this.path : null,
+        };
     }
 
     // ----- helpers (named to mirror the Python implementation) -----
