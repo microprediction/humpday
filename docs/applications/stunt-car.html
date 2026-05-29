@@ -429,16 +429,21 @@ function runJump(params, recordFrames = false) {
   const world = buildWorld(rampDeg);
   const { engine, chassis, wheelL, wheelR } = world;
 
-  // Initial push: set wheel angular velocity so the car drives forward.
-  // Angular velocity in rad/step; positive = wheel rolls forward (to
-  // the right).
-  Body.setAngularVelocity(wheelL, speed * 0.25);
-  Body.setAngularVelocity(wheelR, speed * 0.25);
-  // Also give the chassis a forward linear velocity so it doesn't lose
-  // momentum to wheel slip on the run-up.
-  Body.setVelocity(chassis, { x: speed * 0.6, y: 0 });
-  Body.setVelocity(wheelL, { x: speed * 0.6, y: 0 });
-  Body.setVelocity(wheelR, { x: speed * 0.6, y: 0 });
+  // Initial state — give all three bodies the SAME forward linear
+  // velocity, and spin the wheels at the angular rate that matches
+  // rolling-without-slipping for that velocity (ω = v / r). Previously
+  // the wheels were given ω = speed × 0.25 (≈ 4× the rolling-no-slip
+  // rate), which made them effectively burnout-spin at standstill;
+  // the high-friction wheel surface then dragged the chassis into a
+  // wheelie on launch, which read as "the car lifts off on its own".
+  const vxPxs = speed * 0.6;                    // chassis forward speed (px/step)
+  const omega = vxPxs / WHEEL_R;                // rolling-no-slip angular rate
+  Body.setVelocity(chassis, { x: vxPxs, y: 0 });
+  Body.setVelocity(wheelL, { x: vxPxs, y: 0 });
+  Body.setVelocity(wheelR, { x: vxPxs, y: 0 });
+  Body.setAngularVelocity(wheelL, omega);
+  Body.setAngularVelocity(wheelR, omega);
+  Body.setAngularVelocity(chassis, 0);          // start level, not pre-rotating
 
   const frames = recordFrames ? [] : null;
   let restConfirms = 0;
