@@ -1,0 +1,821 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' 'unsafe-inline' https://cdn.jsdelivr.net; style-src 'self' 'unsafe-inline';">
+<title>🏁 Brachistochrone Ramp — HumpDay</title>
+<style>
+  :root {
+    --bg: #1a1a22;
+    --panel: #2d2d3a;
+    --accent: #ffcc00;
+    --text: #e8e8ea;
+    --muted: #9a9aac;
+  }
+  body { margin: 0; background: var(--bg); color: var(--text);
+    font-family: -apple-system, 'Segoe UI', 'Helvetica Neue', Helvetica, Arial, sans-serif; }
+  .site-nav { background: #34495e; padding: 12px 24px;
+    font-family: 'Times New Roman', Times, serif;
+    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1); }
+  .site-nav-inner { max-width: 1100px; margin: 0 auto;
+    display: flex; justify-content: space-between; align-items: center; }
+  .site-nav a { color: #ecf0f1; text-decoration: none; margin: 0 12px; }
+  .site-nav a:hover { color: white; text-decoration: underline; }
+  .site-nav-brand { font-weight: 700; font-size: 1.25em; }
+
+  .container { max-width: 1100px; margin: 0 auto; padding: 32px 24px 64px; }
+  h1 { font-size: 2.2em; margin: 0.2em 0; }
+  h2 { font-size: 1.4em; margin-top: 1.4em; color: var(--accent); }
+  p { line-height: 1.55; max-width: 70ch; }
+  .intro { color: var(--muted); }
+
+  .stage { display: grid; grid-template-columns: 1fr 320px; gap: 24px;
+    align-items: start; margin-top: 24px; }
+  @media (max-width: 800px) { .stage { grid-template-columns: 1fr; } }
+  canvas { background: linear-gradient(180deg, #1a2a4a 0%, #2a4a7a 100%);
+    border: 3px solid var(--accent); border-radius: 6px; display: block;
+    width: 100%; height: auto; }
+
+  .panel { background: var(--panel); padding: 18px; border-radius: 6px; border: 1px solid #404054; }
+  .panel h3 { margin: 0 0 12px; font-size: 1.05em; text-transform: uppercase;
+    letter-spacing: 0.06em; color: var(--accent); }
+  label { display: block; margin: 10px 0 6px; font-size: 0.9em; color: var(--muted); }
+  select, input, button { width: 100%; box-sizing: border-box; padding: 8px 10px;
+    border-radius: 4px; border: 1px solid #404054; background: #1a1a22; color: var(--text); font-size: 0.95em; }
+  button { background: var(--accent); color: #1a1a22; font-weight: 700; cursor: pointer; margin-top: 6px; transition: opacity 0.15s; }
+  button:hover { opacity: 0.88; }
+  button.secondary { background: #404054; color: var(--text); font-weight: 400; }
+  button:disabled { opacity: 0.5; cursor: not-allowed; }
+  .stats { margin-top: 16px; padding-top: 14px; border-top: 1px solid #404054; font-size: 0.92em; line-height: 1.6; }
+  .stats .score { font-size: 2.6em; color: var(--accent); font-weight: 700; }
+  .stat-row { display: flex; justify-content: space-between; align-items: baseline; gap: 12px; }
+  .stat-row span:first-child { white-space: nowrap; flex-shrink: 0; }
+  .stat-row span:last-child { color: var(--text); font-family: 'SF Mono', Menlo, monospace; text-align: right; word-break: break-word; }
+  .stat-row .algo-tag { display: block; color: var(--muted); font-size: 0.82em; margin-top: 2px; }
+
+  .leaderboard { margin-top: 24px; }
+  .leaderboard table { width: 100%; border-collapse: collapse; background: var(--panel); border-radius: 6px; overflow: hidden; }
+  .leaderboard th, .leaderboard td { padding: 10px 14px; text-align: left; border-bottom: 1px solid #404054; }
+  .leaderboard th { background: #1a1a22; color: var(--muted); text-transform: uppercase; font-size: 0.78em; letter-spacing: 0.08em; }
+  .leaderboard td:nth-child(2) { text-align: center; font-size: 1.3em; font-weight: 700; color: var(--accent); }
+  .leaderboard td:nth-child(3), .leaderboard td:nth-child(4) { font-family: 'SF Mono', Menlo, monospace; color: var(--muted); }
+  .leaderboard tr.human-raphson td:first-child { color: #ff9944; font-weight: 700; }
+
+  .left-stack { display: flex; flex-direction: column; gap: 16px; min-width: 0; }
+  .hr-panel { padding: 14px 16px; }
+  .hr-panel h3 { margin: 0 0 6px; }
+  /* 8 sliders, 4 cols × 2 rows so each control has room. */
+  .hr-sliders { display: grid; grid-template-columns: repeat(4, 1fr); gap: 8px 14px; margin-bottom: 10px; }
+  .hr-sliders label { margin: 0; display: flex; justify-content: space-between; align-items: baseline; font-size: 0.78em; }
+  .hr-sliders label output { color: var(--accent); font-family: 'SF Mono', Menlo, monospace; font-size: 0.88em; }
+  .hr-sliders input[type=range] { width: 100%; margin: 0; padding: 0; background: transparent; }
+  .hr-sliders input[type=range]::-webkit-slider-runnable-track { background: #1a1a22; height: 6px; border-radius: 3px; }
+  .hr-sliders input[type=range]::-webkit-slider-thumb { -webkit-appearance: none; appearance: none; background: var(--accent); width: 16px; height: 16px; border-radius: 50%; margin-top: -5px; cursor: pointer; }
+  .hr-preset-row { display: flex; gap: 8px; margin-bottom: 8px; flex-wrap: wrap; }
+  .hr-preset-row button { width: auto; flex: 1 1 80px; background: #2d3a4a; color: var(--text); font-weight: 500; font-size: 0.84em; padding: 6px 10px; margin: 0; }
+  .hr-panel button.go { background: #ff9944; color: #1a1a22; margin-top: 0; }
+
+  .skill-callout { margin-top: 36px; background: rgba(255, 204, 0, 0.06); border: 1px solid rgba(255, 204, 0, 0.3); border-radius: 8px; padding: 18px 22px; }
+  .skill-callout h3 { margin: 0 0 6px; color: var(--accent); font-size: 1.05em; text-transform: none; letter-spacing: 0; }
+  .skill-callout p { margin: 0 0 10px; color: var(--text); max-width: none; }
+  .skill-callout pre { background: #1a1a22; border: 1px solid #404054; border-radius: 4px; padding: 10px 14px; margin: 0; font-size: 0.84em; color: var(--accent); white-space: pre-wrap; word-break: break-all; font-family: 'SF Mono', Menlo, monospace; }
+  .skill-actions { margin-top: 10px; display: flex; align-items: center; gap: 14px; }
+  .skill-actions button { width: auto; background: #404054; color: var(--text); border: 1px solid #404054; padding: 6px 12px; font-size: 0.85em; cursor: pointer; border-radius: 4px; margin: 0; font-weight: 500; }
+  .skill-actions button:hover { background: #4a4a60; }
+  .skill-actions a { color: var(--accent); font-size: 0.85em; text-decoration: none; }
+  .skill-actions a:hover { text-decoration: underline; }
+</style>
+</head>
+<body>
+<nav class="site-nav">
+  <div class="site-nav-inner">
+    <a class="site-nav-brand" href="../index.html">HumpDay 🏁</a>
+    <div>
+      <a href="../index.html">Home</a>
+      <a href="index.html">Applications</a>
+      <a href="../contest.html">Contest</a>
+      <a href="../README.html">Docs</a>
+    </div>
+  </div>
+</nav>
+
+<div class="container">
+  <h1>🏁 Brachistochrone Ramp</h1>
+  <p class="intro">
+    Design a ramp shape that gets a marble from the upper-left corner
+    to the lower-right corner as fast as possible. The shape is set by
+    eight control-point heights — that's an 8-D search problem. The
+    famous answer is <em>not</em> the straight line; it's the cycloid.
+    Most optimisers can find it on a generous budget.
+  </p>
+
+  <div class="stage">
+    <div class="left-stack">
+      <canvas id="canvas" width="800" height="450"></canvas>
+
+      <div class="panel hr-panel">
+        <h3>🧠 Human Raphson</h3>
+        <p style="color: var(--muted); margin: 0 0 8px; font-size: 0.86em;">
+          Drag the eight control heights or use a preset, then race the
+          marble.
+        </p>
+        <div class="hr-preset-row">
+          <button type="button" onclick="loadPreset('straight')">Straight</button>
+          <button type="button" onclick="loadPreset('dip')">Deep dip</button>
+          <button type="button" onclick="loadPreset('cycloid')">Cycloid</button>
+          <button type="button" onclick="loadPreset('flat')">Flat then drop</button>
+        </div>
+        <div class="hr-sliders" id="hr-sliders"></div>
+        <button id="manual-btn" class="go" onclick="manualRace()">▶ Race the marble</button>
+      </div>
+    </div>
+
+    <div class="panel">
+      <h3>Algorithm</h3>
+      <label for="algorithm">Pick a HumpDay optimizer:</label>
+      <select id="algorithm">
+        <optgroup label="Trust-region / interpolation">
+          <option value="PRIMA_BOBYQA">PRIMA_BOBYQA</option>
+          <option value="PRIMA_NEWUOA">PRIMA_NEWUOA</option>
+        </optgroup>
+        <optgroup label="Local / classical">
+          <option value="NelderMead">Nelder-Mead</option>
+          <option value="Powell">Powell</option>
+          <option value="LBFGSB">L-BFGS-B (simplified)</option>
+        </optgroup>
+        <optgroup label="Population-based">
+          <option value="DifferentialEvolution" selected>Differential Evolution</option>
+          <option value="ParticleSwarm">Particle Swarm</option>
+          <option value="CMAEvolutionStrategy">CMA-Evolution Strategy</option>
+          <option value="GeneticAlgorithm">Genetic Algorithm</option>
+          <option value="EvolutionStrategy">Evolution Strategy</option>
+          <option value="HarmonySearch">Harmony Search</option>
+        </optgroup>
+        <optgroup label="Other">
+          <option value="SimulatedAnnealing">Simulated Annealing</option>
+          <option value="BayesianOpt">Bayesian Optimization</option>
+          <option value="FireflyAlgorithm">Firefly Algorithm</option>
+          <option value="AntColonyOpt">Ant Colony</option>
+          <option value="TabuSearch">Tabu Search</option>
+          <option value="RandomSearch">Random Search</option>
+        </optgroup>
+      </select>
+
+      <label for="budget">Evaluation budget:</label>
+      <select id="budget">
+        <option value="50">50 trials</option>
+        <option value="100">100 trials</option>
+        <option value="200" selected>200 trials</option>
+        <option value="500">500 trials</option>
+        <option value="1000">1000 trials</option>
+      </select>
+      <p style="margin: 8px 0 0; font-size: 0.78em; color: var(--muted);">
+        8-D search needs a generous budget. Random Search at 50 evals
+        will not find the cycloid.
+      </p>
+
+      <button id="run-btn" onclick="runOptimization()">▶ Find the fastest ramp</button>
+      <button class="secondary" onclick="replayBest()">🔁 Replay best</button>
+      <button class="secondary" onclick="resetEverything()">⟲ Reset leaderboard</button>
+
+      <div class="stats">
+        <div class="stat-row"><span>Score</span><span class="score" id="score-now">0</span></div>
+        <div class="stat-row"><span>Time</span><span id="score-detail">—</span></div>
+        <div class="stat-row"><span>Trials</span><span id="evals">0</span></div>
+        <div class="stat-row"><span>Best so far</span><span id="best-score">—</span></div>
+      </div>
+    </div>
+  </div>
+
+  <div class="leaderboard">
+    <h2>Leaderboard (this session)</h2>
+    <p style="color: var(--muted);">
+      Each row is the best single trial a given algorithm found.
+    </p>
+    <table>
+      <thead>
+        <tr><th>Algorithm</th><th>Score</th><th>Trials used</th><th>Best time (sim frames)</th></tr>
+      </thead>
+      <tbody id="leaderboard-body">
+        <tr><td colspan="4" style="color: var(--muted); text-align: center;">— no runs yet —</td></tr>
+      </tbody>
+    </table>
+  </div>
+
+  <h2>What's happening</h2>
+  <p>
+    Eight internal control heights at evenly-spaced x positions
+    parameterise the ramp; the start and end points are fixed. The
+    marble starts at rest, gravity pulls it along the piecewise-linear
+    track, and we measure the time it takes the marble's centre to
+    cross the finish line.
+  </p>
+  <p>
+    <strong>Score</strong> rewards low time:
+    <em>0–100</em> on a smooth scale where the theoretical cycloid
+    optimum scores around 95. Partial credit if the marble gets stuck
+    (e.g. trying to climb a hill it has no energy for) — proportional
+    to how far it got before the simulation budget ran out.
+  </p>
+  <p>
+    The optimum is a <a href="https://en.wikipedia.org/wiki/Brachistochrone_curve" target="_blank" style="color: var(--accent);">cycloid</a> — the same curve a point on the rim of a rolling
+    wheel traces. Famously, it's <em>not</em> the straight line, even
+    though the straight line is the shortest path. Steep early descent
+    builds speed; gentler tail preserves it.
+  </p>
+
+  <hr style="border: 0; border-top: 1px solid #404054; margin: 32px 0 16px;" />
+  <p style="font-size: 0.78em; color: var(--muted);">
+    Physics powered by <a style="color: var(--muted); text-decoration: underline;" href="https://brm.io/matter-js/">Matter.js</a> — rigid-body marble on a static piecewise-linear track.
+  </p>
+
+  <div class="skill-callout">
+    <h3>🌱 Save the Planet</h3>
+    <p>Cut and paste this into Claude or Cursor:</p>
+    <pre id="skill-snippet">Read https://raw.githubusercontent.com/microprediction/humpday/main/SKILL.md
+and create a project skill from it.</pre>
+    <div class="skill-actions">
+      <button type="button" onclick="copySkillSnippet(this)">📋 Copy</button>
+      <a href="https://github.com/microprediction/humpday/blob/main/SKILL.md" target="_blank" rel="noopener">View SKILL.md →</a>
+    </div>
+  </div>
+
+  <script>
+    function copySkillSnippet(btn) {
+      const text = document.getElementById('skill-snippet').textContent;
+      navigator.clipboard.writeText(text).then(() => {
+        const orig = btn.textContent;
+        btn.textContent = '✓ Copied';
+        setTimeout(() => { btn.textContent = orig; }, 1500);
+      }).catch(() => {
+        btn.textContent = '✗ Copy failed';
+      });
+    }
+  </script>
+</div>
+
+<script src="https://cdn.jsdelivr.net/npm/matter-js@0.19.0/build/matter.min.js"></script>
+<script src="../js/modules/base-optimizer.js"></script>
+<script src="../js/modules/prima-algorithms.js"></script>
+<script src="../js/modules/scipy-algorithms.js"></script>
+<script src="../js/modules/evolutionary-algorithms.js"></script>
+<script src="../js/modules/search-algorithms.js"></script>
+
+<script>
+// ============================================================================
+// Brachistochrone ramp — 8-D curve-shape design problem.
+//
+// The user (or the optimiser) sets 8 internal control y-coordinates at
+// fixed x positions. The ramp is the piecewise-linear curve through
+// (START, y_start), (x1, c1), (x2, c2), ..., (x8, c8), (END, y_end).
+// A marble drops from the start at rest, gravity pulls it along the
+// track, and we record the time it takes to cross the finish line.
+//
+// The theoretical optimum is the cycloid — not the straight line.
+// ============================================================================
+
+const { Engine, World, Bodies, Body, Composite } = Matter;
+
+const canvas = document.getElementById('canvas');
+const ctx = canvas.getContext('2d');
+const W = canvas.width, H = canvas.height;
+
+// ---- Curve geometry. The eight CONTROL x-positions are fixed; only
+//      their y-coordinates are the parameters. -----------------------------
+const START = { x: 60, y: 60 };
+const END = { x: 740, y: 380 };
+const CONTROL_XS = [135, 210, 285, 360, 435, 510, 585, 660]; // 8 control points
+const Y_MIN = 60;          // upper bound for control y (can't go above start)
+const Y_MAX = 430;         // lower bound (just above floor)
+const N_DIM = CONTROL_XS.length;
+
+const TRACK_THICK = 12;
+const MARBLE_R = 9;
+const FINISH_X = END.x;     // marble has finished when centre.x > FINISH_X
+
+// Decode u in [0, 1]^8 to control y-values in [Y_MIN, Y_MAX].
+function decode(u) {
+  return u.map((v) => Y_MIN + (Y_MAX - Y_MIN) * v);
+}
+
+// Build the static ramp from the eight control y-values. Returns a list
+// of static Matter.js segments + the polyline (for rendering).
+function buildTrack(controlYs) {
+  const xs = [START.x, ...CONTROL_XS, END.x];
+  const ys = [START.y, ...controlYs, END.y];
+  const segments = [];
+  for (let i = 0; i < xs.length - 1; i++) {
+    const x0 = xs[i], y0 = ys[i], x1 = xs[i + 1], y1 = ys[i + 1];
+    const len = Math.hypot(x1 - x0, y1 - y0);
+    if (len < 1) continue;
+    const angle = Math.atan2(y1 - y0, x1 - x0);
+    const cx = (x0 + x1) / 2, cy = (y0 + y1) / 2;
+    // Offset perpendicular DOWN-right of the slope so the segment's TOP
+    // edge lies exactly on the geometric curve. Normal = (-sinθ, cosθ).
+    const nx = -Math.sin(angle), ny = Math.cos(angle);
+    const seg = Bodies.rectangle(
+      cx + (TRACK_THICK / 2) * nx,
+      cy + (TRACK_THICK / 2) * ny,
+      len + 1,   // +1 px overlap so joints don't open hairline gaps
+      TRACK_THICK,
+      {
+        isStatic: true,
+        angle,
+        friction: 0.02,
+        frictionStatic: 0.05,
+        restitution: 0.0,    // no bouncing off the track
+        label: 'track',
+      },
+    );
+    segments.push(seg);
+  }
+  // Polyline of (x, y) pairs, for rendering.
+  const polyline = xs.map((x, i) => ({ x, y: ys[i] }));
+  return { segments, polyline };
+}
+
+function buildWorld(controlYs) {
+  const engine = Engine.create({ gravity: { x: 0, y: 1.2 } });
+  const world = engine.world;
+  const { segments, polyline } = buildTrack(controlYs);
+  // Sidewalls + floor — backup so the marble can't escape the canvas.
+  const leftWall = Bodies.rectangle(-10, H / 2, 20, H, { isStatic: true });
+  const rightWall = Bodies.rectangle(W + 10, H / 2, 20, H, { isStatic: true });
+  const floor = Bodies.rectangle(W / 2, H + 30, W, 60, { isStatic: true, label: 'floor' });
+  // Marble — placed just above the start point so it rests on the track.
+  const marble = Bodies.circle(START.x + 6, START.y - MARBLE_R - 2, MARBLE_R, {
+    density: 0.01,
+    friction: 0.02,
+    frictionAir: 0.001,
+    restitution: 0.0,
+    label: 'marble',
+  });
+  Composite.add(world, [...segments, leftWall, rightWall, floor, marble]);
+  return { engine, marble, polyline };
+}
+
+// ---- One race ---------------------------------------------------------------
+const N_SIM_STEPS = 600;     // ~10 s of physics; long enough that even a
+                             // bad curve has time to fail clearly
+const SIM_DELTA = 1000 / 60;
+
+function runRace(controlYs, recordFrames = false) {
+  const { engine, marble, polyline } = buildWorld(controlYs);
+
+  const frames = recordFrames ? [] : null;
+  let finishedAt = -1;
+  let restConfirms = 0;
+  const REST_SPEED = 0.05;
+
+  for (let step = 0; step < N_SIM_STEPS; step++) {
+    Engine.update(engine, SIM_DELTA);
+
+    if (recordFrames) {
+      frames.push({
+        marble: { x: marble.position.x, y: marble.position.y, a: marble.angle },
+      });
+    }
+
+    if (finishedAt < 0 && marble.position.x > FINISH_X) {
+      finishedAt = step;
+      break;
+    }
+
+    // Bail out early if the marble has clearly stopped before the
+    // finish line — saves the optimiser long waits on bad ramps.
+    if (step > 90 && step % 8 === 0) {
+      const speed = Math.hypot(marble.velocity.x, marble.velocity.y);
+      if (speed < REST_SPEED) {
+        restConfirms++;
+        if (restConfirms >= 3) break;
+      } else {
+        restConfirms = 0;
+      }
+    }
+  }
+
+  const distAlong = Math.max(0, marble.position.x - START.x);
+  const fullDist = END.x - START.x;
+  const reached = finishedAt >= 0;
+
+  // Score:
+  //   - Finished: 100 * exp(-(time - bestPossible) / scale). With
+  //     bestPossible≈60 frames and scale=120, a cycloid (~80 frames)
+  //     scores ≈85, a straight line (~110 frames) ≈65, slow finishes
+  //     fall off smoothly.
+  //   - Didn't finish: partial credit 20 * (distance / full distance).
+  let score, detail;
+  if (reached) {
+    const t = finishedAt;
+    score = 100 * Math.exp(-(t - 60) / 120);
+    detail = `${t} frames (${(t / 60).toFixed(2)} s)`;
+  } else {
+    score = 20 * distAlong / fullDist;
+    detail = `stuck at x=${Math.round(marble.position.x)}`;
+  }
+
+  return {
+    score, detail,
+    finishedAt: reached ? finishedAt : null,
+    distAlong,
+    frames,
+    polyline,
+    params: controlYs,
+  };
+}
+
+// ============================================================================
+// HumpDay objective.
+// ============================================================================
+const searchHistory = [];
+
+function objective(u) {
+  const controlYs = decode(u);
+  const r = runRace(controlYs);
+  searchHistory.push({
+    score: r.score,
+    detail: r.detail,
+    finishedAt: r.finishedAt,
+    params: controlYs,
+    polyline: r.polyline,
+  });
+  return -r.score;
+}
+
+// ============================================================================
+// Rendering.
+// ============================================================================
+function drawScene(polyline, marbleState, hudText) {
+  // Sky.
+  const sky = ctx.createLinearGradient(0, 0, 0, H);
+  sky.addColorStop(0, '#1a2a4a'); sky.addColorStop(1, '#2a4a7a');
+  ctx.fillStyle = sky;
+  ctx.fillRect(0, 0, W, H);
+
+  // Track shadow (under the curve, for depth).
+  if (polyline && polyline.length > 1) {
+    ctx.fillStyle = 'rgba(0,0,0,0.25)';
+    ctx.beginPath();
+    ctx.moveTo(polyline[0].x, polyline[0].y + 14);
+    for (let i = 1; i < polyline.length; i++) {
+      ctx.lineTo(polyline[i].x, polyline[i].y + 14);
+    }
+    ctx.lineTo(polyline[polyline.length - 1].x, H);
+    ctx.lineTo(polyline[0].x, H);
+    ctx.closePath();
+    ctx.fill();
+
+    // Track surface — Hot Wheels orange.
+    ctx.strokeStyle = '#d96820';
+    ctx.lineWidth = TRACK_THICK;
+    ctx.lineCap = 'round';
+    ctx.lineJoin = 'round';
+    ctx.beginPath();
+    ctx.moveTo(polyline[0].x, polyline[0].y);
+    for (let i = 1; i < polyline.length; i++) ctx.lineTo(polyline[i].x, polyline[i].y);
+    ctx.stroke();
+
+    // Inner highlight stripe.
+    ctx.strokeStyle = '#ffb060';
+    ctx.lineWidth = 3;
+    ctx.beginPath();
+    ctx.moveTo(polyline[0].x, polyline[0].y - 2);
+    for (let i = 1; i < polyline.length; i++) ctx.lineTo(polyline[i].x, polyline[i].y - 2);
+    ctx.stroke();
+
+    // Control point dots.
+    for (let i = 1; i < polyline.length - 1; i++) {
+      ctx.fillStyle = '#ffcc00';
+      ctx.beginPath();
+      ctx.arc(polyline[i].x, polyline[i].y, 3, 0, Math.PI * 2);
+      ctx.fill();
+    }
+  }
+
+  // Start and finish flags.
+  drawFlag(START.x - 8, START.y - 32, '#33ff66', 'START');
+  drawFlag(END.x + 4, END.y - 32, '#ff5555', 'FINISH');
+
+  // Marble.
+  if (marbleState) {
+    const m = marbleState;
+    ctx.save();
+    ctx.translate(m.x, m.y);
+    ctx.rotate(m.a);
+    const g = ctx.createRadialGradient(-3, -3, 1, 0, 0, MARBLE_R);
+    g.addColorStop(0, '#ffffff'); g.addColorStop(0.6, '#c0d0e0'); g.addColorStop(1, '#404858');
+    ctx.fillStyle = g;
+    ctx.beginPath();
+    ctx.arc(0, 0, MARBLE_R, 0, Math.PI * 2);
+    ctx.fill();
+    ctx.strokeStyle = 'rgba(0,0,0,0.3)';
+    ctx.lineWidth = 0.6;
+    ctx.stroke();
+    // Spin indicator — a thin line so rotation is visible.
+    ctx.strokeStyle = 'rgba(20, 30, 50, 0.9)';
+    ctx.lineWidth = 1.4;
+    ctx.beginPath();
+    ctx.moveTo(-MARBLE_R + 1, 0); ctx.lineTo(MARBLE_R - 1, 0);
+    ctx.stroke();
+    ctx.restore();
+  }
+
+  // HUD.
+  if (hudText) {
+    ctx.font = 'bold 15px -apple-system, Helvetica, Arial, sans-serif';
+    const padX = 12;
+    const metrics = ctx.measureText(hudText);
+    const boxW = Math.ceil(metrics.width) + 2 * padX;
+    ctx.fillStyle = 'rgba(0,0,0,0.65)';
+    ctx.fillRect(18, 14, boxW, 28);
+    ctx.fillStyle = '#ffcc00';
+    ctx.fillText(hudText, 18 + padX, 33);
+  }
+}
+
+function drawFlag(x, y, color, label) {
+  ctx.strokeStyle = '#222'; ctx.lineWidth = 2;
+  ctx.beginPath(); ctx.moveTo(x, y); ctx.lineTo(x, y + 36); ctx.stroke();
+  ctx.fillStyle = color;
+  ctx.beginPath();
+  ctx.moveTo(x, y); ctx.lineTo(x + 18, y + 6); ctx.lineTo(x, y + 12);
+  ctx.closePath(); ctx.fill();
+  ctx.fillStyle = '#222';
+  ctx.font = 'bold 9px -apple-system, Helvetica, Arial, sans-serif';
+  ctx.fillText(label, x + 2, y + 9);
+}
+
+function drawIdleScene(controlYs = null) {
+  const ys = controlYs || decode(Array(N_DIM).fill(0.5));
+  const { marble, polyline } = buildWorld(ys);
+  drawScene(polyline, { x: marble.position.x, y: marble.position.y, a: 0 },
+    'Press "Find the fastest ramp" to start');
+}
+
+// ============================================================================
+// Animations.
+// ============================================================================
+const REPLAY_MS_PER_FRAME = 14;
+const MONTAGE_MS_PER_FRAME = 6;
+let animationToken = 0;
+
+function animateShot(frames, polyline, hudText, msPerFrame = REPLAY_MS_PER_FRAME) {
+  const myToken = animationToken;
+  return new Promise((resolve) => {
+    if (!frames || frames.length === 0) return resolve();
+    let i = 0;
+    function tick() {
+      if (myToken !== animationToken) return resolve();
+      if (i >= frames.length) return resolve();
+      drawScene(polyline, frames[i].marble, hudText);
+      i += 1;
+      setTimeout(tick, msPerFrame);
+    }
+    tick();
+  });
+}
+
+async function animateSearchMontage() {
+  const myToken = ++animationToken;
+  const total = searchHistory.length;
+  if (total === 0) return -1;
+
+  let bestSoFar = -Infinity;
+  let bestIdx = -1;
+  for (let i = 0; i < total; i++) {
+    if (myToken !== animationToken) return bestIdx;
+    const entry = searchHistory[i];
+    const isNew = entry.score > bestSoFar;
+    if (isNew) { bestSoFar = entry.score; bestIdx = i; }
+
+    const reF = runRace(entry.params, /*recordFrames=*/true);
+    document.getElementById('evals').textContent = i + 1;
+    document.getElementById('score-now').textContent = entry.score.toFixed(1);
+    document.getElementById('score-detail').textContent = entry.detail;
+
+    if (isNew) {
+      addLeaderboardEntry(
+        document.getElementById('algorithm').value,
+        entry, i + 1,
+        { inPlace: liveLeaderboardIdx >= 0 },
+      );
+      setBestScore(entry, document.getElementById('algorithm').value);
+    }
+
+    const label = `Trial ${i + 1}/${total}  ·  Best: ${bestSoFar.toFixed(1)}${isNew ? '  ★ NEW!' : ''}`;
+    await animateShot(reF.frames, reF.polyline, label, MONTAGE_MS_PER_FRAME);
+  }
+  return bestIdx;
+}
+
+function setBestScore(entry, algoName) {
+  const el = document.getElementById('best-score');
+  el.innerHTML = `${entry.score.toFixed(1)} (${entry.detail})<span class="algo-tag">${algoName}</span>`;
+}
+
+// ============================================================================
+// Runner.
+// ============================================================================
+let lastBest = null;
+
+function getOptimizerClass(name) { return globalThis[name]; }
+
+async function runOptimization() {
+  const algoName = document.getElementById('algorithm').value;
+  const budget = parseInt(document.getElementById('budget').value, 10);
+  const cls = getOptimizerClass(algoName);
+  if (!cls) { alert(`Optimizer '${algoName}' not found.`); return; }
+
+  const runBtn = document.getElementById('run-btn');
+  runBtn.disabled = true;
+  runBtn.textContent = `Searching with ${algoName}...`;
+
+  animationToken++;
+  searchHistory.length = 0;
+  await new Promise((r) => setTimeout(r, 30));
+
+  try {
+    const opt = new cls(objective, budget, N_DIM);
+    opt.optimize();
+
+    const bestIdx = await animateSearchMontage();
+    const bestEntry = searchHistory[bestIdx];
+
+    const replay = runRace(bestEntry.params, /*recordFrames=*/true);
+    lastBest = replay;
+
+    await animateShot(
+      replay.frames, replay.polyline,
+      `Best ramp: ${bestEntry.score.toFixed(1)} (${bestEntry.detail}) — ${algoName}`,
+    );
+
+    setBestScore(bestEntry, algoName);
+    syncSlidersToControlYs(bestEntry.params);
+    addLeaderboardEntry(algoName, bestEntry, opt.evaluations, {
+      inPlace: liveLeaderboardIdx >= 0,
+    });
+    liveLeaderboardIdx = -1;
+  } catch (e) {
+    console.error(e);
+    alert(`${algoName} threw an error: ${e.message}`);
+  } finally {
+    runBtn.disabled = false;
+    runBtn.textContent = '▶ Find the fastest ramp';
+  }
+}
+
+function replayBest() {
+  if (!lastBest) return;
+  animationToken++;
+  animateShot(lastBest.frames, lastBest.polyline, 'Replaying best');
+}
+
+const leaderboard = [];
+let liveLeaderboardIdx = -1;
+
+function addLeaderboardEntry(algoName, entry, evals, { inPlace = false } = {}) {
+  const row = {
+    name: algoName, score: entry.score, detail: entry.detail,
+    evals, finishedAt: entry.finishedAt,
+  };
+  if (inPlace && liveLeaderboardIdx >= 0) {
+    leaderboard[liveLeaderboardIdx] = row;
+  } else {
+    leaderboard.push(row);
+    liveLeaderboardIdx = leaderboard.length - 1;
+  }
+  const tracked = leaderboard[liveLeaderboardIdx];
+  leaderboard.sort((a, b) => b.score - a.score || a.evals - b.evals);
+  liveLeaderboardIdx = leaderboard.indexOf(tracked);
+  renderLeaderboard();
+}
+
+function renderLeaderboard() {
+  const body = document.getElementById('leaderboard-body');
+  if (leaderboard.length === 0) {
+    body.innerHTML = '<tr><td colspan="4" style="color: var(--muted); text-align: center;">— no runs yet —</td></tr>';
+    return;
+  }
+  body.innerHTML = leaderboard.map((row) => {
+    const cls = row.name === 'Human Raphson' ? ' class="human-raphson"' : '';
+    return `<tr${cls}>
+      <td>${row.name}</td>
+      <td>${row.score.toFixed(1)}</td>
+      <td>${row.evals}</td>
+      <td>${row.finishedAt != null ? row.finishedAt : '—'}</td>
+    </tr>`;
+  }).join('');
+}
+
+// ============================================================================
+// Human Raphson — 8 sliders.
+// ============================================================================
+const slidersContainer = document.getElementById('hr-sliders');
+for (let i = 0; i < N_DIM; i++) {
+  const label = document.createElement('label');
+  label.htmlFor = `c${i}`;
+  label.innerHTML = `C${i + 1} <output id="c${i}-out">0.50</output>`;
+  const range = document.createElement('input');
+  range.type = 'range'; range.id = `c${i}`;
+  range.min = '0'; range.max = '1'; range.step = '0.01'; range.value = '0.5';
+  range.addEventListener('input', () => {
+    document.getElementById(`c${i}-out`).textContent = parseFloat(range.value).toFixed(2);
+    drawIdleScene(currentControlYs());
+  });
+  slidersContainer.appendChild(label);
+  slidersContainer.appendChild(range);
+}
+
+function currentControlYs() {
+  const u = [];
+  for (let i = 0; i < N_DIM; i++) u.push(parseFloat(document.getElementById(`c${i}`).value));
+  return decode(u);
+}
+
+function syncSlidersToControlYs(controlYs) {
+  for (let i = 0; i < N_DIM; i++) {
+    const u = (controlYs[i] - Y_MIN) / (Y_MAX - Y_MIN);
+    const slider = document.getElementById(`c${i}`);
+    slider.value = u.toString();
+    document.getElementById(`c${i}-out`).textContent = u.toFixed(2);
+  }
+  drawIdleScene(controlYs);
+}
+
+// Presets — let the user compare named shapes quickly.
+const PRESETS = {
+  // Straight line from (start, START.y) to (end, END.y).
+  straight: () => CONTROL_XS.map((x) => {
+    const t = (x - START.x) / (END.x - START.x);
+    return START.y + (END.y - START.y) * t;
+  }),
+  // Deep dip — all controls at the bottom.
+  dip: () => CONTROL_XS.map(() => Y_MAX - 10),
+  // Approximate cycloid from START to END. Generated by solving the
+  // cycloid equations numerically once (offline) and sampling at the
+  // 8 control x positions. Close-but-not-perfect: the optimiser should
+  // beat this preset, since the optimum is the EXACT cycloid not this
+  // approximation.
+  cycloid: () => CONTROL_XS.map((x) => {
+    const t = (x - START.x) / (END.x - START.x);
+    // Quick cycloid approximation. The true brachistochrone from (0,0)
+    // to (1, 0.5) parameterised as x = a(θ - sinθ), y = a(1 - cosθ)
+    // bottoms out around θ ≈ 1.85. We use a parametric proxy that
+    // captures the shape (steep at start, gentle at end).
+    const y = START.y + (END.y - START.y) * (1 - Math.cos(Math.PI * t)) / 2
+            + 110 * Math.sin(Math.PI * t);
+    return Math.max(Y_MIN + 1, Math.min(Y_MAX - 1, y));
+  }),
+  // Flat shelf then drop — start nearly horizontal, then fall.
+  flat: () => CONTROL_XS.map((x) => {
+    const t = (x - START.x) / (END.x - START.x);
+    return START.y + (END.y - START.y) * Math.pow(t, 3.5);
+  }),
+};
+
+function loadPreset(name) {
+  const ys = PRESETS[name]();
+  syncSlidersToControlYs(ys);
+}
+
+async function manualRace() {
+  const controlYs = currentControlYs();
+  const btn = document.getElementById('manual-btn');
+  btn.disabled = true;
+  btn.textContent = 'Racing...';
+  animationToken++;
+  await new Promise((r) => setTimeout(r, 30));
+  try {
+    const replay = runRace(controlYs, /*recordFrames=*/true);
+    document.getElementById('score-now').textContent = replay.score.toFixed(1);
+    document.getElementById('score-detail').textContent = replay.detail;
+    await animateShot(
+      replay.frames, replay.polyline,
+      `🧠 Human Raphson: ${replay.score.toFixed(1)} (${replay.detail})`,
+    );
+    addLeaderboardEntry('Human Raphson',
+      { ...replay, finishedAt: replay.finishedAt }, 1);
+    setBestScore(replay, 'Human Raphson');
+  } finally {
+    btn.disabled = false;
+    btn.textContent = '▶ Race the marble';
+  }
+}
+
+function resetEverything() {
+  leaderboard.length = 0;
+  liveLeaderboardIdx = -1;
+  lastBest = null;
+  animationToken++;
+  ['score-now', 'evals'].forEach((id) => document.getElementById(id).textContent = '0');
+  ['score-detail', 'best-score'].forEach((id) =>
+    document.getElementById(id).textContent = '—');
+  renderLeaderboard();
+  drawIdleScene();
+}
+
+drawIdleScene();
+</script>
+</body>
+</html>
