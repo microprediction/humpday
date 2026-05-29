@@ -300,11 +300,14 @@ const WALL_LEFT = W / 2 - 1.0 * PX_PER_M * 2.5;  // 2.5 player-widths offset
 const PLAYER_WIDTH_M = 0.5;
 const WALL_PLAYER_DX = PLAYER_WIDTH_M * 1.2 * PX_PER_M;
 
-// Goalkeeper — stands a touch off the goal line, slightly offset to
-// the keeper's strong side (we put them at x = W/2).
-const KEEPER = { x: W / 2, y: GOAL_Y + 8 };
-const KEEPER_REACH_M = 2.6;    // m of dive reach during a 1.2 s flight
-const KEEPER_REACH = KEEPER_REACH_M * PX_PER_M;
+// Goalkeeper — starts at goal centre, ACTIVELY dives toward the
+// projected ball arrival point (with a reaction-time delay), capped
+// at their max lateral dive speed. Reach is anisotropic: easier to
+// stretch up than to dive low.
+const KEEPER_START = { x: W / 2, y: GOAL_Y + 8 };
+const KEEPER_REACTION_S = 0.22;    // human reaction time before they start moving
+const KEEPER_MAX_SPEED_M = 5.0;    // lateral dive speed in m/s (top keepers ~5–6)
+const KEEPER_REACH_M = 1.05;       // arm-extended reach at the target point
 
 // ---- Parameter ranges decoded from u in [0,1]^4 -----------------------
 // aim     : -25° to +25° from straight-at-goal
@@ -349,6 +352,9 @@ function runKick(params, recordFrames = false) {
 
   const frames = recordFrames ? [] : null;
 
+  // Active goalkeeper state.
+  const keeper = { x: KEEPER_START.x, vx: 0 };
+
   let crossedWall = false, wallHeightAtCross = null, wallBlocked = false;
   let crossedGoalLine = false, goalCrossing = null;
   let landed = false, landingPos = null;
@@ -378,7 +384,28 @@ function runKick(params, recordFrames = false) {
     ball.y += ball.vy * DT;
     ball.z += ball.vz * DT;
 
-    if (recordFrames) frames.push({ x: ball.x, y: ball.y, z: ball.z });
+    // Active goalkeeper: after reaction time, project where the ball
+    // will cross the goal line using its CURRENT velocity (a naive
+    // linear prediction, which is what a real keeper roughly does),
+    // then dive toward that x at max speed. The keeper is fooled by
+    // late curve, which is exactly the point.
+    if (t >= KEEPER_REACTION_S && ball.vy < -1e-3) {
+      const tToGoal = (GOAL_Y - ball.y) / ball.vy;
+      if (tToGoal > 0 && tToGoal < 2.0) {
+        const predictedX = ball.x + ball.vx * tToGoal;
+        const dx = predictedX - keeper.x;
+        keeper.vx = Math.sign(dx) * KEEPER_MAX_SPEED_M * PX_PER_M;
+      }
+    } else {
+      keeper.vx *= 0.5;     // decelerate when not actively diving
+    }
+    keeper.x += keeper.vx * DT;
+    keeper.x = Math.max(GOAL_LEFT + 10, Math.min(GOAL_RIGHT - 10, keeper.x));
+
+    if (recordFrames) frames.push({
+      x: ball.x, y: ball.y, z: ball.z,
+      kx: keeper.x,
+    });
 
     // Wall crossing — wall is between ball and goal at WALL_Y.
     if (!crossedWall && ball.y < WALL_Y) {
@@ -397,7 +424,7 @@ function runKick(params, recordFrames = false) {
     // Goal-line crossing — record state and stop.
     if (!crossedGoalLine && ball.y < GOAL_Y) {
       crossedGoalLine = true;
-      goalCrossing = { x: ball.x, z: ball.z, t };
+      goalCrossing = { x: ball.x, z: ball.z, t, kx: keeper.x };
       break;
     }
 
@@ -450,26 +477,22 @@ function runKick(params, recordFrames = false) {
       score = Math.max(0, 10 - overBy * 8);
       result = 'over';
     } else {
-      // In the goal frame. Did the keeper save?
-      const dx = gx - KEEPER.x;
-      // Keeper's effective reach scales with flight time (more time =
-      // more dive). Use a saturating curve so very fast kicks (<0.6 s)
-      // give the keeper essentially their static span only.
-      const dive = KEEPER_REACH * Math.min(1, gt / 0.9);
-      // Vertical reach is shorter than lateral — keepers jump less than
-      // they dive sideways.
-      const dz = gz - GOAL_HEIGHT_M * 0.45;        // keeper's reach centre
-      const reachVert = KEEPER_REACH_M * 0.55;
-      const reachDist = Math.hypot(dx / dive, dz / reachVert);
-      if (reachDist < 1) {
+      // In the goal frame. Did the (now actively diving) keeper save?
+      // Use the keeper's final position at the goal-line crossing.
+      const dx_m = (gx - goalCrossing.kx) / PX_PER_M;        // lateral metres
+      // Vertical reach is shorter (keepers don't jump as far as they
+      // dive sideways). Use anisotropic reach: scale dz by 1/0.65.
+      const dz_m = gz - GOAL_HEIGHT_M * 0.45;                // height vs reach centre
+      const reachDist = Math.hypot(dx_m, dz_m / 0.65);
+      if (reachDist < KEEPER_REACH_M) {
         // Saved. Partial credit by how badly the keeper would need to
         // stretch — close-but-saved gives an optimisation gradient.
-        score = 20 + 30 * (1 - reachDist);
+        score = 20 + 30 * (1 - reachDist / KEEPER_REACH_M);
         result = 'keeper saves';
       } else {
-        // GOAL. Base 100, plus a placement bonus rewarding shots in
-        // the corners where the keeper has no chance.
-        const placementBonus = 10 * Math.min(2, reachDist - 1);
+        // GOAL. Base 100, plus a placement bonus rewarding shots that
+        // beat the keeper by a wide margin (i.e. the corners).
+        const placementBonus = 10 * Math.min(2, reachDist - KEEPER_REACH_M);
         score = 100 + placementBonus;
         result = 'GOAL!';
       }
@@ -504,135 +527,235 @@ function objective(u) {
 }
 
 // ============================================================================
-// Rendering — top-down view of the pitch.
+// Rendering — HEAD-ON perspective (TV-style camera behind the kicker,
+// looking toward the goal). Pitch points (px, py, z_m) project via a
+// simple pinhole camera with focal length FOCAL, camera height
+// CAM_HEIGHT_M, and the camera placed CAM_BACK_PX pixels behind the
+// kicker.
 // ============================================================================
+const CAM_BACK_PX = 80;        // px behind the kicker
+const CAM_HEIGHT_M = 1.7;      // m above the pitch (head height)
+const FOCAL = 520;             // virtual focal length in px
+const HORIZON_Y = 105;         // canvas-y of the horizon line
+
+function project(px, py, z_m = 0) {
+  // Forward distance from the camera (positive = ball in front).
+  const d = (KICK_SPOT.y + CAM_BACK_PX) - py;
+  if (d <= 4) return { x: W / 2, y: HORIZON_Y, scale: 0, visible: false };
+  const lateral = px - W / 2;                              // px on the pitch
+  const heightPx = z_m * PX_PER_M - CAM_HEIGHT_M * PX_PER_M;  // px above eye level
+  const scale = FOCAL / d;
+  return {
+    x: W / 2 + lateral * scale,
+    y: HORIZON_Y - heightPx * scale,
+    scale,
+    visible: true,
+  };
+}
+
 function drawPitch() {
-  // Grass.
+  // Sky.
+  const sky = ctx.createLinearGradient(0, 0, 0, HORIZON_Y);
+  sky.addColorStop(0, '#1a2a4a'); sky.addColorStop(1, '#7090b8');
+  ctx.fillStyle = sky;
+  ctx.fillRect(0, 0, W, HORIZON_Y);
+
+  // Pitch (trapezoid via perspective projection of a rectangular swath
+  // around the kick-to-goal corridor).
+  const farY = GOAL_Y - 20;
+  const nearY = KICK_SPOT.y + 60;
+  const PITCH_HALF_W_PX = W;          // wide enough to fill the canvas at the near plane
+  const corners = [
+    project(W / 2 - PITCH_HALF_W_PX, nearY, 0),
+    project(W / 2 + PITCH_HALF_W_PX, nearY, 0),
+    project(W / 2 + PITCH_HALF_W_PX, farY, 0),
+    project(W / 2 - PITCH_HALF_W_PX, farY, 0),
+  ];
   ctx.fillStyle = '#1f6f2a';
-  ctx.fillRect(0, 0, W, H);
-  // Mowed stripes.
+  ctx.beginPath();
+  ctx.moveTo(corners[0].x, corners[0].y);
+  for (let i = 1; i < 4; i++) ctx.lineTo(corners[i].x, corners[i].y);
+  ctx.closePath();
+  ctx.fill();
+
+  // Mowed stripes (alternating bands at increasing pitch depth).
   ctx.fillStyle = 'rgba(255,255,255,0.05)';
   for (let i = 0; i < 6; i++) {
-    ctx.fillRect(0, 60 + i * 70, W, 35);
+    const y0 = nearY - (nearY - farY) * (i / 6);
+    const y1 = nearY - (nearY - farY) * ((i + 0.5) / 6);
+    if (i % 2 === 0) continue;     // every other stripe
+    const c0a = project(W / 2 - PITCH_HALF_W_PX, y0, 0);
+    const c0b = project(W / 2 + PITCH_HALF_W_PX, y0, 0);
+    const c1a = project(W / 2 - PITCH_HALF_W_PX, y1, 0);
+    const c1b = project(W / 2 + PITCH_HALF_W_PX, y1, 0);
+    ctx.beginPath();
+    ctx.moveTo(c0a.x, c0a.y); ctx.lineTo(c0b.x, c0b.y);
+    ctx.lineTo(c1b.x, c1b.y); ctx.lineTo(c1a.x, c1a.y);
+    ctx.closePath(); ctx.fill();
   }
 
-  // 18-yard box.
-  const BOX_DEPTH = 16.5 * PX_PER_M;   // 16.5 m deep
+  // 18-yard box (projected outline).
   const BOX_W = 40 * PX_PER_M;
-  ctx.strokeStyle = '#ffffff';
-  ctx.lineWidth = 2;
-  ctx.strokeRect((W - BOX_W) / 2, GOAL_Y, BOX_W, BOX_DEPTH);
+  const BOX_DEPTH = 16.5 * PX_PER_M;
+  drawPolyline([
+    project((W - BOX_W) / 2, GOAL_Y + BOX_DEPTH, 0),
+    project((W + BOX_W) / 2, GOAL_Y + BOX_DEPTH, 0),
+    project((W + BOX_W) / 2, GOAL_Y, 0),
+    project((W - BOX_W) / 2, GOAL_Y, 0),
+  ], '#ffffff', 2, true);
   // 6-yard box.
   const SMALL_W = 18.32 * PX_PER_M;
   const SMALL_D = 5.5 * PX_PER_M;
-  ctx.strokeRect((W - SMALL_W) / 2, GOAL_Y, SMALL_W, SMALL_D);
+  drawPolyline([
+    project((W - SMALL_W) / 2, GOAL_Y + SMALL_D, 0),
+    project((W + SMALL_W) / 2, GOAL_Y + SMALL_D, 0),
+    project((W + SMALL_W) / 2, GOAL_Y, 0),
+    project((W - SMALL_W) / 2, GOAL_Y, 0),
+  ], '#ffffff', 2, true);
+
   // Penalty spot.
+  const ps = project(W / 2, GOAL_Y + 11 * PX_PER_M, 0);
   ctx.fillStyle = '#fff';
-  ctx.beginPath(); ctx.arc(W / 2, GOAL_Y + 11 * PX_PER_M, 2, 0, Math.PI * 2); ctx.fill();
-  // Penalty arc (top of D).
-  ctx.beginPath();
-  ctx.arc(W / 2, GOAL_Y + 11 * PX_PER_M, 9.15 * PX_PER_M, Math.PI / 6, Math.PI * (1 - 1/6));
-  ctx.stroke();
+  ctx.beginPath(); ctx.arc(ps.x, ps.y, Math.max(1.5, ps.scale * 1.5), 0, Math.PI * 2); ctx.fill();
 
-  // Goal frame.
-  ctx.strokeStyle = '#fff';
-  ctx.lineWidth = 4;
+  // Goal — four corners (left/right × top/bottom) + posts + crossbar.
+  const gbl = project(GOAL_LEFT, GOAL_Y, 0);
+  const gbr = project(GOAL_RIGHT, GOAL_Y, 0);
+  const gtl = project(GOAL_LEFT, GOAL_Y, GOAL_HEIGHT_M);
+  const gtr = project(GOAL_RIGHT, GOAL_Y, GOAL_HEIGHT_M);
+  // Net background (slightly darker).
+  ctx.fillStyle = 'rgba(0,0,0,0.25)';
   ctx.beginPath();
-  ctx.moveTo(GOAL_LEFT, GOAL_Y);
-  ctx.lineTo(GOAL_LEFT, GOAL_Y - 18);
-  ctx.lineTo(GOAL_RIGHT, GOAL_Y - 18);
-  ctx.lineTo(GOAL_RIGHT, GOAL_Y);
-  ctx.stroke();
-  // Net texture (just a grid hint).
-  ctx.strokeStyle = 'rgba(255,255,255,0.3)';
+  ctx.moveTo(gbl.x, gbl.y); ctx.lineTo(gtl.x, gtl.y);
+  ctx.lineTo(gtr.x, gtr.y); ctx.lineTo(gbr.x, gbr.y);
+  ctx.closePath(); ctx.fill();
+  // Net grid.
+  ctx.strokeStyle = 'rgba(255,255,255,0.25)';
   ctx.lineWidth = 0.5;
-  for (let i = 0; i < 6; i++) {
-    const x = GOAL_LEFT + (i / 5) * (GOAL_RIGHT - GOAL_LEFT);
-    ctx.beginPath(); ctx.moveTo(x, GOAL_Y - 18); ctx.lineTo(x, GOAL_Y); ctx.stroke();
+  for (let i = 1; i < 8; i++) {
+    const f = i / 8;
+    const tx = GOAL_LEFT + f * (GOAL_RIGHT - GOAL_LEFT);
+    const t0 = project(tx, GOAL_Y, 0);
+    const t1 = project(tx, GOAL_Y, GOAL_HEIGHT_M);
+    ctx.beginPath(); ctx.moveTo(t0.x, t0.y); ctx.lineTo(t1.x, t1.y); ctx.stroke();
   }
-  for (let i = 0; i < 4; i++) {
-    const y = GOAL_Y - (i / 3) * 18;
-    ctx.beginPath(); ctx.moveTo(GOAL_LEFT, y); ctx.lineTo(GOAL_RIGHT, y); ctx.stroke();
+  for (let i = 1; i < 5; i++) {
+    const f = i / 5;
+    const tl = project(GOAL_LEFT, GOAL_Y, f * GOAL_HEIGHT_M);
+    const tr = project(GOAL_RIGHT, GOAL_Y, f * GOAL_HEIGHT_M);
+    ctx.beginPath(); ctx.moveTo(tl.x, tl.y); ctx.lineTo(tr.x, tr.y); ctx.stroke();
   }
+  // Posts + crossbar.
+  ctx.strokeStyle = '#ffffff';
+  ctx.lineWidth = 3;
+  ctx.beginPath();
+  ctx.moveTo(gbl.x, gbl.y); ctx.lineTo(gtl.x, gtl.y);
+  ctx.lineTo(gtr.x, gtr.y); ctx.lineTo(gbr.x, gbr.y);
+  ctx.stroke();
 
-  // Wall — 5 player silhouettes.
+  // Wall — five defenders in a row.
   for (let i = 0; i < N_WALL; i++) {
     const px = WALL_LEFT + i * WALL_PLAYER_DX;
-    drawDefender(px, WALL_Y);
+    drawDefenderProjected(px, WALL_Y);
   }
 
-  // Keeper.
-  drawKeeper(KEEPER.x, KEEPER.y);
-  // Keeper reach zone (faint).
-  ctx.strokeStyle = 'rgba(255,255,255,0.18)';
-  ctx.setLineDash([3, 3]);
-  ctx.beginPath(); ctx.ellipse(KEEPER.x, KEEPER.y, KEEPER_REACH, KEEPER_REACH * 0.55, 0, 0, Math.PI * 2); ctx.stroke();
-  ctx.setLineDash([]);
-
   // Kick spot.
+  const ks = project(KICK_SPOT.x, KICK_SPOT.y, 0);
   ctx.fillStyle = '#fff';
-  ctx.beginPath(); ctx.arc(KICK_SPOT.x, KICK_SPOT.y, 3, 0, Math.PI * 2); ctx.fill();
+  ctx.beginPath(); ctx.arc(ks.x, ks.y, Math.max(2, ks.scale * 2.5), 0, Math.PI * 2); ctx.fill();
 }
 
-function drawDefender(x, y) {
-  // Body — blue shirt.
+// Draw a projected polyline; closed=true draws a closed loop.
+function drawPolyline(points, stroke, lineWidth, closed = false) {
+  if (points.some((p) => !p.visible)) return;
+  ctx.strokeStyle = stroke;
+  ctx.lineWidth = lineWidth;
+  ctx.beginPath();
+  ctx.moveTo(points[0].x, points[0].y);
+  for (let i = 1; i < points.length; i++) ctx.lineTo(points[i].x, points[i].y);
+  if (closed) ctx.closePath();
+  ctx.stroke();
+}
+
+function drawDefenderProjected(pitchX, pitchY) {
+  const feet = project(pitchX, pitchY, 0);
+  const head = project(pitchX, pitchY, WALL_HEIGHT_M);
+  if (!feet.visible || !head.visible) return;
+  const w = Math.max(4, feet.scale * 14);
+  const headR = Math.max(2.5, feet.scale * 5);
+  // Body.
   ctx.fillStyle = '#1a3a8a';
-  ctx.fillRect(x - 5, y - 4, 10, 14);
+  ctx.fillRect(feet.x - w / 2, head.y + headR * 0.7, w, feet.y - (head.y + headR * 0.7));
   // Head.
   ctx.fillStyle = '#c8a888';
-  ctx.beginPath(); ctx.arc(x, y - 9, 4, 0, Math.PI * 2); ctx.fill();
-  // Shadow.
-  ctx.fillStyle = 'rgba(0,0,0,0.25)';
-  ctx.beginPath(); ctx.ellipse(x, y + 12, 6, 2, 0, 0, Math.PI * 2); ctx.fill();
+  ctx.beginPath(); ctx.arc(head.x, head.y + headR, headR, 0, Math.PI * 2); ctx.fill();
+  // Shadow on pitch.
+  ctx.fillStyle = 'rgba(0,0,0,0.3)';
+  ctx.beginPath(); ctx.ellipse(feet.x, feet.y + 2, w * 0.7, w * 0.18, 0, 0, Math.PI * 2); ctx.fill();
 }
 
-function drawKeeper(x, y) {
-  // Body — yellow shirt (classic GK).
+function drawKeeperProjected(pitchX) {
+  const feet = project(pitchX, KEEPER_START.y, 0);
+  const head = project(pitchX, KEEPER_START.y, 1.85);  // standing height
+  if (!feet.visible || !head.visible) return;
+  const w = Math.max(5, feet.scale * 18);
+  const headR = Math.max(3, feet.scale * 6);
+  // Body.
   ctx.fillStyle = '#f3d233';
-  ctx.fillRect(x - 6, y - 4, 12, 16);
-  // Outstretched arms (suggests dive readiness).
-  ctx.fillStyle = '#f3d233';
-  ctx.fillRect(x - 14, y - 2, 28, 4);
+  ctx.fillRect(feet.x - w / 2, head.y + headR * 0.7, w, feet.y - (head.y + headR * 0.7));
+  // Stretched-out arms hint.
+  ctx.fillRect(feet.x - w * 1.2, head.y + headR * 1.5, w * 2.4, w * 0.3);
   // Head.
   ctx.fillStyle = '#c8a888';
-  ctx.beginPath(); ctx.arc(x, y - 10, 4.5, 0, Math.PI * 2); ctx.fill();
+  ctx.beginPath(); ctx.arc(head.x, head.y + headR, headR, 0, Math.PI * 2); ctx.fill();
   // Shadow.
-  ctx.fillStyle = 'rgba(0,0,0,0.25)';
-  ctx.beginPath(); ctx.ellipse(x, y + 14, 7, 2.5, 0, 0, Math.PI * 2); ctx.fill();
+  ctx.fillStyle = 'rgba(0,0,0,0.3)';
+  ctx.beginPath(); ctx.ellipse(feet.x, feet.y + 2, w * 0.8, w * 0.2, 0, 0, Math.PI * 2); ctx.fill();
 }
 
-function drawBall(x, y, z) {
-  // Ball height shows as a shadow on the pitch + a slightly elevated
-  // ball drawing.
-  // Shadow on pitch (directly under ball).
-  ctx.fillStyle = 'rgba(0,0,0,0.4)';
-  const shadowR = 4 / (1 + z * 0.4);
-  ctx.beginPath(); ctx.ellipse(x, y + 4, shadowR + 1, shadowR * 0.4 + 1, 0, 0, Math.PI * 2); ctx.fill();
-
-  // Ball with vertical-offset to fake the height.
-  const yDrawn = y - z * PX_PER_M * 0.6;   // half-perspective lift
+function drawBallProjected(ball) {
+  // Shadow at z=0 directly under the ball's (x, y).
+  const shadow = project(ball.x, ball.y, 0);
+  if (shadow.visible) {
+    const sR = Math.max(1.5, shadow.scale * 4);
+    ctx.fillStyle = 'rgba(0,0,0,0.35)';
+    ctx.beginPath(); ctx.ellipse(shadow.x, shadow.y, sR, sR * 0.35, 0, 0, Math.PI * 2); ctx.fill();
+  }
+  // Ball.
+  const p = project(ball.x, ball.y, ball.z);
+  if (!p.visible) return;
+  const r = Math.max(2.5, p.scale * 4.5);
   ctx.fillStyle = '#fff';
-  ctx.beginPath(); ctx.arc(x, yDrawn, 5, 0, Math.PI * 2); ctx.fill();
-  // Hex pattern hint.
+  ctx.beginPath(); ctx.arc(p.x, p.y, r, 0, Math.PI * 2); ctx.fill();
+  ctx.strokeStyle = 'rgba(0,0,0,0.4)';
+  ctx.lineWidth = 0.7;
+  ctx.stroke();
+  // Hex hint.
   ctx.fillStyle = '#222';
-  ctx.beginPath(); ctx.arc(x - 1, yDrawn - 1, 1.2, 0, Math.PI * 2); ctx.fill();
-  ctx.beginPath(); ctx.arc(x + 1.5, yDrawn + 1, 1.0, 0, Math.PI * 2); ctx.fill();
+  ctx.beginPath(); ctx.arc(p.x - r * 0.2, p.y - r * 0.2, r * 0.22, 0, Math.PI * 2); ctx.fill();
 }
 
 function drawScene(state, hudText, trail) {
   drawPitch();
-  // Trail of ball positions for the current shot.
+  // Keeper rendered AFTER the pitch but BEFORE the ball, so the ball
+  // (which can pass in front of the keeper near the goal line) draws on
+  // top during a save attempt.
+  const keeperX = state && state.kx != null ? state.kx : KEEPER_START.x;
+  drawKeeperProjected(keeperX);
+  // Trail.
   if (trail && trail.length > 1) {
-    ctx.strokeStyle = 'rgba(255, 255, 255, 0.7)';
+    ctx.strokeStyle = 'rgba(255,255,255,0.75)';
     ctx.lineWidth = 2;
     ctx.beginPath();
-    ctx.moveTo(trail[0].x, trail[0].y - trail[0].z * PX_PER_M * 0.6);
+    const p0 = project(trail[0].x, trail[0].y, trail[0].z);
+    ctx.moveTo(p0.x, p0.y);
     for (let i = 1; i < trail.length; i++) {
-      ctx.lineTo(trail[i].x, trail[i].y - trail[i].z * PX_PER_M * 0.6);
+      const p = project(trail[i].x, trail[i].y, trail[i].z);
+      ctx.lineTo(p.x, p.y);
     }
     ctx.stroke();
   }
-  if (state) drawBall(state.x, state.y, state.z);
+  if (state) drawBallProjected(state);
   // HUD.
   if (hudText) {
     ctx.font = 'bold 15px -apple-system, Helvetica, Arial, sans-serif';
@@ -647,7 +770,7 @@ function drawScene(state, hudText, trail) {
 }
 
 function drawIdleScene() {
-  drawScene({ x: KICK_SPOT.x, y: KICK_SPOT.y, z: 0 },
+  drawScene({ x: KICK_SPOT.x, y: KICK_SPOT.y, z: 0, kx: KEEPER_START.x },
     'Press "Find the best kick" or take one yourself', null);
 }
 
