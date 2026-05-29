@@ -4,7 +4,7 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' 'unsafe-inline' https://cdn.jsdelivr.net; style-src 'self' 'unsafe-inline';">
-<title>🎱 Pool Trick Shot — HumpDay</title>
+<title>🎱 Pool Break — HumpDay</title>
 <style>
   :root {
     --bg: #1a1a22;
@@ -96,12 +96,12 @@
 </nav>
 
 <div class="container">
-  <h1>🎱 Pool Trick Shot Optimizer</h1>
+  <h1>🎱 Pool Break Optimizer</h1>
   <p class="intro">
-    One cue ball, a six-ball rack, six pockets. The optimiser picks
-    <strong>angle, power,</strong> and <strong>English</strong> (sidespin)
-    and tries to sink as many balls as possible in a single break.
-    Scratching the cue costs three.
+    Standard 8-ball rack — 15 object balls plus the cue, six pockets.
+    The optimiser picks <strong>angle, power,</strong> and
+    <strong>English</strong> (sidespin) and tries to sink as many
+    balls as possible on the break. Scratching the cue costs three.
   </p>
 
   <div class="stage">
@@ -280,7 +280,7 @@ const FELT_MX = (FELT_X0 + FELT_X1) / 2;
 const FELT_MY = (FELT_Y0 + FELT_Y1) / 2;
 
 const BALL_R = 11;
-const POCKET_R = 22;
+const POCKET_R = 30;       // generous pockets — easier to actually sink anything
 
 // Six pockets — four corners + two side rails (top and bottom centre).
 const POCKETS = [
@@ -297,27 +297,50 @@ const POCKETS = [
 const CUE_HOME = { x: FELT_X0 + 160, y: FELT_MY };
 const RACK_APEX = { x: FELT_X1 - 200, y: FELT_MY };
 
-// Triangle rack of 6 balls (1 + 2 + 3). Spacing is just over a diameter
-// so balls almost touch but don't overlap.
+// Classic 8-ball rack: 5 rows, 1+2+3+4+5 = 15 object balls. Spacing is
+// just over a diameter so balls almost touch but don't overlap. The
+// 8-ball goes in the centre of the third row, per real-world rules.
 function rackPositions() {
   const dx = BALL_R * 2 + 0.4;
   const dy = BALL_R * 2 + 0.4;
   const positions = [];
-  for (let row = 0; row < 3; row++) {
+  for (let row = 0; row < 5; row++) {
     const x = RACK_APEX.x + row * dx * Math.cos(Math.PI / 6);
     for (let i = 0; i <= row; i++) {
       const y = RACK_APEX.y + (i - row / 2) * dy;
       positions.push({ x, y });
     }
   }
-  return positions;  // 1 + 2 + 3 = 6 balls
+  return positions;  // 1+2+3+4+5 = 15 balls
 }
 const RACK = rackPositions();
 const N_OBJECT_BALLS = RACK.length;
 
-// Solid colours for the six target balls. (Mimics 1-6 in a standard
-// pool set: yellow, blue, red, purple, orange, green.)
-const BALL_COLORS = ['#e8c64b', '#3a6dc4', '#c83838', '#7a3aa8', '#e87324', '#2f9a4a'];
+// 15 balls — solids 1-7 in row-order, the 8-ball in the rack centre
+// (index 4 = row-2 centre = position 4 in 0-indexed row-major), then
+// stripes 9-15 filling the rest. The colour palette mirrors a standard
+// pool set; stripes draw with a coloured band on a white ball.
+//   row 0:                    1
+//   row 1:                  2   3
+//   row 2:                4   8   5
+//   row 3:              6   7   9   10
+//   row 4:            11  12  13  14   15
+// (8-ball lands at index 4 in row-major order: row 2's middle slot.)
+const BALL_NUMBERS = [
+  1,
+  2, 3,
+  4, 8, 5,
+  6, 7, 9, 10,
+  11, 12, 13, 14, 15,
+];
+const NUMBER_COLORS = {
+  1: '#e8c64b', 2: '#3a6dc4', 3: '#c83838', 4: '#7a3aa8',
+  5: '#e87324', 6: '#2f9a4a', 7: '#8a3030',
+  8: '#111111',
+  9: '#e8c64b', 10: '#3a6dc4', 11: '#c83838', 12: '#7a3aa8',
+  13: '#e87324', 14: '#2f9a4a', 15: '#8a3030',
+};
+const IS_STRIPE = (n) => n >= 9;
 
 // ----- Parameter ranges decoded from u in [0,1]^3 ------------------------
 // angle  : -15° to +15° (relative to a flat horizontal aim at the rack apex)
@@ -599,7 +622,8 @@ function drawScene(state, hudText) {
     for (let i = 0; i < state.objects.length; i++) {
       const b = state.objects[i];
       if (b.pocketed) continue;
-      drawBall(b.x, b.y, BALL_COLORS[i], i + 1, b.a);
+      const num = BALL_NUMBERS[i];
+      drawBall(b.x, b.y, NUMBER_COLORS[num], num, b.a, IS_STRIPE(num));
     }
     // Cue ball (drawn last so it sits on top during overlaps).
     if (!state.cue.pocketed) {
@@ -625,31 +649,58 @@ function drawScene(state, hudText) {
   }
 }
 
-function drawBall(x, y, color, number, angle) {
-  // Body with radial highlight.
+function drawBall(x, y, color, number, angle, stripe = false) {
   ctx.save();
   ctx.translate(x, y);
-  const g = ctx.createRadialGradient(-3, -3, 1, 0, 0, BALL_R);
-  g.addColorStop(0, '#ffffff');
-  g.addColorStop(0.15, color);
-  g.addColorStop(1, shade(color, -0.35));
-  ctx.fillStyle = g;
-  ctx.beginPath();
-  ctx.arc(0, 0, BALL_R, 0, Math.PI * 2);
-  ctx.fill();
+  ctx.rotate(angle ?? 0);
+
+  if (stripe) {
+    // White body with a coloured equatorial band (top + bottom poles
+    // stay white). Rotates with the ball so spin is visible.
+    const g = ctx.createRadialGradient(-3, -3, 1, 0, 0, BALL_R);
+    g.addColorStop(0, '#ffffff');
+    g.addColorStop(0.9, '#f0ebe0');
+    g.addColorStop(1, '#b5b0a3');
+    ctx.fillStyle = g;
+    ctx.beginPath();
+    ctx.arc(0, 0, BALL_R, 0, Math.PI * 2);
+    ctx.fill();
+    // Coloured band — a horizontal stripe through the middle ~55% of height.
+    ctx.save();
+    ctx.beginPath();
+    ctx.arc(0, 0, BALL_R, 0, Math.PI * 2);
+    ctx.clip();
+    ctx.fillStyle = color;
+    ctx.fillRect(-BALL_R - 1, -BALL_R * 0.55, 2 * BALL_R + 2, BALL_R * 1.1);
+    ctx.restore();
+  } else {
+    // Solid colour ball with radial highlight.
+    const g = ctx.createRadialGradient(-3, -3, 1, 0, 0, BALL_R);
+    g.addColorStop(0, '#ffffff');
+    g.addColorStop(0.15, color);
+    g.addColorStop(1, shade(color, -0.35));
+    ctx.fillStyle = g;
+    ctx.beginPath();
+    ctx.arc(0, 0, BALL_R, 0, Math.PI * 2);
+    ctx.fill();
+  }
   ctx.strokeStyle = 'rgba(0,0,0,0.25)';
   ctx.lineWidth = 0.8;
+  ctx.beginPath();
+  ctx.arc(0, 0, BALL_R, 0, Math.PI * 2);
   ctx.stroke();
 
-  // Number in a small white disc (so rotation is visible).
+  // Number in a small white disc (so rotation is visible). For the
+  // 8-ball draw the digit in a slightly larger disc so the "8" stays
+  // legible against the black body.
   if (number != null) {
-    ctx.rotate(angle);
+    const discR = number === 8 ? BALL_R * 0.58 : BALL_R * 0.5;
     ctx.fillStyle = '#fff';
     ctx.beginPath();
-    ctx.arc(0, 0, BALL_R * 0.55, 0, Math.PI * 2);
+    ctx.arc(0, 0, discR, 0, Math.PI * 2);
     ctx.fill();
     ctx.fillStyle = '#222';
-    ctx.font = 'bold 10px -apple-system, Helvetica, Arial, sans-serif';
+    ctx.font = `bold ${number >= 10 ? 8 : 10}px -apple-system, Helvetica, Arial, sans-serif`;
     ctx.textAlign = 'center';
     ctx.textBaseline = 'middle';
     ctx.fillText(number.toString(), 0, 0.5);
