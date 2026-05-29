@@ -117,8 +117,8 @@
           <label for="manual-angle">Angle <output id="manual-angle-out">0°</output></label>
           <input type="range" id="manual-angle" min="-15" max="15" step="0.1" value="0">
 
-          <label for="manual-power">Power <output id="manual-power-out">20</output></label>
-          <input type="range" id="manual-power" min="5" max="40" step="0.5" value="20">
+          <label for="manual-power">Power <output id="manual-power-out">25</output></label>
+          <input type="range" id="manual-power" min="5" max="70" step="0.5" value="25">
 
           <label for="manual-spin">English <output id="manual-spin-out">0.00</output></label>
           <input type="range" id="manual-spin" min="-0.8" max="0.8" step="0.02" value="0">
@@ -176,7 +176,8 @@
       <button class="secondary" onclick="resetEverything()">⟲ Reset leaderboard</button>
 
       <div class="stats">
-        <div class="stat-row"><span>Balls pocketed</span><span class="score" id="score-now">0</span></div>
+        <div class="stat-row"><span>Score</span><span class="score" id="score-now">0</span></div>
+        <div class="stat-row"><span>Detail</span><span id="score-detail">—</span></div>
         <div class="stat-row"><span>Breaks tried</span><span id="evals">0</span></div>
         <div class="stat-row"><span>Best so far</span><span id="best-score">—</span></div>
         <div class="stat-row"><span>Angle</span><span id="param-angle">—</span></div>
@@ -213,17 +214,11 @@
     object balls pocketed, minus 3 if the cue ball scratches.
   </p>
   <p>
-    The objective is brutal: most random shots sink zero balls. There's a
-    narrow ridge of aim angles where the cue ball strikes the rack
-    cleanly, and only a sub-region of that ridge produces useful caroms.
-    English (sidespin) shifts the post-collision angle of the cue, opening
-    up shots that pure aim can't reach — but only with the right power.
-  </p>
-  <p>
-    Try Differential Evolution or CMA-ES on a budget of 50+ breaks. Local
-    methods like Nelder-Mead tend to plateau on the first one-ball
-    pocketed shot they find; broad searchers more often discover the
-    two-and-three-ball combinations that need a specific angle/spin pair.
+    Run a few different optimisers on different budgets and see what
+    falls out — the search landscape on this version of the table
+    hasn't been profiled yet, so the most useful thing to do here is
+    compare runs side-by-side rather than trust any prediction about
+    which algorithm should win.
   </p>
 
   <hr style="border: 0; border-top: 1px solid #404054; margin: 32px 0 16px;" />
@@ -326,8 +321,8 @@ const BALL_COLORS = ['#e8c64b', '#3a6dc4', '#c83838', '#7a3aa8', '#e87324', '#2f
 
 // ----- Parameter ranges decoded from u in [0,1]^3 ------------------------
 // angle  : -15° to +15° (relative to a flat horizontal aim at the rack apex)
-// power  : 8 to 32 (velocity magnitude — high enough to reach the rack
-//          and produce caroms, low enough that balls don't tunnel through
+// power  : 8 to 64 (velocity magnitude — high enough to drive caroms
+//          across the table, low enough that balls don't tunnel through
 //          cushions at one frame's resolution)
 // spin   : -0.8 to +0.8 rad/step (English — sidespin, NOT initial
 //          velocity. Affects post-collision direction via cue-ball
@@ -336,7 +331,7 @@ const BALL_COLORS = ['#e8c64b', '#3a6dc4', '#c83838', '#7a3aa8', '#e87324', '#2f
 function decode(u) {
   return [
     -15 + 30 * u[0],
-    8 + 24 * u[1],
+    8 + 56 * u[1],
     -0.8 + 1.6 * u[2],
   ];
 }
@@ -351,8 +346,8 @@ function buildWorld() {
   // pocket is reachable from along the rail.
   const cushion = (x, y, w, h) => Bodies.rectangle(x, y, w, h, {
     isStatic: true,
-    restitution: 0.78,        // bouncy cushion
-    friction: 0.05,
+    restitution: 0.85,        // bouncy cushion
+    friction: 0.01,           // minimal — balls don't bleed energy along rails
     label: 'cushion',
   });
   const railThick = 20;
@@ -407,9 +402,9 @@ function buildWorld() {
   const objectBalls = RACK.map((p, i) =>
     Bodies.circle(p.x, p.y, BALL_R, {
       density: 0.008,
-      friction: 0.02,
-      frictionAir: 0.022,    // felt drag — balls eventually stop
-      restitution: 0.93,     // bouncy collisions
+      friction: 0.005,
+      frictionAir: 0.004,    // felt drag — much lower so balls roll a long way
+      restitution: 0.95,     // bouncy collisions
       label: `object-${i}`,
     })
   );
@@ -417,9 +412,9 @@ function buildWorld() {
   // Cue ball — slightly heavier, marked with `cue` label.
   const cue = Bodies.circle(CUE_HOME.x, CUE_HOME.y, BALL_R, {
     density: 0.010,
-    friction: 0.02,
-    frictionAir: 0.022,
-    restitution: 0.93,
+    friction: 0.005,
+    frictionAir: 0.004,
+    restitution: 0.95,
     label: 'cue',
   });
 
@@ -435,10 +430,35 @@ function runShot(params, recordFrames = false) {
   const [angleDeg, power, spin] = params;
   const { engine, cue, objectBalls } = buildWorld();
 
-  // Initial velocity: aim from cue home toward the rack apex with the
-  // requested angle perturbation.
+  // Initial aim direction (base toward rack apex + user angle).
   const baseDir = Math.atan2(RACK_APEX.y - CUE_HOME.y, RACK_APEX.x - CUE_HOME.x);
   const aimRad = baseDir + angleDeg * Math.PI / 180;
+
+  const frames = recordFrames ? [] : null;
+
+  // ---- Cue-stick strike animation (only when recording frames) -----------
+  // 18 frames: 6 of the cue pulling back, 12 of the cue thrusting forward
+  // to contact. The cue ball stays still during this. After the strike
+  // we apply the impulse and run the physics loop.
+  if (recordFrames) {
+    const N_PULLBACK = 6, N_THRUST = 12;
+    const restingGap = BALL_R + 4;            // gap from ball to cue tip at rest
+    const pullbackExtra = 80;                 // how far back the cue draws
+    for (let k = 0; k < N_PULLBACK; k++) {
+      const t = k / (N_PULLBACK - 1);         // 0..1
+      const tipDist = restingGap + pullbackExtra * t;
+      frames.push(snapshot(cue, objectBalls, new Set(),
+        cueStickAt(cue.position.x, cue.position.y, aimRad, tipDist)));
+    }
+    for (let k = 0; k < N_THRUST; k++) {
+      const t = k / (N_THRUST - 1);           // 0..1
+      const tipDist = restingGap + pullbackExtra * (1 - t);
+      frames.push(snapshot(cue, objectBalls, new Set(),
+        cueStickAt(cue.position.x, cue.position.y, aimRad, tipDist)));
+    }
+  }
+
+  // ---- Strike. -----------------------------------------------------------
   const vMag = power * 0.35;    // 0.35 keeps Matter.js stable at this scale
   Body.setVelocity(cue, { x: vMag * Math.cos(aimRad), y: vMag * Math.sin(aimRad) });
   Body.setAngularVelocity(cue, spin);
@@ -447,8 +467,6 @@ function runShot(params, recordFrames = false) {
   // from the world and counted.
   const pocketed = new Set();      // labels of pocketed balls
   let cueScratched = false;
-
-  const frames = recordFrames ? [] : null;
   for (let step = 0; step < N_SIM_STEPS; step++) {
     Engine.update(engine, SIM_DELTA);
 
@@ -497,13 +515,25 @@ function runShot(params, recordFrames = false) {
   };
 }
 
-function snapshot(cue, objectBalls, pocketed) {
+function snapshot(cue, objectBalls, pocketed, cueStick = null) {
   return {
     cue: { x: cue.position.x, y: cue.position.y, a: cue.angle, pocketed: pocketed.has('cue') },
     objects: objectBalls.map((b) => ({
       x: b.position.x, y: b.position.y, a: b.angle,
       pocketed: pocketed.has(b.label),
     })),
+    cueStick,    // { tipX, tipY, angle } or null
+  };
+}
+
+// Compute cue stick geometry: tip is `tipDist` from the ball centre,
+// along the OPPOSITE direction to `aimRad` (so the cue points toward
+// the ball).
+function cueStickAt(ballX, ballY, aimRad, tipDist) {
+  return {
+    tipX: ballX - tipDist * Math.cos(aimRad),
+    tipY: ballY - tipDist * Math.sin(aimRad),
+    angle: aimRad,
   };
 }
 
@@ -575,6 +605,11 @@ function drawScene(state, hudText) {
     if (!state.cue.pocketed) {
       drawBall(state.cue.x, state.cue.y, '#f5f0e0', null, state.cue.a);
     }
+    // Cue stick — only shown during the strike animation. Drawn on top
+    // of the cue ball so the white tip clearly meets the ball.
+    if (state.cueStick) {
+      drawCueStick(state.cueStick);
+    }
   }
 
   // HUD.
@@ -621,6 +656,48 @@ function drawBall(x, y, color, number, angle) {
     ctx.textAlign = 'start';
     ctx.textBaseline = 'alphabetic';
   }
+  ctx.restore();
+}
+
+// Draw a tapered pool cue. The TIP is the contact end (small, blue/white
+// leather), the BUTT is the wrap end (thicker, dark). `angle` points
+// from butt to tip so the tip is at (tipX, tipY) and the cue extends
+// backward.
+function drawCueStick(cs) {
+  const length = 220;
+  const tipDiam = 3;
+  const buttDiam = 9;
+  // Vector from tip back to butt.
+  const dx = -Math.cos(cs.angle);
+  const dy = -Math.sin(cs.angle);
+  ctx.save();
+  ctx.translate(cs.tipX, cs.tipY);
+  ctx.rotate(cs.angle);
+  // Wood shaft — trapezoidal, going from (0,0)=tip to (-length,0)=butt.
+  const grad = ctx.createLinearGradient(0, 0, -length, 0);
+  grad.addColorStop(0, '#dccba7');     // light maple near tip
+  grad.addColorStop(0.7, '#a47a3c');   // mid shaft
+  grad.addColorStop(1, '#2a1d10');     // dark butt
+  ctx.fillStyle = grad;
+  ctx.beginPath();
+  ctx.moveTo(0, -tipDiam / 2);
+  ctx.lineTo(-length, -buttDiam / 2);
+  ctx.lineTo(-length, buttDiam / 2);
+  ctx.lineTo(0, tipDiam / 2);
+  ctx.closePath();
+  ctx.fill();
+  ctx.strokeStyle = 'rgba(0,0,0,0.35)';
+  ctx.lineWidth = 0.6;
+  ctx.stroke();
+  // Leather tip — small light-blue cap at the contact end.
+  ctx.fillStyle = '#7da1c8';
+  ctx.fillRect(-1.5, -tipDiam / 2 - 0.4, 2, tipDiam + 0.8);
+  // Brass ferrule just behind the tip.
+  ctx.fillStyle = '#e8d488';
+  ctx.fillRect(-5, -tipDiam / 2 - 0.4, 3, tipDiam + 0.8);
+  // Wrap detail on the butt half.
+  ctx.fillStyle = 'rgba(0,0,0,0.35)';
+  ctx.fillRect(-length * 0.7, -buttDiam / 2 + 0.4, length * 0.18, buttDiam - 0.8);
   ctx.restore();
 }
 
@@ -680,7 +757,8 @@ async function animateSearchMontage() {
 
     const reF = runShot(entry.params, /*recordFrames=*/true);
     document.getElementById('evals').textContent = i + 1;
-    document.getElementById('score-now').textContent = formatScore(entry);
+    document.getElementById('score-now').textContent = entry.score;
+    document.getElementById('score-detail').textContent = formatDetail(entry);
     updateBestParams(entry.params, entry.score);
 
     if (isNew) {
@@ -690,23 +768,20 @@ async function animateSearchMontage() {
         { inPlace: liveLeaderboardIdx >= 0 },
       );
       document.getElementById('best-score').textContent =
-        `${formatScore(entry)} (${document.getElementById('algorithm').value})`;
+        `${entry.score} (${formatDetail(entry)}) — ${document.getElementById('algorithm').value}`;
     }
 
-    const label = `Break ${i + 1}/${total}  ·  Best: ${formatScore({ score: bestSoFar })}${isNew ? '  ★ NEW!' : ''}`;
+    const label = `Break ${i + 1}/${total}  ·  Best: ${bestSoFar}${isNew ? '  ★ NEW!' : ''}`;
     await animateShot(reF.frames, label, MONTAGE_MS_PER_FRAME);
   }
   return bestIdx;
 }
 
-function formatScore(entry) {
-  if (entry.cueScratched) {
-    return `${entry.score} (${entry.objectsPocketed} in, scratch)`;
-  }
-  if (typeof entry.objectsPocketed === 'number') {
-    return `${entry.score} (${entry.objectsPocketed} in)`;
-  }
-  return `${entry.score}`;
+function formatDetail(entry) {
+  if (typeof entry.objectsPocketed !== 'number') return '—';
+  const parts = [`${entry.objectsPocketed} in`];
+  if (entry.cueScratched) parts.push('scratch');
+  return parts.join(', ');
 }
 
 // ============================================================================
@@ -742,11 +817,11 @@ async function runOptimization() {
 
     await animateShot(
       replay.frames,
-      `Best break: ${formatScore(bestEntry)} (${algoName})`,
+      `Best break: ${bestEntry.score} (${formatDetail(bestEntry)}) — ${algoName}`,
     );
 
     document.getElementById('best-score').textContent =
-      `${formatScore(bestEntry)} (${algoName})`;
+      `${bestEntry.score} (${formatDetail(bestEntry)}) — ${algoName}`;
     updateBestParams(bestEntry.params, bestEntry.score);
     addLeaderboardEntry(algoName, bestEntry, opt.evaluations, {
       inPlace: liveLeaderboardIdx >= 0,
@@ -845,16 +920,18 @@ async function manualShot() {
 
   try {
     const replay = runShot([a, p, s], /*recordFrames=*/true);
-    document.getElementById('score-now').textContent = formatScore(replay);
+    document.getElementById('score-now').textContent = replay.score;
+    document.getElementById('score-detail').textContent = formatDetail(replay);
     document.getElementById('param-angle').textContent = `${a.toFixed(1)}°`;
     document.getElementById('param-power').textContent = p.toFixed(2);
     document.getElementById('param-spin').textContent = s.toFixed(2);
     await animateShot(
       replay.frames,
-      `🧠 Human Raphson: ${formatScore(replay)}`,
+      `🧠 Human Raphson: ${replay.score} (${formatDetail(replay)})`,
     );
     addLeaderboardEntry('Human Raphson', replay, 1);
-    document.getElementById('best-score').textContent = `${formatScore(replay)} (Human Raphson)`;
+    document.getElementById('best-score').textContent =
+      `${replay.score} (${formatDetail(replay)}) — Human Raphson`;
   } finally {
     btn.disabled = false;
     btn.textContent = '▶ Break (Human Raphson)';
@@ -867,7 +944,7 @@ function resetEverything() {
   lastBest = null;
   animationToken++;
   ['score-now', 'evals'].forEach((id) => document.getElementById(id).textContent = '0');
-  ['best-score', 'param-angle', 'param-power', 'param-spin'].forEach((id) =>
+  ['score-detail', 'best-score', 'param-angle', 'param-power', 'param-spin'].forEach((id) =>
     document.getElementById(id).textContent = '—');
   renderLeaderboard();
   drawIdleScene();
