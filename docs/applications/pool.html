@@ -486,6 +486,12 @@ function runShot(params, recordFrames = false) {
     }
   }
 
+  // Capture each object ball's starting position so we can credit a
+  // small per-ball-displacement bonus at the end. Smooths the integer
+  // pocket count with a continuous signal so the optimiser still has
+  // gradient on shots that move the rack without sinking anything.
+  const objectStartPos = objectBalls.map((b) => ({ x: b.position.x, y: b.position.y }));
+
   // ---- Strike. -----------------------------------------------------------
   const vMag = power * 0.35;    // 0.35 keeps Matter.js stable at this scale
   Body.setVelocity(cue, { x: vMag * Math.cos(aimRad), y: vMag * Math.sin(aimRad) });
@@ -537,15 +543,31 @@ function runShot(params, recordFrames = false) {
     }
   }
 
-  // Score: balls pocketed minus penalty for scratching.
-  const objectsPocketed =
-    pocketed.size - (cueScratched ? 1 : 0);
-  const score = objectsPocketed - (cueScratched ? 3 : 0);
+  // Score breakdown:
+  //   pocketCount - 3*scratch   ← integer "real" score
+  //   + distanceBonus           ← small smoothing term, capped < 1 so
+  //                               ordering by pocketed count is preserved
+  //
+  // distanceBonus is a tiny multiplier on the SUM of object-ball
+  // displacements (start to end), excluding any ball that got pocketed
+  // (those already earned a +1 in the integer score). The cue ball is
+  // excluded — its trajectory is incidental to the break quality.
+  const objectsPocketed = pocketed.size - (cueScratched ? 1 : 0);
+  let totalDisplacement = 0;
+  for (let i = 0; i < objectBalls.length; i++) {
+    const b = objectBalls[i];
+    if (pocketed.has(b.label)) continue;
+    const s = objectStartPos[i];
+    totalDisplacement += Math.hypot(b.position.x - s.x, b.position.y - s.y);
+  }
+  const distanceBonus = Math.min(0.9, totalDisplacement * 0.0008);
+  const score = objectsPocketed - (cueScratched ? 3 : 0) + distanceBonus;
 
   return {
     score,
     objectsPocketed,
     cueScratched,
+    distanceBonus,
     frames,
     params,
     cueEnd: { x: cue.position.x, y: cue.position.y },
@@ -585,6 +607,7 @@ function objective(u) {
     score: r.score,
     objectsPocketed: r.objectsPocketed,
     cueScratched: r.cueScratched,
+    distanceBonus: r.distanceBonus,
     params: r.params,
     cueEnd: r.cueEnd,
   });
@@ -822,7 +845,7 @@ async function animateSearchMontage() {
 
     const reF = runShot(entry.params, /*recordFrames=*/true);
     document.getElementById('evals').textContent = i + 1;
-    document.getElementById('score-now').textContent = entry.score;
+    document.getElementById('score-now').textContent = entry.score.toFixed(2);
     document.getElementById('score-detail').textContent = formatDetail(entry);
     updateBestParams(entry.params, entry.score);
 
@@ -835,7 +858,7 @@ async function animateSearchMontage() {
       setBestScore(entry, document.getElementById('algorithm').value);
     }
 
-    const label = `Break ${i + 1}/${total}  ·  Best: ${bestSoFar}${isNew ? '  ★ NEW!' : ''}`;
+    const label = `Break ${i + 1}/${total}  ·  Best: ${bestSoFar.toFixed(2)}${isNew ? '  ★ NEW!' : ''}`;
     await animateShot(reF.frames, label, MONTAGE_MS_PER_FRAME);
   }
   return bestIdx;
@@ -853,7 +876,7 @@ function formatDetail(entry) {
 // CMAEvolutionStrategy don't wrap the label into two lines.
 function setBestScore(entry, algoName) {
   const el = document.getElementById('best-score');
-  el.innerHTML = `${entry.score} (${formatDetail(entry)})<span class="algo-tag">${algoName}</span>`;
+  el.innerHTML = `${entry.score.toFixed(2)} (${formatDetail(entry)})<span class="algo-tag">${algoName}</span>`;
 }
 
 // ============================================================================
@@ -889,7 +912,7 @@ async function runOptimization() {
 
     await animateShot(
       replay.frames,
-      `Best break: ${bestEntry.score} (${formatDetail(bestEntry)}) — ${algoName}`,
+      `Best break: ${bestEntry.score.toFixed(2)} (${formatDetail(bestEntry)}) — ${algoName}`,
     );
 
     setBestScore(bestEntry, algoName);
@@ -951,7 +974,8 @@ function renderLeaderboard() {
   body.innerHTML = leaderboard.map((row) => {
     const [a, p, s] = row.params;
     const cls = row.name === 'Human Raphson' ? ' class="human-raphson"' : '';
-    const scoreCell = row.scratch ? `${row.score} (${row.pocketed} in, scratch)` : `${row.score} (${row.pocketed} in)`;
+    const scoreStr = row.score.toFixed(2);
+    const scoreCell = row.scratch ? `${scoreStr} (${row.pocketed} in, scratch)` : `${scoreStr} (${row.pocketed} in)`;
     return `<tr${cls}>
       <td>${row.name}</td>
       <td>${scoreCell}</td>
@@ -991,14 +1015,14 @@ async function manualShot() {
 
   try {
     const replay = runShot([a, p, s], /*recordFrames=*/true);
-    document.getElementById('score-now').textContent = replay.score;
+    document.getElementById('score-now').textContent = replay.score.toFixed(2);
     document.getElementById('score-detail').textContent = formatDetail(replay);
     document.getElementById('param-angle').textContent = `${a.toFixed(1)}°`;
     document.getElementById('param-power').textContent = p.toFixed(2);
     document.getElementById('param-spin').textContent = s.toFixed(2);
     await animateShot(
       replay.frames,
-      `🧠 Human Raphson: ${replay.score} (${formatDetail(replay)})`,
+      `🧠 Human Raphson: ${replay.score.toFixed(2)} (${formatDetail(replay)})`,
     );
     addLeaderboardEntry('Human Raphson', replay, 1);
     setBestScore(replay, 'Human Raphson');
