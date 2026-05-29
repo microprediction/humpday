@@ -12,6 +12,24 @@ canonical template. When in doubt, copy from there.
 
 ---
 
+## 0. Workflow at a glance
+
+For a new demo `xyz`:
+
+1. `git checkout main && git pull && git checkout -b add-xyz-demo`
+2. Copy `docs/applications/slingshot.html` → `docs/applications/xyz.html`,
+   adapt the title/intro/physics/parameters.
+3. **Add a card to `docs/applications/index.html`** in the "Live demos"
+   grid (section 13 below). A demo that isn't on the index is invisible
+   to anyone arriving at the applications page.
+4. Local preview (section 10), iterate until it looks right.
+5. Smoke-test the simulator with N random params (section 11) before
+   writing copy that asserts anything about the landscape.
+6. Walk the section 13 checklist.
+7. Commit, push, open PR.
+
+---
+
 ## 1. Page shell — copy from slingshot.html
 
 Every demo uses the same HTML structure. Don't redesign it; the user
@@ -170,7 +188,51 @@ const inline = [...html.matchAll(/<script>([\s\S]*?)<\/script>/g)]
 // Stub DOM, extract decode + simulate, loop random params, report stats.
 ```
 
-## 11. PR / branch hygiene
+## 11. Adding the demo to the applications index — DO NOT SKIP
+
+> A demo not linked from `docs/applications/index.html` is effectively
+> invisible. This is the easiest step to forget and the user has
+> reminded me twice now.
+
+Open `docs/applications/index.html` and add an `<a class="card live">`
+block to the **Live demos** grid (just before the closing `</div>` of
+`<div class="grid">` that follows the `<h2>Live demos</h2>`). The card
+template:
+
+```html
+<a class="card live" href="xyz.html" style="text-decoration:none;">
+  <div class="emoji">🎯</div>                       <!-- pick a fitting emoji -->
+  <span class="tag">Live</span>
+  <h3>Demo Name</h3>
+  <p class="desc">
+    One-paragraph description. Mention the search space size (n=3, n=4),
+    what's being optimised, and the score range. Keep it concise — this
+    sits in a fixed-height card.
+  </p>
+  <div class="meta">
+    <span>n=3 · score 0-100</span>                  <!-- left meta: search size + range -->
+    <span class="play">Open →</span>
+  </div>
+</a>
+```
+
+Conventions:
+
+- **Emoji**: a single emoji that maps to the demo (🎳 🎱 ⛳ 🦅 🛞 🚗).
+- **Tag**: `<span class="tag">Live</span>` for finished demos. Use
+  `<span class="tag soon">Coming</span>` on a `.card.coming-soon` for
+  placeholders.
+- **Desc**: <= 2 sentences. Do not predict algorithm behaviour here
+  any more than you would in "What's happening" (see section 8).
+- **Meta left cell**: `n=K · <unit>` — search-space dimensionality
+  plus the score's natural unit/range.
+- **Page browser tab title** in `xyz.html` should match the demo
+  name in the card (emoji + title).
+
+If the demo is a partial / experimental version, mark the card as
+`coming-soon` instead of `live` and move it to the second grid.
+
+## 12. PR / branch hygiene
 
 > User's recurring pain point — squash-merges have lost work twice.
 
@@ -183,10 +245,13 @@ const inline = [...html.matchAll(/<script>([\s\S]*?)<\/script>/g)]
 - After a PR merges, check `main` to confirm the user-blessed values
   survived the squash before starting the next branch.
 
-## 12. Checklist before opening a new demo PR
+## 13. Checklist before opening a new demo PR
 
 - [ ] Page renders cleanly in local server preview
-- [ ] All three params: slider min/max matches decode min/max
+- [ ] **Card added to `docs/applications/index.html` "Live demos" grid**
+      with the right emoji, n=K, score range, and concise description
+- [ ] Browser tab `<title>` matches the index-card name
+- [ ] All sliders: every slider's min/max matches decode's range
 - [ ] Score panel layout doesn't wrap label lines
 - [ ] Reset leaderboard clears every stat row's textContent
 - [ ] Search montage updates params on every eval, not just `isNew`
@@ -194,18 +259,17 @@ const inline = [...html.matchAll(/<script>([\s\S]*?)<\/script>/g)]
 - [ ] N_SIM_STEPS large enough for slow-friction physics to come to rest
 - [ ] Rest detection confirms across multiple checks
 - [ ] "What's happening" copy describes setup, not predictions
-- [ ] Card added to `docs/applications/index.html` (live demos grid)
 - [ ] Save-the-Planet callout present with SKILL.md snippet
 - [ ] Smoke-test the simulator with random params before claiming
       anything about the landscape
 
-## 13. User-blessed constants — DO NOT change without an explicit ask
+## 14. User-blessed constants — DO NOT change without an explicit ask
 
 See `memory/slingshot-tuned-params.md` for the slingshot's locked-in
 physics. When a user blesses a demo's parameters with "this is
 perfect", write a similar memory file before moving on.
 
-## 14. Common feedback flavours (so you can anticipate)
+## 15. Common feedback flavours (so you can anticipate)
 
 | Feedback | Translation |
 |---|---|
