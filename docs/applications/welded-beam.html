@@ -75,14 +75,14 @@
   .hr-sliders input[type=range]::-webkit-slider-thumb { -webkit-appearance: none; appearance: none; background: var(--accent); width: 18px; height: 18px; border-radius: 50%; margin-top: -6px; cursor: pointer; }
   .hr-panel button { background: #ff9944; color: #1a1a22; margin-top: 0; }
 
-  .skill-callout { margin-top: 36px; background: rgba(255, 204, 0, 0.06); border: 1px solid rgba(255, 204, 0, 0.3); border-radius: 8px; padding: 18px 22px; }
-  .skill-callout h3 { margin: 0 0 6px; color: var(--accent); font-size: 1.05em; text-transform: none; letter-spacing: 0; }
+  .skill-callout { margin-top: 36px; background: rgba(126, 217, 87, 0.07); border: 1px solid rgba(126, 217, 87, 0.35); border-radius: 8px; padding: 18px 22px; }
+  .skill-callout h3 { margin: 0 0 6px; color: #7ed957; font-size: 1.05em; text-transform: none; letter-spacing: 0; }
   .skill-callout p { margin: 0 0 10px; color: var(--text); max-width: none; }
-  .skill-callout pre { background: #1a1a22; border: 1px solid #404054; border-radius: 4px; padding: 10px 14px; margin: 0; font-size: 0.84em; color: var(--accent); white-space: pre-wrap; word-break: break-all; font-family: 'SF Mono', Menlo, monospace; }
+  .skill-callout pre { background: #1a1a22; border: 1px solid #404054; border-radius: 4px; padding: 10px 14px; margin: 0; font-size: 0.84em; color: #7ed957; white-space: pre-wrap; word-break: break-all; font-family: 'SF Mono', Menlo, monospace; }
   .skill-actions { margin-top: 10px; display: flex; align-items: center; gap: 14px; }
   .skill-actions button { width: auto; background: #404054; color: var(--text); border: 1px solid #404054; padding: 6px 12px; font-size: 0.85em; cursor: pointer; border-radius: 4px; margin: 0; font-weight: 500; }
   .skill-actions button:hover { background: #4a4a60; }
-  .skill-actions a { color: var(--accent); font-size: 0.85em; text-decoration: none; }
+  .skill-actions a { color: #7ed957; font-size: 0.85em; text-decoration: none; }
   .skill-actions a:hover { text-decoration: underline; }
 
 </style>
@@ -260,8 +260,8 @@
   </p>
 
   <div class="skill-callout">
-    <h3>🌱 Save the Planet from Dumb Meta-Searches</h3>
-    <p>Cut and paste this into Claude or Cursor:</p>
+    <h3>🌱 Save the Planet</h3>
+    <p>If your hyper-parameter searches are heating the Earth, drop this in Cursor or Claude:</p>
     <pre id="skill-snippet">Read https://raw.githubusercontent.com/microprediction/humpday/main/SKILL.md
 and create a project skill from it.</pre>
     <div class="skill-actions">
@@ -579,56 +579,84 @@ function drawBeam(state, hudText) {
 function drawCrossSection(t, b, h) {
   // Pinned to the top-right corner so the load arrow's "P = 6 000 lb"
   // label (which sits just left of the beam tip) doesn't collide with
-  // the inset's t/b readouts.
-  const boxW = 120, boxH = 130;
+  // the inset's readouts. The box is split into three bands —
+  //   header (title) · drawing area (beam + weld) · footer (t/b/h readouts) —
+  // so the gold weld fillets can never bleed into the text.
+  const boxW = 142, boxH = 190;
   const boxLeft = W - boxW - 8;                        // 8 px margin from canvas right
   const boxTop = 38;
-  const cx = boxLeft + boxW / 2;
-  const cy = boxTop + 50;
-  const maxDim = 80;
-  const scale = maxDim / Math.max(t, b, 0.5);
-  const tPxC = Math.max(4, t * scale);
-  const bPxC = Math.max(4, b * scale);
-  const hPxC = Math.max(2, h * scale);
+  const headerH = 24;
+  const footerH = 60;
+  const drawTop = boxTop + headerH;
+  const drawH = boxH - headerH - footerH;
+  const drawCx = boxLeft + boxW / 2;
+  const drawCy = drawTop + drawH / 2;
 
-  ctx.fillStyle = 'rgba(0, 0, 0, 0.55)';
+  ctx.fillStyle = 'rgba(0, 0, 0, 0.6)';
   ctx.fillRect(boxLeft, boxTop, boxW, boxH);
   ctx.strokeStyle = 'rgba(255, 204, 0, 0.4)';
   ctx.lineWidth = 1;
   ctx.strokeRect(boxLeft, boxTop, boxW, boxH);
+  // Header underline so the bands read as distinct.
+  ctx.beginPath();
+  ctx.moveTo(boxLeft, drawTop);
+  ctx.lineTo(boxLeft + boxW, drawTop);
+  ctx.stroke();
+  ctx.beginPath();
+  ctx.moveTo(boxLeft, drawTop + drawH);
+  ctx.lineTo(boxLeft + boxW, drawTop + drawH);
+  ctx.stroke();
 
-  ctx.fillStyle = '#9a9aac';
-  ctx.font = 'bold 11px -apple-system, Helvetica, Arial, sans-serif';
-  ctx.fillText('cross-section', boxLeft + 10, boxTop + 14);
+  ctx.fillStyle = '#e8e8ea';
+  ctx.font = 'bold 12px -apple-system, Helvetica, Arial, sans-serif';
+  ctx.fillText('cross-section', boxLeft + 10, boxTop + 17);
 
-  // Beam cross-section: b wide × t tall, centred at (cx, cy + 20).
-  const beamX = cx - bPxC / 2;
-  const beamY = cy + 20 - tPxC / 2;
+  // Scale so beam (b × t) + weld fillets (size h, extending above the
+  // beam's top and below its bottom on one side) always fit inside the
+  // drawing band. Bounding box of the assembly: width b + h, height t + 2h.
+  const padW = 18, padH = 14;
+  const scaleW = (boxW - padW) / Math.max(0.4, b + h);
+  const scaleH = (drawH - padH) / Math.max(0.4, t + 2 * h);
+  const scale = Math.min(scaleW, scaleH, 32);          // cap so a small beam still reads
+  const tPxC = Math.max(4, t * scale);
+  const bPxC = Math.max(4, b * scale);
+  const hPxC = Math.max(2, h * scale);
+
+  // Beam (centred horizontally with the weld stack on its left — shift
+  // the beam right by hPxC/2 so the whole assembly sits centred).
+  const beamX = drawCx - (bPxC + hPxC) / 2 + hPxC;
+  const beamY = drawCy - tPxC / 2;
   ctx.fillStyle = '#4a8050';
   ctx.fillRect(beamX, beamY, bPxC, tPxC);
   ctx.strokeStyle = '#1a1a22';
   ctx.lineWidth = 1.5;
   ctx.strokeRect(beamX, beamY, bPxC, tPxC);
 
-  // Two weld fillets (gold triangles top + bottom on one side).
+  // Two weld fillets (gold triangles) on the left side of the beam,
+  // extending UP from the top corner and DOWN from the bottom corner —
+  // so the weld leg `h` is unambiguously visible without clobbering the
+  // beam itself.
   ctx.fillStyle = '#d0a040';
   ctx.beginPath();
   ctx.moveTo(beamX, beamY);
   ctx.lineTo(beamX - hPxC, beamY);
-  ctx.lineTo(beamX, beamY + hPxC);
+  ctx.lineTo(beamX, beamY - hPxC);
   ctx.closePath();
   ctx.fill();
   ctx.beginPath();
   ctx.moveTo(beamX, beamY + tPxC);
   ctx.lineTo(beamX - hPxC, beamY + tPxC);
-  ctx.lineTo(beamX, beamY + tPxC - hPxC);
+  ctx.lineTo(beamX, beamY + tPxC + hPxC);
   ctx.closePath();
   ctx.fill();
 
+  // Footer text — three rows (h alongside t and b).
   ctx.fillStyle = '#e8e8ea';
-  ctx.font = '10px "SF Mono", Menlo, monospace';
-  ctx.fillText(`t = ${t.toFixed(2)}″`, boxLeft + 10, boxTop + boxH - 18);
-  ctx.fillText(`b = ${b.toFixed(2)}″`, boxLeft + 10, boxTop + boxH - 5);
+  ctx.font = '12px "SF Mono", Menlo, monospace';
+  const footerY = drawTop + drawH + 16;
+  ctx.fillText(`t = ${t.toFixed(2)}″`, boxLeft + 10, footerY);
+  ctx.fillText(`b = ${b.toFixed(2)}″`, boxLeft + 10, footerY + 15);
+  ctx.fillText(`h = ${h.toFixed(2)}″`, boxLeft + 10, footerY + 30);
 }
 
 function drawConstraintStrip(evalResult) {
