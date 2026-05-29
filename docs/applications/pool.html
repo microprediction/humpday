@@ -438,8 +438,17 @@ function buildWorld() {
 }
 
 // ----- One shot ----------------------------------------------------------
-const N_SIM_STEPS = 360;     // ~6 s of physics at 60 fps
+// At frictionAir=0.004 a ball loses only ~0.4% velocity per frame, so a
+// fast break can keep rolling for many seconds. We give the simulation
+// 15 s of headroom and only exit early once balls have been below the
+// rest-speed threshold for THREE consecutive checks — single-check
+// thresholds were firing during mid-roll lulls and cutting the
+// animation off before all balls had actually stopped.
+const N_SIM_STEPS = 900;     // ~15 s of physics at 60 fps
 const SIM_DELTA = 1000 / 60;
+const REST_SPEED = 0.025;    // pixels/step — below this we consider a ball stopped
+const REST_CHECK_EVERY = 6;
+const REST_CONFIRM = 3;      // consecutive slow checks needed to stop early
 
 function runShot(params, recordFrames = false) {
   const [angleDeg, power, spin] = params;
@@ -450,6 +459,7 @@ function runShot(params, recordFrames = false) {
   const aimRad = baseDir + angleDeg * Math.PI / 180;
 
   const frames = recordFrames ? [] : null;
+  let restConfirms = 0;
 
   // ---- Cue-stick strike animation (only when recording frames) -----------
   // 18 frames: 6 of the cue pulling back, 12 of the cue thrusting forward
@@ -504,14 +514,23 @@ function runShot(params, recordFrames = false) {
 
     if (recordFrames) frames.push(snapshot(cue, objectBalls, pocketed));
 
-    // Early termination — once nothing is moving meaningfully, stop.
-    if (step > 30 && step % 6 === 0) {
+    // Early termination — only exit once balls have been slower than
+    // REST_SPEED for REST_CONFIRM consecutive checks. A single-check
+    // threshold was firing during mid-roll lulls (e.g. moment a ball
+    // reverses off a cushion) and cutting the animation off before
+    // all balls had actually stopped.
+    if (step > 30 && step % REST_CHECK_EVERY === 0) {
       let maxSpeed = 0;
       for (const b of [cue, ...objectBalls]) {
         if (pocketed.has(b.label)) continue;
         maxSpeed = Math.max(maxSpeed, Math.hypot(b.velocity.x, b.velocity.y));
       }
-      if (maxSpeed < 0.05) break;
+      if (maxSpeed < REST_SPEED) {
+        restConfirms++;
+        if (restConfirms >= REST_CONFIRM) break;
+      } else {
+        restConfirms = 0;
+      }
     }
   }
 
