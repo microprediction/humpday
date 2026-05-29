@@ -762,34 +762,73 @@ function drawDefenderProjected(pitchX, pitchY) {
   ctx.beginPath(); ctx.ellipse(feet.x, feet.y + 2, w * 0.7, w * 0.18, 0, 0, Math.PI * 2); ctx.fill();
 }
 
-function drawKeeperProjected(pitchX, diveVx = 0) {
+function drawKeeperProjected(pitchX, diveVx = 0, ballState = null) {
   const feet = project(pitchX, KEEPER_START.y, 0);
   const head = project(pitchX, KEEPER_START.y, 1.85);
   if (!feet.visible || !head.visible) return;
   const w = Math.max(4, feet.scale * 10);
   const headR = Math.max(2.5, feet.scale * 3.6);
-  // Dive amount in [0, 1] based on lateral keeper velocity. When the
-  // keeper is moving fast we extend their arms much further in the
-  // dive direction — visually "jumping toward the ball".
+
+  // 1) Extend timing — arms only stretch out as the ball approaches
+  //    the goal line (60 %+ of the flight). User feedback: "have the
+  //    keeper extend a little later".
+  let flightProgress = 0;
+  if (ballState && ballState.y != null) {
+    flightProgress = Math.max(0, Math.min(1,
+      (KICK_SPOT.y - ballState.y) / (KICK_SPOT.y - GOAL_Y)));
+  }
+  const extendRamp = Math.max(0, Math.min(1, (flightProgress - 0.55) / 0.4));
+
+  // 2) Arm direction — if the ball is high the arms reach UP; if low
+  //    they extend OUT laterally. User feedback: "if the ball is high
+  //    have the keeper extend their arms UP not straight out".
+  let upFraction = 0;
+  if (ballState && ballState.z != null) {
+    // Keeper's chest is ~0.9 m. Anything above 1 m starts shifting
+    // the reach upward; balls near the crossbar (2.4 m) → full up.
+    upFraction = Math.max(0, Math.min(1, (ballState.z - 0.9) / 1.4));
+  }
+
+  // Dive velocity → lateral magnitude.
   const maxV = KEEPER_MAX_SPEED_M * PX_PER_M;
   const diveMag = Math.min(1, Math.abs(diveVx) / maxV);
-  const diveSign = Math.sign(diveVx);
-  // Body.
+  const diveSign = Math.sign(diveVx) || 0;
+
+  // Body (unchanged).
   ctx.fillStyle = '#f3d233';
   ctx.fillRect(feet.x - w / 2, head.y + headR * 0.7, w, feet.y - (head.y + headR * 0.7));
-  // Stretched arms — grow longer and shift toward the dive direction
-  // as the keeper accelerates laterally. At full dive speed the arms
-  // span ~4 × the body width and centre shifts by ~0.7 × w in the
-  // dive direction (so the keeper looks like they're reaching).
-  const armSpan = w * (2.0 + diveMag * 2.2);
-  const armCenterX = feet.x + diveSign * diveMag * w * 0.7;
-  ctx.fillRect(armCenterX - armSpan / 2, head.y + headR * 1.4, armSpan, w * 0.28);
-  // Head — shifts a touch in the dive direction so the figure
-  // visibly leans into the dive.
+
+  // Arms — drawn as a rotated rectangle whose direction depends on
+  // whether the ball is high (up) or low (out sideways). Length is
+  // gated by extendRamp so the dive happens late, not early.
+  const armSpan = w * (2.0 + (diveMag + extendRamp) * 1.5);
+  const reachLen = armSpan * extendRamp;        // 0 until late in flight
+  // Direction vector from keeper to where the ball will be — biased
+  // up by upFraction, biased sideways by diveSign (default right if
+  // keeper isn't actively diving).
+  const dx = (diveSign === 0 ? 1 : diveSign) * (1 - upFraction);
+  const dy = -upFraction;
+  const len = Math.hypot(dx, dy) || 1;
+  const ux = dx / len, uy = dy / len;
+  ctx.save();
+  ctx.translate(feet.x, head.y + headR * 1.4);
+  ctx.rotate(Math.atan2(uy, ux));
+  // Forward arm (toward the ball).
+  ctx.fillRect(0, -w * 0.14, reachLen, w * 0.28);
+  // Trailing arm (back for balance) — half length, only when actively diving.
+  if (diveMag > 0.25) {
+    ctx.fillRect(-reachLen * 0.5, -w * 0.14, reachLen * 0.5, w * 0.28);
+  }
+  ctx.restore();
+
+  // Head — leans into the dive direction.
   ctx.fillStyle = '#c8a888';
+  const headShiftX = (diveSign === 0 ? 0 : diveSign) * diveMag * w * 0.25 * extendRamp;
+  const headShiftY = -upFraction * headR * 0.5 * extendRamp;
   ctx.beginPath();
-  ctx.arc(head.x + diveSign * diveMag * w * 0.25, head.y + headR, headR, 0, Math.PI * 2);
+  ctx.arc(head.x + headShiftX, head.y + headR + headShiftY, headR, 0, Math.PI * 2);
   ctx.fill();
+
   // Shadow.
   ctx.fillStyle = 'rgba(0,0,0,0.3)';
   ctx.beginPath(); ctx.ellipse(feet.x, feet.y + 2, w * 0.7, w * 0.18, 0, 0, Math.PI * 2); ctx.fill();
@@ -808,7 +847,8 @@ function drawBallProjected(ball) {
   // edge). 1.5 px-in-pitch ≈ a real soccer ball at PX_PER_M = 13.5.
   const p = project(ball.x, ball.y, ball.z);
   if (!p.visible) return;
-  const r = Math.max(2.5, Math.min(10, p.scale * 1.8));
+  // Cap at 14 px (was 10 — was too small at close range per user feedback).
+  const r = Math.max(2.5, Math.min(14, p.scale * 2.4));
   ctx.fillStyle = '#fff';
   ctx.beginPath(); ctx.arc(p.x, p.y, r, 0, Math.PI * 2); ctx.fill();
   ctx.strokeStyle = 'rgba(0,0,0,0.4)';
@@ -826,7 +866,7 @@ function drawScene(state, hudText, trail, showKickSpotMarker = false) {
   // top during a save attempt.
   const keeperX = state && state.kx != null ? state.kx : KEEPER_START.x;
   const keeperVx = state && state.kvx != null ? state.kvx : 0;
-  drawKeeperProjected(keeperX, keeperVx);
+  drawKeeperProjected(keeperX, keeperVx, state);
   // Trail.
   if (trail && trail.length > 1) {
     ctx.strokeStyle = 'rgba(255,255,255,0.75)';
