@@ -100,11 +100,11 @@
 <div class="container">
   <h1>🚗 Stunt Car Ramp Jump</h1>
   <p class="intro">
-    A daredevil car hits a launch ramp and tries to land wheels-down on
-    a landing ramp across a gap. The optimiser tunes
-    <strong>launch speed, launch ramp angle,</strong> and an
-    <strong>in-air torque</strong> (constant angular acceleration while
-    airborne — lets the driver rotate the chassis to land flat).
+    A daredevil car hits a launch ramp and tries to land wheels-down
+    on a landing ramp across a gap. The optimiser tunes
+    <strong>launch speed</strong> and <strong>launch ramp angle</strong>.
+    Whether it lands wheels-down then depends on the ramp geometry,
+    the time of flight, and gravity — no magic in-air rotation.
   </p>
 
   <div class="stage">
@@ -123,8 +123,6 @@
           <label for="manual-angle">Ramp ° <output id="manual-angle-out">30</output></label>
           <input type="range" id="manual-angle" min="15" max="50" step="0.5" value="30">
 
-          <label for="manual-torque">Air torque <output id="manual-torque-out">0.00</output></label>
-          <input type="range" id="manual-torque" min="-0.5" max="0.5" step="0.01" value="0">
         </div>
         <button id="manual-btn" onclick="manualJump()">▶ Send it (Human Raphson)</button>
       </div>
@@ -185,7 +183,6 @@
         <div class="stat-row"><span>Best so far</span><span id="best-score">—</span></div>
         <div class="stat-row"><span>Speed</span><span id="param-speed">—</span></div>
         <div class="stat-row"><span>Ramp °</span><span id="param-angle">—</span></div>
-        <div class="stat-row"><span>Air torque</span><span id="param-torque">—</span></div>
       </div>
     </div>
   </div>
@@ -197,7 +194,7 @@
     </p>
     <table>
       <thead>
-        <tr><th>Algorithm</th><th>Score</th><th>Jumps used</th><th>Best params (speed / ° / torque)</th></tr>
+        <tr><th>Algorithm</th><th>Score</th><th>Jumps used</th><th>Best params (speed / °)</th></tr>
       </thead>
       <tbody id="leaderboard-body">
         <tr><td colspan="4" style="color: var(--muted); text-align: center;">— no runs yet —</td></tr>
@@ -209,8 +206,7 @@
   <p>
     A 2-D rigid-body car (chassis + two wheels, Matter.js constraints)
     rolls toward a launch ramp, leaves the lip at the configured speed
-    and angle, applies a constant <em>in-air torque</em> while airborne,
-    and either sticks the landing on the far ramp or doesn't.
+    and angle, and either sticks the landing on the far ramp or doesn't.
   </p>
   <p>
     <strong>Score</strong> is composite:
@@ -295,15 +291,18 @@ const CHASSIS_W = 64;
 const CHASSIS_H = 18;
 const WHEEL_R = 9;
 
-// Parameter ranges — decoded from [0,1]^3:
-//   speed     : 10 to 18  (chassis launch velocity, capped per user)
-//   rampDeg   : 15 to 50  (launch ramp slope, degrees)
-//   airTorque : -0.5 to 0.5 (constant angular acceleration while airborne)
+// Parameter ranges — 2-D search:
+//   speed     : 10 to 18  (chassis launch velocity)
+//   rampDeg   : 12 to 28  (real stunt ramps are this range — 50° was
+//                          launching the car into orbit)
+// Air-torque was dropped: it was applying a constant angular
+// acceleration in the air which is unphysical (cars don't have
+// thrusters). The chassis now rotates only from the launch geometry
+// + gravity-driven rotation around the wheels at takeoff.
 function decode(u) {
   return [
     10 + 8 * u[0],
-    15 + 35 * u[1],
-    -0.5 + 1.0 * u[2],
+    12 + 16 * u[1],
   ];
 }
 
@@ -427,7 +426,7 @@ const N_SIM_STEPS = 300;     // ~5 s of physics (was 8 s — sim runs too long a
 const SIM_DELTA = 1000 / 60;
 
 function runJump(params, recordFrames = false) {
-  const [speed, rampDeg, airTorque] = params;
+  const [speed, rampDeg] = params;
   const world = buildWorld(rampDeg);
   const { engine, chassis, wheelL, wheelR } = world;
 
@@ -463,16 +462,9 @@ function runJump(params, recordFrames = false) {
   let landedOnRoof = false;
 
   for (let step = 0; step < N_SIM_STEPS; step++) {
-    // Apply in-air torque only when airborne. "Airborne" = chassis is
-    // past the gap-left edge AND no wheel is in contact with anything
-    // (cheap proxy: chassis y is above the ramps).
-    const airborne = chassis.position.x > GAP_LEFT - 10
-      && chassis.position.x < GAP_RIGHT + 10
-      && chassis.position.y < GROUND_Y - 30;
-    if (airborne) {
-      Body.setAngularVelocity(chassis, chassis.angularVelocity + airTorque * 0.04);
-    }
-
+    // In-air torque removed — chassis rotation now comes only from the
+    // launch geometry + gravity. No more "the driver pushed itself
+    // straight in mid-air" effect.
     Engine.update(engine, SIM_DELTA);
 
     // Track landing state — once the chassis is past the gap on the
@@ -807,7 +799,7 @@ async function runOptimization() {
   await new Promise((r) => setTimeout(r, 30));
 
   try {
-    const opt = new cls(objective, budget, 3);
+    const opt = new cls(objective, budget, 2);
     opt.optimize();
 
     const bestIdx = await animateSearchMontage();
@@ -839,10 +831,9 @@ async function runOptimization() {
 }
 
 function updateBestParams(params) {
-  const [s, deg, t] = params;
+  const [s, deg] = params;
   document.getElementById('param-speed').textContent = s.toFixed(2);
   document.getElementById('param-angle').textContent = `${deg.toFixed(1)}°`;
-  document.getElementById('param-torque').textContent = t.toFixed(2);
 }
 
 function replayBest() {
@@ -878,13 +869,13 @@ function renderLeaderboard() {
     return;
   }
   body.innerHTML = leaderboard.map((row) => {
-    const [s, deg, t] = row.params;
+    const [s, deg] = row.params;
     const cls = row.name === 'Human Raphson' ? ' class="human-raphson"' : '';
     return `<tr${cls}>
       <td>${row.name}</td>
       <td>${row.score.toFixed(1)} (${row.result})</td>
       <td>${row.evals}</td>
-      <td>${s.toFixed(1)} / ${deg.toFixed(1)}° / ${t.toFixed(2)}</td>
+      <td>${s.toFixed(1)} / ${deg.toFixed(1)}°</td>
     </tr>`;
   }).join('');
 }
@@ -892,11 +883,10 @@ function renderLeaderboard() {
 // ============================================================================
 // Human Raphson.
 // ============================================================================
-const sliderInputs = ['manual-speed', 'manual-angle', 'manual-torque'];
+const sliderInputs = ['manual-speed', 'manual-angle'];
 const sliderOutputs = {
   'manual-speed': (v) => parseFloat(v).toFixed(1),
   'manual-angle': (v) => parseFloat(v).toFixed(1),
-  'manual-torque': (v) => parseFloat(v).toFixed(2),
 };
 for (const id of sliderInputs) {
   const slider = document.getElementById(id);
@@ -909,17 +899,16 @@ for (const id of sliderInputs) {
 async function manualJump() {
   const s = parseFloat(document.getElementById('manual-speed').value);
   const deg = parseFloat(document.getElementById('manual-angle').value);
-  const t = parseFloat(document.getElementById('manual-torque').value);
   const btn = document.getElementById('manual-btn');
   btn.disabled = true;
   btn.textContent = 'Sending it...';
   animationToken++;
   await new Promise((r) => setTimeout(r, 30));
   try {
-    const replay = runJump([s, deg, t], /*recordFrames=*/true);
+    const replay = runJump([s, deg], /*recordFrames=*/true);
     document.getElementById('score-now').textContent = replay.score.toFixed(1);
     document.getElementById('score-detail').textContent = replay.result;
-    updateBestParams([s, deg, t]);
+    updateBestParams([s, deg]);
     await animateShot(
       replay.frames,
       `🧠 Human Raphson: ${replay.score.toFixed(1)} (${replay.result})`,
@@ -939,7 +928,7 @@ function resetEverything() {
   lastBest = null;
   animationToken++;
   ['score-now', 'evals'].forEach((id) => document.getElementById(id).textContent = '0');
-  ['score-detail', 'best-score', 'param-speed', 'param-angle', 'param-torque'].forEach((id) =>
+  ['score-detail', 'best-score', 'param-speed', 'param-angle'].forEach((id) =>
     document.getElementById(id).textContent = '—');
   renderLeaderboard();
   drawIdleScene();
