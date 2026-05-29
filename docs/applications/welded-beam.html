@@ -1,0 +1,990 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' 'unsafe-inline'; style-src 'self' 'unsafe-inline';">
+<title>🏗️ Welded Beam Optimizer — HumpDay</title>
+<style>
+  :root {
+    --bg: #1a1a22;
+    --panel: #2d2d3a;
+    --accent: #ffcc00;
+    --text: #e8e8ea;
+    --muted: #9a9aac;
+  }
+  body { margin: 0; background: var(--bg); color: var(--text);
+    font-family: -apple-system, 'Segoe UI', 'Helvetica Neue', Helvetica, Arial, sans-serif; }
+  .site-nav { background: #34495e; padding: 12px 24px;
+    font-family: 'Times New Roman', Times, serif;
+    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1); }
+  .site-nav-inner { max-width: 1100px; margin: 0 auto;
+    display: flex; justify-content: space-between; align-items: center; }
+  .site-nav a { color: #ecf0f1; text-decoration: none; margin: 0 12px; }
+  .site-nav a:hover { color: white; text-decoration: underline; }
+  .site-nav-brand { font-weight: 700; font-size: 1.25em; }
+
+  .container { max-width: 1100px; margin: 0 auto; padding: 32px 24px 64px; }
+  h1 { font-size: 2.2em; margin: 0.2em 0; }
+  h2 { font-size: 1.4em; margin-top: 1.4em; color: var(--accent); }
+  p { line-height: 1.55; max-width: 70ch; }
+  .intro { color: var(--muted); }
+
+  .stage { display: grid; grid-template-columns: 1fr 320px; gap: 24px;
+    align-items: start; margin-top: 24px; }
+  @media (max-width: 800px) { .stage { grid-template-columns: 1fr; } }
+  canvas { background: #20202a;
+    border: 3px solid var(--accent); border-radius: 6px; display: block;
+    width: 100%; height: auto; }
+
+  .panel { background: var(--panel); padding: 18px; border-radius: 6px; border: 1px solid #404054; }
+  .panel h3 { margin: 0 0 12px; font-size: 1.05em; text-transform: uppercase;
+    letter-spacing: 0.06em; color: var(--accent); }
+  label { display: block; margin: 10px 0 6px; font-size: 0.9em; color: var(--muted); }
+  select, input, button { width: 100%; box-sizing: border-box; padding: 8px 10px;
+    border-radius: 4px; border: 1px solid #404054; background: #1a1a22; color: var(--text); font-size: 0.95em; }
+  button { background: var(--accent); color: #1a1a22; font-weight: 700; cursor: pointer; margin-top: 6px; transition: opacity 0.15s; }
+  button:hover { opacity: 0.88; }
+  button.secondary { background: #404054; color: var(--text); font-weight: 400; }
+  button:disabled { opacity: 0.5; cursor: not-allowed; }
+  .stats { margin-top: 16px; padding-top: 14px; border-top: 1px solid #404054; font-size: 0.92em; line-height: 1.6; }
+  .stats .score { font-size: 2.6em; color: var(--accent); font-weight: 700; }
+  .stat-row { display: flex; justify-content: space-between; gap: 8px; }
+  .stat-row span:first-child { white-space: nowrap; flex-shrink: 0; color: var(--muted); }
+  .stat-row span:last-child { color: var(--text); font-family: 'SF Mono', Menlo, monospace; text-align: right; word-break: break-word; }
+  .algo-tag { font-size: 0.7em; color: var(--muted); display: block; }
+
+  .leaderboard { margin-top: 24px; }
+  .leaderboard table { width: 100%; border-collapse: collapse; background: var(--panel); border-radius: 6px; overflow: hidden; }
+  .leaderboard th, .leaderboard td { padding: 10px 14px; text-align: left; border-bottom: 1px solid #404054; }
+  .leaderboard th { background: #1a1a22; color: var(--muted); text-transform: uppercase; font-size: 0.78em; letter-spacing: 0.08em; }
+  .leaderboard td:nth-child(2) { text-align: center; font-size: 1.3em; font-weight: 700; color: var(--accent); }
+  .leaderboard td:nth-child(3), .leaderboard td:nth-child(4), .leaderboard td:nth-child(5) { font-family: 'SF Mono', Menlo, monospace; color: var(--muted); }
+  .leaderboard tr.human-raphson td:first-child { color: #ff9944; font-weight: 700; }
+  .leaderboard tr.infeasible td:nth-child(2) { color: #d04040; }
+
+  .left-stack { display: flex; flex-direction: column; gap: 16px; min-width: 0; }
+  .hr-panel { padding: 14px 16px; }
+  .hr-panel h3 { margin: 0 0 6px; }
+  .hr-sliders { display: grid; grid-template-columns: repeat(2, 1fr); gap: 6px 18px; margin-bottom: 10px; }
+  .hr-sliders .slider-cell { display: flex; flex-direction: column; }
+  .hr-sliders label { margin: 0; display: flex; justify-content: space-between; align-items: baseline; font-size: 0.84em; }
+  .hr-sliders label output { color: var(--accent); font-family: 'SF Mono', Menlo, monospace; font-size: 0.92em; }
+  .hr-sliders input[type=range] { width: 100%; margin: 0; padding: 0; background: transparent; }
+  .hr-sliders input[type=range]::-webkit-slider-runnable-track { background: #1a1a22; height: 6px; border-radius: 3px; }
+  .hr-sliders input[type=range]::-webkit-slider-thumb { -webkit-appearance: none; appearance: none; background: var(--accent); width: 18px; height: 18px; border-radius: 50%; margin-top: -6px; cursor: pointer; }
+  .hr-panel button { background: #ff9944; color: #1a1a22; margin-top: 0; }
+
+  .skill-callout { margin-top: 36px; background: rgba(126, 217, 87, 0.07); border: 1px solid rgba(126, 217, 87, 0.35); border-radius: 8px; padding: 18px 22px; }
+  .skill-callout h3 { margin: 0 0 6px; color: #7ed957; font-size: 1.05em; text-transform: none; letter-spacing: 0; }
+  .skill-callout p { margin: 0 0 10px; color: var(--text); max-width: none; }
+  .skill-callout pre { background: #1a1a22; border: 1px solid #404054; border-radius: 4px; padding: 10px 14px; margin: 0; font-size: 0.84em; color: #7ed957; white-space: pre-wrap; word-break: break-all; font-family: 'SF Mono', Menlo, monospace; }
+  .skill-actions { margin-top: 10px; display: flex; align-items: center; gap: 14px; }
+  .skill-actions button { width: auto; background: #404054; color: var(--text); border: 1px solid #404054; padding: 6px 12px; font-size: 0.85em; cursor: pointer; border-radius: 4px; margin: 0; font-weight: 500; }
+  .skill-actions button:hover { background: #4a4a60; }
+  .skill-actions a { color: #7ed957; font-size: 0.85em; text-decoration: none; }
+  .skill-actions a:hover { text-decoration: underline; }
+
+</style>
+</head>
+<body>
+<nav class="site-nav">
+  <div class="site-nav-inner">
+    <a class="site-nav-brand" href="../index.html">HumpDay 🦅</a>
+    <div>
+      <a href="../index.html">Home</a>
+      <a href="index.html">Applications</a>
+      <a href="../contest.html">Contest</a>
+      <a href="../README.html">Docs</a>
+    </div>
+  </div>
+</nav>
+
+<div class="container">
+  <h1>🏗️ Welded Beam Optimizer</h1>
+  <p class="intro">
+    Design the cheapest welded cantilever beam that survives a 6 000-lb tip
+    load under seven physical constraints (shear, bending, deflection,
+    buckling, geometry). HumpDay's optimisers tune four variables —
+    weld thickness <em>h</em>, weld length <em>l</em>, beam thickness
+    <em>t</em>, beam width <em>b</em> — over a narrow feasible region.
+    The world-class minimum cost is ≈ $1.725.
+  </p>
+
+  <div class="stage">
+    <div class="left-stack">
+      <canvas id="canvas" width="800" height="450"></canvas>
+
+      <div class="panel hr-panel">
+        <h3>🧠 Human Raphson</h3>
+        <p style="color: var(--muted); margin: 0 0 12px; font-size: 0.86em;">
+          Try a manual design — slide, load, compete against the algorithms.
+          Sliders use the same physical bounds the optimisers search over.
+        </p>
+        <div class="hr-sliders">
+          <div class="slider-cell">
+            <label for="manual-h">Weld h (in) <output id="manual-h-out">0.21</output></label>
+            <input type="range" id="manual-h" min="0.125" max="2.0" step="0.005" value="0.21">
+          </div>
+          <div class="slider-cell">
+            <label for="manual-l">Weld l (in) <output id="manual-l-out">3.47</output></label>
+            <input type="range" id="manual-l" min="0.1" max="10.0" step="0.02" value="3.47">
+          </div>
+          <div class="slider-cell">
+            <label for="manual-t">Beam t (in) <output id="manual-t-out">9.04</output></label>
+            <input type="range" id="manual-t" min="0.1" max="10.0" step="0.02" value="9.04">
+          </div>
+          <div class="slider-cell">
+            <label for="manual-b">Beam b (in) <output id="manual-b-out">0.21</output></label>
+            <input type="range" id="manual-b" min="0.1" max="2.0" step="0.005" value="0.21">
+          </div>
+        </div>
+        <button id="manual-btn" onclick="manualLoad()">▶ Apply load (Human Raphson)</button>
+      </div>
+    </div>
+
+    <div class="panel">
+      <h3>Algorithm</h3>
+      <label for="algorithm">Pick a HumpDay optimizer:</label>
+      <select id="algorithm">
+        <optgroup label="Trust-region / interpolation">
+          <option value="PRIMA_BOBYQA" selected>PRIMA_BOBYQA</option>
+          <option value="PRIMA_NEWUOA">PRIMA_NEWUOA</option>
+        </optgroup>
+        <optgroup label="Local / classical">
+          <option value="NelderMead">Nelder-Mead</option>
+          <option value="Powell">Powell</option>
+          <option value="LBFGSB">L-BFGS-B (simplified)</option>
+        </optgroup>
+        <optgroup label="Population-based">
+          <option value="DifferentialEvolution">Differential Evolution</option>
+          <option value="ParticleSwarm">Particle Swarm</option>
+          <option value="CMAEvolutionStrategy">CMA-Evolution Strategy</option>
+          <option value="GeneticAlgorithm">Genetic Algorithm</option>
+          <option value="EvolutionStrategy">Evolution Strategy</option>
+          <option value="HarmonySearch">Harmony Search</option>
+        </optgroup>
+        <optgroup label="Other">
+          <option value="SimulatedAnnealing">Simulated Annealing</option>
+          <option value="BayesianOpt">Bayesian Optimization</option>
+          <option value="FireflyAlgorithm">Firefly Algorithm</option>
+          <option value="AntColonyOpt">Ant Colony</option>
+          <option value="TabuSearch">Tabu Search</option>
+          <option value="RandomSearch">Random Search</option>
+        </optgroup>
+      </select>
+
+      <label for="budget">Evaluation budget:</label>
+      <select id="budget">
+        <option value="10">10 designs</option>
+        <option value="20">20 designs</option>
+        <option value="50" selected>50 designs</option>
+        <option value="100">100 designs</option>
+        <option value="200">200 designs</option>
+        <option value="500">500 designs</option>
+      </select>
+      <p style="margin: 8px 0 0; font-size: 0.78em; color: var(--muted);">
+        Each design is drawn and load-tested at ~2× the final-replay
+        speed. At 50 designs that's about a minute of watchable search.
+      </p>
+
+      <button id="run-btn" onclick="runOptimization()">▶ Find the cheapest beam</button>
+      <button class="secondary" onclick="replayBest()">🔁 Replay best design</button>
+      <button class="secondary" onclick="resetEverything()">⟲ Reset leaderboard</button>
+
+      <div class="stats">
+        <div class="stat-row"><span>Score</span><span class="score" id="score-now">0</span></div>
+        <div class="stat-row"><span>Detail</span><span id="score-detail">—</span></div>
+        <div class="stat-row"><span>Designs tried</span><span id="evals">0</span></div>
+        <div class="stat-row"><span>Best so far</span><span id="best-score">—</span></div>
+        <div class="stat-row"><span>Weld h (in)</span><span id="param-h">—</span></div>
+        <div class="stat-row"><span>Weld l (in)</span><span id="param-l">—</span></div>
+        <div class="stat-row"><span>Beam t (in)</span><span id="param-t">—</span></div>
+        <div class="stat-row"><span>Beam b (in)</span><span id="param-b">—</span></div>
+      </div>
+    </div>
+  </div>
+
+  <div class="leaderboard">
+    <h2>Leaderboard (this session)</h2>
+    <p style="color: var(--muted);">
+      Each row is the cheapest feasible design a given algorithm found
+      (lower cost = better; infeasible best-attempts shown in red and
+      pushed to the bottom). The published world-class minimum is
+      $1.725 — anything under $2.00 is a very good design.
+    </p>
+    <table>
+      <thead>
+        <tr><th>Algorithm</th><th>Score</th><th>Cost ($)</th><th>Evals</th><th>h / l / t / b (in)</th></tr>
+      </thead>
+      <tbody id="leaderboard-body">
+        <tr><td colspan="5" style="color: var(--muted); text-align: center;">— no runs yet —</td></tr>
+      </tbody>
+    </table>
+  </div>
+
+  <h2>What's happening</h2>
+  <p>
+    A classical structural engineering benchmark (Ragsdell &amp; Phillips,
+    1976). A steel cantilever beam of fixed length <em>L = 14 in</em>
+    carries a downward tip load of <em>P = 6 000 lb</em>. The beam is
+    attached to a rigid wall by two fillet welds of leg size <em>h</em>
+    and length <em>l</em>. The beam itself has rectangular cross-section
+    <em>t × b</em>. Cost — material plus labour plus welding — is
+    <code>1.10471·h²·l + 0.04811·t·b·(14 + l)</code>.
+  </p>
+  <p>
+    Seven constraints must hold simultaneously: shear stress in the weld
+    ≤ 13 600 psi, bending stress in the beam ≤ 30 000 psi, tip deflection
+    ≤ 0.25 in, buckling load Pc ≥ P, plus three geometric constraints
+    (<em>h ≥ 0.125</em>, <em>h ≤ b</em>, combined-cost bound). Infeasible
+    designs are penalised quadratically — so the cost landscape has
+    <strong>steep penalty cliffs</strong> around a narrow feasible
+    corridor. The score shown is <em>100</em> at the published optimum
+    and drops linearly to <em>0</em> at $6.725; infeasible designs
+    score zero regardless of cost.
+  </p>
+  <p>
+    A smoke-test of 2 000 random unit-cube samples (seed 0) gave a
+    feasibility rate of <strong>2.6 %</strong> and a best random cost
+    of <strong>$2.68</strong>. So unguided search burns most of its
+    budget in the infeasible interior. Run a few optimisers and see
+    how they each handle the penalty cliffs.
+  </p>
+
+  <hr style="border: 0; border-top: 1px solid #404054; margin: 32px 0 16px;" />
+  <p style="font-size: 0.78em; color: var(--muted);">
+    Mechanical formulation from
+    <a style="color: var(--muted); text-decoration: underline;" href="https://en.wikipedia.org/wiki/Test_functions_for_optimization#Welded_beam_design_optimization_problem">Ragsdell &amp; Phillips (1976)</a>
+    — see <code>example_applications/welded_beam/problem.py</code> for the exact equations.
+  </p>
+
+  <div class="skill-callout">
+    <h3>🌱 Save the Planet</h3>
+    <p>If your hyper-parameter searches are heating the Earth, drop this in Cursor or Claude:</p>
+    <pre id="skill-snippet">Read https://raw.githubusercontent.com/microprediction/humpday/main/SKILL.md
+and create a project skill from it.</pre>
+    <div class="skill-actions">
+      <button type="button" onclick="copySkillSnippet(this)">📋 Copy</button>
+      <a href="https://github.com/microprediction/humpday/blob/main/SKILL.md" target="_blank" rel="noopener">View SKILL.md →</a>
+    </div>
+  </div>
+
+  <script>
+    function copySkillSnippet(btn) {
+      const text = document.getElementById('skill-snippet').textContent;
+      navigator.clipboard.writeText(text).then(() => {
+        const orig = btn.textContent;
+        btn.textContent = '✓ Copied';
+        setTimeout(() => { btn.textContent = orig; }, 1500);
+      }).catch(() => {
+        btn.textContent = '✗ Copy failed';
+      });
+    }
+  </script>
+</div>
+
+<script src="../js/modules/base-optimizer.js"></script>
+<script src="../js/modules/prima-algorithms.js"></script>
+<script src="../js/modules/scipy-algorithms.js"></script>
+<script src="../js/modules/evolutionary-algorithms.js"></script>
+<script src="../js/modules/search-algorithms.js"></script>
+
+<script>
+// ============================================================================
+// Welded beam — Ragsdell & Phillips (1976) formulation, ported from
+// example_applications/welded_beam/problem.py. No external physics engine:
+// the cost, stresses, deflection and buckling load are all closed-form, so
+// each "evaluation" is microseconds and only the rendering takes time.
+// ============================================================================
+
+const canvas = document.getElementById('canvas');
+const ctx = canvas.getContext('2d');
+const W = canvas.width, H = canvas.height;
+
+// Physical constants — match problem.py exactly.
+const P_LOAD = 6000.0;
+const L_BEAM = 14.0;
+const E_MOD = 30e6;
+const G_MOD = 12e6;
+const TAU_MAX = 13600.0;
+const SIGMA_MAX = 30000.0;
+const DELTA_MAX = 0.25;
+const PENALTY_WEIGHT = 1e4;
+
+// Variable bounds — slider min/max MUST match these (section 3 of
+// APPLICATIONS_GUIDELINES.md). Each entry is [lo, hi].
+const BOUNDS = {
+  h: [0.125, 2.0],
+  l: [0.1, 10.0],
+  t: [0.1, 10.0],
+  b: [0.1, 2.0],
+};
+
+// Decode u ∈ [0,1]^4 to physical (h, l, t, b).
+function decode(u) {
+  return [
+    BOUNDS.h[0] + (BOUNDS.h[1] - BOUNDS.h[0]) * u[0],
+    BOUNDS.l[0] + (BOUNDS.l[1] - BOUNDS.l[0]) * u[1],
+    BOUNDS.t[0] + (BOUNDS.t[1] - BOUNDS.t[0]) * u[2],
+    BOUNDS.b[0] + (BOUNDS.b[1] - BOUNDS.b[0]) * u[3],
+  ];
+}
+
+// Stress + deflection + buckling-load formulas. Guarded against the
+// h→0, t→0, b→0 corner exactly like the Python reference.
+function stresses(h, l, t, b) {
+  const eps = 1e-12;
+  const tau_prime = P_LOAD / (Math.sqrt(2) * h * l + eps);
+  const M = P_LOAD * (L_BEAM + l / 2);
+  const R = Math.sqrt(l * l / 4 + (h + t) * (h + t) / 4);
+  const J = 2 * (Math.sqrt(2) * h * l * (l * l / 12 + (h + t) * (h + t) / 4));
+  const tau_dprime = M * R / (J + eps);
+  const tau = Math.sqrt(
+    tau_prime * tau_prime
+    + 2 * tau_prime * tau_dprime * l / (2 * R + eps)
+    + tau_dprime * tau_dprime
+  );
+  const sigma = 6 * P_LOAD * L_BEAM / (t * t * b + eps);
+  const delta = 4 * P_LOAD * L_BEAM * L_BEAM * L_BEAM / (E_MOD * t * t * t * b + eps);
+  const pc = (
+    4.013 * E_MOD * Math.sqrt(t * t * Math.pow(b, 6) / 36) / (L_BEAM * L_BEAM)
+    * (1 - t / (2 * L_BEAM) * Math.sqrt(E_MOD / (4 * G_MOD + eps)))
+  );
+  return { tau, sigma, delta, pc };
+}
+
+function rawCost(h, l, t, b) {
+  return 1.10471 * h * h * l + 0.04811 * t * b * (14 + l);
+}
+
+function constraintViolations(h, l, t, b) {
+  const { tau, sigma, delta, pc } = stresses(h, l, t, b);
+  return [
+    { name: 'shear τ ≤ 13 600', g: tau - TAU_MAX },
+    { name: 'bending σ ≤ 30 000', g: sigma - SIGMA_MAX },
+    { name: 'h ≤ b', g: h - b },
+    { name: 'combined cost ≤ 5', g: 0.10471 * h * h + 0.04811 * t * b * (14 + l) - 5 },
+    { name: 'h ≥ 0.125', g: 0.125 - h },
+    { name: 'deflection ≤ 0.25', g: delta - DELTA_MAX },
+    { name: 'buckling Pc ≥ P', g: P_LOAD - pc },
+  ];
+}
+
+// Evaluate a (h, l, t, b) design — returns everything we need for both
+// the HumpDay objective (cost + penalty) and the renderer (stresses,
+// per-constraint slack, score).
+function evaluateDesign(params) {
+  const [h, l, t, b] = params;
+  const cost = rawCost(h, l, t, b);
+  const s = stresses(h, l, t, b);
+  const violations = constraintViolations(h, l, t, b);
+  const maxViol = violations.reduce((m, v) => Math.max(m, v.g), 0);
+  const feasible = maxViol <= 1e-6;
+  const penalty = violations.reduce(
+    (acc, v) => acc + PENALTY_WEIGHT * Math.pow(Math.max(0, v.g), 2), 0,
+  );
+  // Score: 100 at the published optimum ($1.725), drops linearly to 0 at
+  // $6.725, infeasible → 0. Chosen so a "good" feasible cost of $2.00
+  // scores ~94.5 — high enough to feel like progress without saturating.
+  let score = 0;
+  if (feasible) {
+    score = Math.max(0, Math.min(100, 100 - (cost - 1.725) * 20));
+  }
+  return {
+    params, cost, penalty, total: cost + penalty,
+    stresses: s, violations, maxViolation: maxViol, feasible, score,
+  };
+}
+
+// ============================================================================
+// HumpDay objective: u ∈ [0,1]^4 → cost + penalty (to minimise).
+// ============================================================================
+const searchHistory = [];
+
+function objective(u) {
+  const params = decode(u);
+  const r = evaluateDesign(params);
+  searchHistory.push(r);
+  return r.total;
+}
+
+// ============================================================================
+// Rendering — side view of the cantilever beam, with a cross-section inset
+// (top-right) and a constraint readout strip (bottom).
+// ============================================================================
+
+// Drawing layout — keep all magic numbers here so the geometry is
+// straightforward to tweak without hunting through drawScene.
+const SCALE = 38;                              // px per inch (side view)
+const WALL_X = 70;                             // right edge of the wall
+const BEAM_BASE_Y = 180;                       // y of beam centreline at the wall
+const BEAM_TIP_X = WALL_X + L_BEAM * SCALE;    // = 70 + 14*38 = 602
+
+// Visual cap on deflection — physical δ can be tiny (0.001 in) or huge
+// (50 in for an infeasible noodle); we map δ logarithmically into pixels
+// so both extremes are legible without breaking the cantilever shape.
+function deflectionPx(deltaIn) {
+  // 0 → 0 px, 0.01 → ~12 px, 0.25 → ~50 px, 5 → ~100 px (clamped).
+  const px = 80 * Math.log10(1 + Math.abs(deltaIn) * 80);
+  return Math.min(140, Math.max(0, px));
+}
+
+function drawBeam(state, hudText) {
+  ctx.clearRect(0, 0, W, H);
+
+  // Background — soft dark with subtle grid so the beam reads as
+  // technical drawing.
+  ctx.fillStyle = '#20202a';
+  ctx.fillRect(0, 0, W, H);
+  ctx.strokeStyle = 'rgba(255, 255, 255, 0.04)';
+  ctx.lineWidth = 1;
+  for (let x = 0; x < W; x += 40) {
+    ctx.beginPath(); ctx.moveTo(x, 0); ctx.lineTo(x, H); ctx.stroke();
+  }
+  for (let y = 0; y < H; y += 40) {
+    ctx.beginPath(); ctx.moveTo(0, y); ctx.lineTo(W, y); ctx.stroke();
+  }
+
+  // Wall.
+  ctx.fillStyle = '#3a3a48';
+  ctx.fillRect(0, 30, WALL_X, 280);
+  ctx.fillStyle = '#2a2a36';
+  ctx.fillRect(WALL_X - 4, 30, 4, 280);                 // attachment shadow
+  // Hatching to indicate fixed support.
+  ctx.strokeStyle = '#5a5a6e';
+  ctx.lineWidth = 1;
+  for (let y = 30; y < 310; y += 10) {
+    ctx.beginPath();
+    ctx.moveTo(WALL_X - 14, y);
+    ctx.lineTo(WALL_X - 6, y + 10);
+    ctx.stroke();
+  }
+
+  if (!state) {
+    drawHud(hudText);
+    return;
+  }
+
+  const { params, stresses, feasible, violations, cost, score } = state.eval;
+  const [h, l, t, b] = params;
+  const tPx = Math.max(2, t * SCALE * 0.6);          // beam thickness on screen
+  const lPx = Math.max(3, l * SCALE);                // weld length along beam
+  const hPx = Math.max(2, h * SCALE);                // weld leg size
+
+  const deflectPx = deflectionPx(stresses.delta) * state.loadFrac;
+
+  // Beam — straight at base, curving down toward tip following a
+  // cantilever deflection shape y = δ * (3x² - x³) / 2 (cubic), where
+  // x ∈ [0, 1] is fractional distance from wall.
+  function beamCenterY(xFrac) {
+    return BEAM_BASE_Y + deflectPx * (3 * xFrac * xFrac - xFrac * xFrac * xFrac) / 2;
+  }
+
+  // Choose beam fill colour by worst stress level.
+  const tauFrac = stresses.tau / TAU_MAX;
+  const sigmaFrac = stresses.sigma / SIGMA_MAX;
+  const worstFrac = Math.max(tauFrac, sigmaFrac);
+  let beamFill = '#4a8050';                            // green, comfortably safe
+  if (worstFrac > 0.85) beamFill = '#b07a47';          // amber, near limit
+  if (worstFrac > 1.0) beamFill = '#a04040';           // red, exceeded
+
+  // Trace beam outline (top edge then bottom edge back, filled).
+  const STEPS = 40;
+  ctx.beginPath();
+  for (let i = 0; i <= STEPS; i++) {
+    const xFrac = i / STEPS;
+    const xPx = WALL_X + xFrac * (BEAM_TIP_X - WALL_X);
+    const yCenter = beamCenterY(xFrac);
+    if (i === 0) ctx.moveTo(xPx, yCenter - tPx / 2);
+    else ctx.lineTo(xPx, yCenter - tPx / 2);
+  }
+  for (let i = STEPS; i >= 0; i--) {
+    const xFrac = i / STEPS;
+    const xPx = WALL_X + xFrac * (BEAM_TIP_X - WALL_X);
+    const yCenter = beamCenterY(xFrac);
+    ctx.lineTo(xPx, yCenter + tPx / 2);
+  }
+  ctx.closePath();
+  ctx.fillStyle = beamFill;
+  ctx.fill();
+  ctx.strokeStyle = '#1a1a22';
+  ctx.lineWidth = 1.5;
+  ctx.stroke();
+
+  // Weld fillets — triangular at top + bottom, near the wall, of
+  // length lPx along the beam and leg size hPx.
+  ctx.fillStyle = '#d0a040';
+  // Top weld.
+  ctx.beginPath();
+  ctx.moveTo(WALL_X, BEAM_BASE_Y - tPx / 2);
+  ctx.lineTo(WALL_X, BEAM_BASE_Y - tPx / 2 - hPx);
+  ctx.lineTo(WALL_X + lPx, BEAM_BASE_Y - tPx / 2);
+  ctx.closePath();
+  ctx.fill();
+  // Bottom weld.
+  ctx.beginPath();
+  ctx.moveTo(WALL_X, BEAM_BASE_Y + tPx / 2);
+  ctx.lineTo(WALL_X, BEAM_BASE_Y + tPx / 2 + hPx);
+  ctx.lineTo(WALL_X + lPx, BEAM_BASE_Y + tPx / 2);
+  ctx.closePath();
+  ctx.fill();
+  ctx.strokeStyle = '#7a5a20';
+  ctx.lineWidth = 1;
+  ctx.stroke();
+
+  // Load arrow at the tip.
+  const tipY = beamCenterY(1);
+  ctx.strokeStyle = '#ffcc00';
+  ctx.lineWidth = 3;
+  ctx.beginPath();
+  ctx.moveTo(BEAM_TIP_X, tipY - 60);
+  ctx.lineTo(BEAM_TIP_X, tipY - tPx / 2 - 4);
+  ctx.stroke();
+  // Arrowhead.
+  ctx.fillStyle = '#ffcc00';
+  ctx.beginPath();
+  ctx.moveTo(BEAM_TIP_X, tipY - tPx / 2 - 2);
+  ctx.lineTo(BEAM_TIP_X - 6, tipY - tPx / 2 - 14);
+  ctx.lineTo(BEAM_TIP_X + 6, tipY - tPx / 2 - 14);
+  ctx.closePath();
+  ctx.fill();
+  // Load label.
+  ctx.fillStyle = '#ffcc00';
+  ctx.font = 'bold 13px -apple-system, Helvetica, Arial, sans-serif';
+  ctx.fillText('P = 6000 lb', BEAM_TIP_X - 36, tipY - 70);
+
+  // Length label.
+  ctx.strokeStyle = '#9a9aac';
+  ctx.lineWidth = 1;
+  ctx.setLineDash([4, 4]);
+  ctx.beginPath();
+  ctx.moveTo(WALL_X, BEAM_BASE_Y + tPx / 2 + 80);
+  ctx.lineTo(BEAM_TIP_X, BEAM_BASE_Y + tPx / 2 + 80);
+  ctx.stroke();
+  ctx.setLineDash([]);
+  ctx.fillStyle = '#9a9aac';
+  ctx.font = '11px -apple-system, Helvetica, Arial, sans-serif';
+  ctx.fillText('L = 14 in', (WALL_X + BEAM_TIP_X) / 2 - 22, BEAM_BASE_Y + tPx / 2 + 95);
+
+  // Cross-section inset (top-right) showing t × b with weld fillets.
+  drawCrossSection(t, b, h);
+
+  // Constraint readout — bottom strip.
+  drawConstraintStrip(state.eval);
+
+  drawHud(hudText);
+}
+
+function drawCrossSection(t, b, h) {
+  // Pinned to the top-right corner so the load arrow's "P = 6 000 lb"
+  // label (which sits just left of the beam tip) doesn't collide with
+  // the inset's readouts. The box is split into three bands —
+  //   header (title) · drawing area (beam + weld) · footer (t/b/h readouts) —
+  // so the gold weld fillets can never bleed into the text.
+  const boxW = 142, boxH = 190;
+  const boxLeft = W - boxW - 8;                        // 8 px margin from canvas right
+  const boxTop = 38;
+  const headerH = 24;
+  const footerH = 60;
+  const drawTop = boxTop + headerH;
+  const drawH = boxH - headerH - footerH;
+  const drawCx = boxLeft + boxW / 2;
+  const drawCy = drawTop + drawH / 2;
+
+  ctx.fillStyle = 'rgba(0, 0, 0, 0.6)';
+  ctx.fillRect(boxLeft, boxTop, boxW, boxH);
+  ctx.strokeStyle = 'rgba(255, 204, 0, 0.4)';
+  ctx.lineWidth = 1;
+  ctx.strokeRect(boxLeft, boxTop, boxW, boxH);
+  // Header underline so the bands read as distinct.
+  ctx.beginPath();
+  ctx.moveTo(boxLeft, drawTop);
+  ctx.lineTo(boxLeft + boxW, drawTop);
+  ctx.stroke();
+  ctx.beginPath();
+  ctx.moveTo(boxLeft, drawTop + drawH);
+  ctx.lineTo(boxLeft + boxW, drawTop + drawH);
+  ctx.stroke();
+
+  ctx.fillStyle = '#e8e8ea';
+  ctx.font = 'bold 12px -apple-system, Helvetica, Arial, sans-serif';
+  ctx.fillText('cross-section', boxLeft + 10, boxTop + 17);
+
+  // Scale so beam (b × t) + weld fillets (size h, extending above the
+  // beam's top and below its bottom on one side) always fit inside the
+  // drawing band. Bounding box of the assembly: width b + h, height t + 2h.
+  const padW = 18, padH = 14;
+  const scaleW = (boxW - padW) / Math.max(0.4, b + h);
+  const scaleH = (drawH - padH) / Math.max(0.4, t + 2 * h);
+  const scale = Math.min(scaleW, scaleH, 32);          // cap so a small beam still reads
+  const tPxC = Math.max(4, t * scale);
+  const bPxC = Math.max(4, b * scale);
+  const hPxC = Math.max(2, h * scale);
+
+  // Beam (centred horizontally with the weld stack on its left — shift
+  // the beam right by hPxC/2 so the whole assembly sits centred).
+  const beamX = drawCx - (bPxC + hPxC) / 2 + hPxC;
+  const beamY = drawCy - tPxC / 2;
+  ctx.fillStyle = '#4a8050';
+  ctx.fillRect(beamX, beamY, bPxC, tPxC);
+  ctx.strokeStyle = '#1a1a22';
+  ctx.lineWidth = 1.5;
+  ctx.strokeRect(beamX, beamY, bPxC, tPxC);
+
+  // Two weld fillets (gold triangles) on the left side of the beam,
+  // extending UP from the top corner and DOWN from the bottom corner —
+  // so the weld leg `h` is unambiguously visible without clobbering the
+  // beam itself.
+  ctx.fillStyle = '#d0a040';
+  ctx.beginPath();
+  ctx.moveTo(beamX, beamY);
+  ctx.lineTo(beamX - hPxC, beamY);
+  ctx.lineTo(beamX, beamY - hPxC);
+  ctx.closePath();
+  ctx.fill();
+  ctx.beginPath();
+  ctx.moveTo(beamX, beamY + tPxC);
+  ctx.lineTo(beamX - hPxC, beamY + tPxC);
+  ctx.lineTo(beamX, beamY + tPxC + hPxC);
+  ctx.closePath();
+  ctx.fill();
+
+  // Footer text — three rows (h alongside t and b).
+  ctx.fillStyle = '#e8e8ea';
+  ctx.font = '12px "SF Mono", Menlo, monospace';
+  const footerY = drawTop + drawH + 16;
+  ctx.fillText(`t = ${t.toFixed(2)}″`, boxLeft + 10, footerY);
+  ctx.fillText(`b = ${b.toFixed(2)}″`, boxLeft + 10, footerY + 15);
+  ctx.fillText(`h = ${h.toFixed(2)}″`, boxLeft + 10, footerY + 30);
+}
+
+function drawConstraintStrip(evalResult) {
+  const y0 = 350;
+  const stripH = 90;
+  ctx.fillStyle = 'rgba(0, 0, 0, 0.45)';
+  ctx.fillRect(20, y0, W - 40, stripH);
+  ctx.strokeStyle = '#404054';
+  ctx.lineWidth = 1;
+  ctx.strokeRect(20, y0, W - 40, stripH);
+
+  ctx.font = 'bold 12px -apple-system, Helvetica, Arial, sans-serif';
+  ctx.fillStyle = evalResult.feasible ? '#4a8050' : '#d04040';
+  const verdict = evalResult.feasible
+    ? `✓ FEASIBLE  ·  cost = $${evalResult.cost.toFixed(3)}  ·  score = ${evalResult.score.toFixed(1)}`
+    : `✗ INFEASIBLE  ·  worst violation = ${evalResult.maxViolation.toExponential(2)}`;
+  ctx.fillText(verdict, 32, y0 + 18);
+
+  // Seven constraint chips, two rows.
+  ctx.font = '10.5px "SF Mono", Menlo, monospace';
+  const chipsPerRow = 4;
+  const chipW = (W - 80) / chipsPerRow;
+  for (let i = 0; i < evalResult.violations.length; i++) {
+    const v = evalResult.violations[i];
+    const row = Math.floor(i / chipsPerRow);
+    const col = i % chipsPerRow;
+    const cx = 32 + col * chipW;
+    const cy = y0 + 36 + row * 26;
+    const ok = v.g <= 1e-6;
+    ctx.fillStyle = ok ? 'rgba(74, 128, 80, 0.85)' : 'rgba(208, 64, 64, 0.85)';
+    ctx.fillRect(cx, cy, chipW - 8, 20);
+    ctx.fillStyle = '#fff';
+    const mark = ok ? '✓' : '✗';
+    ctx.fillText(`${mark} ${v.name}`, cx + 6, cy + 14);
+  }
+}
+
+function drawHud(hudText) {
+  if (!hudText) return;
+  ctx.font = 'bold 15px -apple-system, Helvetica, Arial, sans-serif';
+  const padX = 12;
+  const metrics = ctx.measureText(hudText);
+  const boxW = Math.ceil(metrics.width) + 2 * padX;
+  ctx.fillStyle = 'rgba(0,0,0,0.6)';
+  ctx.fillRect(18, 14, boxW, 28);
+  ctx.fillStyle = '#ffcc00';
+  ctx.fillText(hudText, 18 + padX, 33);
+}
+
+function drawIdleScene() {
+  // Show an undeformed reference design.
+  const refParams = [0.21, 3.47, 9.04, 0.21];
+  const r = evaluateDesign(refParams);
+  drawBeam({ eval: r, loadFrac: 0 }, 'Press "Find the cheapest beam" to start');
+}
+
+// ============================================================================
+// Animations — each "design test" plays a short load-on, hold, load-off
+// cycle. With no real physics this is purely a visual cue; the actual
+// stress numbers are static (closed-form). N_SIM_STEPS controls how
+// many frames the load animation plays for.
+// ============================================================================
+const N_SIM_STEPS = 14;                       // frames per design test
+const REPLAY_MS_PER_FRAME = 70;               // slow final-best playback
+const MONTAGE_MS_PER_FRAME = 32;              // search-montage, ~2× faster
+let animationToken = 0;
+
+function animateDesign(evalResult, hudText, msPerFrame = REPLAY_MS_PER_FRAME) {
+  const myToken = animationToken;
+  return new Promise((resolve) => {
+    let i = 0;
+    function tick() {
+      if (myToken !== animationToken) return resolve();
+      if (i >= N_SIM_STEPS) {
+        // Hold the final pose for one extra frame so the user sees the
+        // verdict before the next design starts.
+        drawBeam({ eval: evalResult, loadFrac: 1.0 }, hudText);
+        return setTimeout(resolve, msPerFrame * 2);
+      }
+      // Ease load in (ease-out cubic), then hold.
+      const t = Math.min(1, i / (N_SIM_STEPS - 2));
+      const loadFrac = 1 - Math.pow(1 - t, 3);
+      drawBeam({ eval: evalResult, loadFrac }, hudText);
+      i += 1;
+      setTimeout(tick, msPerFrame);
+    }
+    tick();
+  });
+}
+
+async function animateSearchMontage() {
+  const myToken = ++animationToken;
+  const total = searchHistory.length;
+  if (total === 0) return -1;
+
+  // Best-feasible bookkeeping: among feasible designs, lower cost wins.
+  // If nothing is feasible yet, fall back to lowest penalty.
+  let bestFeasibleCost = Infinity, bestFeasibleIdx = -1;
+  let bestFallbackTotal = Infinity, bestFallbackIdx = -1;
+
+  for (let i = 0; i < total; i++) {
+    if (myToken !== animationToken) return bestFeasibleIdx >= 0 ? bestFeasibleIdx : bestFallbackIdx;
+    const entry = searchHistory[i];
+
+    let isNew = false;
+    if (entry.feasible && entry.cost < bestFeasibleCost) {
+      bestFeasibleCost = entry.cost;
+      bestFeasibleIdx = i;
+      isNew = true;
+    } else if (bestFeasibleIdx < 0 && entry.total < bestFallbackTotal) {
+      bestFallbackTotal = entry.total;
+      bestFallbackIdx = i;
+      // Don't mark fallback improvements as "NEW" — saves the leaderboard
+      // from being spammed by penalty-minimisation steps before any
+      // feasible design has been found.
+    }
+
+    // ALWAYS update the per-design param + score rows (section 6 of
+    // APPLICATIONS_GUIDELINES.md — params must reflect the CURRENT eval,
+    // not the most recent best).
+    updateParams(entry.params);
+    document.getElementById('score-now').textContent = entry.score.toFixed(1);
+    document.getElementById('score-detail').textContent = entry.feasible
+      ? `cost $${entry.cost.toFixed(3)}` : `infeasible (gmax=${entry.maxViolation.toExponential(2)})`;
+    document.getElementById('evals').textContent = i + 1;
+
+    if (isNew) {
+      const algoName = document.getElementById('algorithm').value;
+      addLeaderboardEntry(algoName, entry, i + 1, { inPlace: liveLeaderboardIdx >= 0 });
+      const bestScore = entry.score.toFixed(1);
+      document.getElementById('best-score').innerHTML =
+        `${bestScore} ($${entry.cost.toFixed(3)})<span class="algo-tag">${algoName}</span>`;
+    }
+
+    const hud = `Design ${i + 1}/${total}  ·  ${
+      bestFeasibleIdx >= 0 ? `best $${bestFeasibleCost.toFixed(3)}` : 'no feasible yet'
+    }${isNew ? '  ★ NEW!' : ''}`;
+    await animateDesign(entry, hud, MONTAGE_MS_PER_FRAME);
+  }
+  return bestFeasibleIdx >= 0 ? bestFeasibleIdx : bestFallbackIdx;
+}
+
+// ============================================================================
+// Runner.
+// ============================================================================
+let lastBest = null;
+
+function getOptimizerClass(name) { return globalThis[name]; }
+
+async function runOptimization() {
+  const algoName = document.getElementById('algorithm').value;
+  const budget = parseInt(document.getElementById('budget').value, 10);
+  const cls = getOptimizerClass(algoName);
+  if (!cls) { alert(`Optimizer '${algoName}' not found.`); return; }
+
+  const runBtn = document.getElementById('run-btn');
+  runBtn.disabled = true;
+  runBtn.textContent = `Searching with ${algoName}...`;
+
+  animationToken++;
+  searchHistory.length = 0;
+  await new Promise((r) => setTimeout(r, 30));
+
+  try {
+    const opt = new cls(objective, budget, 4);
+    opt.optimize();
+
+    const bestIdx = await animateSearchMontage();
+    if (bestIdx < 0) return;
+    const bestEntry = searchHistory[bestIdx];
+
+    // Slow replay of the best design.
+    lastBest = bestEntry;
+    await animateDesign(
+      bestEntry,
+      `Best ${algoName} design  ·  ${bestEntry.feasible
+        ? `cost $${bestEntry.cost.toFixed(3)}` : 'INFEASIBLE'}`,
+    );
+
+    updateParams(bestEntry.params);
+    document.getElementById('score-now').textContent = bestEntry.score.toFixed(1);
+    document.getElementById('score-detail').textContent = bestEntry.feasible
+      ? `cost $${bestEntry.cost.toFixed(3)}` : `infeasible (gmax=${bestEntry.maxViolation.toExponential(2)})`;
+    document.getElementById('best-score').innerHTML =
+      `${bestEntry.score.toFixed(1)} ($${bestEntry.cost.toFixed(3)})<span class="algo-tag">${algoName}</span>`;
+    addLeaderboardEntry(algoName, bestEntry, opt.evaluations, {
+      inPlace: liveLeaderboardIdx >= 0,
+    });
+    liveLeaderboardIdx = -1;
+  } catch (e) {
+    console.error(e);
+    alert(`${algoName} threw an error: ${e.message}`);
+  } finally {
+    runBtn.disabled = false;
+    runBtn.textContent = '▶ Find the cheapest beam';
+  }
+}
+
+function updateParams(params) {
+  const [h, l, t, b] = params;
+  document.getElementById('param-h').textContent = h.toFixed(3);
+  document.getElementById('param-l').textContent = l.toFixed(2);
+  document.getElementById('param-t').textContent = t.toFixed(2);
+  document.getElementById('param-b').textContent = b.toFixed(3);
+}
+
+function replayBest() {
+  if (!lastBest) return;
+  animationToken++;
+  animateDesign(lastBest, 'Replaying best design');
+}
+
+const leaderboard = [];
+let liveLeaderboardIdx = -1;
+
+function addLeaderboardEntry(algoName, entry, evals, { inPlace = false } = {}) {
+  const row = {
+    name: algoName,
+    score: entry.score,
+    cost: entry.cost,
+    feasible: entry.feasible,
+    evals,
+    params: entry.params,
+  };
+  if (inPlace && liveLeaderboardIdx >= 0) {
+    leaderboard[liveLeaderboardIdx] = row;
+  } else {
+    leaderboard.push(row);
+    liveLeaderboardIdx = leaderboard.length - 1;
+  }
+  const tracked = leaderboard[liveLeaderboardIdx];
+  // Sort: feasible above infeasible; within each, cheaper first.
+  leaderboard.sort((a, b) => {
+    if (a.feasible !== b.feasible) return a.feasible ? -1 : 1;
+    return a.cost - b.cost;
+  });
+  liveLeaderboardIdx = leaderboard.indexOf(tracked);
+  renderLeaderboard();
+}
+
+function renderLeaderboard() {
+  const body = document.getElementById('leaderboard-body');
+  if (leaderboard.length === 0) {
+    body.innerHTML = '<tr><td colspan="5" style="color: var(--muted); text-align: center;">— no runs yet —</td></tr>';
+    return;
+  }
+  body.innerHTML = leaderboard.map((row) => {
+    const [h, l, t, b] = row.params;
+    const cls = row.name === 'Human Raphson' ? 'human-raphson' : '';
+    const infCls = row.feasible ? '' : 'infeasible';
+    const rowCls = [cls, infCls].filter(Boolean).join(' ');
+    const scoreCell = row.feasible
+      ? row.score.toFixed(1)
+      : '—';
+    const costCell = row.feasible
+      ? `$${row.cost.toFixed(3)}`
+      : `infeasible`;
+    return `<tr${rowCls ? ` class="${rowCls}"` : ''}>
+      <td>${row.name}</td>
+      <td>${scoreCell}</td>
+      <td>${costCell}</td>
+      <td>${row.evals}</td>
+      <td>${h.toFixed(3)} / ${l.toFixed(2)} / ${t.toFixed(2)} / ${b.toFixed(3)}</td>
+    </tr>`;
+  }).join('');
+}
+
+// ============================================================================
+// Human Raphson — manual design, counts as 1 eval, joins the leaderboard.
+// ============================================================================
+const sliderIds = ['manual-h', 'manual-l', 'manual-t', 'manual-b'];
+const sliderFormat = {
+  'manual-h': (v) => parseFloat(v).toFixed(3),
+  'manual-l': (v) => parseFloat(v).toFixed(2),
+  'manual-t': (v) => parseFloat(v).toFixed(2),
+  'manual-b': (v) => parseFloat(v).toFixed(3),
+};
+for (const id of sliderIds) {
+  const slider = document.getElementById(id);
+  const out = document.getElementById(`${id}-out`);
+  const upd = () => { out.textContent = sliderFormat[id](slider.value); };
+  slider.addEventListener('input', upd);
+  upd();
+}
+
+async function manualLoad() {
+  const h = parseFloat(document.getElementById('manual-h').value);
+  const l = parseFloat(document.getElementById('manual-l').value);
+  const t = parseFloat(document.getElementById('manual-t').value);
+  const b = parseFloat(document.getElementById('manual-b').value);
+  const r = evaluateDesign([h, l, t, b]);
+
+  const btn = document.getElementById('manual-btn');
+  btn.disabled = true;
+  btn.textContent = 'Loading...';
+  animationToken++;
+  await new Promise((rs) => setTimeout(rs, 30));
+
+  try {
+    updateParams([h, l, t, b]);
+    document.getElementById('score-now').textContent = r.score.toFixed(1);
+    document.getElementById('score-detail').textContent = r.feasible
+      ? `cost $${r.cost.toFixed(3)}` : `infeasible (gmax=${r.maxViolation.toExponential(2)})`;
+    await animateDesign(r, `🧠 Human Raphson  ·  ${r.feasible
+      ? `cost $${r.cost.toFixed(3)}` : 'INFEASIBLE'}`);
+    addLeaderboardEntry('Human Raphson', r, 1);
+    document.getElementById('best-score').innerHTML =
+      `${r.score.toFixed(1)} ($${r.cost.toFixed(3)})<span class="algo-tag">Human Raphson</span>`;
+  } finally {
+    btn.disabled = false;
+    btn.textContent = '▶ Apply load (Human Raphson)';
+  }
+}
+
+function resetEverything() {
+  leaderboard.length = 0;
+  liveLeaderboardIdx = -1;
+  lastBest = null;
+  animationToken++;
+  document.getElementById('score-now').textContent = '0';
+  document.getElementById('evals').textContent = '0';
+  ['score-detail', 'best-score', 'param-h', 'param-l', 'param-t', 'param-b']
+    .forEach((id) => document.getElementById(id).textContent = '—');
+  renderLeaderboard();
+  drawIdleScene();
+}
+
+drawIdleScene();
+</script>
+</body>
+</html>
