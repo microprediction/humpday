@@ -623,11 +623,12 @@ const CAM_BACK_PX = 110;       // px behind the kicker
 const CAM_HEIGHT_M = 2.4;      // m above the pitch
 const FOCAL = 900;             // longer focal length = bigger goal on canvas
 const HORIZON_Y = 80;
-// Smaller pan than before — the +50 offset projected the kicker off
-// the canvas left edge so half the ball was invisible. +20 keeps the
-// kicker visibly on canvas (~canvas-x 236) while still leaving the
-// goal in the right-of-centre region.
-const CAM_X_REF = KICK_SPOT.x + 20;
+// Pan offset: +35 keeps the kicker on canvas at ~x = 113 (about
+// 100 px from the left edge — enough margin for the 14-px ball),
+// while shifting the goal from canvas x ~685 to ~655 (closer to
+// canvas centre). Earlier values: +50 pushed the kicker off canvas;
+// +20 left too much empty space on the left.
+const CAM_X_REF = KICK_SPOT.x + 35;
 
 function project(px, py, z_m = 0) {
   // Forward distance from the camera (positive = ball in front).
