@@ -104,7 +104,7 @@
     Standard 9-ball rack — nine object balls in a diamond, plus the
     cue, six pockets. The optimiser picks <strong>angle, power,</strong>
     and <strong>English</strong> (sidespin) and tries to sink as many
-    balls as possible on the break. Scratching the cue costs three.
+    balls as possible on the break. Scratching the cue costs two.
   </p>
 
   <div class="stage">
@@ -214,7 +214,7 @@
     in a triangular rack, one cue ball. The optimiser sets
     <em>(angle, power, English)</em> and we run the physics until
     everything stops rolling. <strong>Score</strong> is the number of
-    object balls pocketed, minus 3 if the cue ball scratches.
+    object balls pocketed, minus 2 if the cue ball scratches.
   </p>
   <p>
     Run a few different optimisers on different budgets and see what
@@ -561,7 +561,7 @@ function runShot(params, recordFrames = false) {
     totalDisplacement += Math.hypot(b.position.x - s.x, b.position.y - s.y);
   }
   const distanceBonus = Math.min(0.9, totalDisplacement * 0.0008);
-  const score = objectsPocketed - (cueScratched ? 3 : 0) + distanceBonus;
+  const score = objectsPocketed - (cueScratched ? 2 : 0) + distanceBonus;
 
   return {
     score,
