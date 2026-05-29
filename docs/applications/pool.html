@@ -1,0 +1,1050 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' 'unsafe-inline' https://cdn.jsdelivr.net; style-src 'self' 'unsafe-inline';">
+<title>🎱 Pool Break — HumpDay</title>
+<style>
+  :root {
+    --bg: #1a1a22;
+    --panel: #2d2d3a;
+    --accent: #ffcc00;
+    --text: #e8e8ea;
+    --muted: #9a9aac;
+  }
+  body { margin: 0; background: var(--bg); color: var(--text);
+    font-family: -apple-system, 'Segoe UI', 'Helvetica Neue', Helvetica, Arial, sans-serif; }
+  .site-nav { background: #34495e; padding: 12px 24px;
+    font-family: 'Times New Roman', Times, serif;
+    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1); }
+  .site-nav-inner { max-width: 1100px; margin: 0 auto;
+    display: flex; justify-content: space-between; align-items: center; }
+  .site-nav a { color: #ecf0f1; text-decoration: none; margin: 0 12px; }
+  .site-nav a:hover { color: white; text-decoration: underline; }
+  .site-nav-brand { font-weight: 700; font-size: 1.25em; }
+
+  .container { max-width: 1100px; margin: 0 auto; padding: 32px 24px 64px; }
+  h1 { font-size: 2.2em; margin: 0.2em 0; }
+  h2 { font-size: 1.4em; margin-top: 1.4em; color: var(--accent); }
+  p { line-height: 1.55; max-width: 70ch; }
+  .intro { color: var(--muted); }
+
+  .stage { display: grid; grid-template-columns: 1fr 320px; gap: 24px;
+    align-items: start; margin-top: 24px; }
+  @media (max-width: 800px) { .stage { grid-template-columns: 1fr; } }
+  canvas { background: #224a2c;
+    border: 3px solid var(--accent); border-radius: 6px; display: block;
+    width: 100%; height: auto; }
+
+  .panel { background: var(--panel); padding: 18px; border-radius: 6px; border: 1px solid #404054; }
+  .panel h3 { margin: 0 0 12px; font-size: 1.05em; text-transform: uppercase;
+    letter-spacing: 0.06em; color: var(--accent); }
+  label { display: block; margin: 10px 0 6px; font-size: 0.9em; color: var(--muted); }
+  select, input, button { width: 100%; box-sizing: border-box; padding: 8px 10px;
+    border-radius: 4px; border: 1px solid #404054; background: #1a1a22; color: var(--text); font-size: 0.95em; }
+  button { background: var(--accent); color: #1a1a22; font-weight: 700; cursor: pointer; margin-top: 6px; transition: opacity 0.15s; }
+  button:hover { opacity: 0.88; }
+  button.secondary { background: #404054; color: var(--text); font-weight: 400; }
+  button:disabled { opacity: 0.5; cursor: not-allowed; }
+  .stats { margin-top: 16px; padding-top: 14px; border-top: 1px solid #404054; font-size: 0.92em; line-height: 1.6; }
+  .stats .score { font-size: 2.6em; color: var(--accent); font-weight: 700; }
+  .stat-row { display: flex; justify-content: space-between; align-items: baseline; gap: 12px; }
+  .stat-row span:first-child { white-space: nowrap; flex-shrink: 0; }
+  .stat-row span:last-child { color: var(--text); font-family: 'SF Mono', Menlo, monospace;
+    text-align: right; word-break: break-word; }
+  .stat-row .algo-tag { display: block; color: var(--muted); font-size: 0.82em; margin-top: 2px; }
+
+  .leaderboard { margin-top: 24px; }
+  .leaderboard table { width: 100%; border-collapse: collapse; background: var(--panel); border-radius: 6px; overflow: hidden; }
+  .leaderboard th, .leaderboard td { padding: 10px 14px; text-align: left; border-bottom: 1px solid #404054; }
+  .leaderboard th { background: #1a1a22; color: var(--muted); text-transform: uppercase; font-size: 0.78em; letter-spacing: 0.08em; }
+  .leaderboard td:nth-child(2) { text-align: center; font-size: 1.3em; font-weight: 700; color: var(--accent); }
+  .leaderboard td:nth-child(3), .leaderboard td:nth-child(4) { font-family: 'SF Mono', Menlo, monospace; color: var(--muted); }
+  .leaderboard tr.human-raphson td:first-child { color: #ff9944; font-weight: 700; }
+
+  .left-stack { display: flex; flex-direction: column; gap: 16px; min-width: 0; }
+  .hr-panel { padding: 14px 16px; }
+  .hr-panel h3 { margin: 0 0 6px; }
+  .hr-sliders { display: grid; grid-template-columns: repeat(3, 1fr); gap: 6px 18px; margin-bottom: 10px; }
+  .hr-sliders label { margin: 0; display: flex; justify-content: space-between; align-items: baseline; font-size: 0.84em; grid-row: 1; }
+  .hr-sliders label output { color: var(--accent); font-family: 'SF Mono', Menlo, monospace; font-size: 0.92em; }
+  .hr-sliders input[type=range] { width: 100%; margin: 0; padding: 0; background: transparent; grid-row: 2; }
+  .hr-sliders input[type=range]::-webkit-slider-runnable-track { background: #1a1a22; height: 6px; border-radius: 3px; }
+  .hr-sliders input[type=range]::-webkit-slider-thumb { -webkit-appearance: none; appearance: none; background: var(--accent); width: 18px; height: 18px; border-radius: 50%; margin-top: -6px; cursor: pointer; }
+  .hr-panel button { background: #ff9944; color: #1a1a22; margin-top: 0; }
+
+  .skill-callout { margin-top: 36px; background: rgba(255, 204, 0, 0.06); border: 1px solid rgba(255, 204, 0, 0.3); border-radius: 8px; padding: 18px 22px; }
+  .skill-callout h3 { margin: 0 0 6px; color: var(--accent); font-size: 1.05em; text-transform: none; letter-spacing: 0; }
+  .skill-callout p { margin: 0 0 10px; color: var(--text); max-width: none; }
+  .skill-callout pre { background: #1a1a22; border: 1px solid #404054; border-radius: 4px; padding: 10px 14px; margin: 0; font-size: 0.84em; color: var(--accent); white-space: pre-wrap; word-break: break-all; font-family: 'SF Mono', Menlo, monospace; }
+  .skill-actions { margin-top: 10px; display: flex; align-items: center; gap: 14px; }
+  .skill-actions button { width: auto; background: #404054; color: var(--text); border: 1px solid #404054; padding: 6px 12px; font-size: 0.85em; cursor: pointer; border-radius: 4px; margin: 0; font-weight: 500; }
+  .skill-actions button:hover { background: #4a4a60; }
+  .skill-actions a { color: var(--accent); font-size: 0.85em; text-decoration: none; }
+  .skill-actions a:hover { text-decoration: underline; }
+</style>
+</head>
+<body>
+<nav class="site-nav">
+  <div class="site-nav-inner">
+    <a class="site-nav-brand" href="../index.html">HumpDay 🎱</a>
+    <div>
+      <a href="../index.html">Home</a>
+      <a href="index.html">Applications</a>
+      <a href="../contest.html">Contest</a>
+      <a href="../README.html">Docs</a>
+    </div>
+  </div>
+</nav>
+
+<div class="container">
+  <h1>🎱 Pool Break Optimizer</h1>
+  <p class="intro">
+    Standard 9-ball rack — nine object balls in a diamond, plus the
+    cue, six pockets. The optimiser picks <strong>angle, power,</strong>
+    and <strong>English</strong> (sidespin) and tries to sink as many
+    balls as possible on the break. Scratching the cue costs two.
+  </p>
+
+  <div class="stage">
+    <div class="left-stack">
+      <canvas id="canvas" width="800" height="450"></canvas>
+
+      <div class="panel hr-panel">
+        <h3>🧠 Human Raphson</h3>
+        <p style="color: var(--muted); margin: 0 0 12px; font-size: 0.86em;">
+          Try a shot yourself — drag the sliders, take the break, compete against the algorithms.
+        </p>
+        <div class="hr-sliders">
+          <label for="manual-angle">Angle <output id="manual-angle-out">0°</output></label>
+          <input type="range" id="manual-angle" min="-10" max="10" step="0.1" value="0">
+
+          <label for="manual-power">Power <output id="manual-power-out">35</output></label>
+          <input type="range" id="manual-power" min="20" max="70" step="0.5" value="35">
+
+          <label for="manual-spin">English <output id="manual-spin-out">0.00</output></label>
+          <input type="range" id="manual-spin" min="-0.8" max="0.8" step="0.02" value="0">
+        </div>
+        <button id="manual-btn" onclick="manualShot()">▶ Break (Human Raphson)</button>
+      </div>
+    </div>
+
+    <div class="panel">
+      <h3>Algorithm</h3>
+      <label for="algorithm">Pick a HumpDay optimizer:</label>
+      <select id="algorithm">
+        <optgroup label="Trust-region / interpolation">
+          <option value="PRIMA_BOBYQA">PRIMA_BOBYQA</option>
+          <option value="PRIMA_NEWUOA">PRIMA_NEWUOA</option>
+        </optgroup>
+        <optgroup label="Local / classical">
+          <option value="NelderMead">Nelder-Mead</option>
+          <option value="Powell">Powell</option>
+          <option value="LBFGSB">L-BFGS-B (simplified)</option>
+        </optgroup>
+        <optgroup label="Population-based">
+          <option value="DifferentialEvolution" selected>Differential Evolution</option>
+          <option value="ParticleSwarm">Particle Swarm</option>
+          <option value="CMAEvolutionStrategy">CMA-Evolution Strategy</option>
+          <option value="GeneticAlgorithm">Genetic Algorithm</option>
+          <option value="EvolutionStrategy">Evolution Strategy</option>
+          <option value="HarmonySearch">Harmony Search</option>
+        </optgroup>
+        <optgroup label="Other">
+          <option value="SimulatedAnnealing">Simulated Annealing</option>
+          <option value="BayesianOpt">Bayesian Optimization</option>
+          <option value="FireflyAlgorithm">Firefly Algorithm</option>
+          <option value="AntColonyOpt">Ant Colony</option>
+          <option value="TabuSearch">Tabu Search</option>
+          <option value="RandomSearch">Random Search</option>
+        </optgroup>
+      </select>
+
+      <label for="budget">Evaluation budget:</label>
+      <select id="budget">
+        <option value="10">10 breaks</option>
+        <option value="20" selected>20 breaks</option>
+        <option value="50">50 breaks</option>
+        <option value="100">100 breaks</option>
+        <option value="200">200 breaks</option>
+        <option value="500">500 breaks</option>
+      </select>
+      <p style="margin: 8px 0 0; font-size: 0.78em; color: var(--muted);">
+        Each break is animated frame-by-frame at 2× the final-replay speed.
+      </p>
+
+      <button id="run-btn" onclick="runOptimization()">▶ Find the best break</button>
+      <button class="secondary" onclick="replayBest()">🔁 Replay best break</button>
+      <button class="secondary" onclick="resetEverything()">⟲ Reset leaderboard</button>
+
+      <div class="stats">
+        <div class="stat-row"><span>Score</span><span class="score" id="score-now">0</span></div>
+        <div class="stat-row"><span>Detail</span><span id="score-detail">—</span></div>
+        <div class="stat-row"><span>Breaks tried</span><span id="evals">0</span></div>
+        <div class="stat-row"><span>Best so far</span><span id="best-score">—</span></div>
+        <div class="stat-row"><span>Angle</span><span id="param-angle">—</span></div>
+        <div class="stat-row"><span>Power</span><span id="param-power">—</span></div>
+        <div class="stat-row"><span>English</span><span id="param-spin">—</span></div>
+      </div>
+    </div>
+  </div>
+
+  <div class="leaderboard">
+    <h2>Leaderboard (this session)</h2>
+    <p style="color: var(--muted);">
+      Each row is the best single break a given algorithm found.
+      Sinking even one ball off a random break is hard; the carom paths
+      that pocket three or more reward methods willing to explore the
+      angle/spin landscape broadly.
+    </p>
+    <table>
+      <thead>
+        <tr><th>Algorithm</th><th>Score</th><th>Breaks used</th><th>Best params (angle° / power / English)</th></tr>
+      </thead>
+      <tbody id="leaderboard-body">
+        <tr><td colspan="4" style="color: var(--muted); text-align: center;">— no runs yet —</td></tr>
+      </tbody>
+    </table>
+  </div>
+
+  <h2>What's happening</h2>
+  <p>
+    A 2-D top-down rigid-body pool table — six pockets, six object balls
+    in a triangular rack, one cue ball. The optimiser sets
+    <em>(angle, power, English)</em> and we run the physics until
+    everything stops rolling. <strong>Score</strong> is the number of
+    object balls pocketed, minus 2 if the cue ball scratches.
+  </p>
+  <p>
+    Run a few different optimisers on different budgets and see what
+    falls out — the search landscape on this version of the table
+    hasn't been profiled yet, so the most useful thing to do here is
+    compare runs side-by-side rather than trust any prediction about
+    which algorithm should win.
+  </p>
+
+  <hr style="border: 0; border-top: 1px solid #404054; margin: 32px 0 16px;" />
+  <p style="font-size: 0.78em; color: var(--muted);">
+    Physics powered by <a style="color: var(--muted); text-decoration: underline;" href="https://brm.io/matter-js/">Matter.js</a> — rigid-body collisions, friction (felt), restitution (cushions).
+  </p>
+
+  <div class="skill-callout">
+    <h3>🌱 Save the Planet</h3>
+    <p>Cut and paste this into Claude or Cursor:</p>
+    <pre id="skill-snippet">Read https://raw.githubusercontent.com/microprediction/humpday/main/SKILL.md
+and create a project skill from it.</pre>
+    <div class="skill-actions">
+      <button type="button" onclick="copySkillSnippet(this)">📋 Copy</button>
+      <a href="https://github.com/microprediction/humpday/blob/main/SKILL.md" target="_blank" rel="noopener">View SKILL.md →</a>
+    </div>
+  </div>
+
+  <script>
+    function copySkillSnippet(btn) {
+      const text = document.getElementById('skill-snippet').textContent;
+      navigator.clipboard.writeText(text).then(() => {
+        const orig = btn.textContent;
+        btn.textContent = '✓ Copied';
+        setTimeout(() => { btn.textContent = orig; }, 1500);
+      }).catch(() => {
+        btn.textContent = '✗ Copy failed';
+      });
+    }
+  </script>
+</div>
+
+<script src="https://cdn.jsdelivr.net/npm/matter-js@0.19.0/build/matter.min.js"></script>
+<script src="../js/modules/base-optimizer.js"></script>
+<script src="../js/modules/prima-algorithms.js"></script>
+<script src="../js/modules/scipy-algorithms.js"></script>
+<script src="../js/modules/evolutionary-algorithms.js"></script>
+<script src="../js/modules/search-algorithms.js"></script>
+
+<script>
+// ============================================================================
+// Pool trick-shot demo — top-down 2D, Matter.js for collisions. World is
+// rebuilt from scratch for every evaluation so every parameter vector
+// starts from identical initial conditions.
+// ============================================================================
+
+const { Engine, World, Bodies, Body, Composite, Events } = Matter;
+
+const canvas = document.getElementById('canvas');
+const ctx = canvas.getContext('2d');
+const W = canvas.width, H = canvas.height;
+
+// --- Table geometry. The felt occupies the inner rectangle; the outer
+// 25-px frame is the rails (cushions + pockets). --------------------------
+const RAIL = 30;
+const FELT_X0 = RAIL, FELT_Y0 = RAIL;
+const FELT_X1 = W - RAIL, FELT_Y1 = H - RAIL;
+const FELT_MX = (FELT_X0 + FELT_X1) / 2;
+const FELT_MY = (FELT_Y0 + FELT_Y1) / 2;
+
+const BALL_R = 11;
+const POCKET_R = 30;       // generous pockets — easier to actually sink anything
+
+// Six pockets — four corners + two side rails (top and bottom centre).
+const POCKETS = [
+  { x: FELT_X0, y: FELT_Y0 },
+  { x: FELT_X1, y: FELT_Y0 },
+  { x: FELT_X0, y: FELT_Y1 },
+  { x: FELT_X1, y: FELT_Y1 },
+  { x: FELT_MX, y: FELT_Y0 },
+  { x: FELT_MX, y: FELT_Y1 },
+];
+
+// Cue ball home position (left side, on the "head string"). Target rack
+// is racked at the right side, classic apex-toward-cue orientation.
+const CUE_HOME = { x: FELT_X0 + 160, y: FELT_MY };
+const RACK_APEX = { x: FELT_X1 - 200, y: FELT_MY };
+
+// Classic 9-ball rack: a DIAMOND of nine balls (1+2+3+2+1). The 1-ball
+// goes at the apex (front, facing the cue), and the 9-ball sits in the
+// centre of the diamond. Other balls fill the remaining slots.
+function rackPositions() {
+  const dx = BALL_R * 2 + 0.4;
+  const dy = BALL_R * 2 + 0.4;
+  const rowCounts = [1, 2, 3, 2, 1];
+  const positions = [];
+  for (let row = 0; row < rowCounts.length; row++) {
+    const n = rowCounts[row];
+    const x = RACK_APEX.x + row * dx * Math.cos(Math.PI / 6);
+    for (let i = 0; i < n; i++) {
+      const y = RACK_APEX.y + (i - (n - 1) / 2) * dy;
+      positions.push({ x, y });
+    }
+  }
+  return positions;  // 1+2+3+2+1 = 9 balls
+}
+const RACK = rackPositions();
+const N_OBJECT_BALLS = RACK.length;
+
+// 9 balls. Row-major layout matches a standard 9-ball rack:
+//   row 0:                    1               (1-ball at the apex)
+//   row 1:                  2   3
+//   row 2:                4   9   5           (9-ball in the centre)
+//   row 3:                  6   7
+//   row 4:                    8
+const BALL_NUMBERS = [1, 2, 3, 4, 9, 5, 6, 7, 8];
+const NUMBER_COLORS = {
+  1: '#e8c64b', 2: '#3a6dc4', 3: '#c83838',
+  4: '#7a3aa8', 5: '#e87324', 6: '#2f9a4a',
+  7: '#8a3030', 8: '#111111',
+  9: '#e8c64b',                   // yellow — but rendered as a STRIPE
+};
+// In 9-ball only the 9 is striped.
+const IS_STRIPE = (n) => n === 9;
+
+// ----- Parameter ranges decoded from u in [0,1]^3 ------------------------
+// angle  : -10° to +10° (relative to a flat horizontal aim at the rack apex)
+// power  : 20 to 70 (a soft tap doesn't break the rack — minimum 20
+//          guarantees the cue actually reaches the rack and starts a
+//          chain reaction. High end keeps stable contact resolution.)
+// spin   : -0.8 to +0.8 rad/step (English — sidespin, NOT initial
+//          velocity. Affects post-collision direction via cue-ball
+//          rotation at contact, which Matter.js models via tangential
+//          friction.)
+function decode(u) {
+  return [
+    -10 + 20 * u[0],
+    20 + 50 * u[1],
+    -0.8 + 1.6 * u[2],
+  ];
+}
+
+// ----- World construction ------------------------------------------------
+function buildWorld() {
+  const engine = Engine.create({ gravity: { x: 0, y: 0 } });
+  const world = engine.world;
+
+  // Cushions — four rectangles on each side, with notches for pockets.
+  // Each side rail is split at the side-pocket position so the side
+  // pocket is reachable from along the rail.
+  const cushion = (x, y, w, h) => Bodies.rectangle(x, y, w, h, {
+    isStatic: true,
+    restitution: 0.85,        // bouncy cushion
+    friction: 0.01,           // minimal — balls don't bleed energy along rails
+    label: 'cushion',
+  });
+  const railThick = 20;
+  const railOffset = railThick / 2 + 0.5;
+  const sideGap = POCKET_R * 1.6;
+  const cornerGap = POCKET_R * 1.4;
+
+  const cushions = [
+    // Top rail, split into two segments around the centre pocket.
+    cushion(
+      (FELT_X0 + cornerGap + FELT_MX - sideGap / 2) / 2,
+      FELT_Y0 - railOffset,
+      FELT_MX - sideGap / 2 - FELT_X0 - cornerGap,
+      railThick,
+    ),
+    cushion(
+      (FELT_MX + sideGap / 2 + FELT_X1 - cornerGap) / 2,
+      FELT_Y0 - railOffset,
+      FELT_X1 - cornerGap - FELT_MX - sideGap / 2,
+      railThick,
+    ),
+    // Bottom rail.
+    cushion(
+      (FELT_X0 + cornerGap + FELT_MX - sideGap / 2) / 2,
+      FELT_Y1 + railOffset,
+      FELT_MX - sideGap / 2 - FELT_X0 - cornerGap,
+      railThick,
+    ),
+    cushion(
+      (FELT_MX + sideGap / 2 + FELT_X1 - cornerGap) / 2,
+      FELT_Y1 + railOffset,
+      FELT_X1 - cornerGap - FELT_MX - sideGap / 2,
+      railThick,
+    ),
+    // Left rail (no side pocket on long sides — just one segment).
+    cushion(
+      FELT_X0 - railOffset,
+      FELT_MY,
+      railThick,
+      FELT_Y1 - FELT_Y0 - 2 * cornerGap,
+    ),
+    // Right rail.
+    cushion(
+      FELT_X1 + railOffset,
+      FELT_MY,
+      railThick,
+      FELT_Y1 - FELT_Y0 - 2 * cornerGap,
+    ),
+  ];
+
+  // Object balls — coloured solids.
+  const objectBalls = RACK.map((p, i) =>
+    Bodies.circle(p.x, p.y, BALL_R, {
+      density: 0.008,
+      friction: 0.005,
+      frictionAir: 0.004,    // felt drag — much lower so balls roll a long way
+      restitution: 0.95,     // bouncy collisions
+      label: `object-${i}`,
+    })
+  );
+
+  // Cue ball — slightly heavier, marked with `cue` label.
+  const cue = Bodies.circle(CUE_HOME.x, CUE_HOME.y, BALL_R, {
+    density: 0.010,
+    friction: 0.005,
+    frictionAir: 0.004,
+    restitution: 0.95,
+    label: 'cue',
+  });
+
+  Composite.add(world, [...cushions, cue, ...objectBalls]);
+  return { engine, cue, objectBalls };
+}
+
+// ----- One shot ----------------------------------------------------------
+// At frictionAir=0.004 a ball loses only ~0.4% velocity per frame, so a
+// fast break can keep rolling for many seconds. We give the simulation
+// 15 s of headroom and only exit early once balls have been below the
+// rest-speed threshold for THREE consecutive checks — single-check
+// thresholds were firing during mid-roll lulls and cutting the
+// animation off before all balls had actually stopped.
+const N_SIM_STEPS = 900;     // ~15 s of physics at 60 fps
+const SIM_DELTA = 1000 / 60;
+const REST_SPEED = 0.025;    // pixels/step — below this we consider a ball stopped
+const REST_CHECK_EVERY = 6;
+const REST_CONFIRM = 3;      // consecutive slow checks needed to stop early
+
+function runShot(params, recordFrames = false) {
+  const [angleDeg, power, spin] = params;
+  const { engine, cue, objectBalls } = buildWorld();
+
+  // Initial aim direction (base toward rack apex + user angle).
+  const baseDir = Math.atan2(RACK_APEX.y - CUE_HOME.y, RACK_APEX.x - CUE_HOME.x);
+  const aimRad = baseDir + angleDeg * Math.PI / 180;
+
+  const frames = recordFrames ? [] : null;
+  let restConfirms = 0;
+
+  // ---- Cue-stick strike animation (only when recording frames) -----------
+  // 18 frames: 6 of the cue pulling back, 12 of the cue thrusting forward
+  // to contact. The cue ball stays still during this. After the strike
+  // we apply the impulse and run the physics loop.
+  if (recordFrames) {
+    const N_PULLBACK = 6, N_THRUST = 12;
+    const restingGap = BALL_R + 4;            // gap from ball to cue tip at rest
+    const pullbackExtra = 80;                 // how far back the cue draws
+    for (let k = 0; k < N_PULLBACK; k++) {
+      const t = k / (N_PULLBACK - 1);         // 0..1
+      const tipDist = restingGap + pullbackExtra * t;
+      frames.push(snapshot(cue, objectBalls, new Set(),
+        cueStickAt(cue.position.x, cue.position.y, aimRad, tipDist)));
+    }
+    for (let k = 0; k < N_THRUST; k++) {
+      const t = k / (N_THRUST - 1);           // 0..1
+      const tipDist = restingGap + pullbackExtra * (1 - t);
+      frames.push(snapshot(cue, objectBalls, new Set(),
+        cueStickAt(cue.position.x, cue.position.y, aimRad, tipDist)));
+    }
+  }
+
+  // Capture each object ball's starting position so we can credit a
+  // small per-ball-displacement bonus at the end. Smooths the integer
+  // pocket count with a continuous signal so the optimiser still has
+  // gradient on shots that move the rack without sinking anything.
+  const objectStartPos = objectBalls.map((b) => ({ x: b.position.x, y: b.position.y }));
+
+  // ---- Strike. -----------------------------------------------------------
+  const vMag = power * 0.35;    // 0.35 keeps Matter.js stable at this scale
+  Body.setVelocity(cue, { x: vMag * Math.cos(aimRad), y: vMag * Math.sin(aimRad) });
+  Body.setAngularVelocity(cue, spin);
+
+  // Pocketed state — once a ball center enters a pocket it's removed
+  // from the world and counted.
+  const pocketed = new Set();      // labels of pocketed balls
+  let cueScratched = false;
+  for (let step = 0; step < N_SIM_STEPS; step++) {
+    Engine.update(engine, SIM_DELTA);
+
+    // Pocket detection (post-step).
+    for (const pkt of POCKETS) {
+      for (const b of [cue, ...objectBalls]) {
+        if (pocketed.has(b.label)) continue;
+        const dx = b.position.x - pkt.x;
+        const dy = b.position.y - pkt.y;
+        if (dx * dx + dy * dy < POCKET_R * POCKET_R) {
+          pocketed.add(b.label);
+          if (b.label === 'cue') cueScratched = true;
+          // Park pocketed ball off-screen so it stops interacting with
+          // the rest of the table.
+          Body.setPosition(b, { x: -200, y: -200 });
+          Body.setVelocity(b, { x: 0, y: 0 });
+        }
+      }
+    }
+
+    if (recordFrames) frames.push(snapshot(cue, objectBalls, pocketed));
+
+    // Early termination — only exit once balls have been slower than
+    // REST_SPEED for REST_CONFIRM consecutive checks. A single-check
+    // threshold was firing during mid-roll lulls (e.g. moment a ball
+    // reverses off a cushion) and cutting the animation off before
+    // all balls had actually stopped.
+    if (step > 30 && step % REST_CHECK_EVERY === 0) {
+      let maxSpeed = 0;
+      for (const b of [cue, ...objectBalls]) {
+        if (pocketed.has(b.label)) continue;
+        maxSpeed = Math.max(maxSpeed, Math.hypot(b.velocity.x, b.velocity.y));
+      }
+      if (maxSpeed < REST_SPEED) {
+        restConfirms++;
+        if (restConfirms >= REST_CONFIRM) break;
+      } else {
+        restConfirms = 0;
+      }
+    }
+  }
+
+  // Score breakdown:
+  //   pocketCount - 3*scratch   ← integer "real" score
+  //   + distanceBonus           ← small smoothing term, capped < 1 so
+  //                               ordering by pocketed count is preserved
+  //
+  // distanceBonus is a tiny multiplier on the SUM of object-ball
+  // displacements (start to end), excluding any ball that got pocketed
+  // (those already earned a +1 in the integer score). The cue ball is
+  // excluded — its trajectory is incidental to the break quality.
+  const objectsPocketed = pocketed.size - (cueScratched ? 1 : 0);
+  let totalDisplacement = 0;
+  for (let i = 0; i < objectBalls.length; i++) {
+    const b = objectBalls[i];
+    if (pocketed.has(b.label)) continue;
+    const s = objectStartPos[i];
+    totalDisplacement += Math.hypot(b.position.x - s.x, b.position.y - s.y);
+  }
+  const distanceBonus = Math.min(0.9, totalDisplacement * 0.0008);
+  const score = objectsPocketed - (cueScratched ? 2 : 0) + distanceBonus;
+
+  return {
+    score,
+    objectsPocketed,
+    cueScratched,
+    distanceBonus,
+    frames,
+    params,
+    cueEnd: { x: cue.position.x, y: cue.position.y },
+  };
+}
+
+function snapshot(cue, objectBalls, pocketed, cueStick = null) {
+  return {
+    cue: { x: cue.position.x, y: cue.position.y, a: cue.angle, pocketed: pocketed.has('cue') },
+    objects: objectBalls.map((b) => ({
+      x: b.position.x, y: b.position.y, a: b.angle,
+      pocketed: pocketed.has(b.label),
+    })),
+    cueStick,    // { tipX, tipY, angle } or null
+  };
+}
+
+// Compute cue stick geometry: tip is `tipDist` from the ball centre,
+// along the OPPOSITE direction to `aimRad` (so the cue points toward
+// the ball).
+function cueStickAt(ballX, ballY, aimRad, tipDist) {
+  return {
+    tipX: ballX - tipDist * Math.cos(aimRad),
+    tipY: ballY - tipDist * Math.sin(aimRad),
+    angle: aimRad,
+  };
+}
+
+// ============================================================================
+// HumpDay objective.
+// ============================================================================
+const searchHistory = [];
+
+function objective(u) {
+  const r = runShot(decode(u));
+  searchHistory.push({
+    score: r.score,
+    objectsPocketed: r.objectsPocketed,
+    cueScratched: r.cueScratched,
+    distanceBonus: r.distanceBonus,
+    params: r.params,
+    cueEnd: r.cueEnd,
+  });
+  return -r.score;
+}
+
+// ============================================================================
+// Rendering — pure canvas2d using positions from Matter.js bodies.
+// ============================================================================
+function drawScene(state, hudText) {
+  // Felt + frame.
+  ctx.fillStyle = '#3a2516';
+  ctx.fillRect(0, 0, W, H);
+  ctx.fillStyle = '#1f5230';
+  ctx.fillRect(FELT_X0, FELT_Y0, FELT_X1 - FELT_X0, FELT_Y1 - FELT_Y0);
+
+  // Cushions — drawn as darker green strips inside the frame.
+  ctx.fillStyle = '#27693d';
+  // top
+  ctx.fillRect(FELT_X0, FELT_Y0, FELT_X1 - FELT_X0, 6);
+  ctx.fillRect(FELT_X0, FELT_Y1 - 6, FELT_X1 - FELT_X0, 6);
+  ctx.fillRect(FELT_X0, FELT_Y0, 6, FELT_Y1 - FELT_Y0);
+  ctx.fillRect(FELT_X1 - 6, FELT_Y0, 6, FELT_Y1 - FELT_Y0);
+
+  // Pockets.
+  for (const pkt of POCKETS) {
+    ctx.fillStyle = '#0a0a0a';
+    ctx.beginPath();
+    ctx.arc(pkt.x, pkt.y, POCKET_R, 0, Math.PI * 2);
+    ctx.fill();
+    ctx.strokeStyle = '#5a3a1c';
+    ctx.lineWidth = 2;
+    ctx.beginPath();
+    ctx.arc(pkt.x, pkt.y, POCKET_R, 0, Math.PI * 2);
+    ctx.stroke();
+  }
+
+  // Head string (the dashed line where the cue ball is placed).
+  ctx.strokeStyle = 'rgba(255,255,255,0.15)';
+  ctx.setLineDash([4, 4]);
+  ctx.beginPath();
+  ctx.moveTo(CUE_HOME.x, FELT_Y0 + 8);
+  ctx.lineTo(CUE_HOME.x, FELT_Y1 - 8);
+  ctx.stroke();
+  ctx.setLineDash([]);
+
+  if (state) {
+    // Object balls.
+    for (let i = 0; i < state.objects.length; i++) {
+      const b = state.objects[i];
+      if (b.pocketed) continue;
+      const num = BALL_NUMBERS[i];
+      drawBall(b.x, b.y, NUMBER_COLORS[num], num, b.a, IS_STRIPE(num));
+    }
+    // Cue ball (drawn last so it sits on top during overlaps).
+    if (!state.cue.pocketed) {
+      drawBall(state.cue.x, state.cue.y, '#f5f0e0', null, state.cue.a);
+    }
+    // Cue stick — only shown during the strike animation. Drawn on top
+    // of the cue ball so the white tip clearly meets the ball.
+    if (state.cueStick) {
+      drawCueStick(state.cueStick);
+    }
+  }
+
+  // HUD.
+  if (hudText) {
+    ctx.font = 'bold 15px -apple-system, Helvetica, Arial, sans-serif';
+    const padX = 12;
+    const metrics = ctx.measureText(hudText);
+    const boxW = Math.ceil(metrics.width) + 2 * padX;
+    ctx.fillStyle = 'rgba(0,0,0,0.65)';
+    ctx.fillRect(18, 14, boxW, 28);
+    ctx.fillStyle = '#ffcc00';
+    ctx.fillText(hudText, 18 + padX, 33);
+  }
+}
+
+function drawBall(x, y, color, number, angle, stripe = false) {
+  ctx.save();
+  ctx.translate(x, y);
+  ctx.rotate(angle ?? 0);
+
+  if (stripe) {
+    // White body with a coloured equatorial band (top + bottom poles
+    // stay white). Rotates with the ball so spin is visible.
+    const g = ctx.createRadialGradient(-3, -3, 1, 0, 0, BALL_R);
+    g.addColorStop(0, '#ffffff');
+    g.addColorStop(0.9, '#f0ebe0');
+    g.addColorStop(1, '#b5b0a3');
+    ctx.fillStyle = g;
+    ctx.beginPath();
+    ctx.arc(0, 0, BALL_R, 0, Math.PI * 2);
+    ctx.fill();
+    // Coloured band — a horizontal stripe through the middle ~55% of height.
+    ctx.save();
+    ctx.beginPath();
+    ctx.arc(0, 0, BALL_R, 0, Math.PI * 2);
+    ctx.clip();
+    ctx.fillStyle = color;
+    ctx.fillRect(-BALL_R - 1, -BALL_R * 0.55, 2 * BALL_R + 2, BALL_R * 1.1);
+    ctx.restore();
+  } else {
+    // Solid colour ball with radial highlight.
+    const g = ctx.createRadialGradient(-3, -3, 1, 0, 0, BALL_R);
+    g.addColorStop(0, '#ffffff');
+    g.addColorStop(0.15, color);
+    g.addColorStop(1, shade(color, -0.35));
+    ctx.fillStyle = g;
+    ctx.beginPath();
+    ctx.arc(0, 0, BALL_R, 0, Math.PI * 2);
+    ctx.fill();
+  }
+  ctx.strokeStyle = 'rgba(0,0,0,0.25)';
+  ctx.lineWidth = 0.8;
+  ctx.beginPath();
+  ctx.arc(0, 0, BALL_R, 0, Math.PI * 2);
+  ctx.stroke();
+
+  // Number in a small white disc (so rotation is visible). For the
+  // 8-ball draw the digit in a slightly larger disc so the "8" stays
+  // legible against the black body.
+  if (number != null) {
+    const discR = number === 8 ? BALL_R * 0.58 : BALL_R * 0.5;
+    ctx.fillStyle = '#fff';
+    ctx.beginPath();
+    ctx.arc(0, 0, discR, 0, Math.PI * 2);
+    ctx.fill();
+    ctx.fillStyle = '#222';
+    ctx.font = `bold ${number >= 10 ? 8 : 10}px -apple-system, Helvetica, Arial, sans-serif`;
+    ctx.textAlign = 'center';
+    ctx.textBaseline = 'middle';
+    ctx.fillText(number.toString(), 0, 0.5);
+    ctx.textAlign = 'start';
+    ctx.textBaseline = 'alphabetic';
+  }
+  ctx.restore();
+}
+
+// Draw a tapered pool cue. The TIP is the contact end (small, blue/white
+// leather), the BUTT is the wrap end (thicker, dark). `angle` points
+// from butt to tip so the tip is at (tipX, tipY) and the cue extends
+// backward.
+function drawCueStick(cs) {
+  const length = 220;
+  const tipDiam = 3;
+  const buttDiam = 9;
+  // Vector from tip back to butt.
+  const dx = -Math.cos(cs.angle);
+  const dy = -Math.sin(cs.angle);
+  ctx.save();
+  ctx.translate(cs.tipX, cs.tipY);
+  ctx.rotate(cs.angle);
+  // Wood shaft — trapezoidal, going from (0,0)=tip to (-length,0)=butt.
+  const grad = ctx.createLinearGradient(0, 0, -length, 0);
+  grad.addColorStop(0, '#dccba7');     // light maple near tip
+  grad.addColorStop(0.7, '#a47a3c');   // mid shaft
+  grad.addColorStop(1, '#2a1d10');     // dark butt
+  ctx.fillStyle = grad;
+  ctx.beginPath();
+  ctx.moveTo(0, -tipDiam / 2);
+  ctx.lineTo(-length, -buttDiam / 2);
+  ctx.lineTo(-length, buttDiam / 2);
+  ctx.lineTo(0, tipDiam / 2);
+  ctx.closePath();
+  ctx.fill();
+  ctx.strokeStyle = 'rgba(0,0,0,0.35)';
+  ctx.lineWidth = 0.6;
+  ctx.stroke();
+  // Leather tip — small light-blue cap at the contact end.
+  ctx.fillStyle = '#7da1c8';
+  ctx.fillRect(-1.5, -tipDiam / 2 - 0.4, 2, tipDiam + 0.8);
+  // Brass ferrule just behind the tip.
+  ctx.fillStyle = '#e8d488';
+  ctx.fillRect(-5, -tipDiam / 2 - 0.4, 3, tipDiam + 0.8);
+  // Wrap detail on the butt half.
+  ctx.fillStyle = 'rgba(0,0,0,0.35)';
+  ctx.fillRect(-length * 0.7, -buttDiam / 2 + 0.4, length * 0.18, buttDiam - 0.8);
+  ctx.restore();
+}
+
+// Lighten/darken a hex colour by `amount` in [-1, 1].
+function shade(hex, amount) {
+  const m = /^#?([0-9a-f]{2})([0-9a-f]{2})([0-9a-f]{2})$/i.exec(hex);
+  if (!m) return hex;
+  let [r, g, b] = [parseInt(m[1], 16), parseInt(m[2], 16), parseInt(m[3], 16)];
+  const f = amount < 0 ? 0 : 255;
+  const t = Math.abs(amount);
+  r = Math.round(r + (f - r) * t);
+  g = Math.round(g + (f - g) * t);
+  b = Math.round(b + (f - b) * t);
+  return `rgb(${r}, ${g}, ${b})`;
+}
+
+function drawIdleScene() {
+  const { cue, objectBalls } = buildWorld();
+  drawScene(snapshot(cue, objectBalls, new Set()), 'Press "Find the best break" to start');
+}
+
+// ============================================================================
+// Animations.
+// ============================================================================
+const REPLAY_MS_PER_FRAME = 18;
+const MONTAGE_MS_PER_FRAME = 9;
+let animationToken = 0;
+
+function animateShot(frames, hudText, msPerFrame = REPLAY_MS_PER_FRAME) {
+  const myToken = animationToken;
+  return new Promise((resolve) => {
+    if (!frames || frames.length === 0) return resolve();
+    let i = 0;
+    function tick() {
+      if (myToken !== animationToken) return resolve();
+      if (i >= frames.length) return resolve();
+      drawScene(frames[i], hudText);
+      i += 1;
+      setTimeout(tick, msPerFrame);
+    }
+    tick();
+  });
+}
+
+async function animateSearchMontage() {
+  const myToken = ++animationToken;
+  const total = searchHistory.length;
+  if (total === 0) return -1;
+
+  let bestSoFar = -Infinity;
+  let bestIdx = -1;
+  for (let i = 0; i < total; i++) {
+    if (myToken !== animationToken) return bestIdx;
+    const entry = searchHistory[i];
+    const isNew = entry.score > bestSoFar;
+    if (isNew) { bestSoFar = entry.score; bestIdx = i; }
+
+    const reF = runShot(entry.params, /*recordFrames=*/true);
+    document.getElementById('evals').textContent = i + 1;
+    document.getElementById('score-now').textContent = entry.score.toFixed(2);
+    document.getElementById('score-detail').textContent = formatDetail(entry);
+    updateBestParams(entry.params, entry.score);
+
+    if (isNew) {
+      addLeaderboardEntry(
+        document.getElementById('algorithm').value,
+        entry, i + 1,
+        { inPlace: liveLeaderboardIdx >= 0 },
+      );
+      setBestScore(entry, document.getElementById('algorithm').value);
+    }
+
+    const label = `Break ${i + 1}/${total}  ·  Best: ${bestSoFar.toFixed(2)}${isNew ? '  ★ NEW!' : ''}`;
+    await animateShot(reF.frames, label, MONTAGE_MS_PER_FRAME);
+  }
+  return bestIdx;
+}
+
+function formatDetail(entry) {
+  if (typeof entry.objectsPocketed !== 'number') return '—';
+  const parts = [`${entry.objectsPocketed} in`];
+  if (entry.cueScratched) parts.push('scratch');
+  return parts.join(', ');
+}
+
+// Populate the "Best so far" row as score on the first line and the
+// algorithm name on a smaller second line, so long algorithm names like
+// CMAEvolutionStrategy don't wrap the label into two lines.
+function setBestScore(entry, algoName) {
+  const el = document.getElementById('best-score');
+  el.innerHTML = `${entry.score.toFixed(2)} (${formatDetail(entry)})<span class="algo-tag">${algoName}</span>`;
+}
+
+// ============================================================================
+// Runner.
+// ============================================================================
+let lastBest = null;
+
+function getOptimizerClass(name) { return globalThis[name]; }
+
+async function runOptimization() {
+  const algoName = document.getElementById('algorithm').value;
+  const budget = parseInt(document.getElementById('budget').value, 10);
+  const cls = getOptimizerClass(algoName);
+  if (!cls) { alert(`Optimizer '${algoName}' not found.`); return; }
+
+  const runBtn = document.getElementById('run-btn');
+  runBtn.disabled = true;
+  runBtn.textContent = `Aiming ${algoName}...`;
+
+  animationToken++;
+  searchHistory.length = 0;
+  await new Promise((r) => setTimeout(r, 30));
+
+  try {
+    const opt = new cls(objective, budget, 3);
+    opt.optimize();
+
+    const bestIdx = await animateSearchMontage();
+    const bestEntry = searchHistory[bestIdx];
+
+    const replay = runShot(bestEntry.params, /*recordFrames=*/true);
+    lastBest = replay;
+
+    await animateShot(
+      replay.frames,
+      `Best break: ${bestEntry.score.toFixed(2)} (${formatDetail(bestEntry)}) — ${algoName}`,
+    );
+
+    setBestScore(bestEntry, algoName);
+    updateBestParams(bestEntry.params, bestEntry.score);
+    addLeaderboardEntry(algoName, bestEntry, opt.evaluations, {
+      inPlace: liveLeaderboardIdx >= 0,
+    });
+    liveLeaderboardIdx = -1;
+  } catch (e) {
+    console.error(e);
+    alert(`${algoName} threw an error: ${e.message}`);
+  } finally {
+    runBtn.disabled = false;
+    runBtn.textContent = '▶ Find the best break';
+  }
+}
+
+function updateBestParams(params, score) {
+  const [a, p, s] = params;
+  document.getElementById('param-angle').textContent = `${a.toFixed(1)}°`;
+  document.getElementById('param-power').textContent = p.toFixed(2);
+  document.getElementById('param-spin').textContent = s.toFixed(2);
+}
+
+function replayBest() {
+  if (!lastBest) return;
+  animationToken++;
+  animateShot(lastBest.frames, 'Replaying best break');
+}
+
+const leaderboard = [];
+let liveLeaderboardIdx = -1;
+
+function addLeaderboardEntry(algoName, entry, evals, { inPlace = false } = {}) {
+  const row = {
+    name: algoName,
+    score: entry.score,
+    pocketed: entry.objectsPocketed ?? 0,
+    scratch: !!entry.cueScratched,
+    evals, params: entry.params,
+  };
+  if (inPlace && liveLeaderboardIdx >= 0) {
+    leaderboard[liveLeaderboardIdx] = row;
+  } else {
+    leaderboard.push(row);
+    liveLeaderboardIdx = leaderboard.length - 1;
+  }
+  const tracked = leaderboard[liveLeaderboardIdx];
+  leaderboard.sort((a, b) => b.score - a.score || a.evals - b.evals);
+  liveLeaderboardIdx = leaderboard.indexOf(tracked);
+  renderLeaderboard();
+}
+function renderLeaderboard() {
+  const body = document.getElementById('leaderboard-body');
+  if (leaderboard.length === 0) {
+    body.innerHTML = '<tr><td colspan="4" style="color: var(--muted); text-align: center;">— no runs yet —</td></tr>';
+    return;
+  }
+  body.innerHTML = leaderboard.map((row) => {
+    const [a, p, s] = row.params;
+    const cls = row.name === 'Human Raphson' ? ' class="human-raphson"' : '';
+    const scoreStr = row.score.toFixed(2);
+    const scoreCell = row.scratch ? `${scoreStr} (${row.pocketed} in, scratch)` : `${scoreStr} (${row.pocketed} in)`;
+    return `<tr${cls}>
+      <td>${row.name}</td>
+      <td>${scoreCell}</td>
+      <td>${row.evals}</td>
+      <td>${a.toFixed(1)}° / ${p.toFixed(1)} / ${s.toFixed(2)}</td>
+    </tr>`;
+  }).join('');
+}
+
+// ============================================================================
+// Human Raphson — manual shot via sliders.
+// ============================================================================
+const sliderInputs = ['manual-angle', 'manual-power', 'manual-spin'];
+const sliderOutputs = {
+  'manual-angle': (v) => `${parseFloat(v).toFixed(1)}°`,
+  'manual-power': (v) => parseFloat(v).toFixed(1),
+  'manual-spin': (v) => parseFloat(v).toFixed(2),
+};
+for (const id of sliderInputs) {
+  const slider = document.getElementById(id);
+  const output = document.getElementById(`${id}-out`);
+  const update = () => { output.textContent = sliderOutputs[id](slider.value); };
+  slider.addEventListener('input', update);
+  update();
+}
+
+async function manualShot() {
+  const a = parseFloat(document.getElementById('manual-angle').value);
+  const p = parseFloat(document.getElementById('manual-power').value);
+  const s = parseFloat(document.getElementById('manual-spin').value);
+
+  const btn = document.getElementById('manual-btn');
+  btn.disabled = true;
+  btn.textContent = 'Breaking...';
+  animationToken++;
+  await new Promise((r) => setTimeout(r, 30));
+
+  try {
+    const replay = runShot([a, p, s], /*recordFrames=*/true);
+    document.getElementById('score-now').textContent = replay.score.toFixed(2);
+    document.getElementById('score-detail').textContent = formatDetail(replay);
+    document.getElementById('param-angle').textContent = `${a.toFixed(1)}°`;
+    document.getElementById('param-power').textContent = p.toFixed(2);
+    document.getElementById('param-spin').textContent = s.toFixed(2);
+    await animateShot(
+      replay.frames,
+      `🧠 Human Raphson: ${replay.score.toFixed(2)} (${formatDetail(replay)})`,
+    );
+    addLeaderboardEntry('Human Raphson', replay, 1);
+    setBestScore(replay, 'Human Raphson');
+  } finally {
+    btn.disabled = false;
+    btn.textContent = '▶ Break (Human Raphson)';
+  }
+}
+
+function resetEverything() {
+  leaderboard.length = 0;
+  liveLeaderboardIdx = -1;
+  lastBest = null;
+  animationToken++;
+  ['score-now', 'evals'].forEach((id) => document.getElementById(id).textContent = '0');
+  ['score-detail', 'best-score', 'param-angle', 'param-power', 'param-spin'].forEach((id) =>
+    document.getElementById(id).textContent = '—');
+  renderLeaderboard();
+  drawIdleScene();
+}
+
+drawIdleScene();
+</script>
+</body>
+</html>
