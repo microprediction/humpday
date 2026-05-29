@@ -288,26 +288,43 @@ const GOAL_HEIGHT_M = 2.44;    // crossbar is 2.44 m up
 const GOAL_LEFT = (W - GOAL_WIDTH_M * PX_PER_M) / 2;
 const GOAL_RIGHT = (W + GOAL_WIDTH_M * PX_PER_M) / 2;
 const GOAL_CENTER = { x: W / 2, y: GOAL_Y };
-const KICK_SPOT = { x: W / 2, y: H - 70 };
-const KICK_TO_GOAL_M = (KICK_SPOT.y - GOAL_Y) / PX_PER_M;
+// Kicker on the LEFT side of the field — angled free-kick scenario.
+const KICK_SPOT = { x: W * 0.30, y: H - 50 };
+const KICK_TO_GOAL_M = Math.hypot(GOAL_CENTER.x - KICK_SPOT.x, GOAL_Y - KICK_SPOT.y) / PX_PER_M;
 
-// Defender wall — 5 players standing 9.15 m (10 yds) from the ball.
-const WALL_Y = KICK_SPOT.y - 9.15 * PX_PER_M;
-const WALL_HEIGHT_M = 1.85;    // standing player ~1.85 m tall
-const WALL_HEIGHT = WALL_HEIGHT_M * PX_PER_M;
+// Defender wall — 5 players standing 9.15 m (10 yds) from the ball
+// ON the ball-to-goal line (so its centre actually blocks the kicker's
+// direct view of the goal — matches how a real wall is set up).
 const N_WALL = 5;
-const WALL_LEFT = W / 2 - 1.0 * PX_PER_M * 2.5;  // 2.5 player-widths offset
 const PLAYER_WIDTH_M = 0.5;
 const WALL_PLAYER_DX = PLAYER_WIDTH_M * 1.2 * PX_PER_M;
+const WALL_TOTAL_W_PX = (N_WALL - 1) * WALL_PLAYER_DX + PLAYER_WIDTH_M * PX_PER_M;
+const WALL_HEIGHT_M = 1.85;
+const WALL_HEIGHT = WALL_HEIGHT_M * PX_PER_M;
+// Wall position computed by walking 9.15 m along the kick-to-goal
+// direction from the ball.
+const _KG_DX = GOAL_CENTER.x - KICK_SPOT.x;
+const _KG_DY = GOAL_Y - KICK_SPOT.y;
+const _KG_LEN = Math.hypot(_KG_DX, _KG_DY);
+const WALL_DIST_PX = 9.15 * PX_PER_M;
+const WALL_CENTER_X = KICK_SPOT.x + _KG_DX * WALL_DIST_PX / _KG_LEN;
+const WALL_Y = KICK_SPOT.y + _KG_DY * WALL_DIST_PX / _KG_LEN;
+// Wall is oriented perpendicular to the kick line (real walls are).
+const WALL_PERP_DX = -_KG_DY / _KG_LEN;
+const WALL_PERP_DY = _KG_DX / _KG_LEN;
+const WALL_LEFT_X = WALL_CENTER_X - (WALL_TOTAL_W_PX / 2) * WALL_PERP_DX;
+const WALL_LEFT_Y = WALL_Y - (WALL_TOTAL_W_PX / 2) * WALL_PERP_DY;
 
-// Goalkeeper — starts at goal centre, ACTIVELY dives toward the
-// projected ball arrival point (with a reaction-time delay), capped
-// at their max lateral dive speed. Reach is anisotropic: easier to
-// stretch up than to dive low.
-const KEEPER_START = { x: W / 2, y: GOAL_Y + 8 };
-const KEEPER_REACTION_S = 0.22;    // human reaction time before they start moving
-const KEEPER_MAX_SPEED_M = 5.0;    // lateral dive speed in m/s (top keepers ~5–6)
-const KEEPER_REACH_M = 1.05;       // arm-extended reach at the target point
+// Goalkeeper — starts ~1 m to the side of goal centre away from where
+// the wall covers most (the open side). With the kicker on the left,
+// the wall mostly covers the LEFT/NEAR side of the goal, so the
+// keeper biases toward the RIGHT/FAR side. The optimiser then has
+// to either curl tight around the wall to find the near corner OR
+// fire straight at the far corner the keeper is covering.
+const KEEPER_START = { x: W / 2 + 1.2 * PX_PER_M, y: GOAL_Y + 8 };
+const KEEPER_REACTION_S = 0.22;
+const KEEPER_MAX_SPEED_M = 5.0;
+const KEEPER_REACH_M = 1.05;
 
 // ---- Parameter ranges decoded from u in [0,1]^4 -----------------------
 // aim     : -25° to +25° from straight-at-goal
@@ -407,17 +424,24 @@ function runKick(params, recordFrames = false) {
       kx: keeper.x,
     });
 
-    // Wall crossing — wall is between ball and goal at WALL_Y.
-    if (!crossedWall && ball.y < WALL_Y) {
-      crossedWall = true;
-      wallHeightAtCross = ball.z;
-      // Check x-extent of wall: the 5 players cover WALL_LEFT to
-      // WALL_LEFT + (N_WALL - 1)*WALL_PLAYER_DX + PLAYER_WIDTH_M*PX_PER_M
-      const wallRight = WALL_LEFT + (N_WALL - 1) * WALL_PLAYER_DX + PLAYER_WIDTH_M * PX_PER_M;
-      const inWallX = ball.x > WALL_LEFT - PLAYER_WIDTH_M * PX_PER_M / 2
-                     && ball.x < wallRight + PLAYER_WIDTH_M * PX_PER_M / 2;
-      if (inWallX && ball.z < WALL_HEIGHT_M) {
-        wallBlocked = true;
+    // Wall crossing — the wall is now an ANGLED line perpendicular to
+    // the kick-to-goal direction, 9.15 m along that line from the ball.
+    // "Crossed the wall" = projection of ball-from-kicker onto the
+    // kick-to-goal direction exceeds WALL_DIST_PX.
+    if (!crossedWall) {
+      const dx = ball.x - KICK_SPOT.x;
+      const dy = ball.y - KICK_SPOT.y;
+      const alongKG = dx * (_KG_DX / _KG_LEN) + dy * (_KG_DY / _KG_LEN);
+      if (alongKG > WALL_DIST_PX) {
+        crossedWall = true;
+        wallHeightAtCross = ball.z;
+        // Perpendicular displacement of the ball from the kick line
+        // at the wall's depth.
+        const perp = dx * WALL_PERP_DX + dy * WALL_PERP_DY;
+        const halfWall = WALL_TOTAL_W_PX / 2 + PLAYER_WIDTH_M * PX_PER_M / 2;
+        if (Math.abs(perp) < halfWall && ball.z < WALL_HEIGHT_M) {
+          wallBlocked = true;
+        }
       }
     }
 
@@ -531,19 +555,23 @@ function objective(u) {
 // looking toward the goal). Pitch points (px, py, z_m) project via a
 // simple pinhole camera with focal length FOCAL, camera height
 // CAM_HEIGHT_M, and the camera placed CAM_BACK_PX pixels behind the
-// kicker.
+// kicker. The camera is OFFSET to the kicker's x so the kicker appears
+// at canvas centre and the goal sits to the right (angled-shot view).
 // ============================================================================
-const CAM_BACK_PX = 80;        // px behind the kicker
-const CAM_HEIGHT_M = 1.7;      // m above the pitch (head height)
-const FOCAL = 520;             // virtual focal length in px
-const HORIZON_Y = 105;         // canvas-y of the horizon line
+const CAM_BACK_PX = 100;       // px behind the kicker
+const CAM_HEIGHT_M = 3.0;      // m above the pitch — raised so the
+                               // viewer sees over the wall to the keeper
+const FOCAL = 700;             // virtual focal length in px
+const HORIZON_Y = 95;          // canvas-y of the horizon line
 
 function project(px, py, z_m = 0) {
   // Forward distance from the camera (positive = ball in front).
   const d = (KICK_SPOT.y + CAM_BACK_PX) - py;
   if (d <= 4) return { x: W / 2, y: HORIZON_Y, scale: 0, visible: false };
-  const lateral = px - W / 2;                              // px on the pitch
-  const heightPx = z_m * PX_PER_M - CAM_HEIGHT_M * PX_PER_M;  // px above eye level
+  // Lateral is relative to the camera's x (== kicker's x), so the
+  // kicker projects to canvas centre regardless of where they stand.
+  const lateral = px - KICK_SPOT.x;
+  const heightPx = z_m * PX_PER_M - CAM_HEIGHT_M * PX_PER_M;
   const scale = FOCAL / d;
   return {
     x: W / 2 + lateral * scale,
@@ -553,45 +581,37 @@ function project(px, py, z_m = 0) {
   };
 }
 
-function drawPitch() {
+function drawPitch(showKickSpotMarker = false) {
   // Sky.
   const sky = ctx.createLinearGradient(0, 0, 0, HORIZON_Y);
   sky.addColorStop(0, '#1a2a4a'); sky.addColorStop(1, '#7090b8');
   ctx.fillStyle = sky;
   ctx.fillRect(0, 0, W, HORIZON_Y);
 
-  // Pitch (trapezoid via perspective projection of a rectangular swath
-  // around the kick-to-goal corridor).
+  // Pitch — flat-fill below horizon. We used to render a perspective
+  // trapezoid plus perspective stripes, but with a wide pitch and the
+  // wide field-of-view those stripes projected into off-canvas trapezoids
+  // that the canvas clipped into the visible "wedge" artifact the user
+  // flagged. A simple flat fill + horizontal canvas-y stripe bands looks
+  // clean and avoids the artifact; the perspective is communicated by
+  // the projected pitch markings (boxes, posts, players) above it.
+  ctx.fillStyle = '#1f6f2a';
+  ctx.fillRect(0, HORIZON_Y, W, H - HORIZON_Y);
+
+  // Mowed stripes — horizontal canvas bands between projected pitch
+  // depths. Use the project() of points along the kick line (at the
+  // kicker's x) to get clean canvas-y values.
   const farY = GOAL_Y - 20;
   const nearY = KICK_SPOT.y + 60;
-  const PITCH_HALF_W_PX = W;          // wide enough to fill the canvas at the near plane
-  const corners = [
-    project(W / 2 - PITCH_HALF_W_PX, nearY, 0),
-    project(W / 2 + PITCH_HALF_W_PX, nearY, 0),
-    project(W / 2 + PITCH_HALF_W_PX, farY, 0),
-    project(W / 2 - PITCH_HALF_W_PX, farY, 0),
-  ];
-  ctx.fillStyle = '#1f6f2a';
-  ctx.beginPath();
-  ctx.moveTo(corners[0].x, corners[0].y);
-  for (let i = 1; i < 4; i++) ctx.lineTo(corners[i].x, corners[i].y);
-  ctx.closePath();
-  ctx.fill();
-
-  // Mowed stripes (alternating bands at increasing pitch depth).
-  ctx.fillStyle = 'rgba(255,255,255,0.05)';
-  for (let i = 0; i < 6; i++) {
-    const y0 = nearY - (nearY - farY) * (i / 6);
-    const y1 = nearY - (nearY - farY) * ((i + 0.5) / 6);
-    if (i % 2 === 0) continue;     // every other stripe
-    const c0a = project(W / 2 - PITCH_HALF_W_PX, y0, 0);
-    const c0b = project(W / 2 + PITCH_HALF_W_PX, y0, 0);
-    const c1a = project(W / 2 - PITCH_HALF_W_PX, y1, 0);
-    const c1b = project(W / 2 + PITCH_HALF_W_PX, y1, 0);
-    ctx.beginPath();
-    ctx.moveTo(c0a.x, c0a.y); ctx.lineTo(c0b.x, c0b.y);
-    ctx.lineTo(c1b.x, c1b.y); ctx.lineTo(c1a.x, c1a.y);
-    ctx.closePath(); ctx.fill();
+  ctx.fillStyle = 'rgba(255,255,255,0.04)';
+  const N_STRIPES = 6;
+  for (let i = 0; i < N_STRIPES; i++) {
+    if (i % 2 === 0) continue;
+    const py0 = nearY - (nearY - farY) * (i / N_STRIPES);
+    const py1 = nearY - (nearY - farY) * ((i + 1) / N_STRIPES);
+    const cy0 = project(KICK_SPOT.x, py0, 0).y;
+    const cy1 = project(KICK_SPOT.x, py1, 0).y;
+    ctx.fillRect(0, Math.min(cy0, cy1), W, Math.abs(cy1 - cy0));
   }
 
   // 18-yard box (projected outline).
@@ -653,16 +673,22 @@ function drawPitch() {
   ctx.lineTo(gtr.x, gtr.y); ctx.lineTo(gbr.x, gbr.y);
   ctx.stroke();
 
-  // Wall — five defenders in a row.
+  // Wall — five defenders perpendicular to the kick-to-goal line.
   for (let i = 0; i < N_WALL; i++) {
-    const px = WALL_LEFT + i * WALL_PLAYER_DX;
-    drawDefenderProjected(px, WALL_Y);
+    const offset = i * WALL_PLAYER_DX;
+    const px = WALL_LEFT_X + offset * WALL_PERP_DX;
+    const py = WALL_LEFT_Y + offset * WALL_PERP_DY;
+    drawDefenderProjected(px, py);
   }
 
-  // Kick spot.
-  const ks = project(KICK_SPOT.x, KICK_SPOT.y, 0);
-  ctx.fillStyle = '#fff';
-  ctx.beginPath(); ctx.arc(ks.x, ks.y, Math.max(2, ks.scale * 2.5), 0, Math.PI * 2); ctx.fill();
+  // Kick-spot dot — only shown in the idle scene (before a kick),
+  // otherwise a static dot at the same pitch location as the moving
+  // ball reads visually as "two balls".
+  if (showKickSpotMarker) {
+    const ks = project(KICK_SPOT.x, KICK_SPOT.y, 0);
+    ctx.fillStyle = '#fff';
+    ctx.beginPath(); ctx.arc(ks.x, ks.y, Math.max(2, ks.scale * 2.5), 0, Math.PI * 2); ctx.fill();
+  }
 }
 
 // Draw a projected polyline; closed=true draws a closed loop.
@@ -681,8 +707,9 @@ function drawDefenderProjected(pitchX, pitchY) {
   const feet = project(pitchX, pitchY, 0);
   const head = project(pitchX, pitchY, WALL_HEIGHT_M);
   if (!feet.visible || !head.visible) return;
-  const w = Math.max(4, feet.scale * 14);
-  const headR = Math.max(2.5, feet.scale * 5);
+  // Slimmer than before so heads don't dominate.
+  const w = Math.max(3, feet.scale * 8);
+  const headR = Math.max(2, feet.scale * 3.4);
   // Body.
   ctx.fillStyle = '#1a3a8a';
   ctx.fillRect(feet.x - w / 2, head.y + headR * 0.7, w, feet.y - (head.y + headR * 0.7));
@@ -698,19 +725,21 @@ function drawKeeperProjected(pitchX) {
   const feet = project(pitchX, KEEPER_START.y, 0);
   const head = project(pitchX, KEEPER_START.y, 1.85);  // standing height
   if (!feet.visible || !head.visible) return;
-  const w = Math.max(5, feet.scale * 18);
-  const headR = Math.max(3, feet.scale * 6);
+  // Keeper rendered slimmer than wall defenders so they don't look
+  // huge relative to the goal frame.
+  const w = Math.max(4, feet.scale * 10);
+  const headR = Math.max(2.5, feet.scale * 3.6);
   // Body.
   ctx.fillStyle = '#f3d233';
   ctx.fillRect(feet.x - w / 2, head.y + headR * 0.7, w, feet.y - (head.y + headR * 0.7));
   // Stretched-out arms hint.
-  ctx.fillRect(feet.x - w * 1.2, head.y + headR * 1.5, w * 2.4, w * 0.3);
+  ctx.fillRect(feet.x - w * 1.1, head.y + headR * 1.4, w * 2.2, w * 0.28);
   // Head.
   ctx.fillStyle = '#c8a888';
   ctx.beginPath(); ctx.arc(head.x, head.y + headR, headR, 0, Math.PI * 2); ctx.fill();
   // Shadow.
   ctx.fillStyle = 'rgba(0,0,0,0.3)';
-  ctx.beginPath(); ctx.ellipse(feet.x, feet.y + 2, w * 0.8, w * 0.2, 0, 0, Math.PI * 2); ctx.fill();
+  ctx.beginPath(); ctx.ellipse(feet.x, feet.y + 2, w * 0.7, w * 0.18, 0, 0, Math.PI * 2); ctx.fill();
 }
 
 function drawBallProjected(ball) {
@@ -735,8 +764,8 @@ function drawBallProjected(ball) {
   ctx.beginPath(); ctx.arc(p.x - r * 0.2, p.y - r * 0.2, r * 0.22, 0, Math.PI * 2); ctx.fill();
 }
 
-function drawScene(state, hudText, trail) {
-  drawPitch();
+function drawScene(state, hudText, trail, showKickSpotMarker = false) {
+  drawPitch(showKickSpotMarker);
   // Keeper rendered AFTER the pitch but BEFORE the ball, so the ball
   // (which can pass in front of the keeper near the goal line) draws on
   // top during a save attempt.
@@ -771,7 +800,8 @@ function drawScene(state, hudText, trail) {
 
 function drawIdleScene() {
   drawScene({ x: KICK_SPOT.x, y: KICK_SPOT.y, z: 0, kx: KEEPER_START.x },
-    'Press "Find the best kick" or take one yourself', null);
+    'Press "Find the best kick" or take one yourself', null,
+    /*showKickSpotMarker=*/false);  // Ball IS the marker in idle, no need for both
 }
 
 // ============================================================================
