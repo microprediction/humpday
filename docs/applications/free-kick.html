@@ -127,7 +127,7 @@
           <input type="range" id="manual-power" min="14" max="32" step="0.1" value="24">
 
           <label for="manual-curve">Curve <output id="manual-curve-out">0.00</output></label>
-          <input type="range" id="manual-curve" min="-2" max="2" step="0.02" value="0">
+          <input type="range" id="manual-curve" min="-3" max="3" step="0.02" value="0">
         </div>
         <button id="manual-btn" onclick="manualKick()">▶ Take the kick</button>
       </div>
@@ -337,13 +337,14 @@ const KEEPER_REACH_M = 1.7;
 // aim     : -25° to +25° from straight-at-goal
 // loft    : 5° to 40° (vertical elevation off the pitch)
 // power   : 14 to 32 m/s (real free kicks are typically 22–32 m/s)
-// curve   : -2 to +2 rad/s of spin (left curl = negative)
+// curve   : -3 to +3 rad/s of spin (extended — more curve lets the
+//           ball bend further around the wall and the keeper)
 function decode(u) {
   return [
     -25 + 50 * u[0],
      5 + 35 * u[1],
     14 + 18 * u[2],
-    -2 + 4 * u[3],
+    -3 + 6 * u[3],
   ];
 }
 
@@ -428,7 +429,7 @@ function runKick(params, recordFrames = false) {
 
     if (recordFrames) frames.push({
       x: ball.x, y: ball.y, z: ball.z,
-      kx: keeper.x,
+      kx: keeper.x, kvx: keeper.vx,
     });
 
     // Wall crossing — the wall is an angled line perpendicular to the
@@ -469,11 +470,22 @@ function runKick(params, recordFrames = false) {
       break;
     }
 
-    // Ground hit before goal line.
+    // Ground hit before goal line — let the ball BOUNCE off the
+    // grass with energy loss. A real ball that lands short of the
+    // goal usually bounces a few times before stopping; sometimes a
+    // bouncing low ball can still cross the line.
     if (ball.z < 0) {
-      landed = true;
-      landingPos = { x: ball.x, y: ball.y };
-      break;
+      ball.z = 0;
+      ball.vz = -ball.vz * 0.42;     // 58 % energy loss on the bounce
+      ball.vx *= 0.72;                // turf friction during contact
+      ball.vy *= 0.72;
+      // Stop bouncing once the bounce is very weak (small enough vz
+      // that the ball is just rolling on the turf).
+      if (Math.abs(ball.vz) < 0.4) {
+        landed = true;
+        landingPos = { x: ball.x, y: ball.y };
+        break;
+      }
     }
 
     t += DT;
@@ -511,7 +523,12 @@ function runKick(params, recordFrames = false) {
     // posts as "wide". A ball at the post line counts as in (grazes
     // the woodwork) per real-game convention.
     const inPosts = gx > GOAL_LEFT && gx < GOAL_RIGHT;
-    const underCrossbar = gz < GOAL_HEIGHT_M - 0.05;
+    // Bigger margin from the crossbar — was 5 cm, now 20 cm. A ball
+    // that grazes the top of the bar is "over" not "goal" since in
+    // the visualisation that trajectory is indistinguishable from a
+    // shot that sailed clean over. User feedback: "this should not
+    // be a goal" on a shot that arced just under the bar.
+    const underCrossbar = gz < GOAL_HEIGHT_M - 0.20;
     if (!inPosts) {
       // Side-net miss — partial credit if very close to a post.
       const distFromPost = Math.min(Math.abs(gx - GOAL_LEFT), Math.abs(gx - GOAL_RIGHT));
@@ -580,11 +597,15 @@ function objective(u) {
 // scene uses more canvas width — kicker on the canvas-left, goal in
 // the right-of-centre region with room around it.
 // ============================================================================
-const CAM_BACK_PX = 100;       // px behind the kicker
-const CAM_HEIGHT_M = 3.0;      // m above the pitch
+const CAM_BACK_PX = 110;       // px behind the kicker
+const CAM_HEIGHT_M = 2.4;      // m above the pitch
 const FOCAL = 900;             // longer focal length = bigger goal on canvas
 const HORIZON_Y = 80;
-const CAM_X_REF = KICK_SPOT.x + 40;   // pan the camera toward the goal
+// Smaller pan than before — the +50 offset projected the kicker off
+// the canvas left edge so half the ball was invisible. +20 keeps the
+// kicker visibly on canvas (~canvas-x 236) while still leaving the
+// goal in the right-of-centre region.
+const CAM_X_REF = KICK_SPOT.x + 20;
 
 function project(px, py, z_m = 0) {
   // Forward distance from the camera (positive = ball in front).
@@ -741,22 +762,34 @@ function drawDefenderProjected(pitchX, pitchY) {
   ctx.beginPath(); ctx.ellipse(feet.x, feet.y + 2, w * 0.7, w * 0.18, 0, 0, Math.PI * 2); ctx.fill();
 }
 
-function drawKeeperProjected(pitchX) {
+function drawKeeperProjected(pitchX, diveVx = 0) {
   const feet = project(pitchX, KEEPER_START.y, 0);
-  const head = project(pitchX, KEEPER_START.y, 1.85);  // standing height
+  const head = project(pitchX, KEEPER_START.y, 1.85);
   if (!feet.visible || !head.visible) return;
-  // Keeper rendered slimmer than wall defenders so they don't look
-  // huge relative to the goal frame.
   const w = Math.max(4, feet.scale * 10);
   const headR = Math.max(2.5, feet.scale * 3.6);
+  // Dive amount in [0, 1] based on lateral keeper velocity. When the
+  // keeper is moving fast we extend their arms much further in the
+  // dive direction — visually "jumping toward the ball".
+  const maxV = KEEPER_MAX_SPEED_M * PX_PER_M;
+  const diveMag = Math.min(1, Math.abs(diveVx) / maxV);
+  const diveSign = Math.sign(diveVx);
   // Body.
   ctx.fillStyle = '#f3d233';
   ctx.fillRect(feet.x - w / 2, head.y + headR * 0.7, w, feet.y - (head.y + headR * 0.7));
-  // Stretched-out arms hint.
-  ctx.fillRect(feet.x - w * 1.1, head.y + headR * 1.4, w * 2.2, w * 0.28);
-  // Head.
+  // Stretched arms — grow longer and shift toward the dive direction
+  // as the keeper accelerates laterally. At full dive speed the arms
+  // span ~4 × the body width and centre shifts by ~0.7 × w in the
+  // dive direction (so the keeper looks like they're reaching).
+  const armSpan = w * (2.0 + diveMag * 2.2);
+  const armCenterX = feet.x + diveSign * diveMag * w * 0.7;
+  ctx.fillRect(armCenterX - armSpan / 2, head.y + headR * 1.4, armSpan, w * 0.28);
+  // Head — shifts a touch in the dive direction so the figure
+  // visibly leans into the dive.
   ctx.fillStyle = '#c8a888';
-  ctx.beginPath(); ctx.arc(head.x, head.y + headR, headR, 0, Math.PI * 2); ctx.fill();
+  ctx.beginPath();
+  ctx.arc(head.x + diveSign * diveMag * w * 0.25, head.y + headR, headR, 0, Math.PI * 2);
+  ctx.fill();
   // Shadow.
   ctx.fillStyle = 'rgba(0,0,0,0.3)';
   ctx.beginPath(); ctx.ellipse(feet.x, feet.y + 2, w * 0.7, w * 0.18, 0, 0, Math.PI * 2); ctx.fill();
@@ -766,14 +799,16 @@ function drawBallProjected(ball) {
   // Shadow at z=0 directly under the ball's (x, y).
   const shadow = project(ball.x, ball.y, 0);
   if (shadow.visible) {
-    const sR = Math.max(1.5, shadow.scale * 4);
+    const sR = Math.max(1.5, Math.min(8, shadow.scale * 1.5));
     ctx.fillStyle = 'rgba(0,0,0,0.35)';
     ctx.beginPath(); ctx.ellipse(shadow.x, shadow.y, sR, sR * 0.35, 0, 0, Math.PI * 2); ctx.fill();
   }
-  // Ball.
+  // Ball — capped at 10 px so the perspective close-up at the kicker
+  // doesn't blow it up to 40+ px (which was clipping off the canvas
+  // edge). 1.5 px-in-pitch ≈ a real soccer ball at PX_PER_M = 13.5.
   const p = project(ball.x, ball.y, ball.z);
   if (!p.visible) return;
-  const r = Math.max(2.5, p.scale * 4.5);
+  const r = Math.max(2.5, Math.min(10, p.scale * 1.8));
   ctx.fillStyle = '#fff';
   ctx.beginPath(); ctx.arc(p.x, p.y, r, 0, Math.PI * 2); ctx.fill();
   ctx.strokeStyle = 'rgba(0,0,0,0.4)';
@@ -790,7 +825,8 @@ function drawScene(state, hudText, trail, showKickSpotMarker = false) {
   // (which can pass in front of the keeper near the goal line) draws on
   // top during a save attempt.
   const keeperX = state && state.kx != null ? state.kx : KEEPER_START.x;
-  drawKeeperProjected(keeperX);
+  const keeperVx = state && state.kvx != null ? state.kvx : 0;
+  drawKeeperProjected(keeperX, keeperVx);
   // Trail.
   if (trail && trail.length > 1) {
     ctx.strokeStyle = 'rgba(255,255,255,0.75)';
