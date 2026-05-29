@@ -117,8 +117,8 @@
           Set it up yourself — drag the sliders, hit it, see if you can stick the landing.
         </p>
         <div class="hr-sliders">
-          <label for="manual-speed">Speed <output id="manual-speed-out">17</output></label>
-          <input type="range" id="manual-speed" min="10" max="25" step="0.1" value="17">
+          <label for="manual-speed">Speed <output id="manual-speed-out">14</output></label>
+          <input type="range" id="manual-speed" min="10" max="18" step="0.1" value="14">
 
           <label for="manual-angle">Ramp ° <output id="manual-angle-out">30</output></label>
           <input type="range" id="manual-angle" min="15" max="50" step="0.5" value="30">
@@ -296,15 +296,12 @@ const CHASSIS_H = 18;
 const WHEEL_R = 9;
 
 // Parameter ranges — decoded from [0,1]^3:
-//   speed     : 10 to 25   (initial wheel angular velocity → forward roll)
-//   rampDeg   : 15 to 50   (launch ramp slope, degrees)
+//   speed     : 10 to 18  (chassis launch velocity, capped per user)
+//   rampDeg   : 15 to 50  (launch ramp slope, degrees)
 //   airTorque : -0.5 to 0.5 (constant angular acceleration while airborne)
-// Speed previously went to 35; that envelope produced "always overshoot"
-// regions where any angle worked. Capping at 25 makes the speed-vs-angle
-// tradeoff matter at every point in the search space.
 function decode(u) {
   return [
-    10 + 15 * u[0],
+    10 + 8 * u[0],
     15 + 35 * u[1],
     -0.5 + 1.0 * u[2],
   ];
@@ -383,13 +380,18 @@ function buildWorld(rampDeg) {
   const chassis = Bodies.rectangle(startX, startY, CHASSIS_W, CHASSIS_H, {
     density: 0.004,
     friction: 0.3,
-    restitution: 0.15,
+    restitution: 0.0,           // was 0.15 — chassis was bouncing visibly
     label: 'chassis',
   });
   const wheelOffsetX = CHASSIS_W * 0.32;
   const wheelOffsetY = CHASSIS_H * 0.55;
   const wheelOpts = {
-    density: 0.006, friction: 1.5, frictionStatic: 2.0, restitution: 0.05,
+    density: 0.006,
+    friction: 0.9,              // was 1.5 — wheels were "grabbing" at the
+                                 // ramp lip transition and launching the
+                                 // car off-ramp
+    frictionStatic: 1.2,        // was 2.0
+    restitution: 0.0,           // was 0.05 — no wheel bounce on ramp impact
     label: 'wheel',
   };
   const wheelL = Bodies.circle(startX - wheelOffsetX, startY + wheelOffsetY, WHEEL_R, wheelOpts);
@@ -421,7 +423,7 @@ function rampHeightFromDeg(deg) {
 }
 
 // ---- One jump --------------------------------------------------------------
-const N_SIM_STEPS = 480;     // ~8 s of physics
+const N_SIM_STEPS = 300;     // ~5 s of physics (was 8 s — sim runs too long after landing)
 const SIM_DELTA = 1000 / 60;
 
 function runJump(params, recordFrames = false) {
@@ -452,7 +454,10 @@ function runJump(params, recordFrames = false) {
 
   const frames = recordFrames ? [] : null;
   let restConfirms = 0;
-  const REST_SPEED = 0.4;
+  const REST_SPEED = 1.0;       // looser threshold so the sim cuts off
+                                 // sooner once the car is clearly settling
+                                 // (was 0.4 — sim kept running while
+                                 // wheels rolled slowly on the right side)
   let leftLaunchRamp = false;
   let landedOnLandingRamp = false;
   let landedOnRoof = false;
@@ -488,7 +493,7 @@ function runJump(params, recordFrames = false) {
     if (recordFrames) frames.push(snapshot(chassis, wheelL, wheelR));
 
     // Early termination when the car is at rest.
-    if (step > 60 && step % 6 === 0) {
+    if (step > 30 && step % 4 === 0) {       // first check after 0.5 s, then every 4 steps
       const maxSpeed = Math.max(
         Math.hypot(chassis.velocity.x, chassis.velocity.y),
         Math.hypot(wheelL.velocity.x, wheelL.velocity.y),
@@ -496,7 +501,7 @@ function runJump(params, recordFrames = false) {
       );
       if (maxSpeed < REST_SPEED) {
         restConfirms++;
-        if (restConfirms >= 3) break;
+        if (restConfirms >= 2) break;            // was 3 — quicker cutoff
       } else {
         restConfirms = 0;
       }
