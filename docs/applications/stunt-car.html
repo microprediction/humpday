@@ -1,0 +1,933 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' 'unsafe-inline' https://cdn.jsdelivr.net; style-src 'self' 'unsafe-inline';">
+<title>🚗 Stunt Car Ramp Jump — HumpDay</title>
+<style>
+  :root {
+    --bg: #1a1a22;
+    --panel: #2d2d3a;
+    --accent: #ffcc00;
+    --text: #e8e8ea;
+    --muted: #9a9aac;
+  }
+  body { margin: 0; background: var(--bg); color: var(--text);
+    font-family: -apple-system, 'Segoe UI', 'Helvetica Neue', Helvetica, Arial, sans-serif; }
+  .site-nav { background: #34495e; padding: 12px 24px;
+    font-family: 'Times New Roman', Times, serif;
+    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1); }
+  .site-nav-inner { max-width: 1100px; margin: 0 auto;
+    display: flex; justify-content: space-between; align-items: center; }
+  .site-nav a { color: #ecf0f1; text-decoration: none; margin: 0 12px; }
+  .site-nav a:hover { color: white; text-decoration: underline; }
+  .site-nav-brand { font-weight: 700; font-size: 1.25em; }
+
+  .container { max-width: 1100px; margin: 0 auto; padding: 32px 24px 64px; }
+  h1 { font-size: 2.2em; margin: 0.2em 0; }
+  h2 { font-size: 1.4em; margin-top: 1.4em; color: var(--accent); }
+  p { line-height: 1.55; max-width: 70ch; }
+  .intro { color: var(--muted); }
+
+  .stage { display: grid; grid-template-columns: 1fr 320px; gap: 24px;
+    align-items: start; margin-top: 24px; }
+  @media (max-width: 800px) { .stage { grid-template-columns: 1fr; } }
+  canvas { background: linear-gradient(180deg, #4a6fa5 0%, #93b4d8 60%, #6a8d5a 60%, #4a6638 100%);
+    border: 3px solid var(--accent); border-radius: 6px; display: block;
+    width: 100%; height: auto; }
+
+  .panel { background: var(--panel); padding: 18px; border-radius: 6px; border: 1px solid #404054; }
+  .panel h3 { margin: 0 0 12px; font-size: 1.05em; text-transform: uppercase;
+    letter-spacing: 0.06em; color: var(--accent); }
+  label { display: block; margin: 10px 0 6px; font-size: 0.9em; color: var(--muted); }
+  select, input, button { width: 100%; box-sizing: border-box; padding: 8px 10px;
+    border-radius: 4px; border: 1px solid #404054; background: #1a1a22; color: var(--text); font-size: 0.95em; }
+  button { background: var(--accent); color: #1a1a22; font-weight: 700; cursor: pointer; margin-top: 6px; transition: opacity 0.15s; }
+  button:hover { opacity: 0.88; }
+  button.secondary { background: #404054; color: var(--text); font-weight: 400; }
+  button:disabled { opacity: 0.5; cursor: not-allowed; }
+  .stats { margin-top: 16px; padding-top: 14px; border-top: 1px solid #404054; font-size: 0.92em; line-height: 1.6; }
+  .stats .score { font-size: 2.6em; color: var(--accent); font-weight: 700; }
+  .stat-row { display: flex; justify-content: space-between; align-items: baseline; gap: 12px; }
+  .stat-row span:first-child { white-space: nowrap; flex-shrink: 0; }
+  .stat-row span:last-child { color: var(--text); font-family: 'SF Mono', Menlo, monospace; text-align: right; word-break: break-word; }
+  .stat-row .algo-tag { display: block; color: var(--muted); font-size: 0.82em; margin-top: 2px; }
+
+  .leaderboard { margin-top: 24px; }
+  .leaderboard table { width: 100%; border-collapse: collapse; background: var(--panel); border-radius: 6px; overflow: hidden; }
+  .leaderboard th, .leaderboard td { padding: 10px 14px; text-align: left; border-bottom: 1px solid #404054; }
+  .leaderboard th { background: #1a1a22; color: var(--muted); text-transform: uppercase; font-size: 0.78em; letter-spacing: 0.08em; }
+  .leaderboard td:nth-child(2) { text-align: center; font-size: 1.3em; font-weight: 700; color: var(--accent); }
+  .leaderboard td:nth-child(3), .leaderboard td:nth-child(4) { font-family: 'SF Mono', Menlo, monospace; color: var(--muted); }
+  .leaderboard tr.human-raphson td:first-child { color: #ff9944; font-weight: 700; }
+
+  .left-stack { display: flex; flex-direction: column; gap: 16px; min-width: 0; }
+  .hr-panel { padding: 14px 16px; }
+  .hr-panel h3 { margin: 0 0 6px; }
+  .hr-sliders { display: grid; grid-template-columns: repeat(3, 1fr); gap: 6px 18px; margin-bottom: 10px; }
+  .hr-sliders label { margin: 0; display: flex; justify-content: space-between; align-items: baseline; font-size: 0.84em; grid-row: 1; }
+  .hr-sliders label output { color: var(--accent); font-family: 'SF Mono', Menlo, monospace; font-size: 0.92em; }
+  .hr-sliders input[type=range] { width: 100%; margin: 0; padding: 0; background: transparent; grid-row: 2; }
+  .hr-sliders input[type=range]::-webkit-slider-runnable-track { background: #1a1a22; height: 6px; border-radius: 3px; }
+  .hr-sliders input[type=range]::-webkit-slider-thumb { -webkit-appearance: none; appearance: none; background: var(--accent); width: 18px; height: 18px; border-radius: 50%; margin-top: -6px; cursor: pointer; }
+  .hr-panel button { background: #ff9944; color: #1a1a22; margin-top: 0; }
+
+  .skill-callout { margin-top: 36px; background: rgba(255, 204, 0, 0.06); border: 1px solid rgba(255, 204, 0, 0.3); border-radius: 8px; padding: 18px 22px; }
+  .skill-callout h3 { margin: 0 0 6px; color: var(--accent); font-size: 1.05em; text-transform: none; letter-spacing: 0; }
+  .skill-callout p { margin: 0 0 10px; color: var(--text); max-width: none; }
+  .skill-callout pre { background: #1a1a22; border: 1px solid #404054; border-radius: 4px; padding: 10px 14px; margin: 0; font-size: 0.84em; color: var(--accent); white-space: pre-wrap; word-break: break-all; font-family: 'SF Mono', Menlo, monospace; }
+  .skill-actions { margin-top: 10px; display: flex; align-items: center; gap: 14px; }
+  .skill-actions button { width: auto; background: #404054; color: var(--text); border: 1px solid #404054; padding: 6px 12px; font-size: 0.85em; cursor: pointer; border-radius: 4px; margin: 0; font-weight: 500; }
+  .skill-actions button:hover { background: #4a4a60; }
+  .skill-actions a { color: var(--accent); font-size: 0.85em; text-decoration: none; }
+  .skill-actions a:hover { text-decoration: underline; }
+</style>
+</head>
+<body>
+<nav class="site-nav">
+  <div class="site-nav-inner">
+    <a class="site-nav-brand" href="../index.html">HumpDay 🚗</a>
+    <div>
+      <a href="../index.html">Home</a>
+      <a href="index.html">Applications</a>
+      <a href="../contest.html">Contest</a>
+      <a href="../README.html">Docs</a>
+    </div>
+  </div>
+</nav>
+
+<div class="container">
+  <h1>🚗 Stunt Car Ramp Jump</h1>
+  <p class="intro">
+    A daredevil car hits a launch ramp and tries to land wheels-down on
+    a landing ramp across a gap. The optimiser tunes
+    <strong>launch speed, launch ramp angle,</strong> and an
+    <strong>in-air torque</strong> (constant angular acceleration while
+    airborne — lets the driver rotate the chassis to land flat).
+  </p>
+
+  <div class="stage">
+    <div class="left-stack">
+      <canvas id="canvas" width="800" height="450"></canvas>
+
+      <div class="panel hr-panel">
+        <h3>🧠 Human Raphson</h3>
+        <p style="color: var(--muted); margin: 0 0 12px; font-size: 0.86em;">
+          Set it up yourself — drag the sliders, hit it, see if you can stick the landing.
+        </p>
+        <div class="hr-sliders">
+          <label for="manual-speed">Speed <output id="manual-speed-out">18</output></label>
+          <input type="range" id="manual-speed" min="10" max="35" step="0.1" value="18">
+
+          <label for="manual-angle">Ramp ° <output id="manual-angle-out">30</output></label>
+          <input type="range" id="manual-angle" min="15" max="50" step="0.5" value="30">
+
+          <label for="manual-torque">Air torque <output id="manual-torque-out">0.00</output></label>
+          <input type="range" id="manual-torque" min="-0.5" max="0.5" step="0.01" value="0">
+        </div>
+        <button id="manual-btn" onclick="manualJump()">▶ Send it (Human Raphson)</button>
+      </div>
+    </div>
+
+    <div class="panel">
+      <h3>Algorithm</h3>
+      <label for="algorithm">Pick a HumpDay optimizer:</label>
+      <select id="algorithm">
+        <optgroup label="Trust-region / interpolation">
+          <option value="PRIMA_BOBYQA">PRIMA_BOBYQA</option>
+          <option value="PRIMA_NEWUOA">PRIMA_NEWUOA</option>
+        </optgroup>
+        <optgroup label="Local / classical">
+          <option value="NelderMead">Nelder-Mead</option>
+          <option value="Powell">Powell</option>
+          <option value="LBFGSB">L-BFGS-B (simplified)</option>
+        </optgroup>
+        <optgroup label="Population-based">
+          <option value="DifferentialEvolution" selected>Differential Evolution</option>
+          <option value="ParticleSwarm">Particle Swarm</option>
+          <option value="CMAEvolutionStrategy">CMA-Evolution Strategy</option>
+          <option value="GeneticAlgorithm">Genetic Algorithm</option>
+          <option value="EvolutionStrategy">Evolution Strategy</option>
+          <option value="HarmonySearch">Harmony Search</option>
+        </optgroup>
+        <optgroup label="Other">
+          <option value="SimulatedAnnealing">Simulated Annealing</option>
+          <option value="BayesianOpt">Bayesian Optimization</option>
+          <option value="FireflyAlgorithm">Firefly Algorithm</option>
+          <option value="AntColonyOpt">Ant Colony</option>
+          <option value="TabuSearch">Tabu Search</option>
+          <option value="RandomSearch">Random Search</option>
+        </optgroup>
+      </select>
+
+      <label for="budget">Evaluation budget:</label>
+      <select id="budget">
+        <option value="10">10 jumps</option>
+        <option value="20" selected>20 jumps</option>
+        <option value="50">50 jumps</option>
+        <option value="100">100 jumps</option>
+        <option value="200">200 jumps</option>
+        <option value="500">500 jumps</option>
+      </select>
+      <p style="margin: 8px 0 0; font-size: 0.78em; color: var(--muted);">
+        Each jump is animated frame-by-frame at 2× the final-replay speed.
+      </p>
+
+      <button id="run-btn" onclick="runOptimization()">▶ Find the best jump</button>
+      <button class="secondary" onclick="replayBest()">🔁 Replay best jump</button>
+      <button class="secondary" onclick="resetEverything()">⟲ Reset leaderboard</button>
+
+      <div class="stats">
+        <div class="stat-row"><span>Score</span><span class="score" id="score-now">0</span></div>
+        <div class="stat-row"><span>Result</span><span id="score-detail">—</span></div>
+        <div class="stat-row"><span>Jumps tried</span><span id="evals">0</span></div>
+        <div class="stat-row"><span>Best so far</span><span id="best-score">—</span></div>
+        <div class="stat-row"><span>Speed</span><span id="param-speed">—</span></div>
+        <div class="stat-row"><span>Ramp °</span><span id="param-angle">—</span></div>
+        <div class="stat-row"><span>Air torque</span><span id="param-torque">—</span></div>
+      </div>
+    </div>
+  </div>
+
+  <div class="leaderboard">
+    <h2>Leaderboard (this session)</h2>
+    <p style="color: var(--muted);">
+      Each row is the best single jump a given algorithm found.
+    </p>
+    <table>
+      <thead>
+        <tr><th>Algorithm</th><th>Score</th><th>Jumps used</th><th>Best params (speed / ° / torque)</th></tr>
+      </thead>
+      <tbody id="leaderboard-body">
+        <tr><td colspan="4" style="color: var(--muted); text-align: center;">— no runs yet —</td></tr>
+      </tbody>
+    </table>
+  </div>
+
+  <h2>What's happening</h2>
+  <p>
+    A 2-D rigid-body car (chassis + two wheels, Matter.js constraints)
+    rolls toward a launch ramp, leaves the lip at the configured speed
+    and angle, applies a constant <em>in-air torque</em> while airborne,
+    and either sticks the landing on the far ramp or doesn't.
+  </p>
+  <p>
+    <strong>Score</strong> is composite:
+    <em>100</em> for landing wheels-down on the landing ramp,
+    <em>~50</em> for landing on the roof or sideways on the landing
+    ramp, partial credit proportional to how close the car got to the
+    landing ramp if it falls short, and a small style bonus for
+    horizontal distance covered.
+  </p>
+  <p>
+    Three parameters means the search space is small, but the failure
+    modes are sharp — overshoot, undershoot, land upside down — so the
+    objective surface has hard edges. Try a few different algorithms
+    and compare; we haven't profiled the landscape yet, so the most
+    useful thing is to look at the actual results.
+  </p>
+
+  <hr style="border: 0; border-top: 1px solid #404054; margin: 32px 0 16px;" />
+  <p style="font-size: 0.78em; color: var(--muted);">
+    Physics powered by <a style="color: var(--muted); text-decoration: underline;" href="https://brm.io/matter-js/">Matter.js</a> — rigid-body collisions, gravity, joint constraints.
+  </p>
+
+  <div class="skill-callout">
+    <h3>🌱 Save the Planet</h3>
+    <p>Cut and paste this into Claude or Cursor:</p>
+    <pre id="skill-snippet">Read https://raw.githubusercontent.com/microprediction/humpday/main/SKILL.md
+and create a project skill from it.</pre>
+    <div class="skill-actions">
+      <button type="button" onclick="copySkillSnippet(this)">📋 Copy</button>
+      <a href="https://github.com/microprediction/humpday/blob/main/SKILL.md" target="_blank" rel="noopener">View SKILL.md →</a>
+    </div>
+  </div>
+
+  <script>
+    function copySkillSnippet(btn) {
+      const text = document.getElementById('skill-snippet').textContent;
+      navigator.clipboard.writeText(text).then(() => {
+        const orig = btn.textContent;
+        btn.textContent = '✓ Copied';
+        setTimeout(() => { btn.textContent = orig; }, 1500);
+      }).catch(() => {
+        btn.textContent = '✗ Copy failed';
+      });
+    }
+  </script>
+</div>
+
+<script src="https://cdn.jsdelivr.net/npm/matter-js@0.19.0/build/matter.min.js"></script>
+<script src="../js/modules/base-optimizer.js"></script>
+<script src="../js/modules/prima-algorithms.js"></script>
+<script src="../js/modules/scipy-algorithms.js"></script>
+<script src="../js/modules/evolutionary-algorithms.js"></script>
+<script src="../js/modules/search-algorithms.js"></script>
+
+<script>
+// ============================================================================
+// Stunt-car ramp jump — 2D Matter.js, car = chassis rectangle + 2 wheel
+// circles joined by revolute constraints. World rebuilt for every shot
+// so every parameter vector starts from identical initial conditions.
+// ============================================================================
+
+const { Engine, World, Bodies, Body, Composite, Constraint } = Matter;
+
+const canvas = document.getElementById('canvas');
+const ctx = canvas.getContext('2d');
+const W = canvas.width, H = canvas.height;
+
+// World geometry — flat ground on each side of a gap, two ramps.
+const GROUND_Y = H - 50;
+const GAP_LEFT = 320;        // right edge of launch ramp / left edge of gap
+const GAP_RIGHT = 540;       // left edge of landing ramp / right edge of gap
+const GAP_WIDTH = GAP_RIGHT - GAP_LEFT;
+
+// Launch ramp parameters that depend on user input.
+const LAUNCH_BASE_X = 170;   // ramp's leftmost point (lowest, on ground)
+const LANDING_TOP_X = GAP_RIGHT;
+const LANDING_BASE_X = 740;
+const LANDING_TOP_Y = GROUND_Y - 90;  // landing ramp's high left edge
+
+// Car geometry.
+const CHASSIS_W = 64;
+const CHASSIS_H = 18;
+const WHEEL_R = 9;
+
+// Parameter ranges — decoded from [0,1]^3:
+//   speed     : 10 to 35   (initial wheel angular velocity → forward roll)
+//   rampDeg   : 15 to 50   (launch ramp slope, degrees)
+//   airTorque : -0.5 to 0.5 (constant angular acceleration while airborne)
+function decode(u) {
+  return [
+    10 + 25 * u[0],
+    15 + 35 * u[1],
+    -0.5 + 1.0 * u[2],
+  ];
+}
+
+// Build a fresh world.
+function buildWorld(rampDeg) {
+  const engine = Engine.create({ gravity: { x: 0, y: 1.2 } });
+  const world = engine.world;
+
+  // Flat ground on the left (the run-up).
+  const leftGround = Bodies.rectangle(
+    LAUNCH_BASE_X / 2, GROUND_Y + 25,
+    LAUNCH_BASE_X, 50,
+    { isStatic: true, friction: 0.6, label: 'ground' },
+  );
+
+  // Launch ramp — sloped rectangle. Bottom-left at (LAUNCH_BASE_X, GROUND_Y),
+  // top-right at (GAP_LEFT, GROUND_Y - rampHeight). Width along its
+  // sloped axis. We use a rotated thin rectangle so the surface is one
+  // clean line.
+  const rampLength = Math.hypot(GAP_LEFT - LAUNCH_BASE_X,
+                                 (GROUND_Y - rampHeightFromDeg(rampDeg)) - GROUND_Y);
+  const rampAngle = Math.atan2(
+    (GROUND_Y - rampHeightFromDeg(rampDeg)) - GROUND_Y,
+    GAP_LEFT - LAUNCH_BASE_X,
+  );
+  const rampThick = 14;
+  // Mid-point of the ramp segment.
+  const rampMidX = (LAUNCH_BASE_X + GAP_LEFT) / 2;
+  const rampMidY = (GROUND_Y + (GROUND_Y - rampHeightFromDeg(rampDeg))) / 2;
+  // Shift the rectangle DOWN by half-thickness along the ramp's normal
+  // so the TOP surface of the rectangle lies on the geometric ramp
+  // line. Normal points up-and-left from the slope going up-right.
+  const normalDx = -Math.sin(rampAngle), normalDy = Math.cos(rampAngle);
+  const launchRamp = Bodies.rectangle(
+    rampMidX + (rampThick / 2) * normalDx,
+    rampMidY + (rampThick / 2) * normalDy,
+    rampLength, rampThick,
+    { isStatic: true, angle: rampAngle, friction: 0.6, label: 'launchRamp' },
+  );
+
+  // Landing ramp — fixed geometry: top-left at (GAP_RIGHT, LANDING_TOP_Y),
+  // bottom-right at (LANDING_BASE_X, GROUND_Y). Slopes downward to the right.
+  const landingLength = Math.hypot(LANDING_BASE_X - GAP_RIGHT, GROUND_Y - LANDING_TOP_Y);
+  const landingAngle = Math.atan2(GROUND_Y - LANDING_TOP_Y, LANDING_BASE_X - GAP_RIGHT);
+  const landingMidX = (GAP_RIGHT + LANDING_BASE_X) / 2;
+  const landingMidY = (LANDING_TOP_Y + GROUND_Y) / 2;
+  const lnDx = -Math.sin(landingAngle), lnDy = Math.cos(landingAngle);
+  const landingRamp = Bodies.rectangle(
+    landingMidX + (rampThick / 2) * lnDx,
+    landingMidY + (rampThick / 2) * lnDy,
+    landingLength, rampThick,
+    { isStatic: true, angle: landingAngle, friction: 0.6, label: 'landingRamp' },
+  );
+
+  // Far-right ground after the landing ramp, so a successful jump
+  // doesn't fall off the screen edge.
+  const rightGround = Bodies.rectangle(
+    (LANDING_BASE_X + W) / 2, GROUND_Y + 25,
+    W - LANDING_BASE_X, 50,
+    { isStatic: true, friction: 0.6, label: 'ground' },
+  );
+
+  // Pit floor below the gap — dampens-but-doesn't-bounce, so the
+  // animation visibly settles when the car falls in.
+  const pitFloor = Bodies.rectangle(
+    (GAP_LEFT + GAP_RIGHT) / 2, H + 80,
+    GAP_RIGHT - GAP_LEFT + 80, 60,
+    { isStatic: true, friction: 0.9, label: 'pit' },
+  );
+
+  // Car — chassis + two wheels joined by revolute constraints.
+  const startX = LAUNCH_BASE_X - 60;
+  const startY = GROUND_Y - 18;
+  const chassis = Bodies.rectangle(startX, startY, CHASSIS_W, CHASSIS_H, {
+    density: 0.004,
+    friction: 0.3,
+    restitution: 0.15,
+    label: 'chassis',
+  });
+  const wheelOffsetX = CHASSIS_W * 0.32;
+  const wheelOffsetY = CHASSIS_H * 0.55;
+  const wheelOpts = {
+    density: 0.006, friction: 1.5, frictionStatic: 2.0, restitution: 0.05,
+    label: 'wheel',
+  };
+  const wheelL = Bodies.circle(startX - wheelOffsetX, startY + wheelOffsetY, WHEEL_R, wheelOpts);
+  const wheelR = Bodies.circle(startX + wheelOffsetX, startY + wheelOffsetY, WHEEL_R, wheelOpts);
+
+  // Stiff revolute joints — no length, no stiffness damping.
+  const jointL = Constraint.create({
+    bodyA: chassis, pointA: { x: -wheelOffsetX, y: wheelOffsetY },
+    bodyB: wheelL,
+    length: 0, stiffness: 1.0,
+  });
+  const jointR = Constraint.create({
+    bodyA: chassis, pointA: { x: wheelOffsetX, y: wheelOffsetY },
+    bodyB: wheelR,
+    length: 0, stiffness: 1.0,
+  });
+
+  Composite.add(world, [
+    leftGround, launchRamp, landingRamp, rightGround, pitFloor,
+    chassis, wheelL, wheelR, jointL, jointR,
+  ]);
+
+  return { engine, chassis, wheelL, wheelR, landingRamp, rampAngle, landingAngle };
+}
+
+function rampHeightFromDeg(deg) {
+  const r = deg * Math.PI / 180;
+  return (GAP_LEFT - LAUNCH_BASE_X) * Math.tan(r);
+}
+
+// ---- One jump --------------------------------------------------------------
+const N_SIM_STEPS = 480;     // ~8 s of physics
+const SIM_DELTA = 1000 / 60;
+
+function runJump(params, recordFrames = false) {
+  const [speed, rampDeg, airTorque] = params;
+  const world = buildWorld(rampDeg);
+  const { engine, chassis, wheelL, wheelR } = world;
+
+  // Initial push: set wheel angular velocity so the car drives forward.
+  // Angular velocity in rad/step; positive = wheel rolls forward (to
+  // the right).
+  Body.setAngularVelocity(wheelL, speed * 0.25);
+  Body.setAngularVelocity(wheelR, speed * 0.25);
+  // Also give the chassis a forward linear velocity so it doesn't lose
+  // momentum to wheel slip on the run-up.
+  Body.setVelocity(chassis, { x: speed * 0.6, y: 0 });
+  Body.setVelocity(wheelL, { x: speed * 0.6, y: 0 });
+  Body.setVelocity(wheelR, { x: speed * 0.6, y: 0 });
+
+  const frames = recordFrames ? [] : null;
+  let restConfirms = 0;
+  const REST_SPEED = 0.4;
+  let leftLaunchRamp = false;
+  let landedOnLandingRamp = false;
+  let landedOnRoof = false;
+
+  for (let step = 0; step < N_SIM_STEPS; step++) {
+    // Apply in-air torque only when airborne. "Airborne" = chassis is
+    // past the gap-left edge AND no wheel is in contact with anything
+    // (cheap proxy: chassis y is above the ramps).
+    const airborne = chassis.position.x > GAP_LEFT - 10
+      && chassis.position.x < GAP_RIGHT + 10
+      && chassis.position.y < GROUND_Y - 30;
+    if (airborne) {
+      Body.setAngularVelocity(chassis, chassis.angularVelocity + airTorque * 0.04);
+    }
+
+    Engine.update(engine, SIM_DELTA);
+
+    // Track landing state — once the chassis is past the gap on the
+    // right side AND moving slowly enough.
+    if (!leftLaunchRamp && chassis.position.x > GAP_LEFT + 5) leftLaunchRamp = true;
+
+    if (leftLaunchRamp && chassis.position.x > GAP_RIGHT) {
+      // We're past the landing-ramp top edge. Are we on top of the
+      // landing ramp? Check chassis y vs the landing-ramp surface at
+      // this x.
+      const dx = chassis.position.x - GAP_RIGHT;
+      const surfaceY = LANDING_TOP_Y + dx * (GROUND_Y - LANDING_TOP_Y) / (LANDING_BASE_X - GAP_RIGHT);
+      if (Math.abs(chassis.position.y - surfaceY) < 30) {
+        landedOnLandingRamp = true;
+      }
+    }
+
+    if (recordFrames) frames.push(snapshot(chassis, wheelL, wheelR));
+
+    // Early termination when the car is at rest.
+    if (step > 60 && step % 6 === 0) {
+      const maxSpeed = Math.max(
+        Math.hypot(chassis.velocity.x, chassis.velocity.y),
+        Math.hypot(wheelL.velocity.x, wheelL.velocity.y),
+        Math.hypot(wheelR.velocity.x, wheelR.velocity.y),
+      );
+      if (maxSpeed < REST_SPEED) {
+        restConfirms++;
+        if (restConfirms >= 3) break;
+      } else {
+        restConfirms = 0;
+      }
+    }
+  }
+
+  // Final orientation — "wheels-down" if chassis angle is near 0 (any
+  // multiple of 2π).
+  const a = chassis.angle;
+  const normAngle = ((a + Math.PI) % (2 * Math.PI) + 2 * Math.PI) % (2 * Math.PI) - Math.PI;
+  const absAngle = Math.abs(normAngle);
+  const wheelsDown = absAngle < Math.PI / 4;        // ±45°
+  const roof = absAngle > 3 * Math.PI / 4;          // upside down
+  landedOnRoof = landedOnLandingRamp && roof;
+
+  // Score.
+  //   100 — landed wheels-down on the landing ramp
+  //    60 — landed on the roof/sideways on the landing ramp
+  //  partial — fell short (proportional to distance covered past the launch lip)
+  //    +5  — extra distance bonus past LANDING_TOP, up to 20pts
+  let score = 0;
+  let result;
+  if (landedOnLandingRamp && wheelsDown) {
+    score = 100;
+    result = 'stuck the landing';
+  } else if (landedOnLandingRamp) {
+    score = roof ? 55 : 60;
+    result = roof ? 'on the roof' : 'sideways';
+  } else if (chassis.position.x < GAP_LEFT) {
+    score = 0;
+    result = 'never left ramp';
+  } else {
+    // Fell short into the pit OR landed flat on the wrong side. Award
+    // proportional credit by how far across the gap we got.
+    const distAcross = Math.max(0, chassis.position.x - GAP_LEFT);
+    score = Math.min(40, 40 * distAcross / GAP_WIDTH);
+    result = 'pit';
+  }
+
+  // Style bonus: extra distance past LANDING_TOP_X (capped) — only on
+  // a successful landing.
+  if (landedOnLandingRamp && wheelsDown) {
+    const extra = Math.min(20, Math.max(0, chassis.position.x - LANDING_TOP_X) / 8);
+    score += extra;
+  }
+
+  return {
+    score,
+    result,
+    landed: landedOnLandingRamp,
+    wheelsDown,
+    onRoof: roof,
+    frames,
+    params,
+    endX: chassis.position.x,
+    endY: chassis.position.y,
+    endAngle: chassis.angle,
+  };
+}
+
+function snapshot(chassis, wheelL, wheelR) {
+  return {
+    chassis: { x: chassis.position.x, y: chassis.position.y, a: chassis.angle },
+    wheelL: { x: wheelL.position.x, y: wheelL.position.y, a: wheelL.angle },
+    wheelR: { x: wheelR.position.x, y: wheelR.position.y, a: wheelR.angle },
+  };
+}
+
+// ============================================================================
+// HumpDay objective. We MINIMISE -score because HumpDay convention is
+// "smaller is better".
+// ============================================================================
+const searchHistory = [];
+
+function objective(u) {
+  const r = runJump(decode(u));
+  searchHistory.push({
+    score: r.score,
+    result: r.result,
+    landed: r.landed,
+    wheelsDown: r.wheelsDown,
+    onRoof: r.onRoof,
+    params: r.params,
+    endX: r.endX,
+  });
+  return -r.score;
+}
+
+// ============================================================================
+// Rendering — pure canvas2d.
+// ============================================================================
+function drawScene(state, hudText, rampDeg = 30) {
+  // Sky.
+  const sky = ctx.createLinearGradient(0, 0, 0, GROUND_Y);
+  sky.addColorStop(0, '#4a6fa5'); sky.addColorStop(1, '#a3c2e0');
+  ctx.fillStyle = sky;
+  ctx.fillRect(0, 0, W, GROUND_Y);
+
+  // Left ground.
+  ctx.fillStyle = '#5a7d4a';
+  ctx.fillRect(0, GROUND_Y, LAUNCH_BASE_X, H - GROUND_Y);
+  ctx.fillStyle = '#3a5530';
+  ctx.fillRect(0, GROUND_Y, LAUNCH_BASE_X, 4);
+
+  // Launch ramp.
+  ctx.save();
+  ctx.fillStyle = '#6b4226';
+  const rampTopY = GROUND_Y - rampHeightFromDeg(rampDeg);
+  ctx.beginPath();
+  ctx.moveTo(LAUNCH_BASE_X, GROUND_Y);
+  ctx.lineTo(GAP_LEFT, rampTopY);
+  ctx.lineTo(GAP_LEFT, GROUND_Y);
+  ctx.closePath();
+  ctx.fill();
+  ctx.strokeStyle = '#8a5934';
+  ctx.lineWidth = 3;
+  ctx.beginPath();
+  ctx.moveTo(LAUNCH_BASE_X, GROUND_Y);
+  ctx.lineTo(GAP_LEFT, rampTopY);
+  ctx.stroke();
+  ctx.restore();
+
+  // Gap — show water.
+  const wgrad = ctx.createLinearGradient(0, GROUND_Y, 0, H);
+  wgrad.addColorStop(0, '#3a6a9a');
+  wgrad.addColorStop(1, '#1a3a5a');
+  ctx.fillStyle = wgrad;
+  ctx.fillRect(GAP_LEFT, GROUND_Y, GAP_WIDTH, H - GROUND_Y);
+  // Waves.
+  ctx.strokeStyle = 'rgba(255,255,255,0.25)';
+  ctx.lineWidth = 1;
+  for (let i = 0; i < 3; i++) {
+    ctx.beginPath();
+    const wy = GROUND_Y + 8 + i * 10;
+    for (let x = GAP_LEFT; x < GAP_RIGHT; x += 12) {
+      ctx.moveTo(x, wy); ctx.lineTo(x + 6, wy);
+    }
+    ctx.stroke();
+  }
+
+  // Landing ramp.
+  ctx.save();
+  ctx.fillStyle = '#6b4226';
+  ctx.beginPath();
+  ctx.moveTo(GAP_RIGHT, LANDING_TOP_Y);
+  ctx.lineTo(LANDING_BASE_X, GROUND_Y);
+  ctx.lineTo(GAP_RIGHT, GROUND_Y);
+  ctx.closePath();
+  ctx.fill();
+  ctx.strokeStyle = '#8a5934';
+  ctx.lineWidth = 3;
+  ctx.beginPath();
+  ctx.moveTo(GAP_RIGHT, LANDING_TOP_Y);
+  ctx.lineTo(LANDING_BASE_X, GROUND_Y);
+  ctx.stroke();
+  ctx.restore();
+
+  // Right ground.
+  ctx.fillStyle = '#5a7d4a';
+  ctx.fillRect(LANDING_BASE_X, GROUND_Y, W - LANDING_BASE_X, H - GROUND_Y);
+  ctx.fillStyle = '#3a5530';
+  ctx.fillRect(LANDING_BASE_X, GROUND_Y, W - LANDING_BASE_X, 4);
+
+  // Car.
+  if (state) {
+    // Chassis.
+    ctx.save();
+    ctx.translate(state.chassis.x, state.chassis.y);
+    ctx.rotate(state.chassis.a);
+    // Body.
+    const carGrad = ctx.createLinearGradient(0, -CHASSIS_H / 2, 0, CHASSIS_H / 2);
+    carGrad.addColorStop(0, '#e84a3a');
+    carGrad.addColorStop(1, '#a01818');
+    ctx.fillStyle = carGrad;
+    ctx.fillRect(-CHASSIS_W / 2, -CHASSIS_H / 2, CHASSIS_W, CHASSIS_H);
+    ctx.strokeStyle = '#2a0a0a';
+    ctx.lineWidth = 1.5;
+    ctx.strokeRect(-CHASSIS_W / 2, -CHASSIS_H / 2, CHASSIS_W, CHASSIS_H);
+    // Windshield.
+    ctx.fillStyle = 'rgba(170,210,240,0.85)';
+    ctx.fillRect(-CHASSIS_W / 2 + 8, -CHASSIS_H / 2 - 6, CHASSIS_W * 0.45, 6);
+    ctx.restore();
+
+    // Wheels.
+    for (const w of [state.wheelL, state.wheelR]) {
+      ctx.save();
+      ctx.translate(w.x, w.y);
+      ctx.rotate(w.a);
+      ctx.fillStyle = '#1a1a1a';
+      ctx.beginPath();
+      ctx.arc(0, 0, WHEEL_R, 0, Math.PI * 2);
+      ctx.fill();
+      ctx.strokeStyle = '#888';
+      ctx.lineWidth = 1.2;
+      ctx.beginPath();
+      ctx.moveTo(-WHEEL_R + 1, 0); ctx.lineTo(WHEEL_R - 1, 0);
+      ctx.moveTo(0, -WHEEL_R + 1); ctx.lineTo(0, WHEEL_R - 1);
+      ctx.stroke();
+      ctx.restore();
+    }
+  }
+
+  // HUD.
+  if (hudText) {
+    ctx.font = 'bold 15px -apple-system, Helvetica, Arial, sans-serif';
+    const padX = 12;
+    const metrics = ctx.measureText(hudText);
+    const boxW = Math.ceil(metrics.width) + 2 * padX;
+    ctx.fillStyle = 'rgba(0,0,0,0.6)';
+    ctx.fillRect(18, 14, boxW, 28);
+    ctx.fillStyle = '#ffcc00';
+    ctx.fillText(hudText, 18 + padX, 33);
+  }
+}
+
+function drawIdleScene() {
+  const { chassis, wheelL, wheelR } = buildWorld(30);
+  drawScene(snapshot(chassis, wheelL, wheelR), 'Press "Find the best jump" to start', 30);
+}
+
+// ============================================================================
+// Animations.
+// ============================================================================
+const REPLAY_MS_PER_FRAME = 20;
+const MONTAGE_MS_PER_FRAME = 10;
+let animationToken = 0;
+
+function animateShot(frames, hudText, rampDeg, msPerFrame = REPLAY_MS_PER_FRAME) {
+  const myToken = animationToken;
+  return new Promise((resolve) => {
+    if (!frames || frames.length === 0) return resolve();
+    let i = 0;
+    function tick() {
+      if (myToken !== animationToken) return resolve();
+      if (i >= frames.length) return resolve();
+      drawScene(frames[i], hudText, rampDeg);
+      i += 1;
+      setTimeout(tick, msPerFrame);
+    }
+    tick();
+  });
+}
+
+async function animateSearchMontage() {
+  const myToken = ++animationToken;
+  const total = searchHistory.length;
+  if (total === 0) return -1;
+
+  let bestSoFar = -Infinity;
+  let bestIdx = -1;
+  for (let i = 0; i < total; i++) {
+    if (myToken !== animationToken) return bestIdx;
+    const entry = searchHistory[i];
+    const isNew = entry.score > bestSoFar;
+    if (isNew) { bestSoFar = entry.score; bestIdx = i; }
+
+    const reF = runJump(entry.params, /*recordFrames=*/true);
+    document.getElementById('evals').textContent = i + 1;
+    document.getElementById('score-now').textContent = entry.score.toFixed(1);
+    document.getElementById('score-detail').textContent = entry.result;
+    updateBestParams(entry.params);
+
+    if (isNew) {
+      addLeaderboardEntry(
+        document.getElementById('algorithm').value,
+        entry, i + 1,
+        { inPlace: liveLeaderboardIdx >= 0 },
+      );
+      setBestScore(entry, document.getElementById('algorithm').value);
+    }
+
+    const label = `Jump ${i + 1}/${total}  ·  Best: ${bestSoFar.toFixed(1)}${isNew ? '  ★ NEW!' : ''}`;
+    await animateShot(reF.frames, label, entry.params[1], MONTAGE_MS_PER_FRAME);
+  }
+  return bestIdx;
+}
+
+function setBestScore(entry, algoName) {
+  const el = document.getElementById('best-score');
+  el.innerHTML = `${entry.score.toFixed(1)} (${entry.result})<span class="algo-tag">${algoName}</span>`;
+}
+
+// ============================================================================
+// Runner.
+// ============================================================================
+let lastBest = null;
+let lastBestRampDeg = 30;
+
+function getOptimizerClass(name) { return globalThis[name]; }
+
+async function runOptimization() {
+  const algoName = document.getElementById('algorithm').value;
+  const budget = parseInt(document.getElementById('budget').value, 10);
+  const cls = getOptimizerClass(algoName);
+  if (!cls) { alert(`Optimizer '${algoName}' not found.`); return; }
+
+  const runBtn = document.getElementById('run-btn');
+  runBtn.disabled = true;
+  runBtn.textContent = `Aiming ${algoName}...`;
+
+  animationToken++;
+  searchHistory.length = 0;
+  await new Promise((r) => setTimeout(r, 30));
+
+  try {
+    const opt = new cls(objective, budget, 3);
+    opt.optimize();
+
+    const bestIdx = await animateSearchMontage();
+    const bestEntry = searchHistory[bestIdx];
+
+    const replay = runJump(bestEntry.params, /*recordFrames=*/true);
+    lastBest = replay;
+    lastBestRampDeg = bestEntry.params[1];
+
+    await animateShot(
+      replay.frames,
+      `Best jump: ${bestEntry.score.toFixed(1)} (${bestEntry.result}) — ${algoName}`,
+      bestEntry.params[1],
+    );
+
+    setBestScore(bestEntry, algoName);
+    updateBestParams(bestEntry.params);
+    addLeaderboardEntry(algoName, bestEntry, opt.evaluations, {
+      inPlace: liveLeaderboardIdx >= 0,
+    });
+    liveLeaderboardIdx = -1;
+  } catch (e) {
+    console.error(e);
+    alert(`${algoName} threw an error: ${e.message}`);
+  } finally {
+    runBtn.disabled = false;
+    runBtn.textContent = '▶ Find the best jump';
+  }
+}
+
+function updateBestParams(params) {
+  const [s, deg, t] = params;
+  document.getElementById('param-speed').textContent = s.toFixed(2);
+  document.getElementById('param-angle').textContent = `${deg.toFixed(1)}°`;
+  document.getElementById('param-torque').textContent = t.toFixed(2);
+}
+
+function replayBest() {
+  if (!lastBest) return;
+  animationToken++;
+  animateShot(lastBest.frames, 'Replaying best jump', lastBestRampDeg);
+}
+
+const leaderboard = [];
+let liveLeaderboardIdx = -1;
+
+function addLeaderboardEntry(algoName, entry, evals, { inPlace = false } = {}) {
+  const row = {
+    name: algoName, score: entry.score, result: entry.result,
+    evals, params: entry.params,
+  };
+  if (inPlace && liveLeaderboardIdx >= 0) {
+    leaderboard[liveLeaderboardIdx] = row;
+  } else {
+    leaderboard.push(row);
+    liveLeaderboardIdx = leaderboard.length - 1;
+  }
+  const tracked = leaderboard[liveLeaderboardIdx];
+  leaderboard.sort((a, b) => b.score - a.score || a.evals - b.evals);
+  liveLeaderboardIdx = leaderboard.indexOf(tracked);
+  renderLeaderboard();
+}
+
+function renderLeaderboard() {
+  const body = document.getElementById('leaderboard-body');
+  if (leaderboard.length === 0) {
+    body.innerHTML = '<tr><td colspan="4" style="color: var(--muted); text-align: center;">— no runs yet —</td></tr>';
+    return;
+  }
+  body.innerHTML = leaderboard.map((row) => {
+    const [s, deg, t] = row.params;
+    const cls = row.name === 'Human Raphson' ? ' class="human-raphson"' : '';
+    return `<tr${cls}>
+      <td>${row.name}</td>
+      <td>${row.score.toFixed(1)} (${row.result})</td>
+      <td>${row.evals}</td>
+      <td>${s.toFixed(1)} / ${deg.toFixed(1)}° / ${t.toFixed(2)}</td>
+    </tr>`;
+  }).join('');
+}
+
+// ============================================================================
+// Human Raphson.
+// ============================================================================
+const sliderInputs = ['manual-speed', 'manual-angle', 'manual-torque'];
+const sliderOutputs = {
+  'manual-speed': (v) => parseFloat(v).toFixed(1),
+  'manual-angle': (v) => parseFloat(v).toFixed(1),
+  'manual-torque': (v) => parseFloat(v).toFixed(2),
+};
+for (const id of sliderInputs) {
+  const slider = document.getElementById(id);
+  const output = document.getElementById(`${id}-out`);
+  const update = () => { output.textContent = sliderOutputs[id](slider.value); };
+  slider.addEventListener('input', update);
+  update();
+}
+
+async function manualJump() {
+  const s = parseFloat(document.getElementById('manual-speed').value);
+  const deg = parseFloat(document.getElementById('manual-angle').value);
+  const t = parseFloat(document.getElementById('manual-torque').value);
+  const btn = document.getElementById('manual-btn');
+  btn.disabled = true;
+  btn.textContent = 'Sending it...';
+  animationToken++;
+  await new Promise((r) => setTimeout(r, 30));
+  try {
+    const replay = runJump([s, deg, t], /*recordFrames=*/true);
+    document.getElementById('score-now').textContent = replay.score.toFixed(1);
+    document.getElementById('score-detail').textContent = replay.result;
+    updateBestParams([s, deg, t]);
+    await animateShot(
+      replay.frames,
+      `🧠 Human Raphson: ${replay.score.toFixed(1)} (${replay.result})`,
+      deg,
+    );
+    addLeaderboardEntry('Human Raphson', replay, 1);
+    setBestScore(replay, 'Human Raphson');
+  } finally {
+    btn.disabled = false;
+    btn.textContent = '▶ Send it (Human Raphson)';
+  }
+}
+
+function resetEverything() {
+  leaderboard.length = 0;
+  liveLeaderboardIdx = -1;
+  lastBest = null;
+  animationToken++;
+  ['score-now', 'evals'].forEach((id) => document.getElementById(id).textContent = '0');
+  ['score-detail', 'best-score', 'param-speed', 'param-angle', 'param-torque'].forEach((id) =>
+    document.getElementById(id).textContent = '—');
+  renderLeaderboard();
+  drawIdleScene();
+}
+
+drawIdleScene();
+</script>
+</body>
+</html>
