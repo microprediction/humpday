@@ -98,9 +98,9 @@
 <div class="container">
   <h1>🎱 Pool Break Optimizer</h1>
   <p class="intro">
-    Standard 8-ball rack — 15 object balls plus the cue, six pockets.
-    The optimiser picks <strong>angle, power,</strong> and
-    <strong>English</strong> (sidespin) and tries to sink as many
+    Standard 9-ball rack — nine object balls in a diamond, plus the
+    cue, six pockets. The optimiser picks <strong>angle, power,</strong>
+    and <strong>English</strong> (sidespin) and tries to sink as many
     balls as possible on the break. Scratching the cue costs three.
   </p>
 
@@ -297,50 +297,42 @@ const POCKETS = [
 const CUE_HOME = { x: FELT_X0 + 160, y: FELT_MY };
 const RACK_APEX = { x: FELT_X1 - 200, y: FELT_MY };
 
-// Classic 8-ball rack: 5 rows, 1+2+3+4+5 = 15 object balls. Spacing is
-// just over a diameter so balls almost touch but don't overlap. The
-// 8-ball goes in the centre of the third row, per real-world rules.
+// Classic 9-ball rack: a DIAMOND of nine balls (1+2+3+2+1). The 1-ball
+// goes at the apex (front, facing the cue), and the 9-ball sits in the
+// centre of the diamond. Other balls fill the remaining slots.
 function rackPositions() {
   const dx = BALL_R * 2 + 0.4;
   const dy = BALL_R * 2 + 0.4;
+  const rowCounts = [1, 2, 3, 2, 1];
   const positions = [];
-  for (let row = 0; row < 5; row++) {
+  for (let row = 0; row < rowCounts.length; row++) {
+    const n = rowCounts[row];
     const x = RACK_APEX.x + row * dx * Math.cos(Math.PI / 6);
-    for (let i = 0; i <= row; i++) {
-      const y = RACK_APEX.y + (i - row / 2) * dy;
+    for (let i = 0; i < n; i++) {
+      const y = RACK_APEX.y + (i - (n - 1) / 2) * dy;
       positions.push({ x, y });
     }
   }
-  return positions;  // 1+2+3+4+5 = 15 balls
+  return positions;  // 1+2+3+2+1 = 9 balls
 }
 const RACK = rackPositions();
 const N_OBJECT_BALLS = RACK.length;
 
-// 15 balls — solids 1-7 in row-order, the 8-ball in the rack centre
-// (index 4 = row-2 centre = position 4 in 0-indexed row-major), then
-// stripes 9-15 filling the rest. The colour palette mirrors a standard
-// pool set; stripes draw with a coloured band on a white ball.
-//   row 0:                    1
+// 9 balls. Row-major layout matches a standard 9-ball rack:
+//   row 0:                    1               (1-ball at the apex)
 //   row 1:                  2   3
-//   row 2:                4   8   5
-//   row 3:              6   7   9   10
-//   row 4:            11  12  13  14   15
-// (8-ball lands at index 4 in row-major order: row 2's middle slot.)
-const BALL_NUMBERS = [
-  1,
-  2, 3,
-  4, 8, 5,
-  6, 7, 9, 10,
-  11, 12, 13, 14, 15,
-];
+//   row 2:                4   9   5           (9-ball in the centre)
+//   row 3:                  6   7
+//   row 4:                    8
+const BALL_NUMBERS = [1, 2, 3, 4, 9, 5, 6, 7, 8];
 const NUMBER_COLORS = {
-  1: '#e8c64b', 2: '#3a6dc4', 3: '#c83838', 4: '#7a3aa8',
-  5: '#e87324', 6: '#2f9a4a', 7: '#8a3030',
-  8: '#111111',
-  9: '#e8c64b', 10: '#3a6dc4', 11: '#c83838', 12: '#7a3aa8',
-  13: '#e87324', 14: '#2f9a4a', 15: '#8a3030',
+  1: '#e8c64b', 2: '#3a6dc4', 3: '#c83838',
+  4: '#7a3aa8', 5: '#e87324', 6: '#2f9a4a',
+  7: '#8a3030', 8: '#111111',
+  9: '#e8c64b',                   // yellow — but rendered as a STRIPE
 };
-const IS_STRIPE = (n) => n >= 9;
+// In 9-ball only the 9 is striped.
+const IS_STRIPE = (n) => n === 9;
 
 // ----- Parameter ranges decoded from u in [0,1]^3 ------------------------
 // angle  : -15° to +15° (relative to a flat horizontal aim at the rack apex)
