@@ -523,12 +523,11 @@ function runKick(params, recordFrames = false) {
     // posts as "wide". A ball at the post line counts as in (grazes
     // the woodwork) per real-game convention.
     const inPosts = gx > GOAL_LEFT && gx < GOAL_RIGHT;
-    // Bigger margin from the crossbar — was 5 cm, now 20 cm. A ball
-    // that grazes the top of the bar is "over" not "goal" since in
-    // the visualisation that trajectory is indistinguishable from a
-    // shot that sailed clean over. User feedback: "this should not
-    // be a goal" on a shot that arced just under the bar.
-    const underCrossbar = gz < GOAL_HEIGHT_M - 0.20;
+    // Margin from the crossbar. Was 20 cm — too strict, the user
+    // saw shots that looked clearly under the bar being called "over".
+    // 10 cm balances: a ball that clearly grazes the bar is still
+    // "over"; a ball that's a fist below it is "goal".
+    const underCrossbar = gz < GOAL_HEIGHT_M - 0.10;
     if (!inPosts) {
       // Side-net miss — partial credit if very close to a post.
       const distFromPost = Math.min(Math.abs(gx - GOAL_LEFT), Math.abs(gx - GOAL_RIGHT));
@@ -798,15 +797,15 @@ function drawKeeperProjected(pitchX, diveVx = 0, ballState = null) {
   ctx.fillStyle = '#f3d233';
   ctx.fillRect(feet.x - w / 2, head.y + headR * 0.7, w, feet.y - (head.y + headR * 0.7));
 
-  // Arms — drawn as a rotated rectangle whose direction depends on
-  // whether the ball is high (up) or low (out sideways). Length is
-  // gated by extendRamp so the dive happens late, not early.
-  const armSpan = w * (2.0 + (diveMag + extendRamp) * 1.5);
-  const reachLen = armSpan * extendRamp;        // 0 until late in flight
-  // Direction vector from keeper to where the ball will be — biased
-  // up by upFraction, biased sideways by diveSign (default right if
-  // keeper isn't actively diving).
-  const dx = (diveSign === 0 ? 1 : diveSign) * (1 - upFraction);
+  // Arms — drawn as a rotated rectangle. Always have a base length
+  // (so the keeper isn't a torso in idle), plus an extension that
+  // grows late in the flight as the dive ramps up.
+  const baseArmLen = w * 1.4;                              // always-on resting span
+  const reachLen = baseArmLen + w * 2.2 * extendRamp;      // grows late in flight
+  // Direction from keeper to where the ball will be: biased up if
+  // the ball is high, biased sideways by the dive direction.
+  const sgn = (diveSign === 0 ? 1 : diveSign);    // default reach to the right
+  const dx = sgn * (1 - upFraction);
   const dy = -upFraction;
   const len = Math.hypot(dx, dy) || 1;
   const ux = dx / len, uy = dy / len;
@@ -815,10 +814,10 @@ function drawKeeperProjected(pitchX, diveVx = 0, ballState = null) {
   ctx.rotate(Math.atan2(uy, ux));
   // Forward arm (toward the ball).
   ctx.fillRect(0, -w * 0.14, reachLen, w * 0.28);
-  // Trailing arm (back for balance) — half length, only when actively diving.
-  if (diveMag > 0.25) {
-    ctx.fillRect(-reachLen * 0.5, -w * 0.14, reachLen * 0.5, w * 0.28);
-  }
+  // Trailing arm (back for balance). Always show some of it so the
+  // keeper looks two-armed; extend more when actively diving.
+  const trailLen = baseArmLen * 0.55 + w * 1.0 * diveMag * extendRamp;
+  ctx.fillRect(-trailLen, -w * 0.14, trailLen, w * 0.28);
   ctx.restore();
 
   // Head — leans into the dive direction.
