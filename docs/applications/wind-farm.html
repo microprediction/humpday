@@ -1,0 +1,932 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' 'unsafe-inline'; style-src 'self' 'unsafe-inline';">
+<title>🌬️ Wind Farm Layout — HumpDay</title>
+<style>
+  :root {
+    --bg: #1a1a22;
+    --panel: #2d2d3a;
+    --accent: #ffcc00;
+    --text: #e8e8ea;
+    --muted: #9a9aac;
+  }
+  body { margin: 0; background: var(--bg); color: var(--text);
+    font-family: -apple-system, 'Segoe UI', 'Helvetica Neue', Helvetica, Arial, sans-serif; }
+  .site-nav { background: #34495e; padding: 12px 24px;
+    font-family: 'Times New Roman', Times, serif;
+    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1); }
+  .site-nav-inner { max-width: 1100px; margin: 0 auto;
+    display: flex; justify-content: space-between; align-items: center; }
+  .site-nav a { color: #ecf0f1; text-decoration: none; margin: 0 12px; }
+  .site-nav a:hover { color: white; text-decoration: underline; }
+  .site-nav-brand { font-weight: 700; font-size: 1.25em; }
+
+  .container { max-width: 1100px; margin: 0 auto; padding: 32px 24px 64px; }
+  h1 { font-size: 2.2em; margin: 0.2em 0; }
+  h2 { font-size: 1.4em; margin-top: 1.4em; color: var(--accent); }
+  p { line-height: 1.55; max-width: 70ch; }
+  .intro { color: var(--muted); }
+
+  .stage { display: grid; grid-template-columns: 1fr 320px; gap: 24px;
+    align-items: start; margin-top: 24px; }
+  @media (max-width: 800px) { .stage { grid-template-columns: 1fr; } }
+  canvas { background: #1a3a5a;
+    border: 3px solid var(--accent); border-radius: 6px; display: block;
+    width: 100%; height: auto; }
+
+  .panel { background: var(--panel); padding: 18px; border-radius: 6px; border: 1px solid #404054; }
+  .panel h3 { margin: 0 0 12px; font-size: 1.05em; text-transform: uppercase;
+    letter-spacing: 0.06em; color: var(--accent); }
+  label { display: block; margin: 10px 0 6px; font-size: 0.9em; color: var(--muted); }
+  select, input, button { width: 100%; box-sizing: border-box; padding: 8px 10px;
+    border-radius: 4px; border: 1px solid #404054; background: #1a1a22; color: var(--text); font-size: 0.95em; }
+  button { background: var(--accent); color: #1a1a22; font-weight: 700; cursor: pointer; margin-top: 6px; transition: opacity 0.15s; }
+  button:hover { opacity: 0.88; }
+  button.secondary { background: #404054; color: var(--text); font-weight: 400; }
+  button:disabled { opacity: 0.5; cursor: not-allowed; }
+  .stats { margin-top: 16px; padding-top: 14px; border-top: 1px solid #404054; font-size: 0.92em; line-height: 1.6; }
+  .stats .score { font-size: 2.6em; color: var(--accent); font-weight: 700; }
+  .stat-row { display: flex; justify-content: space-between; align-items: baseline; gap: 12px; }
+  .stat-row span:first-child { white-space: nowrap; flex-shrink: 0; }
+  .stat-row span:last-child { color: var(--text); font-family: 'SF Mono', Menlo, monospace; text-align: right; word-break: break-word; }
+  .stat-row .algo-tag { display: block; color: var(--muted); font-size: 0.82em; margin-top: 2px; }
+
+  .leaderboard { margin-top: 24px; }
+  .leaderboard table { width: 100%; border-collapse: collapse; background: var(--panel); border-radius: 6px; overflow: hidden; }
+  .leaderboard th, .leaderboard td { padding: 10px 14px; text-align: left; border-bottom: 1px solid #404054; }
+  .leaderboard th { background: #1a1a22; color: var(--muted); text-transform: uppercase; font-size: 0.78em; letter-spacing: 0.08em; }
+  .leaderboard td:nth-child(2) { text-align: center; font-size: 1.3em; font-weight: 700; color: var(--accent); }
+  .leaderboard td:nth-child(3), .leaderboard td:nth-child(4) { font-family: 'SF Mono', Menlo, monospace; color: var(--muted); }
+  .leaderboard tr.human-raphson td:first-child { color: #ff9944; font-weight: 700; }
+
+  .left-stack, .right-stack { display: flex; flex-direction: column; gap: 16px; min-width: 0; }
+  #rose-canvas { background: transparent; border: 0; width: 100%; height: auto; display: block; }
+  .rose-panel p { margin: 8px 0 0; font-size: 0.82em; color: var(--muted); line-height: 1.45; max-width: none; }
+  .hr-panel { padding: 14px 16px; }
+  .hr-panel h3 { margin: 0 0 6px; }
+  .hr-preset-row { display: flex; gap: 8px; margin-bottom: 8px; flex-wrap: wrap; }
+  .hr-preset-row button { width: auto; flex: 1 1 80px; background: #2d3a4a; color: var(--text); font-weight: 500; font-size: 0.84em; padding: 6px 10px; margin: 0; }
+  .hr-panel button.go { background: #ff9944; color: #1a1a22; margin-top: 0; }
+
+  .skill-callout { margin-top: 36px; background: rgba(126, 217, 87, 0.07); border: 1px solid rgba(126, 217, 87, 0.35); border-radius: 8px; padding: 18px 22px; }
+  .skill-callout h3 { margin: 0 0 6px; color: #7ed957; font-size: 1.05em; text-transform: none; letter-spacing: 0; }
+  .skill-callout p { margin: 0 0 10px; color: var(--text); max-width: none; }
+  .skill-callout pre { background: #1a1a22; border: 1px solid #404054; border-radius: 4px; padding: 10px 14px; margin: 0; font-size: 0.84em; color: #7ed957; white-space: pre-wrap; word-break: break-all; font-family: 'SF Mono', Menlo, monospace; }
+  .skill-actions { margin-top: 10px; display: flex; align-items: center; gap: 14px; }
+  .skill-actions button { width: auto; background: #404054; color: var(--text); border: 1px solid #404054; padding: 6px 12px; font-size: 0.85em; cursor: pointer; border-radius: 4px; margin: 0; font-weight: 500; }
+  .skill-actions button:hover { background: #4a4a60; }
+  .skill-actions a { color: #7ed957; font-size: 0.85em; text-decoration: none; }
+  .skill-actions a:hover { text-decoration: underline; }
+</style>
+</head>
+<body>
+<nav class="site-nav">
+  <div class="site-nav-inner">
+    <a class="site-nav-brand" href="../index.html">HumpDay 🌬️</a>
+    <div>
+      <a href="../index.html">Home</a>
+      <a href="index.html">Applications</a>
+      <a href="../contest.html">Contest</a>
+      <a href="../README.html">Docs</a>
+    </div>
+  </div>
+</nav>
+
+<div class="container">
+  <h1>🌬️ Wind Farm Layout</h1>
+  <p class="intro">
+    Position 8 wind turbines on an offshore site to maximise the
+    <em>expected</em> power output across a real wind rose. Wind
+    doesn't come from one direction — there's a directional
+    distribution (rose panel →). Each turbine slows the wind for
+    everything downwind of it, so the best layout depends on which
+    directions the wind tends to blow from. 16-D continuous
+    optimisation problem — the same one offshore-wind developers
+    solve when planning a real farm.
+  </p>
+
+  <div class="stage">
+    <div class="left-stack">
+      <canvas id="canvas" width="800" height="450"></canvas>
+
+      <div class="panel hr-panel">
+        <h3>🧠 Human Raphson</h3>
+        <p style="color: var(--muted); margin: 0 0 8px; font-size: 0.86em;">
+          Try a layout pattern, see what the wakes do to the back rows.
+        </p>
+        <div class="hr-preset-row">
+          <button type="button" onclick="loadPreset('grid')">Grid</button>
+          <button type="button" onclick="loadPreset('staggered')">Staggered rows</button>
+          <button type="button" onclick="loadPreset('line')">Single line</button>
+          <button type="button" onclick="loadPreset('random')">Random</button>
+        </div>
+        <button id="manual-btn" class="go" onclick="manualEvaluate()">▶ Score this layout</button>
+      </div>
+    </div>
+
+    <div class="right-stack">
+    <div class="panel rose-panel">
+      <h3>Wind Rose</h3>
+      <canvas id="rose-canvas" width="240" height="240"></canvas>
+      <p>
+        Direction the wind comes <em>from</em>. Modelled on a North
+        Sea offshore site — prevailing W (22 %) and SW (16 %), with
+        a long tail. Score is <strong>expected</strong> farm output
+        averaged over all 12 directions, so no layout can score 100.
+      </p>
+    </div>
+
+    <div class="panel">
+      <h3>Algorithm</h3>
+      <label for="algorithm">Pick a HumpDay optimizer:</label>
+      <select id="algorithm">
+        <optgroup label="Trust-region / interpolation">
+          <option value="PRIMA_BOBYQA">PRIMA_BOBYQA</option>
+          <option value="PRIMA_NEWUOA">PRIMA_NEWUOA</option>
+        </optgroup>
+        <optgroup label="Local / classical">
+          <option value="NelderMead">Nelder-Mead</option>
+          <option value="Powell">Powell</option>
+          <option value="LBFGSB">L-BFGS-B (simplified)</option>
+        </optgroup>
+        <optgroup label="Population-based">
+          <option value="DifferentialEvolution" selected>Differential Evolution</option>
+          <option value="ParticleSwarm">Particle Swarm</option>
+          <option value="CMAEvolutionStrategy">CMA-Evolution Strategy</option>
+          <option value="GeneticAlgorithm">Genetic Algorithm</option>
+          <option value="EvolutionStrategy">Evolution Strategy</option>
+          <option value="HarmonySearch">Harmony Search</option>
+        </optgroup>
+        <optgroup label="Other">
+          <option value="SimulatedAnnealing">Simulated Annealing</option>
+          <option value="BayesianOpt">Bayesian Optimization</option>
+          <option value="FireflyAlgorithm">Firefly Algorithm</option>
+          <option value="AntColonyOpt">Ant Colony</option>
+          <option value="TabuSearch">Tabu Search</option>
+          <option value="RandomSearch">Random Search</option>
+        </optgroup>
+      </select>
+
+      <label for="budget">Evaluation budget:</label>
+      <select id="budget">
+        <option value="100">100 layouts</option>
+        <option value="200">200 layouts</option>
+        <option value="500" selected>500 layouts</option>
+        <option value="1000">1000 layouts</option>
+        <option value="2000">2000 layouts</option>
+      </select>
+      <p style="margin: 8px 0 0; font-size: 0.78em; color: var(--muted);">
+        16-D problem. Even DE needs ~500 layouts to converge.
+      </p>
+
+      <button id="run-btn" onclick="runOptimization()">▶ Find the best layout</button>
+      <button class="secondary" onclick="replayBest()">🔁 Show best layout</button>
+      <button class="secondary" onclick="resetEverything()">⟲ Reset leaderboard</button>
+
+      <div class="stats">
+        <div class="stat-row"><span>Score</span><span class="score" id="score-now">0</span></div>
+        <div class="stat-row"><span>Detail</span><span id="score-detail">—</span></div>
+        <div class="stat-row"><span>Layouts tried</span><span id="evals">0</span></div>
+        <div class="stat-row"><span>Best so far</span><span id="best-score">—</span></div>
+      </div>
+    </div>
+    </div>
+  </div>
+
+  <div class="leaderboard">
+    <h2>Leaderboard (this session)</h2>
+    <p style="color: var(--muted);">
+      Each row is the best layout a given algorithm found.
+    </p>
+    <table>
+      <thead>
+        <tr><th>Algorithm</th><th>Score</th><th>Layouts used</th><th>Detail</th></tr>
+      </thead>
+      <tbody id="leaderboard-body">
+        <tr><td colspan="4" style="color: var(--muted); text-align: center;">— no runs yet —</td></tr>
+      </tbody>
+    </table>
+  </div>
+
+  <h2>What's happening</h2>
+  <p>
+    For each of 12 wind directions in the rose, the model computes
+    the wind speed at every turbine: wakes from upstream turbines
+    are summed using the Jensen model with deficit
+    <code>(2a) / (1 + k·d/r)²</code> where a = 0.42 is the axial
+    induction factor, k = 0.08 the wake decay (bumped from the
+    textbook 0.05 to make wakes spread wider — about 2× the
+    interference of a typical offshore site), and d is the
+    downwind distance. Power per turbine is wind-speed cubed —
+    so a 10 % wind drop cuts output by ~27 %.
+  </p>
+  <p>
+    <strong>Score</strong> is the <em>expected</em> farm output,
+    weighted by the rose, as a percentage of the maximum-possible
+    (8 turbines × clean wind in every direction), plus a tiny
+    <code>+ boundary</code> bonus (max +2.5 pts) that nudges
+    optimizers away from the all-stacked-at-the-centre starting
+    point and minus a stiff spacing penalty for turbines closer
+    than 3 rotor diameters (industry rule of thumb for foundation
+    spacing). Because the wind rose covers 12 directions, every
+    layout has wakes <em>somewhere</em> in the distribution — so
+    100 is unreachable. Realistic scores sit in the 70s–high 80s;
+    the best layouts thread the gaps in the prevailing W/SW sector
+    while staying clean for the rare E/N bins.
+  </p>
+  <p>
+    The optimal layout is non-obvious. Lining turbines up along the
+    prevailing direction is terrible (back rows live in wakes 38 %
+    of the time). Lining them up <em>perpendicular</em> to the
+    prevailing direction is better but still costs you on the E/SE
+    bins. The good answers are clusters with subtle staggering —
+    try the presets and see.
+  </p>
+
+  <hr style="border: 0; border-top: 1px solid #404054; margin: 32px 0 16px;" />
+  <p style="font-size: 0.78em; color: var(--muted);">
+    Jensen wake model with a directional wind rose — the early-stage
+    workflow real offshore developers use. Wake cones on the canvas
+    are drawn for every direction in the rose, with opacity
+    proportional to that direction's weight: the "petal" pattern
+    around each turbine <em>is</em> the rose. Production planning
+    additionally accounts for joint speed–direction distributions,
+    wind shear, and turbine yaw.
+  </p>
+
+  <div class="skill-callout">
+    <h3>🌱 Save the Planet</h3>
+    <p>If your hyper-parameter searches are heating the Earth, drop this in Cursor or Claude:</p>
+    <pre id="skill-snippet">Read https://raw.githubusercontent.com/microprediction/humpday/main/SKILL.md
+and create a project skill from it.</pre>
+    <div class="skill-actions">
+      <button type="button" onclick="copySkillSnippet(this)">📋 Copy</button>
+      <a href="https://github.com/microprediction/humpday/blob/main/SKILL.md" target="_blank" rel="noopener">View SKILL.md →</a>
+    </div>
+  </div>
+
+  <script>
+    function copySkillSnippet(btn) {
+      const text = document.getElementById('skill-snippet').textContent;
+      navigator.clipboard.writeText(text).then(() => {
+        const orig = btn.textContent;
+        btn.textContent = '✓ Copied';
+        setTimeout(() => { btn.textContent = orig; }, 1500);
+      }).catch(() => {
+        btn.textContent = '✗ Copy failed';
+      });
+    }
+  </script>
+</div>
+
+<script src="../js/modules/base-optimizer.js"></script>
+<script src="../js/modules/prima-algorithms.js"></script>
+<script src="../js/modules/scipy-algorithms.js"></script>
+<script src="../js/modules/evolutionary-algorithms.js"></script>
+<script src="../js/modules/search-algorithms.js"></script>
+
+<script>
+// ============================================================================
+// Wind farm layout — 16-D continuous optimisation.
+//
+// Eight turbines, each with (x, y) position. Wind blows from -x to +x.
+// For each turbine, sum wake deficits from all upstream turbines, get
+// the local wind speed, cube it for power. Total farm output as a
+// fraction of the ideal (all turbines in clean wind) is the score.
+// ============================================================================
+
+const canvas = document.getElementById('canvas');
+const ctx = canvas.getContext('2d');
+const W = canvas.width, H = canvas.height;
+
+// ---- Field geometry ----------------------------------------------------
+const FIELD_X0 = 60, FIELD_X1 = 740;
+const FIELD_Y0 = 60, FIELD_Y1 = 390;
+
+const N_TURBINES = 8;
+const N_DIM = N_TURBINES * 2;
+
+// ---- Wake-model constants ---------------------------------------------
+// Tuned for a visibly dramatic farm: rotors larger than a textbook
+// offshore site, decay coefficient bumped so wakes spread wider, and
+// axial induction at the high end of the realistic envelope. Net
+// effect ≈ 2× the interference of a North Sea k=0.05 site — naive
+// presets land in the high 70s, random-search ceiling drops to ~94,
+// the wake cones are much bigger on screen.
+const ROTOR_R = 14;           // px (one rotor radius)
+const ROTOR_D = ROTOR_R * 2;
+const AXIAL_INDUCTION = 0.42; // a — strong but still sub-Betz
+const WAKE_DECAY = 0.08;      // k — wider cones than offshore 0.05
+const MIN_SPACING_PX = ROTOR_D * 3;   // 3-diameter minimum spacing
+
+// ---- Wind rose --------------------------------------------------------
+// Twelve directional bins, modelled on a typical North Sea offshore site.
+// 'compass' is the direction the wind comes FROM (0 = N, 90 = E, ...).
+// 'angle' is derived: the math angle the wind BLOWS TOWARD in canvas
+// coordinates, where +x = East and +y = South. Weights sum to 1.
+const WIND_ROSE = [
+  { from: 'W',   compass: 270, weight: 0.22 },
+  { from: 'WNW', compass: 300, weight: 0.14 },
+  { from: 'NNW', compass: 330, weight: 0.10 },
+  { from: 'N',   compass:   0, weight: 0.04 },
+  { from: 'NNE', compass:  30, weight: 0.03 },
+  { from: 'ENE', compass:  60, weight: 0.03 },
+  { from: 'E',   compass:  90, weight: 0.03 },
+  { from: 'ESE', compass: 120, weight: 0.04 },
+  { from: 'SSE', compass: 150, weight: 0.05 },
+  { from: 'S',   compass: 180, weight: 0.06 },
+  { from: 'SSW', compass: 210, weight: 0.10 },
+  { from: 'WSW', compass: 240, weight: 0.16 },
+];
+// compass-from C → math angle of "blows toward" in canvas coords (+y = S).
+// Wind from compass C blows toward compass C+180, which maps to
+// math angle (C + 180 - 90) * π/180 = (C + 90) * π/180.
+WIND_ROSE.forEach((b) => { b.angle = (b.compass + 90) * Math.PI / 180; });
+
+// ---- Decoder: u in [0,1]^16 to 8 turbine (x, y) positions --------------
+function decode(u) {
+  const positions = [];
+  for (let i = 0; i < N_TURBINES; i++) {
+    positions.push({
+      x: FIELD_X0 + u[2 * i]     * (FIELD_X1 - FIELD_X0),
+      y: FIELD_Y0 + u[2 * i + 1] * (FIELD_Y1 - FIELD_Y0),
+    });
+  }
+  return positions;
+}
+
+// ---- Wake model: wind speeds each turbine sees, for one direction ------
+// windAngle is the math angle the wind blows TOWARD. Rotating positions
+// by -windAngle aligns the wind with +x, then it's the usual Jensen sum.
+function windSpeedsForDirection(positions, windAngle) {
+  const cos = Math.cos(-windAngle), sin = Math.sin(-windAngle);
+  const rot = positions.map((p) => ({
+    x: p.x * cos - p.y * sin,
+    y: p.x * sin + p.y * cos,
+  }));
+  const v = [];
+  for (let i = 0; i < rot.length; i++) {
+    let defSq = 0;
+    for (let j = 0; j < rot.length; j++) {
+      if (i === j) continue;
+      const dx = rot[i].x - rot[j].x;     // downwind distance from j to i
+      const dy = rot[i].y - rot[j].y;
+      if (dx <= 0) continue;              // j is downstream of i
+      const wakeR = ROTOR_R + WAKE_DECAY * dx;
+      if (Math.abs(dy) > wakeR) continue; // i is outside j's wake
+      const deficit = (2 * AXIAL_INDUCTION) / Math.pow(1 + WAKE_DECAY * dx / ROTOR_R, 2);
+      defSq += deficit * deficit;
+    }
+    v.push(Math.max(0, 1 - Math.sqrt(defSq)));   // fraction of free-stream
+  }
+  return v;
+}
+
+// Expected farm power over the wind rose. 0..N_TURBINES.
+function expectedPower(positions) {
+  let total = 0;
+  for (const bin of WIND_ROSE) {
+    const v = windSpeedsForDirection(positions, bin.angle);
+    let p = 0;
+    for (let i = 0; i < positions.length; i++) p += v[i] * v[i] * v[i];
+    total += bin.weight * p;
+  }
+  return total;
+}
+
+// Per-turbine expected power fraction (0..1) — used for colouring.
+function expectedTurbineFractions(positions) {
+  const fractions = new Array(positions.length).fill(0);
+  for (const bin of WIND_ROSE) {
+    const v = windSpeedsForDirection(positions, bin.angle);
+    for (let i = 0; i < positions.length; i++) {
+      fractions[i] += bin.weight * v[i] * v[i] * v[i];
+    }
+  }
+  return fractions;
+}
+
+// Small "use the boundary" hint, max +BOUNDARY_BONUS_PTS points.
+// 0 when every turbine is at the field centre, 1 when every turbine
+// sits on an edge of the box. A tiny term (≤ ~2.5 pts) — enough to
+// give DE/PSO a gradient out of the all-stacked default, not enough
+// to override the real expected-power objective.
+const BOUNDARY_BONUS_PTS = 2.5;
+function boundaryBonus(positions) {
+  const cxf = (FIELD_X0 + FIELD_X1) / 2;
+  const cyf = (FIELD_Y0 + FIELD_Y1) / 2;
+  const halfW = (FIELD_X1 - FIELD_X0) / 2;
+  const halfH = (FIELD_Y1 - FIELD_Y0) / 2;
+  let total = 0;
+  for (const t of positions) {
+    const fx = Math.abs(t.x - cxf) / halfW;
+    const fy = Math.abs(t.y - cyf) / halfH;
+    total += Math.max(fx, fy);     // Chebyshev distance from centre
+  }
+  return total / positions.length; // 0..1 average
+}
+
+function spacingPenalty(positions) {
+  let penalty = 0;
+  for (let i = 0; i < positions.length; i++) {
+    for (let j = i + 1; j < positions.length; j++) {
+      const d = Math.hypot(positions[i].x - positions[j].x,
+                           positions[i].y - positions[j].y);
+      if (d < MIN_SPACING_PX) {
+        const violation = (MIN_SPACING_PX - d) / MIN_SPACING_PX;
+        penalty += violation * violation;
+      }
+    }
+  }
+  return penalty;
+}
+
+function evaluateLayout(positions) {
+  const p = expectedPower(positions);
+  const power_fraction = p / N_TURBINES;                   // 0..1
+  const penalty = spacingPenalty(positions);
+  const boundary = boundaryBonus(positions);               // 0..1
+  // Power dominates; tiny boundary bonus pulls turbines off the
+  // centre; stiff spacing penalty.
+  const score =
+      100 * power_fraction
+    + BOUNDARY_BONUS_PTS * boundary
+    -  40 * penalty;
+  return {
+    score, powerFraction: power_fraction, penalty,
+    boundaryBonus: BOUNDARY_BONUS_PTS * boundary,
+  };
+}
+
+// ============================================================================
+// HumpDay objective.
+// ============================================================================
+const searchHistory = [];
+
+function objective(u) {
+  const positions = decode(u);
+  const result = evaluateLayout(positions);
+  searchHistory.push({ score: result.score, positions, ...result });
+  return -result.score;
+}
+
+// ============================================================================
+// Rendering.
+// ============================================================================
+function drawScene(positions, hudText, focusBin = null) {
+  // Sea background.
+  ctx.fillStyle = '#1a3a5a';
+  ctx.fillRect(0, 0, W, H);
+  // Subtle wave hint.
+  ctx.strokeStyle = 'rgba(255,255,255,0.04)';
+  ctx.lineWidth = 1;
+  for (let y = 20; y < H; y += 35) {
+    ctx.beginPath();
+    for (let x = 0; x < W; x += 6) ctx.lineTo(x, y + Math.sin(x / 30) * 1.5);
+    ctx.stroke();
+  }
+
+  if (!positions) return;
+
+  // Wake cones: one per (turbine × rose bin). Length AND opacity both
+  // scale with the bin's weight — so the visual size of each wake
+  // matches its length on the side-panel rose. Big W petal, tiny E.
+  const WAKE_LEN_MAX = 380;        // px — length of the strongest bin
+  const maxBinW = Math.max(...WIND_ROSE.map((b) => b.weight));
+  for (const bin of WIND_ROSE) {
+    let opacity;
+    if (focusBin) {
+      if (bin !== focusBin) continue;
+      opacity = 0.55;
+    } else {
+      opacity = bin.weight * 1.9;
+      if (opacity < 0.03) continue;          // skip near-invisible bins
+      opacity = Math.min(0.45, opacity);
+    }
+    const wakeLen = WAKE_LEN_MAX * (bin.weight / maxBinW);
+    const farR = ROTOR_R + WAKE_DECAY * wakeLen;
+    const cos = Math.cos(bin.angle), sin = Math.sin(bin.angle);
+    const px = -sin, py = cos;               // perpendicular to wind
+    ctx.fillStyle = focusBin
+      ? `rgba(255, 204, 0, ${opacity * 0.55})`  // yellow tinge for the focused direction
+      : `rgba(40, 60, 80, ${opacity})`;
+    for (const t of positions) {
+      const sx = t.x + cos * ROTOR_R, sy = t.y + sin * ROTOR_R;
+      const fx = t.x + cos * wakeLen,  fy = t.y + sin * wakeLen;
+      ctx.beginPath();
+      ctx.moveTo(sx + px * ROTOR_R, sy + py * ROTOR_R);
+      ctx.lineTo(fx + px * farR,    fy + py * farR);
+      ctx.lineTo(fx - px * farR,    fy - py * farR);
+      ctx.lineTo(sx - px * ROTOR_R, sy - py * ROTOR_R);
+      ctx.closePath();
+      ctx.fill();
+    }
+  }
+
+  // Per-turbine colour: expected fraction in multi-direction mode, or
+  // this-direction power fraction when a focus bin is active. The
+  // colour changes as the cycle rotates → wakes are *seen* hitting
+  // different turbines.
+  const ef = focusBin
+    ? windSpeedsForDirection(positions, focusBin.angle).map((v) => v * v * v)
+    : expectedTurbineFractions(positions);
+
+  // Turbines.
+  for (let i = 0; i < positions.length; i++) {
+    const t = positions[i];
+    // Mast.
+    ctx.strokeStyle = '#dddddd';
+    ctx.lineWidth = 2;
+    ctx.beginPath(); ctx.moveTo(t.x, t.y); ctx.lineTo(t.x, t.y + 14); ctx.stroke();
+    // Rotor disc — coloured by expected power fraction (green = healthy
+    // on average, red = lives in wakes too often).
+    const health = Math.max(0, Math.min(1, ef[i]));
+    const r = Math.round(220 - 160 * health);
+    const g = Math.round(80 + 130 * health);
+    const b = 60;
+    ctx.fillStyle = `rgb(${r}, ${g}, ${b})`;
+    ctx.beginPath(); ctx.arc(t.x, t.y, ROTOR_R, 0, Math.PI * 2); ctx.fill();
+    ctx.strokeStyle = '#1a1a22';
+    ctx.lineWidth = 1.2;
+    ctx.stroke();
+    // Three blade hints.
+    ctx.strokeStyle = 'rgba(0,0,0,0.4)';
+    ctx.lineWidth = 1.5;
+    for (let k = 0; k < 3; k++) {
+      const ang = (Math.PI * 2 / 3) * k + Math.PI / 6;
+      ctx.beginPath();
+      ctx.moveTo(t.x, t.y);
+      ctx.lineTo(t.x + Math.cos(ang) * ROTOR_R, t.y + Math.sin(ang) * ROTOR_R);
+      ctx.stroke();
+    }
+    // Per-turbine expected-power label.
+    ctx.fillStyle = '#fff';
+    ctx.font = '10px -apple-system, Helvetica, Arial, sans-serif';
+    ctx.fillText((ef[i] * 100).toFixed(0) + '%', t.x + ROTOR_R + 3, t.y + 3);
+  }
+
+  // HUD.
+  if (hudText) {
+    ctx.font = 'bold 15px -apple-system, Helvetica, Arial, sans-serif';
+    const padX = 12;
+    const metrics = ctx.measureText(hudText);
+    const boxW = Math.ceil(metrics.width) + 2 * padX;
+    ctx.fillStyle = 'rgba(0,0,0,0.65)';
+    ctx.fillRect(W - boxW - 18, 14, boxW, 28);
+    ctx.fillStyle = '#ffcc00';
+    ctx.fillText(hudText, W - boxW - 18 + padX, 33);
+  }
+}
+
+function drawIdleScene() {
+  // Use the staggered layout as the idle default — every cycle frame
+  // shows wakes actually hitting some turbines, which is the point of
+  // the page. (u=0.5 default would stack all 8 turbines at the centre.)
+  const positions = PRESETS.staggered();
+  startDirectionCycle(positions, 'Pick a preset or run the optimiser');
+}
+
+// ---- Wind-direction cycle --------------------------------------------
+// When showing a static layout, sweep through the rose so the user sees
+// the wake envelope swing direction-by-direction. Driven by a token so
+// it can be cancelled the moment a new operation starts.
+let cycleToken = 0;
+const ROSE_BY_COMPASS = [...WIND_ROSE].sort((a, b) => a.compass - b.compass);
+const CYCLE_HOLD_MS = 650;
+
+function stopDirectionCycle() {
+  cycleToken++;
+}
+
+function startDirectionCycle(positions, hudPrefix) {
+  stopDirectionCycle();
+  const myToken = ++cycleToken;
+  let i = 0;
+  (function tick() {
+    if (myToken !== cycleToken) return;
+    const bin = ROSE_BY_COMPASS[i];
+    // Per-direction farm output (fraction of clean).
+    const v = windSpeedsForDirection(positions, bin.angle);
+    let p = 0;
+    for (let k = 0; k < positions.length; k++) p += v[k] * v[k] * v[k];
+    const dirHud =
+      `Wind from ${bin.from} · ${(bin.weight * 100).toFixed(0)}% of time · farm at ${(p / N_TURBINES * 100).toFixed(0)}%`;
+    const hud = hudPrefix ? `${hudPrefix}  ·  ${dirHud}` : dirHud;
+    drawScene(positions, hud, bin);
+    drawSidePanelRose(bin);
+    i = (i + 1) % ROSE_BY_COMPASS.length;
+    setTimeout(tick, CYCLE_HOLD_MS);
+  })();
+}
+
+// ---- Side-panel wind rose --------------------------------------------
+// Standard meteorological rose: bars point in the direction the wind
+// comes FROM, length proportional to the bin's weight. N is up,
+// E is right (canvas y is down, hence the -cos for the y component).
+function drawSidePanelRose(focusBin = null) {
+  const rcanvas = document.getElementById('rose-canvas');
+  if (!rcanvas) return;
+  const rctx = rcanvas.getContext('2d');
+  const RW = rcanvas.width, RH = rcanvas.height;
+  const cx = RW / 2, cy = RH / 2;
+  const maxR = Math.min(RW, RH) / 2 - 24;
+
+  rctx.clearRect(0, 0, RW, RH);
+
+  // Compass disc backdrop.
+  rctx.fillStyle = '#1a1a22';
+  rctx.beginPath(); rctx.arc(cx, cy, maxR + 14, 0, Math.PI * 2); rctx.fill();
+  rctx.strokeStyle = '#404054';
+  rctx.lineWidth = 1; rctx.stroke();
+
+  // Concentric rings every 25 % of max weight.
+  rctx.strokeStyle = 'rgba(255,255,255,0.07)';
+  for (let f = 1; f <= 4; f++) {
+    rctx.beginPath(); rctx.arc(cx, cy, maxR * (f / 4), 0, Math.PI * 2); rctx.stroke();
+  }
+
+  // Cardinal labels (N up, E right, S down, W left).
+  rctx.fillStyle = 'rgba(255,255,255,0.7)';
+  rctx.font = 'bold 12px -apple-system, Helvetica, Arial, sans-serif';
+  rctx.textAlign = 'center'; rctx.textBaseline = 'middle';
+  rctx.fillText('N', cx,             cy - maxR - 10);
+  rctx.fillText('S', cx,             cy + maxR + 10);
+  rctx.fillText('E', cx + maxR + 11, cy);
+  rctx.fillText('W', cx - maxR - 11, cy);
+
+  // Bars, brightest for the dominant bin. When a focus bin is set,
+  // dim non-focused bars and ring the focused one.
+  const maxW = Math.max(...WIND_ROSE.map((b) => b.weight));
+  for (const bin of WIND_ROSE) {
+    const fromRad = bin.compass * Math.PI / 180;
+    const L = (bin.weight / maxW) * maxR;
+    const x1 = cx + L * Math.sin(fromRad);
+    const y1 = cy - L * Math.cos(fromRad);
+    const wn = bin.weight / maxW;
+    let intensity;
+    if (focusBin) {
+      intensity = (bin === focusBin) ? 1.0 : 0.15 + 0.15 * wn;
+    } else {
+      intensity = 0.35 + 0.6 * wn;
+    }
+    rctx.strokeStyle = `rgba(255, 204, 0, ${intensity})`;
+    rctx.lineWidth = 8;
+    rctx.lineCap = 'round';
+    rctx.beginPath();
+    rctx.moveTo(cx, cy); rctx.lineTo(x1, y1); rctx.stroke();
+    // Halo on the focused spoke's tip.
+    if (focusBin && bin === focusBin) {
+      rctx.strokeStyle = 'rgba(255, 204, 0, 0.55)';
+      rctx.lineWidth = 2;
+      rctx.beginPath(); rctx.arc(x1, y1, 7, 0, Math.PI * 2); rctx.stroke();
+    }
+  }
+
+  // Centre dot.
+  rctx.fillStyle = '#1a1a22';
+  rctx.beginPath(); rctx.arc(cx, cy, 5, 0, Math.PI * 2); rctx.fill();
+  rctx.strokeStyle = 'rgba(255,255,255,0.35)';
+  rctx.lineWidth = 1.2; rctx.stroke();
+
+  rctx.textAlign = 'start';
+  rctx.textBaseline = 'alphabetic';
+}
+
+// ============================================================================
+// Animations — simple state swap, no per-frame physics.
+// ============================================================================
+const MONTAGE_MS_PER_FRAME = 60;
+let animationToken = 0;
+
+async function animateMontage() {
+  const myToken = ++animationToken;
+  const total = searchHistory.length;
+  if (total === 0) return -1;
+  let bestSoFar = -Infinity;
+  let bestIdx = -1;
+  // For high-budget runs, throttle the visualisation to a fixed total time.
+  const targetTotalMs = 12000;       // ~12 s of montage regardless of budget
+  const step = Math.max(1, Math.floor(total / (targetTotalMs / MONTAGE_MS_PER_FRAME)));
+  for (let i = 0; i < total; i += step) {
+    if (myToken !== animationToken) return bestIdx;
+    const entry = searchHistory[i];
+    const isNew = entry.score > bestSoFar;
+    if (isNew) { bestSoFar = entry.score; bestIdx = i; }
+    document.getElementById('evals').textContent = i + 1;
+    document.getElementById('score-now').textContent = entry.score.toFixed(1);
+    document.getElementById('score-detail').textContent =
+      `exp. power ${(entry.powerFraction * 100).toFixed(1)} % · boundary +${entry.boundaryBonus.toFixed(2)} · penalty ${entry.penalty.toFixed(2)}`;
+    if (isNew) {
+      addLeaderboardEntry(
+        document.getElementById('algorithm').value, entry, i + 1,
+        { inPlace: liveLeaderboardIdx >= 0 });
+      setBestScore(entry, document.getElementById('algorithm').value);
+    }
+    const label = `Layout ${i + 1}/${total}  ·  Best: ${bestSoFar.toFixed(1)}${isNew ? '  ★ NEW!' : ''}`;
+    drawScene(entry.positions, label);
+    await new Promise((r) => setTimeout(r, MONTAGE_MS_PER_FRAME));
+  }
+  // Look at the actual best (in case the stride skipped it).
+  for (let j = 0; j < total; j++) {
+    if (searchHistory[j].score > bestSoFar) { bestSoFar = searchHistory[j].score; bestIdx = j; }
+  }
+  return bestIdx;
+}
+
+function setBestScore(entry, algoName) {
+  const el = document.getElementById('best-score');
+  el.innerHTML = `${entry.score.toFixed(1)} (${(entry.powerFraction * 100).toFixed(1)} %)<span class="algo-tag">${algoName}</span>`;
+}
+
+// ============================================================================
+// Runner.
+// ============================================================================
+let lastBest = null;
+
+function getOptimizerClass(name) { return globalThis[name]; }
+
+async function runOptimization() {
+  const algoName = document.getElementById('algorithm').value;
+  const budget = parseInt(document.getElementById('budget').value, 10);
+  const cls = getOptimizerClass(algoName);
+  if (!cls) { alert(`Optimizer '${algoName}' not found.`); return; }
+
+  const runBtn = document.getElementById('run-btn');
+  runBtn.disabled = true;
+  runBtn.textContent = `Searching with ${algoName}...`;
+
+  animationToken++;
+  stopDirectionCycle();
+  drawSidePanelRose();                 // clear any focused-spoke highlight
+  searchHistory.length = 0;
+  await new Promise((r) => setTimeout(r, 30));
+
+  try {
+    const opt = new cls(objective, budget, N_DIM);
+    opt.optimize();
+
+    const bestIdx = await animateMontage();
+    const bestEntry = searchHistory[bestIdx];
+    lastBest = bestEntry;
+
+    setBestScore(bestEntry, algoName);
+    addLeaderboardEntry(algoName, bestEntry, opt.evaluations, {
+      inPlace: liveLeaderboardIdx >= 0,
+    });
+    liveLeaderboardIdx = -1;
+    // Show the winning layout and start the rose cycle on it.
+    startDirectionCycle(bestEntry.positions,
+      `Best: ${bestEntry.score.toFixed(1)} (${algoName})`);
+  } catch (e) {
+    console.error(e);
+    alert(`${algoName} threw an error: ${e.message}`);
+  } finally {
+    runBtn.disabled = false;
+    runBtn.textContent = '▶ Find the best layout';
+  }
+}
+
+function replayBest() {
+  if (!lastBest) return;
+  animationToken++;
+  startDirectionCycle(lastBest.positions,
+    `Best: ${lastBest.score.toFixed(1)}`);
+}
+
+const leaderboard = [];
+let liveLeaderboardIdx = -1;
+
+function addLeaderboardEntry(algoName, entry, evals, { inPlace = false } = {}) {
+  const row = {
+    name: algoName, score: entry.score,
+    powerFraction: entry.powerFraction, penalty: entry.penalty,
+    boundaryBonus: entry.boundaryBonus,
+    evals,
+  };
+  if (inPlace && liveLeaderboardIdx >= 0) leaderboard[liveLeaderboardIdx] = row;
+  else { leaderboard.push(row); liveLeaderboardIdx = leaderboard.length - 1; }
+  const tracked = leaderboard[liveLeaderboardIdx];
+  leaderboard.sort((a, b) => b.score - a.score || a.evals - b.evals);
+  liveLeaderboardIdx = leaderboard.indexOf(tracked);
+  renderLeaderboard();
+}
+
+function renderLeaderboard() {
+  const body = document.getElementById('leaderboard-body');
+  if (leaderboard.length === 0) {
+    body.innerHTML = '<tr><td colspan="4" style="color: var(--muted); text-align: center;">— no runs yet —</td></tr>';
+    return;
+  }
+  body.innerHTML = leaderboard.map((row) => {
+    const cls = row.name === 'Human Raphson' ? ' class="human-raphson"' : '';
+    return `<tr${cls}>
+      <td>${row.name}</td>
+      <td>${row.score.toFixed(1)}</td>
+      <td>${row.evals}</td>
+      <td>exp. power ${(row.powerFraction * 100).toFixed(1)} % · boundary +${row.boundaryBonus.toFixed(2)} · penalty ${row.penalty.toFixed(2)}</td>
+    </tr>`;
+  }).join('');
+}
+
+// ============================================================================
+// Presets.
+// ============================================================================
+const PRESETS = {
+  grid: () => {
+    const positions = [];
+    const cols = 4, rows = 2;
+    const dx = (FIELD_X1 - FIELD_X0) / (cols + 1);
+    const dy = (FIELD_Y1 - FIELD_Y0) / (rows + 1);
+    for (let r = 0; r < rows; r++) {
+      for (let c = 0; c < cols; c++) {
+        positions.push({
+          x: FIELD_X0 + (c + 1) * dx,
+          y: FIELD_Y0 + (r + 1) * dy,
+        });
+      }
+    }
+    return positions;
+  },
+  staggered: () => {
+    const positions = [];
+    const cols = 4, rows = 2;
+    const dx = (FIELD_X1 - FIELD_X0) / (cols + 1);
+    const dy = (FIELD_Y1 - FIELD_Y0) / (rows + 1);
+    for (let r = 0; r < rows; r++) {
+      for (let c = 0; c < cols; c++) {
+        const offset = (r % 2 === 1) ? dx / 2 : 0;
+        positions.push({
+          x: FIELD_X0 + (c + 1) * dx + offset,
+          y: FIELD_Y0 + (r + 1) * dy,
+        });
+      }
+    }
+    return positions;
+  },
+  line: () => {
+    const positions = [];
+    const dx = (FIELD_X1 - FIELD_X0) / (N_TURBINES + 1);
+    const yCentre = (FIELD_Y0 + FIELD_Y1) / 2;
+    for (let i = 0; i < N_TURBINES; i++) {
+      positions.push({ x: FIELD_X0 + (i + 1) * dx, y: yCentre });
+    }
+    return positions;
+  },
+  random: () => {
+    const positions = [];
+    for (let i = 0; i < N_TURBINES; i++) {
+      positions.push({
+        x: FIELD_X0 + Math.random() * (FIELD_X1 - FIELD_X0),
+        y: FIELD_Y0 + Math.random() * (FIELD_Y1 - FIELD_Y0),
+      });
+    }
+    return positions;
+  },
+};
+
+let manualPositions = null;
+function loadPreset(name) {
+  manualPositions = PRESETS[name]();
+  const result = evaluateLayout(manualPositions);
+  document.getElementById('score-now').textContent = result.score.toFixed(1);
+  document.getElementById('score-detail').textContent =
+    `exp. power ${(result.powerFraction * 100).toFixed(1)} % · boundary +${result.boundaryBonus.toFixed(2)} · penalty ${result.penalty.toFixed(2)}`;
+  startDirectionCycle(manualPositions,
+    `Preset: ${name} — ${result.score.toFixed(1)}`);
+}
+
+function manualEvaluate() {
+  if (!manualPositions) loadPreset('grid');
+  const result = evaluateLayout(manualPositions);
+  document.getElementById('score-now').textContent = result.score.toFixed(1);
+  document.getElementById('score-detail').textContent =
+    `exp. power ${(result.powerFraction * 100).toFixed(1)} % · boundary +${result.boundaryBonus.toFixed(2)} · penalty ${result.penalty.toFixed(2)}`;
+  addLeaderboardEntry('Human Raphson',
+    { positions: manualPositions, ...result }, 1);
+  setBestScore({ score: result.score, powerFraction: result.powerFraction },
+    'Human Raphson');
+  startDirectionCycle(manualPositions,
+    `🧠 Human Raphson: ${result.score.toFixed(1)}`);
+}
+
+function resetEverything() {
+  leaderboard.length = 0;
+  liveLeaderboardIdx = -1;
+  lastBest = null;
+  manualPositions = null;
+  animationToken++;
+  ['score-now', 'evals'].forEach((id) => document.getElementById(id).textContent = '0');
+  ['score-detail', 'best-score'].forEach((id) =>
+    document.getElementById(id).textContent = '—');
+  renderLeaderboard();
+  drawIdleScene();
+}
+
+drawSidePanelRose();          // initial static draw of the rose
+drawIdleScene();              // starts the direction-cycle animation
+</script>
+</body>
+</html>
