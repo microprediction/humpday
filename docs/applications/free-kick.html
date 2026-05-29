@@ -791,24 +791,24 @@ function drawKeeperProjected(pitchX, diveVx = 0, ballState = null) {
   const w = Math.max(4, feet.scale * 10);
   const headR = Math.max(2.5, feet.scale * 3.6);
 
-  // 1) Extend timing — arms only stretch out RIGHT before the ball
-  //    arrives. User feedback: "Arm extension much later please".
-  //    Was kicking in at 55 % of flight; now waits until 85 %.
+  // 1) Extend timing — arms only stretch out just BEFORE the ball
+  //    arrives. Was 55 %, then 85 %, now 92 % (final 8 % of flight).
+  //    User: "make the movement LATER just before the ball arrives".
   let flightProgress = 0;
   if (ballState && ballState.y != null) {
     flightProgress = Math.max(0, Math.min(1,
       (KICK_SPOT.y - ballState.y) / (KICK_SPOT.y - GOAL_Y)));
   }
-  const extendRamp = Math.max(0, Math.min(1, (flightProgress - 0.85) / 0.15));
+  const extendRamp = Math.max(0, Math.min(1, (flightProgress - 0.92) / 0.08));
 
-  // 2) Arm direction — if the ball is high the arms reach UP; if low
-  //    they extend OUT laterally. User feedback: "if the ball is high
-  //    have the keeper extend their arms UP not straight out".
+  // 2) Arm direction — diagonal up for high balls, NOT straight up.
+  //    User: "make his arms go up and diagonal not straight up — looks
+  //    ridiculous like he has one arm coming out of his neck".
+  //    Cap at 0.55 so the arms always retain a lateral component.
   let upFraction = 0;
   if (ballState && ballState.z != null) {
-    // Keeper's chest is ~0.9 m. Anything above 1 m starts shifting
-    // the reach upward; balls near the crossbar (2.4 m) → full up.
-    upFraction = Math.max(0, Math.min(1, (ballState.z - 0.9) / 1.4));
+    const raw = Math.max(0, Math.min(1, (ballState.z - 0.9) / 1.4));
+    upFraction = raw * 0.55;
   }
 
   // Dive velocity → lateral magnitude.
