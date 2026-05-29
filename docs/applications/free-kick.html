@@ -322,9 +322,16 @@ const WALL_LEFT_Y = WALL_Y - (WALL_TOTAL_W_PX / 2) * WALL_PERP_DY;
 // to either curl tight around the wall to find the near corner OR
 // fire straight at the far corner the keeper is covering.
 const KEEPER_START = { x: W / 2 + 1.2 * PX_PER_M, y: GOAL_Y + 8 };
-const KEEPER_REACTION_S = 0.22;
-const KEEPER_MAX_SPEED_M = 5.0;
-const KEEPER_REACH_M = 1.05;
+// Slower reflexes than before — user feedback "give the keeper slower
+// reflexes". A 0.35 s reaction is more like a tired ageing keeper
+// than a top-flight athlete (who'd be 0.20-0.25 s).
+const KEEPER_REACTION_S = 0.35;
+// Slower lateral movement than top-keeper speed (was 5.0). Real
+// keepers diving sideways with this much accuracy run more like
+// 3.5–4 m/s. Compensated by a more generous reach when they DO
+// arrive at the ball — user: "if they get to the ball let them stop it".
+const KEEPER_MAX_SPEED_M = 3.8;
+const KEEPER_REACH_M = 1.7;
 
 // ---- Parameter ranges decoded from u in [0,1]^4 -----------------------
 // aim     : -25° to +25° from straight-at-goal
@@ -424,8 +431,8 @@ function runKick(params, recordFrames = false) {
       kx: keeper.x,
     });
 
-    // Wall crossing — the wall is now an ANGLED line perpendicular to
-    // the kick-to-goal direction, 9.15 m along that line from the ball.
+    // Wall crossing — the wall is an angled line perpendicular to the
+    // kick-to-goal direction, 9.15 m along that line from the ball.
     // "Crossed the wall" = projection of ball-from-kicker onto the
     // kick-to-goal direction exceeds WALL_DIST_PX.
     if (!crossedWall) {
@@ -435,12 +442,22 @@ function runKick(params, recordFrames = false) {
       if (alongKG > WALL_DIST_PX) {
         crossedWall = true;
         wallHeightAtCross = ball.z;
-        // Perpendicular displacement of the ball from the kick line
-        // at the wall's depth.
         const perp = dx * WALL_PERP_DX + dy * WALL_PERP_DY;
         const halfWall = WALL_TOTAL_W_PX / 2 + PLAYER_WIDTH_M * PX_PER_M / 2;
         if (Math.abs(perp) < halfWall && ball.z < WALL_HEIGHT_M) {
           wallBlocked = true;
+          // Bounce off the wall — reverse the component of velocity
+          // along the kick-to-goal direction (with energy loss), keep
+          // the perpendicular component (so a ball travelling at an
+          // angle deflects sideways), dampen vertical. Previously we
+          // just set the flag and the ball flew through the wall
+          // visually; now it bounces back the way a real ball would.
+          const kgUx = _KG_DX / _KG_LEN, kgUy = _KG_DY / _KG_LEN;
+          const vDotKG = ball.vx * kgUx + ball.vy * kgUy;
+          const BOUNCE_E = 0.35;
+          ball.vx -= (1 + BOUNCE_E) * vDotKG * kgUx;
+          ball.vy -= (1 + BOUNCE_E) * vDotKG * kgUy;
+          ball.vz *= 0.55;
         }
       }
     }
@@ -489,7 +506,11 @@ function runKick(params, recordFrames = false) {
   } else {
     // Crossed the goal line at (x, z). Check goal frame.
     const { x: gx, z: gz, t: gt } = goalCrossing;
-    const inPosts = gx > GOAL_LEFT + 4 && gx < GOAL_RIGHT - 4;
+    // No buffer on the inPosts check — previously had ±4 px (~30 cm)
+    // which incorrectly counted balls that were ACTUALLY between the
+    // posts as "wide". A ball at the post line counts as in (grazes
+    // the woodwork) per real-game convention.
+    const inPosts = gx > GOAL_LEFT && gx < GOAL_RIGHT;
     const underCrossbar = gz < GOAL_HEIGHT_M - 0.05;
     if (!inPosts) {
       // Side-net miss — partial credit if very close to a post.
@@ -555,22 +576,21 @@ function objective(u) {
 // looking toward the goal). Pitch points (px, py, z_m) project via a
 // simple pinhole camera with focal length FOCAL, camera height
 // CAM_HEIGHT_M, and the camera placed CAM_BACK_PX pixels behind the
-// kicker. The camera is OFFSET to the kicker's x so the kicker appears
-// at canvas centre and the goal sits to the right (angled-shot view).
+// kicker. CAM_X_REF shifts the camera slightly toward the goal so the
+// scene uses more canvas width — kicker on the canvas-left, goal in
+// the right-of-centre region with room around it.
 // ============================================================================
 const CAM_BACK_PX = 100;       // px behind the kicker
-const CAM_HEIGHT_M = 3.0;      // m above the pitch — raised so the
-                               // viewer sees over the wall to the keeper
-const FOCAL = 700;             // virtual focal length in px
-const HORIZON_Y = 95;          // canvas-y of the horizon line
+const CAM_HEIGHT_M = 3.0;      // m above the pitch
+const FOCAL = 900;             // longer focal length = bigger goal on canvas
+const HORIZON_Y = 80;
+const CAM_X_REF = KICK_SPOT.x + 40;   // pan the camera toward the goal
 
 function project(px, py, z_m = 0) {
   // Forward distance from the camera (positive = ball in front).
   const d = (KICK_SPOT.y + CAM_BACK_PX) - py;
   if (d <= 4) return { x: W / 2, y: HORIZON_Y, scale: 0, visible: false };
-  // Lateral is relative to the camera's x (== kicker's x), so the
-  // kicker projects to canvas centre regardless of where they stand.
-  const lateral = px - KICK_SPOT.x;
+  const lateral = px - CAM_X_REF;
   const heightPx = z_m * PX_PER_M - CAM_HEIGHT_M * PX_PER_M;
   const scale = FOCAL / d;
   return {
