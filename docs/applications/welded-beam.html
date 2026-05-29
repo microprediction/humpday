@@ -577,22 +577,29 @@ function drawBeam(state, hudText) {
 }
 
 function drawCrossSection(t, b, h) {
-  const cx = 680, cy = 80;
-  const maxDim = 100;                                   // pixels for the largest of t/b
+  // Pinned to the top-right corner so the load arrow's "P = 6 000 lb"
+  // label (which sits just left of the beam tip) doesn't collide with
+  // the inset's t/b readouts.
+  const boxW = 120, boxH = 130;
+  const boxLeft = W - boxW - 8;                        // 8 px margin from canvas right
+  const boxTop = 38;
+  const cx = boxLeft + boxW / 2;
+  const cy = boxTop + 50;
+  const maxDim = 80;
   const scale = maxDim / Math.max(t, b, 0.5);
   const tPxC = Math.max(4, t * scale);
   const bPxC = Math.max(4, b * scale);
   const hPxC = Math.max(2, h * scale);
 
-  ctx.fillStyle = 'rgba(0, 0, 0, 0.4)';
-  ctx.fillRect(cx - 70, cy - 50, 140, 130);
+  ctx.fillStyle = 'rgba(0, 0, 0, 0.55)';
+  ctx.fillRect(boxLeft, boxTop, boxW, boxH);
   ctx.strokeStyle = 'rgba(255, 204, 0, 0.4)';
   ctx.lineWidth = 1;
-  ctx.strokeRect(cx - 70, cy - 50, 140, 130);
+  ctx.strokeRect(boxLeft, boxTop, boxW, boxH);
 
   ctx.fillStyle = '#9a9aac';
   ctx.font = 'bold 11px -apple-system, Helvetica, Arial, sans-serif';
-  ctx.fillText('cross-section', cx - 60, cy - 36);
+  ctx.fillText('cross-section', boxLeft + 10, boxTop + 14);
 
   // Beam cross-section: b wide × t tall, centred at (cx, cy + 20).
   const beamX = cx - bPxC / 2;
@@ -620,8 +627,8 @@ function drawCrossSection(t, b, h) {
 
   ctx.fillStyle = '#e8e8ea';
   ctx.font = '10px "SF Mono", Menlo, monospace';
-  ctx.fillText(`t = ${t.toFixed(2)}″`, cx - 60, cy + 60);
-  ctx.fillText(`b = ${b.toFixed(2)}″`, cx - 60, cy + 73);
+  ctx.fillText(`t = ${t.toFixed(2)}″`, boxLeft + 10, boxTop + boxH - 18);
+  ctx.fillText(`b = ${b.toFixed(2)}″`, boxLeft + 10, boxTop + boxH - 5);
 }
 
 function drawConstraintStrip(evalResult) {
