@@ -50,3 +50,5 @@ htmlcov/
 .coverage.*
 # Generated artifacts from run_comprehensive_validation.py
 validation_results/
+node_modules/
+package-lock.json
