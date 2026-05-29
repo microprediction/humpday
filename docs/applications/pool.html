@@ -49,8 +49,11 @@
   button:disabled { opacity: 0.5; cursor: not-allowed; }
   .stats { margin-top: 16px; padding-top: 14px; border-top: 1px solid #404054; font-size: 0.92em; line-height: 1.6; }
   .stats .score { font-size: 2.6em; color: var(--accent); font-weight: 700; }
-  .stat-row { display: flex; justify-content: space-between; }
-  .stat-row span:last-child { color: var(--text); font-family: 'SF Mono', Menlo, monospace; }
+  .stat-row { display: flex; justify-content: space-between; align-items: baseline; gap: 12px; }
+  .stat-row span:first-child { white-space: nowrap; flex-shrink: 0; }
+  .stat-row span:last-child { color: var(--text); font-family: 'SF Mono', Menlo, monospace;
+    text-align: right; word-break: break-word; }
+  .stat-row .algo-tag { display: block; color: var(--muted); font-size: 0.82em; margin-top: 2px; }
 
   .leaderboard { margin-top: 24px; }
   .leaderboard table { width: 100%; border-collapse: collapse; background: var(--panel); border-radius: 6px; overflow: hidden; }
@@ -829,8 +832,7 @@ async function animateSearchMontage() {
         entry, i + 1,
         { inPlace: liveLeaderboardIdx >= 0 },
       );
-      document.getElementById('best-score').textContent =
-        `${entry.score} (${formatDetail(entry)}) — ${document.getElementById('algorithm').value}`;
+      setBestScore(entry, document.getElementById('algorithm').value);
     }
 
     const label = `Break ${i + 1}/${total}  ·  Best: ${bestSoFar}${isNew ? '  ★ NEW!' : ''}`;
@@ -844,6 +846,14 @@ function formatDetail(entry) {
   const parts = [`${entry.objectsPocketed} in`];
   if (entry.cueScratched) parts.push('scratch');
   return parts.join(', ');
+}
+
+// Populate the "Best so far" row as score on the first line and the
+// algorithm name on a smaller second line, so long algorithm names like
+// CMAEvolutionStrategy don't wrap the label into two lines.
+function setBestScore(entry, algoName) {
+  const el = document.getElementById('best-score');
+  el.innerHTML = `${entry.score} (${formatDetail(entry)})<span class="algo-tag">${algoName}</span>`;
 }
 
 // ============================================================================
@@ -882,8 +892,7 @@ async function runOptimization() {
       `Best break: ${bestEntry.score} (${formatDetail(bestEntry)}) — ${algoName}`,
     );
 
-    document.getElementById('best-score').textContent =
-      `${bestEntry.score} (${formatDetail(bestEntry)}) — ${algoName}`;
+    setBestScore(bestEntry, algoName);
     updateBestParams(bestEntry.params, bestEntry.score);
     addLeaderboardEntry(algoName, bestEntry, opt.evaluations, {
       inPlace: liveLeaderboardIdx >= 0,
@@ -992,8 +1001,7 @@ async function manualShot() {
       `🧠 Human Raphson: ${replay.score} (${formatDetail(replay)})`,
     );
     addLeaderboardEntry('Human Raphson', replay, 1);
-    document.getElementById('best-score').textContent =
-      `${replay.score} (${formatDetail(replay)}) — Human Raphson`;
+    setBestScore(replay, 'Human Raphson');
   } finally {
     btn.disabled = false;
     btn.textContent = '▶ Break (Human Raphson)';
