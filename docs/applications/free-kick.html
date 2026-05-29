@@ -785,6 +785,16 @@ function drawDefenderProjected(pitchX, pitchY) {
   ctx.beginPath(); ctx.ellipse(feet.x, feet.y + 2, w * 0.7, w * 0.18, 0, 0, Math.PI * 2); ctx.fill();
 }
 
+// Single arm rectangle anchored at (shoulderX, shoulderY), extending
+// `length` along `angle` (radians; 0 = right, -π/2 = straight up).
+function drawArmRect(shoulderX, shoulderY, angle, length, width) {
+  ctx.save();
+  ctx.translate(shoulderX, shoulderY);
+  ctx.rotate(angle);
+  ctx.fillRect(0, -width / 2, length, width);
+  ctx.restore();
+}
+
 function drawKeeperProjected(pitchX, diveVx = 0, ballState = null) {
   const feet = project(pitchX, KEEPER_START.y, 0);
   const head = project(pitchX, KEEPER_START.y, 1.85);
@@ -821,29 +831,27 @@ function drawKeeperProjected(pitchX, diveVx = 0, ballState = null) {
   ctx.fillStyle = '#f3d233';
   ctx.fillRect(feet.x - w / 2, head.y + headR * 0.7, w, feet.y - (head.y + headR * 0.7));
 
-  // Arms — drawn as a rotated rectangle. Always have a small base
-  // length so the keeper isn't a torso in idle; the extension is
-  // intentionally small (was 2.2 × w — looked like a vertical
-  // pillar reaching out of the top of the canvas).
-  const baseArmLen = w * 1.1;                              // always-on resting span
-  const reachLen = baseArmLen + w * 0.7 * extendRamp;      // small late-flight extension
-  // Direction from keeper to where the ball will be: biased up if
-  // the ball is high, biased sideways by the dive direction.
-  const sgn = (diveSign === 0 ? 1 : diveSign);    // default reach to the right
-  const dx = sgn * (1 - upFraction);
-  const dy = -upFraction;
-  const len = Math.hypot(dx, dy) || 1;
-  const ux = dx / len, uy = dy / len;
-  ctx.save();
-  ctx.translate(feet.x, head.y + headR * 1.4);
-  ctx.rotate(Math.atan2(uy, ux));
-  // Forward arm (toward the ball).
-  ctx.fillRect(0, -w * 0.14, reachLen, w * 0.28);
-  // Trailing arm (back for balance). Always show some of it so the
-  // keeper looks two-armed; extend more when actively diving.
-  const trailLen = baseArmLen * 0.55 + w * 1.0 * diveMag * extendRamp;
-  ctx.fillRect(-trailLen, -w * 0.14, trailLen, w * 0.28);
-  ctx.restore();
+  // Arms — TWO arms, each anchored at its own shoulder (left + right
+  // sides of the torso) so they read as anatomically separate, not
+  // as a single rod skewered through the keeper. User: "TWO ARMS
+  // FROM TWO ARM SOCKETS NOT ONE ARM FROM (WHERE?)".
+  const baseArmLen = w * 0.95;                            // resting span per arm
+  const reachLen = baseArmLen + w * 0.6 * extendRamp;     // late-flight extension
+  const armWidth = w * 0.25;
+  const shoulderY = head.y + headR * 1.15;
+  const shoulderLeftX = feet.x - w * 0.42;
+  const shoulderRightX = feet.x + w * 0.42;
+  // Forward arm direction — toward the ball (diagonal up + sideways).
+  // Default reach RIGHT when the keeper isn't actively diving.
+  const sgn = (diveSign === 0 ? 1 : diveSign);
+  const fwdAngle = Math.atan2(-upFraction, sgn * (1 - upFraction));
+  // Trailing arm direction — somewhat back behind the keeper, with a
+  // smaller upward bias so it visibly differs from the lead arm.
+  const trailAngle = Math.atan2(-upFraction * 0.6, -sgn * 0.6);
+
+  ctx.fillStyle = '#f3d233';
+  drawArmRect(sgn > 0 ? shoulderRightX : shoulderLeftX, shoulderY, fwdAngle, reachLen, armWidth);
+  drawArmRect(sgn > 0 ? shoulderLeftX : shoulderRightX, shoulderY, trailAngle, baseArmLen, armWidth);
 
   // Head — leans into the dive direction.
   ctx.fillStyle = '#c8a888';
