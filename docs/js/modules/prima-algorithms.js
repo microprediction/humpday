@@ -690,80 +690,87 @@ class PRIMA_NEWUOA extends Optimizer {
         const n = this.nDim;
         const npt = this.npt;
 
-        // Initialize starting point using PDFO-like strategy
-        let xbase = Array(n).fill(0).map(() => 0.3 + 0.4 * Math.random());
+        // DETERMINISTIC starting point at the cube centre, matching the
+        // Python reference impl (humpday/optimizers/prima_algorithms.py).
+        // The old `0.3 + 0.4 * Math.random()` random start was the
+        // dominant driver of the ~5% tail of unlucky-seed runs landing
+        // in [0.050, 0.058] on the sphere parity test.
+        let xbase = Array(n).fill(0.5);
         let fbase = this.evaluate(xbase);
 
-        // AGGRESSIVE trust region parameters matching PDFO
-        let rho = 0.5;  // Large initial trust region
-        const rhoend = 1e-8; // Precise final radius
-        const eta1 = 0.01; // Aggressive step acceptance
-        const eta2 = 0.25; // Aggressive expansion threshold
-        const gamma1 = 0.5; // Contraction factor
-        const gamma2 = 4.0; // Aggressive expansion
+        // Trust region parameters mirroring the Python reference. The
+        // old eta1=0.01/eta2=0.25 was very permissive (any step that
+        // reduced the predicted-reduction-ratio above 1% counted as
+        // success). Python uses a 0.75/0.25/0.1 cascade: ratio<0.1
+        // shrinks 0.5×; 0.1–0.25 shrinks 0.8×; 0.25–0.75 keeps;
+        // ≥0.75 expands 2× capped at rhobeg.
+        const rhobeg = 0.5;
+        const rho_end = 1e-8;
+        let rho = rhobeg;
 
-        // Initialize interpolation set with PROPER NEWUOA structure
         let XPT = Array(npt).fill().map(() => Array(n).fill(0));
         let FVAL = Array(npt).fill(0);
-
-        XPT[0] = Array(n).fill(0); // First point is xbase (origin in shifted coordinates)
+        XPT[0] = Array(n).fill(0);
         FVAL[0] = fbase;
-
-        // Build PROPER NEWUOA interpolation set (2n+1 points)
         this.buildNEWUOAInterpolationSet(XPT, FVAL, xbase, rho);
 
-        let kopt = 0; // Index of best point
+        let kopt = 0;
         for (let k = 1; k < XPT.length; k++) {
-            if (FVAL[k] < FVAL[kopt]) {
-                kopt = k;
-            }
+            if (FVAL[k] < FVAL[kopt]) kopt = k;
         }
 
-        let xopt = MathUtils.add(xbase, XPT[kopt]); // Best point in original coordinates
+        let xopt = MathUtils.add(xbase, XPT[kopt]);
         let fopt = FVAL[kopt];
 
-        // Main NEWUOA loop
-        while (this.evaluations < this.nTrials && rho > rhoend) {
-            // Build quadratic model around current best point
+        while (this.evaluations < this.nTrials && rho > rho_end) {
             const model = this.buildNEWUOAQuadraticModel(XPT, FVAL, xopt);
-
-            // Solve trust region subproblem
             const step = this.solveNEWUOATrustRegion(model, xopt, rho);
 
             if (this.evaluations >= this.nTrials) break;
 
-            // Compute trial point (no bounds in NEWUOA, but we'll apply [0,1] bounds)
             const xTrial = MathUtils.add(xopt, step);
             const xTrialBounded = xTrial.map(x => Math.min(1, Math.max(0, x)));
             const fTrial = this.evaluate(xTrialBounded);
 
-            // Compute model prediction and actual reduction
             const predRed = this.computeNEWUOAPrediction(model, step);
             const actualRed = fopt - fTrial;
-
-            // Ratio test
             const ratio = predRed > 0 ? actualRed / predRed : -1;
 
-            // Update trust region radius
-            let rhoNew = rho;
-            if (ratio <= eta1) {
-                rhoNew = gamma1 * rho;
-            } else if (ratio >= eta2 && MathUtils.norm(step) > 0.8 * rho) {
-                rhoNew = Math.min(gamma2 * rho, 10.0);
+            // Python's trust-region update cascade (verbatim from
+            // _update_trust_region_radius in prima_algorithms.py).
+            let rhoNew;
+            if (ratio >= 0.75) {
+                rhoNew = Math.min(rho * 2.0, rhobeg);
+            } else if (ratio >= 0.25) {
+                rhoNew = rho;
+            } else if (ratio >= 0.1) {
+                rhoNew = rho * 0.8;
+            } else {
+                rhoNew = Math.max(rho * 0.5, rho_end);
             }
 
-            // Accept step if ratio is good enough
-            if (ratio > eta1) {
+            // Accept the step whenever it actually reduces the
+            // objective. updateNEWUOAInterpolationSet already gates
+            // on its own "is this better than the worst point" check
+            // so this is sufficient.
+            let stepAccepted = false;
+            if (fTrial < fopt) {
                 xopt = xTrialBounded.slice();
                 fopt = fTrial;
-                kopt = this.updateNEWUOAInterpolationSet(XPT, FVAL, xopt, fopt);
+                kopt = this.updateNEWUOAInterpolationSet(XPT, FVAL, xopt, fopt, xbase);
+                stepAccepted = true;
             }
 
-            rho = Math.max(rhoNew, rhoend);
+            rho = rhoNew;
 
-            // Geometry improvement step (simplified)
-            if (Math.random() < 0.1 && this.evaluations < this.nTrials - 5) {
-                this.improveGeometry(XPT, FVAL, xopt, rho);
+            // Geometry step on REJECTED iterations only — the model
+            // is demonstrably wrong (predicted reduction not realised)
+            // so a probe to refresh interpolation conditioning is
+            // exactly what we want. Was previously gated at 10% chance
+            // on EVERY iteration, which both wasted evals on accepted
+            // steps and missed the cases where it actually mattered.
+            if (!stepAccepted && this.evaluations < this.nTrials - 1) {
+                this.improveGeometry(XPT, FVAL, xopt, rho, xbase);
             }
         }
 
@@ -966,52 +973,86 @@ class PRIMA_NEWUOA extends Optimizer {
         return pred;
     }
 
-    updateNEWUOAInterpolationSet(XPT, FVAL, xnew, fnew) {
-        // Replace worst point with new point
-        let worstK = 0;
-        for (let k = 1; k < FVAL.length; k++) {
-            if (FVAL[k] > FVAL[worstK]) {
-                worstK = k;
-            }
+    updateNEWUOAInterpolationSet(XPT, FVAL, xnew, fnew, xbase) {
+        // Replace the point furthest from `xnew` (excluding the
+        // current best) with `(xnew - xbase, fnew)`. This is closer to
+        // Python's "furthest from new position" rule than the previous
+        // "replace the worst f-value" rule — the latter could degrade
+        // the geometry of the interpolation set even when accepting an
+        // improving step.
+        const npt = FVAL.length;
+        let koptIdx = 0;
+        for (let k = 1; k < npt; k++) {
+            if (FVAL[k] < FVAL[koptIdx]) koptIdx = k;
         }
-
-        if (fnew < FVAL[worstK]) {
-            // Convert from absolute coordinates to shifted coordinates
-            const xbase = Array(this.nDim).fill(0); // This should be passed as parameter but simplified
-            XPT[worstK] = MathUtils.subtract(xnew, xbase);
-            FVAL[worstK] = fnew;
-            return worstK;
+        const xnewOffset = MathUtils.subtract(xnew, xbase);
+        let furthestK = -1, furthestDist = -1;
+        for (let k = 0; k < npt; k++) {
+            if (k === koptIdx) continue;
+            const d = MathUtils.norm(MathUtils.subtract(XPT[k], xnewOffset));
+            if (d > furthestDist) { furthestDist = d; furthestK = k; }
         }
-
-        return 0;
+        if (furthestK < 0) return koptIdx;
+        XPT[furthestK] = xnewOffset;
+        FVAL[furthestK] = fnew;
+        // Recompute kopt after the swap (the new point may itself
+        // become best, since the caller just accepted it as fopt).
+        let newKopt = 0;
+        for (let k = 1; k < npt; k++) {
+            if (FVAL[k] < FVAL[newKopt]) newKopt = k;
+        }
+        return newKopt;
     }
 
-    improveGeometry(XPT, FVAL, xopt, rho) {
-        // Simple geometry improvement: add a point that improves interpolation matrix conditioning
-        // This is a simplified version - real NEWUOA has complex geometry management
+    improveGeometry(XPT, FVAL, xopt, rho, xbase) {
+        // Geometry-improvement step: probe a direction that least
+        // resembles any existing interpolation offset, at distance rho.
+        // Replaces a random direction (was Math.random() - 0.5) with a
+        // direction chosen to *maximise the minimum cosine distance* to
+        // existing XPT offsets — which is a cheap proxy for improving
+        // interpolation matrix conditioning.
         const n = this.nDim;
-
         if (this.evaluations >= this.nTrials) return;
 
-        // Find direction with largest model uncertainty
-        let bestDir = Array(n).fill(0).map(() => Math.random() - 0.5);
-        bestDir = MathUtils.scale(bestDir, rho / MathUtils.norm(bestDir));
+        // Try each unit coordinate direction (and its negative) and
+        // pick the one most orthogonal to the current interpolation
+        // offsets. Cheap and deterministic. For n=2 this is 4 probes.
+        let bestDir = null;
+        let bestMaxOverlap = Infinity;
+        for (let i = 0; i < n; i++) {
+            for (const sgn of [1, -1]) {
+                const dir = Array(n).fill(0);
+                dir[i] = sgn;
+                let maxOverlap = 0;
+                for (let k = 0; k < XPT.length; k++) {
+                    const s = XPT[k];
+                    const sNorm = MathUtils.norm(s);
+                    if (sNorm < 1e-12) continue;
+                    const cos = Math.abs(MathUtils.dot(s, dir) / sNorm);
+                    if (cos > maxOverlap) maxOverlap = cos;
+                }
+                if (maxOverlap < bestMaxOverlap) {
+                    bestMaxOverlap = maxOverlap;
+                    bestDir = dir;
+                }
+            }
+        }
+        if (!bestDir) bestDir = Array(n).fill(0).map(() => 0.5);
 
-        const xTest = MathUtils.add(xopt, bestDir);
+        const stepVec = MathUtils.scale(bestDir, rho);
+        const xTest = MathUtils.add(xopt, stepVec);
         const xBounded = xTest.map(x => Math.min(1, Math.max(0, x)));
         const fTest = this.evaluate(xBounded);
 
-        // Replace worst point if new point is better
+        // Drop into the worst point's slot if the new point is at
+        // least competitive. Use the REAL xbase passed in so the
+        // shifted-coord offset is correct (previous version used
+        // zeros(n), which broke alignment).
         let worstK = 0;
         for (let k = 1; k < FVAL.length; k++) {
-            if (FVAL[k] > FVAL[worstK]) {
-                worstK = k;
-            }
+            if (FVAL[k] > FVAL[worstK]) worstK = k;
         }
-
         if (fTest < FVAL[worstK]) {
-            // Convert to shifted coordinates
-            const xbase = Array(n).fill(0); // Simplified - should be actual base point
             XPT[worstK] = MathUtils.subtract(xBounded, xbase);
             FVAL[worstK] = fTest;
         }
