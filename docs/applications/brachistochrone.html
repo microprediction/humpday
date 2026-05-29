@@ -294,7 +294,11 @@ const TRACK_THICK = 12;
 const MARBLE_R = 9;
 const FINISH_X = END.x;     // marble has finished when centre.x > FINISH_X
 
-// Decode u in [0, 1]^8 to control y-values in [Y_MIN, Y_MAX].
+// Decode u in [0, 1]^8 to control y-values in [Y_MIN, Y_MAX]. Free
+// parameterisation — the optimiser can pick any heights it likes.
+// The non-monotonicity QUADRATIC penalty below pushes it strongly
+// away from W-shaped curves while still allowing small tail upswings
+// (the true cycloid for our endpoints has a ~17 px terminal rise).
 function decode(u) {
   return u.map((v) => Y_MIN + (Y_MAX - Y_MIN) * v);
 }
@@ -420,20 +424,25 @@ function runRace(controlYs, recordFrames = false) {
     detail = `stuck at x=${Math.round(marble.position.x)}`;
   }
 
-  // Non-monotonicity penalty: subtract for every pixel the curve goes
-  // UP between consecutive control points. Tuned at 0.15 × upPenalty:
-  // strong enough that a wildly non-monotonic random config (~300 px
-  // of total upswing) loses ~45 pt — the optimiser sees a sharp
-  // gradient away from "marble gets stuck climbing" — but tolerant
-  // enough that the TRUE cycloid (which climbs ~17 px at the tail
-  // because the end is above the cycloid's minimum) loses only ~2.5,
-  // still beating every monotonic alternative.
-  let upPenalty = 0;
+  // Non-monotonicity penalty — QUADRATIC PER SEGMENT. For each pair
+  // of consecutive control points (including START and END as virtual
+  // endpoints), if the next point is HIGHER (i.e. y went DOWN in
+  // pixel coords, meaning the curve goes up visually) we add the
+  // squared upswing to the penalty. Quadratic-per-segment specifically
+  // targets BIG upward ramps: one 100-px reversal costs 10 000, vs
+  // five 20-px reversals costing 5 × 400 = 2 000. Small wobbles
+  // (e.g. the true cycloid's ~17 px tail-rise: 17² = 289) stay nearly
+  // free; wild W-shapes (one or two huge reversals) are deep craters
+  // the optimiser steers around in its first generation.
+  let upPenaltySq = 0;
   const fullSeq = [START.y, ...controlYs, END.y];
   for (let i = 0; i < fullSeq.length - 1; i++) {
-    if (fullSeq[i + 1] < fullSeq[i]) upPenalty += fullSeq[i] - fullSeq[i + 1];
+    if (fullSeq[i + 1] < fullSeq[i]) {
+      const up = fullSeq[i] - fullSeq[i + 1];
+      upPenaltySq += up * up;
+    }
   }
-  score -= 0.15 * upPenalty;
+  score -= 0.01 * upPenaltySq;
 
   return {
     score, detail,
