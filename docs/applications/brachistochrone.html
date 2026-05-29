@@ -322,8 +322,11 @@ function buildTrack(controlYs) {
       {
         isStatic: true,
         angle,
-        friction: 0.02,
-        frictionStatic: 0.05,
+        // Near-zero surface friction — this is the textbook
+        // brachistochrone (pure sliding, no rolling). Matter.js can
+        // get jittery exactly at 0, so 0.0005 is the safe floor.
+        friction: 0.0005,
+        frictionStatic: 0.0005,
         restitution: 0.0,    // no bouncing off the track
         label: 'track',
       },
@@ -344,10 +347,12 @@ function buildWorld(controlYs) {
   const rightWall = Bodies.rectangle(W + 10, H / 2, 20, H, { isStatic: true });
   const floor = Bodies.rectangle(W / 2, H + 30, W, 60, { isStatic: true, label: 'floor' });
   // Marble — placed just above the start point so it rests on the track.
+  // Near-zero friction so the marble slides (rather than rolls) — the
+  // textbook brachistochrone is a sliding problem.
   const marble = Bodies.circle(START.x + 6, START.y - MARBLE_R - 2, MARBLE_R, {
     density: 0.01,
-    friction: 0.02,
-    frictionAir: 0.001,
+    friction: 0.0005,
+    frictionAir: 0.0008,    // tiny drag to damp numerical noise
     restitution: 0.0,
     label: 'marble',
   });
@@ -415,21 +420,20 @@ function runRace(controlYs, recordFrames = false) {
     detail = `stuck at x=${Math.round(marble.position.x)}`;
   }
 
-  // Non-monotonicity penalty: subtract a small amount for every pixel
-  // the curve goes UP between consecutive control points. The TRUE
-  // cycloid for our endpoints dips slightly below the end height and
-  // climbs ~17 px back up at the tail, so the coefficient needs to be
-  // small enough not to disqualify near-optimal curves — pixel-per-px
-  // budget of 0.04 means the cycloid loses < 1 pt, but random
-  // wildly-non-monotonic configurations (multiple 100+ px reversals)
-  // pay a heavy 10–30 pt penalty. Gives the optimiser a clear gradient
-  // pointing away from the "marble gets stuck climbing" region.
+  // Non-monotonicity penalty: subtract for every pixel the curve goes
+  // UP between consecutive control points. Tuned at 0.15 × upPenalty:
+  // strong enough that a wildly non-monotonic random config (~300 px
+  // of total upswing) loses ~45 pt — the optimiser sees a sharp
+  // gradient away from "marble gets stuck climbing" — but tolerant
+  // enough that the TRUE cycloid (which climbs ~17 px at the tail
+  // because the end is above the cycloid's minimum) loses only ~2.5,
+  // still beating every monotonic alternative.
   let upPenalty = 0;
   const fullSeq = [START.y, ...controlYs, END.y];
   for (let i = 0; i < fullSeq.length - 1; i++) {
     if (fullSeq[i + 1] < fullSeq[i]) upPenalty += fullSeq[i] - fullSeq[i + 1];
   }
-  score -= 0.04 * upPenalty;
+  score -= 0.15 * upPenalty;
 
   return {
     score, detail,
@@ -727,16 +731,22 @@ function renderLeaderboard() {
 // ============================================================================
 // Human Raphson — 8 sliders.
 // ============================================================================
+// Sliders operate directly in pixel-y coordinates so the value next to
+// each slider IS the ramp height you see on the canvas. (The optimiser
+// still sees a normalised [0,1] cube internally — those two worlds
+// don't need to share units.)
 const slidersContainer = document.getElementById('hr-sliders');
+const SLIDER_DEFAULT = Math.round((Y_MIN + Y_MAX) / 2);  // 245 — middle of the canvas
 for (let i = 0; i < N_DIM; i++) {
   const label = document.createElement('label');
   label.htmlFor = `c${i}`;
-  label.innerHTML = `C${i + 1} <output id="c${i}-out">0.50</output>`;
+  label.innerHTML = `C${i + 1} <output id="c${i}-out">${SLIDER_DEFAULT}</output>`;
   const range = document.createElement('input');
   range.type = 'range'; range.id = `c${i}`;
-  range.min = '0'; range.max = '1'; range.step = '0.01'; range.value = '0.5';
+  range.min = String(Y_MIN); range.max = String(Y_MAX);
+  range.step = '1'; range.value = String(SLIDER_DEFAULT);
   range.addEventListener('input', () => {
-    document.getElementById(`c${i}-out`).textContent = parseFloat(range.value).toFixed(2);
+    document.getElementById(`c${i}-out`).textContent = range.value;
     drawIdleScene(currentControlYs());
   });
   slidersContainer.appendChild(label);
@@ -744,17 +754,16 @@ for (let i = 0; i < N_DIM; i++) {
 }
 
 function currentControlYs() {
-  const u = [];
-  for (let i = 0; i < N_DIM; i++) u.push(parseFloat(document.getElementById(`c${i}`).value));
-  return decode(u);
+  const ys = [];
+  for (let i = 0; i < N_DIM; i++) ys.push(parseFloat(document.getElementById(`c${i}`).value));
+  return ys;
 }
 
 function syncSlidersToControlYs(controlYs) {
   for (let i = 0; i < N_DIM; i++) {
-    const u = (controlYs[i] - Y_MIN) / (Y_MAX - Y_MIN);
     const slider = document.getElementById(`c${i}`);
-    slider.value = u.toString();
-    document.getElementById(`c${i}-out`).textContent = u.toFixed(2);
+    slider.value = String(Math.round(controlYs[i]));
+    document.getElementById(`c${i}-out`).textContent = slider.value;
   }
   drawIdleScene(controlYs);
 }
