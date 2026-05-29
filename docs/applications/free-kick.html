@@ -1,0 +1,874 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' 'unsafe-inline'; style-src 'self' 'unsafe-inline';">
+<title>⚽ Free Kick Over the Wall — HumpDay</title>
+<style>
+  :root {
+    --bg: #1a1a22;
+    --panel: #2d2d3a;
+    --accent: #ffcc00;
+    --text: #e8e8ea;
+    --muted: #9a9aac;
+  }
+  body { margin: 0; background: var(--bg); color: var(--text);
+    font-family: -apple-system, 'Segoe UI', 'Helvetica Neue', Helvetica, Arial, sans-serif; }
+  .site-nav { background: #34495e; padding: 12px 24px;
+    font-family: 'Times New Roman', Times, serif;
+    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1); }
+  .site-nav-inner { max-width: 1100px; margin: 0 auto;
+    display: flex; justify-content: space-between; align-items: center; }
+  .site-nav a { color: #ecf0f1; text-decoration: none; margin: 0 12px; }
+  .site-nav a:hover { color: white; text-decoration: underline; }
+  .site-nav-brand { font-weight: 700; font-size: 1.25em; }
+
+  .container { max-width: 1100px; margin: 0 auto; padding: 32px 24px 64px; }
+  h1 { font-size: 2.2em; margin: 0.2em 0; }
+  h2 { font-size: 1.4em; margin-top: 1.4em; color: var(--accent); }
+  p { line-height: 1.55; max-width: 70ch; }
+  .intro { color: var(--muted); }
+
+  .stage { display: grid; grid-template-columns: 1fr 320px; gap: 24px;
+    align-items: start; margin-top: 24px; }
+  @media (max-width: 800px) { .stage { grid-template-columns: 1fr; } }
+  canvas { background: #1f6f2a;
+    border: 3px solid var(--accent); border-radius: 6px; display: block;
+    width: 100%; height: auto; }
+
+  .panel { background: var(--panel); padding: 18px; border-radius: 6px; border: 1px solid #404054; }
+  .panel h3 { margin: 0 0 12px; font-size: 1.05em; text-transform: uppercase;
+    letter-spacing: 0.06em; color: var(--accent); }
+  label { display: block; margin: 10px 0 6px; font-size: 0.9em; color: var(--muted); }
+  select, input, button { width: 100%; box-sizing: border-box; padding: 8px 10px;
+    border-radius: 4px; border: 1px solid #404054; background: #1a1a22; color: var(--text); font-size: 0.95em; }
+  button { background: var(--accent); color: #1a1a22; font-weight: 700; cursor: pointer; margin-top: 6px; transition: opacity 0.15s; }
+  button:hover { opacity: 0.88; }
+  button.secondary { background: #404054; color: var(--text); font-weight: 400; }
+  button:disabled { opacity: 0.5; cursor: not-allowed; }
+  .stats { margin-top: 16px; padding-top: 14px; border-top: 1px solid #404054; font-size: 0.92em; line-height: 1.6; }
+  .stats .score { font-size: 2.6em; color: var(--accent); font-weight: 700; }
+  .stat-row { display: flex; justify-content: space-between; align-items: baseline; gap: 12px; }
+  .stat-row span:first-child { white-space: nowrap; flex-shrink: 0; }
+  .stat-row span:last-child { color: var(--text); font-family: 'SF Mono', Menlo, monospace; text-align: right; word-break: break-word; }
+  .stat-row .algo-tag { display: block; color: var(--muted); font-size: 0.82em; margin-top: 2px; }
+
+  .leaderboard { margin-top: 24px; }
+  .leaderboard table { width: 100%; border-collapse: collapse; background: var(--panel); border-radius: 6px; overflow: hidden; }
+  .leaderboard th, .leaderboard td { padding: 10px 14px; text-align: left; border-bottom: 1px solid #404054; }
+  .leaderboard th { background: #1a1a22; color: var(--muted); text-transform: uppercase; font-size: 0.78em; letter-spacing: 0.08em; }
+  .leaderboard td:nth-child(2) { text-align: center; font-size: 1.3em; font-weight: 700; color: var(--accent); }
+  .leaderboard td:nth-child(3), .leaderboard td:nth-child(4) { font-family: 'SF Mono', Menlo, monospace; color: var(--muted); }
+  .leaderboard tr.human-raphson td:first-child { color: #ff9944; font-weight: 700; }
+
+  .left-stack { display: flex; flex-direction: column; gap: 16px; min-width: 0; }
+  .hr-panel { padding: 14px 16px; }
+  .hr-panel h3 { margin: 0 0 6px; }
+  .hr-sliders { display: grid; grid-template-columns: repeat(2, 1fr); gap: 8px 18px; margin-bottom: 10px; }
+  .hr-sliders label { margin: 0; display: flex; justify-content: space-between; align-items: baseline; font-size: 0.84em; }
+  .hr-sliders label output { color: var(--accent); font-family: 'SF Mono', Menlo, monospace; font-size: 0.92em; }
+  .hr-sliders input[type=range] { width: 100%; margin: 0; padding: 0; background: transparent; }
+  .hr-sliders input[type=range]::-webkit-slider-runnable-track { background: #1a1a22; height: 6px; border-radius: 3px; }
+  .hr-sliders input[type=range]::-webkit-slider-thumb { -webkit-appearance: none; appearance: none; background: var(--accent); width: 18px; height: 18px; border-radius: 50%; margin-top: -6px; cursor: pointer; }
+  .hr-panel button { background: #ff9944; color: #1a1a22; margin-top: 0; }
+
+  .skill-callout { margin-top: 36px; background: rgba(255, 204, 0, 0.06); border: 1px solid rgba(255, 204, 0, 0.3); border-radius: 8px; padding: 18px 22px; }
+  .skill-callout h3 { margin: 0 0 6px; color: var(--accent); font-size: 1.05em; text-transform: none; letter-spacing: 0; }
+  .skill-callout p { margin: 0 0 10px; color: var(--text); max-width: none; }
+  .skill-callout pre { background: #1a1a22; border: 1px solid #404054; border-radius: 4px; padding: 10px 14px; margin: 0; font-size: 0.84em; color: var(--accent); white-space: pre-wrap; word-break: break-all; font-family: 'SF Mono', Menlo, monospace; }
+  .skill-actions { margin-top: 10px; display: flex; align-items: center; gap: 14px; }
+  .skill-actions button { width: auto; background: #404054; color: var(--text); border: 1px solid #404054; padding: 6px 12px; font-size: 0.85em; cursor: pointer; border-radius: 4px; margin: 0; font-weight: 500; }
+  .skill-actions button:hover { background: #4a4a60; }
+  .skill-actions a { color: var(--accent); font-size: 0.85em; text-decoration: none; }
+  .skill-actions a:hover { text-decoration: underline; }
+</style>
+</head>
+<body>
+<nav class="site-nav">
+  <div class="site-nav-inner">
+    <a class="site-nav-brand" href="../index.html">HumpDay ⚽</a>
+    <div>
+      <a href="../index.html">Home</a>
+      <a href="index.html">Applications</a>
+      <a href="../contest.html">Contest</a>
+      <a href="../README.html">Docs</a>
+    </div>
+  </div>
+</nav>
+
+<div class="container">
+  <h1>⚽ Free Kick Over the Wall</h1>
+  <p class="intro">
+    A 22-yard free kick. A 5-man wall stands between the ball and the
+    goal; the keeper covers the centre. The optimiser tunes
+    <strong>aim, power, loft,</strong> and <strong>curve</strong>
+    (Magnus spin) to find the trajectory that clears the wall, beats
+    the keeper, and finds the net.
+  </p>
+
+  <div class="stage">
+    <div class="left-stack">
+      <canvas id="canvas" width="800" height="450"></canvas>
+
+      <div class="panel hr-panel">
+        <h3>🧠 Human Raphson</h3>
+        <p style="color: var(--muted); margin: 0 0 12px; font-size: 0.86em;">
+          Take the kick yourself — drag the sliders, hit it, see if you can curl one home.
+        </p>
+        <div class="hr-sliders">
+          <label for="manual-aim">Aim <output id="manual-aim-out">0.0°</output></label>
+          <input type="range" id="manual-aim" min="-25" max="25" step="0.1" value="0">
+
+          <label for="manual-loft">Loft <output id="manual-loft-out">20°</output></label>
+          <input type="range" id="manual-loft" min="5" max="40" step="0.1" value="20">
+
+          <label for="manual-power">Power <output id="manual-power-out">24</output></label>
+          <input type="range" id="manual-power" min="14" max="32" step="0.1" value="24">
+
+          <label for="manual-curve">Curve <output id="manual-curve-out">0.00</output></label>
+          <input type="range" id="manual-curve" min="-2" max="2" step="0.02" value="0">
+        </div>
+        <button id="manual-btn" onclick="manualKick()">▶ Take the kick</button>
+      </div>
+    </div>
+
+    <div class="panel">
+      <h3>Algorithm</h3>
+      <label for="algorithm">Pick a HumpDay optimizer:</label>
+      <select id="algorithm">
+        <optgroup label="Trust-region / interpolation">
+          <option value="PRIMA_BOBYQA">PRIMA_BOBYQA</option>
+          <option value="PRIMA_NEWUOA">PRIMA_NEWUOA</option>
+        </optgroup>
+        <optgroup label="Local / classical">
+          <option value="NelderMead">Nelder-Mead</option>
+          <option value="Powell">Powell</option>
+          <option value="LBFGSB">L-BFGS-B (simplified)</option>
+        </optgroup>
+        <optgroup label="Population-based">
+          <option value="DifferentialEvolution" selected>Differential Evolution</option>
+          <option value="ParticleSwarm">Particle Swarm</option>
+          <option value="CMAEvolutionStrategy">CMA-Evolution Strategy</option>
+          <option value="GeneticAlgorithm">Genetic Algorithm</option>
+          <option value="EvolutionStrategy">Evolution Strategy</option>
+          <option value="HarmonySearch">Harmony Search</option>
+        </optgroup>
+        <optgroup label="Other">
+          <option value="SimulatedAnnealing">Simulated Annealing</option>
+          <option value="BayesianOpt">Bayesian Optimization</option>
+          <option value="FireflyAlgorithm">Firefly Algorithm</option>
+          <option value="AntColonyOpt">Ant Colony</option>
+          <option value="TabuSearch">Tabu Search</option>
+          <option value="RandomSearch">Random Search</option>
+        </optgroup>
+      </select>
+
+      <label for="budget">Evaluation budget:</label>
+      <select id="budget">
+        <option value="20">20 kicks</option>
+        <option value="50" selected>50 kicks</option>
+        <option value="100">100 kicks</option>
+        <option value="200">200 kicks</option>
+        <option value="500">500 kicks</option>
+      </select>
+
+      <button id="run-btn" onclick="runOptimization()">▶ Find the best kick</button>
+      <button class="secondary" onclick="replayBest()">🔁 Replay best</button>
+      <button class="secondary" onclick="resetEverything()">⟲ Reset leaderboard</button>
+
+      <div class="stats">
+        <div class="stat-row"><span>Score</span><span class="score" id="score-now">0</span></div>
+        <div class="stat-row"><span>Result</span><span id="score-detail">—</span></div>
+        <div class="stat-row"><span>Kicks tried</span><span id="evals">0</span></div>
+        <div class="stat-row"><span>Best so far</span><span id="best-score">—</span></div>
+        <div class="stat-row"><span>Aim</span><span id="param-aim">—</span></div>
+        <div class="stat-row"><span>Loft</span><span id="param-loft">—</span></div>
+        <div class="stat-row"><span>Power</span><span id="param-power">—</span></div>
+        <div class="stat-row"><span>Curve</span><span id="param-curve">—</span></div>
+      </div>
+    </div>
+  </div>
+
+  <div class="leaderboard">
+    <h2>Leaderboard (this session)</h2>
+    <p style="color: var(--muted);">
+      Each row is the best single kick a given algorithm found.
+    </p>
+    <table>
+      <thead>
+        <tr><th>Algorithm</th><th>Score</th><th>Kicks used</th><th>Best params (aim° / loft° / pow / curve)</th></tr>
+      </thead>
+      <tbody id="leaderboard-body">
+        <tr><td colspan="4" style="color: var(--muted); text-align: center;">— no runs yet —</td></tr>
+      </tbody>
+    </table>
+  </div>
+
+  <h2>What's happening</h2>
+  <p>
+    A 2.5-D ball-flight simulator. The ball leaves the kick spot with
+    chosen (aim, loft, power, curve). Gravity pulls it down; air drag
+    slows it; the <em>Magnus force</em> from the spin curves the flight
+    sideways. The simulator tracks the ball until it reaches the goal
+    line, the ground, or runs out of time.
+  </p>
+  <p>
+    <strong>Score</strong> is 100 for a goal, with a small bonus for
+    placement away from the keeper's reach. The wall blocks any ball
+    that crosses its line below ~1.8 m. The keeper covers a circular
+    reach zone around their starting position — so the scoring region
+    sits in the top corners and the far-side post, threaded by curve
+    around the wall.
+  </p>
+  <p>
+    The objective surface is sharply discontinuous (wall block, post,
+    keeper save are all step functions), so gradient methods are at a
+    disadvantage. Population methods that sample broadly tend to find
+    the curved-around-the-wall trajectories first.
+  </p>
+
+  <hr style="border: 0; border-top: 1px solid #404054; margin: 32px 0 16px;" />
+  <p style="font-size: 0.78em; color: var(--muted);">
+    Custom 2.5-D ball simulator — no rigid-body physics needed.
+    Gravity + drag + Magnus is enough for the soccer trick-shot regime.
+  </p>
+
+  <div class="skill-callout">
+    <h3>🌱 Save the Planet from Dumb Meta-Searches</h3>
+    <p>Cut and paste this into Claude or Cursor:</p>
+    <pre id="skill-snippet">Read https://raw.githubusercontent.com/microprediction/humpday/main/SKILL.md
+and create a project skill from it.</pre>
+    <div class="skill-actions">
+      <button type="button" onclick="copySkillSnippet(this)">📋 Copy</button>
+      <a href="https://github.com/microprediction/humpday/blob/main/SKILL.md" target="_blank" rel="noopener">View SKILL.md →</a>
+    </div>
+  </div>
+
+  <script>
+    function copySkillSnippet(btn) {
+      const text = document.getElementById('skill-snippet').textContent;
+      navigator.clipboard.writeText(text).then(() => {
+        const orig = btn.textContent;
+        btn.textContent = '✓ Copied';
+        setTimeout(() => { btn.textContent = orig; }, 1500);
+      }).catch(() => {
+        btn.textContent = '✗ Copy failed';
+      });
+    }
+  </script>
+</div>
+
+<script src="../js/modules/base-optimizer.js"></script>
+<script src="../js/modules/prima-algorithms.js"></script>
+<script src="../js/modules/scipy-algorithms.js"></script>
+<script src="../js/modules/evolutionary-algorithms.js"></script>
+<script src="../js/modules/search-algorithms.js"></script>
+
+<script>
+// ============================================================================
+// Free-kick demo — custom 2.5-D ball simulator (top-down x/y on the pitch
+// plus a vertical z height). Gravity + linear drag + Magnus force. No
+// rigid-body engine needed since the only collisions of interest are
+// (a) wall block at fixed y, (b) goal-line crossing, (c) ground.
+// ============================================================================
+
+const canvas = document.getElementById('canvas');
+const ctx = canvas.getContext('2d');
+const W = canvas.width, H = canvas.height;
+
+// ---- Pitch + objects geometry (px). Top-down view, goal at the top. -----
+// One pixel ≈ 0.075 metres so the kick distance is about 25 yds (23 m).
+// Goal at the TOP of the canvas (small y), ball at the BOTTOM kicks
+// toward the top.
+const PX_PER_M = 13.5;
+const GOAL_Y = 60;
+const GOAL_WIDTH_M = 7.32;     // standard goal is 7.32 m wide
+const GOAL_HEIGHT_M = 2.44;    // crossbar is 2.44 m up
+const GOAL_LEFT = (W - GOAL_WIDTH_M * PX_PER_M) / 2;
+const GOAL_RIGHT = (W + GOAL_WIDTH_M * PX_PER_M) / 2;
+const GOAL_CENTER = { x: W / 2, y: GOAL_Y };
+const KICK_SPOT = { x: W / 2, y: H - 70 };
+const KICK_TO_GOAL_M = (KICK_SPOT.y - GOAL_Y) / PX_PER_M;
+
+// Defender wall — 5 players standing 9.15 m (10 yds) from the ball.
+const WALL_Y = KICK_SPOT.y - 9.15 * PX_PER_M;
+const WALL_HEIGHT_M = 1.85;    // standing player ~1.85 m tall
+const WALL_HEIGHT = WALL_HEIGHT_M * PX_PER_M;
+const N_WALL = 5;
+const WALL_LEFT = W / 2 - 1.0 * PX_PER_M * 2.5;  // 2.5 player-widths offset
+const PLAYER_WIDTH_M = 0.5;
+const WALL_PLAYER_DX = PLAYER_WIDTH_M * 1.2 * PX_PER_M;
+
+// Goalkeeper — stands a touch off the goal line, slightly offset to
+// the keeper's strong side (we put them at x = W/2).
+const KEEPER = { x: W / 2, y: GOAL_Y + 8 };
+const KEEPER_REACH_M = 2.6;    // m of dive reach during a 1.2 s flight
+const KEEPER_REACH = KEEPER_REACH_M * PX_PER_M;
+
+// ---- Parameter ranges decoded from u in [0,1]^4 -----------------------
+// aim     : -25° to +25° from straight-at-goal
+// loft    : 5° to 40° (vertical elevation off the pitch)
+// power   : 14 to 32 m/s (real free kicks are typically 22–32 m/s)
+// curve   : -2 to +2 rad/s of spin (left curl = negative)
+function decode(u) {
+  return [
+    -25 + 50 * u[0],
+     5 + 35 * u[1],
+    14 + 18 * u[2],
+    -2 + 4 * u[3],
+  ];
+}
+
+// ---- One kick ---------------------------------------------------------
+const DT = 1 / 120;            // 120 Hz simulator
+const MAX_T = 3.0;             // seconds — a kick that hangs longer is a goalmouth scramble
+const G = 9.81;                // m/s²
+const DRAG = 0.04;             // per-second linear drag
+const MAGNUS_COEF = 0.0085;    // Magnus deflection scale
+
+function runKick(params, recordFrames = false) {
+  const [aimDeg, loftDeg, powerMps, curve] = params;
+
+  // Aim direction in pitch plane — base aim is straight at the goal centre.
+  const baseDir = Math.atan2(GOAL_CENTER.y - KICK_SPOT.y, GOAL_CENTER.x - KICK_SPOT.x);
+  const aimRad = baseDir + aimDeg * Math.PI / 180;
+  const loftRad = loftDeg * Math.PI / 180;
+
+  // Initial velocity (m/s) in 3-D. Convert pitch-plane components to px/s
+  // for x/y; keep z in metres internally.
+  const vHorizMps = powerMps * Math.cos(loftRad);
+  const ball = {
+    x: KICK_SPOT.x,                          // px
+    y: KICK_SPOT.y,                          // px
+    z: 0,                                    // m (height above pitch)
+    vx: vHorizMps * Math.cos(aimRad) * PX_PER_M,   // px/s
+    vy: vHorizMps * Math.sin(aimRad) * PX_PER_M,   // px/s
+    vz: powerMps * Math.sin(loftRad),              // m/s
+  };
+
+  const frames = recordFrames ? [] : null;
+
+  let crossedWall = false, wallHeightAtCross = null, wallBlocked = false;
+  let crossedGoalLine = false, goalCrossing = null;
+  let landed = false, landingPos = null;
+  let t = 0;
+
+  while (t < MAX_T) {
+    // Magnus deflection: spin around vertical axis deflects the ball
+    // perpendicular to its horizontal velocity.
+    const vHorizPxs = Math.hypot(ball.vx, ball.vy);
+    if (vHorizPxs > 1e-6) {
+      const nx = -ball.vy / vHorizPxs;       // left-perpendicular unit
+      const ny =  ball.vx / vHorizPxs;
+      const magAccel = curve * MAGNUS_COEF * vHorizPxs * PX_PER_M;  // px/s²
+      ball.vx += nx * magAccel * DT;
+      ball.vy += ny * magAccel * DT;
+    }
+
+    // Drag — applied linearly to all three components.
+    ball.vx *= (1 - DRAG * DT);
+    ball.vy *= (1 - DRAG * DT);
+    ball.vz *= (1 - DRAG * DT);
+    // Gravity.
+    ball.vz -= G * DT;
+
+    // Step position.
+    ball.x += ball.vx * DT;
+    ball.y += ball.vy * DT;
+    ball.z += ball.vz * DT;
+
+    if (recordFrames) frames.push({ x: ball.x, y: ball.y, z: ball.z });
+
+    // Wall crossing — wall is between ball and goal at WALL_Y.
+    if (!crossedWall && ball.y < WALL_Y) {
+      crossedWall = true;
+      wallHeightAtCross = ball.z;
+      // Check x-extent of wall: the 5 players cover WALL_LEFT to
+      // WALL_LEFT + (N_WALL - 1)*WALL_PLAYER_DX + PLAYER_WIDTH_M*PX_PER_M
+      const wallRight = WALL_LEFT + (N_WALL - 1) * WALL_PLAYER_DX + PLAYER_WIDTH_M * PX_PER_M;
+      const inWallX = ball.x > WALL_LEFT - PLAYER_WIDTH_M * PX_PER_M / 2
+                     && ball.x < wallRight + PLAYER_WIDTH_M * PX_PER_M / 2;
+      if (inWallX && ball.z < WALL_HEIGHT_M) {
+        wallBlocked = true;
+      }
+    }
+
+    // Goal-line crossing — record state and stop.
+    if (!crossedGoalLine && ball.y < GOAL_Y) {
+      crossedGoalLine = true;
+      goalCrossing = { x: ball.x, z: ball.z, t };
+      break;
+    }
+
+    // Ground hit before goal line.
+    if (ball.z < 0) {
+      landed = true;
+      landingPos = { x: ball.x, y: ball.y };
+      break;
+    }
+
+    t += DT;
+  }
+  if (recordFrames && !crossedGoalLine && !landed) {
+    // ran out of time — record the final state
+    frames.push({ x: ball.x, y: ball.y, z: ball.z });
+  }
+
+  // ---- Outcome + score ------------------------------------------------
+  let result, score;
+
+  if (wallBlocked) {
+    result = 'blocked by wall';
+    score = 0;
+    // Small partial credit for being only just short of clearing.
+    if (wallHeightAtCross != null) {
+      score = Math.max(0, 5 - 10 * (WALL_HEIGHT_M - wallHeightAtCross));
+    }
+  } else if (!crossedGoalLine) {
+    if (landed) {
+      // Landed short. Partial credit based on how close to the goal line.
+      const dyShort = Math.max(0, landingPos.y - GOAL_Y);
+      score = Math.max(0, 30 * (1 - dyShort / (KICK_SPOT.y - GOAL_Y)));
+      result = 'short';
+    } else {
+      score = 0;
+      result = 'in the air';
+    }
+  } else {
+    // Crossed the goal line at (x, z). Check goal frame.
+    const { x: gx, z: gz, t: gt } = goalCrossing;
+    const inPosts = gx > GOAL_LEFT + 4 && gx < GOAL_RIGHT - 4;
+    const underCrossbar = gz < GOAL_HEIGHT_M - 0.05;
+    if (!inPosts) {
+      // Side-net miss — partial credit if very close to a post.
+      const distFromPost = Math.min(Math.abs(gx - GOAL_LEFT), Math.abs(gx - GOAL_RIGHT));
+      score = Math.max(0, 10 - distFromPost / 2);
+      result = 'wide';
+    } else if (!underCrossbar) {
+      const overBy = gz - GOAL_HEIGHT_M;
+      score = Math.max(0, 10 - overBy * 8);
+      result = 'over';
+    } else {
+      // In the goal frame. Did the keeper save?
+      const dx = gx - KEEPER.x;
+      // Keeper's effective reach scales with flight time (more time =
+      // more dive). Use a saturating curve so very fast kicks (<0.6 s)
+      // give the keeper essentially their static span only.
+      const dive = KEEPER_REACH * Math.min(1, gt / 0.9);
+      // Vertical reach is shorter than lateral — keepers jump less than
+      // they dive sideways.
+      const dz = gz - GOAL_HEIGHT_M * 0.45;        // keeper's reach centre
+      const reachVert = KEEPER_REACH_M * 0.55;
+      const reachDist = Math.hypot(dx / dive, dz / reachVert);
+      if (reachDist < 1) {
+        // Saved. Partial credit by how badly the keeper would need to
+        // stretch — close-but-saved gives an optimisation gradient.
+        score = 20 + 30 * (1 - reachDist);
+        result = 'keeper saves';
+      } else {
+        // GOAL. Base 100, plus a placement bonus rewarding shots in
+        // the corners where the keeper has no chance.
+        const placementBonus = 10 * Math.min(2, reachDist - 1);
+        score = 100 + placementBonus;
+        result = 'GOAL!';
+      }
+    }
+  }
+
+  return {
+    score, result,
+    crossedWall, wallBlocked, wallHeightAtCross,
+    crossedGoalLine, goalCrossing,
+    landed, landingPos,
+    frames,
+    params,
+  };
+}
+
+// ============================================================================
+// HumpDay objective. Minimise -score.
+// ============================================================================
+const searchHistory = [];
+
+function objective(u) {
+  const r = runKick(decode(u));
+  searchHistory.push({
+    score: r.score,
+    result: r.result,
+    crossedGoalLine: r.crossedGoalLine,
+    goalCrossing: r.goalCrossing,
+    params: r.params,
+  });
+  return -r.score;
+}
+
+// ============================================================================
+// Rendering — top-down view of the pitch.
+// ============================================================================
+function drawPitch() {
+  // Grass.
+  ctx.fillStyle = '#1f6f2a';
+  ctx.fillRect(0, 0, W, H);
+  // Mowed stripes.
+  ctx.fillStyle = 'rgba(255,255,255,0.05)';
+  for (let i = 0; i < 6; i++) {
+    ctx.fillRect(0, 60 + i * 70, W, 35);
+  }
+
+  // 18-yard box.
+  const BOX_DEPTH = 16.5 * PX_PER_M;   // 16.5 m deep
+  const BOX_W = 40 * PX_PER_M;
+  ctx.strokeStyle = '#ffffff';
+  ctx.lineWidth = 2;
+  ctx.strokeRect((W - BOX_W) / 2, GOAL_Y, BOX_W, BOX_DEPTH);
+  // 6-yard box.
+  const SMALL_W = 18.32 * PX_PER_M;
+  const SMALL_D = 5.5 * PX_PER_M;
+  ctx.strokeRect((W - SMALL_W) / 2, GOAL_Y, SMALL_W, SMALL_D);
+  // Penalty spot.
+  ctx.fillStyle = '#fff';
+  ctx.beginPath(); ctx.arc(W / 2, GOAL_Y + 11 * PX_PER_M, 2, 0, Math.PI * 2); ctx.fill();
+  // Penalty arc (top of D).
+  ctx.beginPath();
+  ctx.arc(W / 2, GOAL_Y + 11 * PX_PER_M, 9.15 * PX_PER_M, Math.PI / 6, Math.PI * (1 - 1/6));
+  ctx.stroke();
+
+  // Goal frame.
+  ctx.strokeStyle = '#fff';
+  ctx.lineWidth = 4;
+  ctx.beginPath();
+  ctx.moveTo(GOAL_LEFT, GOAL_Y);
+  ctx.lineTo(GOAL_LEFT, GOAL_Y - 18);
+  ctx.lineTo(GOAL_RIGHT, GOAL_Y - 18);
+  ctx.lineTo(GOAL_RIGHT, GOAL_Y);
+  ctx.stroke();
+  // Net texture (just a grid hint).
+  ctx.strokeStyle = 'rgba(255,255,255,0.3)';
+  ctx.lineWidth = 0.5;
+  for (let i = 0; i < 6; i++) {
+    const x = GOAL_LEFT + (i / 5) * (GOAL_RIGHT - GOAL_LEFT);
+    ctx.beginPath(); ctx.moveTo(x, GOAL_Y - 18); ctx.lineTo(x, GOAL_Y); ctx.stroke();
+  }
+  for (let i = 0; i < 4; i++) {
+    const y = GOAL_Y - (i / 3) * 18;
+    ctx.beginPath(); ctx.moveTo(GOAL_LEFT, y); ctx.lineTo(GOAL_RIGHT, y); ctx.stroke();
+  }
+
+  // Wall — 5 player silhouettes.
+  for (let i = 0; i < N_WALL; i++) {
+    const px = WALL_LEFT + i * WALL_PLAYER_DX;
+    drawDefender(px, WALL_Y);
+  }
+
+  // Keeper.
+  drawKeeper(KEEPER.x, KEEPER.y);
+  // Keeper reach zone (faint).
+  ctx.strokeStyle = 'rgba(255,255,255,0.18)';
+  ctx.setLineDash([3, 3]);
+  ctx.beginPath(); ctx.ellipse(KEEPER.x, KEEPER.y, KEEPER_REACH, KEEPER_REACH * 0.55, 0, 0, Math.PI * 2); ctx.stroke();
+  ctx.setLineDash([]);
+
+  // Kick spot.
+  ctx.fillStyle = '#fff';
+  ctx.beginPath(); ctx.arc(KICK_SPOT.x, KICK_SPOT.y, 3, 0, Math.PI * 2); ctx.fill();
+}
+
+function drawDefender(x, y) {
+  // Body — blue shirt.
+  ctx.fillStyle = '#1a3a8a';
+  ctx.fillRect(x - 5, y - 4, 10, 14);
+  // Head.
+  ctx.fillStyle = '#c8a888';
+  ctx.beginPath(); ctx.arc(x, y - 9, 4, 0, Math.PI * 2); ctx.fill();
+  // Shadow.
+  ctx.fillStyle = 'rgba(0,0,0,0.25)';
+  ctx.beginPath(); ctx.ellipse(x, y + 12, 6, 2, 0, 0, Math.PI * 2); ctx.fill();
+}
+
+function drawKeeper(x, y) {
+  // Body — yellow shirt (classic GK).
+  ctx.fillStyle = '#f3d233';
+  ctx.fillRect(x - 6, y - 4, 12, 16);
+  // Outstretched arms (suggests dive readiness).
+  ctx.fillStyle = '#f3d233';
+  ctx.fillRect(x - 14, y - 2, 28, 4);
+  // Head.
+  ctx.fillStyle = '#c8a888';
+  ctx.beginPath(); ctx.arc(x, y - 10, 4.5, 0, Math.PI * 2); ctx.fill();
+  // Shadow.
+  ctx.fillStyle = 'rgba(0,0,0,0.25)';
+  ctx.beginPath(); ctx.ellipse(x, y + 14, 7, 2.5, 0, 0, Math.PI * 2); ctx.fill();
+}
+
+function drawBall(x, y, z) {
+  // Ball height shows as a shadow on the pitch + a slightly elevated
+  // ball drawing.
+  // Shadow on pitch (directly under ball).
+  ctx.fillStyle = 'rgba(0,0,0,0.4)';
+  const shadowR = 4 / (1 + z * 0.4);
+  ctx.beginPath(); ctx.ellipse(x, y + 4, shadowR + 1, shadowR * 0.4 + 1, 0, 0, Math.PI * 2); ctx.fill();
+
+  // Ball with vertical-offset to fake the height.
+  const yDrawn = y - z * PX_PER_M * 0.6;   // half-perspective lift
+  ctx.fillStyle = '#fff';
+  ctx.beginPath(); ctx.arc(x, yDrawn, 5, 0, Math.PI * 2); ctx.fill();
+  // Hex pattern hint.
+  ctx.fillStyle = '#222';
+  ctx.beginPath(); ctx.arc(x - 1, yDrawn - 1, 1.2, 0, Math.PI * 2); ctx.fill();
+  ctx.beginPath(); ctx.arc(x + 1.5, yDrawn + 1, 1.0, 0, Math.PI * 2); ctx.fill();
+}
+
+function drawScene(state, hudText, trail) {
+  drawPitch();
+  // Trail of ball positions for the current shot.
+  if (trail && trail.length > 1) {
+    ctx.strokeStyle = 'rgba(255, 255, 255, 0.7)';
+    ctx.lineWidth = 2;
+    ctx.beginPath();
+    ctx.moveTo(trail[0].x, trail[0].y - trail[0].z * PX_PER_M * 0.6);
+    for (let i = 1; i < trail.length; i++) {
+      ctx.lineTo(trail[i].x, trail[i].y - trail[i].z * PX_PER_M * 0.6);
+    }
+    ctx.stroke();
+  }
+  if (state) drawBall(state.x, state.y, state.z);
+  // HUD.
+  if (hudText) {
+    ctx.font = 'bold 15px -apple-system, Helvetica, Arial, sans-serif';
+    const padX = 12;
+    const metrics = ctx.measureText(hudText);
+    const boxW = Math.ceil(metrics.width) + 2 * padX;
+    ctx.fillStyle = 'rgba(0,0,0,0.7)';
+    ctx.fillRect(18, 14, boxW, 28);
+    ctx.fillStyle = '#ffcc00';
+    ctx.fillText(hudText, 18 + padX, 33);
+  }
+}
+
+function drawIdleScene() {
+  drawScene({ x: KICK_SPOT.x, y: KICK_SPOT.y, z: 0 },
+    'Press "Find the best kick" or take one yourself', null);
+}
+
+// ============================================================================
+// Animations.
+// ============================================================================
+const REPLAY_MS_PER_FRAME = 7;
+const MONTAGE_MS_PER_FRAME = 3;
+let animationToken = 0;
+
+function animateShot(frames, hudText, msPerFrame = REPLAY_MS_PER_FRAME) {
+  const myToken = animationToken;
+  return new Promise((resolve) => {
+    if (!frames || frames.length === 0) return resolve();
+    let i = 0;
+    function tick() {
+      if (myToken !== animationToken) return resolve();
+      if (i >= frames.length) return resolve();
+      drawScene(frames[i], hudText, frames.slice(0, i + 1));
+      i += 1;
+      setTimeout(tick, msPerFrame);
+    }
+    tick();
+  });
+}
+
+async function animateSearchMontage() {
+  const myToken = ++animationToken;
+  const total = searchHistory.length;
+  if (total === 0) return -1;
+
+  let bestSoFar = -Infinity;
+  let bestIdx = -1;
+  for (let i = 0; i < total; i++) {
+    if (myToken !== animationToken) return bestIdx;
+    const entry = searchHistory[i];
+    const isNew = entry.score > bestSoFar;
+    if (isNew) { bestSoFar = entry.score; bestIdx = i; }
+
+    const reF = runKick(entry.params, /*recordFrames=*/true);
+    document.getElementById('evals').textContent = i + 1;
+    document.getElementById('score-now').textContent = entry.score.toFixed(0);
+    document.getElementById('score-detail').textContent = entry.result;
+    updateBestParams(entry.params);
+
+    if (isNew) {
+      addLeaderboardEntry(
+        document.getElementById('algorithm').value,
+        entry, i + 1,
+        { inPlace: liveLeaderboardIdx >= 0 },
+      );
+      setBestScore(entry, document.getElementById('algorithm').value);
+    }
+
+    const label = `Kick ${i + 1}/${total}  ·  Best: ${bestSoFar.toFixed(0)}${isNew ? '  ★ NEW!' : ''}`;
+    await animateShot(reF.frames, label, MONTAGE_MS_PER_FRAME);
+  }
+  return bestIdx;
+}
+
+function setBestScore(entry, algoName) {
+  const el = document.getElementById('best-score');
+  el.innerHTML = `${entry.score.toFixed(0)} (${entry.result})<span class="algo-tag">${algoName}</span>`;
+}
+
+// ============================================================================
+// Runner.
+// ============================================================================
+let lastBest = null;
+
+function getOptimizerClass(name) { return globalThis[name]; }
+
+async function runOptimization() {
+  const algoName = document.getElementById('algorithm').value;
+  const budget = parseInt(document.getElementById('budget').value, 10);
+  const cls = getOptimizerClass(algoName);
+  if (!cls) { alert(`Optimizer '${algoName}' not found.`); return; }
+
+  const runBtn = document.getElementById('run-btn');
+  runBtn.disabled = true;
+  runBtn.textContent = `Searching with ${algoName}...`;
+
+  animationToken++;
+  searchHistory.length = 0;
+  await new Promise((r) => setTimeout(r, 30));
+
+  try {
+    const opt = new cls(objective, budget, 4);
+    opt.optimize();
+
+    const bestIdx = await animateSearchMontage();
+    const bestEntry = searchHistory[bestIdx];
+    const replay = runKick(bestEntry.params, /*recordFrames=*/true);
+    lastBest = replay;
+
+    await animateShot(
+      replay.frames,
+      `Best kick: ${bestEntry.score.toFixed(0)} (${bestEntry.result}) — ${algoName}`,
+    );
+
+    setBestScore(bestEntry, algoName);
+    updateBestParams(bestEntry.params);
+    addLeaderboardEntry(algoName, bestEntry, opt.evaluations, {
+      inPlace: liveLeaderboardIdx >= 0,
+    });
+    liveLeaderboardIdx = -1;
+  } catch (e) {
+    console.error(e);
+    alert(`${algoName} threw an error: ${e.message}`);
+  } finally {
+    runBtn.disabled = false;
+    runBtn.textContent = '▶ Find the best kick';
+  }
+}
+
+function updateBestParams(params) {
+  const [a, l, p, c] = params;
+  document.getElementById('param-aim').textContent = `${a.toFixed(1)}°`;
+  document.getElementById('param-loft').textContent = `${l.toFixed(1)}°`;
+  document.getElementById('param-power').textContent = p.toFixed(1);
+  document.getElementById('param-curve').textContent = c.toFixed(2);
+}
+
+function replayBest() {
+  if (!lastBest) return;
+  animationToken++;
+  animateShot(lastBest.frames, 'Replaying best kick');
+}
+
+const leaderboard = [];
+let liveLeaderboardIdx = -1;
+
+function addLeaderboardEntry(algoName, entry, evals, { inPlace = false } = {}) {
+  const row = {
+    name: algoName, score: entry.score, result: entry.result,
+    evals, params: entry.params,
+  };
+  if (inPlace && liveLeaderboardIdx >= 0) leaderboard[liveLeaderboardIdx] = row;
+  else { leaderboard.push(row); liveLeaderboardIdx = leaderboard.length - 1; }
+  const tracked = leaderboard[liveLeaderboardIdx];
+  leaderboard.sort((a, b) => b.score - a.score || a.evals - b.evals);
+  liveLeaderboardIdx = leaderboard.indexOf(tracked);
+  renderLeaderboard();
+}
+
+function renderLeaderboard() {
+  const body = document.getElementById('leaderboard-body');
+  if (leaderboard.length === 0) {
+    body.innerHTML = '<tr><td colspan="4" style="color: var(--muted); text-align: center;">— no runs yet —</td></tr>';
+    return;
+  }
+  body.innerHTML = leaderboard.map((row) => {
+    const [a, l, p, c] = row.params;
+    const cls = row.name === 'Human Raphson' ? ' class="human-raphson"' : '';
+    return `<tr${cls}>
+      <td>${row.name}</td>
+      <td>${row.score.toFixed(0)} (${row.result})</td>
+      <td>${row.evals}</td>
+      <td>${a.toFixed(1)}° / ${l.toFixed(1)}° / ${p.toFixed(1)} / ${c.toFixed(2)}</td>
+    </tr>`;
+  }).join('');
+}
+
+// ============================================================================
+// Human Raphson.
+// ============================================================================
+const sliderInputs = ['manual-aim', 'manual-loft', 'manual-power', 'manual-curve'];
+const sliderOutputs = {
+  'manual-aim': (v) => `${parseFloat(v).toFixed(1)}°`,
+  'manual-loft': (v) => `${parseFloat(v).toFixed(1)}°`,
+  'manual-power': (v) => parseFloat(v).toFixed(1),
+  'manual-curve': (v) => parseFloat(v).toFixed(2),
+};
+for (const id of sliderInputs) {
+  const slider = document.getElementById(id);
+  const output = document.getElementById(`${id}-out`);
+  const update = () => { output.textContent = sliderOutputs[id](slider.value); };
+  slider.addEventListener('input', update);
+  update();
+}
+
+async function manualKick() {
+  const a = parseFloat(document.getElementById('manual-aim').value);
+  const l = parseFloat(document.getElementById('manual-loft').value);
+  const p = parseFloat(document.getElementById('manual-power').value);
+  const c = parseFloat(document.getElementById('manual-curve').value);
+  const btn = document.getElementById('manual-btn');
+  btn.disabled = true;
+  btn.textContent = 'Striking...';
+  animationToken++;
+  await new Promise((r) => setTimeout(r, 30));
+  try {
+    const replay = runKick([a, l, p, c], /*recordFrames=*/true);
+    document.getElementById('score-now').textContent = replay.score.toFixed(0);
+    document.getElementById('score-detail').textContent = replay.result;
+    updateBestParams([a, l, p, c]);
+    await animateShot(
+      replay.frames,
+      `🧠 Human Raphson: ${replay.score.toFixed(0)} (${replay.result})`,
+    );
+    addLeaderboardEntry('Human Raphson', { ...replay }, 1);
+    setBestScore(replay, 'Human Raphson');
+  } finally {
+    btn.disabled = false;
+    btn.textContent = '▶ Take the kick';
+  }
+}
+
+function resetEverything() {
+  leaderboard.length = 0;
+  liveLeaderboardIdx = -1;
+  lastBest = null;
+  animationToken++;
+  ['score-now', 'evals'].forEach((id) => document.getElementById(id).textContent = '0');
+  ['score-detail', 'best-score', 'param-aim', 'param-loft', 'param-power', 'param-curve'].forEach((id) =>
+    document.getElementById(id).textContent = '—');
+  renderLeaderboard();
+  drawIdleScene();
+}
+
+drawIdleScene();
+</script>
+</body>
+</html>
