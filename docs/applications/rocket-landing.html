@@ -97,19 +97,19 @@
 
 <div class="container">
   <h1>🚀 Rocket Landing</h1>
-  <p class="intro">
+    <p class="intro">
     Land a returning booster softly on the pad with as much fuel
     left over as possible. You're picking a piecewise-constant
     throttle schedule — 12 values in [0, 1], one per 0.83-second
-    segment. Full throttle the whole way wastes fuel and pushes
-    you back into space; zero throttle crashes you into the pad
-    at 65 px/s. The continuous-time optimum is a <em>suicide
-    burn</em> — free-fall, then a single precisely-timed full
-    burn — but the discrete 0.83-second segments here can't time
-    that exactly, so the practical optimum is a near-bang-bang
-    schedule with one or two <em>fractional</em> segments around
-    the burn-start that fake the missing sub-segment delay.
-    Finding it is a 12-D optimal-control problem.
+    segment. The engine has a thrust-to-weight ratio of ~4.8 and
+    a fuel tank good for 4 seconds of full burn — so the rocket
+    <em>can</em> dump fuel fast enough to do a real suicide burn:
+    free-fall most of the way, then one precisely-timed
+    full-throttle segment that brings v ≈ 0 at h = 0. Free fall
+    crashes you in at 65 px/s; constant full throttle wastes
+    everything and sends you back to space; the right answer is
+    a near-bang-bang schedule with a fractional kicker that
+    fakes the sub-segment timing.
   </p>
 
   <div class="stage">
@@ -211,11 +211,12 @@
     The booster starts at 200 px altitude with 15 px/s downward
     velocity. Constant gravity g = 10 pulls it down; a single
     throttle τ ∈ [0, 1] controls a thrust producing acceleration
-    24·τ upward (so τ ≈ 0.42 is the hover throttle). The 12 control
+    48·τ upward (so τ ≈ 0.21 is the hover throttle and full thrust
+    decelerates a falling rocket at 38 px/s²). The 12 control
     variables are the throttle settings for 12 equal time-segments
     spanning 10 seconds. Fuel burns at full throttle in exactly
-    10 seconds — so any constant non-zero throttle eventually runs
-    the tank dry.
+    4 seconds — so the rocket has plenty for a short suicide burn
+    but constant max throttle empties the tank before landing.
   </p>
   <p>
     <strong>Score</strong> rewards landing softly and keeping fuel.
@@ -299,8 +300,13 @@ const TW = tCanvas.width, TH = tCanvas.height;
 const N_SEGS = 12;
 const N_DIM = N_SEGS;
 const GRAVITY = 10;             // px/s²
-const THRUST_MAX = 24;          // px/s² at full throttle (so hover τ = 10/24 ≈ 0.42)
-const FUEL_BURN = 0.10;         // fuel/s at full throttle (1.0 fuel = 10 s of burn)
+// Thrust + burn rate both bumped (TWR = 4.8, fuel out in 4 s at full
+// throttle) so the discrete optimum is a real bang-bang: one full
+// segment of thrust + one fractional boundary segment. Lower TWR
+// forced the boundary segment to do most of the work; this version
+// lets a clean "burn for 0.83 s" preset actually land softly.
+const THRUST_MAX = 48;          // px/s² at full throttle (so hover τ = 10/48 ≈ 0.21)
+const FUEL_BURN = 0.25;         // fuel/s at full throttle (1.0 fuel = 4 s of burn)
 const H0 = 200;                 // starting altitude (px)
 const V0 = -15;                 // starting velocity (px/s, negative = downward)
 const SIM_T = 10;               // total simulation time (s)
@@ -861,17 +867,17 @@ function renderLeaderboard() {
 // ============================================================================
 // Presets.
 // ============================================================================
-const HOVER_THROTTLE = GRAVITY / THRUST_MAX;   // ≈ 0.417
+const HOVER_THROTTLE = GRAVITY / THRUST_MAX;   // ≈ 0.21
 // Hand-built presets. Each illustrates a different strategy.
 // "suicide" is the discrete approximation of the continuous-time
-// optimum — bang-bang with one fractional segment at the burn-start
-// boundary. The fractional value (0.86 at seg 4) compensates for the
-// burn-start happening mid-segment in continuous time. Lands softly.
+// optimum: one fractional kick + one full segment of thrust, with
+// nothing afterwards. With TWR ≈ 4.8 a single 0.83-second blast is
+// enough to bring v ≈ 0 at h = 0. Verified to land at v=−3.8 px/s.
 const PRESETS = {
   freefall: () => Array(N_SEGS).fill(0),
   hover:    () => Array(N_SEGS).fill(HOVER_THROTTLE),
   lateMax:  () => Array.from({ length: N_SEGS }, (_, i) => i < 5 ? 0 : 1),
-  suicide:  () => [0, 0, 0, 0, 0.86, 1, 1, 1, 1, 1, 1, 1],
+  suicide:  () => [0, 0, 0, 0, 0, 0.88, 1, 0, 0, 0, 0, 0],
   random:   () => Array.from({ length: N_SEGS }, () => Math.random()),
 };
 
