@@ -1,0 +1,948 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' 'unsafe-inline'; style-src 'self' 'unsafe-inline';">
+<title>🏢 NYC Building HVAC — HumpDay</title>
+<style>
+  :root {
+    --bg: #1a1a22;
+    --panel: #2d2d3a;
+    --accent: #ffcc00;
+    --text: #e8e8ea;
+    --muted: #9a9aac;
+  }
+  body { margin: 0; background: var(--bg); color: var(--text);
+    font-family: -apple-system, 'Segoe UI', 'Helvetica Neue', Helvetica, Arial, sans-serif; }
+  .site-nav { background: #34495e; padding: 12px 24px;
+    font-family: 'Times New Roman', Times, serif;
+    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1); }
+  .site-nav-inner { max-width: 1100px; margin: 0 auto;
+    display: flex; justify-content: space-between; align-items: center; }
+  .site-nav a { color: #ecf0f1; text-decoration: none; margin: 0 12px; }
+  .site-nav a:hover { color: white; text-decoration: underline; }
+  .site-nav-brand { font-weight: 700; font-size: 1.25em; }
+
+  .container { max-width: 1100px; margin: 0 auto; padding: 32px 24px 64px; }
+  h1 { font-size: 2.2em; margin: 0.2em 0; }
+  h2 { font-size: 1.4em; margin-top: 1.4em; color: var(--accent); }
+  p { line-height: 1.55; max-width: 70ch; }
+  .intro { color: var(--muted); }
+
+  .stage { display: grid; grid-template-columns: 1fr 320px; gap: 24px;
+    align-items: start; margin-top: 24px; }
+  @media (max-width: 800px) { .stage { grid-template-columns: 1fr; } }
+  canvas { background: #14141c;
+    border: 3px solid var(--accent); border-radius: 6px; display: block;
+    width: 100%; height: auto; }
+
+  .panel { background: var(--panel); padding: 18px; border-radius: 6px; border: 1px solid #404054; }
+  .panel h3 { margin: 0 0 12px; font-size: 1.05em; text-transform: uppercase;
+    letter-spacing: 0.06em; color: var(--accent); }
+  label { display: block; margin: 10px 0 6px; font-size: 0.9em; color: var(--muted); }
+  select, input, button { width: 100%; box-sizing: border-box; padding: 8px 10px;
+    border-radius: 4px; border: 1px solid #404054; background: #1a1a22; color: var(--text); font-size: 0.95em; }
+  button { background: var(--accent); color: #1a1a22; font-weight: 700; cursor: pointer; margin-top: 6px; transition: opacity 0.15s; }
+  button:hover { opacity: 0.88; }
+  button.secondary { background: #404054; color: var(--text); font-weight: 400; }
+  button:disabled { opacity: 0.5; cursor: not-allowed; }
+  .stats { margin-top: 16px; padding-top: 14px; border-top: 1px solid #404054; font-size: 0.92em; line-height: 1.6; }
+  .stats .score { font-size: 2.2em; color: var(--accent); font-weight: 700; }
+  .stat-row { display: flex; justify-content: space-between; align-items: baseline; gap: 12px; }
+  .stat-row span:first-child { white-space: nowrap; flex-shrink: 0; }
+  .stat-row span:last-child { color: var(--text); font-family: 'SF Mono', Menlo, monospace; text-align: right; word-break: break-word; }
+  .stat-row .algo-tag { display: block; color: var(--muted); font-size: 0.82em; margin-top: 2px; }
+
+  .leaderboard { margin-top: 24px; }
+  .leaderboard table { width: 100%; border-collapse: collapse; background: var(--panel); border-radius: 6px; overflow: hidden; }
+  .leaderboard th, .leaderboard td { padding: 10px 14px; text-align: left; border-bottom: 1px solid #404054; }
+  .leaderboard th { background: #1a1a22; color: var(--muted); text-transform: uppercase; font-size: 0.78em; letter-spacing: 0.08em; }
+  .leaderboard td:nth-child(2) { text-align: center; font-size: 1.2em; font-weight: 700; color: var(--accent); }
+  .leaderboard td:nth-child(3), .leaderboard td:nth-child(4) { font-family: 'SF Mono', Menlo, monospace; color: var(--muted); }
+  .leaderboard tr.human-raphson td:first-child { color: #ff9944; font-weight: 700; }
+
+  .left-stack { display: flex; flex-direction: column; gap: 16px; min-width: 0; }
+  .hr-panel { padding: 14px 16px; }
+  .hr-panel h3 { margin: 0 0 6px; }
+  .hr-panel p { margin: 0 0 8px; color: var(--muted); font-size: 0.86em; }
+  .hr-preset-row { display: flex; gap: 8px; margin-bottom: 8px; flex-wrap: wrap; }
+  .hr-preset-row button { width: auto; flex: 1 1 80px; background: #2d3a4a; color: var(--text); font-weight: 500; font-size: 0.84em; padding: 6px 10px; margin: 0; }
+  .hr-actions button.go { background: #ff9944; color: #1a1a22; margin-top: 0; }
+
+  .skill-callout { margin-top: 36px; background: rgba(126, 217, 87, 0.07); border: 1px solid rgba(126, 217, 87, 0.35); border-radius: 8px; padding: 18px 22px; }
+  .skill-callout h3 { margin: 0 0 6px; color: #7ed957; font-size: 1.05em; text-transform: none; letter-spacing: 0; }
+  .skill-callout p { margin: 0 0 10px; color: var(--text); max-width: none; }
+  .skill-callout pre { background: #1a1a22; border: 1px solid #404054; border-radius: 4px; padding: 10px 14px; margin: 0; font-size: 0.84em; color: #7ed957; white-space: pre-wrap; word-break: break-all; font-family: 'SF Mono', Menlo, monospace; }
+  .skill-actions { margin-top: 10px; display: flex; align-items: center; gap: 14px; }
+  .skill-actions button { width: auto; background: #404054; color: var(--text); border: 1px solid #404054; padding: 6px 12px; font-size: 0.85em; cursor: pointer; border-radius: 4px; margin: 0; font-weight: 500; }
+  .skill-actions button:hover { background: #4a4a60; }
+  .skill-actions a { color: #7ed957; font-size: 0.85em; text-decoration: none; }
+  .skill-actions a:hover { text-decoration: underline; }
+</style>
+</head>
+<body>
+<nav class="site-nav">
+  <div class="site-nav-inner">
+    <a class="site-nav-brand" href="../index.html">HumpDay 🏢</a>
+    <div>
+      <a href="../index.html">Home</a>
+      <a href="index.html">Applications</a>
+      <a href="../contest.html">Contest</a>
+      <a href="../README.html">Docs</a>
+    </div>
+  </div>
+</nav>
+
+<div class="container">
+  <h1>🏢 NYC Building HVAC Dispatch</h1>
+  <p class="intro">
+    A commercial floor in Manhattan has four ways to keep itself
+    comfortable: an electric heat pump (efficient when it's warm
+    outside, mediocre below freezing), a gas boiler (constant
+    efficiency, gas commodity price), Con Edison district steam
+    (the world's largest urban steam loop — premium-priced),
+    and an electric chiller. Electricity from NYISO Zone J swings
+    from ~$30/MWh overnight to over $200/MWh at the 5 pm peak.
+    Search for a <strong>control policy</strong> (linear in zone
+    state) that minimises the daily total energy bill plus comfort
+    penalty, averaged across four real-weather days from a NYC
+    year. 16-D continuous problem.
+  </p>
+
+  <div class="stage">
+    <div class="left-stack">
+      <canvas id="canvas" width="800" height="500"></canvas>
+
+      <div class="panel hr-panel">
+        <h3>🧠 Human Raphson</h3>
+        <p>Pick a policy and watch it dispatch across all four weather days.</p>
+        <div class="hr-preset-row">
+          <button type="button" onclick="loadPreset('off')">Do nothing</button>
+          <button type="button" onclick="loadPreset('boiler')">Always boiler</button>
+          <button type="button" onclick="loadPreset('pump')">Always heat pump</button>
+          <button type="button" onclick="loadPreset('thermostat')">Naive thermostat</button>
+          <button type="button" onclick="loadPreset('random')">Random</button>
+        </div>
+        <div class="hr-actions">
+          <button class="go" onclick="manualEvaluate()">▶ Score this policy</button>
+        </div>
+      </div>
+    </div>
+
+    <div class="panel">
+      <h3>Algorithm</h3>
+      <label for="algorithm">Pick a HumpDay optimizer:</label>
+      <select id="algorithm">
+        <optgroup label="Trust-region / interpolation">
+          <option value="PRIMA_BOBYQA">PRIMA_BOBYQA</option>
+          <option value="PRIMA_NEWUOA">PRIMA_NEWUOA</option>
+        </optgroup>
+        <optgroup label="Local / classical">
+          <option value="NelderMead">Nelder-Mead</option>
+          <option value="Powell">Powell</option>
+          <option value="LBFGSB">L-BFGS-B (simplified)</option>
+        </optgroup>
+        <optgroup label="Population-based">
+          <option value="DifferentialEvolution" selected>Differential Evolution</option>
+          <option value="ParticleSwarm">Particle Swarm</option>
+          <option value="CMAEvolutionStrategy">CMA-Evolution Strategy</option>
+          <option value="GeneticAlgorithm">Genetic Algorithm</option>
+          <option value="EvolutionStrategy">Evolution Strategy</option>
+          <option value="HarmonySearch">Harmony Search</option>
+        </optgroup>
+        <optgroup label="Other">
+          <option value="SimulatedAnnealing">Simulated Annealing</option>
+          <!-- BayesianOpt omitted: scales poorly past ~5-D; this is 16-D. -->
+          <option value="FireflyAlgorithm">Firefly Algorithm</option>
+          <option value="AntColonyOpt">Ant Colony</option>
+          <option value="TabuSearch">Tabu Search</option>
+          <option value="RandomSearch">Random Search</option>
+        </optgroup>
+      </select>
+
+      <label for="budget">Evaluation budget:</label>
+      <select id="budget">
+        <option value="200">200 policies</option>
+        <option value="500">500 policies</option>
+        <option value="1000" selected>1000 policies</option>
+        <option value="2000">2000 policies</option>
+        <option value="5000">5000 policies</option>
+      </select>
+      <p style="margin: 8px 0 0; font-size: 0.78em; color: var(--muted);">
+        16-D policy, each evaluation simulates four 24-hour days.
+      </p>
+
+      <button id="run-btn" onclick="runOptimization()">▶ Find the best policy</button>
+      <button class="secondary" onclick="replayBest()">🔁 Replay best</button>
+      <button class="secondary" onclick="resetEverything()">⟲ Reset leaderboard</button>
+
+      <div class="stats">
+        <div class="stat-row"><span>Daily cost</span><span class="score" id="score-now">—</span></div>
+        <div class="stat-row"><span>Energy</span><span id="stat-energy">—</span></div>
+        <div class="stat-row"><span>Comfort penalty</span><span id="stat-comfort">—</span></div>
+        <div class="stat-row"><span>Policies tried</span><span id="evals">0</span></div>
+        <div class="stat-row"><span>Best so far</span><span id="best-score">—</span></div>
+      </div>
+    </div>
+  </div>
+
+  <div class="leaderboard">
+    <h2>Leaderboard (this session)</h2>
+    <p style="color: var(--muted);">
+      Each row is the best policy a given algorithm found (lower
+      cost = better).
+    </p>
+    <table>
+      <thead>
+        <tr><th>Algorithm</th><th>$/day</th><th>Policies</th><th>Detail</th></tr>
+      </thead>
+      <tbody id="leaderboard-body">
+        <tr><td colspan="4" style="color: var(--muted); text-align: center;">— no runs yet —</td></tr>
+      </tbody>
+    </table>
+  </div>
+
+  <h2>What's happening</h2>
+  <p>
+    The zone is a single-RC thermal model — capacitance C = 10
+    kBtu/°F, overall envelope conductance UA = 0.8 kBtu/h/°F, so
+    the natural time constant τ ≈ 12.5 h. Stepped hourly, with
+    setpoint 72 °F and a comfort band of 68–76 °F enforced
+    during occupied hours (8 am – 6 pm). The outside temperature
+    follows a smooth diurnal curve with a daily peak around 2 pm.
+  </p>
+  <p>
+    Four dispatchable sources, with cost structures that pull in
+    different directions:
+  </p>
+  <ul style="max-width: 70ch; color: var(--text); line-height: 1.55;">
+    <li><strong>Heat pump</strong> — COP scales with outdoor temperature
+        (≈3.5 at 60 °F, ≈1.5 at 0 °F). Pays the volatile NYISO LMP.</li>
+    <li><strong>Gas boiler</strong> — flat 92 % efficiency, paid in $/MMBtu
+        of natural gas (nearly constant intraday).</li>
+    <li><strong>Con Ed steam</strong> — direct heat, no on-site
+        combustion. Highest unit cost, with a morning ramp.</li>
+    <li><strong>Electric chiller</strong> — COP drops as outside
+        gets hotter. Also pays the LMP.</li>
+  </ul>
+  <p>
+    Each scenario simulates a 24-hour day from a different point
+    of a NYC year — a January <em>cold snap</em>, a mild winter
+    day, a mild summer day, and a July <em>heat wave</em>. The
+    score is the mean of total daily cost (energy + comfort
+    penalty at $1.5/°F-h during occupancy) across all four days.
+  </p>
+  <p>
+    The 16-D decision variable is the parameters of a linear
+    control policy: four sources, each driven by a sigmoid of
+    (bias + zone error + outdoor demand + electricity-price
+    excursion). The optimum trades off when to use each source
+    against the current state — a "good thermostat" gets to
+    ~$70/day, but the optimum gets close to ~$30/day by riding
+    the heat pump when it's warm and the LMP is cheap, switching
+    to the boiler during the 4–7 pm peak, and barely touching
+    steam.
+  </p>
+
+  <hr style="border: 0; border-top: 1px solid #404054; margin: 32px 0 16px;" />
+  <p style="font-size: 0.78em; color: var(--muted);">
+    Single-zone RC simplification of an EnergyPlus-style building
+    model. Real BMS optimization adds latent loads, weather
+    forecasting, occupancy stochasticity, multi-zone coupling,
+    and demand-response tariff signals — but the core structure
+    (find a policy that minimises an expected cost over a
+    distribution of days) is the same.
+  </p>
+
+  <div class="skill-callout">
+    <h3>🌱 Save the Planet</h3>
+    <p>If your hyper-parameter searches are heating the Earth, drop this in Cursor or Claude:</p>
+    <pre id="skill-snippet">Read https://raw.githubusercontent.com/microprediction/humpday/main/SKILL.md
+and create a project skill from it.</pre>
+    <div class="skill-actions">
+      <button type="button" onclick="copySkillSnippet(this)">📋 Copy</button>
+      <a href="https://github.com/microprediction/humpday/blob/main/SKILL.md" target="_blank" rel="noopener">View SKILL.md →</a>
+    </div>
+  </div>
+
+  <script>
+    function copySkillSnippet(btn) {
+      const text = document.getElementById('skill-snippet').textContent;
+      navigator.clipboard.writeText(text).then(() => {
+        const orig = btn.textContent;
+        btn.textContent = '✓ Copied';
+        setTimeout(() => { btn.textContent = orig; }, 1500);
+      }).catch(() => {
+        btn.textContent = '✗ Copy failed';
+      });
+    }
+  </script>
+</div>
+
+<script src="../js/modules/base-optimizer.js"></script>
+<script src="../js/modules/prima-algorithms.js"></script>
+<script src="../js/modules/scipy-algorithms.js"></script>
+<script src="../js/modules/evolutionary-algorithms.js"></script>
+<script src="../js/modules/search-algorithms.js"></script>
+
+<script>
+// ============================================================================
+// NYC HVAC dispatch — 16-D policy search.
+//
+// State: zone temperature T (°F) of a single-zone RC building.
+// Disturbances: outdoor T (°F), electricity price ($/MWh),
+//   gas/steam prices ($/MMBtu), occupancy schedule.
+// Actions: continuous activations [0,1] for four sources
+//   (heat pump, gas boiler, Con Ed steam, electric chiller).
+// Policy: each action is a sigmoid of (bias + 3 state features).
+// Score: mean over four scenarios of total daily cost (energy +
+//   comfort penalty during occupied hours).
+// ============================================================================
+
+const canvas = document.getElementById('canvas');
+const ctx = canvas.getContext('2d');
+const W = canvas.width, H = canvas.height;
+
+const N_SOURCES = 4;
+const N_FEATURES = 4;            // bias + 3 state features
+const N_DIM = N_SOURCES * N_FEATURES;   // = 16
+const WEIGHT_RANGE = 4;          // [0,1] → [-2, +2] for usable sigmoid range
+
+// ---- Thermal + cost constants ------------------------------------------
+const HOURS = 24;
+const R_TH = 1.25;               // °F·h/kBtu (envelope UA = 0.8 kBtu/h/°F)
+const C_TH = 10.0;               // kBtu/°F   (zone thermal mass)
+const T_SET = 72;                // °F
+const T_BAND_LO = 68, T_BAND_HI = 76;
+const COMFORT_PENALTY = 1.5;     // $/°F-h outside band during occupancy
+const OCC_START = 8, OCC_END = 18;
+
+const HEAT_PUMP_MAX_KW = 18;     // electric input
+const BOILER_MAX_KBTUH = 80;     // gas thermal output
+const STEAM_MAX_KBTUH  = 50;     // steam thermal output
+const CHILLER_MAX_KW   = 22;     // electric input
+const KW_TO_KBTUH = 3.412;
+
+function copHeatPump(T_out) { return Math.max(1.5, 3.5 - 0.04 * (60 - T_out)); }
+function copChiller(T_out)  { return Math.max(1.5, 4.5 - 0.05 * (T_out - 60)); }
+
+// ---- Scenarios ---------------------------------------------------------
+// Four representative NYC weather days. Each one has its own diurnal
+// outdoor-temperature curve; electricity, gas, and steam prices share a
+// common template across all days (real LMPs would differ but the
+// 4-pm peak pattern is consistent).
+function makeOutdoorCurve(meanF, ampF) {
+  const T_out = new Array(HOURS);
+  for (let h = 0; h < HOURS; h++) T_out[h] = meanF + ampF * Math.sin((h - 8) * Math.PI / 12);
+  return T_out;
+}
+function makeElectricPriceCurve() {
+  // NYISO Zone J shape: ~$30 overnight, mid-day ~$60, sharp 4–7 pm peak.
+  const p = new Array(HOURS);
+  for (let h = 0; h < HOURS; h++) {
+    const base = 35 + 15 * Math.sin((h - 7) * Math.PI / 12);
+    const peak = h >= 16 && h <= 19 ? 100 + 50 * Math.sin((h - 16) * Math.PI / 3.5) : 0;
+    p[h] = Math.max(20, base + peak);
+  }
+  return p;
+}
+const SCENARIOS = [
+  { name: 'cold snap',   color: '#6fb0ff', T_out: makeOutdoorCurve(10, 10) },
+  { name: 'mild winter', color: '#aac8e0', T_out: makeOutdoorCurve(40, 12) },
+  { name: 'mild summer', color: '#d4c870', T_out: makeOutdoorCurve(72, 12) },
+  { name: 'heat wave',   color: '#ff7050', T_out: makeOutdoorCurve(88, 12) },
+];
+const PRICE_E = makeElectricPriceCurve();
+const PRICE_GAS = Array(HOURS).fill(12);
+const PRICE_STEAM = Array.from({ length: HOURS },
+  (_, h) => 18 + (h >= 6 && h <= 10 ? 8 : 0));
+
+function occupied(h) { return h >= OCC_START && h <= OCC_END; }
+
+// ---- Decode + simulate -------------------------------------------------
+function decode(u) {
+  // 4 sources × 4 weights. Map [0,1] → [-WEIGHT_RANGE/2, +WEIGHT_RANGE/2].
+  const policy = new Array(N_SOURCES);
+  for (let s = 0; s < N_SOURCES; s++) {
+    const w = new Array(N_FEATURES);
+    for (let f = 0; f < N_FEATURES; f++) w[f] = (u[s * N_FEATURES + f] - 0.5) * WEIGHT_RANGE;
+    policy[s] = w;
+  }
+  return policy;
+}
+function sigmoid(x) { return 1 / (1 + Math.exp(-Math.max(-30, Math.min(30, x)))); }
+
+function actionsAt(policy, T, T_out, priceE) {
+  const f = [
+    1,
+    (T - T_SET) / 5,
+    (T_SET - T_out) / 30,
+    (priceE - 60) / 60,
+  ];
+  const out = new Array(N_SOURCES);
+  for (let s = 0; s < N_SOURCES; s++) {
+    let z = 0;
+    for (let i = 0; i < N_FEATURES; i++) z += policy[s][i] * f[i];
+    out[s] = sigmoid(z);
+  }
+  return out;   // [pump, boiler, steam, chiller]
+}
+
+function simulateScenario(policy, scn) {
+  let T = T_SET;
+  let energyCost = 0, comfortPenalty = 0;
+  const trace = [];
+  for (let h = 0; h < HOURS; h++) {
+    const T_out = scn.T_out[h];
+    const priceE = PRICE_E[h];
+    const a = actionsAt(policy, T, T_out, priceE);
+    // Heat flows (kBtu/h).
+    const pPumpKW    = a[0] * HEAT_PUMP_MAX_KW;
+    const qPump      = pPumpKW * copHeatPump(T_out) * KW_TO_KBTUH;
+    const qBoiler    = a[1] * BOILER_MAX_KBTUH;
+    const qSteam     = a[2] * STEAM_MAX_KBTUH;
+    const pChillerKW = a[3] * CHILLER_MAX_KW;
+    const qChiller   = pChillerKW * copChiller(T_out) * KW_TO_KBTUH;
+    // Costs ($).
+    const cPump    = pPumpKW    * priceE / 1000;
+    const cChiller = pChillerKW * priceE / 1000;
+    const cBoiler  = (qBoiler / 1000) * PRICE_GAS[h];     // qBoiler/1000 in MMBtu/h
+    const cSteam   = (qSteam  / 1000) * PRICE_STEAM[h];
+    energyCost += cPump + cBoiler + cSteam + cChiller;
+    // Zone temperature update.
+    const Q_net = qPump + qBoiler + qSteam - qChiller;
+    const dT = ((T_out - T) / R_TH + Q_net) / C_TH;
+    T += dT;
+    // Comfort penalty during occupancy.
+    if (occupied(h)) {
+      const dev = T < T_BAND_LO ? T_BAND_LO - T
+                : T > T_BAND_HI ? T - T_BAND_HI : 0;
+      comfortPenalty += dev * COMFORT_PENALTY;
+    }
+    trace.push({
+      h, T, T_out, priceE,
+      a_pump: a[0], a_boiler: a[1], a_steam: a[2], a_chiller: a[3],
+      c_pump: cPump, c_boiler: cBoiler, c_steam: cSteam, c_chiller: cChiller,
+      cum_cost: energyCost,
+    });
+  }
+  return { trace, energyCost, comfortPenalty, totalCost: energyCost + comfortPenalty };
+}
+
+function evaluatePolicy(u) {
+  const policy = decode(u);
+  let total = 0, energy = 0, comfort = 0;
+  const perScenario = [];
+  for (const scn of SCENARIOS) {
+    const r = simulateScenario(policy, scn);
+    total += r.totalCost; energy += r.energyCost; comfort += r.comfortPenalty;
+    perScenario.push({ ...r, scn });
+  }
+  return {
+    meanCost: total / SCENARIOS.length,
+    meanEnergy: energy / SCENARIOS.length,
+    meanComfort: comfort / SCENARIOS.length,
+    perScenario,
+  };
+}
+
+// ============================================================================
+// HumpDay objective (minimise mean cost).
+// ============================================================================
+const searchHistory = [];
+function objective(u) {
+  const result = evaluatePolicy(u);
+  searchHistory.push(result);
+  return result.meanCost;
+}
+
+// ============================================================================
+// Rendering — multi-panel time-series.
+// ============================================================================
+//
+// Panel layout (top → bottom):
+//   PANEL_TEMP   : outside T (line) + zone T (line), comfort band shaded
+//   PANEL_STACK  : per-hour stacked source dispatch ($)
+//   PANEL_PRICE  : electric LMP + gas/steam dashed
+//   PANEL_AXIS   : hour ticks 0..24
+const PAD_L = 50, PAD_R = 16, PAD_T = 40, PAD_B = 22;
+const PANEL_TEMP_H = 170, PANEL_STACK_H = 130, PANEL_PRICE_H = 110, GAP = 12;
+const PANEL_TEMP_Y = PAD_T;
+const PANEL_STACK_Y = PANEL_TEMP_Y + PANEL_TEMP_H + GAP;
+const PANEL_PRICE_Y = PANEL_STACK_Y + PANEL_STACK_H + GAP;
+const PLOT_X0 = PAD_L, PLOT_X1 = W - PAD_R;
+
+const SOURCE_COLORS = {
+  pump:    '#ffcc00',
+  boiler:  '#ff6644',
+  steam:   '#a070ff',
+  chiller: '#5fb8ff',
+};
+const SOURCE_LABEL = ['Heat pump', 'Gas boiler', 'Steam', 'Chiller'];
+
+function hourToX(h) {
+  return PLOT_X0 + (h / (HOURS - 1)) * (PLOT_X1 - PLOT_X0);
+}
+
+function drawScene(scn, trace, hudText, currentH) {
+  ctx.fillStyle = '#14141c';
+  ctx.fillRect(0, 0, W, H);
+
+  // ---- TEMP panel ----
+  drawTempPanel(scn, trace, currentH);
+  // ---- STACKED dispatch panel ----
+  drawStackPanel(trace, currentH);
+  // ---- PRICE panel ----
+  drawPricePanel(trace, currentH);
+  // ---- Hour axis ----
+  drawHourAxis();
+  // ---- HUD top centre ----
+  if (hudText) {
+    ctx.font = 'bold 14px -apple-system, Helvetica, Arial, sans-serif';
+    const padX = 12;
+    const metrics = ctx.measureText(hudText);
+    const boxW = Math.ceil(metrics.width) + 2 * padX;
+    ctx.fillStyle = 'rgba(0,0,0,0.65)';
+    ctx.fillRect(W / 2 - boxW / 2, 8, boxW, 24);
+    ctx.fillStyle = '#ffcc00';
+    ctx.textAlign = 'center';
+    ctx.fillText(hudText, W / 2, 25);
+    ctx.textAlign = 'start';
+  }
+}
+
+function drawTempPanel(scn, trace, currentH) {
+  const y0 = PANEL_TEMP_Y, h = PANEL_TEMP_H;
+  ctx.fillStyle = '#0d0d16';
+  ctx.fillRect(PLOT_X0, y0, PLOT_X1 - PLOT_X0, h);
+  ctx.strokeStyle = '#404054';
+  ctx.lineWidth = 1;
+  ctx.strokeRect(PLOT_X0 + 0.5, y0 + 0.5, PLOT_X1 - PLOT_X0, h);
+  // Temp scale.
+  const TMIN = 0, TMAX = 100;
+  const yFromT = (T) => y0 + h - ((T - TMIN) / (TMAX - TMIN)) * h;
+  // Comfort band shading.
+  ctx.fillStyle = 'rgba(126, 217, 87, 0.10)';
+  ctx.fillRect(PLOT_X0, yFromT(T_BAND_HI), PLOT_X1 - PLOT_X0, yFromT(T_BAND_LO) - yFromT(T_BAND_HI));
+  // Comfort band edges.
+  ctx.strokeStyle = 'rgba(126, 217, 87, 0.35)';
+  ctx.setLineDash([4, 4]);
+  ctx.beginPath();
+  ctx.moveTo(PLOT_X0, yFromT(T_BAND_HI)); ctx.lineTo(PLOT_X1, yFromT(T_BAND_HI));
+  ctx.moveTo(PLOT_X0, yFromT(T_BAND_LO)); ctx.lineTo(PLOT_X1, yFromT(T_BAND_LO));
+  ctx.stroke();
+  ctx.setLineDash([]);
+  // Occupancy band shading.
+  ctx.fillStyle = 'rgba(255, 204, 0, 0.04)';
+  ctx.fillRect(hourToX(OCC_START), y0, hourToX(OCC_END) - hourToX(OCC_START), h);
+  // y-axis labels.
+  ctx.fillStyle = 'rgba(255,255,255,0.45)';
+  ctx.font = '10px -apple-system, Helvetica, Arial, sans-serif';
+  ctx.textAlign = 'right';
+  for (let T = 0; T <= 100; T += 20) {
+    ctx.fillText(`${T}°F`, PLOT_X0 - 6, yFromT(T) + 3);
+  }
+  // Outside T line.
+  if (trace) {
+    ctx.strokeStyle = scn.color;
+    ctx.lineWidth = 2;
+    ctx.beginPath();
+    for (let i = 0; i < trace.length; i++) {
+      const x = hourToX(trace[i].h), y = yFromT(trace[i].T_out);
+      if (i === 0) ctx.moveTo(x, y); else ctx.lineTo(x, y);
+    }
+    ctx.stroke();
+    // Zone T line.
+    ctx.strokeStyle = '#ffffff';
+    ctx.lineWidth = 2.2;
+    ctx.beginPath();
+    for (let i = 0; i < trace.length; i++) {
+      const x = hourToX(trace[i].h), y = yFromT(trace[i].T);
+      if (i === 0) ctx.moveTo(x, y); else ctx.lineTo(x, y);
+    }
+    ctx.stroke();
+  }
+  // Cursor line.
+  if (currentH !== undefined && currentH !== null) {
+    ctx.strokeStyle = 'rgba(255, 204, 0, 0.6)';
+    ctx.lineWidth = 1.5;
+    ctx.beginPath();
+    ctx.moveTo(hourToX(currentH), y0); ctx.lineTo(hourToX(currentH), y0 + h);
+    ctx.stroke();
+  }
+  // Panel title + legend.
+  ctx.fillStyle = '#ffcc00';
+  ctx.font = 'bold 12px -apple-system, Helvetica, Arial, sans-serif';
+  ctx.textAlign = 'left';
+  ctx.fillText('Temperature', PLOT_X0 + 6, y0 + 14);
+  ctx.font = '11px -apple-system, Helvetica, Arial, sans-serif';
+  if (trace) {
+    ctx.fillStyle = scn.color;
+    ctx.fillText('— outside', PLOT_X0 + 100, y0 + 14);
+    ctx.fillStyle = '#ffffff';
+    ctx.fillText('— zone', PLOT_X0 + 180, y0 + 14);
+    ctx.fillStyle = 'rgba(126, 217, 87, 0.7)';
+    ctx.fillText('comfort 68–76°F', PLOT_X0 + 240, y0 + 14);
+    ctx.fillStyle = 'rgba(255, 204, 0, 0.65)';
+    ctx.fillText('occupied 8a–6p', PLOT_X0 + 360, y0 + 14);
+  }
+}
+
+function drawStackPanel(trace, currentH) {
+  const y0 = PANEL_STACK_Y, h = PANEL_STACK_H;
+  ctx.fillStyle = '#0d0d16';
+  ctx.fillRect(PLOT_X0, y0, PLOT_X1 - PLOT_X0, h);
+  ctx.strokeStyle = '#404054';
+  ctx.strokeRect(PLOT_X0 + 0.5, y0 + 0.5, PLOT_X1 - PLOT_X0, h);
+  if (!trace) { drawStackTitle(y0); return; }
+  // Per-hour stacked $ — find max for y-scale.
+  let maxCost = 0.5;
+  for (const s of trace) {
+    const sum = s.c_pump + s.c_boiler + s.c_steam + s.c_chiller;
+    if (sum > maxCost) maxCost = sum;
+  }
+  const cols = ['c_pump', 'c_boiler', 'c_steam', 'c_chiller'];
+  const colors = [SOURCE_COLORS.pump, SOURCE_COLORS.boiler, SOURCE_COLORS.steam, SOURCE_COLORS.chiller];
+  const barW = (PLOT_X1 - PLOT_X0) / HOURS;
+  for (let i = 0; i < trace.length; i++) {
+    let yCursor = y0 + h - 4;
+    const x = hourToX(i) - barW / 2;
+    for (let s = 0; s < 4; s++) {
+      const v = trace[i][cols[s]];
+      const barH = (v / maxCost) * (h - 16);
+      if (barH < 0.4) continue;
+      ctx.fillStyle = colors[s];
+      ctx.globalAlpha = 0.85;
+      ctx.fillRect(x + 1, yCursor - barH, barW - 2, barH);
+      ctx.globalAlpha = 1;
+      yCursor -= barH;
+    }
+  }
+  if (currentH !== undefined && currentH !== null) {
+    ctx.strokeStyle = 'rgba(255, 204, 0, 0.6)';
+    ctx.lineWidth = 1.5;
+    ctx.beginPath();
+    ctx.moveTo(hourToX(currentH), y0); ctx.lineTo(hourToX(currentH), y0 + h);
+    ctx.stroke();
+  }
+  // y-axis.
+  ctx.fillStyle = 'rgba(255,255,255,0.45)';
+  ctx.font = '10px -apple-system, Helvetica, Arial, sans-serif';
+  ctx.textAlign = 'right';
+  ctx.fillText(`$${maxCost.toFixed(1)}/h`, PLOT_X0 - 6, y0 + 16);
+  ctx.fillText('$0', PLOT_X0 - 6, y0 + h - 4);
+  drawStackTitle(y0);
+}
+function drawStackTitle(y0) {
+  ctx.fillStyle = '#ffcc00';
+  ctx.font = 'bold 12px -apple-system, Helvetica, Arial, sans-serif';
+  ctx.textAlign = 'left';
+  ctx.fillText('Dispatch $/h', PLOT_X0 + 6, y0 + 14);
+  ctx.font = '11px -apple-system, Helvetica, Arial, sans-serif';
+  const items = [
+    ['Pump',    SOURCE_COLORS.pump,    110],
+    ['Boiler',  SOURCE_COLORS.boiler,  170],
+    ['Steam',   SOURCE_COLORS.steam,   240],
+    ['Chiller', SOURCE_COLORS.chiller, 310],
+  ];
+  for (const [name, c, dx] of items) {
+    ctx.fillStyle = c;
+    ctx.fillRect(PLOT_X0 + dx, y0 + 8, 8, 8);
+    ctx.fillStyle = c;
+    ctx.fillText(name, PLOT_X0 + dx + 12, y0 + 16);
+  }
+}
+
+function drawPricePanel(trace, currentH) {
+  const y0 = PANEL_PRICE_Y, h = PANEL_PRICE_H;
+  ctx.fillStyle = '#0d0d16';
+  ctx.fillRect(PLOT_X0, y0, PLOT_X1 - PLOT_X0, h);
+  ctx.strokeStyle = '#404054';
+  ctx.strokeRect(PLOT_X0 + 0.5, y0 + 0.5, PLOT_X1 - PLOT_X0, h);
+  // Build "$/MMBtu equivalent" for electric so all three are on the same axis.
+  // Electric in $/MWh; 1 MWh = 3.412 MMBtu thermal at COP=1. Use $/MMBtu = $/MWh / 3.412.
+  const pe_mmbtu = PRICE_E.map(p => p / 3.412);
+  const pmax = Math.max(...pe_mmbtu, ...PRICE_GAS, ...PRICE_STEAM);
+  const yFromP = (p) => y0 + h - 8 - (p / pmax) * (h - 24);
+  // Electric LMP-equivalent line (yellow).
+  ctx.strokeStyle = '#ffcc00';
+  ctx.lineWidth = 2;
+  ctx.beginPath();
+  for (let i = 0; i < HOURS; i++) {
+    const x = hourToX(i), y = yFromP(pe_mmbtu[i]);
+    if (i === 0) ctx.moveTo(x, y); else ctx.lineTo(x, y);
+  }
+  ctx.stroke();
+  // Gas (dashed).
+  ctx.strokeStyle = '#ff6644'; ctx.setLineDash([5, 4]);
+  ctx.beginPath();
+  for (let i = 0; i < HOURS; i++) {
+    const x = hourToX(i), y = yFromP(PRICE_GAS[i]);
+    if (i === 0) ctx.moveTo(x, y); else ctx.lineTo(x, y);
+  }
+  ctx.stroke();
+  // Steam (dashed).
+  ctx.strokeStyle = '#a070ff';
+  ctx.beginPath();
+  for (let i = 0; i < HOURS; i++) {
+    const x = hourToX(i), y = yFromP(PRICE_STEAM[i]);
+    if (i === 0) ctx.moveTo(x, y); else ctx.lineTo(x, y);
+  }
+  ctx.stroke();
+  ctx.setLineDash([]);
+  if (currentH !== undefined && currentH !== null) {
+    ctx.strokeStyle = 'rgba(255, 204, 0, 0.6)';
+    ctx.lineWidth = 1.5;
+    ctx.beginPath();
+    ctx.moveTo(hourToX(currentH), y0); ctx.lineTo(hourToX(currentH), y0 + h);
+    ctx.stroke();
+  }
+  // Titles + legend.
+  ctx.fillStyle = '#ffcc00';
+  ctx.font = 'bold 12px -apple-system, Helvetica, Arial, sans-serif';
+  ctx.textAlign = 'left';
+  ctx.fillText('Energy prices ($/MMBtu-eq)', PLOT_X0 + 6, y0 + 14);
+  ctx.font = '11px -apple-system, Helvetica, Arial, sans-serif';
+  ctx.fillStyle = '#ffcc00';
+  ctx.fillText('— LMP elec', PLOT_X0 + 195, y0 + 14);
+  ctx.fillStyle = '#ff6644';
+  ctx.fillText('-- gas', PLOT_X0 + 270, y0 + 14);
+  ctx.fillStyle = '#a070ff';
+  ctx.fillText('-- steam', PLOT_X0 + 315, y0 + 14);
+}
+
+function drawHourAxis() {
+  ctx.fillStyle = 'rgba(255,255,255,0.45)';
+  ctx.font = '10px -apple-system, Helvetica, Arial, sans-serif';
+  ctx.textAlign = 'center';
+  const y = PANEL_PRICE_Y + PANEL_PRICE_H + 12;
+  for (let h = 0; h <= 24; h += 4) ctx.fillText(`${h}h`, hourToX(Math.min(23, h)), y);
+}
+
+function drawIdleScene() {
+  drawScene(SCENARIOS[1], null, 'Pick a policy or run the optimiser', null);
+}
+
+// ============================================================================
+// Animations.
+// ============================================================================
+const MONTAGE_MS_PER_FRAME = 70;
+let animationToken = 0;
+
+async function animateMontage() {
+  const myToken = ++animationToken;
+  const total = searchHistory.length;
+  if (total === 0) return -1;
+  // Stride to fit in ~12 s total. Each frame renders one scenario from
+  // the entry being shown so the user watches policies improve in
+  // different weather.
+  const TARGET_MS = 12000, FRAME_MS = MONTAGE_MS_PER_FRAME;
+  const step = Math.max(1, Math.floor(total / (TARGET_MS / FRAME_MS)));
+  let bestSoFar = Infinity, bestIdx = -1;
+  let scnIdx = 0;
+  for (let i = 0; i < total; i += step) {
+    if (myToken !== animationToken) return bestIdx;
+    const entry = searchHistory[i];
+    const isNew = entry.meanCost < bestSoFar;
+    if (isNew) { bestSoFar = entry.meanCost; bestIdx = i; }
+    document.getElementById('evals').textContent = i + 1;
+    setBigStats(entry);
+    if (isNew) {
+      addLeaderboardEntry(document.getElementById('algorithm').value, entry, i + 1, { inPlace: liveLeaderboardIdx >= 0 });
+      setBestScore(entry, document.getElementById('algorithm').value);
+    }
+    const scn = SCENARIOS[scnIdx % SCENARIOS.length];
+    const r = entry.perScenario[scnIdx % SCENARIOS.length];
+    scnIdx++;
+    const label = `Policy ${i + 1}/${total}  ·  ${scn.name}  ·  best $${bestSoFar.toFixed(0)}${isNew ? '  ★' : ''}`;
+    drawScene(scn, r.trace, label, null);
+    await new Promise((r) => setTimeout(r, FRAME_MS));
+  }
+  // Find the actual best (stride may have skipped).
+  for (let j = 0; j < total; j++) if (searchHistory[j].meanCost < bestSoFar) { bestSoFar = searchHistory[j].meanCost; bestIdx = j; }
+  return bestIdx;
+}
+
+// Slow-mo replay: walk hour-by-hour through one scenario, then cycle.
+async function animateReplay(entry, hudPrefix) {
+  const myToken = ++animationToken;
+  const FRAME_MS = 120;          // 2.9-second sweep per scenario
+  const HOLD_BETWEEN = 700;
+  let scnIdx = 0;
+  while (myToken === animationToken) {
+    const scn = SCENARIOS[scnIdx % SCENARIOS.length];
+    const r = entry.perScenario[scnIdx % SCENARIOS.length];
+    for (let h = 0; h < HOURS; h++) {
+      if (myToken !== animationToken) return;
+      const label = `${hudPrefix}  ·  ${scn.name}  ·  $${r.totalCost.toFixed(0)}/day`;
+      drawScene(scn, r.trace, label, h);
+      await new Promise((rr) => setTimeout(rr, FRAME_MS));
+    }
+    // Hold final frame so the daily totals are readable.
+    drawScene(scn, r.trace, `${hudPrefix}  ·  ${scn.name}  ·  $${r.totalCost.toFixed(0)}/day`, HOURS - 1);
+    await new Promise((rr) => setTimeout(rr, HOLD_BETWEEN));
+    scnIdx++;
+  }
+}
+
+function setBigStats(entry) {
+  document.getElementById('score-now').textContent = `$${entry.meanCost.toFixed(0)}`;
+  document.getElementById('stat-energy').textContent = `$${entry.meanEnergy.toFixed(0)}/day`;
+  document.getElementById('stat-comfort').textContent = `$${entry.meanComfort.toFixed(0)}/day`;
+}
+function setBestScore(entry, algoName) {
+  const el = document.getElementById('best-score');
+  el.innerHTML = `$${entry.meanCost.toFixed(0)} (en $${entry.meanEnergy.toFixed(0)} · cf $${entry.meanComfort.toFixed(0)})<span class="algo-tag">${algoName}</span>`;
+}
+
+// ============================================================================
+// Runner.
+// ============================================================================
+let lastBest = null;
+function getOptimizerClass(name) { return globalThis[name]; }
+
+async function runOptimization() {
+  const algoName = document.getElementById('algorithm').value;
+  const budget = parseInt(document.getElementById('budget').value, 10);
+  const cls = getOptimizerClass(algoName);
+  if (!cls) { alert(`Optimizer '${algoName}' not found.`); return; }
+
+  const runBtn = document.getElementById('run-btn');
+  runBtn.disabled = true;
+  runBtn.textContent = `Searching with ${algoName}...`;
+  animationToken++;
+  searchHistory.length = 0;
+  await new Promise((r) => setTimeout(r, 30));
+
+  try {
+    const opt = new cls(objective, budget, N_DIM);
+    opt.optimize();
+    const bestIdx = await animateMontage();
+    const bestEntry = searchHistory[bestIdx];
+    lastBest = bestEntry;
+    setBigStats(bestEntry);
+    setBestScore(bestEntry, algoName);
+    addLeaderboardEntry(algoName, bestEntry, opt.evaluations, { inPlace: liveLeaderboardIdx >= 0 });
+    liveLeaderboardIdx = -1;
+    animateReplay(bestEntry, `Best: $${bestEntry.meanCost.toFixed(0)}/day (${algoName})`);
+  } catch (e) {
+    console.error(e);
+    alert(`${algoName} threw an error: ${e.message}`);
+  } finally {
+    runBtn.disabled = false;
+    runBtn.textContent = '▶ Find the best policy';
+  }
+}
+
+function replayBest() {
+  if (!lastBest) return;
+  animateReplay(lastBest, `Best: $${lastBest.meanCost.toFixed(0)}/day`);
+}
+
+const leaderboard = [];
+let liveLeaderboardIdx = -1;
+function addLeaderboardEntry(algoName, entry, evals, { inPlace = false } = {}) {
+  const row = {
+    name: algoName,
+    cost: entry.meanCost,
+    energy: entry.meanEnergy,
+    comfort: entry.meanComfort,
+    evals,
+  };
+  if (inPlace && liveLeaderboardIdx >= 0) leaderboard[liveLeaderboardIdx] = row;
+  else { leaderboard.push(row); liveLeaderboardIdx = leaderboard.length - 1; }
+  const tracked = leaderboard[liveLeaderboardIdx];
+  leaderboard.sort((a, b) => a.cost - b.cost || a.evals - b.evals);
+  liveLeaderboardIdx = leaderboard.indexOf(tracked);
+  renderLeaderboard();
+}
+function renderLeaderboard() {
+  const body = document.getElementById('leaderboard-body');
+  if (leaderboard.length === 0) {
+    body.innerHTML = '<tr><td colspan="4" style="color: var(--muted); text-align: center;">— no runs yet —</td></tr>';
+    return;
+  }
+  body.innerHTML = leaderboard.map((row) => {
+    const cls = row.name === 'Human Raphson' ? ' class="human-raphson"' : '';
+    return `<tr${cls}>
+      <td>${row.name}</td>
+      <td>$${row.cost.toFixed(0)}</td>
+      <td>${row.evals}</td>
+      <td>energy $${row.energy.toFixed(0)} · comfort $${row.comfort.toFixed(0)}</td>
+    </tr>`;
+  }).join('');
+}
+
+// ============================================================================
+// Presets (in u-space; will be decoded to [-2, +2]^16).
+// ============================================================================
+const PRESETS = {
+  off: () => {
+    // Every source's bias deeply negative — sigmoid ≈ 0 always.
+    const u = new Array(N_DIM).fill(0.5);
+    for (let s = 0; s < N_SOURCES; s++) u[s * N_FEATURES] = 0;
+    return u;
+  },
+  boiler: () => {
+    // Boiler bias positive (always on), others negative.
+    const u = new Array(N_DIM).fill(0.5);
+    for (let s = 0; s < N_SOURCES; s++) u[s * N_FEATURES] = s === 1 ? 1 : 0;
+    return u;
+  },
+  pump: () => {
+    const u = new Array(N_DIM).fill(0.5);
+    for (let s = 0; s < N_SOURCES; s++) u[s * N_FEATURES] = s === 0 ? 1 : 0;
+    return u;
+  },
+  thermostat: () => {
+    // Naive thermostat: pump/boiler/steam respond to "zone too cold"
+    // (negative T-error means cold, want positive activation → w1 < 0,
+    // u1 < 0.5). Chiller responds to "zone too hot" (w1 > 0).
+    const u = new Array(N_DIM).fill(0.5);
+    // Pump:    bias 0, w_Terror = -1.5 → u = [0.5, 0.13, 0.5, 0.5]
+    u[0] = 0.5; u[1] = 0.13; u[2] = 0.5; u[3] = 0.5;
+    // Boiler — only kicks in if it's really cold (smaller bias, similar w1).
+    u[4] = 0.25; u[5] = 0.13; u[6] = 0.85; u[7] = 0.5;
+    // Steam — rarely; large negative bias.
+    u[8] = 0.1; u[9] = 0.13; u[10] = 0.5; u[11] = 0.5;
+    // Chiller — turns on when zone too hot (w1 > 0).
+    u[12] = 0.5; u[13] = 0.87; u[14] = 0.5; u[15] = 0.5;
+    return u;
+  },
+  random: () => Array.from({ length: N_DIM }, () => Math.random()),
+};
+
+let manualU = null;
+function loadPreset(name) {
+  manualU = PRESETS[name]();
+  const result = evaluatePolicy(manualU);
+  setBigStats(result);
+  animateReplay(result, `Preset: ${name} — $${result.meanCost.toFixed(0)}/day`);
+}
+function manualEvaluate() {
+  if (!manualU) loadPreset('thermostat');
+  const result = evaluatePolicy(manualU);
+  setBigStats(result);
+  addLeaderboardEntry('Human Raphson', result, 1);
+  setBestScore(result, 'Human Raphson');
+  animateReplay(result, `🧠 Human Raphson: $${result.meanCost.toFixed(0)}/day`);
+}
+
+function resetEverything() {
+  leaderboard.length = 0;
+  liveLeaderboardIdx = -1;
+  lastBest = null;
+  manualU = null;
+  animationToken++;
+  ['evals'].forEach((id) => document.getElementById(id).textContent = '0');
+  ['score-now', 'stat-energy', 'stat-comfort', 'best-score'].forEach((id) =>
+    document.getElementById(id).textContent = '—');
+  renderLeaderboard();
+  drawIdleScene();
+}
+
+drawIdleScene();
+</script>
+</body>
+</html>
