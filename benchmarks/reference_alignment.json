@@ -194,11 +194,11 @@
       "algorithm": "PRIMA_BOBYQA",
       "reference": "Py-BOBYQA",
       "problem": "rosenbrock",
-      "humpday_median": 0.12588400616987605,
+      "humpday_median": 0.08230425275202669,
       "reference_median": 5.3653609788160214e-18,
-      "humpday_to_opt": 0.12588400616987605,
+      "humpday_to_opt": 0.08230425275202669,
       "reference_to_opt": 5.3653609788160214e-18,
-      "ratio_humpday_over_reference": 125212197531171.48
+      "ratio_humpday_over_reference": 81865017382234.94
     },
     {
       "algorithm": "PRIMA_BOBYQA",
@@ -214,5 +214,5 @@
   "n_runs": 4,
   "n_trials": 200,
   "n_dim": 2,
-  "recorded_at": "2026-05-30T15:55:17Z"
+  "recorded_at": "2026-05-30T17:04:16Z"
 }

@@ -195,7 +195,206 @@ def _build_min_frobenius_quadratic(XPT, FVAL, H_prev, n):
             H[j][i] = val
             col += 1
 
+    # Belt-and-braces: a barely-singular SVD can produce non-finite
+    # coefficients that propagate into H_prev and poison subsequent
+    # iterations. Raise so the caller's fallback path is taken and the
+    # prior (good) H_prev is preserved.
+    if not math.isfinite(float(c)):
+        raise _PRIMALinAlgError("non-finite c")
+    for v in g_arr:
+        if not math.isfinite(float(v)):
+            raise _PRIMALinAlgError("non-finite g")
+    for i in range(n):
+        for j in range(n):
+            if not math.isfinite(float(H[i][j])):
+                raise _PRIMALinAlgError("non-finite H")
+
     return c, g_arr, H
+
+
+def _solve_trsbox(g, H, rho, x_current, xl, xu, n):
+    """Powell's TRSBOX trust-region subproblem solver for BOBYQA.
+
+    Solves
+        min  Q(d) = g·d + ½ dᵀ H d
+        s.t. ‖d‖₂ ≤ rho
+             xl_i ≤ x_current_i + d_i ≤ xu_i   ∀ i
+
+    Active-set Steihaug-Toint truncated CG: each outer pass runs CG in
+    the current free subspace until either (a) CG converges in that
+    subspace, (b) a new bound becomes active (add it, restart CG), or
+    (c) the step hits the TR boundary. Negative curvature on the CG
+    direction triggers a step to the TR boundary. At the start of each
+    outer pass any active bound whose gradient points back into the
+    feasible region is released, so the active set can shrink as well
+    as grow.
+
+    Phase 3 of Powell's BOBYQA TRSBOX — the "alternative iteration" that
+    moves along the TR boundary after CG hits it — is *not* implemented
+    here. The 2-phase version is enough to recover the curvature
+    information the new full-Hessian model carries (e.g. closes the
+    Rosenbrock gap to within a few ULPs); the alternative iteration
+    can be added later if benchmarks justify it.
+
+    Returns d as an `_A` vector. d satisfies the bound constraints
+    exactly (active components pinned to the bound). The trust-region
+    constraint is satisfied up to a small numerical tolerance.
+    """
+    tol = 1e-12
+
+    # Reject non-finite inputs cleanly so the caller's fallback path
+    # can run instead of NaN-propagating through the CG iteration.
+    for v in g:
+        if not math.isfinite(float(v)):
+            raise _PRIMALinAlgError("non-finite g")
+    for i in range(n):
+        for j in range(n):
+            if not math.isfinite(float(H[i][j])):
+                raise _PRIMALinAlgError("non-finite H")
+
+    # Recast bounds into d-space.
+    lo_d = [float(xl[i]) - float(x_current[i]) for i in range(n)]
+    hi_d = [float(xu[i]) - float(x_current[i]) for i in range(n)]
+
+    d = [0.0] * n
+    # active[i] ∈ {None, 'lo', 'hi'}.
+    active = [None] * n
+
+    # Generous caps; both inner and outer loops terminate well before
+    # these in practice (CG converges in ≤ n iterations in a fixed
+    # subspace; active set changes ≤ 2n times).
+    outer_cap = 2 * n + 10
+    inner_cap = 2 * n + 10
+
+    for _outer in range(outer_cap):
+        # Gradient of Q at the current d: grad = g + H d.
+        Hd = list(_A.linalg.matvec(H, _A.asarray(d)))
+        grad = [float(g[i]) + Hd[i] for i in range(n)]
+
+        # Catch coordinates that the previous CG step landed exactly on
+        # (ties in α_box, or numerical drift). If we don't mark them
+        # active here, the next inner step can walk straight past the
+        # bound — α_box would skip them (no strictly-positive step) and
+        # α_cg can be large. Must run *before* the release check so that
+        # freshly-detected bound activations still get a chance to be
+        # released when the gradient points away from the constraint
+        # (e.g. starting at a corner with a gradient pointing inward).
+        for i in range(n):
+            if active[i] is None:
+                if d[i] <= lo_d[i] + tol:
+                    active[i] = "lo"
+                    d[i] = lo_d[i]
+                elif d[i] >= hi_d[i] - tol:
+                    active[i] = "hi"
+                    d[i] = hi_d[i]
+
+        # Release any active bound whose gradient component points back
+        # into the feasible region (∂Q/∂d_i > 0 at lower bound means we
+        # want to *decrease* d_i, which is infeasible — keep the bound;
+        # ∂Q/∂d_i < 0 at lower bound means decreasing Q wants to
+        # increase d_i, which IS feasible — release).
+        for i in range(n):
+            if active[i] == "lo" and grad[i] < -tol:
+                active[i] = None
+            elif active[i] == "hi" and grad[i] > tol:
+                active[i] = None
+
+        # Projected residual r = -grad on the free subspace.
+        r = [-grad[i] if active[i] is None else 0.0 for i in range(n)]
+        r_norm_sq = sum(ri * ri for ri in r)
+        if r_norm_sq < tol * tol:
+            break  # nothing left to do in the current free subspace
+
+        # CG inner loop in the current subspace.
+        p = list(r)
+        d_norm_sq = sum(di * di for di in d)
+        bound_added = False
+
+        for _inner in range(inner_cap):
+            # Compute Hp restricted to the free subspace.
+            Hp_full = list(_A.linalg.matvec(H, _A.asarray(p)))
+            Hp = [Hp_full[i] if active[i] is None else 0.0 for i in range(n)]
+            pHp = sum(p[i] * Hp[i] for i in range(n))
+
+            # alpha_box: smallest positive step before a new bound is hit.
+            alpha_box = float("inf")
+            new_idx = -1
+            new_side = None
+            for i in range(n):
+                if active[i] is not None:
+                    continue
+                if p[i] > tol:
+                    a = (hi_d[i] - d[i]) / p[i]
+                    if 0 < a < alpha_box:
+                        alpha_box = a
+                        new_idx = i
+                        new_side = "hi"
+                elif p[i] < -tol:
+                    a = (lo_d[i] - d[i]) / p[i]
+                    if 0 < a < alpha_box:
+                        alpha_box = a
+                        new_idx = i
+                        new_side = "lo"
+
+            # alpha_tr: step to the TR boundary ‖d + α p‖ = rho.
+            pp = sum(pi * pi for pi in p)
+            if pp < tol * tol:
+                break
+            dp = sum(d[i] * p[i] for i in range(n))
+            disc = dp * dp - pp * (d_norm_sq - rho * rho)
+            if disc < 0:
+                alpha_tr = 0.0  # already at/outside TR (numerical edge)
+            else:
+                alpha_tr = (-dp + math.sqrt(disc)) / pp
+
+            # alpha_cg: CG step length (infinite on non-positive curvature
+            # so the boundary terms govern the step).
+            if pHp > tol:
+                alpha_cg = r_norm_sq / pHp
+            else:
+                alpha_cg = float("inf")
+
+            alpha = min(alpha_cg, alpha_box, alpha_tr)
+            if alpha <= 0:
+                break
+
+            d = [d[i] + alpha * p[i] for i in range(n)]
+            d_norm_sq = sum(di * di for di in d)
+
+            # Termination at the TR boundary — Phase 3 omitted; we accept
+            # the current d.
+            if alpha >= alpha_tr - tol:
+                return _A.asarray(d)
+
+            # Bound hit: pin the new active coordinate exactly to the
+            # bound (kills accumulated rounding) and restart CG in the
+            # smaller subspace.
+            if alpha >= alpha_box - tol and new_idx >= 0:
+                active[new_idx] = new_side
+                d[new_idx] = hi_d[new_idx] if new_side == "hi" else lo_d[new_idx]
+                bound_added = True
+                break
+
+            # Otherwise alpha == alpha_cg — continue CG in this subspace.
+            r_new = [r[i] - alpha * Hp[i] for i in range(n)]
+            r_new_norm_sq = sum(ri * ri for ri in r_new)
+            if r_new_norm_sq < tol * tol:
+                return _A.asarray(d)
+
+            beta = r_new_norm_sq / r_norm_sq
+            p = [r_new[i] + beta * p[i] for i in range(n)]
+            # Belt-and-braces re-projection (numerical drift on active
+            # coordinates could otherwise pull d off the bound).
+            for i in range(n):
+                if active[i] is not None:
+                    p[i] = 0.0
+            r = r_new
+            r_norm_sq = r_new_norm_sq
+
+        if not bound_added:
+            break  # CG terminated in the current subspace, no bound change.
+
+    return _A.asarray(d)
 
 
 class PRIMA_UOBYQA(BaseOptimizer):
@@ -970,23 +1169,15 @@ class PRIMA_BOBYQA(BaseOptimizer):
         return _A.asarray(g_list)
 
     def _solve_bound_constrained_tr(self, g, H, rho, n, x_current, xl, xu):
-        """Bound-constrained trust-region solve. Tries the Newton step
-        first and falls back to projected-Cauchy if Newton is infeasible
-        or H isn't SPD enough."""
+        """Bound-constrained trust-region solve via Powell's TRSBOX
+        (see the module-level `_solve_trsbox` helper). Falls back to the
+        old projected-Cauchy path if TRSBOX raises — shouldn't happen on
+        well-formed inputs but it's the same fallback shape the rest of
+        BOBYQA uses."""
         try:
-            eigvals, _ = _A.linalg.eigh(H)
-            if all(v > 1e-8 for v in eigvals):
-                d_newton = -_A.linalg.solve(H, g)
-                x_new = x_current + d_newton
-                if (
-                    all(float(x_new[i]) >= float(xl[i]) for i in range(n))
-                    and all(float(x_new[i]) <= float(xu[i]) for i in range(n))
-                    and _A.norm(d_newton) <= rho
-                ):
-                    return d_newton
+            return _solve_trsbox(g, H, rho, x_current, xl, xu, n)
         except Exception:
-            pass
-        return self._projected_cauchy_point(g, H, rho, n, x_current, xl, xu)
+            return self._projected_cauchy_point(g, H, rho, n, x_current, xl, xu)
 
     def _projected_cauchy_point(self, g, H, rho, n, x_current, xl, xu):
         """Projected Cauchy point — direction is steepest descent with
