@@ -201,6 +201,31 @@ def _ref_scipy_powell(func, n_trials, n_dim, seed):
     return {"best_value": float(r.fun), "evals": counter["n"]}
 
 
+def _ref_scipy_lbfgsb(func, n_trials, n_dim, seed):
+    from scipy.optimize import minimize
+
+    counter = {"n": 0}
+
+    def wrapped(x):
+        counter["n"] += 1
+        return func(list(x))
+
+    bounds = [(0.0, 1.0)] * n_dim
+    # `maxfun` (not `maxiter`) caps function evaluations — L-BFGS-B
+    # uses finite-difference gradient internally so one "iteration"
+    # already eats ~n_dim evals. ftol=1e-12, gtol=1e-12 push the
+    # solver to the same precision floor we use for NelderMead /
+    # Powell (scipy's defaults stop ~1e-7 below the optimum).
+    r = minimize(
+        wrapped,
+        _draw_x0(seed, n_dim),
+        method="L-BFGS-B",
+        bounds=bounds,
+        options={"maxfun": n_trials, "ftol": 1e-12, "gtol": 1e-12},
+    )
+    return {"best_value": float(r.fun), "evals": counter["n"]}
+
+
 def _ref_scipy_de(func, n_trials, n_dim, seed):
     from scipy.optimize import differential_evolution
 
@@ -354,6 +379,7 @@ def _ref_pdfo_uobyqa(func, n_trials, n_dim, seed):
 REFERENCES = {
     "NelderMead": ("scipy.optimize Nelder-Mead", _ref_scipy_neldermead, ["scipy"]),
     "Powell": ("scipy.optimize Powell", _ref_scipy_powell, ["scipy"]),
+    "LBFGSB": ("scipy.optimize L-BFGS-B", _ref_scipy_lbfgsb, ["scipy"]),
     "DifferentialEvolution": ("scipy differential_evolution", _ref_scipy_de, ["scipy"]),
     "SimulatedAnnealing": (
         "scipy dual_annealing",

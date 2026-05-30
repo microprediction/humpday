@@ -61,6 +61,36 @@
       "ratio_humpday_over_reference": 0.8943944276089192
     },
     {
+      "algorithm": "LBFGSB",
+      "reference": "scipy.optimize L-BFGS-B",
+      "problem": "sphere",
+      "humpday_median": 6.970861327204782e-09,
+      "reference_median": 5.000024586489128e-17,
+      "humpday_to_opt": 6.970861327204782e-09,
+      "reference_to_opt": 5.000024586489128e-17,
+      "ratio_humpday_over_reference": 6638914.947551124
+    },
+    {
+      "algorithm": "LBFGSB",
+      "reference": "scipy.optimize L-BFGS-B",
+      "problem": "rosenbrock",
+      "humpday_median": 0.6135391895992446,
+      "reference_median": 1.4447293952184428e-10,
+      "humpday_to_opt": 0.6135391895992446,
+      "reference_to_opt": 1.4447293952184428e-10,
+      "ratio_humpday_over_reference": 4246711840.4179683
+    },
+    {
+      "algorithm": "LBFGSB",
+      "reference": "scipy.optimize L-BFGS-B",
+      "problem": "ackley",
+      "humpday_median": 2.580224519065084,
+      "reference_median": 3.574451877257808,
+      "humpday_to_opt": 2.580224519065084,
+      "reference_to_opt": 3.574451877257808,
+      "ratio_humpday_over_reference": 0.721851799287487
+    },
+    {
       "algorithm": "DifferentialEvolution",
       "reference": "scipy differential_evolution",
       "problem": "sphere",
@@ -214,5 +244,5 @@
   "n_runs": 4,
   "n_trials": 200,
   "n_dim": 2,
-  "recorded_at": "2026-05-30T18:32:25Z"
+  "recorded_at": "2026-05-30T19:13:47Z"
 }
