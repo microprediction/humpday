@@ -25,20 +25,29 @@ class DifferentialEvolution(BaseOptimizer):
         # Match scipy.optimize.differential_evolution defaults: `best1bin`
         # mutation strategy (mutate around the population's best member,
         # not a random one), dither-mutation F drawn per-generation in
-        # [0.5, 1.0], recombination probability 0.7.
+        # [0.5, 1.0], recombination probability 0.7, and a local-search
+        # polish stage after DE (scipy uses `polish=True` by default,
+        # which calls minimize with L-BFGS-B). The closest
+        # derivative-free polish HumpDay can use is coordinate descent
+        # with a shrinking step — same pattern SimulatedAnnealing's
+        # stage 2 uses, which matches scipy.dual_annealing.
         #
-        # The previous implementation used the `rand1` strategy with a
-        # fixed F=0.8 and CR=0.9 — `rand1` is more exploratory but
-        # converges very slowly on smooth landscapes, which is exactly
-        # why this port was 1e8x off scipy's DE on the sphere benchmark.
         # Reference: scipy/optimize/_differentialevolution.py.
-        pop_size = max(10, min(20, self.n_trials // 5))
+        # Without the polish, humpday DE was ~7e6× worse than scipy DE
+        # on the sphere benchmark at n_trials=200 — the reference's
+        # L-BFGS-B polish converges to machine precision in tens of
+        # function evals, while humpday DE alone hits a noise floor
+        # around 1e-5 at that budget.
+        polish_budget = max(15, self.n_trials // 4)
+        de_budget = self.n_trials - polish_budget
+
+        pop_size = max(10, min(20, de_budget // 5))
         CR = 0.7  # scipy default recombination probability.
 
         population = [_A.random_uniform(self.n_dim) for _ in range(pop_size)]
         fitness = [self.evaluate(ind) for ind in population]
 
-        while self.evaluations < self.n_trials:
+        while self.evaluations < de_budget:
             # Dither: pick F uniformly in [0.5, 1.0] per generation. This
             # is scipy's default `mutation=(0.5, 1)` behaviour, which
             # helps the population avoid stagnation by varying the
@@ -46,7 +55,7 @@ class DifferentialEvolution(BaseOptimizer):
             F = 0.5 + 0.5 * _A.random_scalar()
 
             for i in range(pop_size):
-                if self.evaluations >= self.n_trials:
+                if self.evaluations >= de_budget:
                     break
 
                 # `best1bin`: base point is the current population best,
@@ -82,6 +91,33 @@ class DifferentialEvolution(BaseOptimizer):
                 if trial_fitness < fitness[i]:
                     population[i] = trial
                     fitness[i] = trial_fitness
+
+        # --- Polish stage: coordinate descent from the best DE point ---
+        # Equivalent of scipy.differential_evolution's L-BFGS-B polish.
+        # Halves the step on each unimproved round; keeps stepping along
+        # each coordinate axis from the running best until the budget
+        # is exhausted or the step shrinks below machine precision.
+        center = self.best_x.copy()
+        center_fx = self.best_value
+        step = 0.05
+        while self.evaluations < self.n_trials and step > 1e-14:
+            improved = False
+            for j in range(self.n_dim):
+                for sign in (-1, 1):
+                    if self.evaluations >= self.n_trials:
+                        break
+                    trial = center.copy()
+                    trial[j] = max(0.0, min(1.0, float(trial[j]) + sign * step))
+                    f_trial = self.evaluate(trial)
+                    if f_trial < center_fx:
+                        center = trial
+                        center_fx = f_trial
+                        improved = True
+                        break
+                if improved:
+                    break
+            if not improved:
+                step *= 0.5
 
         return self.best_value, self.best_x
 

@@ -37,24 +37,32 @@ if (typeof module !== 'undefined' && module.exports) {
     // test.
     optimize() {
         const n = this.nDim;
-        const popSize = Math.max(10, Math.min(20, Math.floor(this.nTrials / 5)));
+        // Reserve ~25% of the budget for a coordinate-descent polish,
+        // matching scipy DE's default `polish=True` (which uses L-BFGS-B
+        // — closest derivative-free equivalent is coord descent with a
+        // shrinking step). Without the polish JS DE was ~1000× off
+        // scipy DE on the sphere at n_trials=200.
+        const polishBudget = Math.max(15, Math.floor(this.nTrials / 4));
+        const deBudget = this.nTrials - polishBudget;
+
+        const popSize = Math.max(10, Math.min(20, Math.floor(deBudget / 5)));
         const CR = 0.7;
 
         // Initialise population uniformly in [0, 1]^n and evaluate.
         const population = [];
-        for (let i = 0; i < popSize && this.evaluations < this.nTrials; i++) {
+        for (let i = 0; i < popSize && this.evaluations < deBudget; i++) {
             const x = new Array(n);
             for (let j = 0; j < n; j++) x[j] = Math.random();
             const f = this.evaluate(x);
             population.push({ x, f });
         }
 
-        while (this.evaluations < this.nTrials && population.length >= 4) {
+        while (this.evaluations < deBudget && population.length >= 4) {
             // Dither: pick F uniformly in [0.5, 1.0] each generation.
             const F = 0.5 + 0.5 * Math.random();
 
             for (let i = 0; i < population.length; i++) {
-                if (this.evaluations >= this.nTrials) break;
+                if (this.evaluations >= deBudget) break;
 
                 // best/1: base = current population best.
                 let bestIdx = 0;
@@ -107,6 +115,31 @@ if (typeof module !== 'undefined' && module.exports) {
                     population[i] = { x: trial, f: trialF };
                 }
             }
+        }
+
+        // --- Polish stage: coordinate descent from best DE point ----
+        // Halves the step on each unimproved round, refining until the
+        // step shrinks below 1e-14 or the budget is exhausted.
+        let center = this.bestX.slice();
+        let centerFx = this.bestValue;
+        let step = 0.05;
+        while (this.evaluations < this.nTrials && step > 1e-14) {
+            let improved = false;
+            for (let j = 0; j < n && !improved; j++) {
+                for (const sign of [-1, 1]) {
+                    if (this.evaluations >= this.nTrials) break;
+                    const trial = center.slice();
+                    trial[j] = Math.max(0, Math.min(1, trial[j] + sign * step));
+                    const fTrial = this.evaluate(trial);
+                    if (fTrial < centerFx) {
+                        center = trial;
+                        centerFx = fTrial;
+                        improved = true;
+                        break;
+                    }
+                }
+            }
+            if (!improved) step *= 0.5;
         }
 
         return {
