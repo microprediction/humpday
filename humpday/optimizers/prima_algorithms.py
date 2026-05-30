@@ -64,8 +64,8 @@ def _build_min_frobenius_quadratic(XPT, FVAL, H_prev, n):
     implementation.
     """
     npt = len(FVAL)
-    p_lin = 1 + n               # c, g_1, ..., g_n
-    p_quad = n * (n + 1) // 2   # H_11..H_nn diagonals + H_12..H_(n-1)n off-diagonals
+    p_lin = 1 + n  # c, g_1, ..., g_n
+    p_quad = n * (n + 1) // 2  # H_11..H_nn diagonals + H_12..H_(n-1)n off-diagonals
     n_null = npt - p_lin
 
     if n_null < 0:
