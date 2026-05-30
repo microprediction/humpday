@@ -19,7 +19,420 @@ if (typeof module !== 'undefined' && module.exports) {
     const _base = require('./base-optimizer.js');
     globalThis.Optimizer = _base.Optimizer;
     globalThis.MathUtils = _base.MathUtils;
+    globalThis.Linalg = require('./linalg.js');
 }
+
+/**
+ * Powell's NEWUOA-style minimum-Frobenius-norm quadratic update —
+ * mirrors `humpday/optimizers/prima_algorithms.py::
+ * _build_min_frobenius_quadratic` step-for-step (same KKT
+ * derivation, same vech ordering, same Frobenius weights). See the
+ * Python helper's docstring for the math; this is the pure-JS port.
+ *
+ * Returns `{ c, g, H }` on success; throws on rank-deficient A_l or
+ * non-finite FVAL so the caller can fall back to a simpler model.
+ */
+function buildMinFrobeniusQuadratic(XPT, FVAL, Hprev, n) {
+    const npt = FVAL.length;
+    const pLin = 1 + n;
+    const pQuad = n * (n + 1) / 2;
+    const nNull = npt - pLin;
+
+    if (nNull < 0) throw new Error('PRIMA: npt < pLin');
+
+    for (let k = 0; k < npt; k++) {
+        if (!Number.isFinite(FVAL[k])) {
+            throw new Error('PRIMA: non-finite FVAL');
+        }
+    }
+
+    // Build A_l (npt × pLin), A_q (npt × pQuad), and b.
+    // vech(H) ordering: n diagonals first, then n(n-1)/2 strict-upper
+    // off-diagonals in row-major order.
+    const Al = Linalg.zeros(npt, pLin);
+    const Aq = Linalg.zeros(npt, pQuad);
+    const b = new Array(npt);
+
+    for (let k = 0; k < npt; k++) {
+        const x = XPT[k];
+        Al[k][0] = 1.0;
+        for (let i = 0; i < n; i++) Al[k][i + 1] = x[i];
+
+        let col = 0;
+        for (let i = 0; i < n; i++) {
+            Aq[k][col++] = 0.5 * x[i] * x[i];
+        }
+        for (let i = 0; i < n; i++) {
+            for (let j = i + 1; j < n; j++) {
+                Aq[k][col++] = x[i] * x[j];
+            }
+        }
+
+        // b[k] = FVAL[k] − ½ x_k^T H_prev x_k.
+        const HpX = Linalg.matvec(Hprev, x);
+        let quadForm = 0;
+        for (let i = 0; i < n; i++) quadForm += x[i] * HpX[i];
+        b[k] = FVAL[k] - 0.5 * quadForm;
+    }
+
+    // Frobenius weights: 1 on diagonal entries, 2 on off-diagonals.
+    const wQ = new Array(pQuad);
+    for (let i = 0; i < n; i++) wQ[i] = 1.0;
+    for (let i = n; i < pQuad; i++) wQ[i] = 2.0;
+
+    // Householder QR of A_l; Qfull is the m × m orthogonal matrix so
+    // Qfull[:, pLin:] spans null(A_l^T) — the basis we need below.
+    const { Q: Ql, R: Rl, Qfull: QlFull } = Linalg.householderQR(Al);
+
+    // Rank check on R's diagonal (= singular-value proxy for the SVD-
+    // based check the Python helper uses).
+    let maxR = 0, minR = Infinity;
+    for (let i = 0; i < pLin; i++) {
+        const v = Math.abs(Rl[i][i]);
+        if (v > maxR) maxR = v;
+        if (v < minR) minR = v;
+    }
+    if (maxR === 0 || minR <= 1e-12 * maxR) {
+        throw new Error('PRIMA: A_l rank-deficient');
+    }
+
+    // KKT-reduced solve for x_q (vech(ΔH)).
+    let xQ;
+    if (nNull > 0) {
+        // Z = QlFull[:, pLin:] : npt × nNull.
+        const Z = Linalg.zeros(npt, nNull);
+        for (let i = 0; i < npt; i++) {
+            for (let j = 0; j < nNull; j++) Z[i][j] = QlFull[i][pLin + j];
+        }
+
+        // Z^T b : length nNull.
+        const ZTb = new Array(nNull);
+        for (let j = 0; j < nNull; j++) {
+            let acc = 0;
+            for (let k = 0; k < npt; k++) acc += Z[k][j] * b[k];
+            ZTb[j] = acc;
+        }
+
+        // Z^T A_q : nNull × pQuad.
+        const ZTAq = Linalg.zeros(nNull, pQuad);
+        for (let j = 0; j < nNull; j++) {
+            for (let c = 0; c < pQuad; c++) {
+                let acc = 0;
+                for (let k = 0; k < npt; k++) acc += Z[k][j] * Aq[k][c];
+                ZTAq[j][c] = acc;
+            }
+        }
+
+        // (A_q / W_q)^T Z : pQuad × nNull.
+        const AqScaledTZ = Linalg.zeros(pQuad, nNull);
+        for (let c = 0; c < pQuad; c++) {
+            const invW = 1.0 / wQ[c];
+            for (let j = 0; j < nNull; j++) {
+                let acc = 0;
+                for (let k = 0; k < npt; k++) acc += Aq[k][c] * invW * Z[k][j];
+                AqScaledTZ[c][j] = acc;
+            }
+        }
+
+        // M = (Z^T A_q)(A_q/W_q)^T Z : nNull × nNull, symmetric PSD.
+        const M = Linalg.matmul(ZTAq, AqScaledTZ);
+        const negZTb = ZTb.map(v => -v);
+        const mu = Linalg.solveLinearSystem(M, negZTb);
+
+        xQ = new Array(pQuad);
+        for (let c = 0; c < pQuad; c++) {
+            let acc = 0;
+            for (let j = 0; j < nNull; j++) acc += AqScaledTZ[c][j] * mu[j];
+            xQ[c] = -acc;
+        }
+    } else {
+        xQ = new Array(pQuad).fill(0);
+    }
+
+    // x_l: solve A_l x_l = b − A_q x_q via QR.
+    const AqXq = new Array(npt);
+    for (let k = 0; k < npt; k++) {
+        let acc = 0;
+        for (let c = 0; c < pQuad; c++) acc += Aq[k][c] * xQ[c];
+        AqXq[k] = acc;
+    }
+    const rhs = new Array(npt);
+    for (let k = 0; k < npt; k++) rhs[k] = b[k] - AqXq[k];
+
+    const QlTrhs = Linalg.matvec(Linalg.transpose(Ql), rhs);
+    const xL = Linalg.solveUpperTriangular(Rl, QlTrhs);
+
+    const c = xL[0];
+    const g = xL.slice(1, n + 1);
+
+    // Reconstruct symmetric H = H_prev + ΔH.
+    const H = Linalg.zeros(n, n);
+    let col = 0;
+    for (let i = 0; i < n; i++) H[i][i] = Hprev[i][i] + xQ[col++];
+    for (let i = 0; i < n; i++) {
+        for (let j = i + 1; j < n; j++) {
+            const val = Hprev[i][j] + xQ[col++];
+            H[i][j] = val;
+            H[j][i] = val;
+        }
+    }
+
+    // Belt-and-braces finite check — a barely-singular QR can produce
+    // non-finite coefficients that poison Hprev for subsequent calls.
+    if (!Number.isFinite(c)) throw new Error('PRIMA: non-finite c');
+    for (let i = 0; i < n; i++) {
+        if (!Number.isFinite(g[i])) throw new Error('PRIMA: non-finite g');
+        for (let j = 0; j < n; j++) {
+            if (!Number.isFinite(H[i][j])) throw new Error('PRIMA: non-finite H');
+        }
+    }
+
+    return { c, g, H };
+}
+
+/**
+ * Powell's TRSBOX bound-constrained TR subproblem solver — mirrors
+ * `humpday/optimizers/prima_algorithms.py::_solve_trsbox` step-for-step.
+ *
+ * Solves min Q(d) = g·d + ½ dᵀ H d  subject to ‖d‖₂ ≤ rho and
+ * xl ≤ x_current + d ≤ xu via active-set Steihaug-Toint CG. Phase 3
+ * (Powell's alternative iteration along the TR boundary) is omitted;
+ * see the Python helper's docstring for the rationale.
+ */
+function solveTrsbox(g, H, rho, xCurrent, xl, xu, n) {
+    const tol = 1e-12;
+
+    for (let i = 0; i < n; i++) {
+        if (!Number.isFinite(g[i])) throw new Error('PRIMA: non-finite g');
+        for (let j = 0; j < n; j++) {
+            if (!Number.isFinite(H[i][j])) throw new Error('PRIMA: non-finite H');
+        }
+    }
+
+    const loD = new Array(n);
+    const hiD = new Array(n);
+    for (let i = 0; i < n; i++) {
+        loD[i] = xl[i] - xCurrent[i];
+        hiD[i] = xu[i] - xCurrent[i];
+    }
+
+    const d = new Array(n).fill(0);
+    const active = new Array(n).fill(null);  // null | 'lo' | 'hi'
+
+    const outerCap = 2 * n + 10;
+    const innerCap = 2 * n + 10;
+
+    for (let outer = 0; outer < outerCap; outer++) {
+        const Hd = Linalg.matvec(H, d);
+        const grad = new Array(n);
+        for (let i = 0; i < n; i++) grad[i] = g[i] + Hd[i];
+
+        // Catch coordinates that landed exactly on a bound from the
+        // prior step (ties in α_box, or numerical drift). Must run
+        // *before* the release check so freshly-detected activations
+        // can still be released when the gradient points inward.
+        for (let i = 0; i < n; i++) {
+            if (active[i] === null) {
+                if (d[i] <= loD[i] + tol) {
+                    active[i] = 'lo';
+                    d[i] = loD[i];
+                } else if (d[i] >= hiD[i] - tol) {
+                    active[i] = 'hi';
+                    d[i] = hiD[i];
+                }
+            }
+        }
+
+        // Release any active bound whose gradient points into the
+        // feasible region.
+        for (let i = 0; i < n; i++) {
+            if (active[i] === 'lo' && grad[i] < -tol) active[i] = null;
+            else if (active[i] === 'hi' && grad[i] > tol) active[i] = null;
+        }
+
+        // Projected residual r on the current free subspace.
+        const r = new Array(n);
+        let rNormSq = 0;
+        for (let i = 0; i < n; i++) {
+            r[i] = active[i] === null ? -grad[i] : 0;
+            rNormSq += r[i] * r[i];
+        }
+        if (rNormSq < tol * tol) break;
+
+        // Inner CG.
+        let p = r.slice();
+        let dNormSq = 0;
+        for (let i = 0; i < n; i++) dNormSq += d[i] * d[i];
+        let boundAdded = false;
+
+        let rCur = r;
+        let rCurNormSq = rNormSq;
+
+        for (let inner = 0; inner < innerCap; inner++) {
+            const HpFull = Linalg.matvec(H, p);
+            const Hp = new Array(n);
+            let pHp = 0;
+            for (let i = 0; i < n; i++) {
+                Hp[i] = active[i] === null ? HpFull[i] : 0;
+                pHp += p[i] * Hp[i];
+            }
+
+            // α_box: smallest positive step before a new bound is hit.
+            let alphaBox = Infinity;
+            let newIdx = -1;
+            let newSide = null;
+            for (let i = 0; i < n; i++) {
+                if (active[i] !== null) continue;
+                if (p[i] > tol) {
+                    const a = (hiD[i] - d[i]) / p[i];
+                    if (a > 0 && a < alphaBox) {
+                        alphaBox = a;
+                        newIdx = i;
+                        newSide = 'hi';
+                    }
+                } else if (p[i] < -tol) {
+                    const a = (loD[i] - d[i]) / p[i];
+                    if (a > 0 && a < alphaBox) {
+                        alphaBox = a;
+                        newIdx = i;
+                        newSide = 'lo';
+                    }
+                }
+            }
+
+            // α_tr: step to TR boundary ‖d + α p‖ = rho.
+            let pp = 0;
+            for (let i = 0; i < n; i++) pp += p[i] * p[i];
+            if (pp < tol * tol) break;
+            let dp = 0;
+            for (let i = 0; i < n; i++) dp += d[i] * p[i];
+            const disc = dp * dp - pp * (dNormSq - rho * rho);
+            const alphaTr = disc < 0 ? 0 : (-dp + Math.sqrt(disc)) / pp;
+
+            // α_cg: CG step length on positive curvature.
+            const alphaCg = pHp > tol ? rCurNormSq / pHp : Infinity;
+
+            const alpha = Math.min(alphaCg, alphaBox, alphaTr);
+            if (!(alpha > 0) || !Number.isFinite(alpha)) break;
+
+            for (let i = 0; i < n; i++) d[i] += alpha * p[i];
+            dNormSq = 0;
+            for (let i = 0; i < n; i++) dNormSq += d[i] * d[i];
+
+            if (alpha >= alphaTr - tol) {
+                return d;  // TR boundary; Phase 3 omitted.
+            }
+
+            if (alpha >= alphaBox - tol && newIdx >= 0) {
+                active[newIdx] = newSide;
+                d[newIdx] = newSide === 'hi' ? hiD[newIdx] : loD[newIdx];
+                boundAdded = true;
+                break;
+            }
+
+            // α_cg branch: continue CG.
+            const rNew = new Array(n);
+            let rNewNormSq = 0;
+            for (let i = 0; i < n; i++) {
+                rNew[i] = rCur[i] - alpha * Hp[i];
+                rNewNormSq += rNew[i] * rNew[i];
+            }
+            if (rNewNormSq < tol * tol) return d;
+
+            const beta = rNewNormSq / rCurNormSq;
+            const pNew = new Array(n);
+            for (let i = 0; i < n; i++) {
+                pNew[i] = active[i] === null ? rNew[i] + beta * p[i] : 0;
+            }
+            p = pNew;
+            rCur = rNew;
+            rCurNormSq = rNewNormSq;
+        }
+
+        if (!boundAdded) break;
+    }
+
+    return d;
+}
+
+/**
+ * Unbounded trust-region subproblem solver — Newton step when H is SPD
+ * and the step is inside the TR, otherwise dogleg. Mirrors
+ * `_solve_trust_region_newuoa` + `_dogleg_method` in the Python module.
+ *
+ * NEWUOA's TR step has no bound handling (Python clips xnew at the
+ * end). For BOBYQA the bound-constrained TRSBOX is used instead.
+ */
+function solveTrustRegionUnbounded(g, H, rho, n) {
+    // Newton path if H is SPD enough and Newton step is inside TR.
+    try {
+        const L = Linalg.cholesky(H);
+        const negG = g.map(v => -v);
+        const dNewton = Linalg.solveSPDFromCholesky(L, negG);
+        let nrm = 0;
+        for (let i = 0; i < n; i++) nrm += dNewton[i] * dNewton[i];
+        nrm = Math.sqrt(nrm);
+        if (nrm <= rho) return dNewton;
+        // Continue: Newton outside TR → fall through to dogleg with Newton hint.
+    } catch (e) {
+        // Not SPD → dogleg.
+    }
+    return dogleg(g, H, rho, n);
+}
+
+function dogleg(g, H, rho, n) {
+    let gNormSq = 0;
+    for (let i = 0; i < n; i++) gNormSq += g[i] * g[i];
+    if (gNormSq < 1e-24) return new Array(n).fill(0);
+
+    const Hg = Linalg.matvec(H, g);
+    let gHg = 0;
+    for (let i = 0; i < n; i++) gHg += g[i] * Hg[i];
+    const alphaC = gHg > 1e-12 ? gNormSq / gHg : 1.0;
+
+    const dCauchy = g.map(v => -alphaC * v);
+    let cauchyNorm = 0;
+    for (let i = 0; i < n; i++) cauchyNorm += dCauchy[i] * dCauchy[i];
+    cauchyNorm = Math.sqrt(cauchyNorm);
+
+    if (cauchyNorm >= rho) {
+        // Cauchy is already outside TR → step rho along -g.
+        const gNorm = Math.sqrt(gNormSq);
+        return g.map(v => (-rho / gNorm) * v);
+    }
+
+    try {
+        const L = Linalg.cholesky(H);
+        const negG = g.map(v => -v);
+        const dNewton = Linalg.solveSPDFromCholesky(L, negG);
+        let nNorm = 0;
+        for (let i = 0; i < n; i++) nNorm += dNewton[i] * dNewton[i];
+        nNorm = Math.sqrt(nNorm);
+        if (nNorm <= rho) return dNewton;
+
+        // Dogleg: find τ ∈ [0,1] s.t. ‖dC + τ(dN − dC)‖ = rho.
+        const diff = new Array(n);
+        for (let i = 0; i < n; i++) diff[i] = dNewton[i] - dCauchy[i];
+        let a = 0, b = 0, c = 0;
+        for (let i = 0; i < n; i++) {
+            a += diff[i] * diff[i];
+            b += 2 * dCauchy[i] * diff[i];
+            c += dCauchy[i] * dCauchy[i];
+        }
+        c -= rho * rho;
+        const disc = b * b - 4 * a * c;
+        if (disc >= 0 && a > 1e-12) {
+            const tau = (-b + Math.sqrt(disc)) / (2 * a);
+            const out = new Array(n);
+            for (let i = 0; i < n; i++) out[i] = dCauchy[i] + tau * diff[i];
+            return out;
+        }
+    } catch (e) {
+        // Not SPD → just return Cauchy.
+    }
+    return dCauchy;
+}
+
 class PRIMA_UOBYQA extends Optimizer {
     constructor(objective, nTrials, nDim) {
         super(objective, nTrials, nDim);
@@ -720,9 +1133,23 @@ class PRIMA_NEWUOA extends Optimizer {
         let xopt = MathUtils.add(xbase, XPT[kopt]);
         let fopt = FVAL[kopt];
 
+        // Reset the min-Frobenius update's prior Hessian for this TR
+        // pass (mirrors the Python port — Powell's NEWUOA initialises
+        // H_prev = 0 at restart and carries it forward).
+        this._Hprev = Linalg.zeros(n, n);
+
         while (this.evaluations < this.nTrials && rho > rho_end) {
             const model = this.buildNEWUOAQuadraticModel(XPT, FVAL, xopt);
-            const step = this.solveNEWUOATrustRegion(model, xopt, rho);
+            // Effective gradient at xopt (= xbase + XPT[kopt]). The model
+            // m(s) = c + g·s + ½ sᵀ H s is centred at xbase, so the
+            // gradient at the trial origin xopt is g + H · XPT[kopt].
+            // Using g directly would solve a TR problem geometrically
+            // centred at xbase — fine when base-point shifting keeps
+            // XPT[kopt] ≈ 0 (Powell's NEWUOA does this every iteration)
+            // but otherwise mis-aligned with the TR step we then add to
+            // xopt.
+            const gEff = MathUtils.add(model.g, Linalg.matvec(model.H, XPT[kopt]));
+            const step = solveTrustRegionUnbounded(gEff, model.H, rho, n);
 
             if (this.evaluations >= this.nTrials) break;
 
@@ -730,7 +1157,10 @@ class PRIMA_NEWUOA extends Optimizer {
             const xTrialBounded = xTrial.map(x => Math.min(1, Math.max(0, x)));
             const fTrial = this.evaluate(xTrialBounded);
 
-            const predRed = this.computeNEWUOAPrediction(model, step);
+            // Predicted reduction at xopt: −(gEff · step + ½ stepᵀ H step).
+            const HStep = Linalg.matvec(model.H, step);
+            let predRed = -MathUtils.dot(gEff, step);
+            for (let i = 0; i < n; i++) predRed -= 0.5 * step[i] * HStep[i];
             const actualRed = fopt - fTrial;
             const ratio = predRed > 0 ? actualRed / predRed : -1;
 
@@ -796,151 +1226,58 @@ class PRIMA_NEWUOA extends Optimizer {
         };
     }
 
-    buildNEWUOAQuadraticModel(XPT, FVAL, xopt) {
+    buildNEWUOAQuadraticModel(XPT, FVAL, _xopt) {
+        // Powell's full-Hessian min-Frobenius-norm update (matches the
+        // Python port). The previous diagonal-Hessian FD heuristic could
+        // not capture Rosenbrock's off-diagonal 100·(−2xy) cross-term;
+        // this can. Carries `this._Hprev` across iterations within a TR
+        // pass; the outer optimize() resets it per restart pass.
+        //
+        // Falls back to a finite-difference gradient with identity
+        // Hessian on rank-deficient interpolation sets or non-finite
+        // FVAL — same fallback shape the Python port uses.
         const n = this.nDim;
-        const npt = XPT.length;
-
-        // Model: m(s) = c + g^T s + 0.5 s^T H s, where s = x - xopt
-        const model = {
-            c: 0,
-            g: new Array(n).fill(0),
-            H: Array(n).fill().map(() => new Array(n).fill(0))
-        };
-
-        // Find point closest to xopt for constant term
-        let kBase = 0;
-        let minDist = Infinity;
-        for (let k = 0; k < npt; k++) {
-            const dist = MathUtils.norm(MathUtils.subtract(MathUtils.add(XPT[k], xopt), xopt));
-            if (dist < minDist) {
-                minDist = dist;
-                kBase = k;
-            }
+        const Hprev = this._Hprev || Linalg.zeros(n, n);
+        try {
+            const { c, g, H } = buildMinFrobeniusQuadratic(XPT, FVAL, Hprev, n);
+            this._Hprev = H;
+            return { c, g, H };
+        } catch (e) {
+            const g = this._fdGradient(XPT, FVAL, n);
+            const H = Linalg.eye(n);
+            // Don't update _Hprev — keep the last successful Hessian.
+            return { c: 0, g, H };
         }
-        model.c = FVAL[kBase];
-
-        // Compute model coefficients using Lagrange interpolation principles
-        // Simplified approach: use finite differences where possible
-
-        // Estimate gradient using coordinate directions from interpolation set
-        for (let i = 0; i < n; i++) {
-            let forwardK = -1, backwardK = -1;
-            let minForwardDist = Infinity, minBackwardDist = Infinity;
-
-            for (let k = 0; k < npt; k++) {
-                const s = XPT[k]; // Already in shifted coordinates
-
-                // Check if this is approximately a coordinate direction
-                let maxNonCoord = 0;
-                for (let j = 0; j < n; j++) {
-                    if (j !== i && Math.abs(s[j]) > maxNonCoord) {
-                        maxNonCoord = Math.abs(s[j]);
-                    }
-                }
-
-                if (maxNonCoord < 0.1 * Math.abs(s[i]) && Math.abs(s[i]) > 1e-8) {
-                    const dist = Math.abs(s[i]);
-                    if (s[i] > 0 && dist < minForwardDist) {
-                        forwardK = k;
-                        minForwardDist = dist;
-                    } else if (s[i] < 0 && dist < minBackwardDist) {
-                        backwardK = k;
-                        minBackwardDist = dist;
-                    }
-                }
-            }
-
-            // Compute gradient estimate
-            if (forwardK >= 0 && backwardK >= 0) {
-                const h = XPT[forwardK][i] - XPT[backwardK][i];
-                model.g[i] = (FVAL[forwardK] - FVAL[backwardK]) / h;
-
-                // Estimate diagonal Hessian
-                const hHalf = h / 2;
-                model.H[i][i] = (FVAL[forwardK] - 2 * model.c + FVAL[backwardK]) / (hHalf * hHalf);
-            } else if (forwardK >= 0) {
-                const h = XPT[forwardK][i];
-                model.g[i] = (FVAL[forwardK] - model.c) / h;
-            } else if (backwardK >= 0) {
-                const h = -XPT[backwardK][i];
-                model.g[i] = (model.c - FVAL[backwardK]) / h;
-            }
-        }
-
-        return model;
     }
 
-    solveNEWUOATrustRegion(model, xopt, rho) {
-        const n = this.nDim;
-
-        // Simplified trust region solve: dogleg method approximation
-
-        // Cauchy point: steepest descent step
-        let gNorm = MathUtils.norm(model.g);
-        if (gNorm < 1e-12) {
-            // Zero gradient - return small random step
-            const randomStep = Array(n).fill(0).map(() => (Math.random() - 0.5) * 2 * rho * 0.1);
-            return this.projectToBounds(randomStep, xopt);
+    _fdGradient(XPT, FVAL, n) {
+        // Central-difference gradient at the best point of the
+        // interpolation set, using whichever ± coordinate-axis points
+        // are present. Used only as a last-resort fallback when the
+        // min-Frobenius solve fails.
+        let kopt = 0;
+        for (let k = 1; k < FVAL.length; k++) {
+            if (FVAL[k] < FVAL[kopt]) kopt = k;
         }
-
-        let cauchyStep = MathUtils.scale(model.g, -1);
-
-        // Compute Hg for curvature
-        let Hg = Array(n).fill(0);
+        const g = new Array(n).fill(0);
         for (let i = 0; i < n; i++) {
-            for (let j = 0; j < n; j++) {
-                Hg[i] += model.H[i][j] * model.g[j];
+            let posV = FVAL[kopt], negV = FVAL[kopt], step = 0;
+            for (let k = 0; k < FVAL.length; k++) {
+                if (k === kopt) continue;
+                let dominant = true, absI = Math.abs(XPT[k][i] - XPT[kopt][i]);
+                if (absI < 1e-8) continue;
+                let other = 0;
+                for (let j = 0; j < n; j++) if (j !== i) other += Math.abs(XPT[k][j] - XPT[kopt][j]);
+                if (other > absI) dominant = false;
+                if (!dominant) continue;
+                if (XPT[k][i] > XPT[kopt][i]) posV = FVAL[k]; else negV = FVAL[k];
+                if (absI > step) step = absI;
+            }
+            if (posV !== FVAL[kopt] && negV !== FVAL[kopt] && step > 0) {
+                g[i] = (posV - negV) / (2 * step);
             }
         }
-
-        let gHg = MathUtils.dot(model.g, Hg);
-
-        // Compute optimal step length along gradient
-        let alpha = gHg > 0 ? (gNorm * gNorm) / gHg : 1.0;
-
-        // Scale Cauchy step
-        cauchyStep = MathUtils.scale(cauchyStep, alpha);
-
-        // Truncate to trust region
-        let stepNorm = MathUtils.norm(cauchyStep);
-        if (stepNorm > rho) {
-            cauchyStep = MathUtils.scale(cauchyStep, rho / stepNorm);
-        }
-
-        // Apply bound constraints
-        return this.projectToBounds(cauchyStep, xopt);
-    }
-
-    projectToBounds(step, xopt) {
-        const n = this.nDim;
-        for (let i = 0; i < n; i++) {
-            const newPos = xopt[i] + step[i];
-            if (newPos < 0) {
-                step[i] = -xopt[i];
-            } else if (newPos > 1) {
-                step[i] = 1 - xopt[i];
-            }
-        }
-        return step;
-    }
-
-    computeNEWUOAPrediction(model, step) {
-        const n = this.nDim;
-
-        // Predicted reduction: -(g^T s + 0.5 s^T H s)
-        let pred = 0;
-
-        // Linear term
-        pred -= MathUtils.dot(model.g, step);
-
-        // Quadratic term
-        for (let i = 0; i < n; i++) {
-            for (let j = 0; j < n; j++) {
-                pred -= 0.5 * step[i] * model.H[i][j] * step[j];
-            }
-        }
-
-        return pred;
+        return g;
     }
 
     updateNEWUOAInterpolationSet(XPT, FVAL, xnew, fnew, xbase) {
@@ -1109,6 +1446,9 @@ class PRIMA_BOBYQA extends Optimizer {
         let { XPT, FVAL } = this._initBOBYQAPoints(xbase, rho, npt, n, xl, xu);
         let kopt = this._argmin(FVAL);
 
+        // Reset min-Frobenius prior Hessian for this TR pass.
+        this._Hprev = Linalg.zeros(n, n);
+
         let iteration = 0;
         // Cap iteration count by budget directly rather than by
         // floor(budget / npt) — the previous formula gave only
@@ -1122,20 +1462,24 @@ class PRIMA_BOBYQA extends Optimizer {
         while (this.evaluations < this.nTrials && rho > rhoend && iteration < maxIter) {
             iteration += 1;
 
-            let g, Hdiag;
+            let g, H;
             try {
-                ({ g, Hdiag } = this._buildBOBYQAModel(XPT, FVAL, kopt, n));
+                ({ g, H } = this._buildBOBYQAModel(XPT, FVAL, kopt, n));
             } catch (e) {
                 rho *= 0.5;
                 continue;
             }
 
             const xCurr = this._addVec(xbase, XPT[kopt]);
+            // Effective gradient at xCurr: g + H · XPT[kopt] (the model
+            // is centred at xbase; the TR subproblem is solved from
+            // xCurr = xbase + XPT[kopt]).
+            const gEff = MathUtils.add(g, Linalg.matvec(H, XPT[kopt]));
             let d;
             try {
-                d = this._solveBoundConstrainedTR(g, Hdiag, rho, n, xCurr, xl, xu);
+                d = solveTrsbox(gEff, H, rho, xCurr, xl, xu, n);
             } catch (e) {
-                d = this._fallbackBoundStep(g, rho, n, xCurr, xl, xu);
+                d = this._fallbackBoundStep(gEff, rho, n, xCurr, xl, xu);
             }
 
             const xnew = this._clip01(this._addVec(xCurr, d));
@@ -1143,7 +1487,10 @@ class PRIMA_BOBYQA extends Optimizer {
             if (this.evaluations >= this.nTrials) break;
             const fnew = this.evaluate(xnew);
 
-            const predRed = this._predictReduction(g, Hdiag, d);
+            // Predicted reduction at xCurr: −(gEff · d + ½ dᵀ H d).
+            const Hd = Linalg.matvec(H, d);
+            let predRed = -MathUtils.dot(gEff, d);
+            for (let i = 0; i < n; i++) predRed -= 0.5 * d[i] * Hd[i];
             const actualRed = FVAL[kopt] - fnew;
 
             const updated = this._updateBOBYQAInterpolation(
@@ -1244,48 +1591,25 @@ class PRIMA_BOBYQA extends Optimizer {
     }
 
     _buildBOBYQAModel(XPT, FVAL, kopt, n) {
-        // Quadratic surrogate m(s) = c + g.s + 0.5 * sum(d_i s_i^2)
-        // fit by least squares on the (FVAL - FVAL[kopt]) targets.
-        // Design matrix columns: [1, s_1..s_n, 0.5*s_1^2..0.5*s_n^2].
+        // Powell's full-Hessian min-Frobenius-norm update (matches the
+        // Python port from #167). The previous diagonal-Hessian
+        // least-squares fit could not capture cross-term curvature
+        // like Rosenbrock's 100·(−2xy); this can. Carries
+        // `this._Hprev` across iterations within a TR pass; the outer
+        // optimize() resets it per restart pass.
         //
-        // When the interpolation set clusters in a subspace, the system
-        // is rank-deficient and the solver returns null. Python's BOBYQA
-        // catches its equivalent failure and falls back to a
-        // finite-difference gradient + identity Hessian; we mirror that
-        // here so the algorithm keeps making progress instead of
-        // stalling and shrinking rho to zero.
-        const nterms = 1 + 2 * n;
-        const nrows = FVAL.length;
-        const A = Array(nrows).fill().map(() => Array(nterms).fill(0));
-        const b = Array(nrows);
-
-        for (let k = 0; k < nrows; k++) {
-            const x = XPT[k];
-            let col = 0;
-            A[k][col++] = 1.0;
-            for (let i = 0; i < n; i++) A[k][col++] = x[i];
-            for (let i = 0; i < n; i++) A[k][col++] = 0.5 * x[i] * x[i];
-            b[k] = FVAL[k] - FVAL[kopt];
+        // Falls back to a finite-difference gradient + identity Hessian
+        // on rank-deficient interpolation sets or non-finite FVAL.
+        const Hprev = this._Hprev || Linalg.zeros(n, n);
+        try {
+            const { g, H } = buildMinFrobeniusQuadratic(XPT, FVAL, Hprev, n);
+            this._Hprev = H;
+            return { g, H };
+        } catch (e) {
+            const g = this._finiteDifferenceGradientBounded(XPT, FVAL, kopt, n);
+            const H = Linalg.eye(n);
+            return { g, H };
         }
-
-        const coeffs = PRIMA_BOBYQA._solveLeastSquaresStatic(A, b);
-        if (!coeffs) {
-            // Mirror Python's `except Exception:` fallback.
-            const gFD = this._finiteDifferenceGradientBounded(XPT, FVAL, kopt, n);
-            return { g: gFD, Hdiag: new Array(n).fill(1.0) };
-        }
-
-        const g = coeffs.slice(1, n + 1);
-        const diagVals = coeffs.slice(n + 1, 2 * n + 1);
-
-        // Force the diagonal Hessian SPD (Python: shift by -min+1e-6 if needed).
-        let minDiag = diagVals[0];
-        for (let i = 1; i < diagVals.length; i++) if (diagVals[i] < minDiag) minDiag = diagVals[i];
-        if (minDiag <= 0) {
-            const shift = -minDiag + 1e-6;
-            for (let i = 0; i < diagVals.length; i++) diagVals[i] += shift;
-        }
-        return { g, Hdiag: diagVals };
     }
 
     _finiteDifferenceGradientBounded(XPT, FVAL, kopt, n) {
@@ -1316,114 +1640,6 @@ class PRIMA_BOBYQA extends Optimizer {
             else if (negStep > 0)            g[i] = (FVAL[kopt] - negVal) / negStep;
         }
         return g;
-    }
-
-    // Solve A x = b for the BOBYQA quadratic-model regression.
-    //
-    // When npt == n_terms (exactly-determined) we solve A x = b directly
-    // via Gaussian elimination on A. Normal equations (A^T A) squares the
-    // condition number, which matters once the interpolation set starts
-    // to cluster (subsequent iterations after the initial layout). For
-    // overdetermined systems we fall back to normal equations, same as
-    // the JS UOBYQA does.
-    static _solveLeastSquaresStatic(A, b) {
-        const m = A.length;
-        const n = A[0].length;
-
-        // Direct path: m == n means the augmented matrix is square.
-        let M, rhs;
-        if (m === n) {
-            M = A.map(row => [...row]);
-            rhs = b.slice();
-        } else {
-            // Overdetermined → normal equations.
-            const AtA = Array(n).fill().map(() => Array(n).fill(0));
-            const Atb = Array(n).fill(0);
-            for (let i = 0; i < n; i++) {
-                for (let j = 0; j < n; j++) {
-                    let s = 0;
-                    for (let k = 0; k < m; k++) s += A[k][i] * A[k][j];
-                    AtA[i][j] = s;
-                }
-                let s = 0;
-                for (let k = 0; k < m; k++) s += A[k][i] * b[k];
-                Atb[i] = s;
-            }
-            M = AtA;
-            rhs = Atb;
-        }
-
-        // Gaussian elimination with partial pivoting on [M | rhs].
-        const Aug = M.map((row, i) => [...row, rhs[i]]);
-        for (let i = 0; i < n; i++) {
-            let maxRow = i;
-            for (let k = i + 1; k < n; k++) {
-                if (Math.abs(Aug[k][i]) > Math.abs(Aug[maxRow][i])) maxRow = k;
-            }
-            [Aug[i], Aug[maxRow]] = [Aug[maxRow], Aug[i]];
-            if (Math.abs(Aug[i][i]) < 1e-12) return null;
-            for (let k = i + 1; k < n; k++) {
-                const factor = Aug[k][i] / Aug[i][i];
-                for (let j = i; j <= n; j++) Aug[k][j] -= factor * Aug[i][j];
-            }
-        }
-        const x = new Array(n).fill(0);
-        for (let i = n - 1; i >= 0; i--) {
-            let s = Aug[i][n];
-            for (let j = i + 1; j < n; j++) s -= Aug[i][j] * x[j];
-            x[i] = s / Aug[i][i];
-        }
-        return x;
-    }
-
-    _solveBoundConstrainedTR(g, Hdiag, rho, n, xCurrent, xl, xu) {
-        // Try the Newton step on the surrogate (diagonal H → coordinate-wise
-        // solve). If it's feasible and inside the trust region, take it.
-        const dNewton = new Array(n);
-        let allPos = true;
-        for (let i = 0; i < n; i++) {
-            if (Hdiag[i] <= 1e-8) { allPos = false; break; }
-            dNewton[i] = -g[i] / Hdiag[i];
-        }
-        if (allPos) {
-            const xNew = this._addVec(xCurrent, dNewton);
-            let inBox = true;
-            for (let i = 0; i < n; i++) {
-                if (xNew[i] < xl[i] || xNew[i] > xu[i]) { inBox = false; break; }
-            }
-            if (inBox && this._norm(dNewton) <= rho) return dNewton;
-        }
-        return this._projectedCauchy(g, Hdiag, rho, n, xCurrent, xl, xu);
-    }
-
-    _projectedCauchy(g, Hdiag, rho, n, xCurrent, xl, xu) {
-        // Steepest-descent on the surrogate with active-bound components
-        // zeroed, scaled to rho if needed, then projected onto the box.
-        if (this._norm(g) < 1e-12) return new Array(n).fill(0);
-
-        const p = g.map(v => -v);
-        for (let i = 0; i < n; i++) {
-            if (xCurrent[i] <= xl[i] + 1e-10 && p[i] < 0) p[i] = 0;
-            else if (xCurrent[i] >= xu[i] - 1e-10 && p[i] > 0) p[i] = 0;
-        }
-        if (this._norm(p) < 1e-12) return new Array(n).fill(0);
-
-        // Cauchy α = (g·g) / (g·H·g) for diagonal H.
-        let gHg = 0;
-        for (let i = 0; i < n; i++) gHg += g[i] * Hdiag[i] * g[i];
-        const gg = g.reduce((s, v) => s + v * v, 0);
-        const alpha = gHg > 1e-12 ? gg / gHg : 1.0;
-
-        let d = p.map(v => alpha * v);
-        const dn = this._norm(d);
-        if (dn > rho) d = d.map(v => rho * v / dn);
-
-        for (let i = 0; i < n; i++) {
-            const xi = xCurrent[i] + d[i];
-            if (xi < xl[i]) d[i] = xl[i] - xCurrent[i];
-            else if (xi > xu[i]) d[i] = xu[i] - xCurrent[i];
-        }
-        return d;
     }
 
     _updateBOBYQAInterpolation(XPT, FVAL, dFromBase, fnew, kopt, npt) {
@@ -1476,15 +1692,6 @@ class PRIMA_BOBYQA extends Optimizer {
             else if (xi > xu[i]) d[i] = xu[i] - xCurrent[i];
         }
         return d;
-    }
-
-    _predictReduction(g, Hdiag, d) {
-        let gd = 0, dHd = 0;
-        for (let i = 0; i < g.length; i++) {
-            gd  += g[i] * d[i];
-            dHd += Hdiag[i] * d[i] * d[i];
-        }
-        return -(gd + 0.5 * dHd);
     }
 
     _updateTrustRegionRadius(predRed, actualRed, rho, rhobeg, rhoend) {
