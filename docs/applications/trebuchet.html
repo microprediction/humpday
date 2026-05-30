@@ -1,0 +1,918 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' 'unsafe-inline' https://cdn.jsdelivr.net; style-src 'self' 'unsafe-inline';">
+<title>🏰 Trebuchet Optimizer — HumpDay</title>
+<style>
+  :root {
+    --bg: #1a1a22;
+    --panel: #2d2d3a;
+    --accent: #ffcc00;
+    --text: #e8e8ea;
+    --muted: #9a9aac;
+  }
+  body { margin: 0; background: var(--bg); color: var(--text);
+    font-family: -apple-system, 'Segoe UI', 'Helvetica Neue', Helvetica, Arial, sans-serif; }
+  .site-nav { background: #34495e; padding: 12px 24px;
+    font-family: 'Times New Roman', Times, serif;
+    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1); }
+  .site-nav-inner { max-width: 1100px; margin: 0 auto;
+    display: flex; justify-content: space-between; align-items: center; }
+  .site-nav a { color: #ecf0f1; text-decoration: none; margin: 0 12px; }
+  .site-nav a:hover { color: white; text-decoration: underline; }
+  .site-nav-brand { font-weight: 700; font-size: 1.25em; }
+
+  .container { max-width: 1100px; margin: 0 auto; padding: 32px 24px 64px; }
+  h1 { font-size: 2.2em; margin: 0.2em 0; }
+  h2 { font-size: 1.4em; margin-top: 1.4em; color: var(--accent); }
+  p { line-height: 1.55; max-width: 70ch; }
+  .intro { color: var(--muted); }
+
+  .stage { display: grid; grid-template-columns: 1fr 320px; gap: 24px;
+    align-items: start; margin-top: 24px; }
+  @media (max-width: 800px) { .stage { grid-template-columns: 1fr; } }
+  canvas { background: linear-gradient(180deg, #6c8fbf 0%, #a3c0e0 60%, #7a9460 60%, #5a7340 100%);
+    border: 3px solid var(--accent); border-radius: 6px; display: block;
+    width: 100%; height: auto; }
+
+  .panel { background: var(--panel); padding: 18px; border-radius: 6px; border: 1px solid #404054; }
+  .panel h3 { margin: 0 0 12px; font-size: 1.05em; text-transform: uppercase;
+    letter-spacing: 0.06em; color: var(--accent); }
+  label { display: block; margin: 10px 0 6px; font-size: 0.9em; color: var(--muted); }
+  select, input, button { width: 100%; box-sizing: border-box; padding: 8px 10px;
+    border-radius: 4px; border: 1px solid #404054; background: #1a1a22; color: var(--text); font-size: 0.95em; }
+  button { background: var(--accent); color: #1a1a22; font-weight: 700; cursor: pointer; margin-top: 6px; transition: opacity 0.15s; }
+  button:hover { opacity: 0.88; }
+  button.secondary { background: #404054; color: var(--text); font-weight: 400; }
+  button:disabled { opacity: 0.5; cursor: not-allowed; }
+  .stats { margin-top: 16px; padding-top: 14px; border-top: 1px solid #404054; font-size: 0.92em; line-height: 1.6; }
+  .stats .score { font-size: 2.6em; color: var(--accent); font-weight: 700; }
+  .stat-row { display: flex; justify-content: space-between; gap: 8px; }
+  .stat-row span:first-child { white-space: nowrap; flex-shrink: 0; color: var(--muted); }
+  .stat-row span:last-child { color: var(--text); font-family: 'SF Mono', Menlo, monospace; text-align: right; word-break: break-word; }
+  .algo-tag { font-size: 0.7em; color: var(--muted); display: block; }
+
+  .leaderboard { margin-top: 24px; }
+  .leaderboard table { width: 100%; border-collapse: collapse; background: var(--panel); border-radius: 6px; overflow: hidden; }
+  .leaderboard th, .leaderboard td { padding: 10px 14px; text-align: left; border-bottom: 1px solid #404054; }
+  .leaderboard th { background: #1a1a22; color: var(--muted); text-transform: uppercase; font-size: 0.78em; letter-spacing: 0.08em; }
+  .leaderboard td:nth-child(2) { text-align: center; font-size: 1.3em; font-weight: 700; color: var(--accent); }
+  .leaderboard td:nth-child(3), .leaderboard td:nth-child(4) { font-family: 'SF Mono', Menlo, monospace; color: var(--muted); }
+  .leaderboard tr.human-raphson td:first-child { color: #ff9944; font-weight: 700; }
+
+  .left-stack { display: flex; flex-direction: column; gap: 16px; min-width: 0; }
+  .hr-panel { padding: 14px 16px; }
+  .hr-panel h3 { margin: 0 0 6px; }
+  .hr-sliders { display: grid; grid-template-columns: repeat(2, 1fr); gap: 6px 18px; margin-bottom: 10px; }
+  .hr-sliders .slider-cell { display: flex; flex-direction: column; }
+  .hr-sliders label { margin: 0; display: flex; justify-content: space-between; align-items: baseline; font-size: 0.84em; }
+  .hr-sliders label output { color: var(--accent); font-family: 'SF Mono', Menlo, monospace; font-size: 0.92em; }
+  .hr-sliders input[type=range] { width: 100%; margin: 0; padding: 0; background: transparent; }
+  .hr-sliders input[type=range]::-webkit-slider-runnable-track { background: #1a1a22; height: 6px; border-radius: 3px; }
+  .hr-sliders input[type=range]::-webkit-slider-thumb { -webkit-appearance: none; appearance: none; background: var(--accent); width: 18px; height: 18px; border-radius: 50%; margin-top: -6px; cursor: pointer; }
+  .hr-panel button { background: #ff9944; color: #1a1a22; margin-top: 0; }
+
+  .skill-callout { margin-top: 36px; background: rgba(126, 217, 87, 0.07); border: 1px solid rgba(126, 217, 87, 0.35); border-radius: 8px; padding: 18px 22px; }
+  .skill-callout h3 { margin: 0 0 6px; color: #7ed957; font-size: 1.05em; text-transform: none; letter-spacing: 0; }
+  .skill-callout p { margin: 0 0 10px; color: var(--text); max-width: none; }
+  .skill-callout pre { background: #1a1a22; border: 1px solid #404054; border-radius: 4px; padding: 10px 14px; margin: 0; font-size: 0.84em; color: #7ed957; white-space: pre-wrap; word-break: break-all; font-family: 'SF Mono', Menlo, monospace; }
+  .skill-actions { margin-top: 10px; display: flex; align-items: center; gap: 14px; }
+  .skill-actions button { width: auto; background: #404054; color: var(--text); border: 1px solid #404054; padding: 6px 12px; font-size: 0.85em; cursor: pointer; border-radius: 4px; margin: 0; font-weight: 500; }
+  .skill-actions button:hover { background: #4a4a60; }
+  .skill-actions a { color: #7ed957; font-size: 0.85em; text-decoration: none; }
+  .skill-actions a:hover { text-decoration: underline; }
+</style>
+</head>
+<body>
+<nav class="site-nav">
+  <div class="site-nav-inner">
+    <a class="site-nav-brand" href="../index.html">HumpDay 🦅</a>
+    <div>
+      <a href="../index.html">Home</a>
+      <a href="index.html">Applications</a>
+      <a href="../contest.html">Contest</a>
+      <a href="../README.html">Docs</a>
+    </div>
+  </div>
+</nav>
+
+<div class="container">
+  <h1>🏰 Trebuchet Optimizer</h1>
+  <p class="intro">
+    Design a trebuchet and pick when the sling releases. A counterweight
+    drops, the long arm whips overhead, the sling lags behind on its
+    pivot and snaps forward — then the release pin disengages and the
+    projectile flies. Hit the target 60 m downrange. Two of the four
+    parameters control geometry; the fourth — the release angle —
+    is razor-thin: too early flings the rock backward over the arm,
+    too late drives it into the ground.
+  </p>
+
+  <div class="stage">
+    <div class="left-stack">
+      <canvas id="canvas" width="800" height="450"></canvas>
+
+      <div class="panel hr-panel">
+        <h3>🧠 Human Raphson</h3>
+        <p style="color: var(--muted); margin: 0 0 12px; font-size: 0.86em;">
+          Try a manual design — set the four parameters, fire, see where the rock lands.
+        </p>
+        <div class="hr-sliders">
+          <div class="slider-cell">
+            <label for="manual-mass">Counterweight (kg) <output id="manual-mass-out">200</output></label>
+            <input type="range" id="manual-mass" min="50" max="500" step="5" value="200">
+          </div>
+          <div class="slider-cell">
+            <label for="manual-ratio">Arm ratio <output id="manual-ratio-out">0.25</output></label>
+            <input type="range" id="manual-ratio" min="0.15" max="0.45" step="0.005" value="0.25">
+          </div>
+          <div class="slider-cell">
+            <label for="manual-sling">Sling ratio <output id="manual-sling-out">0.95</output></label>
+            <input type="range" id="manual-sling" min="0.4" max="1.5" step="0.01" value="0.95">
+          </div>
+          <div class="slider-cell">
+            <label for="manual-release">Release (°) <output id="manual-release-out">130</output></label>
+            <input type="range" id="manual-release" min="40" max="200" step="1" value="130">
+          </div>
+        </div>
+        <button id="manual-btn" onclick="manualFire()">▶ Fire (Human Raphson)</button>
+      </div>
+    </div>
+
+    <div class="panel">
+      <h3>Algorithm</h3>
+      <label for="algorithm">Pick a HumpDay optimizer:</label>
+      <select id="algorithm">
+        <optgroup label="Trust-region / interpolation">
+          <option value="PRIMA_BOBYQA">PRIMA_BOBYQA</option>
+          <option value="PRIMA_NEWUOA">PRIMA_NEWUOA</option>
+        </optgroup>
+        <optgroup label="Local / classical">
+          <option value="NelderMead">Nelder-Mead</option>
+          <option value="Powell">Powell</option>
+          <option value="LBFGSB">L-BFGS-B (simplified)</option>
+        </optgroup>
+        <optgroup label="Population-based">
+          <option value="DifferentialEvolution" selected>Differential Evolution</option>
+          <option value="ParticleSwarm">Particle Swarm</option>
+          <option value="CMAEvolutionStrategy">CMA-Evolution Strategy</option>
+          <option value="GeneticAlgorithm">Genetic Algorithm</option>
+          <option value="EvolutionStrategy">Evolution Strategy</option>
+          <option value="HarmonySearch">Harmony Search</option>
+        </optgroup>
+        <optgroup label="Other">
+          <option value="SimulatedAnnealing">Simulated Annealing</option>
+          <option value="BayesianOpt">Bayesian Optimization</option>
+          <option value="FireflyAlgorithm">Firefly Algorithm</option>
+          <option value="AntColonyOpt">Ant Colony</option>
+          <option value="TabuSearch">Tabu Search</option>
+          <option value="RandomSearch">Random Search</option>
+        </optgroup>
+      </select>
+
+      <label for="budget">Evaluation budget:</label>
+      <select id="budget">
+        <option value="10">10 shots</option>
+        <option value="20">20 shots</option>
+        <option value="50" selected>50 shots</option>
+        <option value="100">100 shots</option>
+        <option value="200">200 shots</option>
+        <option value="500">500 shots</option>
+      </select>
+      <p style="margin: 8px 0 0; font-size: 0.78em; color: var(--muted);">
+        Each shot is animated at ~2× the final-replay speed.
+      </p>
+
+      <button id="run-btn" onclick="runOptimization()">▶ Find the best shot</button>
+      <button class="secondary" onclick="replayBest()">🔁 Replay best shot</button>
+      <button class="secondary" onclick="resetEverything()">⟲ Reset leaderboard</button>
+
+      <div class="stats">
+        <div class="stat-row"><span>Score</span><span class="score" id="score-now">0</span></div>
+        <div class="stat-row"><span>Landed at</span><span id="landed">—</span></div>
+        <div class="stat-row"><span>Shots tried</span><span id="evals">0</span></div>
+        <div class="stat-row"><span>Best so far</span><span id="best-score">—</span></div>
+        <div class="stat-row"><span>Counterweight</span><span id="param-mass">—</span></div>
+        <div class="stat-row"><span>Arm ratio</span><span id="param-ratio">—</span></div>
+        <div class="stat-row"><span>Sling ratio</span><span id="param-sling">—</span></div>
+        <div class="stat-row"><span>Release angle</span><span id="param-release">—</span></div>
+      </div>
+    </div>
+  </div>
+
+  <div class="leaderboard">
+    <h2>Leaderboard (this session)</h2>
+    <p style="color: var(--muted);">
+      Each row is the closest-to-target shot a given algorithm found.
+      The release-angle parameter has a razor-thin sweet spot — most
+      random parameter triples either fling the rock backward (release
+      too early) or smash it into the ground (release too late).
+      Population methods (CMA-ES, DE, PSO) tend to find both
+      "near hit" and "perfect" basins; pure-local methods often
+      stall on the wrong side of the release window.
+    </p>
+    <table>
+      <thead>
+        <tr><th>Algorithm</th><th>Score</th><th>Shots used</th><th>Mass / Ratio / Sling / Release°</th></tr>
+      </thead>
+      <tbody id="leaderboard-body">
+        <tr><td colspan="4" style="color: var(--muted); text-align: center;">— no runs yet —</td></tr>
+      </tbody>
+    </table>
+  </div>
+
+  <h2>What's happening</h2>
+  <p>
+    A side-view trebuchet built from a compound rigid body in
+    <strong>Matter.js</strong>: a long arm and a short arm
+    fused around a fixed pivot, with a heavy disc (the counterweight)
+    on the short side. A sling — a fixed-length distance constraint —
+    connects the long-arm tip to a small projectile that starts on the
+    ground. Gravity does all the work: the counterweight falls, the
+    long arm whips overhead, the sling lags behind on its own pivot
+    and snaps forward as the arm decelerates.
+  </p>
+  <p>
+    The release pin is modelled by watching the sling's angle
+    <em>relative to the long arm</em>. When that angle reaches the
+    release-threshold parameter, the sling constraint is removed
+    from the world and the projectile flies ballistically until it
+    lands. Score = 100 at the centre of the target (60 m downrange),
+    dropping smoothly with distance. Shots that land short, long, or
+    behind the trebuchet score 0.
+  </p>
+
+  <hr style="border: 0; border-top: 1px solid #404054; margin: 32px 0 16px;" />
+  <p style="font-size: 0.78em; color: var(--muted);">
+    Physics powered by <a style="color: var(--muted); text-decoration: underline;" href="https://brm.io/matter-js/">Matter.js</a>
+    — compound bodies, distance constraints, and a hand-rolled release-pin
+    trigger that severs the sling at a configurable angle.
+  </p>
+
+  <div class="skill-callout">
+    <h3>🌱 Save the Planet</h3>
+    <p>If your hyper-parameter searches are heating the Earth, drop this in Cursor or Claude:</p>
+    <pre id="skill-snippet">Read https://raw.githubusercontent.com/microprediction/humpday/main/SKILL.md
+and create a project skill from it.</pre>
+    <div class="skill-actions">
+      <button type="button" onclick="copySkillSnippet(this)">📋 Copy</button>
+      <a href="https://github.com/microprediction/humpday/blob/main/SKILL.md" target="_blank" rel="noopener">View SKILL.md →</a>
+    </div>
+  </div>
+
+  <script>
+    function copySkillSnippet(btn) {
+      const text = document.getElementById('skill-snippet').textContent;
+      navigator.clipboard.writeText(text).then(() => {
+        const orig = btn.textContent;
+        btn.textContent = '✓ Copied';
+        setTimeout(() => { btn.textContent = orig; }, 1500);
+      }).catch(() => {
+        btn.textContent = '✗ Copy failed';
+      });
+    }
+  </script>
+</div>
+
+<script src="https://cdn.jsdelivr.net/npm/matter-js@0.19.0/build/matter.min.js"></script>
+<script src="../js/modules/base-optimizer.js"></script>
+<script src="../js/modules/prima-algorithms.js"></script>
+<script src="../js/modules/scipy-algorithms.js"></script>
+<script src="../js/modules/evolutionary-algorithms.js"></script>
+<script src="../js/modules/search-algorithms.js"></script>
+
+<script>
+// ============================================================================
+// Trebuchet — side-view, two-DOF system handled by Matter.js compound bodies
+// and constraints. Long arm + short arm + counterweight form one rigid
+// composite pinned at the pivot; the projectile hangs from the long-arm
+// tip on a distance constraint that the demo severs when the sling's
+// angle relative to the arm crosses the user-set release threshold.
+// ============================================================================
+
+const { Engine, Bodies, Body, Composite, Constraint } = Matter;
+
+const canvas = document.getElementById('canvas');
+const ctx = canvas.getContext('2d');
+const W = canvas.width, H = canvas.height;
+
+// World layout (canvas pixels).
+const GROUND_Y = H - 40;                 // 410
+const PIVOT_X = 130;
+const PIVOT_Y = GROUND_Y - 100;          // pivot 100 px above ground = "wooden frame top"
+const PX_PER_M = 8;                      // 8 canvas px = 1 metre
+const L_LONG_PX = 200;                   // 25 m long arm (cartoonishly big — keeps visuals readable)
+const PROJ_R = 7;
+const FRAME_H = GROUND_Y - PIVOT_Y;      // height of the A-frame uprights
+
+// Target — 60 m downrange = 480 px from pivot.
+const TARGET_X = PIVOT_X + 60 * PX_PER_M;
+const TARGET_HALF_WIDTH_PX = 32;         // ± 4 m considered "near hit"
+
+// Initial cocked angle (radians, CCW from +x in Matter coords where y
+// grows DOWN). +130° puts the long arm pointing back and down — the
+// cocked position with the long-arm tip near the ground behind the
+// pivot, and the counterweight raised high on the forward side of the
+// pivot. Gravity then drops the counterweight, the arm whips through
+// 0° (horizontal forward), and the sling lags behind.
+const ARM_INITIAL_ANGLE = 130 * Math.PI / 180;
+
+function decode(u) {
+  return [
+    50 + 450 * u[0],            // counterweight mass (kg)
+    0.15 + 0.30 * u[1],         // short/long arm ratio
+    0.4 + 1.1 * u[2],           // sling length / long arm
+    (40 + 160 * u[3]) * Math.PI / 180,  // release threshold (rad), measured as |arm-to-sling angle|
+  ];
+}
+
+// Build a trebuchet world for the given parameters.
+//
+// Layout: three separate bodies (arm rod, counterweight ball,
+// projectile) joined by three constraints (pivot, counterweight weld,
+// sling). Avoiding Matter.js compound bodies sidesteps the
+// COM-offset-from-pivot impulse that compound + setAngle generated.
+//
+// The arm is a single rectangle whose LEFT edge sits at the pivot at
+// angle 0. We then rotate to ARM_INITIAL_ANGLE. The pivot constraint
+// anchors the body-local left-edge midpoint to the world pivot point;
+// this offset is constant (in body-local coords) regardless of angle,
+// so there's no initial constraint violation.
+function buildWorld(params) {
+  const [cwMass, armRatio, slingRatio, _release] = params;
+  const engine = Engine.create({ gravity: { x: 0, y: 1 } });
+  const world = engine.world;
+
+  const L_short_px = L_LONG_PX * armRatio;
+  const L_sling_px = L_LONG_PX * slingRatio;
+  const armLength = L_LONG_PX + L_short_px;
+
+  // Ground.
+  const ground = Bodies.rectangle(W / 2, GROUND_Y + 200, W * 2, 400, {
+    isStatic: true, friction: 0.9, restitution: 0.05, label: 'ground',
+  });
+
+  // Arm rod — centred such that the pivot point lies at
+  // (PIVOT_X - L_short_px + armLength/2, PIVOT_Y), i.e. at the short-
+  // arm-side end plus L_short. So the rectangle centre is at
+  // (PIVOT_X + (L_LONG_PX - L_short_px) / 2, PIVOT_Y) and the pivot
+  // is at body-local x = -(L_LONG_PX - L_short_px)/2.
+  const pivotOffsetLocalX = -(L_LONG_PX - L_short_px) / 2;
+  const arm = Bodies.rectangle(
+    PIVOT_X + (L_LONG_PX - L_short_px) / 2, PIVOT_Y,
+    armLength, 6,
+    { density: 0.0008, friction: 0.01, frictionAir: 0 },
+  );
+
+  // Counterweight — a separate body welded to the arm at the
+  // short-arm-side end (PIVOT_X - L_short_px, PIVOT_Y).
+  const cwRadius = Math.min(28, 10 + cwMass / 30);
+  const cwArea = Math.PI * cwRadius * cwRadius;
+  // Matter.js mass = density × area. Divide by 25 to keep numeric
+  // values in Matter's "comfortable" range.
+  const cwDensity = (cwMass / 25) / cwArea;
+  const counterweight = Bodies.circle(
+    PIVOT_X - L_short_px, PIVOT_Y, cwRadius,
+    { density: cwDensity, friction: 0.01, frictionAir: 0 },
+  );
+
+  // Projectile (still at long-arm tip in cocked pose — hangs below tip).
+  const tipWorld = {
+    x: PIVOT_X + L_LONG_PX, y: PIVOT_Y,    // tip BEFORE rotation
+  };
+  const proj = Bodies.circle(
+    tipWorld.x, tipWorld.y + L_sling_px, PROJ_R,
+    { density: 0.01, friction: 0.5, restitution: 0.05, label: 'projectile' },
+  );
+
+  // Rotate the arm + counterweight + projectile RIGIDLY around the
+  // world pivot so the trebuchet starts cocked. We rotate each body's
+  // position about the pivot and set its angle. (Matter.js setAngle
+  // doesn't move position, so we move it ourselves.)
+  rotateAroundPivot(arm, ARM_INITIAL_ANGLE);
+  rotateAroundPivot(counterweight, ARM_INITIAL_ANGLE);
+  rotateAroundPivot(proj, ARM_INITIAL_ANGLE);
+  // (Don't rotate projectile's own angle — it's a sphere, doesn't matter.)
+  Body.setAngle(proj, 0);
+
+  // Constraints —
+  // (1) Pivot: anchor the body-local pivot offset to the world pivot.
+  const pivotConstraint = Constraint.create({
+    bodyA: arm,
+    pointA: { x: pivotOffsetLocalX, y: 0 },
+    pointB: { x: PIVOT_X, y: PIVOT_Y },
+    length: 0,
+    stiffness: 1,
+    damping: 0.1,
+  });
+  // (2) Counterweight weld: anchor the cw body to the short-arm tip
+  //     of the arm rod.
+  const cwWeld = Constraint.create({
+    bodyA: arm,
+    pointA: { x: pivotOffsetLocalX - L_short_px, y: 0 },   // short-arm tip in body-local
+    bodyB: counterweight,
+    pointB: { x: 0, y: 0 },
+    length: 0,
+    stiffness: 1,
+    damping: 0.1,
+  });
+  // (3) Sling: distance constraint between long-arm tip and projectile.
+  const sling = Constraint.create({
+    bodyA: arm,
+    pointA: { x: pivotOffsetLocalX + L_LONG_PX, y: 0 },    // long-arm tip in body-local
+    bodyB: proj,
+    pointB: { x: 0, y: 0 },
+    length: L_sling_px,
+    stiffness: 0.9,
+    damping: 0.05,
+  });
+
+  Composite.add(world, [ground, arm, counterweight, proj, pivotConstraint, cwWeld, sling]);
+  return { engine, world, arm, counterweight, proj, sling, pivotConstraint, ground };
+}
+
+// Rotate a body's position around the world pivot by `dAngle`, and
+// add `dAngle` to its orientation.
+function rotateAroundPivot(body, dAngle) {
+  const dx = body.position.x - PIVOT_X;
+  const dy = body.position.y - PIVOT_Y;
+  const c = Math.cos(dAngle), s = Math.sin(dAngle);
+  Body.setPosition(body, {
+    x: PIVOT_X + dx * c - dy * s,
+    y: PIVOT_Y + dx * s + dy * c,
+  });
+  Body.setAngle(body, body.angle + dAngle);
+}
+
+// World position of the long-arm tip for the current arm body state.
+function longArmTipWorld(arm, longLenPx, shortLenPx) {
+  // Long arm tip in body-local coords: pivotOffsetLocalX + L_LONG_PX.
+  const pivotOffsetLocalX = -(longLenPx - shortLenPx) / 2;
+  const localX = pivotOffsetLocalX + longLenPx;
+  const a = arm.angle;
+  return {
+    x: arm.position.x + localX * Math.cos(a),
+    y: arm.position.y + localX * Math.sin(a),
+  };
+}
+
+// Run one shot. Returns { score, landedX, frames, params, released }.
+const SIM_DELTA = 1000 / 120;            // 120 Hz for stability with stiff constraints
+const N_SIM_STEPS = 1200;                // ~10 s max
+const MAX_FLIGHT_STEPS = 600;            // additional ballistic flight after release
+
+function runShot(params, recordFrames = false) {
+  const [cwMass, armRatio, slingRatio, releaseThreshold] = params;
+  const L_short_px = L_LONG_PX * armRatio;
+  const { engine, arm, proj, sling } = buildWorld(params);
+
+  const frames = recordFrames ? [] : null;
+  let released = false;
+  let releaseStep = -1;
+  let landedX = null;
+
+  for (let step = 0; step < N_SIM_STEPS; step++) {
+    Engine.update(engine, SIM_DELTA);
+
+    // Check release condition once per step (only while still attached).
+    // The arm starts at +130° (cocked back). Gravity drops the
+    // counterweight (which sits forward of the pivot in the cocked
+    // pose) — torque rotates the arm so its angle INCREASES past 180°
+    // and continues, sweeping the long arm forward and up. Equivalently
+    // we can say: angular velocity is positive throughout the launch.
+    if (!released && step > 4) {        // skip first few frames for settling
+      const a = arm.angle;
+      const armDir = { x: Math.cos(a), y: Math.sin(a) };       // unit vector along long arm
+      const tip = longArmTipWorld(arm, L_LONG_PX, L_short_px);
+      const slingVec = { x: proj.position.x - tip.x, y: proj.position.y - tip.y };
+      // Signed angle of the sling relative to the arm direction.
+      const cross = armDir.x * slingVec.y - armDir.y * slingVec.x;
+      const dot = armDir.x * slingVec.x + armDir.y * slingVec.y;
+      const relAngle = Math.atan2(cross, dot);
+      // Release when |relAngle| ≤ threshold AND the arm is in its
+      // active-swing phase (positive angular velocity in our setup).
+      if (Math.abs(relAngle) <= releaseThreshold && arm.angularVelocity > 0.01) {
+        Composite.remove(engine.world, sling);
+        released = true;
+        releaseStep = step;
+      }
+    }
+
+    if (recordFrames) frames.push(snapshot(arm, proj, released));
+
+    // Track landing — projectile centre crosses the ground line.
+    if (released && proj.position.y > GROUND_Y - PROJ_R && landedX === null) {
+      landedX = proj.position.x;
+    }
+
+    // Cap total steps after release so a stuck simulation doesn't run forever.
+    if (released && step - releaseStep > MAX_FLIGHT_STEPS) break;
+    if (landedX !== null && proj.velocity.x ** 2 + proj.velocity.y ** 2 < 0.01) break;
+  }
+
+  // If still in flight at end of sim, the projectile didn't land.
+  if (landedX === null) landedX = proj.position.x;
+
+  // Score: 100 at TARGET_X, dropping with horizontal distance.
+  // Shots that fail to leave the trebuchet (released=false or landedX
+  // behind the pivot) score 0.
+  let score = 0;
+  if (released && landedX > PIVOT_X) {
+    const distM = Math.abs(landedX - TARGET_X) / PX_PER_M;
+    // Sharp peak at target, half-width ~6 m (≈ 50 % score at 6 m off).
+    score = 100 * Math.exp(-((distM / 6) ** 2));
+  }
+  const landedXMetres = (landedX - PIVOT_X) / PX_PER_M;
+
+  return {
+    score, landedX, landedXMetres, frames, params, released, releaseStep,
+  };
+}
+
+function snapshot(arm, proj, released) {
+  return {
+    arm: { x: arm.position.x, y: arm.position.y, a: arm.angle },
+    proj: { x: proj.position.x, y: proj.position.y },
+    released,
+  };
+}
+
+// ============================================================================
+// HumpDay objective — minimise −score.
+// ============================================================================
+const searchHistory = [];
+
+function objective(u) {
+  const r = runShot(decode(u));
+  searchHistory.push({
+    score: r.score,
+    landedXMetres: r.landedXMetres,
+    params: r.params,
+    released: r.released,
+  });
+  return -r.score;
+}
+
+// ============================================================================
+// Rendering.
+// ============================================================================
+function drawScene(state, params, hudText) {
+  ctx.clearRect(0, 0, W, H);
+
+  // Background — sky/ground gradient is baked into the canvas CSS
+  // background; clearing isn't enough because canvas defaults to
+  // transparent. Re-fill with the same gradient here so we composite.
+  const sky = ctx.createLinearGradient(0, 0, 0, GROUND_Y);
+  sky.addColorStop(0, '#6c8fbf'); sky.addColorStop(1, '#a3c0e0');
+  ctx.fillStyle = sky;
+  ctx.fillRect(0, 0, W, GROUND_Y);
+  // Grass.
+  ctx.fillStyle = '#7a9460';
+  ctx.fillRect(0, GROUND_Y, W, H - GROUND_Y);
+  ctx.fillStyle = '#5a7340';
+  ctx.fillRect(0, GROUND_Y, W, 4);
+
+  // Distance markers every 20 m.
+  ctx.strokeStyle = 'rgba(255,255,255,0.4)';
+  ctx.lineWidth = 1;
+  ctx.fillStyle = 'rgba(255,255,255,0.6)';
+  ctx.font = '10px -apple-system, Helvetica, Arial, sans-serif';
+  for (let m = 20; m <= 80; m += 20) {
+    const x = PIVOT_X + m * PX_PER_M;
+    if (x > W - 10) break;
+    ctx.beginPath();
+    ctx.moveTo(x, GROUND_Y); ctx.lineTo(x, GROUND_Y + 8);
+    ctx.stroke();
+    ctx.fillText(`${m}m`, x - 8, GROUND_Y + 22);
+  }
+
+  // Target marker.
+  ctx.fillStyle = 'rgba(208, 64, 64, 0.85)';
+  ctx.fillRect(TARGET_X - TARGET_HALF_WIDTH_PX, GROUND_Y - 12, TARGET_HALF_WIDTH_PX * 2, 12);
+  ctx.fillStyle = '#fff';
+  ctx.beginPath();
+  ctx.moveTo(TARGET_X, GROUND_Y - 12);
+  ctx.lineTo(TARGET_X - 4, GROUND_Y - 38);
+  ctx.lineTo(TARGET_X + 10, GROUND_Y - 30);
+  ctx.lineTo(TARGET_X - 2, GROUND_Y - 22);
+  ctx.closePath();
+  ctx.fill();
+  ctx.fillStyle = 'rgba(255,255,255,0.85)';
+  ctx.font = '11px -apple-system, Helvetica, Arial, sans-serif';
+  ctx.fillText('TARGET', TARGET_X - 22, GROUND_Y - 44);
+
+  // A-frame uprights.
+  ctx.strokeStyle = '#5a3a1c';
+  ctx.lineWidth = 5;
+  ctx.beginPath();
+  ctx.moveTo(PIVOT_X - 24, GROUND_Y);
+  ctx.lineTo(PIVOT_X, PIVOT_Y);
+  ctx.lineTo(PIVOT_X + 24, GROUND_Y);
+  ctx.stroke();
+  ctx.lineWidth = 4;
+  ctx.beginPath();
+  ctx.moveTo(PIVOT_X - 30, GROUND_Y - 15);
+  ctx.lineTo(PIVOT_X + 30, GROUND_Y - 15);
+  ctx.stroke();
+  // Pivot pin.
+  ctx.fillStyle = '#3a2818';
+  ctx.beginPath(); ctx.arc(PIVOT_X, PIVOT_Y, 5, 0, Math.PI * 2); ctx.fill();
+
+  if (state) {
+    const [cwMass, armRatio, slingRatio] = params || [200, 0.25, 0.95];
+    const L_short_px = L_LONG_PX * armRatio;
+    const L_sling_px = L_LONG_PX * slingRatio;
+    const cwRadius = Math.min(28, 10 + cwMass / 30);
+
+    // Arm — render as a wooden plank rotated about the pivot.
+    const a = state.arm.a;
+    const cosA = Math.cos(a), sinA = Math.sin(a);
+    const longTipX = PIVOT_X + L_LONG_PX * cosA;
+    const longTipY = PIVOT_Y + L_LONG_PX * sinA;
+    const shortTipX = PIVOT_X - L_short_px * cosA;
+    const shortTipY = PIVOT_Y - L_short_px * sinA;
+
+    ctx.strokeStyle = '#8a5934';
+    ctx.lineWidth = 8;
+    ctx.lineCap = 'round';
+    ctx.beginPath();
+    ctx.moveTo(shortTipX, shortTipY);
+    ctx.lineTo(longTipX, longTipY);
+    ctx.stroke();
+    ctx.lineCap = 'butt';
+
+    // Counterweight (sitting at short tip).
+    const cwGrad = ctx.createRadialGradient(shortTipX - cwRadius / 3, shortTipY - cwRadius / 3, 2, shortTipX, shortTipY, cwRadius);
+    cwGrad.addColorStop(0, '#888');
+    cwGrad.addColorStop(1, '#222');
+    ctx.fillStyle = cwGrad;
+    ctx.beginPath(); ctx.arc(shortTipX, shortTipY, cwRadius, 0, Math.PI * 2); ctx.fill();
+    ctx.strokeStyle = '#111'; ctx.lineWidth = 1.5; ctx.stroke();
+
+    // Sling (if still attached, draw a thin rope from arm tip to projectile).
+    if (!state.released) {
+      ctx.strokeStyle = 'rgba(80, 50, 20, 0.85)';
+      ctx.lineWidth = 1.5;
+      ctx.beginPath();
+      ctx.moveTo(longTipX, longTipY);
+      ctx.lineTo(state.proj.x, state.proj.y);
+      ctx.stroke();
+    }
+
+    // Projectile.
+    const pGrad = ctx.createRadialGradient(state.proj.x - 2, state.proj.y - 2, 1, state.proj.x, state.proj.y, PROJ_R);
+    pGrad.addColorStop(0, '#a0a0a0');
+    pGrad.addColorStop(1, '#1a1a1a');
+    ctx.fillStyle = pGrad;
+    ctx.beginPath(); ctx.arc(state.proj.x, state.proj.y, PROJ_R, 0, Math.PI * 2); ctx.fill();
+    ctx.strokeStyle = '#000'; ctx.lineWidth = 1; ctx.stroke();
+  }
+
+  // HUD.
+  if (hudText) {
+    ctx.font = 'bold 15px -apple-system, Helvetica, Arial, sans-serif';
+    const padX = 12;
+    const m = ctx.measureText(hudText);
+    const boxW = Math.ceil(m.width) + 2 * padX;
+    ctx.fillStyle = 'rgba(0,0,0,0.6)';
+    ctx.fillRect(18, 14, boxW, 28);
+    ctx.fillStyle = '#ffcc00';
+    ctx.fillText(hudText, 18 + padX, 33);
+  }
+}
+
+function drawIdleScene() {
+  const refParams = decode([0.33, 0.33, 0.5, 0.6]);
+  const { arm, proj } = buildWorld(refParams);
+  drawScene(snapshot(arm, proj, false), refParams, 'Press "Find the best shot" to start');
+}
+
+// ============================================================================
+// Animations.
+// ============================================================================
+const REPLAY_MS_PER_FRAME = 16;
+const MONTAGE_MS_PER_FRAME = 8;
+let animationToken = 0;
+
+function animateShot(frames, params, hudText, msPerFrame = REPLAY_MS_PER_FRAME) {
+  const myToken = animationToken;
+  return new Promise((resolve) => {
+    if (!frames || frames.length === 0) return resolve();
+    let i = 0;
+    function tick() {
+      if (myToken !== animationToken) return resolve();
+      if (i >= frames.length) return resolve();
+      drawScene(frames[i], params, hudText);
+      i += 1;
+      setTimeout(tick, msPerFrame);
+    }
+    tick();
+  });
+}
+
+async function animateSearchMontage() {
+  const myToken = ++animationToken;
+  const total = searchHistory.length;
+  if (total === 0) return -1;
+
+  let bestSoFar = -1;
+  let bestIdx = -1;
+  for (let i = 0; i < total; i++) {
+    if (myToken !== animationToken) return bestIdx;
+    const entry = searchHistory[i];
+    const isNew = entry.score > bestSoFar;
+    if (isNew) { bestSoFar = entry.score; bestIdx = i; }
+
+    const reF = runShot(entry.params, true);
+    document.getElementById('evals').textContent = i + 1;
+    document.getElementById('score-now').textContent = entry.score.toFixed(1);
+    document.getElementById('landed').textContent = `${entry.landedXMetres.toFixed(1)} m`;
+    updateBestParams(entry.params);
+
+    const algoName = document.getElementById('algorithm').value;
+    if (isNew) {
+      addLeaderboardEntry(algoName, entry, i + 1, { inPlace: liveLeaderboardIdx >= 0 });
+      document.getElementById('best-score').innerHTML =
+        `${entry.score.toFixed(1)}<span class="algo-tag">${algoName}</span>`;
+    }
+
+    await animateShot(
+      reF.frames, entry.params,
+      `Shot ${i + 1}/${total}  ·  Best: ${bestSoFar.toFixed(1)}${isNew ? '  ★ NEW!' : ''}`,
+      MONTAGE_MS_PER_FRAME,
+    );
+  }
+  return bestIdx;
+}
+
+// ============================================================================
+// Runner.
+// ============================================================================
+let lastBest = null;
+
+function getOptimizerClass(name) { return globalThis[name]; }
+
+async function runOptimization() {
+  const algoName = document.getElementById('algorithm').value;
+  const budget = parseInt(document.getElementById('budget').value, 10);
+  const cls = getOptimizerClass(algoName);
+  if (!cls) { alert(`Optimizer '${algoName}' not found.`); return; }
+
+  const runBtn = document.getElementById('run-btn');
+  runBtn.disabled = true;
+  runBtn.textContent = `Firing ${algoName}...`;
+
+  animationToken++;
+  searchHistory.length = 0;
+  await new Promise((r) => setTimeout(r, 30));
+
+  try {
+    const opt = new cls(objective, budget, 4);
+    opt.optimize();
+
+    const bestIdx = await animateSearchMontage();
+    if (bestIdx < 0) return;
+    const bestEntry = searchHistory[bestIdx];
+
+    const replay = runShot(bestEntry.params, true);
+    lastBest = { ...replay, params: bestEntry.params };
+    await animateShot(
+      replay.frames, bestEntry.params,
+      `Best shot: ${bestEntry.score.toFixed(1)}  ·  landed ${bestEntry.landedXMetres.toFixed(1)} m  (${algoName})`,
+    );
+
+    document.getElementById('score-now').textContent = bestEntry.score.toFixed(1);
+    document.getElementById('landed').textContent = `${bestEntry.landedXMetres.toFixed(1)} m`;
+    document.getElementById('best-score').innerHTML =
+      `${bestEntry.score.toFixed(1)}<span class="algo-tag">${algoName}</span>`;
+    updateBestParams(bestEntry.params);
+    addLeaderboardEntry(algoName, bestEntry, opt.evaluations, {
+      inPlace: liveLeaderboardIdx >= 0,
+    });
+    liveLeaderboardIdx = -1;
+  } catch (e) {
+    console.error(e);
+    alert(`${algoName} threw an error: ${e.message}`);
+  } finally {
+    runBtn.disabled = false;
+    runBtn.textContent = '▶ Find the best shot';
+  }
+}
+
+function updateBestParams(params) {
+  const [mass, ratio, sling, releaseRad] = params;
+  document.getElementById('param-mass').textContent = `${mass.toFixed(0)} kg`;
+  document.getElementById('param-ratio').textContent = ratio.toFixed(3);
+  document.getElementById('param-sling').textContent = sling.toFixed(2);
+  document.getElementById('param-release').textContent = `${(releaseRad * 180 / Math.PI).toFixed(0)}°`;
+}
+
+function replayBest() {
+  if (!lastBest) return;
+  animationToken++;
+  animateShot(lastBest.frames, lastBest.params, 'Replaying best shot');
+}
+
+const leaderboard = [];
+let liveLeaderboardIdx = -1;
+
+function addLeaderboardEntry(algoName, entry, evals, { inPlace = false } = {}) {
+  const row = { name: algoName, score: entry.score, evals, params: entry.params };
+  if (inPlace && liveLeaderboardIdx >= 0) {
+    leaderboard[liveLeaderboardIdx] = row;
+  } else {
+    leaderboard.push(row);
+    liveLeaderboardIdx = leaderboard.length - 1;
+  }
+  const tracked = leaderboard[liveLeaderboardIdx];
+  leaderboard.sort((a, b) => b.score - a.score || a.evals - b.evals);
+  liveLeaderboardIdx = leaderboard.indexOf(tracked);
+  renderLeaderboard();
+}
+
+function renderLeaderboard() {
+  const body = document.getElementById('leaderboard-body');
+  if (leaderboard.length === 0) {
+    body.innerHTML = '<tr><td colspan="4" style="color: var(--muted); text-align: center;">— no runs yet —</td></tr>';
+    return;
+  }
+  body.innerHTML = leaderboard.map((row) => {
+    const [mass, ratio, sling, releaseRad] = row.params;
+    const cls = row.name === 'Human Raphson' ? ' class="human-raphson"' : '';
+    return `<tr${cls}>
+      <td>${row.name}</td>
+      <td>${row.score.toFixed(1)}</td>
+      <td>${row.evals}</td>
+      <td>${mass.toFixed(0)} / ${ratio.toFixed(2)} / ${sling.toFixed(2)} / ${(releaseRad * 180 / Math.PI).toFixed(0)}°</td>
+    </tr>`;
+  }).join('');
+}
+
+// ============================================================================
+// Human Raphson — manual fire, counts as 1 eval, joins the leaderboard.
+// ============================================================================
+const sliderIds = ['manual-mass', 'manual-ratio', 'manual-sling', 'manual-release'];
+const sliderFormat = {
+  'manual-mass': (v) => parseFloat(v).toFixed(0),
+  'manual-ratio': (v) => parseFloat(v).toFixed(3),
+  'manual-sling': (v) => parseFloat(v).toFixed(2),
+  'manual-release': (v) => parseFloat(v).toFixed(0),
+};
+for (const id of sliderIds) {
+  const slider = document.getElementById(id);
+  const out = document.getElementById(`${id}-out`);
+  const upd = () => { out.textContent = sliderFormat[id](slider.value); };
+  slider.addEventListener('input', upd);
+  upd();
+}
+
+async function manualFire() {
+  const mass = parseFloat(document.getElementById('manual-mass').value);
+  const ratio = parseFloat(document.getElementById('manual-ratio').value);
+  const sling = parseFloat(document.getElementById('manual-sling').value);
+  const releaseDeg = parseFloat(document.getElementById('manual-release').value);
+  const params = [mass, ratio, sling, releaseDeg * Math.PI / 180];
+
+  const btn = document.getElementById('manual-btn');
+  btn.disabled = true;
+  btn.textContent = 'Firing...';
+  animationToken++;
+  await new Promise((r) => setTimeout(r, 30));
+
+  try {
+    const replay = runShot(params, true);
+    document.getElementById('score-now').textContent = replay.score.toFixed(1);
+    document.getElementById('landed').textContent = `${replay.landedXMetres.toFixed(1)} m`;
+    updateBestParams(params);
+    await animateShot(
+      replay.frames, params,
+      `🧠 Human Raphson: ${replay.score.toFixed(1)} (landed ${replay.landedXMetres.toFixed(1)} m)`,
+    );
+    addLeaderboardEntry('Human Raphson', { score: replay.score, params }, 1);
+    document.getElementById('best-score').innerHTML =
+      `${replay.score.toFixed(1)}<span class="algo-tag">Human Raphson</span>`;
+  } finally {
+    btn.disabled = false;
+    btn.textContent = '▶ Fire (Human Raphson)';
+  }
+}
+
+function resetEverything() {
+  leaderboard.length = 0;
+  liveLeaderboardIdx = -1;
+  lastBest = null;
+  animationToken++;
+  document.getElementById('score-now').textContent = '0';
+  document.getElementById('evals').textContent = '0';
+  ['landed', 'best-score', 'param-mass', 'param-ratio', 'param-sling', 'param-release']
+    .forEach((id) => document.getElementById(id).textContent = '—');
+  renderLeaderboard();
+  drawIdleScene();
+}
+
+drawIdleScene();
+</script>
+</body>
+</html>
