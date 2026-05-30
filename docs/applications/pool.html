@@ -843,16 +843,17 @@ async function animateSearchMontage() {
   const myToken = ++animationToken;
   const total = searchHistory.length;
   if (total === 0) return -1;
-  const fast = document.getElementById('fast-mode').checked;
 
   let bestSoFar = -Infinity;
   let bestIdx = -1;
-  // In fast mode we don't replay the physics frame-by-frame — just
-  // tick stats forward, redraw the final ball positions every Nth
-  // break so the table doesn't look frozen, and yield to the event
-  // loop every M breaks so the page stays responsive at 5000-budget.
+  // Fast mode: skip per-break frame replay, just tick stats, redraw
+  // the final positions every Nth break so the canvas stays alive,
+  // and yield to the event loop every M breaks so the page stays
+  // responsive at 5000-budget. The checkbox is re-read every
+  // iteration, so flipping it mid-run takes effect on the next break.
   const fastRedrawEvery = Math.max(1, Math.floor(total / 200));
   const fastYieldEvery = 25;
+  const fastModeEl = document.getElementById('fast-mode');
   for (let i = 0; i < total; i++) {
     if (myToken !== animationToken) return bestIdx;
     const entry = searchHistory[i];
@@ -874,15 +875,12 @@ async function animateSearchMontage() {
     }
 
     const label = `Break ${i + 1}/${total}  ·  Best: ${bestSoFar.toFixed(2)}${isNew ? '  ★ NEW!' : ''}`;
+    const fast = fastModeEl.checked;     // re-read every iteration
     if (fast) {
-      // Periodically redraw the final ball positions of this break, so
-      // the canvas isn't a stale frame the whole way through.
       if (isNew || (i % fastRedrawEvery === 0)) {
         const reF = runShot(entry.params, /*recordFrames=*/true);
         drawScene(reF.frames[reF.frames.length - 1], label);
       }
-      // Yield to the event loop occasionally — without this the page
-      // freezes for the entire montage on big budgets.
       if (i % fastYieldEvery === 0) await new Promise((r) => setTimeout(r, 0));
     } else {
       const reF = runShot(entry.params, /*recordFrames=*/true);
