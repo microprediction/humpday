@@ -425,6 +425,16 @@ class PRIMA_UOBYQA(BaseOptimizer):
         # argmin via stdlib — works on lists, ndarrays, _Vec.
         kopt = min(range(nused), key=FVAL.__getitem__)
 
+        # Shift xbase so the best init point sits at the origin BEFORE
+        # the first TR iteration — see NEWUOA #172 comment.
+        if float(_A.norm(XPT[kopt])) > 1e-12:
+            shift = XPT[kopt].copy()
+            new_xbase = _A.clip(xbase + shift, 0, 1)
+            actual_shift = new_xbase - xbase
+            xbase = new_xbase
+            for i in range(nused):
+                XPT[i] = XPT[i] - actual_shift
+
         iteration = 0
         # Cap the trust-region loop by budget directly. The previous
         # `min(100, n_trials // npt)` was the same cap NEWUOA had before
@@ -492,13 +502,19 @@ class PRIMA_UOBYQA(BaseOptimizer):
             else:
                 rho = max(rho * 0.5, rhoend)
 
-            # Base point shifting — recentre the model if the best point is
-            # too far from the centre.
-            if _A.norm(XPT[kopt]) > 0.5 * rho:
+            # Unconditional base-point shift — see NEWUOA #172 comment.
+            # Plain `g` is the gradient at xbase; the TR step is taken
+            # from xbase + XPT[kopt], so the subproblem only stays
+            # consistent when XPT[kopt] ≈ 0 at the start of every
+            # iteration. Uses actual_shift to handle the post-clip
+            # case correctly.
+            if float(_A.norm(XPT[kopt])) > 1e-12:
                 shift = XPT[kopt].copy()
-                xbase = _A.clip(xbase + shift, 0, 1)
+                new_xbase = _A.clip(xbase + shift, 0, 1)
+                actual_shift = new_xbase - xbase
+                xbase = new_xbase
                 for i in range(nused):
-                    XPT[i] = XPT[i] - shift
+                    XPT[i] = XPT[i] - actual_shift
 
         return self.best_value, self.best_x
 
@@ -695,6 +711,17 @@ class PRIMA_NEWUOA(BaseOptimizer):
             # diagonal curvature from non-axial points.
             self._H_prev = _A.linalg.matrix_zeros(n, n)
 
+            # Shift xbase so the best init point sits at the origin
+            # BEFORE the first TR iteration. Powell's NEWUOA shifts
+            # every iteration so that the model's gradient g is the
+            # gradient at the trial origin (xbase + XPT[kopt]); the
+            # first TR step uses plain `g`, so it must already be at
+            # the right place by then. Without this initial shift,
+            # the first iteration's TR step is geometrically mis-
+            # aligned (#172).
+            if float(_A.norm(XPT[kopt])) > 1e-12:
+                xbase = self._shift_base_point(XPT, xbase, kopt, npt)
+
             # Cap iteration count by budget directly. The previous
             # `min(100, n_trials // npt)` gave only floor(80/7) = 11
             # iterations on 3-D budget=80, terminating the TR loop long
@@ -744,7 +771,14 @@ class PRIMA_NEWUOA(BaseOptimizer):
                     predicted_reduction, actual_reduction, rho, rhobeg, rhoend
                 )
 
-                if _A.norm(XPT[kopt]) > 0.5 * rho:
+                # Unconditional base-point shift — see the per-iteration
+                # shift comment at the top of this restart pass. Without
+                # this, plain `g` is the gradient at xbase (not at
+                # xbase + XPT[kopt]), so the TR subproblem is mis-aligned
+                # and `predicted_reduction` is computed in the wrong
+                # frame. Powell's NEWUOA does this shift every iteration
+                # to make the per-iter model consistent.
+                if float(_A.norm(XPT[kopt])) > 1e-12:
                     xbase = self._shift_base_point(XPT, xbase, kopt, npt)
             # ---------- end one trust-region pass ----------
 
@@ -975,12 +1009,22 @@ class PRIMA_NEWUOA(BaseOptimizer):
 
     def _shift_base_point(self, XPT, xbase, kopt, npt):
         """Recentre XPT so the best point sits at the origin. Returns the
-        new xbase (the input xbase is treated as immutable to keep the
-        list-of-vectors semantics simple)."""
+        new xbase.
+
+        Uses the realised (post-clip) shift to keep the model self-
+        consistent — when XPT[kopt] would push xbase outside [0,1] the
+        clip truncates the move, so XPT must be shifted by that same
+        truncated amount or the model coefficients no longer interpolate
+        the data points the optimiser thinks they do. Mirrors the
+        existing pattern in `_shift_base_point_bounded` (BOBYQA).
+
+        Iterates over `len(XPT)` rather than `npt` so partial init-sets
+        (init bailed out on budget) don't IndexError."""
         shift = XPT[kopt].copy()
         new_xbase = _A.clip(xbase + shift, 0, 1)
-        for i in range(npt):
-            XPT[i] = XPT[i] - shift
+        actual_shift = new_xbase - xbase
+        for i in range(len(XPT)):
+            XPT[i] = XPT[i] - actual_shift
         return new_xbase
 
 
@@ -1025,6 +1069,11 @@ class PRIMA_BOBYQA(BaseOptimizer):
             # Reset the min-Frobenius update's prior Hessian for this TR
             # pass (see NEWUOA comment for rationale).
             self._H_prev = _A.linalg.matrix_zeros(n, n)
+
+            # Shift xbase so the best init point sits at the origin
+            # BEFORE the first TR iteration — see NEWUOA #172 comment.
+            if float(_A.norm(XPT[kopt])) > 1e-12:
+                xbase = self._shift_base_point_bounded(XPT, xbase, kopt, npt, xl, xu)
 
             # Cap by budget directly (see NEWUOA comment).
             max_iterations = self.n_trials
@@ -1073,7 +1122,12 @@ class PRIMA_BOBYQA(BaseOptimizer):
                     predicted_reduction, actual_reduction, rho, rhobeg, rhoend
                 )
 
-                if _A.norm(XPT[kopt]) > 0.5 * rho:
+                # Unconditional base-point shift — see #172 / the
+                # NEWUOA comment. Plain `g` is the gradient at xbase;
+                # the TR step is taken from xbase + XPT[kopt], so the
+                # subproblem only stays consistent when XPT[kopt] ≈ 0
+                # at the start of every iteration.
+                if float(_A.norm(XPT[kopt])) > 1e-12:
                     xbase = self._shift_base_point_bounded(
                         XPT, xbase, kopt, npt, xl, xu
                     )
@@ -1259,13 +1313,15 @@ class PRIMA_BOBYQA(BaseOptimizer):
 
     def _shift_base_point_bounded(self, XPT, xbase, kopt, npt, xl, xu):
         """Recentre XPT so the best point sits at the origin, with the
-        new base clipped to the bound box."""
+        new base clipped to the bound box. Iterates over the actual
+        list length rather than `npt` so partial init-sets (init
+        bailed out on budget) don't IndexError."""
         shift = XPT[kopt].copy()
         new_base = _A.clip(xbase + shift, 0, 1)
         # Use the realised shift (might differ from `shift` if clipping
         # truncated it) so XPT stays consistent.
         actual_shift = new_base - xbase
-        for i in range(npt):
+        for i in range(len(XPT)):
             XPT[i] = XPT[i] - actual_shift
         return new_base
 
