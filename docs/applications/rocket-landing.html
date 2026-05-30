@@ -1,0 +1,814 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' 'unsafe-inline'; style-src 'self' 'unsafe-inline';">
+<title>🚀 Rocket Landing — HumpDay</title>
+<style>
+  :root {
+    --bg: #1a1a22;
+    --panel: #2d2d3a;
+    --accent: #ffcc00;
+    --text: #e8e8ea;
+    --muted: #9a9aac;
+  }
+  body { margin: 0; background: var(--bg); color: var(--text);
+    font-family: -apple-system, 'Segoe UI', 'Helvetica Neue', Helvetica, Arial, sans-serif; }
+  .site-nav { background: #34495e; padding: 12px 24px;
+    font-family: 'Times New Roman', Times, serif;
+    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1); }
+  .site-nav-inner { max-width: 1100px; margin: 0 auto;
+    display: flex; justify-content: space-between; align-items: center; }
+  .site-nav a { color: #ecf0f1; text-decoration: none; margin: 0 12px; }
+  .site-nav a:hover { color: white; text-decoration: underline; }
+  .site-nav-brand { font-weight: 700; font-size: 1.25em; }
+
+  .container { max-width: 1100px; margin: 0 auto; padding: 32px 24px 64px; }
+  h1 { font-size: 2.2em; margin: 0.2em 0; }
+  h2 { font-size: 1.4em; margin-top: 1.4em; color: var(--accent); }
+  p { line-height: 1.55; max-width: 70ch; }
+  .intro { color: var(--muted); }
+
+  .stage { display: grid; grid-template-columns: 1fr 320px; gap: 24px;
+    align-items: start; margin-top: 24px; }
+  @media (max-width: 800px) { .stage { grid-template-columns: 1fr; } }
+  canvas { background: #0a0a18;
+    border: 3px solid var(--accent); border-radius: 6px; display: block;
+    width: 100%; height: auto; }
+  #throttle-canvas { background: #1a1a22; border: 1px solid #404054; }
+
+  .panel { background: var(--panel); padding: 18px; border-radius: 6px; border: 1px solid #404054; }
+  .panel h3 { margin: 0 0 12px; font-size: 1.05em; text-transform: uppercase;
+    letter-spacing: 0.06em; color: var(--accent); }
+  label { display: block; margin: 10px 0 6px; font-size: 0.9em; color: var(--muted); }
+  select, input, button { width: 100%; box-sizing: border-box; padding: 8px 10px;
+    border-radius: 4px; border: 1px solid #404054; background: #1a1a22; color: var(--text); font-size: 0.95em; }
+  button { background: var(--accent); color: #1a1a22; font-weight: 700; cursor: pointer; margin-top: 6px; transition: opacity 0.15s; }
+  button:hover { opacity: 0.88; }
+  button.secondary { background: #404054; color: var(--text); font-weight: 400; }
+  button:disabled { opacity: 0.5; cursor: not-allowed; }
+  .stats { margin-top: 16px; padding-top: 14px; border-top: 1px solid #404054; font-size: 0.92em; line-height: 1.6; }
+  .stats .score { font-size: 2.6em; color: var(--accent); font-weight: 700; }
+  .stat-row { display: flex; justify-content: space-between; align-items: baseline; gap: 12px; }
+  .stat-row span:first-child { white-space: nowrap; flex-shrink: 0; }
+  .stat-row span:last-child { color: var(--text); font-family: 'SF Mono', Menlo, monospace; text-align: right; word-break: break-word; }
+  .stat-row .algo-tag { display: block; color: var(--muted); font-size: 0.82em; margin-top: 2px; }
+
+  .leaderboard { margin-top: 24px; }
+  .leaderboard table { width: 100%; border-collapse: collapse; background: var(--panel); border-radius: 6px; overflow: hidden; }
+  .leaderboard th, .leaderboard td { padding: 10px 14px; text-align: left; border-bottom: 1px solid #404054; }
+  .leaderboard th { background: #1a1a22; color: var(--muted); text-transform: uppercase; font-size: 0.78em; letter-spacing: 0.08em; }
+  .leaderboard td:nth-child(2) { text-align: center; font-size: 1.3em; font-weight: 700; color: var(--accent); }
+  .leaderboard td:nth-child(3), .leaderboard td:nth-child(4) { font-family: 'SF Mono', Menlo, monospace; color: var(--muted); }
+  .leaderboard tr.human-raphson td:first-child { color: #ff9944; font-weight: 700; }
+
+  .left-stack { display: flex; flex-direction: column; gap: 16px; min-width: 0; }
+  .throttle-panel { padding: 14px 16px; }
+  .throttle-panel h3 { margin: 0 0 6px; }
+  .throttle-panel p { margin: 0 0 8px; color: var(--muted); font-size: 0.86em; }
+  .hr-preset-row { display: flex; gap: 8px; margin-bottom: 8px; flex-wrap: wrap; }
+  .hr-preset-row button { width: auto; flex: 1 1 80px; background: #2d3a4a; color: var(--text); font-weight: 500; font-size: 0.84em; padding: 6px 10px; margin: 0; }
+  .hr-actions button.go { background: #ff9944; color: #1a1a22; margin-top: 0; }
+
+  .skill-callout { margin-top: 36px; background: rgba(126, 217, 87, 0.07); border: 1px solid rgba(126, 217, 87, 0.35); border-radius: 8px; padding: 18px 22px; }
+  .skill-callout h3 { margin: 0 0 6px; color: #7ed957; font-size: 1.05em; text-transform: none; letter-spacing: 0; }
+  .skill-callout p { margin: 0 0 10px; color: var(--text); max-width: none; }
+  .skill-callout pre { background: #1a1a22; border: 1px solid #404054; border-radius: 4px; padding: 10px 14px; margin: 0; font-size: 0.84em; color: #7ed957; white-space: pre-wrap; word-break: break-all; font-family: 'SF Mono', Menlo, monospace; }
+  .skill-actions { margin-top: 10px; display: flex; align-items: center; gap: 14px; }
+  .skill-actions button { width: auto; background: #404054; color: var(--text); border: 1px solid #404054; padding: 6px 12px; font-size: 0.85em; cursor: pointer; border-radius: 4px; margin: 0; font-weight: 500; }
+  .skill-actions button:hover { background: #4a4a60; }
+  .skill-actions a { color: #7ed957; font-size: 0.85em; text-decoration: none; }
+  .skill-actions a:hover { text-decoration: underline; }
+</style>
+</head>
+<body>
+<nav class="site-nav">
+  <div class="site-nav-inner">
+    <a class="site-nav-brand" href="../index.html">HumpDay 🚀</a>
+    <div>
+      <a href="../index.html">Home</a>
+      <a href="index.html">Applications</a>
+      <a href="../contest.html">Contest</a>
+      <a href="../README.html">Docs</a>
+    </div>
+  </div>
+</nav>
+
+<div class="container">
+  <h1>🚀 Rocket Landing</h1>
+  <p class="intro">
+    Land a returning booster softly on the pad with as much fuel left
+    over as possible. You're picking a throttle schedule — 12 values
+    in [0, 1] — that the rocket follows from release to touchdown.
+    Full throttle wastes fuel and pushes you back into space; zero
+    throttle crashes you into the pad at 65 px/s. The classical
+    answer is a <em>suicide burn</em>: free-fall most of the way,
+    then a precisely-timed full throttle that brings you to zero
+    velocity at zero altitude. Multi-modal 12-D optimal-control problem.
+  </p>
+
+  <div class="stage">
+    <div class="left-stack">
+      <canvas id="canvas" width="800" height="450"></canvas>
+
+      <div class="panel throttle-panel">
+        <h3>🧠 Human Raphson</h3>
+        <p>Pick a throttle profile and see how the rocket lands.</p>
+        <canvas id="throttle-canvas" width="780" height="80"></canvas>
+        <div class="hr-preset-row">
+          <button type="button" onclick="loadPreset('hover')">Hover</button>
+          <button type="button" onclick="loadPreset('ramp')">Linear ramp</button>
+          <button type="button" onclick="loadPreset('lateMax')">Late full burn</button>
+          <button type="button" onclick="loadPreset('lateSoft')">Late soft burn</button>
+          <button type="button" onclick="loadPreset('random')">Random</button>
+        </div>
+        <div class="hr-actions">
+          <button class="go" onclick="manualEvaluate()">▶ Land it</button>
+        </div>
+      </div>
+    </div>
+
+    <div class="panel">
+      <h3>Algorithm</h3>
+      <label for="algorithm">Pick a HumpDay optimizer:</label>
+      <select id="algorithm">
+        <optgroup label="Trust-region / interpolation">
+          <option value="PRIMA_BOBYQA">PRIMA_BOBYQA</option>
+          <option value="PRIMA_NEWUOA">PRIMA_NEWUOA</option>
+        </optgroup>
+        <optgroup label="Local / classical">
+          <option value="NelderMead">Nelder-Mead</option>
+          <option value="Powell">Powell</option>
+          <option value="LBFGSB">L-BFGS-B (simplified)</option>
+        </optgroup>
+        <optgroup label="Population-based">
+          <option value="DifferentialEvolution" selected>Differential Evolution</option>
+          <option value="ParticleSwarm">Particle Swarm</option>
+          <option value="CMAEvolutionStrategy">CMA-Evolution Strategy</option>
+          <option value="GeneticAlgorithm">Genetic Algorithm</option>
+          <option value="EvolutionStrategy">Evolution Strategy</option>
+          <option value="HarmonySearch">Harmony Search</option>
+        </optgroup>
+        <optgroup label="Other">
+          <option value="SimulatedAnnealing">Simulated Annealing</option>
+          <option value="BayesianOpt">Bayesian Optimization</option>
+          <option value="FireflyAlgorithm">Firefly Algorithm</option>
+          <option value="AntColonyOpt">Ant Colony</option>
+          <option value="TabuSearch">Tabu Search</option>
+          <option value="RandomSearch">Random Search</option>
+        </optgroup>
+      </select>
+
+      <label for="budget">Evaluation budget:</label>
+      <select id="budget">
+        <option value="200">200 schedules</option>
+        <option value="500">500 schedules</option>
+        <option value="1000" selected>1000 schedules</option>
+        <option value="2000">2000 schedules</option>
+        <option value="5000">5000 schedules</option>
+      </select>
+      <p style="margin: 8px 0 0; font-size: 0.78em; color: var(--muted);">
+        12-D problem with a sharp suicide-burn optimum. Most algos
+        need ~1000 schedules to converge.
+      </p>
+
+      <button id="run-btn" onclick="runOptimization()">▶ Find the best schedule</button>
+      <button class="secondary" onclick="replayBest()">🔁 Replay best</button>
+      <button class="secondary" onclick="resetEverything()">⟲ Reset leaderboard</button>
+
+      <div class="stats">
+        <div class="stat-row"><span>Score</span><span class="score" id="score-now">0</span></div>
+        <div class="stat-row"><span>Touchdown v</span><span id="touch-v">—</span></div>
+        <div class="stat-row"><span>Fuel left</span><span id="fuel-left">—</span></div>
+        <div class="stat-row"><span>Schedules tried</span><span id="evals">0</span></div>
+        <div class="stat-row"><span>Best so far</span><span id="best-score">—</span></div>
+      </div>
+    </div>
+  </div>
+
+  <div class="leaderboard">
+    <h2>Leaderboard (this session)</h2>
+    <p style="color: var(--muted);">
+      Each row is the best schedule a given algorithm found.
+    </p>
+    <table>
+      <thead>
+        <tr><th>Algorithm</th><th>Score</th><th>Schedules used</th><th>Detail</th></tr>
+      </thead>
+      <tbody id="leaderboard-body">
+        <tr><td colspan="4" style="color: var(--muted); text-align: center;">— no runs yet —</td></tr>
+      </tbody>
+    </table>
+  </div>
+
+  <h2>What's happening</h2>
+  <p>
+    The booster starts at 200 px altitude with 15 px/s downward
+    velocity. Constant gravity g = 10 pulls it down; a single
+    throttle τ ∈ [0, 1] controls a thrust producing acceleration
+    24·τ upward (so τ ≈ 0.42 is the hover throttle). The 12 control
+    variables are the throttle settings for 12 equal time-segments
+    spanning 10 seconds. Fuel burns at full throttle in exactly
+    10 seconds — so any constant non-zero throttle eventually runs
+    the tank dry.
+  </p>
+  <p>
+    <strong>Score</strong> rewards two things: landing softly and
+    keeping fuel. Touchdown velocity v gives <code>100 · (1 − (v/10)²)</code>
+    on a soft landing (zero at the 10 px/s crash threshold) plus
+    up to <code>+12</code> for fuel left in the tank. A schedule
+    that never lands within 10 seconds — too much thrust, rocket
+    bounces back into the sky — gets a stiff negative score.
+  </p>
+  <p>
+    The landscape has several distinct local optima — a gradual
+    "hover lower and lower" descent, a linear taper, and the
+    razor-thin <em>suicide burn</em> where the rocket free-falls
+    until exactly the right instant then goes to full thrust.
+    Trust-region methods often get caught between strategies.
+    Differential Evolution and CMA-ES usually find the suicide-burn
+    region.
+  </p>
+
+  <hr style="border: 0; border-top: 1px solid #404054; margin: 32px 0 16px;" />
+  <p style="font-size: 0.78em; color: var(--muted);">
+    Simplified 1-D vertical landing. Real boosters add gimbal
+    control, mass-varying centre of gravity, atmospheric drag, and
+    aerodynamic surfaces — but the optimal-control structure (and
+    the suicide-burn solution) is the same.
+  </p>
+
+  <div class="skill-callout">
+    <h3>🌱 Save the Planet</h3>
+    <p>If your hyper-parameter searches are heating the Earth, drop this in Cursor or Claude:</p>
+    <pre id="skill-snippet">Read https://raw.githubusercontent.com/microprediction/humpday/main/SKILL.md
+and create a project skill from it.</pre>
+    <div class="skill-actions">
+      <button type="button" onclick="copySkillSnippet(this)">📋 Copy</button>
+      <a href="https://github.com/microprediction/humpday/blob/main/SKILL.md" target="_blank" rel="noopener">View SKILL.md →</a>
+    </div>
+  </div>
+
+  <script>
+    function copySkillSnippet(btn) {
+      const text = document.getElementById('skill-snippet').textContent;
+      navigator.clipboard.writeText(text).then(() => {
+        const orig = btn.textContent;
+        btn.textContent = '✓ Copied';
+        setTimeout(() => { btn.textContent = orig; }, 1500);
+      }).catch(() => {
+        btn.textContent = '✗ Copy failed';
+      });
+    }
+  </script>
+</div>
+
+<script src="../js/modules/base-optimizer.js"></script>
+<script src="../js/modules/prima-algorithms.js"></script>
+<script src="../js/modules/scipy-algorithms.js"></script>
+<script src="../js/modules/evolutionary-algorithms.js"></script>
+<script src="../js/modules/search-algorithms.js"></script>
+
+<script>
+// ============================================================================
+// Rocket landing — 12-D piecewise-constant throttle schedule.
+//
+// State: (altitude h, vertical velocity v, fuel f).
+// Control: throttle τ ∈ [0, 1], piecewise constant over 12 equal
+// time-segments spanning SIM_T seconds.
+// Physics: ḣ = v, v̇ = -g + T_MAX·τ (while fuel > 0), ḟ = -BURN·τ.
+// ============================================================================
+
+const canvas = document.getElementById('canvas');
+const ctx = canvas.getContext('2d');
+const W = canvas.width, H = canvas.height;
+const tCanvas = document.getElementById('throttle-canvas');
+const tCtx = tCanvas.getContext('2d');
+const TW = tCanvas.width, TH = tCanvas.height;
+
+// ---- Problem constants -------------------------------------------------
+const N_SEGS = 12;
+const N_DIM = N_SEGS;
+const GRAVITY = 10;             // px/s²
+const THRUST_MAX = 24;          // px/s² at full throttle (so hover τ = 10/24 ≈ 0.42)
+const FUEL_BURN = 0.10;         // fuel/s at full throttle (1.0 fuel = 10 s of burn)
+const H0 = 200;                 // starting altitude (px)
+const V0 = -15;                 // starting velocity (px/s, negative = downward)
+const SIM_T = 10;               // total simulation time (s)
+const DT = 0.04;                // physics step (s)
+const N_STEPS = Math.round(SIM_T / DT);
+const V_CRASH = 10;             // px/s — touchdown velocity giving 0 score
+
+// ---- Decoder + simulator ----------------------------------------------
+function decode(u) {
+  // u ∈ [0, 1]^12 → schedule[i] = throttle for segment i.
+  const s = new Array(N_SEGS);
+  for (let i = 0; i < N_SEGS; i++) s[i] = Math.max(0, Math.min(1, u[i]));
+  return s;
+}
+
+function simulate(schedule) {
+  let h = H0, v = V0, fuel = 1.0;
+  const trajectory = [{ h, v, fuel, throttle: 0, t: 0 }];
+  let touchV = null, touchFuel = null, touchT = null;
+  for (let k = 0; k < N_STEPS; k++) {
+    const t = k * DT;
+    const segIdx = Math.min(N_SEGS - 1, Math.floor((t / SIM_T) * N_SEGS));
+    let throttle = schedule[segIdx];
+    if (fuel <= 0) throttle = 0;
+    const acc = -GRAVITY + THRUST_MAX * throttle;
+    const newH = h + v * DT + 0.5 * acc * DT * DT;
+    const newV = v + acc * DT;
+    fuel = Math.max(0, fuel - FUEL_BURN * throttle * DT);
+    if (newH <= 0 && touchV === null) {
+      // Linear-interpolate touchdown.
+      const frac = h / (h - newH);
+      touchV = v + acc * DT * frac;
+      touchFuel = fuel;
+      touchT = t + DT * frac;
+      trajectory.push({ h: 0, v: 0, fuel, throttle, t: touchT, landed: true });
+      break;
+    }
+    h = newH; v = newV;
+    trajectory.push({ h, v, fuel, throttle, t: t + DT });
+  }
+  return { trajectory, touchV, touchFuel, touchT,
+           finalH: trajectory[trajectory.length - 1].h,
+           finalV: trajectory[trajectory.length - 1].v };
+}
+
+function evaluateSchedule(schedule) {
+  const sim = simulate(schedule);
+  let score;
+  if (sim.touchV === null) {
+    // Never landed in SIM_T — too much thrust or didn't burn enough.
+    score = -50 - sim.finalH * 0.1 + sim.finalV * 0.5;
+  } else {
+    const v = Math.abs(sim.touchV);
+    const landing = Math.max(0, 100 - 100 * (v / V_CRASH) ** 2);
+    const fuelBonus = sim.touchFuel * 12;
+    score = landing + fuelBonus;
+  }
+  return { score, sim };
+}
+
+// ============================================================================
+// HumpDay objective.
+// ============================================================================
+const searchHistory = [];
+
+function objective(u) {
+  const schedule = decode(u);
+  const result = evaluateSchedule(schedule);
+  searchHistory.push({
+    score: result.score,
+    schedule,
+    sim: result.sim,
+    touchV: result.sim.touchV,
+    touchFuel: result.sim.touchFuel,
+  });
+  return -result.score;
+}
+
+// ============================================================================
+// Rendering — main canvas (sky + rocket + flame).
+// ============================================================================
+const PAD_Y = 60;                // pixels from canvas bottom to "ground"
+const TOP_MARGIN = 30;
+const ROCKET_HALF_W = 8;
+const ROCKET_H = 32;
+const STAR_COUNT = 60;
+const STARS = [];
+{
+  // Deterministic star field.
+  let s = 12345;
+  const r = () => (s = (s * 1664525 + 1013904223) >>> 0) / 0x100000000;
+  for (let i = 0; i < STAR_COUNT; i++) {
+    STARS.push({ x: r() * W, y: r() * (H - PAD_Y - 40), b: 0.3 + r() * 0.7 });
+  }
+}
+
+function altToY(h) {
+  // Map altitude h ∈ [0, H_VIEW_TOP] → canvas y.
+  const H_VIEW_TOP = H0 + 60;
+  const groundY = H - PAD_Y;
+  const topY = TOP_MARGIN;
+  return groundY - (h / H_VIEW_TOP) * (groundY - topY);
+}
+
+function drawScene(state, hudText, schedule) {
+  // Sky.
+  const grad = ctx.createLinearGradient(0, 0, 0, H);
+  grad.addColorStop(0, '#06061a');
+  grad.addColorStop(0.7, '#0a0a2a');
+  grad.addColorStop(1, '#10142a');
+  ctx.fillStyle = grad;
+  ctx.fillRect(0, 0, W, H);
+
+  // Stars.
+  for (const s of STARS) {
+    ctx.fillStyle = `rgba(255, 255, 255, ${s.b * 0.7})`;
+    ctx.fillRect(s.x, s.y, 1.5, 1.5);
+  }
+
+  // Ground + pad.
+  const groundY = H - PAD_Y;
+  ctx.fillStyle = '#2a2a36';
+  ctx.fillRect(0, groundY, W, PAD_Y);
+  // Landing pad: a yellow strip centred horizontally.
+  const padW = 90, padX = W / 2 - padW / 2;
+  ctx.fillStyle = '#ffcc00';
+  ctx.fillRect(padX, groundY - 3, padW, 5);
+  ctx.fillStyle = '#1a1a22';
+  for (let i = 0; i < 7; i++) {
+    ctx.fillRect(padX + 6 + i * 12, groundY - 2, 4, 3);
+  }
+  // Altitude tick marks on the left side.
+  ctx.strokeStyle = 'rgba(255,255,255,0.10)';
+  ctx.fillStyle = 'rgba(255,255,255,0.35)';
+  ctx.font = '10px -apple-system, Helvetica, Arial, sans-serif';
+  ctx.textAlign = 'left';
+  for (let h = 0; h <= H0; h += 50) {
+    const y = altToY(h);
+    ctx.beginPath(); ctx.moveTo(8, y); ctx.lineTo(28, y); ctx.stroke();
+    ctx.fillText(`${h}`, 32, y + 3);
+  }
+
+  if (!state) return;
+
+  // Rocket.
+  const rx = W / 2;
+  const ry = altToY(state.h);
+  // Flame (drawn before rocket so it goes under).
+  if (state.throttle > 0.01 && state.fuel > 0) {
+    const flameLen = 8 + state.throttle * 36;
+    const flicker = 0.6 + 0.4 * Math.random();
+    ctx.fillStyle = `rgba(255, 180, 60, ${0.7 * flicker})`;
+    ctx.beginPath();
+    ctx.moveTo(rx - ROCKET_HALF_W + 1, ry + ROCKET_H / 2);
+    ctx.lineTo(rx + ROCKET_HALF_W - 1, ry + ROCKET_H / 2);
+    ctx.lineTo(rx, ry + ROCKET_H / 2 + flameLen);
+    ctx.closePath();
+    ctx.fill();
+    ctx.fillStyle = `rgba(255, 240, 200, ${0.85 * flicker})`;
+    ctx.beginPath();
+    ctx.moveTo(rx - ROCKET_HALF_W / 2, ry + ROCKET_H / 2);
+    ctx.lineTo(rx + ROCKET_HALF_W / 2, ry + ROCKET_H / 2);
+    ctx.lineTo(rx, ry + ROCKET_H / 2 + flameLen * 0.55);
+    ctx.closePath();
+    ctx.fill();
+  }
+  // Body (white cylinder).
+  ctx.fillStyle = '#e8e8ea';
+  ctx.fillRect(rx - ROCKET_HALF_W, ry - ROCKET_H / 2, ROCKET_HALF_W * 2, ROCKET_H);
+  // Nose cone.
+  ctx.fillStyle = '#c8c8d0';
+  ctx.beginPath();
+  ctx.moveTo(rx - ROCKET_HALF_W, ry - ROCKET_H / 2);
+  ctx.lineTo(rx + ROCKET_HALF_W, ry - ROCKET_H / 2);
+  ctx.lineTo(rx, ry - ROCKET_H / 2 - 10);
+  ctx.closePath();
+  ctx.fill();
+  // Fins.
+  ctx.fillStyle = '#90909a';
+  ctx.beginPath();
+  ctx.moveTo(rx - ROCKET_HALF_W, ry + ROCKET_H / 2 - 8);
+  ctx.lineTo(rx - ROCKET_HALF_W - 6, ry + ROCKET_H / 2);
+  ctx.lineTo(rx - ROCKET_HALF_W, ry + ROCKET_H / 2);
+  ctx.closePath();
+  ctx.fill();
+  ctx.beginPath();
+  ctx.moveTo(rx + ROCKET_HALF_W, ry + ROCKET_H / 2 - 8);
+  ctx.lineTo(rx + ROCKET_HALF_W + 6, ry + ROCKET_H / 2);
+  ctx.lineTo(rx + ROCKET_HALF_W, ry + ROCKET_H / 2);
+  ctx.closePath();
+  ctx.fill();
+  // Window.
+  ctx.fillStyle = '#3a8edd';
+  ctx.beginPath();
+  ctx.arc(rx, ry - 4, 3, 0, Math.PI * 2);
+  ctx.fill();
+
+  // Per-rocket badges: altitude, velocity, fuel.
+  ctx.font = 'bold 11px -apple-system, Helvetica, Arial, sans-serif';
+  ctx.fillStyle = 'rgba(255,255,255,0.85)';
+  ctx.textAlign = 'left';
+  const badgeX = rx + ROCKET_HALF_W + 18;
+  ctx.fillText(`alt ${state.h.toFixed(0)}`, badgeX, ry - 8);
+  ctx.fillText(`v   ${state.v.toFixed(1)}`, badgeX, ry + 6);
+  ctx.fillText(`fuel ${(state.fuel * 100).toFixed(0)}%`, badgeX, ry + 20);
+
+  // HUD top-right.
+  if (hudText) {
+    ctx.font = 'bold 15px -apple-system, Helvetica, Arial, sans-serif';
+    const padX = 12;
+    const metrics = ctx.measureText(hudText);
+    const boxW = Math.ceil(metrics.width) + 2 * padX;
+    ctx.fillStyle = 'rgba(0,0,0,0.65)';
+    ctx.fillRect(W - boxW - 18, 14, boxW, 28);
+    ctx.fillStyle = '#ffcc00';
+    ctx.fillText(hudText, W - boxW - 18 + padX, 33);
+  }
+
+  // Schedule chart (always drawn — separate canvas).
+  if (schedule) drawThrottleChart(schedule, state);
+}
+
+function drawThrottleChart(schedule, state) {
+  tCtx.fillStyle = '#1a1a22';
+  tCtx.fillRect(0, 0, TW, TH);
+  const margin = 24, top = 8, bottom = TH - 20;
+  const barAreaW = TW - margin * 2;
+  const barW = barAreaW / N_SEGS;
+  // Baseline.
+  tCtx.strokeStyle = '#404054';
+  tCtx.lineWidth = 1;
+  tCtx.beginPath();
+  tCtx.moveTo(margin, bottom); tCtx.lineTo(TW - margin, bottom); tCtx.stroke();
+  // Hover-throttle reference line.
+  const hover = GRAVITY / THRUST_MAX;
+  const hoverY = bottom - hover * (bottom - top);
+  tCtx.strokeStyle = 'rgba(126, 217, 87, 0.45)';
+  tCtx.setLineDash([4, 4]);
+  tCtx.beginPath();
+  tCtx.moveTo(margin, hoverY); tCtx.lineTo(TW - margin, hoverY); tCtx.stroke();
+  tCtx.setLineDash([]);
+  tCtx.fillStyle = 'rgba(126, 217, 87, 0.7)';
+  tCtx.font = '10px -apple-system, Helvetica, Arial, sans-serif';
+  tCtx.textAlign = 'left';
+  tCtx.fillText('hover', TW - margin + 2, hoverY + 3);
+  // Bars.
+  const activeSeg = state
+    ? Math.min(N_SEGS - 1, Math.floor((state.t / SIM_T) * N_SEGS))
+    : -1;
+  for (let i = 0; i < N_SEGS; i++) {
+    const v = schedule[i];
+    const x = margin + i * barW;
+    const h = v * (bottom - top);
+    const isActive = i === activeSeg;
+    tCtx.fillStyle = isActive ? '#ffcc00' : (v > hover ? '#ff6644' : '#3a8edd');
+    tCtx.fillRect(x + 1, bottom - h, barW - 2, h);
+    // Segment outline.
+    tCtx.strokeStyle = isActive ? '#ffcc00' : 'rgba(255,255,255,0.08)';
+    tCtx.strokeRect(x + 1, top, barW - 2, bottom - top);
+  }
+  // x-axis time labels.
+  tCtx.fillStyle = 'rgba(255,255,255,0.45)';
+  tCtx.textAlign = 'center';
+  for (let s = 0; s <= 10; s += 2) {
+    const xx = margin + (s / SIM_T) * barAreaW;
+    tCtx.fillText(`${s}s`, xx, TH - 4);
+  }
+  // y-axis labels.
+  tCtx.textAlign = 'right';
+  tCtx.fillText('1.0', margin - 4, top + 4);
+  tCtx.fillText('0', margin - 4, bottom + 3);
+}
+
+function drawIdleScene() {
+  // Show the rocket at start state with a default schedule chart so the
+  // page doesn't look empty on first paint.
+  const start = { h: H0, v: V0, fuel: 1.0, throttle: 0, t: 0 };
+  drawScene(start, 'Pick a profile or run the optimiser', loadedSchedule || PRESETS.lateMax());
+}
+
+// ============================================================================
+// Trajectory animation.
+// ============================================================================
+let animationToken = 0;
+
+function bestScoreSoFar(history, untilIdx) {
+  let best = -Infinity, bestI = -1;
+  for (let i = 0; i <= untilIdx; i++) {
+    if (history[i].score > best) { best = history[i].score; bestI = i; }
+  }
+  return { best, bestI };
+}
+
+async function animateMontage() {
+  const myToken = ++animationToken;
+  const total = searchHistory.length;
+  if (total === 0) return -1;
+  // Cap montage to ~12 s by striding.
+  const TARGET_MS = 12000, FRAME_MS = 80;
+  const step = Math.max(1, Math.floor(total / (TARGET_MS / FRAME_MS)));
+
+  let bestSoFar = -Infinity, bestIdx = -1;
+  for (let i = 0; i < total; i += step) {
+    if (myToken !== animationToken) return bestIdx;
+    const entry = searchHistory[i];
+    const isNew = entry.score > bestSoFar;
+    if (isNew) { bestSoFar = entry.score; bestIdx = i; }
+    document.getElementById('evals').textContent = i + 1;
+    document.getElementById('score-now').textContent = entry.score.toFixed(1);
+    document.getElementById('touch-v').textContent = entry.touchV === null
+      ? 'never landed'
+      : `${entry.touchV.toFixed(1)} px/s`;
+    document.getElementById('fuel-left').textContent = entry.touchFuel === null
+      ? '—'
+      : `${(entry.touchFuel * 100).toFixed(0)} %`;
+    if (isNew) {
+      addLeaderboardEntry(
+        document.getElementById('algorithm').value, entry, i + 1,
+        { inPlace: liveLeaderboardIdx >= 0 });
+      setBestScore(entry, document.getElementById('algorithm').value);
+    }
+    const last = entry.sim.trajectory[entry.sim.trajectory.length - 1];
+    const label = `Schedule ${i + 1}/${total}  ·  Best: ${bestSoFar.toFixed(1)}${isNew ? '  ★' : ''}`;
+    drawScene(last, label, entry.schedule);
+    await new Promise((r) => setTimeout(r, FRAME_MS));
+  }
+  // The actual best may have been skipped — find it.
+  for (let j = 0; j < total; j++) {
+    if (searchHistory[j].score > bestSoFar) { bestSoFar = searchHistory[j].score; bestIdx = j; }
+  }
+  return bestIdx;
+}
+
+// Play out one trajectory step-by-step (used after the montage to show the
+// winning landing in slow motion).
+async function animateTrajectory(entry, hudPrefix) {
+  const myToken = ++animationToken;
+  const traj = entry.sim.trajectory;
+  // Real-time playback at ~25 fps; each step is DT = 40 ms anyway.
+  const STRIDE = 1, FRAME_MS = 40;
+  for (let i = 0; i < traj.length; i += STRIDE) {
+    if (myToken !== animationToken) return;
+    const s = traj[i];
+    const label = `${hudPrefix}  ·  t ${s.t.toFixed(1)} s  ·  v ${s.v.toFixed(1)}`;
+    drawScene(s, label, entry.schedule);
+    await new Promise((r) => setTimeout(r, FRAME_MS));
+  }
+  // Hold final frame.
+  const last = traj[traj.length - 1];
+  const tag = entry.touchV === null ? 'no landing'
+            : `landed v=${entry.touchV.toFixed(1)} px/s, fuel ${(entry.touchFuel * 100).toFixed(0)} %`;
+  drawScene(last, `${hudPrefix}  ·  ${tag}`, entry.schedule);
+}
+
+function setBestScore(entry, algoName) {
+  const el = document.getElementById('best-score');
+  const tag = entry.touchV === null
+    ? `${entry.score.toFixed(1)} (no land)`
+    : `${entry.score.toFixed(1)} (v ${Math.abs(entry.touchV).toFixed(1)})`;
+  el.innerHTML = `${tag}<span class="algo-tag">${algoName}</span>`;
+}
+
+// ============================================================================
+// Runner.
+// ============================================================================
+let lastBest = null;
+let loadedSchedule = null;
+
+function getOptimizerClass(name) { return globalThis[name]; }
+
+async function runOptimization() {
+  const algoName = document.getElementById('algorithm').value;
+  const budget = parseInt(document.getElementById('budget').value, 10);
+  const cls = getOptimizerClass(algoName);
+  if (!cls) { alert(`Optimizer '${algoName}' not found.`); return; }
+
+  const runBtn = document.getElementById('run-btn');
+  runBtn.disabled = true;
+  runBtn.textContent = `Searching with ${algoName}...`;
+
+  animationToken++;
+  searchHistory.length = 0;
+  await new Promise((r) => setTimeout(r, 30));
+
+  try {
+    const opt = new cls(objective, budget, N_DIM);
+    opt.optimize();
+
+    const bestIdx = await animateMontage();
+    const bestEntry = searchHistory[bestIdx];
+    lastBest = bestEntry;
+
+    setBestScore(bestEntry, algoName);
+    addLeaderboardEntry(algoName, bestEntry, opt.evaluations, {
+      inPlace: liveLeaderboardIdx >= 0,
+    });
+    liveLeaderboardIdx = -1;
+    // Snap the side-panel stats to the best entry before the slow-mo
+    // replay (otherwise they'd still show the last montage frame).
+    document.getElementById('score-now').textContent = bestEntry.score.toFixed(1);
+    document.getElementById('touch-v').textContent = bestEntry.touchV === null
+      ? 'never landed'
+      : `${bestEntry.touchV.toFixed(1)} px/s`;
+    document.getElementById('fuel-left').textContent = bestEntry.touchFuel === null
+      ? '—'
+      : `${(bestEntry.touchFuel * 100).toFixed(0)} %`;
+    await animateTrajectory(bestEntry, `Best: ${bestEntry.score.toFixed(1)} (${algoName})`);
+  } catch (e) {
+    console.error(e);
+    alert(`${algoName} threw an error: ${e.message}`);
+  } finally {
+    runBtn.disabled = false;
+    runBtn.textContent = '▶ Find the best schedule';
+  }
+}
+
+function replayBest() {
+  if (!lastBest) return;
+  animateTrajectory(lastBest, `Best: ${lastBest.score.toFixed(1)}`);
+}
+
+const leaderboard = [];
+let liveLeaderboardIdx = -1;
+
+function addLeaderboardEntry(algoName, entry, evals, { inPlace = false } = {}) {
+  const row = {
+    name: algoName,
+    score: entry.score,
+    touchV: entry.touchV,
+    touchFuel: entry.touchFuel,
+    evals,
+  };
+  if (inPlace && liveLeaderboardIdx >= 0) leaderboard[liveLeaderboardIdx] = row;
+  else { leaderboard.push(row); liveLeaderboardIdx = leaderboard.length - 1; }
+  const tracked = leaderboard[liveLeaderboardIdx];
+  leaderboard.sort((a, b) => b.score - a.score || a.evals - b.evals);
+  liveLeaderboardIdx = leaderboard.indexOf(tracked);
+  renderLeaderboard();
+}
+
+function renderLeaderboard() {
+  const body = document.getElementById('leaderboard-body');
+  if (leaderboard.length === 0) {
+    body.innerHTML = '<tr><td colspan="4" style="color: var(--muted); text-align: center;">— no runs yet —</td></tr>';
+    return;
+  }
+  body.innerHTML = leaderboard.map((row) => {
+    const cls = row.name === 'Human Raphson' ? ' class="human-raphson"' : '';
+    const detail = row.touchV === null
+      ? 'never landed'
+      : `v ${Math.abs(row.touchV).toFixed(2)} px/s · fuel ${(row.touchFuel * 100).toFixed(0)} %`;
+    return `<tr${cls}>
+      <td>${row.name}</td>
+      <td>${row.score.toFixed(1)}</td>
+      <td>${row.evals}</td>
+      <td>${detail}</td>
+    </tr>`;
+  }).join('');
+}
+
+// ============================================================================
+// Presets.
+// ============================================================================
+const HOVER_THROTTLE = GRAVITY / THRUST_MAX;   // ≈ 0.417
+const PRESETS = {
+  hover:    () => Array(N_SEGS).fill(HOVER_THROTTLE),
+  ramp:     () => Array.from({ length: N_SEGS }, (_, i) => i / (N_SEGS - 1)),
+  lateMax:  () => Array.from({ length: N_SEGS }, (_, i) => i < 5 ? 0 : 1),
+  lateSoft: () => Array.from({ length: N_SEGS }, (_, i) => i < 5 ? 0 : 0.85),
+  random:   () => Array.from({ length: N_SEGS }, () => Math.random()),
+};
+
+function loadPreset(name) {
+  loadedSchedule = PRESETS[name]();
+  const result = evaluateSchedule(loadedSchedule);
+  document.getElementById('score-now').textContent = result.score.toFixed(1);
+  document.getElementById('touch-v').textContent = result.sim.touchV === null
+    ? 'never landed'
+    : `${result.sim.touchV.toFixed(1)} px/s`;
+  document.getElementById('fuel-left').textContent = result.sim.touchFuel === null
+    ? '—'
+    : `${(result.sim.touchFuel * 100).toFixed(0)} %`;
+  animateTrajectory(
+    { ...result, schedule: loadedSchedule,
+      touchV: result.sim.touchV, touchFuel: result.sim.touchFuel },
+    `Preset: ${name} — ${result.score.toFixed(1)}`);
+}
+
+function manualEvaluate() {
+  if (!loadedSchedule) loadPreset('hover');
+  const result = evaluateSchedule(loadedSchedule);
+  const entry = {
+    ...result,
+    schedule: loadedSchedule,
+    touchV: result.sim.touchV,
+    touchFuel: result.sim.touchFuel,
+  };
+  addLeaderboardEntry('Human Raphson', entry, 1);
+  setBestScore(entry, 'Human Raphson');
+  animateTrajectory(entry, `🧠 Human Raphson: ${result.score.toFixed(1)}`);
+}
+
+function resetEverything() {
+  leaderboard.length = 0;
+  liveLeaderboardIdx = -1;
+  lastBest = null;
+  loadedSchedule = null;
+  animationToken++;
+  ['score-now', 'evals'].forEach((id) => document.getElementById(id).textContent = '0');
+  ['touch-v', 'fuel-left', 'best-score'].forEach((id) =>
+    document.getElementById(id).textContent = '—');
+  renderLeaderboard();
+  drawIdleScene();
+}
+
+drawIdleScene();
+</script>
+</body>
+</html>
