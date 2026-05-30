@@ -88,6 +88,10 @@ reference = [
     "pyswarms>=1.3.0",
     "Py-BOBYQA>=1.4",
     "deap>=1.3.0",
+    # mealpy covers ParticleSwarm / GeneticAlgorithm / FireflyAlgorithm
+    # / HarmonySearch / EvolutionStrategy / AntColonyOpt under one
+    # install (see _ref_mealpy_* in tests/test_reference_alignment.py).
+    "mealpy>=3.0.0",
     # PDFO requires a compiler; install separately if needed:
     #     pip install pdfo
 ]
