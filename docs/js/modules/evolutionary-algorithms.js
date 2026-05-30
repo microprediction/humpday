@@ -23,49 +23,87 @@ if (typeof module !== 'undefined' && module.exports) {
         this.name = 'DifferentialEvolution';
     }
 
+    // Matches scipy.optimize.differential_evolution defaults, mirroring
+    // the Python port in humpday/optimizers/evolutionary_algorithms.py:
+    //   - best/1/bin mutation (base = current population best, not a
+    //     random member);
+    //   - dithered F drawn per-generation in [0.5, 1.0];
+    //   - CR = 0.7;
+    //   - popSize = max(10, min(20, nTrials // 5)).
+    // The previous JS port used rand/1/bin with fixed F=0.5 — that's
+    // more exploratory but converges slowly on smooth landscapes and
+    // was the reason the JS DE lagged Python so badly on the win-rate
+    // test.
     optimize() {
-        const popSize = Math.min(20, Math.max(8, this.nDim * 3));
-        const F = 0.5; // Differential weight
-        const CR = 0.7; // Crossover probability
+        const n = this.nDim;
+        const popSize = Math.max(10, Math.min(20, Math.floor(this.nTrials / 5)));
+        const CR = 0.7;
 
-        // Initialize population
+        // Initialise population uniformly in [0, 1]^n and evaluate.
         const population = [];
         for (let i = 0; i < popSize && this.evaluations < this.nTrials; i++) {
-            const individual = Array(this.nDim).fill(0).map(() => Math.random());
-            const fitness = this.evaluate(individual);
-            population.push({ x: individual, fitness });
+            const x = new Array(n);
+            for (let j = 0; j < n; j++) x[j] = Math.random();
+            const f = this.evaluate(x);
+            population.push({ x, f });
         }
 
-        // Evolution loop
         while (this.evaluations < this.nTrials && population.length >= 4) {
-            for (let i = 0; i < population.length && this.evaluations < this.nTrials; i++) {
-                // Select three random different individuals
-                const indices = Array.from({length: population.length}, (_, idx) => idx)
-                    .filter(idx => idx !== i);
+            // Dither: pick F uniformly in [0.5, 1.0] each generation.
+            const F = 0.5 + 0.5 * Math.random();
 
-                const [a, b, c] = [0, 1, 2].map(j => {
-                    const idx = Math.floor(Math.random() * indices.length);
-                    const selected = indices[idx];
-                    indices.splice(idx, 1);
-                    return selected;
-                });
+            for (let i = 0; i < population.length; i++) {
+                if (this.evaluations >= this.nTrials) break;
 
-                // Mutation: v = a + F * (b - c)
-                const mutant = population[a].x.map((xi, j) =>
-                    xi + F * (population[b].x[j] - population[c].x[j])
-                );
+                // best/1: base = current population best.
+                let bestIdx = 0;
+                for (let k = 1; k < population.length; k++) {
+                    if (population[k].f < population[bestIdx].f) bestIdx = k;
+                }
 
-                // Crossover
-                const trial = population[i].x.map((xi, j) =>
-                    Math.random() < CR ?
-                    MathUtils.clip(mutant[j], 0, 1) : xi
-                );
+                // Two donors distinct from i and bestIdx.
+                const candidates = [];
+                for (let k = 0; k < population.length; k++) {
+                    if (k !== i && k !== bestIdx) candidates.push(k);
+                }
+                if (candidates.length < 2) {
+                    for (let k = 0; k < population.length; k++) {
+                        if (k !== i && candidates.indexOf(k) < 0) candidates.push(k);
+                    }
+                }
+                // Sample without replacement (or with, if fewer than 2 candidates).
+                const replace = candidates.length < 2;
+                const b = candidates[Math.floor(Math.random() * candidates.length)];
+                let c;
+                if (replace) {
+                    c = candidates[Math.floor(Math.random() * candidates.length)];
+                } else {
+                    do {
+                        c = candidates[Math.floor(Math.random() * candidates.length)];
+                    } while (c === b);
+                }
 
-                const trialFitness = this.evaluate(trial);
+                // Mutation: v = x_best + F * (x_b - x_c), clipped to [0, 1].
+                const mutant = new Array(n);
+                for (let j = 0; j < n; j++) {
+                    mutant[j] = MathUtils.clip(
+                        population[bestIdx].x[j] + F * (population[b].x[j] - population[c].x[j]),
+                        0, 1
+                    );
+                }
 
-                // Selection
-                if (trialFitness < population[i].fitness) {
-                    population[i] = { x: trial, fitness: trialFitness };
+                // Binomial crossover with one guaranteed coord.
+                const jGuaranteed = Math.floor(Math.random() * n);
+                const trial = new Array(n);
+                for (let j = 0; j < n; j++) {
+                    trial[j] = (Math.random() < CR || j === jGuaranteed)
+                        ? mutant[j]
+                        : population[i].x[j];
+                }
+
+                const trialF = this.evaluate(trial);
+                if (trialF < population[i].f) {
+                    population[i] = { x: trial, f: trialF };
                 }
             }
         }
@@ -195,104 +233,102 @@ class SimulatedAnnealing extends Optimizer {
         this.name = 'SimulatedAnnealing';
     }
 
+    // Two-stage algorithm matching scipy.optimize.dual_annealing in
+    // spirit (and the Python port in
+    // humpday/optimizers/evolutionary_algorithms.py line-for-line):
+    //
+    //   Stage 1 — multi-restart Metropolis SA explores globally with a
+    //             geometric cooling schedule from T = 1.0 to T = 1e-6.
+    //   Stage 2 — coordinate-descent polish from the best SA point,
+    //             halving the step on each unimproved round, refines to
+    //             high precision.
+    //
+    // scipy's dual_annealing uses L-BFGS-B for stage 2; the closest
+    // derivative-free equivalent is a coordinate descent with shrinking
+    // step. Without the polish stage humpday's SA was ~1e9× off scipy
+    // on sphere and Rosenbrock; the global SA can't reach machine
+    // precision because its proposals are noisy.
     optimize() {
-        let globalBestX = null;
-        let globalBestFx = Infinity;
+        const n = this.nDim;
+        const polishBudget = Math.max(20, Math.floor(this.nTrials / 3));
+        const saBudget = this.nTrials - polishBudget;
 
-        // Multi-restart simulated annealing for better global optimization
-        const numRestarts = Math.max(3, Math.floor(this.nTrials / 30));
-        const trialsPerRestart = Math.floor(this.nTrials / numRestarts);
+        // --- Stage 1: multi-restart Metropolis SA ----------------------
+        const numRestarts = Math.max(3, Math.floor(saBudget / 30));
+        const trialsPerRestart = Math.max(1, Math.floor(saBudget / numRestarts));
 
-        for (let restart = 0; restart < numRestarts && this.evaluations < this.nTrials; restart++) {
-            // Initialize with different strategies per restart
+        for (let restart = 0; restart < numRestarts; restart++) {
+            if (this.evaluations >= saBudget) break;
+
             let x;
             if (restart === 0) {
-                // First restart: center-biased initialization
-                x = Array(this.nDim).fill(0).map(() => 0.5 + (Math.random() - 0.5) * 0.4);
-            } else if (restart === 1) {
-                // Second restart: near-optimal region
-                x = Array(this.nDim).fill(0).map(() => (Math.random() - 0.5) * 0.2 + 0.5);
+                // Center-biased first restart (matches Python).
+                x = new Array(n);
+                for (let i = 0; i < n; i++) x[i] = 0.5 + (Math.random() - 0.5) * 0.4;
             } else {
-                // Subsequent restarts: random
-                x = Array(this.nDim).fill(0).map(() => Math.random());
+                // Uniform random subsequent restarts.
+                x = new Array(n);
+                for (let i = 0; i < n; i++) x[i] = Math.random();
             }
-
             let fx = this.evaluate(x);
 
-            // Track best for this restart
-            let bestX = x.slice();
-            let bestFx = fx;
+            const initialTemp = 1.0;
+            const finalTemp = 1e-6;
+            const cooling = Math.pow(finalTemp / initialTemp, 1.0 / Math.max(1, trialsPerRestart));
+            let temp = initialTemp;
 
-            // Aggressive initial temperature
-            let temperature = Math.max(1.0, bestFx * 2);
-            const finalTemp = 1e-8;
-            const maxIterations = Math.min(trialsPerRestart, this.nTrials - this.evaluations);
+            for (let iter = 0; iter < trialsPerRestart; iter++) {
+                if (this.evaluations >= saBudget) break;
 
-            for (let iter = 0; iter < maxIterations && this.evaluations < this.nTrials; iter++) {
-                // Adaptive step size based on current best and temperature
-                const progressRatio = iter / maxIterations;
-                const tempRatio = temperature / (Math.max(1.0, bestFx * 2));
-                let stepSize = 0.3 * tempRatio * (1 - progressRatio) + 0.01 * progressRatio;
-
-                // Generate neighbor with multiple strategies
-                const strategy = iter % 3;
-                let newX;
-
-                if (strategy === 0) {
-                    // Standard perturbation
-                    newX = x.map(xi => {
-                        const perturbation = (Math.random() - 0.5) * 2 * stepSize;
-                        return MathUtils.clip(xi + perturbation, 0, 1);
-                    });
-                } else if (strategy === 1) {
-                    // Move toward current best with noise
-                    newX = x.map((xi, i) => {
-                        const direction = bestX[i] - xi;
-                        const move = direction * 0.3 + (Math.random() - 0.5) * stepSize;
-                        return MathUtils.clip(xi + move, 0, 1);
-                    });
-                } else {
-                    // Large jump for exploration
-                    newX = x.map(xi => {
-                        if (Math.random() < 0.1) {
-                            return Math.random(); // Occasional large jump
-                        } else {
-                            const perturbation = (Math.random() - 0.5) * 2 * stepSize;
-                            return MathUtils.clip(xi + perturbation, 0, 1);
-                        }
-                    });
+                // Neighbour proposal: step scales with current temp.
+                const stepSize = 0.4 * temp;
+                const newX = new Array(n);
+                for (let i = 0; i < n; i++) {
+                    newX[i] = MathUtils.clip(
+                        x[i] + (Math.random() - 0.5) * 2 * stepSize, 0, 1
+                    );
                 }
-
                 const newFx = this.evaluate(newX);
 
-                // Update best for this restart
-                if (newFx < bestFx) {
-                    bestX = newX.slice();
-                    bestFx = newFx;
-                }
-
-                // Metropolis criterion
+                // Metropolis criterion.
                 const delta = newFx - fx;
-                if (delta < 0 || (temperature > finalTemp && Math.random() < Math.exp(-delta / temperature))) {
+                if (delta < 0 || Math.random() < Math.exp(-delta / Math.max(temp, 1e-12))) {
                     x = newX;
                     fx = newFx;
                 }
 
-                // Fast exponential cooling with floor
-                temperature *= 0.99;
-                temperature = Math.max(temperature, finalTemp);
-            }
-
-            // Update global best
-            if (bestFx < globalBestFx) {
-                globalBestFx = bestFx;
-                globalBestX = bestX.slice();
+                temp *= cooling;
             }
         }
 
+        // --- Stage 2: coordinate-descent polish from best --------------
+        // Equivalent of scipy.dual_annealing's local-search refinement.
+        let center = this.bestX.slice();
+        let centerFx = this.bestValue;
+        let step = 0.05;
+
+        while (this.evaluations < this.nTrials && step > 1e-14) {
+            let improved = false;
+            for (let j = 0; j < n && !improved; j++) {
+                for (const sign of [-1, 1]) {
+                    if (this.evaluations >= this.nTrials) break;
+                    const trial = center.slice();
+                    trial[j] = Math.max(0, Math.min(1, trial[j] + sign * step));
+                    const fTrial = this.evaluate(trial);
+                    if (fTrial < centerFx) {
+                        center = trial;
+                        centerFx = fTrial;
+                        improved = true;
+                        break;
+                    }
+                }
+            }
+            if (!improved) step *= 0.5;
+        }
+
         return {
-            bestValue: globalBestFx,
-            bestX: globalBestX,
+            bestValue: this.bestValue,
+            bestX: this.bestX,
             evaluations: this.evaluations,
             success: true,
             path: this.trackPath ? this.path : null
