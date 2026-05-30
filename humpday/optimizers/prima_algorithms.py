@@ -17,6 +17,7 @@ Must match algorithmic behavior of reference, not use reference directly.
 """
 
 import math
+import random
 
 from humpday import _array as _A
 
@@ -277,62 +278,96 @@ class PRIMA_NEWUOA(BaseOptimizer):
 
         rhobeg = 0.5
         rhoend = 1e-8
-        rho = rhobeg
 
-        xbase = _A.clip(0.5 * _A.ones(n), 0.1, 0.9)
-        _ = self.evaluate(xbase)
+        # First-pass seed: deterministic cube-centre, clipped a hair
+        # off the bound so the coordinate-axis init points have headroom.
+        # Restart passes (below) perturb self.best_x by ~rhobeg so the
+        # caller's n_trials budget actually gets spent on non-smooth
+        # surfaces where a single TR pass naturally terminates in ~50
+        # evals when rho drops below rhoend.
+        xseed = _A.clip(0.5 * _A.ones(n), 0.1, 0.9)
 
-        XPT, FVAL = self._initialize_newuoa_points(xbase, rho, npt, n)
-        A, b = self._build_interpolation_system(XPT, FVAL, npt, n)
-
-        kopt = min(range(len(FVAL)), key=FVAL.__getitem__)
-
-        iteration = 0
-        max_iterations = min(100, self.n_trials // npt)
-
-        while (
-            self.evaluations < self.n_trials
-            and rho > rhoend
-            and iteration < max_iterations
-        ):
-            iteration += 1
-
-            try:
-                g, H = self._build_newuoa_model(XPT, FVAL, A, b, kopt, n)
-            except Exception:
-                rho *= 0.5
-                continue
-
-            try:
-                d = self._solve_trust_region_newuoa(g, H, rho, n)
-            except Exception:
-                d = self._fallback_step(g, rho, n)
-
-            xnew = _A.clip(xbase + XPT[kopt] + d, 0, 1)
-
+        while self.evaluations < self.n_trials:
+            # ---------- one trust-region pass ----------
+            rho = rhobeg
+            xbase = _A.clip(xseed, 0, 1)
+            _ = self.evaluate(xbase)
             if self.evaluations >= self.n_trials:
                 break
 
-            fnew = self.evaluate(xnew)
+            XPT, FVAL = self._initialize_newuoa_points(xbase, rho, npt, n)
+            A, b = self._build_interpolation_system(XPT, FVAL, npt, n)
 
-            predicted_reduction = self._predict_reduction(g, H, d)
-            actual_reduction = FVAL[kopt] - fnew
+            kopt = min(range(len(FVAL)), key=FVAL.__getitem__)
 
-            point_updated = self._update_newuoa_interpolation(
-                XPT, FVAL, A, b, xnew - xbase, fnew, kopt, npt, n
-            )
+            # Cap iteration count by budget directly. The previous
+            # `min(100, n_trials // npt)` gave only floor(80/7) = 11
+            # iterations on 3-D budget=80, terminating the TR loop long
+            # before rho could converge. The outer
+            # `evaluations < n_trials` guard is sufficient.
+            max_iterations = self.n_trials
+            iteration = 0
 
-            if point_updated:
-                kopt_new = min(range(len(FVAL)), key=FVAL.__getitem__)
-                if FVAL[kopt_new] < FVAL[kopt]:
-                    kopt = kopt_new
+            while (
+                self.evaluations < self.n_trials
+                and rho > rhoend
+                and iteration < max_iterations
+            ):
+                iteration += 1
 
-            rho = self._update_trust_region_radius(
-                predicted_reduction, actual_reduction, rho, rhobeg, rhoend
-            )
+                try:
+                    g, H = self._build_newuoa_model(XPT, FVAL, A, b, kopt, n)
+                except Exception:
+                    rho *= 0.5
+                    continue
 
-            if _A.norm(XPT[kopt]) > 0.5 * rho:
-                xbase = self._shift_base_point(XPT, xbase, kopt, npt)
+                try:
+                    d = self._solve_trust_region_newuoa(g, H, rho, n)
+                except Exception:
+                    d = self._fallback_step(g, rho, n)
+
+                xnew = _A.clip(xbase + XPT[kopt] + d, 0, 1)
+
+                if self.evaluations >= self.n_trials:
+                    break
+
+                fnew = self.evaluate(xnew)
+
+                predicted_reduction = self._predict_reduction(g, H, d)
+                actual_reduction = FVAL[kopt] - fnew
+
+                point_updated = self._update_newuoa_interpolation(
+                    XPT, FVAL, A, b, xnew - xbase, fnew, kopt, npt, n
+                )
+
+                if point_updated:
+                    kopt_new = min(range(len(FVAL)), key=FVAL.__getitem__)
+                    if FVAL[kopt_new] < FVAL[kopt]:
+                        kopt = kopt_new
+
+                rho = self._update_trust_region_radius(
+                    predicted_reduction, actual_reduction, rho, rhobeg, rhoend
+                )
+
+                if _A.norm(XPT[kopt]) > 0.5 * rho:
+                    xbase = self._shift_base_point(XPT, xbase, kopt, npt)
+            # ---------- end one trust-region pass ----------
+
+            # Jitter self.best_x by a uniform random vector of magnitude
+            # ≈ rhobeg, clipped into [0, 1]^n. Large enough to escape the
+            # basin that just trapped this pass; if best_x is already at
+            # the global minimum the restart costs one extra pass without
+            # worsening the result.
+            if self.evaluations < self.n_trials:
+                xseed = _A.clip(
+                    [
+                        float(self.best_x[i])
+                        + (random.random() - 0.5) * 2.0 * rhobeg
+                        for i in range(n)
+                    ],
+                    0,
+                    1,
+                )
 
         return self.best_value, self.best_x
 
@@ -558,62 +593,88 @@ class PRIMA_BOBYQA(BaseOptimizer):
 
         rhobeg = 0.5
         rhoend = 1e-8
-        rho = rhobeg
 
-        xbase = _A.clip(0.5 * _A.ones(n), 0.1, 0.9)
-        _ = self.evaluate(xbase)
+        # First-pass seed: cube-centre, clipped a hair off the bounds
+        # so the coordinate-axis init points have headroom. Restart
+        # passes (below) perturb self.best_x by ~rhobeg so the caller's
+        # n_trials budget actually gets spent on non-smooth surfaces
+        # where a single TR pass naturally terminates in ~50 evals.
+        xseed = _A.clip(0.5 * _A.ones(n), 0.1, 0.9)
 
-        XPT, FVAL = self._initialize_bobyqa_points(xbase, rho, npt, n, xl, xu)
-        kopt = min(range(len(FVAL)), key=FVAL.__getitem__)
-
-        iteration = 0
-        max_iterations = min(100, self.n_trials // npt)
-
-        while (
-            self.evaluations < self.n_trials
-            and rho > rhoend
-            and iteration < max_iterations
-        ):
-            iteration += 1
-
-            try:
-                g, H = self._build_bobyqa_model(XPT, FVAL, kopt, n)
-            except Exception:
-                rho *= 0.5
-                continue
-
-            try:
-                d = self._solve_bound_constrained_tr(
-                    g, H, rho, n, xbase + XPT[kopt], xl, xu
-                )
-            except Exception:
-                d = self._fallback_bound_step(g, rho, n, xbase + XPT[kopt], xl, xu)
-
-            xnew = _A.clip(xbase + XPT[kopt] + d, 0, 1)
-
+        while self.evaluations < self.n_trials:
+            # ---------- one trust-region pass ----------
+            rho = rhobeg
+            xbase = _A.clip(xseed, 0.1, 0.9)
+            _ = self.evaluate(xbase)
             if self.evaluations >= self.n_trials:
                 break
 
-            fnew = self.evaluate(xnew)
+            XPT, FVAL = self._initialize_bobyqa_points(xbase, rho, npt, n, xl, xu)
+            kopt = min(range(len(FVAL)), key=FVAL.__getitem__)
 
-            predicted_reduction = self._predict_reduction(g, H, d)
-            actual_reduction = FVAL[kopt] - fnew
+            # Cap by budget directly (see NEWUOA comment).
+            max_iterations = self.n_trials
+            iteration = 0
 
-            point_updated = self._update_bobyqa_interpolation(
-                XPT, FVAL, xnew - xbase, fnew, kopt, npt, n
-            )
+            while (
+                self.evaluations < self.n_trials
+                and rho > rhoend
+                and iteration < max_iterations
+            ):
+                iteration += 1
 
-            if point_updated:
-                kopt_new = min(range(len(FVAL)), key=FVAL.__getitem__)
-                if FVAL[kopt_new] < FVAL[kopt]:
-                    kopt = kopt_new
+                try:
+                    g, H = self._build_bobyqa_model(XPT, FVAL, kopt, n)
+                except Exception:
+                    rho *= 0.5
+                    continue
 
-            rho = self._update_trust_region_radius(
-                predicted_reduction, actual_reduction, rho, rhobeg, rhoend
-            )
+                try:
+                    d = self._solve_bound_constrained_tr(
+                        g, H, rho, n, xbase + XPT[kopt], xl, xu
+                    )
+                except Exception:
+                    d = self._fallback_bound_step(g, rho, n, xbase + XPT[kopt], xl, xu)
 
-            if _A.norm(XPT[kopt]) > 0.5 * rho:
-                xbase = self._shift_base_point_bounded(XPT, xbase, kopt, npt, xl, xu)
+                xnew = _A.clip(xbase + XPT[kopt] + d, 0, 1)
+
+                if self.evaluations >= self.n_trials:
+                    break
+
+                fnew = self.evaluate(xnew)
+
+                predicted_reduction = self._predict_reduction(g, H, d)
+                actual_reduction = FVAL[kopt] - fnew
+
+                point_updated = self._update_bobyqa_interpolation(
+                    XPT, FVAL, xnew - xbase, fnew, kopt, npt, n
+                )
+
+                if point_updated:
+                    kopt_new = min(range(len(FVAL)), key=FVAL.__getitem__)
+                    if FVAL[kopt_new] < FVAL[kopt]:
+                        kopt = kopt_new
+
+                rho = self._update_trust_region_radius(
+                    predicted_reduction, actual_reduction, rho, rhobeg, rhoend
+                )
+
+                if _A.norm(XPT[kopt]) > 0.5 * rho:
+                    xbase = self._shift_base_point_bounded(XPT, xbase, kopt, npt, xl, xu)
+            # ---------- end one trust-region pass ----------
+
+            # Jitter self.best_x for the next pass (clipped to [0.1, 0.9]
+            # for the same headroom reason as the first-pass init).
+            if self.evaluations < self.n_trials:
+                xseed = _A.clip(
+                    [
+                        float(self.best_x[i])
+                        + (random.random() - 0.5) * 2.0 * rhobeg
+                        for i in range(n)
+                    ],
+                    0.1,
+                    0.9,
+                )
 
         return self.best_value, self.best_x
 
