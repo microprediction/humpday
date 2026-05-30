@@ -236,9 +236,11 @@
     The lateral curl of the stone is modelled as a force proportional
     to <code>rotation × (1 / current speed)</code> — so slower stones
     curl more, matching real-ice behaviour. Sweeping reduces friction
-    so the stone slides further with less curl; the
-    <em>sweep release</em> parameter sets how far down the sheet
-    sweeping continues before friction resumes.
+    so the stone stays alive longer; in this model that
+    <em>increases</em> the integrated curl (more time on ice ≈ more
+    lateral drift). The <em>sweep release</em> parameter sets how far
+    down the sheet sweeping continues before full friction resumes —
+    so high values give more curl, low values give a flatter line.
   </p>
   <p>
     Score = <strong>100 × (1 − distance_to_button / house_radius)</strong>
@@ -295,7 +297,7 @@ and create a project skill from it.</pre>
 // that slower stones curl more.
 // ============================================================================
 
-const { Engine, World, Bodies, Body, Composite, Events } = Matter;
+const { Engine, Bodies, Body, Composite } = Matter;
 
 const canvas = document.getElementById('canvas');
 const ctx = canvas.getContext('2d');
@@ -343,7 +345,6 @@ function decode(u) {
 // player's stone at the release point.
 function buildWorld() {
   const engine = Engine.create({ gravity: { x: 0, y: 0 } });   // top-down, no gravity
-  const world = engine.world;
 
   // Side walls — keep stones on the sheet. Slightly absorptive so a bank
   // off the wall isn't free.
@@ -377,8 +378,8 @@ function buildWorld() {
     label: 'player',
   });
 
-  Composite.add(world, [topWall, bottomWall, backBoard, ...opponentBodies, player]);
-  return { engine, world, player, opponentBodies };
+  Composite.add(engine.world, [topWall, bottomWall, backBoard, ...opponentBodies, player]);
+  return { engine, player, opponentBodies };
 }
 
 // Simulation constants.
@@ -438,9 +439,13 @@ function runShot(params, recordFrames = false) {
       const speed = Math.hypot(vx, vy);
       if (speed < 0.01) continue;
       const curlMag = CURL_K * s.angularVelocity / (1 + speed);
-      // perpendicular to velocity (rotate 90° CW): (vy, -vx) / speed
-      const fx = curlMag * vy;
-      const fy = -curlMag * vx;
+      // Unit perpendicular to velocity (rotate 90° CW): (vy, -vx) / speed.
+      // Dividing by `speed` here is what makes the per-step force magnitude
+      // truly scale as `1 / (1 + speed)` — otherwise the lateral force would
+      // scale as `speed / (1 + speed)`, asymptoting at high speed (the
+      // opposite of "slower stones curl more").
+      const fx = curlMag * vy / speed;
+      const fy = -curlMag * vx / speed;
       Body.applyForce(s, s.position, { x: fx, y: fy });
     }
 
@@ -506,7 +511,6 @@ function runShot(params, recordFrames = false) {
     frames,
     params,
     playerEnd: { x: player.position.x, y: player.position.y },
-    finalState: snapshot(player, opponentBodies),
   };
 }
 
