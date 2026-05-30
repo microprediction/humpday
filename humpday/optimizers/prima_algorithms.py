@@ -361,8 +361,7 @@ class PRIMA_NEWUOA(BaseOptimizer):
             if self.evaluations < self.n_trials:
                 xseed = _A.clip(
                     [
-                        float(self.best_x[i])
-                        + (random.random() - 0.5) * 2.0 * rhobeg
+                        float(self.best_x[i]) + (random.random() - 0.5) * 2.0 * rhobeg
                         for i in range(n)
                     ],
                     0,
@@ -660,7 +659,9 @@ class PRIMA_BOBYQA(BaseOptimizer):
                 )
 
                 if _A.norm(XPT[kopt]) > 0.5 * rho:
-                    xbase = self._shift_base_point_bounded(XPT, xbase, kopt, npt, xl, xu)
+                    xbase = self._shift_base_point_bounded(
+                        XPT, xbase, kopt, npt, xl, xu
+                    )
             # ---------- end one trust-region pass ----------
 
             # Jitter self.best_x for the next pass (clipped to [0.1, 0.9]
@@ -668,8 +669,7 @@ class PRIMA_BOBYQA(BaseOptimizer):
             if self.evaluations < self.n_trials:
                 xseed = _A.clip(
                     [
-                        float(self.best_x[i])
-                        + (random.random() - 0.5) * 2.0 * rhobeg
+                        float(self.best_x[i]) + (random.random() - 0.5) * 2.0 * rhobeg
                         for i in range(n)
                     ],
                     0.1,
