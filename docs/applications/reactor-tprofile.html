@@ -97,17 +97,21 @@
 <div class="container">
   <h1>🧪 Plug-flow Reactor T-profile</h1>
   <p class="intro">
-    A jacketed plug-flow reactor runs the series reaction
-    <strong>A → B → C</strong>, where B is the desired product and
-    C is over-reaction waste. Each of the reactor's ten axial
-    zones can be heated or cooled independently to a setpoint
-    between 300 K and 480 K. Pick the temperature profile that
-    maximises the mole fraction of B at the outlet. Because the
-    over-reaction has higher activation energy (E<sub>a,2</sub> &gt;
-    E<sub>a,1</sub>), the optimum is a <em>decreasing</em>
-    profile — hot at the inlet to drive A → B quickly, then cooled
-    along the rest of the reactor to suppress B → C. Classical
-    chem-eng textbook problem; 10-D continuous.
+    A long pipe with chemicals flowing through it. As they travel,
+    <strong>A</strong> slowly turns into <strong>B</strong> (the
+    product you want), but if heat lingers, B keeps reacting and
+    becomes <strong>C</strong> (waste). The pipe is split into ten
+    sections, each with its own thermostat between
+    300 K and 480 K. Pick the ten temperatures that give you the
+    most B coming out the far end.
+  </p>
+  <p class="intro">
+    The twist: heat speeds up both reactions, but it speeds the
+    <em>over-reaction</em> (B → C) up more than the <em>good</em>
+    reaction (A → B). So the textbook answer is a
+    <em>decreasing</em> profile — start hot to make B quickly, then
+    cool the rest of the pipe so it doesn't keep cooking into C.
+    Classic chem-eng problem; 10-D continuous.
   </p>
 
   <div class="stage">
