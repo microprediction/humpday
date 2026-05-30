@@ -315,6 +315,126 @@ def _ref_cmaes(func, n_trials, n_dim, seed):
     return {"best_value": float(best), "evals": counter["n"]}
 
 
+def _ref_random_search(func, n_trials, n_dim, seed):
+    """Uniform-sample baseline — draw n_trials i.i.d. samples from
+    `U[0, 1]^n_dim` and return the best. Cheapest possible
+    lower-bound: any algorithm worth using should beat this median.
+    """
+    rng = random.Random(seed)
+    best = float("inf")
+    n_evals = 0
+    for _ in range(n_trials):
+        x = [rng.random() for _ in range(n_dim)]
+        v = func(x)
+        n_evals += 1
+        if v < best:
+            best = v
+    return {"best_value": float(best), "evals": n_evals}
+
+
+def _ref_oneplusone_es_decay(func, n_trials, n_dim, seed):
+    """(1+1)-ES with a geometric sigma decay schedule — the natural
+    reference for HillClimbing. Starts at sigma=0.1 and decays so the
+    final sigma is ~1e-3, matching a "hill-climbing with shrinking
+    perturbations" intuition."""
+    rng = random.Random(seed)
+    x = [_draw_x0(seed, n_dim)[i] for i in range(n_dim)]
+    fx = func(x)
+    n_evals = 1
+    sigma_init = 0.1
+    sigma_final = 1e-3
+    decay = (sigma_final / sigma_init) ** (1.0 / max(1, n_trials - 1))
+    sigma = sigma_init
+
+    for _ in range(n_trials - 1):
+        z = [rng.gauss(0, 1) for _ in range(n_dim)]
+        x_new = [min(1.0, max(0.0, x[i] + sigma * z[i])) for i in range(n_dim)]
+        fx_new = func(x_new)
+        n_evals += 1
+        if fx_new < fx:
+            x, fx = x_new, fx_new
+        sigma *= decay
+    return {"best_value": float(fx), "evals": n_evals}
+
+
+def _ref_oneplusone_es_oneFifth(func, n_trials, n_dim, seed):
+    """(1+1)-ES with Rechenberg's 1/5-success-rule — the natural
+    reference for AdaptiveRandomSearch. Sigma grows by 1.5× when the
+    success rate over the last 10 trials exceeds 1/5, shrinks by 1/1.5
+    otherwise."""
+    rng = random.Random(seed)
+    x = [_draw_x0(seed, n_dim)[i] for i in range(n_dim)]
+    fx = func(x)
+    n_evals = 1
+    sigma = 0.1
+    window = []
+    window_size = 10
+
+    for _ in range(n_trials - 1):
+        z = [rng.gauss(0, 1) for _ in range(n_dim)]
+        x_new = [min(1.0, max(0.0, x[i] + sigma * z[i])) for i in range(n_dim)]
+        fx_new = func(x_new)
+        n_evals += 1
+        accepted = fx_new < fx
+        if accepted:
+            x, fx = x_new, fx_new
+        window.append(accepted)
+        if len(window) > window_size:
+            window.pop(0)
+        if len(window) >= window_size:
+            rate = sum(window) / window_size
+            if rate > 1 / 5:
+                sigma *= 1.5
+            elif rate < 1 / 5:
+                sigma /= 1.5
+    return {"best_value": float(fx), "evals": n_evals}
+
+
+def _ref_scipy_powell_diagonal(func, n_trials, n_dim, seed):
+    """scipy.optimize.minimize(method="Powell", direc=I) — Powell's
+    direction-set method constrained to the cardinal directions. This
+    is the textbook "coordinate descent with a line search per axis"
+    and is the natural reference for HumpDay's CoordinateDescent."""
+    import numpy as np
+    from scipy.optimize import minimize
+
+    counter = {"n": 0}
+
+    def wrapped(x):
+        counter["n"] += 1
+        return func(list(x))
+
+    r = minimize(
+        wrapped,
+        _draw_x0(seed, n_dim),
+        method="Powell",
+        options={
+            "maxfev": n_trials,
+            "xtol": 1e-12,
+            "ftol": 1e-12,
+            "direc": np.eye(n_dim),
+        },
+    )
+    return {"best_value": float(r.fun), "evals": counter["n"]}
+
+
+def _ref_scipy_direct(func, n_trials, n_dim, seed):
+    """scipy.optimize.direct (DIRECT — DIviding RECTangles) — natural
+    reference for HumpDay's PatternSearch. DIRECT is deterministic so
+    `seed` is unused; we still take it to keep the adapter signature
+    uniform. Bounds = [0,1]^n; maxfun caps the budget directly."""
+    from scipy.optimize import direct
+
+    counter = {"n": 0}
+
+    def wrapped(x):
+        counter["n"] += 1
+        return func(list(x))
+
+    r = direct(wrapped, [(0.0, 1.0)] * n_dim, maxfun=n_trials)
+    return {"best_value": float(r.fun), "evals": counter["n"]}
+
+
 def _ref_mealpy(cls_path, func, n_trials, n_dim, seed, pop_size=20, kwargs=None):
     """Run a mealpy algorithm and return {best_value, evals}.
 
@@ -476,6 +596,23 @@ REFERENCES = {
     "HarmonySearch": ("mealpy HS", _ref_mealpy_harmony, ["mealpy", "numpy"]),
     "EvolutionStrategy": ("mealpy ES", _ref_mealpy_es, ["mealpy", "numpy"]),
     "AntColonyOpt": ("mealpy ACOR", _ref_mealpy_acor, ["mealpy", "numpy"]),
+    "RandomSearch": ("uniform-sample baseline", _ref_random_search, []),
+    "HillClimbing": (
+        "(1+1)-ES sigma-decay schedule",
+        _ref_oneplusone_es_decay,
+        [],
+    ),
+    "AdaptiveRandomSearch": (
+        "(1+1)-ES 1/5-success-rule (Rechenberg)",
+        _ref_oneplusone_es_oneFifth,
+        [],
+    ),
+    "CoordinateDescent": (
+        "scipy Powell (direc=I)",
+        _ref_scipy_powell_diagonal,
+        ["scipy"],
+    ),
+    "PatternSearch": ("scipy.optimize.direct (DIRECT)", _ref_scipy_direct, ["scipy"]),
 }
 
 
