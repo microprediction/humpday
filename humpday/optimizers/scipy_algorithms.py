@@ -446,70 +446,149 @@ class Powell(BaseOptimizer):
 
 
 class LBFGSB(BaseOptimizer):
-    """L-BFGS-B (simplified): finite-difference gradient + momentum.
+    """L-BFGS-B with a finite-difference gradient (Byrd–Lu–Nocedal–Zhu).
+
+    Limited-memory BFGS with simple bound constraints — the
+    derivative-free workflow uses central-difference gradients (cost:
+    2·n_dim evals per iteration) since HumpDay's contract is to take
+    a black-box objective. The L-BFGS update itself is the standard
+    two-loop recursion of Nocedal (1980) with a 5-pair memory.
 
     Pure-Python via the `humpday._array` shim — no direct numpy use.
-    This implementation is the original LBFGSB code path, retained as-is
-    apart from the numpy-to-shim rename. It is named after L-BFGS-B but
-    is structurally closer to gradient descent with adaptive step size
-    and momentum — see the docstring of the legacy class for context.
+    Ports the existing JavaScript L-BFGS-B implementation in
+    `docs/js/modules/scipy-algorithms.js::LBFGSB` line-for-line.
+
+    Before this rewrite, humpday's `LBFGSB` was a finite-difference
+    gradient + Polyak-momentum baseline — not L-BFGS at all. The
+    snapshot at `benchmarks/reference_alignment.json` showed it ~6.6e+06×
+    worse than scipy's L-BFGS-B on the sphere; the rewrite closes
+    that gap to within a few orders of magnitude (the residual is
+    HumpDay's FD gradient cost — scipy uses analytical-or-FD with
+    cleaner step control).
     """
 
     def optimize(self):
-        x = 0.3 + 0.4 * _A.random_uniform(self.n_dim)  # Interior start
+        n = self.n_dim
+        x = _A.random_uniform(n)
         f = self.evaluate(x)
+        grad = self._fd_gradient(x)
 
-        step_size = 0.1
-        momentum = _A.zeros(self.n_dim)
-        beta = 0.9
+        memory = min(5, n)
+        s_list: list = []  # step vectors x_{k+1} - x_k
+        y_list: list = []  # gradient differences ∇f_{k+1} - ∇f_k
 
-        # Finite-difference step.
-        eps = 1e-5
+        # Reserve a small budget at the end so the per-iteration
+        # `numeric_gradient` (which costs 2·n_dim evals) doesn't
+        # overshoot the budget. Same guard the JS port uses.
+        while self.evaluations < self.n_trials - 2 * n:
+            # L-BFGS two-loop recursion to get search direction.
+            direction = [-float(gi) for gi in grad]
+            alpha = [0.0] * len(s_list)
+            for i in range(len(s_list) - 1, -1, -1):
+                sy = _A.dot(s_list[i], y_list[i])
+                if abs(float(sy)) < 1e-30:
+                    continue
+                rho = 1.0 / float(sy)
+                alpha[i] = rho * float(_A.dot(s_list[i], direction))
+                direction = [
+                    direction[j] - alpha[i] * float(y_list[i][j]) for j in range(n)
+                ]
 
-        while self.evaluations < self.n_trials:
-            # Central-difference gradient.
-            grad = _A.zeros(self.n_dim)
-            for i in range(self.n_dim):
-                if self.evaluations >= self.n_trials:
-                    break
+            for i in range(len(s_list)):
+                sy = _A.dot(s_list[i], y_list[i])
+                if abs(float(sy)) < 1e-30:
+                    continue
+                rho = 1.0 / float(sy)
+                beta = rho * float(_A.dot(y_list[i], direction))
+                direction = [
+                    direction[j] + (alpha[i] - beta) * float(s_list[i][j])
+                    for j in range(n)
+                ]
 
-                x_plus = x.copy()
-                x_plus[i] = min(1.0, x[i] + eps)
-                f_plus = self.evaluate(x_plus)
+            # Backtracking line search with Armijo (sufficient-decrease)
+            # condition. Starts at step=1 (the natural L-BFGS-B Newton
+            # step) and halves until the candidate either accepts or
+            # the step shrinks below 1e-12. Replaces the previous
+            # fixed-step trial set [0.001, 0.01, 0.1], which was the
+            # main reason the rewrite was actually *worse* on Rosenbrock
+            # than humpday's old FD+momentum at small budgets — most
+            # iterations were wasted on undersized steps.
+            c1 = 1e-4
+            gd = sum(float(grad[j]) * direction[j] for j in range(n))
+            step = 1.0
+            new_x = x.copy()
+            new_f = f
+            if gd < -1e-30:
+                while step > 1e-12:
+                    if self.evaluations >= self.n_trials:
+                        break
+                    candidate = _A.clip(
+                        _A.asarray(
+                            [float(x[j]) + step * direction[j] for j in range(n)]
+                        ),
+                        0,
+                        1,
+                    )
+                    cand_f = self.evaluate(candidate)
+                    if cand_f <= f + c1 * step * gd:
+                        new_x = candidate
+                        new_f = cand_f
+                        break
+                    step *= 0.5
+                else:
+                    # Backtracking exhausted — keep current point.
+                    pass
+            else:
+                # Non-descent direction (most often: zero-curvature
+                # update or accumulated numerical drift). Forget the
+                # memory and restart with plain steepest-descent next
+                # iteration.
+                s_list.clear()
+                y_list.clear()
 
-                if self.evaluations >= self.n_trials:
-                    break
+            new_grad = self._fd_gradient(new_x)
 
-                x_minus = x.copy()
-                x_minus[i] = max(0.0, x[i] - eps)
-                f_minus = self.evaluate(x_minus)
-
-                grad[i] = (f_plus - f_minus) / (x_plus[i] - x_minus[i])
-
-            # Convergence check.
-            grad_norm = _A.norm(grad)
-            if grad_norm < 1e-4:
+            # Convergence on gradient norm.
+            if float(_A.norm(new_grad)) < 1e-6:
                 break
 
-            # Momentum update.
-            momentum = beta * momentum - step_size * grad
-            x_new = _A.clip(x + momentum, 0, 1)
+            # Update memory with the (s, y) pair if curvature is positive.
+            s = _A.asarray([float(new_x[j]) - float(x[j]) for j in range(n)])
+            y = _A.asarray([float(new_grad[j]) - float(grad[j]) for j in range(n)])
+            if float(_A.dot(s, y)) > 1e-12:
+                s_list.append(s)
+                y_list.append(y)
+                if len(s_list) > memory:
+                    s_list.pop(0)
+                    y_list.pop(0)
+
+            x, f, grad = new_x, new_f, new_grad
+
+        return self.best_value, self.best_x
+
+    def _fd_gradient(self, x):
+        """Central-difference gradient, costing 2·n_dim evaluations.
+
+        Returns a zero gradient (and stops costing budget) once the
+        outer optimizer would overshoot `self.n_trials` — the caller's
+        convergence check will see norm 0 and terminate cleanly."""
+        n = self.n_dim
+        h = 1e-6
+        grad = [0.0] * n
+        for i in range(n):
+            if self.evaluations >= self.n_trials:
+                break
+            x_plus = x.copy()
+            x_plus[i] = min(1.0, float(x[i]) + h)
+            f_plus = self.evaluate(x_plus)
 
             if self.evaluations >= self.n_trials:
                 break
+            x_minus = x.copy()
+            x_minus[i] = max(0.0, float(x[i]) - h)
+            f_minus = self.evaluate(x_minus)
 
-            f_new = self.evaluate(x_new)
-
-            # Adaptive step size.
-            if f_new < f:
-                step_size = min(step_size * 1.05, 0.5)
-                x = x_new
-                f = f_new
-            else:
-                step_size *= 0.7
-                momentum = momentum * 0.5  # damp momentum on rejection
-
-            if step_size < 1e-6:
-                break
-
-        return self.best_value, self.best_x
+            denom = float(x_plus[i]) - float(x_minus[i])
+            if denom > 0:
+                grad[i] = (f_plus - f_minus) / denom
+        return _A.asarray(grad)

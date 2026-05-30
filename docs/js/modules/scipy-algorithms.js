@@ -258,10 +258,35 @@ class LBFGSB extends Optimizer {
                 direction = MathUtils.add(direction, MathUtils.scale(s_list[i], alpha[i] - beta));
             }
 
-            // Line search with bounds
-            const stepResult = this.boundedLineSearch(x, direction);
-            const newX = stepResult.x;
-            const newFx = stepResult.fx;
+            // Backtracking line search with Armijo (sufficient-decrease)
+            // condition. Starts at step=1 (the natural L-BFGS-B Newton
+            // step) and halves until the candidate satisfies the
+            // Armijo rule or the step shrinks below 1e-12.
+            const c1 = 1e-4;
+            let gd = 0;
+            for (let i = 0; i < this.nDim; i++) gd += grad[i] * direction[i];
+            let step = 1.0;
+            let newX = x.slice();
+            let newFx = fx;
+            if (gd < -1e-30) {
+                while (step > 1e-12) {
+                    if (this.evaluations >= this.nTrials) break;
+                    const candidate = x.map((xi, i) =>
+                        MathUtils.clip(xi + step * direction[i], 0, 1)
+                    );
+                    const candFx = this.evaluate(candidate);
+                    if (candFx <= fx + c1 * step * gd) {
+                        newX = candidate;
+                        newFx = candFx;
+                        break;
+                    }
+                    step *= 0.5;
+                }
+            } else {
+                // Non-descent direction — forget memory, restart.
+                s_list.length = 0;
+                y_list.length = 0;
+            }
             const newGrad = this.numericGradient(newX);
 
             // Check convergence
