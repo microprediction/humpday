@@ -180,9 +180,18 @@
         <option value="100">100 shots</option>
         <option value="200">200 shots</option>
         <option value="500">500 shots</option>
+        <option value="1000">1000 shots</option>
+        <option value="2000">2000 shots</option>
+        <option value="5000">5000 shots</option>
       </select>
+      <label style="display: flex; align-items: center; gap: 8px; margin-top: 10px; font-size: 0.86em; color: var(--text); cursor: pointer;">
+        <input type="checkbox" id="fast-mode" style="width: auto; margin: 0;">
+        Fast mode (skip per-shot animation)
+      </label>
       <p style="margin: 8px 0 0; font-size: 0.78em; color: var(--muted);">
-        Each shot is animated at ~2× the final-replay speed.
+        Default replays every shot. Fast mode ticks the leaderboard
+        as shots come in and only animates the winner — recommended
+        for 500+ shots.
       </p>
 
       <button id="run-btn" onclick="runOptimization()">▶ Find the best shot</button>
@@ -300,12 +309,15 @@ const W = canvas.width, H = canvas.height;
 
 // World layout (canvas pixels).
 const GROUND_Y = H - 40;                 // 410
-const PIVOT_X = 130;
-const PIVOT_Y = GROUND_Y - 100;          // pivot 100 px above ground = "wooden frame top"
+const PIVOT_X = 110;                     // pulled left so smaller sprite isn't lonely in the corner
+const PIVOT_Y = GROUND_Y - 55;           // pivot 55 px above ground (was 100)
 const PX_PER_M = 8;                      // 8 canvas px = 1 metre
-const L_LONG_PX = 200;                   // 25 m long arm (cartoonishly big — keeps visuals readable)
-const PROJ_R = 7;
-const FRAME_H = GROUND_Y - PIVOT_Y;      // height of the A-frame uprights
+// Sprite scaled down ~50 % from the original; the trebuchet now
+// occupies a much smaller fraction of the 80 m playfield so the
+// shot landing zone is the main visual focus.
+const L_LONG_PX = 100;                   // ≈12.5 m long arm (was 200 / 25 m)
+const PROJ_R = 5;                        // was 7
+const FRAME_H = GROUND_Y - PIVOT_Y;      // 55 px (was 100)
 
 // Target — 60 m downrange = 480 px from pivot.
 const TARGET_X = PIVOT_X + 60 * PX_PER_M;
@@ -368,7 +380,7 @@ function buildWorld(params) {
 
   // Counterweight — a separate body welded to the arm at the
   // short-arm-side end (PIVOT_X - L_short_px, PIVOT_Y).
-  const cwRadius = Math.min(28, 10 + cwMass / 30);
+  const cwRadius = Math.min(16, 6 + cwMass / 50);     // was min(28, 10+mass/30) — shrunk
   const cwArea = Math.PI * cwRadius * cwRadius;
   // Matter.js mass = density × area. Divide by 25 to keep numeric
   // values in Matter's "comfortable" range.
@@ -624,7 +636,7 @@ function drawScene(state, params, hudText) {
     const [cwMass, armRatio, slingRatio] = params || [200, 0.25, 0.95];
     const L_short_px = L_LONG_PX * armRatio;
     const L_sling_px = L_LONG_PX * slingRatio;
-    const cwRadius = Math.min(28, 10 + cwMass / 30);
+    const cwRadius = Math.min(16, 6 + cwMass / 50);     // was min(28, 10+mass/30) — shrunk
 
     // Arm — render as a wooden plank rotated about the pivot.
     const a = state.arm.a;
@@ -716,6 +728,13 @@ async function animateSearchMontage() {
   const myToken = ++animationToken;
   const total = searchHistory.length;
   if (total === 0) return -1;
+  // Fast mode: skip per-shot animation, just tick stats + redraw the
+  // landing every Nth shot so the canvas stays alive, and yield every
+  // K shots so the page is responsive at 5000-budget.
+  const fastRedrawEvery = Math.max(1, Math.floor(total / 200));
+  const fastYieldEvery = 25;
+  const fastSleepMs = Math.max(1, Math.min(20, Math.floor(8000 / Math.max(1, total / fastYieldEvery))));
+  const fastModeEl = document.getElementById('fast-mode');
 
   let bestSoFar = -1;
   let bestIdx = -1;
@@ -725,7 +744,6 @@ async function animateSearchMontage() {
     const isNew = entry.score > bestSoFar;
     if (isNew) { bestSoFar = entry.score; bestIdx = i; }
 
-    const reF = runShot(entry.params, true);
     document.getElementById('evals').textContent = i + 1;
     document.getElementById('score-now').textContent = entry.score.toFixed(1);
     document.getElementById('landed').textContent = `${entry.landedXMetres.toFixed(1)} m`;
@@ -738,6 +756,19 @@ async function animateSearchMontage() {
         `${entry.score.toFixed(1)}<span class="algo-tag">${algoName}</span>`;
     }
 
+    const fast = fastModeEl && fastModeEl.checked;     // re-read every iteration
+    if (fast) {
+      if (isNew || (i % fastRedrawEvery === 0)) {
+        const reF = runShot(entry.params, true);
+        const last = reF.frames[reF.frames.length - 1];
+        drawScene(last, entry.params,
+          `Shot ${i + 1}/${total}  ·  Best: ${bestSoFar.toFixed(1)}${isNew ? '  ★ NEW!' : ''}`);
+      }
+      if (i % fastYieldEvery === 0) await new Promise((r) => setTimeout(r, fastSleepMs));
+      continue;
+    }
+
+    const reF = runShot(entry.params, true);
     await animateShot(
       reF.frames, entry.params,
       `Shot ${i + 1}/${total}  ·  Best: ${bestSoFar.toFixed(1)}${isNew ? '  ★ NEW!' : ''}`,
