@@ -433,6 +433,34 @@ function dogleg(g, H, rho, n) {
     return dCauchy;
 }
 
+/**
+ * Shift xbase so XPT[kopt] sits at the origin.
+ *
+ * Mirrors `_shift_base_point` / `_shift_base_point_bounded` in the
+ * Python port. Uses the realised (post-clip) shift to keep the model
+ * self-consistent — when XPT[kopt] would push xbase outside [0,1]
+ * the clip truncates the move, so XPT must be shifted by that same
+ * truncated amount or the model coefficients no longer interpolate
+ * the data points the optimiser thinks they do.
+ *
+ * Powell's NEWUOA does this shift every iteration — without it the
+ * model's gradient g is at xbase, not at the trial origin xopt =
+ * xbase + XPT[kopt], so the TR subproblem is mis-aligned (#172/#178).
+ * Mutates XPT in place; returns the new xbase.
+ */
+function shiftBasePoint(XPT, xbase, kopt, n) {
+    const newXbase = new Array(n);
+    for (let i = 0; i < n; i++) {
+        newXbase[i] = Math.min(1, Math.max(0, xbase[i] + XPT[kopt][i]));
+    }
+    const actualShift = new Array(n);
+    for (let i = 0; i < n; i++) actualShift[i] = newXbase[i] - xbase[i];
+    for (let k = 0; k < XPT.length; k++) {
+        for (let i = 0; i < n; i++) XPT[k][i] -= actualShift[i];
+    }
+    return newXbase;
+}
+
 class PRIMA_UOBYQA extends Optimizer {
     constructor(objective, nTrials, nDim) {
         super(objective, nTrials, nDim);
@@ -1138,18 +1166,22 @@ class PRIMA_NEWUOA extends Optimizer {
         // H_prev = 0 at restart and carries it forward).
         this._Hprev = Linalg.zeros(n, n);
 
+        // Shift xbase so XPT[kopt] = 0 BEFORE the first TR iteration —
+        // see #178. The model's plain g then becomes the gradient at
+        // xopt = xbase, and the TR step from xbase is geometrically
+        // consistent with `xnew = xbase + step`.
+        if (MathUtils.norm(XPT[kopt]) > 1e-12) {
+            xbase = shiftBasePoint(XPT, xbase, kopt, n);
+            xopt = xbase.slice();
+        }
+
         while (this.evaluations < this.nTrials && rho > rho_end) {
             const model = this.buildNEWUOAQuadraticModel(XPT, FVAL, xopt);
-            // Effective gradient at xopt (= xbase + XPT[kopt]). The model
-            // m(s) = c + g·s + ½ sᵀ H s is centred at xbase, so the
-            // gradient at the trial origin xopt is g + H · XPT[kopt].
-            // Using g directly would solve a TR problem geometrically
-            // centred at xbase — fine when base-point shifting keeps
-            // XPT[kopt] ≈ 0 (Powell's NEWUOA does this every iteration)
-            // but otherwise mis-aligned with the TR step we then add to
-            // xopt.
-            const gEff = MathUtils.add(model.g, Linalg.matvec(model.H, XPT[kopt]));
-            const step = solveTrustRegionUnbounded(gEff, model.H, rho, n);
+            // Plain g — since XPT[kopt] ≈ 0 after each shift, g IS the
+            // gradient at xopt. The previous gEff inline was needed
+            // when humpday did conditional shifts; unconditional shift
+            // makes it redundant. See #178.
+            const step = solveTrustRegionUnbounded(model.g, model.H, rho, n);
 
             if (this.evaluations >= this.nTrials) break;
 
@@ -1157,9 +1189,9 @@ class PRIMA_NEWUOA extends Optimizer {
             const xTrialBounded = xTrial.map(x => Math.min(1, Math.max(0, x)));
             const fTrial = this.evaluate(xTrialBounded);
 
-            // Predicted reduction at xopt: −(gEff · step + ½ stepᵀ H step).
+            // Predicted reduction: −(g · step + ½ stepᵀ H step).
             const HStep = Linalg.matvec(model.H, step);
-            let predRed = -MathUtils.dot(gEff, step);
+            let predRed = -MathUtils.dot(model.g, step);
             for (let i = 0; i < n; i++) predRed -= 0.5 * step[i] * HStep[i];
             const actualRed = fopt - fTrial;
             const ratio = predRed > 0 ? actualRed / predRed : -1;
@@ -1199,6 +1231,22 @@ class PRIMA_NEWUOA extends Optimizer {
             // steps and missed the cases where it actually mattered.
             if (!stepAccepted && this.evaluations < this.nTrials - 1) {
                 this.improveGeometry(XPT, FVAL, xopt, rho, xbase);
+            }
+
+            // Unconditional base-point shift — see #178. Plain `g` is
+            // the gradient at xbase; the TR step is taken from xopt =
+            // xbase + XPT[kopt], so the subproblem only stays
+            // consistent when XPT[kopt] ≈ 0 at the start of every
+            // iteration. Also recompute kopt in case improveGeometry
+            // / update mutated the interpolation set.
+            kopt = 0;
+            for (let k = 1; k < XPT.length; k++) {
+                if (FVAL[k] < FVAL[kopt]) kopt = k;
+            }
+            if (MathUtils.norm(XPT[kopt]) > 1e-12) {
+                xbase = shiftBasePoint(XPT, xbase, kopt, n);
+                xopt = xbase.slice();
+                fopt = FVAL[kopt];
             }
         }
         // ---------- end one trust-region pass ----------
@@ -1449,6 +1497,12 @@ class PRIMA_BOBYQA extends Optimizer {
         // Reset min-Frobenius prior Hessian for this TR pass.
         this._Hprev = Linalg.zeros(n, n);
 
+        // Shift xbase so XPT[kopt] = 0 BEFORE the first TR iteration
+        // — see #178.
+        if (this._norm(XPT[kopt]) > 1e-12) {
+            xbase = this._shiftBasePointBounded(XPT, xbase, kopt, npt, xl, xu);
+        }
+
         let iteration = 0;
         // Cap iteration count by budget directly rather than by
         // floor(budget / npt) — the previous formula gave only
@@ -1471,15 +1525,14 @@ class PRIMA_BOBYQA extends Optimizer {
             }
 
             const xCurr = this._addVec(xbase, XPT[kopt]);
-            // Effective gradient at xCurr: g + H · XPT[kopt] (the model
-            // is centred at xbase; the TR subproblem is solved from
-            // xCurr = xbase + XPT[kopt]).
-            const gEff = MathUtils.add(g, Linalg.matvec(H, XPT[kopt]));
+            // Plain g — since XPT[kopt] ≈ 0 after each shift, g IS the
+            // gradient at xCurr (the previous gEff inline was needed
+            // when shifts were conditional; #178 makes it redundant).
             let d;
             try {
-                d = solveTrsbox(gEff, H, rho, xCurr, xl, xu, n);
+                d = solveTrsbox(g, H, rho, xCurr, xl, xu, n);
             } catch (e) {
-                d = this._fallbackBoundStep(gEff, rho, n, xCurr, xl, xu);
+                d = this._fallbackBoundStep(g, rho, n, xCurr, xl, xu);
             }
 
             const xnew = this._clip01(this._addVec(xCurr, d));
@@ -1487,9 +1540,9 @@ class PRIMA_BOBYQA extends Optimizer {
             if (this.evaluations >= this.nTrials) break;
             const fnew = this.evaluate(xnew);
 
-            // Predicted reduction at xCurr: −(gEff · d + ½ dᵀ H d).
+            // Predicted reduction: −(g · d + ½ dᵀ H d).
             const Hd = Linalg.matvec(H, d);
-            let predRed = -MathUtils.dot(gEff, d);
+            let predRed = -MathUtils.dot(g, d);
             for (let i = 0; i < n; i++) predRed -= 0.5 * d[i] * Hd[i];
             const actualRed = FVAL[kopt] - fnew;
 
@@ -1503,7 +1556,8 @@ class PRIMA_BOBYQA extends Optimizer {
 
             rho = this._updateTrustRegionRadius(predRed, actualRed, rho, rhobeg, rhoend);
 
-            if (this._norm(XPT[kopt]) > 0.5 * rho) {
+            // Unconditional base-point shift — see #178.
+            if (this._norm(XPT[kopt]) > 1e-12) {
                 xbase = this._shiftBasePointBounded(XPT, xbase, kopt, npt, xl, xu);
             }
         }
@@ -1666,11 +1720,14 @@ class PRIMA_BOBYQA extends Optimizer {
     }
 
     _shiftBasePointBounded(XPT, xbase, kopt, npt, xl, xu) {
-        // Recentre XPT so the best point sits at the origin (Python verbatim).
+        // Recentre XPT so the best point sits at the origin (Python
+        // verbatim). Iterates over `XPT.length` rather than `npt` so
+        // partial init-sets (init bailed out on budget) don't go out
+        // of range.
         const shift = XPT[kopt].slice();
         const newBase = this._clip01(this._addVec(xbase, shift));
         const actualShift = this._subVec(newBase, xbase);
-        for (let i = 0; i < npt; i++) {
+        for (let i = 0; i < XPT.length; i++) {
             XPT[i] = this._subVec(XPT[i], actualShift);
         }
         return newBase;
