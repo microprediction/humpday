@@ -479,10 +479,160 @@
       "humpday_to_opt": 4.430747567480555,
       "reference_to_opt": 0.24688628159903603,
       "ratio_humpday_over_reference": 17.946511806097202
+    },
+    {
+      "algorithm": "RandomSearch",
+      "reference": "uniform-sample baseline",
+      "problem": "sphere",
+      "humpday_median": 0.0022221176064838584,
+      "reference_median": 0.0003330352940661955,
+      "humpday_to_opt": 0.0022221176064838584,
+      "reference_to_opt": 0.0003330352940661955,
+      "ratio_humpday_over_reference": 6.672318658323668
+    },
+    {
+      "algorithm": "RandomSearch",
+      "reference": "uniform-sample baseline",
+      "problem": "rosenbrock",
+      "humpday_median": 0.09198666650343496,
+      "reference_median": 0.34435870084553954,
+      "humpday_to_opt": 0.09198666650343496,
+      "reference_to_opt": 0.34435870084553954,
+      "ratio_humpday_over_reference": 0.2671245601681366
+    },
+    {
+      "algorithm": "RandomSearch",
+      "reference": "uniform-sample baseline",
+      "problem": "ackley",
+      "humpday_median": 2.8363751866134312,
+      "reference_median": 1.2094120558250663,
+      "humpday_to_opt": 2.8363751866134312,
+      "reference_to_opt": 1.2094120558250663,
+      "ratio_humpday_over_reference": 2.345251292106925
+    },
+    {
+      "algorithm": "HillClimbing",
+      "reference": "(1+1)-ES sigma-decay schedule",
+      "problem": "sphere",
+      "humpday_median": 0.00033426152176908115,
+      "reference_median": 1.390796516429335e-07,
+      "humpday_to_opt": 0.00033426152176908115,
+      "reference_to_opt": 1.390796516429335e-07,
+      "ratio_humpday_over_reference": 2403.3819140190717
+    },
+    {
+      "algorithm": "HillClimbing",
+      "reference": "(1+1)-ES sigma-decay schedule",
+      "problem": "rosenbrock",
+      "humpday_median": 0.35802570586317956,
+      "reference_median": 0.09177438621129817,
+      "humpday_to_opt": 0.35802570586317956,
+      "reference_to_opt": 0.09177438621129817,
+      "ratio_humpday_over_reference": 3.901150643915729
+    },
+    {
+      "algorithm": "HillClimbing",
+      "reference": "(1+1)-ES sigma-decay schedule",
+      "problem": "ackley",
+      "humpday_median": 1.7761777471135543,
+      "reference_median": 0.005230236757765017,
+      "humpday_to_opt": 1.7761777471135543,
+      "reference_to_opt": 0.005230236757765017,
+      "ratio_humpday_over_reference": 339.59796264982305
+    },
+    {
+      "algorithm": "AdaptiveRandomSearch",
+      "reference": "(1+1)-ES 1/5-success-rule (Rechenberg)",
+      "problem": "sphere",
+      "humpday_median": 2.0164074250563785e-05,
+      "reference_median": 3.456938901965887e-14,
+      "humpday_to_opt": 2.0164074250563785e-05,
+      "reference_to_opt": 3.456938901965887e-14,
+      "ratio_humpday_over_reference": 566894029.0320784
+    },
+    {
+      "algorithm": "AdaptiveRandomSearch",
+      "reference": "(1+1)-ES 1/5-success-rule (Rechenberg)",
+      "problem": "rosenbrock",
+      "humpday_median": 0.2001628417931641,
+      "reference_median": 0.0858730002482039,
+      "humpday_to_opt": 0.2001628417931641,
+      "reference_to_opt": 0.0858730002482039,
+      "ratio_humpday_over_reference": 2.3309170660698944
+    },
+    {
+      "algorithm": "AdaptiveRandomSearch",
+      "reference": "(1+1)-ES 1/5-success-rule (Rechenberg)",
+      "problem": "ackley",
+      "humpday_median": 0.20408225616901676,
+      "reference_median": 6.8833607014262554e-06,
+      "humpday_to_opt": 0.20408225616901676,
+      "reference_to_opt": 6.8833607014262554e-06,
+      "ratio_humpday_over_reference": 29648.636035749598
+    },
+    {
+      "algorithm": "CoordinateDescent",
+      "reference": "scipy Powell (direc=I)",
+      "problem": "sphere",
+      "humpday_median": 5.6240397679647395e-08,
+      "reference_median": 0.0,
+      "humpday_to_opt": 5.6240397679647395e-08,
+      "reference_to_opt": 0.0,
+      "ratio_humpday_over_reference": 56240398.679647386
+    },
+    {
+      "algorithm": "CoordinateDescent",
+      "reference": "scipy Powell (direc=I)",
+      "problem": "rosenbrock",
+      "humpday_median": 0.27565088962745843,
+      "reference_median": 0.06758611872244405,
+      "humpday_to_opt": 0.27565088962745843,
+      "reference_to_opt": 0.06758611872244405,
+      "ratio_humpday_over_reference": 4.078513381711872
+    },
+    {
+      "algorithm": "CoordinateDescent",
+      "reference": "scipy Powell (direc=I)",
+      "problem": "ackley",
+      "humpday_median": 0.00685738478913267,
+      "reference_median": 1.4808820836265113e-10,
+      "humpday_to_opt": 0.00685738478913267,
+      "reference_to_opt": 1.4808820836265113e-10,
+      "ratio_humpday_over_reference": 46305769.77858393
+    },
+    {
+      "algorithm": "PatternSearch",
+      "reference": "scipy.optimize.direct (DIRECT)",
+      "problem": "sphere",
+      "humpday_median": 4.2138507759282547e-13,
+      "reference_median": 0.0,
+      "humpday_to_opt": 4.2138507759282547e-13,
+      "reference_to_opt": 0.0,
+      "ratio_humpday_over_reference": 422.38507759282544
+    },
+    {
+      "algorithm": "PatternSearch",
+      "reference": "scipy.optimize.direct (DIRECT)",
+      "problem": "rosenbrock",
+      "humpday_median": 0.15215919320399093,
+      "reference_median": 0.010564870537897215,
+      "humpday_to_opt": 0.15215919320399093,
+      "reference_to_opt": 0.010564870537897215,
+      "ratio_humpday_over_reference": 14.402371771444596
+    },
+    {
+      "algorithm": "PatternSearch",
+      "reference": "scipy.optimize.direct (DIRECT)",
+      "problem": "ackley",
+      "humpday_median": 1.771094968505693e-05,
+      "reference_median": 4.440892098500626e-16,
+      "humpday_to_opt": 1.771094968505693e-05,
+      "reference_to_opt": 4.440892098500626e-16,
+      "ratio_humpday_over_reference": 12264442920.320574
     }
   ],
   "n_runs": 4,
   "n_trials": 200,
   "n_dim": 2,
-  "recorded_at": "2026-05-30T19:21:59Z"
+  "recorded_at": "2026-05-30T19:44:25Z"
 }
