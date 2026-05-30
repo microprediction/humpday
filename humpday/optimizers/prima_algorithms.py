@@ -685,11 +685,16 @@ class PRIMA_BOBYQA(BaseOptimizer):
         FVAL = []
 
         XPT.append(_A.zeros(n))
+        if self.evaluations >= self.n_trials:
+            return XPT, FVAL
         FVAL.append(self.evaluate(xbase))
 
         # Coordinate directions, clipped to bound-feasible step sizes.
+        # Each evaluate() is budget-guarded so a restart triggered close
+        # to n_trials can't overshoot via the init-set (caught by the
+        # test_numpy_backend BOBYQA test — 206 vs 200 evals).
         for i in range(n):
-            if len(FVAL) >= npt:
+            if len(FVAL) >= npt or self.evaluations >= self.n_trials:
                 return XPT, FVAL
             step_pos = min(rho, float(xu[i]) - float(xbase[i]))
             if step_pos > 1e-10:
@@ -698,7 +703,7 @@ class PRIMA_BOBYQA(BaseOptimizer):
                 XPT.append(offset)
                 FVAL.append(self.evaluate(_A.clip(xbase + offset, 0, 1)))
 
-            if len(FVAL) >= npt:
+            if len(FVAL) >= npt or self.evaluations >= self.n_trials:
                 return XPT, FVAL
             step_neg = max(-rho, float(xl[i]) - float(xbase[i]))
             if step_neg < -1e-10:
@@ -708,7 +713,7 @@ class PRIMA_BOBYQA(BaseOptimizer):
                 FVAL.append(self.evaluate(_A.clip(xbase + offset, 0, 1)))
 
         # Optional diagonal-direction point, clipped to bounds.
-        if len(FVAL) < npt:
+        if len(FVAL) < npt and self.evaluations < self.n_trials:
             diagonal_step = [rho / math.sqrt(n)] * n
             for i in range(n):
                 xi_target = float(xbase[i]) + diagonal_step[i]
