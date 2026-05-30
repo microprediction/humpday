@@ -128,13 +128,6 @@ class PRIMA_UOBYQA extends Optimizer {
 
             // Update trust region radius
             rho = Math.max(rho_new, rhoend);
-
-            // Early termination if we found excellent solution
-            if (fopt < 1e-6) { // Relaxed convergence for visualization
-                // Do PDFO-like systematic refinement around best point
-                this.doSystematicRefinement(XPT, FVAL, kopt, xbase);
-                break;
-            }
         }
 
         return {
@@ -803,49 +796,6 @@ class PRIMA_NEWUOA extends Optimizer {
         };
     }
 
-    buildNEWUOAInterpolationSet(XPT, FVAL, xbase, rho) {
-        const n = this.nDim;
-        const npt = this.npt;
-
-        let kptNum = 1; // Start from 1 since XPT[0] is already set
-
-        // Add coordinate directions (both positive and negative if budget allows)
-        for (let i = 0; i < n && kptNum < npt && this.evaluations < this.nTrials; i++) {
-            // Positive direction
-            const step1 = Math.min(rho, 1 - xbase[i]);
-            XPT[kptNum] = Array(n).fill(0);
-            XPT[kptNum][i] = step1;
-
-            const xnew1 = MathUtils.add(xbase, XPT[kptNum]);
-            FVAL[kptNum] = this.evaluate(xnew1);
-            kptNum++;
-
-            if (kptNum >= npt || this.evaluations >= this.nTrials) break;
-
-            // Negative direction
-            const step2 = -Math.min(rho, xbase[i]);
-            XPT[kptNum] = Array(n).fill(0);
-            XPT[kptNum][i] = step2;
-
-            const xnew2 = MathUtils.add(xbase, XPT[kptNum]);
-            FVAL[kptNum] = this.evaluate(xnew2);
-            kptNum++;
-        }
-
-        // Add additional points to reach 2n+1 if needed
-        while (kptNum < npt && this.evaluations < this.nTrials) {
-            XPT[kptNum] = Array(n).fill(0);
-            // Add random perturbation
-            for (let i = 0; i < n; i++) {
-                const pert = (Math.random() - 0.5) * 2 * rho * 0.7;
-                XPT[kptNum][i] = Math.max(-xbase[i], Math.min(1 - xbase[i], pert));
-            }
-            const xnew = MathUtils.add(xbase, XPT[kptNum]);
-            FVAL[kptNum] = this.evaluate(xnew);
-            kptNum++;
-        }
-    }
-
     buildNEWUOAQuadraticModel(XPT, FVAL, xopt) {
         const n = this.nDim;
         const npt = XPT.length;
@@ -1118,20 +1068,6 @@ class PRIMA_NEWUOA extends Optimizer {
         }
     }
 
-    buildNEWUOALagrangeModel(XPT, FVAL, kopt) {
-        // NEWUOA uses same Lagrange interpolation as UOBYQA
-        return this.buildLagrangeQuadraticModel(XPT, FVAL, kopt);
-    }
-
-    updateNEWUOALagrangeSet(XPT, FVAL, xbase, snew, fnew) {
-        // NEWUOA uses same geometry management as UOBYQA
-        this.updateLagrangeInterpolationSet(XPT, FVAL, xbase, snew, fnew);
-    }
-
-    doNEWUOASystematicRefinement(XPT, FVAL, kopt, xbase) {
-        // NEWUOA uses same systematic refinement as UOBYQA
-        this.doSystematicRefinement(XPT, FVAL, kopt, xbase);
-    }
 }
 
 // PRIMA BOBYQA - Bound-constrained Optimization BY Quadratic Approximation.
@@ -1263,14 +1199,17 @@ class PRIMA_BOBYQA extends Optimizer {
 
     _initBOBYQAPoints(xbase, rho, npt, n, xl, xu) {
         // Initial interpolation set, 2n+1 coordinate-axis points respecting bounds.
+        // Each evaluate() is budget-guarded so a restart triggered close to
+        // nTrials can't overshoot via the init-set (mirrors Python fix #141).
         const XPT = [];
         const FVAL = [];
 
         XPT.push(new Array(n).fill(0));
+        if (this.evaluations >= this.nTrials) return { XPT, FVAL };
         FVAL.push(this.evaluate(xbase));
 
         for (let i = 0; i < n; i++) {
-            if (FVAL.length >= npt) return { XPT, FVAL };
+            if (FVAL.length >= npt || this.evaluations >= this.nTrials) return { XPT, FVAL };
             const step_pos = Math.min(rho, xu[i] - xbase[i]);
             if (step_pos > 1e-10) {
                 const offset = new Array(n).fill(0);
@@ -1279,7 +1218,7 @@ class PRIMA_BOBYQA extends Optimizer {
                 FVAL.push(this.evaluate(this._clip01(this._addVec(xbase, offset))));
             }
 
-            if (FVAL.length >= npt) return { XPT, FVAL };
+            if (FVAL.length >= npt || this.evaluations >= this.nTrials) return { XPT, FVAL };
             const step_neg = Math.max(-rho, xl[i] - xbase[i]);
             if (step_neg < -1e-10) {
                 const offset = new Array(n).fill(0);
@@ -1290,7 +1229,7 @@ class PRIMA_BOBYQA extends Optimizer {
         }
 
         // Optional diagonal-direction point.
-        if (FVAL.length < npt) {
+        if (FVAL.length < npt && this.evaluations < this.nTrials) {
             const diag = new Array(n).fill(rho / Math.sqrt(n));
             for (let i = 0; i < n; i++) {
                 const xi = xbase[i] + diag[i];

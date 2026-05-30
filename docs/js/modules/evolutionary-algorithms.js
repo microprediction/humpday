@@ -176,9 +176,6 @@ class ParticleSwarm extends Optimizer {
                     particle.stagnationCount = 0;
                 }
             }
-
-            // Early termination for excellent solutions
-            if (this.bestValue < 1e-6) break; // Relaxed termination for visualization
         }
 
         return {
@@ -284,9 +281,6 @@ class SimulatedAnnealing extends Optimizer {
                 // Fast exponential cooling with floor
                 temperature *= 0.99;
                 temperature = Math.max(temperature, finalTemp);
-
-                // Early termination if we find a very good solution
-                if (bestFx < 1e-6) break;
             }
 
             // Update global best

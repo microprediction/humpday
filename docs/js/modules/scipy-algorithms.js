@@ -197,7 +197,7 @@ class Powell extends Optimizer {
 
     lineSearch(x0, direction) {
         let x = [...x0];
-        let fx = this.objective(x);
+        let fx = this.evaluate(x);
 
         const stepSize = 0.1;
         let bestStep = 0;
