@@ -17,6 +17,7 @@ if (typeof module !== 'undefined' && module.exports) {
     const _base = require('./base-optimizer.js');
     globalThis.Optimizer = _base.Optimizer;
     globalThis.MathUtils = _base.MathUtils;
+    globalThis.Linalg = require('./linalg.js');
 }class DifferentialEvolution extends Optimizer {
     constructor(objective, nTrials, nDim) {
         super(objective, nTrials, nDim);
@@ -552,57 +553,177 @@ class CMAEvolutionStrategy extends Optimizer {
         this.name = 'CMAEvolutionStrategy';
     }
 
+    // Hansen-standard CMA-ES with rank-1 + rank-μ covariance adaptation
+    // and evolution paths. Mirrors `humpday/optimizers/
+    // evolutionary_algorithms.py::CMAEvolutionStrategy` step-for-step.
+    // Before this rewrite the JS port was sigma-only adaptation with an
+    // identity-covariance proposal — it could never learn anisotropy,
+    // and the win-rate parity test ran against a Python port that does
+    // full rank-1 + rank-μ updates, making the JS side the obvious
+    // outlier on Rosenbrock and similar coupled objectives.
     optimize() {
-        const lambda = Math.min(20, 4 + Math.floor(3 * Math.log(this.nDim)));
-        const mu = Math.floor(lambda / 2);
+        const n = this.nDim;
 
-        let mean = Array(this.nDim).fill(0.5);
-        let sigma = 0.3;
+        // Hansen's recommended parameters.
+        const lambda_ = Math.min(50, 4 + Math.floor(3 * Math.log(n)));
+        const mu = Math.floor(lambda_ / 2);
 
-        // CMA-ES proper weights (log-linear decreasing)
-        const weights = Array(mu).fill(0).map((_, i) => Math.log(mu + 0.5) - Math.log(i + 1));
-        const sumWeights = weights.reduce((sum, w) => sum + w, 0);
-        const normalizedWeights = weights.map(w => w / sumWeights);
+        // Recombination weights w_i = log(μ + 0.5) − log(i + 1), normalised.
+        const wRaw = new Array(mu);
+        for (let i = 0; i < mu; i++) wRaw[i] = Math.log(mu + 0.5) - Math.log(i + 1);
+        const sumW = wRaw.reduce((s, w) => s + w, 0);
+        const weights = wRaw.map(w => w / sumW);
+        const sumWsq = weights.reduce((s, w) => s + w * w, 0);
+        const mueff = 1.0 / sumWsq;
 
-        // Simplified covariance matrix (identity scaled by sigma^2)
-        let C = Array(this.nDim).fill(0).map(() => Array(this.nDim).fill(0));
-        for (let i = 0; i < this.nDim; i++) {
-            C[i][i] = 1.0; // Identity matrix initially
-        }
+        // Adaptation constants.
+        const cc = (4 + mueff / n) / (n + 4 + 2 * mueff / n);
+        const cs = (mueff + 2) / (n + mueff + 5);
+        const c1 = 2 / ((n + 1.3) ** 2 + mueff);
+        const cmu = Math.min(
+            1 - c1,
+            2 * (mueff - 2 + 1 / mueff) / ((n + 2) ** 2 + mueff)
+        );
+        const damps = 1 + 2 * Math.max(0, Math.sqrt((mueff - 1) / (n + 1)) - 1) + cs;
 
-        while (this.evaluations < this.nTrials) {
-            // Generate offspring using PROPER Gaussian sampling
-            const offspring = [];
-            for (let i = 0; i < lambda && this.evaluations < this.nTrials; i++) {
-                // Sample from multivariate normal N(mean, sigma^2 * C)
-                const z = Array(this.nDim).fill(0).map(() => this.boxMullerGaussian());
-                const individual = mean.map((m, j) =>
-                    MathUtils.clip(m + sigma * z[j], 0, 1)
-                );
-                const fitness = this.evaluate(individual);
-                offspring.push({ x: individual, fitness, z: z });
+        // State. Initial mean is a random interior point in [0.3, 0.7]^n
+        // (matching the Python port — the previous fixed-centre 0.5*ones
+        // gave the same starting point every restart and disadvantaged
+        // objectives whose optimum isn't at the centre).
+        let mean = new Array(n);
+        for (let i = 0; i < n; i++) mean[i] = 0.3 + 0.4 * Math.random();
+        let sigma = 0.2;
+        let C = Linalg.eye(n);
+        let pc = new Array(n).fill(0);
+        let ps = new Array(n).fill(0);
+        let invsqrtC = Linalg.eye(n);
+
+        let generation = 0;
+        const maxGenerations = this.nTrials;
+
+        while (this.evaluations < this.nTrials && generation < maxGenerations) {
+            generation += 1;
+
+            // Sample λ offspring from N(mean, σ² C) via Cholesky.
+            let L_C;
+            try {
+                L_C = Linalg.cholesky(C);
+            } catch (e) {
+                L_C = Linalg.eye(n);
             }
 
-            // Selection and recombination
-            offspring.sort((a, b) => a.fitness - b.fitness);
-            const selected = offspring.slice(0, mu);
+            const population = [];
+            for (let k = 0; k < lambda_; k++) {
+                if (this.evaluations >= this.nTrials) break;
+                const stdZ = new Array(n);
+                for (let i = 0; i < n; i++) stdZ[i] = this._gaussian();
+                const z = Linalg.matvec(L_C, stdZ);
+                const x = new Array(n);
+                for (let i = 0; i < n; i++) {
+                    x[i] = MathUtils.clip(mean[i] + sigma * z[i], 0, 1);
+                }
+                const f = this.evaluate(x);
+                population.push({ x, z, f });
+            }
 
-            // Update mean
-            const newMean = Array(this.nDim).fill(0);
-            for (let i = 0; i < Math.min(mu, selected.length); i++) {
-                if (selected[i] && selected[i].x) {
-                    for (let j = 0; j < this.nDim; j++) {
-                        newMean[j] += normalizedWeights[i] * selected[i].x[j];
+            if (!population.length) break;
+            // Partial-generation guard (same as the Python port — if the
+            // budget ran out before μ samples, recombination would be
+            // ill-defined).
+            if (population.length < mu) break;
+
+            population.sort((a, b) => a.f - b.f);
+
+            // Recombination: new mean = Σ w_i x_i over the μ best.
+            const oldMean = mean.slice();
+            mean = new Array(n).fill(0);
+            for (let i = 0; i < mu; i++) {
+                for (let j = 0; j < n; j++) mean[j] += weights[i] * population[i].x[j];
+            }
+
+            // Evolution paths.
+            const y = new Array(n);
+            for (let i = 0; i < n; i++) y[i] = (mean[i] - oldMean[i]) / sigma;
+
+            const psFactor = Math.sqrt(cs * (2 - cs) * mueff);
+            const invsqrtY = Linalg.matvec(invsqrtC, y);
+            for (let i = 0; i < n; i++) {
+                ps[i] = (1 - cs) * ps[i] + psFactor * invsqrtY[i];
+            }
+
+            let psNorm = 0;
+            for (let i = 0; i < n; i++) psNorm += ps[i] * ps[i];
+            psNorm = Math.sqrt(psNorm);
+
+            const hsigDenom = Math.sqrt(1 - Math.pow(1 - cs, 2 * generation));
+            const hsig = psNorm / hsigDenom < 1.4 + 2 / (n + 1) ? 1 : 0;
+
+            const pcFactor = hsig * Math.sqrt(cc * (2 - cc) * mueff);
+            for (let i = 0; i < n; i++) {
+                pc[i] = (1 - cc) * pc[i] + pcFactor * y[i];
+            }
+
+            // Rank-μ update: weighted sum of outer products of the μ
+            // best (population[i].x − oldMean) / σ.
+            const weightedDiffs = Linalg.zeros(n, n);
+            for (let i = 0; i < mu; i++) {
+                const diff = new Array(n);
+                for (let j = 0; j < n; j++) {
+                    diff[j] = (population[i].x[j] - oldMean[j]) / sigma;
+                }
+                for (let r = 0; r < n; r++) {
+                    for (let c = 0; c < n; c++) {
+                        weightedDiffs[r][c] += weights[i] * diff[r] * diff[c];
                     }
                 }
             }
-            mean = newMean;
 
-            // Adapt step size (simplified)
-            const improvement = (selected.length > 0 && offspring.length > 0) ?
-                (offspring[offspring.length - 1]?.fitness - selected[0]?.fitness) : 0;
-            sigma *= improvement > 0 ? 0.95 : 1.05;
-            sigma = MathUtils.clip(sigma, 0.01, 1.0);
+            // C ← (1 − c1 − cμ) C + c1 (pc pcᵀ) + cμ weightedDiffs.
+            const base = 1 - c1 - cmu;
+            const newC = Linalg.zeros(n, n);
+            for (let r = 0; r < n; r++) {
+                for (let c = 0; c < n; c++) {
+                    newC[r][c] =
+                        base * C[r][c] +
+                        c1 * pc[r] * pc[c] +
+                        cmu * weightedDiffs[r][c];
+                }
+            }
+            C = newC;
+
+            // Ensure C stays positive definite — bump up by the smallest
+            // eigenvalue if it drifted non-PD.
+            try {
+                const { eigvals } = Linalg.eigh(C);
+                let minEig = Infinity;
+                for (let i = 0; i < n; i++) {
+                    if (eigvals[i] < minEig) minEig = eigvals[i];
+                }
+                if (minEig < 1e-14) {
+                    const shift = 1e-14 - minEig;
+                    for (let k = 0; k < n; k++) C[k][k] += shift;
+                }
+            } catch (e) {
+                /* leave C as-is — eigh failed; sampling will hit the
+                   identity-fallback on the next iteration. */
+            }
+
+            // Refresh invsqrtC for the next iteration.
+            try {
+                const { eigvals: D, eigvecs: B } = Linalg.eigh(C);
+                const Dinvsqrt = D.map(d => 1.0 / Math.sqrt(Math.max(d, 1e-14)));
+                const Ddiag = Linalg.diag(Dinvsqrt);
+                const tmp = Linalg.matmul(B, Ddiag);
+                invsqrtC = Linalg.matmul(tmp, Linalg.transpose(B));
+            } catch (e) {
+                invsqrtC = Linalg.eye(n);
+            }
+
+            // Step-size update (CSA). Do NOT cap sigma at 0.5 (pycma has
+            // no cap; clipping each x to [0,1]^n already enforces the
+            // feasible search space) and do NOT floor at 1e-6 (the floor
+            // was preventing precise convergence on smooth basins).
+            sigma = sigma * Math.exp((cs / damps) * (psNorm / Math.sqrt(n) - 1));
         }
 
         return {
@@ -614,20 +735,20 @@ class CMAEvolutionStrategy extends Optimizer {
         };
     }
 
-    // Box-Muller transform for Gaussian sampling (essential for proper CMA-ES)
-    boxMullerGaussian() {
-        if (this.spareGaussian !== undefined) {
-            const spare = this.spareGaussian;
-            this.spareGaussian = undefined;
-            return spare;
+    // Box-Muller transform for Gaussian sampling — caches the spare
+    // sample (each Box-Muller iteration produces two independent
+    // normals).
+    _gaussian() {
+        if (this._spareGaussian !== undefined) {
+            const s = this._spareGaussian;
+            this._spareGaussian = undefined;
+            return s;
         }
-
         const u = Math.random();
         const v = Math.random();
-        const r = Math.sqrt(-2 * Math.log(u));
+        const r = Math.sqrt(-2 * Math.log(Math.max(u, 1e-300)));
         const theta = 2 * Math.PI * v;
-
-        this.spareGaussian = r * Math.sin(theta);
+        this._spareGaussian = r * Math.sin(theta);
         return r * Math.cos(theta);
     }
 }

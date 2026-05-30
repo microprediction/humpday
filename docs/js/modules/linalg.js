@@ -206,6 +206,99 @@ const Linalg = {
         return L;
     },
 
+    /** outer(u, v) → u vᵀ (m × n matrix). */
+    outer(u, v) {
+        const m = u.length;
+        const n = v.length;
+        const A = Linalg.zeros(m, n);
+        for (let i = 0; i < m; i++) {
+            for (let j = 0; j < n; j++) A[i][j] = u[i] * v[j];
+        }
+        return A;
+    },
+
+    /** diag(d) → n × n diagonal matrix with d on the diagonal. */
+    diag(d) {
+        const n = d.length;
+        const A = Linalg.zeros(n, n);
+        for (let i = 0; i < n; i++) A[i][i] = d[i];
+        return A;
+    },
+
+    /**
+     * Symmetric eigendecomposition via the classic Jacobi method.
+     * Returns { eigvals, eigvecs } where `eigvecs[:, i]` is the eigenvector
+     * for eigenvalue `eigvals[i]`. Eigenvalues are not sorted.
+     *
+     * Jacobi is O(n³) per sweep with cubic convergence for well-separated
+     * eigenvalues — fine for the small (n ≤ ~20) symmetric matrices the
+     * CMA-ES covariance update needs. The CyclicJacobi sweep schedule is
+     * used: visit each off-diagonal pair (p, q) once per sweep.
+     */
+    eigh(A) {
+        const n = A.length;
+        // Work on a deep copy of A.
+        const M = A.map(row => row.slice());
+        const V = Linalg.eye(n);
+
+        const maxSweeps = 50;
+        const tol = 1e-14;
+
+        for (let sweep = 0; sweep < maxSweeps; sweep++) {
+            // Frobenius norm of off-diagonal part.
+            let off = 0;
+            for (let p = 0; p < n; p++) {
+                for (let q = p + 1; q < n; q++) off += 2 * M[p][q] * M[p][q];
+            }
+            if (off < tol * tol) break;
+
+            for (let p = 0; p < n - 1; p++) {
+                for (let q = p + 1; q < n; q++) {
+                    const Mpq = M[p][q];
+                    if (Math.abs(Mpq) < tol) continue;
+
+                    // Compute the Jacobi rotation that zeros M[p][q].
+                    const theta = (M[q][q] - M[p][p]) / (2 * Mpq);
+                    let t;
+                    if (Math.abs(theta) > 1e150) {
+                        t = 0.5 / theta;
+                    } else {
+                        const sign = theta >= 0 ? 1 : -1;
+                        t = sign / (Math.abs(theta) + Math.sqrt(theta * theta + 1));
+                    }
+                    const cVal = 1 / Math.sqrt(t * t + 1);
+                    const sVal = t * cVal;
+
+                    // Update M (only the affected rows/cols).
+                    M[p][p] -= t * Mpq;
+                    M[q][q] += t * Mpq;
+                    M[p][q] = 0;
+                    M[q][p] = 0;
+                    for (let i = 0; i < n; i++) {
+                        if (i === p || i === q) continue;
+                        const Mip = M[i][p];
+                        const Miq = M[i][q];
+                        M[i][p] = cVal * Mip - sVal * Miq;
+                        M[p][i] = M[i][p];
+                        M[i][q] = sVal * Mip + cVal * Miq;
+                        M[q][i] = M[i][q];
+                    }
+                    // Accumulate the rotation in V (V ← V · R).
+                    for (let i = 0; i < n; i++) {
+                        const Vip = V[i][p];
+                        const Viq = V[i][q];
+                        V[i][p] = cVal * Vip - sVal * Viq;
+                        V[i][q] = sVal * Vip + cVal * Viq;
+                    }
+                }
+            }
+        }
+
+        const eigvals = new Array(n);
+        for (let i = 0; i < n; i++) eigvals[i] = M[i][i];
+        return { eigvals, eigvecs: V };
+    },
+
     /**
      * Solve a SPD system A x = b given the Cholesky factor L of A.
      */
