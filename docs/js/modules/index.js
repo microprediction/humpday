@@ -14,7 +14,7 @@ if (typeof module !== 'undefined' && module.exports) {
     const { DifferentialEvolution, ParticleSwarm, SimulatedAnnealing, GeneticAlgorithm, RandomSearch,
             BayesianOpt, CMAEvolutionStrategy, TabuSearch, FireflyAlgorithm, AntColonyOpt,
             HarmonySearch, EvolutionStrategy } = require('./evolutionary-algorithms.js');
-    const { AdaptiveRandomSearch, CoordinateDescent, PatternSearch, HillClimbing } = require('./search-algorithms.js');
+    const { Rechenberg, AdaptiveRandomSearch, CoordinateDescent, PatternSearch, HillClimbing } = require('./search-algorithms.js');
 
     // Export everything
     module.exports = {
@@ -47,7 +47,8 @@ if (typeof module !== 'undefined' && module.exports) {
         EvolutionStrategy,
 
         // Search algorithms
-        AdaptiveRandomSearch,
+        Rechenberg,
+        AdaptiveRandomSearch,  // backwards-compat alias for Rechenberg
         CoordinateDescent,
         PatternSearch,
         HillClimbing,
@@ -72,7 +73,8 @@ if (typeof module !== 'undefined' && module.exports) {
             'AntColonyOpt': AntColonyOpt,
             'HarmonySearch': HarmonySearch,
             'EvolutionStrategy': EvolutionStrategy,
-            'AdaptiveRandomSearch': AdaptiveRandomSearch,
+            'Rechenberg': Rechenberg,
+            'AdaptiveRandomSearch': AdaptiveRandomSearch,  // backwards-compat alias
             'CoordinateDescent': CoordinateDescent,
             'PatternSearch': PatternSearch,
             'HillClimbing': HillClimbing
@@ -108,7 +110,8 @@ if (typeof module !== 'undefined' && module.exports) {
         EvolutionStrategy: window.EvolutionStrategy,
 
         // Search algorithms
-        AdaptiveRandomSearch: window.AdaptiveRandomSearch,
+        Rechenberg: window.Rechenberg,
+        AdaptiveRandomSearch: window.AdaptiveRandomSearch,  // backwards-compat alias
         CoordinateDescent: window.CoordinateDescent,
         PatternSearch: window.PatternSearch,
         HillClimbing: window.HillClimbing

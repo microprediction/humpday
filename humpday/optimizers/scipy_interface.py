@@ -112,7 +112,7 @@ def cube_minimize(
         If None (default), an algorithm is auto-selected from `suggest_pure`
         based on the problem dimension: NelderMead for n <= 2,
         DifferentialEvolution for 3-10, CMAEvolutionStrategy for 11-50,
-        and AdaptiveRandomSearch for n > 50.
+        and Rechenberg for n > 50.
     bounds : sequence or tuple, optional
         Bounds for variables. Either:
         - List of (min, max) tuples for each dimension: [(x1_min, x1_max), (x2_min, x2_max), ...]
@@ -309,7 +309,7 @@ def minimize(
         Optimization algorithm name. If None (the default), the method is
         chosen automatically based on problem dimension via `suggest_pure`:
         NelderMead for n <= 2, DifferentialEvolution for 3-10,
-        CMAEvolutionStrategy for 11-50, AdaptiveRandomSearch for n > 50.
+        CMAEvolutionStrategy for 11-50, Rechenberg for n > 50.
     bounds : sequence or tuple, optional
         Bounds for variables (None for unbounded optimization)
     scale : float or array_like, optional

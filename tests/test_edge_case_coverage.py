@@ -31,7 +31,6 @@ class TestOptimizerEdgeCases:
     def test_algorithm_specific_edge_cases(self):
         """Test specific algorithms with conditions that trigger missing lines."""
         from humpday.optimizers.alloptimizers import (
-            AdaptiveRandomSearch,
             BayesianOpt,
             CMAEvolutionStrategy,
             DifferentialEvolution,
@@ -39,6 +38,7 @@ class TestOptimizerEdgeCases:
             NelderMead,
             ParticleSwarm,
             PatternSearch,
+            Rechenberg,
         )
 
         def edge_objective(x):
@@ -51,7 +51,7 @@ class TestOptimizerEdgeCases:
             ParticleSwarm,
             CMAEvolutionStrategy,
             BayesianOpt,
-            AdaptiveRandomSearch,
+            Rechenberg,
             PatternSearch,
             EvolutionStrategy,
         ]

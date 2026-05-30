@@ -41,7 +41,7 @@ document.addEventListener('DOMContentLoaded', function () {
   DifferentialEvolution, ParticleSwarm, SimulatedAnnealing,
   GeneticAlgorithm, RandomSearch, BayesianOpt, CMAEvolutionStrategy,
   TabuSearch, FireflyAlgorithm, AntColonyOpt, EvolutionStrategy,
-  HillClimbing, HarmonySearch, AdaptiveRandomSearch, CoordinateDescent,
+  HillClimbing, HarmonySearch, Rechenberg, CoordinateDescent,
   PatternSearch).
 - **12 test surfaces** — Sphere, Rosenbrock, Ackley, Rastrigin,
   Griewank, Schwefel, Beale, Booth, Himmelblau, Matyas, Levy, Easom.

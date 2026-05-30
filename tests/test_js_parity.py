@@ -67,7 +67,7 @@ WEAK_ON_SMALL_BUDGET = {
     "TabuSearch",
     "FireflyAlgorithm",
     "HarmonySearch",
-    "AdaptiveRandomSearch",
+    "Rechenberg",
     "GeneticAlgorithm",
     "EvolutionStrategy",
     "PatternSearch",

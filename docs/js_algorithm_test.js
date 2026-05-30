@@ -10,7 +10,7 @@ const expectedAlgorithms = [
     'GeneticAlgorithm', 'RandomSearch', 'BayesianOpt', 'CMAEvolutionStrategy',
     'TabuSearch', 'FireflyAlgorithm', 'AntColonyOpt', 'HarmonySearch', 'EvolutionStrategy',
     // Search algorithms
-    'AdaptiveRandomSearch', 'CoordinateDescent', 'PatternSearch', 'HillClimbing'
+    'Rechenberg', 'CoordinateDescent', 'PatternSearch', 'HillClimbing'
 ];
 
 function sphereFunction(x) {
