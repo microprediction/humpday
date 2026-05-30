@@ -315,6 +315,85 @@ def _ref_cmaes(func, n_trials, n_dim, seed):
     return {"best_value": float(best), "evals": counter["n"]}
 
 
+def _ref_mealpy(cls_path, func, n_trials, n_dim, seed, pop_size=20, kwargs=None):
+    """Run a mealpy algorithm and return {best_value, evals}.
+
+    `cls_path` is a string like "mealpy.swarm_based.PSO.OriginalPSO";
+    we import lazily so a missing mealpy install just makes the
+    corresponding `REFERENCES` entry skip cleanly.
+
+    mealpy budgets total evaluations as `epoch * pop_size`, so we set
+    `epoch = max(1, n_trials // pop_size)`. We also silence its
+    INFO-level logging (~one line per epoch — drowns out the
+    pytest -s view) and wrap the objective to count evaluations
+    ourselves rather than relying on mealpy's `nfe_*` attributes
+    (which differ between algorithm classes).
+    """
+    import importlib
+    import logging
+
+    import numpy as np
+    from mealpy import FloatVar
+
+    mod_path, _, cls_name = cls_path.rpartition(".")
+    mod = importlib.import_module(mod_path)
+    cls = getattr(mod, cls_name)
+
+    counter = {"n": 0}
+
+    def wrapped(x):
+        counter["n"] += 1
+        return func(list(x))
+
+    epoch = max(1, n_trials // pop_size)
+    problem = {
+        "obj_func": wrapped,
+        "bounds": FloatVar(lb=[0.0] * n_dim, ub=[1.0] * n_dim),
+        "minmax": "min",
+    }
+    # Quiet mealpy's per-epoch log lines for the whole sweep.
+    logging.getLogger("mealpy").setLevel(logging.WARNING)
+
+    opt = cls(epoch=epoch, pop_size=pop_size, **(kwargs or {}))
+    g_best = opt.solve(problem, seed=seed)
+    return {"best_value": float(g_best.target.fitness), "evals": counter["n"]}
+
+
+def _ref_mealpy_pso(func, n_trials, n_dim, seed):
+    return _ref_mealpy(
+        "mealpy.swarm_based.PSO.OriginalPSO", func, n_trials, n_dim, seed
+    )
+
+
+def _ref_mealpy_ga(func, n_trials, n_dim, seed):
+    return _ref_mealpy(
+        "mealpy.evolutionary_based.GA.BaseGA", func, n_trials, n_dim, seed
+    )
+
+
+def _ref_mealpy_firefly(func, n_trials, n_dim, seed):
+    return _ref_mealpy("mealpy.swarm_based.FA.OriginalFA", func, n_trials, n_dim, seed)
+
+
+def _ref_mealpy_harmony(func, n_trials, n_dim, seed):
+    return _ref_mealpy("mealpy.music_based.HS.OriginalHS", func, n_trials, n_dim, seed)
+
+
+def _ref_mealpy_es(func, n_trials, n_dim, seed):
+    return _ref_mealpy(
+        "mealpy.evolutionary_based.ES.OriginalES", func, n_trials, n_dim, seed
+    )
+
+
+def _ref_mealpy_acor(func, n_trials, n_dim, seed):
+    # ACOR uses sample_count instead of pop_size for the colony, but the
+    # solve loop still does epoch × sample_count. Defaults are similar
+    # enough that the standard pattern works.
+    return _ref_mealpy(
+        "mealpy.swarm_based.ACOR.OriginalACOR", func, n_trials, n_dim, seed
+    )
+
+
 def _ref_pybobyqa(func, n_trials, n_dim, seed):
     import numpy as np
     import pybobyqa
@@ -391,6 +470,12 @@ REFERENCES = {
     "PRIMA_BOBYQA": ("Py-BOBYQA", _ref_pybobyqa, ["pybobyqa", "numpy"]),
     "PRIMA_NEWUOA": ("PDFO newuoa", _ref_pdfo_newuoa, ["pdfo", "numpy"]),
     "PRIMA_UOBYQA": ("PDFO uobyqa", _ref_pdfo_uobyqa, ["pdfo", "numpy"]),
+    "ParticleSwarm": ("mealpy PSO", _ref_mealpy_pso, ["mealpy", "numpy"]),
+    "GeneticAlgorithm": ("mealpy GA", _ref_mealpy_ga, ["mealpy", "numpy"]),
+    "FireflyAlgorithm": ("mealpy FA", _ref_mealpy_firefly, ["mealpy", "numpy"]),
+    "HarmonySearch": ("mealpy HS", _ref_mealpy_harmony, ["mealpy", "numpy"]),
+    "EvolutionStrategy": ("mealpy ES", _ref_mealpy_es, ["mealpy", "numpy"]),
+    "AntColonyOpt": ("mealpy ACOR", _ref_mealpy_acor, ["mealpy", "numpy"]),
 }
 
 
