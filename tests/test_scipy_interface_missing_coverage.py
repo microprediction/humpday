@@ -101,9 +101,20 @@ class TestSciPyInterfaceMissingCoverage:
             "RandomSearch",
         ]
 
+        # This test only exercises the method-dispatch code path
+        # (asserts the result has an `x` attribute). It does NOT need
+        # the default 100-trial budget — at 100 trials, BayesianOpt
+        # alone fits a 2-D GP nine times and adds ~10 s to the test
+        # for no extra coverage. Cap at 20 trials so all nine methods
+        # complete in well under a second.
         for method in methods:
             try:
-                result = minimize(objective, bounds=[(0, 1), (0, 1)], method=method)
+                result = minimize(
+                    objective,
+                    bounds=[(0, 1), (0, 1)],
+                    method=method,
+                    options={"maxiter": 20},
+                )
                 assert hasattr(result, "x")
             except Exception:
                 # Some methods might have specific requirements
