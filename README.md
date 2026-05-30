@@ -10,13 +10,11 @@
 
 ## See it work
 
-Differential Evolution clears a 9-ball rack on a single break — one of
-[13+ interactive applications](https://humpday.microprediction.org/applications/index.html)
-that pit every HumpDay optimizer against a real physics or engineering problem.
+Differential Evolution clears a 9-ball rack on a single break.
 
 https://github.com/microprediction/humpday/raw/main/docs/assets/video/the-perfect-break.mp4
 
-[**Browse all applications →**](https://humpday.microprediction.org/applications/index.html)
+— one of [**13+ interactive applications in the gallery. Browse them all →**](https://humpday.microprediction.org/applications/index.html)
 
 ## Install & Use
 
