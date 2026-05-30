@@ -98,14 +98,18 @@
 <div class="container">
   <h1>🚀 Rocket Landing</h1>
   <p class="intro">
-    Land a returning booster softly on the pad with as much fuel left
-    over as possible. You're picking a throttle schedule — 12 values
-    in [0, 1] — that the rocket follows from release to touchdown.
-    Full throttle wastes fuel and pushes you back into space; zero
-    throttle crashes you into the pad at 65 px/s. The classical
-    answer is a <em>suicide burn</em>: free-fall most of the way,
-    then a precisely-timed full throttle that brings you to zero
-    velocity at zero altitude. Multi-modal 12-D optimal-control problem.
+    Land a returning booster softly on the pad with as much fuel
+    left over as possible. You're picking a piecewise-constant
+    throttle schedule — 12 values in [0, 1], one per 0.83-second
+    segment. Full throttle the whole way wastes fuel and pushes
+    you back into space; zero throttle crashes you into the pad
+    at 65 px/s. The continuous-time optimum is a <em>suicide
+    burn</em> — free-fall, then a single precisely-timed full
+    burn — but the discrete 0.83-second segments here can't time
+    that exactly, so the practical optimum is a near-bang-bang
+    schedule with one or two <em>fractional</em> segments around
+    the burn-start that fake the missing sub-segment delay.
+    Finding it is a 12-D optimal-control problem.
   </p>
 
   <div class="stage">
@@ -117,10 +121,10 @@
         <p>Pick a throttle profile and see how the rocket lands.</p>
         <canvas id="throttle-canvas" width="780" height="80"></canvas>
         <div class="hr-preset-row">
+          <button type="button" onclick="loadPreset('freefall')">Free fall</button>
           <button type="button" onclick="loadPreset('hover')">Hover</button>
-          <button type="button" onclick="loadPreset('ramp')">Linear ramp</button>
           <button type="button" onclick="loadPreset('lateMax')">Late full burn</button>
-          <button type="button" onclick="loadPreset('lateSoft')">Late soft burn</button>
+          <button type="button" onclick="loadPreset('suicide')">Suicide burn</button>
           <button type="button" onclick="loadPreset('random')">Random</button>
         </div>
         <div class="hr-actions">
@@ -214,12 +218,16 @@
     the tank dry.
   </p>
   <p>
-    <strong>Score</strong> rewards two things: landing softly and
-    keeping fuel. Touchdown velocity v gives <code>100 · (1 − (v/10)²)</code>
-    on a soft landing (zero at the 10 px/s crash threshold) plus
-    up to <code>+12</code> for fuel left in the tank. A schedule
-    that never lands within 10 seconds — too much thrust, rocket
-    bounces back into the sky — gets a stiff negative score.
+    <strong>Score</strong> rewards landing softly and keeping fuel.
+    Touchdown velocity v gives <code>100 · (1 − v/80)</code> on
+    any landing (a perfect v ≈ 0 scores 100; the rocket vaporises
+    in a fireball above 5 px/s but still earns partial credit
+    down to 0 at v = 80) plus up to <code>+10</code> for fuel
+    left in the tank. A schedule that never lands within 10
+    seconds is scored on how close it came — the gradient toward
+    soft landings stays positive even from the airborne region,
+    so optimizers aren't trapped at "free fall" as a flat
+    local optimum.
   </p>
   <p>
     The landscape has several distinct local optima — a gradual
@@ -298,7 +306,8 @@ const V0 = -15;                 // starting velocity (px/s, negative = downward)
 const SIM_T = 10;               // total simulation time (s)
 const DT = 0.04;                // physics step (s)
 const N_STEPS = Math.round(SIM_T / DT);
-const V_CRASH = 10;             // px/s — touchdown velocity giving 0 score
+const V_SOFT = 5;               // px/s — below this counts as a soft landing
+const V_LIMIT = 80;             // px/s — touchdown velocity at which landing-score hits 0
 
 // ---- Decoder + simulator ----------------------------------------------
 function decode(u) {
@@ -341,14 +350,21 @@ function simulate(schedule) {
 function evaluateSchedule(schedule) {
   const sim = simulate(schedule);
   let score;
-  if (sim.touchV === null) {
-    // Never landed in SIM_T — too much thrust or didn't burn enough.
-    score = -50 - sim.finalH * 0.1 + sim.finalV * 0.5;
-  } else {
+  if (sim.touchV !== null) {
+    // Linear softness reward + fuel bonus. v < V_SOFT counts as a clean
+    // landing; v == V_LIMIT (80 px/s) zeros out the landing-score term.
     const v = Math.abs(sim.touchV);
-    const landing = Math.max(0, 100 - 100 * (v / V_CRASH) ** 2);
-    const fuelBonus = sim.touchFuel * 12;
+    const landing = Math.max(0, 100 * (1 - v / V_LIMIT));
+    const fuelBonus = sim.touchFuel * 10;
     score = landing + fuelBonus;
+  } else {
+    // Did not land in SIM_T — but reward getting closer. effective_v
+    // combines remaining altitude and final speed, so the gradient
+    // toward "land softly" stays positive even from the airborne region.
+    // (Previously this was a flat -50 penalty, which trapped many
+    // optimizers in the local free-fall optimum.)
+    const eff = Math.abs(sim.finalV) + sim.finalH * 0.5;
+    score = Math.max(-25, 50 - eff * 0.6);
   }
   return { score, sim };
 }
@@ -374,10 +390,12 @@ function objective(u) {
 // ============================================================================
 // Rendering — main canvas (sky + rocket + flame).
 // ============================================================================
-const PAD_Y = 60;                // pixels from canvas bottom to "ground"
+const PAD_Y = 70;                // pixels from canvas bottom to "ground"
 const TOP_MARGIN = 30;
-const ROCKET_HALF_W = 8;
-const ROCKET_H = 32;
+const ROCKET_HALF_W = 16;        // body half-width
+const ROCKET_H = 60;              // body height (cylinder, excluding nose cone)
+const NOSE_H = 18;                // nose cone height above body
+const FIN_OUT = 12;               // how far fins splay outward
 const STAR_COUNT = 60;
 const STARS = [];
 {
@@ -391,13 +409,16 @@ const STARS = [];
 
 function altToY(h) {
   // Map altitude h ∈ [0, H_VIEW_TOP] → canvas y.
+  // h = 0 lands on the TOP of the yellow pad strip, so the rocket
+  // (whose base is at altToY(state.h)) actually sits on the platform
+  // rather than sinking into it.
   const H_VIEW_TOP = H0 + 60;
-  const groundY = H - PAD_Y;
+  const padTopY = H - PAD_Y - 7;        // matches the padThickness above
   const topY = TOP_MARGIN;
-  return groundY - (h / H_VIEW_TOP) * (groundY - topY);
+  return padTopY - (h / H_VIEW_TOP) * (padTopY - topY);
 }
 
-function drawScene(state, hudText, schedule) {
+function drawScene(state, hudText, schedule, trail) {
   // Sky.
   const grad = ctx.createLinearGradient(0, 0, 0, H);
   grad.addColorStop(0, '#06061a');
@@ -417,12 +438,14 @@ function drawScene(state, hudText, schedule) {
   ctx.fillStyle = '#2a2a36';
   ctx.fillRect(0, groundY, W, PAD_Y);
   // Landing pad: a yellow strip centred horizontally.
-  const padW = 90, padX = W / 2 - padW / 2;
+  const padW = 180, padX = W / 2 - padW / 2;
+  const padThickness = 7;
   ctx.fillStyle = '#ffcc00';
-  ctx.fillRect(padX, groundY - 3, padW, 5);
+  ctx.fillRect(padX, groundY - padThickness, padW, padThickness + 2);
+  // Black stripes for visibility.
   ctx.fillStyle = '#1a1a22';
-  for (let i = 0; i < 7; i++) {
-    ctx.fillRect(padX + 6 + i * 12, groundY - 2, 4, 3);
+  for (let i = 0; i < 14; i++) {
+    ctx.fillRect(padX + 8 + i * 12, groundY - padThickness + 2, 4, padThickness - 2);
   }
   // Altitude tick marks on the left side.
   ctx.strokeStyle = 'rgba(255,255,255,0.10)';
@@ -437,67 +460,138 @@ function drawScene(state, hudText, schedule) {
 
   if (!state) return;
 
-  // Rocket.
+  // Faint yellow descent trail (drawn under the rocket and any explosion).
+  if (trail && trail.length > 1) {
+    const tx = W / 2;
+    for (let i = 0; i < trail.length; i++) {
+      const ty = altToY(trail[i].h);
+      const alpha = 0.05 + 0.35 * (i / trail.length);
+      ctx.fillStyle = `rgba(255, 204, 0, ${alpha})`;
+      ctx.beginPath();
+      ctx.arc(tx, ty, 1.6, 0, Math.PI * 2);
+      ctx.fill();
+    }
+  }
+
+  // Touchdown indicator. state.touchV is only set on the held final
+  // frame; soft landings get a green halo, hard landings get a fireball.
+  const crashed = state.touchV !== undefined && Math.abs(state.touchV) > V_SOFT;
+  if (crashed) {
+    // Big multi-ring fireball at the rocket's base on the pad.
+    const cx = W / 2, cy = altToY(0);
+    const rings = [
+      { r: 78, c: 'rgba(255,  60, 30, 0.35)' },
+      { r: 56, c: 'rgba(255, 110, 40, 0.55)' },
+      { r: 38, c: 'rgba(255, 180, 60, 0.75)' },
+      { r: 22, c: 'rgba(255, 240, 200, 0.92)' },
+    ];
+    for (const r of rings) {
+      ctx.fillStyle = r.c;
+      ctx.beginPath(); ctx.arc(cx, cy, r.r, 0, Math.PI * 2); ctx.fill();
+    }
+    // Debris shards radiating outward (and up).
+    ctx.fillStyle = 'rgba(80, 80, 90, 0.9)';
+    for (let i = 0; i < 11; i++) {
+      const ang = (i / 11) * Math.PI * 2 + 0.3;
+      const dist = 44 + (i % 3) * 12;
+      const x = cx + Math.cos(ang) * dist;
+      const y = cy - Math.abs(Math.sin(ang)) * dist;
+      ctx.fillRect(x - 2, y - 2, 4, 4);
+    }
+  }
+
+  // Rocket — skip drawing if crashed (it's vaporised).
   const rx = W / 2;
-  const ry = altToY(state.h);
-  // Flame (drawn before rocket so it goes under).
-  if (state.throttle > 0.01 && state.fuel > 0) {
-    const flameLen = 8 + state.throttle * 36;
+  // ry is the rocket's BASE y (so h = 0 puts it sitting on the pad,
+  // not half-buried in it). The body extends UP from ry.
+  const ry = crashed ? altToY(0) : altToY(state.h);
+  const baseY = ry;                        // landing-gear/engine bell
+  const topY  = ry - ROCKET_H;             // top of cylindrical body
+  if (crashed) {
+    // Charred stump above the pad.
+    ctx.fillStyle = '#1a1a22';
+    ctx.fillRect(rx - 20, baseY - 6, 40, 6);
+  } else {
+  // Flame (drawn first so the rocket body covers its source).
+  // Suppress on the held landed frame — engine is off once it's down.
+  if (state.throttle > 0.01 && state.fuel > 0 && !state.landed) {
+    const flameLen = 14 + state.throttle * 60;
     const flicker = 0.6 + 0.4 * Math.random();
-    ctx.fillStyle = `rgba(255, 180, 60, ${0.7 * flicker})`;
+    ctx.fillStyle = `rgba(255, 180, 60, ${0.75 * flicker})`;
     ctx.beginPath();
-    ctx.moveTo(rx - ROCKET_HALF_W + 1, ry + ROCKET_H / 2);
-    ctx.lineTo(rx + ROCKET_HALF_W - 1, ry + ROCKET_H / 2);
-    ctx.lineTo(rx, ry + ROCKET_H / 2 + flameLen);
+    ctx.moveTo(rx - ROCKET_HALF_W + 2, baseY);
+    ctx.lineTo(rx + ROCKET_HALF_W - 2, baseY);
+    ctx.lineTo(rx, baseY + flameLen);
     ctx.closePath();
     ctx.fill();
-    ctx.fillStyle = `rgba(255, 240, 200, ${0.85 * flicker})`;
+    ctx.fillStyle = `rgba(255, 240, 200, ${0.9 * flicker})`;
     ctx.beginPath();
-    ctx.moveTo(rx - ROCKET_HALF_W / 2, ry + ROCKET_H / 2);
-    ctx.lineTo(rx + ROCKET_HALF_W / 2, ry + ROCKET_H / 2);
-    ctx.lineTo(rx, ry + ROCKET_H / 2 + flameLen * 0.55);
+    ctx.moveTo(rx - ROCKET_HALF_W / 2, baseY);
+    ctx.lineTo(rx + ROCKET_HALF_W / 2, baseY);
+    ctx.lineTo(rx, baseY + flameLen * 0.55);
     ctx.closePath();
     ctx.fill();
   }
-  // Body (white cylinder).
+  // Body (white cylinder), top at topY, base at baseY.
   ctx.fillStyle = '#e8e8ea';
-  ctx.fillRect(rx - ROCKET_HALF_W, ry - ROCKET_H / 2, ROCKET_HALF_W * 2, ROCKET_H);
-  // Nose cone.
+  ctx.fillRect(rx - ROCKET_HALF_W, topY, ROCKET_HALF_W * 2, ROCKET_H);
+  // Side stripe for detail.
+  ctx.fillStyle = '#b8b8c4';
+  ctx.fillRect(rx - ROCKET_HALF_W, topY + ROCKET_H * 0.55, ROCKET_HALF_W * 2, 2);
+  // Nose cone above the body.
   ctx.fillStyle = '#c8c8d0';
   ctx.beginPath();
-  ctx.moveTo(rx - ROCKET_HALF_W, ry - ROCKET_H / 2);
-  ctx.lineTo(rx + ROCKET_HALF_W, ry - ROCKET_H / 2);
-  ctx.lineTo(rx, ry - ROCKET_H / 2 - 10);
+  ctx.moveTo(rx - ROCKET_HALF_W, topY);
+  ctx.lineTo(rx + ROCKET_HALF_W, topY);
+  ctx.lineTo(rx, topY - NOSE_H);
   ctx.closePath();
   ctx.fill();
-  // Fins.
+  // Fins splayed at the base.
   ctx.fillStyle = '#90909a';
   ctx.beginPath();
-  ctx.moveTo(rx - ROCKET_HALF_W, ry + ROCKET_H / 2 - 8);
-  ctx.lineTo(rx - ROCKET_HALF_W - 6, ry + ROCKET_H / 2);
-  ctx.lineTo(rx - ROCKET_HALF_W, ry + ROCKET_H / 2);
+  ctx.moveTo(rx - ROCKET_HALF_W, baseY - 14);
+  ctx.lineTo(rx - ROCKET_HALF_W - FIN_OUT, baseY);
+  ctx.lineTo(rx - ROCKET_HALF_W, baseY);
   ctx.closePath();
   ctx.fill();
   ctx.beginPath();
-  ctx.moveTo(rx + ROCKET_HALF_W, ry + ROCKET_H / 2 - 8);
-  ctx.lineTo(rx + ROCKET_HALF_W + 6, ry + ROCKET_H / 2);
-  ctx.lineTo(rx + ROCKET_HALF_W, ry + ROCKET_H / 2);
+  ctx.moveTo(rx + ROCKET_HALF_W, baseY - 14);
+  ctx.lineTo(rx + ROCKET_HALF_W + FIN_OUT, baseY);
+  ctx.lineTo(rx + ROCKET_HALF_W, baseY);
   ctx.closePath();
   ctx.fill();
-  // Window.
+  // Window near the top of the body.
   ctx.fillStyle = '#3a8edd';
   ctx.beginPath();
-  ctx.arc(rx, ry - 4, 3, 0, Math.PI * 2);
+  ctx.arc(rx, topY + 14, 5, 0, Math.PI * 2);
   ctx.fill();
+  ctx.strokeStyle = '#1a1a22';
+  ctx.lineWidth = 1;
+  ctx.stroke();
+  }      // end of `if (!crashed) { ... draw rocket ... }`
 
-  // Per-rocket badges: altitude, velocity, fuel.
-  ctx.font = 'bold 11px -apple-system, Helvetica, Arial, sans-serif';
-  ctx.fillStyle = 'rgba(255,255,255,0.85)';
-  ctx.textAlign = 'left';
-  const badgeX = rx + ROCKET_HALF_W + 18;
-  ctx.fillText(`alt ${state.h.toFixed(0)}`, badgeX, ry - 8);
-  ctx.fillText(`v   ${state.v.toFixed(1)}`, badgeX, ry + 6);
-  ctx.fillText(`fuel ${(state.fuel * 100).toFixed(0)}%`, badgeX, ry + 20);
+  // Soft-landing halo (drawn after the rocket body, around its base).
+  if (state.touchV !== undefined && !crashed) {
+    const cx = W / 2, cy = altToY(0);
+    ctx.strokeStyle = 'rgba(126, 217, 87, 0.95)';
+    ctx.lineWidth = 3;
+    ctx.beginPath(); ctx.arc(cx, cy, 44, 0, Math.PI * 2); ctx.stroke();
+    ctx.strokeStyle = 'rgba(126, 217, 87, 0.45)';
+    ctx.lineWidth = 2;
+    ctx.beginPath(); ctx.arc(cx, cy, 64, 0, Math.PI * 2); ctx.stroke();
+  }
+
+  // Per-rocket badges (skip if vaporised). Anchored alongside the body.
+  if (!crashed) {
+    ctx.font = 'bold 11px -apple-system, Helvetica, Arial, sans-serif';
+    ctx.fillStyle = 'rgba(255,255,255,0.85)';
+    ctx.textAlign = 'left';
+    const badgeX = rx + ROCKET_HALF_W + 18;
+    const midY = topY + ROCKET_H / 2;     // vertical centre of body
+    ctx.fillText(`alt ${state.h.toFixed(0)}`, badgeX, midY - 12);
+    ctx.fillText(`v   ${state.v.toFixed(1)}`, badgeX, midY + 2);
+    ctx.fillText(`fuel ${(state.fuel * 100).toFixed(0)}%`, badgeX, midY + 16);
+  }
 
   // HUD top-right.
   if (hudText) {
@@ -626,25 +720,36 @@ async function animateMontage() {
   return bestIdx;
 }
 
-// Play out one trajectory step-by-step (used after the montage to show the
-// winning landing in slow motion).
+// Play out one trajectory step-by-step (used after the montage to show
+// the winning landing in slow motion). Builds a fading yellow descent
+// trail and, on the held final frame, flags the touchdown as either a
+// fireball crash (v > V_SOFT) or a soft landing (v ≤ V_SOFT).
 async function animateTrajectory(entry, hudPrefix) {
   const myToken = ++animationToken;
   const traj = entry.sim.trajectory;
-  // Real-time playback at ~25 fps; each step is DT = 40 ms anyway.
-  const STRIDE = 1, FRAME_MS = 40;
-  for (let i = 0; i < traj.length; i += STRIDE) {
+  const FRAME_MS = 55;                  // slightly slower than DT so the descent reads
+  const trail = [];
+  for (let i = 0; i < traj.length; i++) {
     if (myToken !== animationToken) return;
     const s = traj[i];
+    trail.push({ h: s.h });
+    if (trail.length > 38) trail.shift();
     const label = `${hudPrefix}  ·  t ${s.t.toFixed(1)} s  ·  v ${s.v.toFixed(1)}`;
-    drawScene(s, label, entry.schedule);
+    drawScene(s, label, entry.schedule, trail);
     await new Promise((r) => setTimeout(r, FRAME_MS));
   }
-  // Hold final frame.
+  // Hold final frame with a clear outcome badge.
   const last = traj[traj.length - 1];
-  const tag = entry.touchV === null ? 'no landing'
-            : `landed v=${entry.touchV.toFixed(1)} px/s, fuel ${(entry.touchFuel * 100).toFixed(0)} %`;
-  drawScene(last, `${hudPrefix}  ·  ${tag}`, entry.schedule);
+  let tag;
+  if (entry.touchV === null) {
+    tag = 'never landed';
+  } else if (Math.abs(entry.touchV) <= V_SOFT) {
+    tag = `✓ Soft landing! v=${Math.abs(entry.touchV).toFixed(1)} px/s, fuel ${(entry.touchFuel * 100).toFixed(0)} %`;
+  } else {
+    tag = `💥 Crashed at v=${Math.abs(entry.touchV).toFixed(1)} px/s`;
+  }
+  drawScene({ ...last, touchV: entry.touchV },
+    `${hudPrefix}  ·  ${tag}`, entry.schedule, trail);
 }
 
 function setBestScore(entry, algoName) {
@@ -757,11 +862,16 @@ function renderLeaderboard() {
 // Presets.
 // ============================================================================
 const HOVER_THROTTLE = GRAVITY / THRUST_MAX;   // ≈ 0.417
+// Hand-built presets. Each illustrates a different strategy.
+// "suicide" is the discrete approximation of the continuous-time
+// optimum — bang-bang with one fractional segment at the burn-start
+// boundary. The fractional value (0.86 at seg 4) compensates for the
+// burn-start happening mid-segment in continuous time. Lands softly.
 const PRESETS = {
+  freefall: () => Array(N_SEGS).fill(0),
   hover:    () => Array(N_SEGS).fill(HOVER_THROTTLE),
-  ramp:     () => Array.from({ length: N_SEGS }, (_, i) => i / (N_SEGS - 1)),
   lateMax:  () => Array.from({ length: N_SEGS }, (_, i) => i < 5 ? 0 : 1),
-  lateSoft: () => Array.from({ length: N_SEGS }, (_, i) => i < 5 ? 0 : 0.85),
+  suicide:  () => [0, 0, 0, 0, 0.86, 1, 1, 1, 1, 1, 1, 1],
   random:   () => Array.from({ length: N_SEGS }, () => Math.random()),
 };
 
