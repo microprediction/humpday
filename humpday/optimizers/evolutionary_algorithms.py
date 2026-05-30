@@ -575,7 +575,14 @@ class CMAEvolutionStrategy(BaseOptimizer):
         invsqrtC = _A.linalg.eye(n)
 
         generation = 0
-        max_generations = min(100, self.n_trials // lambda_)
+        # Cap iterations by budget directly. The previous
+        # `min(100, n_trials // lambda_)` capped at 100 generations even
+        # when the user's n_trials budget allowed many more — at
+        # lambda_ ≈ 6 and budget 1000, only the first ~600 evals would
+        # be spent. Reference pycma has no such cap; the inner
+        # `evaluations < n_trials` guard is sufficient, this just
+        # protects against pathological infinite loops.
+        max_generations = self.n_trials
 
         while self.evaluations < self.n_trials and generation < max_generations:
             generation += 1
@@ -602,6 +609,15 @@ class CMAEvolutionStrategy(BaseOptimizer):
                 population.append((x, z, f))
 
             if not population:
+                break
+            # If the budget ran out mid-sampling and we have fewer than μ
+            # offspring, we can't do a meaningful recombination — stop
+            # here so the partial generation doesn't pollute the next
+            # iteration's mean/sigma. Before #155 the
+            # `min(100, n_trials // lambda_)` cap on the outer loop made
+            # this case unreachable; now that the cap is gone we need to
+            # guard explicitly.
+            if len(population) < mu:
                 break
 
             # Sort offspring by fitness ascending.
@@ -678,15 +694,16 @@ class CMAEvolutionStrategy(BaseOptimizer):
             except Exception:
                 invsqrtC = _A.linalg.eye(n)
 
-            # Step-size update. Cap sigma at 0.5 to keep proposals in the
-            # unit cube; do NOT floor at 1e-6 — that artificial floor was
-            # preventing the algorithm from converging to higher precision
-            # on smooth basins (Rosenbrock was 4.28× off the cmaes
-            # reference because sigma got pinned at 1e-6 rather than
-            # shrinking further). Reference cmaes library has no floor.
+            # Step-size update. Do NOT floor at 1e-6 — that artificial
+            # floor was preventing convergence on smooth basins
+            # (Rosenbrock was 4.28× off the cmaes reference because
+            # sigma got pinned at 1e-6 rather than shrinking further).
+            # And do NOT cap at 0.5: reference pycma has no upper bound
+            # on sigma; oversized proposals are handled by the
+            # `_A.clip(..., 0, 1)` already applied to each x sample, so
+            # the cap was throttling exploration without changing the
+            # feasible search space.
             sigma = sigma * math.exp((cs / damps) * (_A.norm(ps) / math.sqrt(n) - 1))
-            if sigma > 0.5:
-                sigma = 0.5
 
         return self.best_value, self.best_x
 

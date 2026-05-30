@@ -419,12 +419,21 @@ class PRIMA_UOBYQA(BaseOptimizer):
         _ = self.evaluate(xbase)
 
         XPT, FVAL = self._initialize_interpolation_points(xbase, rho, npt, n)
+        if not FVAL:
+            return self.best_value, self.best_x
         nused = min(len(FVAL), npt)
         # argmin via stdlib — works on lists, ndarrays, _Vec.
         kopt = min(range(nused), key=FVAL.__getitem__)
 
         iteration = 0
-        max_iterations = min(100, self.n_trials // npt)
+        # Cap the trust-region loop by budget directly. The previous
+        # `min(100, n_trials // npt)` was the same cap NEWUOA had before
+        # #167 fixed it; on a 3-D problem with budget=80 and npt=10 it
+        # gave only 8 iterations and the loop terminated long before
+        # rho could converge. The outer `evaluations < n_trials` guard
+        # is sufficient; this is just a guard against pathological
+        # infinite loops.
+        max_iterations = self.n_trials
 
         while (
             self.evaluations < self.n_trials
@@ -588,12 +597,18 @@ class PRIMA_UOBYQA(BaseOptimizer):
     def _initialize_interpolation_points(self, xbase, rho, npt, n):
         """Lay out the initial interpolation set. Returns (XPT_list, FVAL_list)
         where XPT is a list of length-n vectors (centred at xbase = 0) and
-        FVAL is a parallel list of objective values."""
+        FVAL is a parallel list of objective values.
+
+        Each evaluate() is budget-guarded so a restart triggered close to
+        n_trials can't overshoot via the init-set (same pattern as the
+        BOBYQA fix in #156)."""
         XPT = []
         FVAL = []
 
         # Base point at xbase (offset = 0).
         XPT.append(_A.zeros(n))
+        if self.evaluations >= self.n_trials:
+            return XPT, FVAL
         FVAL.append(self.evaluate(xbase))
         if len(FVAL) >= npt:
             return XPT, FVAL
@@ -601,7 +616,7 @@ class PRIMA_UOBYQA(BaseOptimizer):
         # ±rho along each coordinate.
         for i in range(n):
             for sign in (+1, -1):
-                if len(FVAL) >= npt:
+                if len(FVAL) >= npt or self.evaluations >= self.n_trials:
                     return XPT, FVAL
                 offset = _A.zeros(n)
                 offset[i] = sign * rho
@@ -612,7 +627,7 @@ class PRIMA_UOBYQA(BaseOptimizer):
         diag_step = rho / math.sqrt(2)
         for i in range(n - 1):
             for j in range(i + 1, n):
-                if len(FVAL) >= npt:
+                if len(FVAL) >= npt or self.evaluations >= self.n_trials:
                     return XPT, FVAL
                 offset = _A.zeros(n)
                 offset[i] = diag_step
@@ -663,6 +678,12 @@ class PRIMA_NEWUOA(BaseOptimizer):
                 break
 
             XPT, FVAL = self._initialize_newuoa_points(xbase, rho, npt, n)
+            # Init can return < npt points if the budget exhausted mid-
+            # layout (the per-evaluate budget guard). Without a full
+            # interpolation set there's nothing useful to fit, so end
+            # this pass; the outer `while` will terminate naturally.
+            if len(FVAL) < npt:
+                break
             A, b = self._build_interpolation_system(XPT, FVAL, npt, n)
 
             kopt = min(range(len(FVAL)), key=FVAL.__getitem__)
@@ -746,18 +767,24 @@ class PRIMA_NEWUOA(BaseOptimizer):
 
     def _initialize_newuoa_points(self, xbase, rho, npt, n):
         """Lay out the 2n+1 NEWUOA interpolation points. Returns
-        (XPT_list, FVAL_list) — XPT is a list of length-n offset vectors."""
+        (XPT_list, FVAL_list) — XPT is a list of length-n offset vectors.
+
+        Each evaluate() is budget-guarded so a restart triggered close
+        to n_trials can't overshoot via the init-set (same pattern as
+        the BOBYQA fix in #156)."""
         XPT = []
         FVAL = []
 
         # Base point at xbase (offset = 0).
         XPT.append(_A.zeros(n))
+        if self.evaluations >= self.n_trials:
+            return XPT, FVAL
         FVAL.append(self.evaluate(xbase))
 
         # 2n coordinate directions (±rho along each axis).
         for i in range(n):
             for sign in (+1, -1):
-                if len(FVAL) >= npt:
+                if len(FVAL) >= npt or self.evaluations >= self.n_trials:
                     return XPT, FVAL
                 offset = _A.zeros(n)
                 offset[i] = sign * rho
@@ -765,7 +792,7 @@ class PRIMA_NEWUOA(BaseOptimizer):
                 FVAL.append(self.evaluate(_A.clip(xbase + offset, 0, 1)))
 
         # One extra point along the diagonal to bring count to 2n+1.
-        if len(FVAL) < npt:
+        if len(FVAL) < npt and self.evaluations < self.n_trials:
             diag_step = rho / math.sqrt(n)
             offset = _A.full(n, diag_step)
             XPT.append(offset)
@@ -991,6 +1018,8 @@ class PRIMA_BOBYQA(BaseOptimizer):
                 break
 
             XPT, FVAL = self._initialize_bobyqa_points(xbase, rho, npt, n, xl, xu)
+            if not FVAL:
+                break
             kopt = min(range(len(FVAL)), key=FVAL.__getitem__)
 
             # Reset the min-Frobenius update's prior Hessian for this TR

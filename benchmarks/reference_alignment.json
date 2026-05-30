@@ -164,11 +164,11 @@
       "algorithm": "CMAEvolutionStrategy",
       "reference": "cmaes (CyberAgent)",
       "problem": "rosenbrock",
-      "humpday_median": 0.175323488505812,
+      "humpday_median": 0.14706442402747696,
       "reference_median": 0.04449886463650368,
-      "humpday_to_opt": 0.175323488505812,
+      "humpday_to_opt": 0.14706442402747696,
       "reference_to_opt": 0.04449886463650368,
-      "ratio_humpday_over_reference": 3.939954197437798
+      "ratio_humpday_over_reference": 3.3049028380565364
     },
     {
       "algorithm": "CMAEvolutionStrategy",
@@ -214,5 +214,5 @@
   "n_runs": 4,
   "n_trials": 200,
   "n_dim": 2,
-  "recorded_at": "2026-05-30T17:04:16Z"
+  "recorded_at": "2026-05-30T18:32:25Z"
 }
