@@ -121,12 +121,15 @@
           <input type="range" id="manual-angle" min="-10" max="10" step="0.1" value="0">
 
           <label for="manual-power">Power <output id="manual-power-out">35</output></label>
-          <input type="range" id="manual-power" min="20" max="70" step="0.5" value="35">
+          <input type="range" id="manual-power" min="20" max="70" step="0.1" value="35">
 
           <label for="manual-spin">English <output id="manual-spin-out">0.00</output></label>
-          <input type="range" id="manual-spin" min="-0.8" max="0.8" step="0.02" value="0">
+          <input type="range" id="manual-spin" min="-0.8" max="0.8" step="0.01" value="0">
         </div>
-        <button id="manual-btn" onclick="manualShot()">▶ Break (Human Raphson)</button>
+        <div style="display: flex; gap: 8px;">
+          <button id="manual-btn" onclick="manualShot()" style="flex: 2 1 0;">▶ Break (Human Raphson)</button>
+          <button id="cheat-btn" onclick="loadCheat()" title="Set the sliders to a known good break" style="flex: 1 1 0; background: #404054; color: var(--text); font-weight: 500;">Hint</button>
+        </div>
       </div>
     </div>
 
@@ -172,6 +175,9 @@
         <option value="1000">1000 breaks</option>
         <option value="2000">2000 breaks</option>
         <option value="5000">5000 breaks</option>
+        <option value="10000">10 000 breaks</option>
+        <option value="20000">20 000 breaks</option>
+        <option value="50000">50 000 breaks</option>
       </select>
       <label style="display: flex; align-items: center; gap: 8px; margin-top: 10px; font-size: 0.86em; color: var(--text); cursor: pointer;">
         <input type="checkbox" id="fast-mode" style="width: auto; margin: 0;">
@@ -292,7 +298,14 @@ const FELT_MX = (FELT_X0 + FELT_X1) / 2;
 const FELT_MY = (FELT_Y0 + FELT_Y1) / 2;
 
 const BALL_R = 11;
-const POCKET_R = 30;       // generous pockets — easier to actually sink anything
+const POCKET_R = 30;       // detection radius (physics — kept generous)
+// Visual-only pocket geometry — does NOT affect the capture radius.
+// POCKET_DRAW_R is the round black hole drawn at the pocket location;
+// CUSHION_GAP is how far before each pocket the cushion strip ends,
+// leaving a wider mouth instead of an angular L-corner. Both are
+// purely cosmetic — balls still get captured at POCKET_R.
+const POCKET_DRAW_R = 25;
+const CUSHION_GAP   = 30;
 
 // Six pockets — four corners + two side rails (top and bottom centre).
 const POCKETS = [
@@ -373,9 +386,12 @@ function buildWorld() {
   // pocket is reachable from along the rail.
   const cushion = (x, y, w, h) => Bodies.rectangle(x, y, w, h, {
     isStatic: true,
-    restitution: 0.85,        // bouncy cushion
-    friction: 0.01,           // minimal — balls don't bleed energy along rails
-    label: 'cushion',
+    restitution: 0.92,        // bouncy cushion
+    friction: 0,              // zero so the ball doesn't lose tangent
+    frictionStatic: 0,        // velocity when bouncing off at oblique angles
+    label: 'cushion',         // (Matter.js default frictionStatic = 0.5
+                              // would clamp the tangent component to 0
+                              // and make the ball *stick* to the rail)
   });
   const railThick = 20;
   const railOffset = railThick / 2 + 0.5;
@@ -633,24 +649,46 @@ function drawScene(state, hudText) {
   ctx.fillStyle = '#1f5230';
   ctx.fillRect(FELT_X0, FELT_Y0, FELT_X1 - FELT_X0, FELT_Y1 - FELT_Y0);
 
-  // Cushions — drawn as darker green strips inside the frame.
+  // Cushions — darker green strips with gaps around each pocket so the
+  // pocket has a wider mouth rather than an angular L-shaped corner.
+  // CUSHION_GAP is purely visual; the physics cushions in createTable
+  // are unchanged.
+  const sideMidX = (FELT_X0 + FELT_X1) / 2;
+  const CT = 6;
   ctx.fillStyle = '#27693d';
-  // top
-  ctx.fillRect(FELT_X0, FELT_Y0, FELT_X1 - FELT_X0, 6);
-  ctx.fillRect(FELT_X0, FELT_Y1 - 6, FELT_X1 - FELT_X0, 6);
-  ctx.fillRect(FELT_X0, FELT_Y0, 6, FELT_Y1 - FELT_Y0);
-  ctx.fillRect(FELT_X1 - 6, FELT_Y0, 6, FELT_Y1 - FELT_Y0);
+  // Top rail — split around the side pocket.
+  ctx.fillRect(FELT_X0 + CUSHION_GAP, FELT_Y0,
+               sideMidX - CUSHION_GAP - (FELT_X0 + CUSHION_GAP), CT);
+  ctx.fillRect(sideMidX + CUSHION_GAP, FELT_Y0,
+               FELT_X1 - CUSHION_GAP - (sideMidX + CUSHION_GAP), CT);
+  // Bottom rail.
+  ctx.fillRect(FELT_X0 + CUSHION_GAP, FELT_Y1 - CT,
+               sideMidX - CUSHION_GAP - (FELT_X0 + CUSHION_GAP), CT);
+  ctx.fillRect(sideMidX + CUSHION_GAP, FELT_Y1 - CT,
+               FELT_X1 - CUSHION_GAP - (sideMidX + CUSHION_GAP), CT);
+  // Left + right rails — single strip between corner pockets.
+  ctx.fillRect(FELT_X0, FELT_Y0 + CUSHION_GAP,
+               CT, FELT_Y1 - CUSHION_GAP - (FELT_Y0 + CUSHION_GAP));
+  ctx.fillRect(FELT_X1 - CT, FELT_Y0 + CUSHION_GAP,
+               CT, FELT_Y1 - CUSHION_GAP - (FELT_Y0 + CUSHION_GAP));
 
-  // Pockets.
+  // Pockets — full circles with a slightly larger dark-brown shadow
+  // ring underneath, so they look like real snooker pockets cut into
+  // the rail rather than circles pasted on. No clipping — the
+  // rail-side portion is drawn over the rail wood.
   for (const pkt of POCKETS) {
-    ctx.fillStyle = '#0a0a0a';
+    ctx.fillStyle = '#1a0f08';                  // bevel shadow
     ctx.beginPath();
-    ctx.arc(pkt.x, pkt.y, POCKET_R, 0, Math.PI * 2);
+    ctx.arc(pkt.x, pkt.y, POCKET_DRAW_R + 2, 0, Math.PI * 2);
+    ctx.fill();
+    ctx.fillStyle = '#000';                     // pocket opening
+    ctx.beginPath();
+    ctx.arc(pkt.x, pkt.y, POCKET_DRAW_R, 0, Math.PI * 2);
     ctx.fill();
     ctx.strokeStyle = '#5a3a1c';
-    ctx.lineWidth = 2;
+    ctx.lineWidth = 1.5;
     ctx.beginPath();
-    ctx.arc(pkt.x, pkt.y, POCKET_R, 0, Math.PI * 2);
+    ctx.arc(pkt.x, pkt.y, POCKET_DRAW_R, 0, Math.PI * 2);
     ctx.stroke();
   }
 
@@ -1026,6 +1064,19 @@ for (const id of sliderInputs) {
   const update = () => { output.textContent = sliderOutputs[id](slider.value); };
   slider.addEventListener('input', update);
   update();
+}
+
+// Hint button — snap the sliders to a break that scores well. The
+// chaotic nature of the break makes any one tuple sensitive, so this
+// is the best one we've found that survives slider-step quantisation.
+const HINT_BREAK = { angle: -4.0, power: 48.4, spin: -0.02 };
+function loadCheat() {
+  const ids = { 'manual-angle': HINT_BREAK.angle, 'manual-power': HINT_BREAK.power, 'manual-spin': HINT_BREAK.spin };
+  for (const [id, v] of Object.entries(ids)) {
+    const el = document.getElementById(id);
+    el.value = v;
+    el.dispatchEvent(new Event('input'));     // refresh the output label
+  }
 }
 
 async function manualShot() {
