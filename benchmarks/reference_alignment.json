@@ -514,31 +514,31 @@
       "algorithm": "HillClimbing",
       "reference": "(1+1)-ES sigma-decay schedule",
       "problem": "sphere",
-      "humpday_median": 0.00033426152176908115,
+      "humpday_median": 1.1868707860274438e-07,
       "reference_median": 1.390796516429335e-07,
-      "humpday_to_opt": 0.00033426152176908115,
+      "humpday_to_opt": 1.1868707860274438e-07,
       "reference_to_opt": 1.390796516429335e-07,
-      "ratio_humpday_over_reference": 2403.3819140190717
+      "ratio_humpday_over_reference": 0.853374863593138
     },
     {
       "algorithm": "HillClimbing",
       "reference": "(1+1)-ES sigma-decay schedule",
       "problem": "rosenbrock",
-      "humpday_median": 0.35802570586317956,
+      "humpday_median": 0.14143467246185495,
       "reference_median": 0.09177438621129817,
-      "humpday_to_opt": 0.35802570586317956,
+      "humpday_to_opt": 0.14143467246185495,
       "reference_to_opt": 0.09177438621129817,
-      "ratio_humpday_over_reference": 3.901150643915729
+      "ratio_humpday_over_reference": 1.541112703671154
     },
     {
       "algorithm": "HillClimbing",
       "reference": "(1+1)-ES sigma-decay schedule",
       "problem": "ackley",
-      "humpday_median": 1.7761777471135543,
+      "humpday_median": 0.005089738473536887,
       "reference_median": 0.005230236757765017,
-      "humpday_to_opt": 1.7761777471135543,
+      "humpday_to_opt": 0.005089738473536887,
       "reference_to_opt": 0.005230236757765017,
-      "ratio_humpday_over_reference": 339.59796264982305
+      "ratio_humpday_over_reference": 0.9731372993737781
     },
     {
       "algorithm": "Rechenberg",
@@ -634,5 +634,5 @@
   "n_runs": 4,
   "n_trials": 200,
   "n_dim": 2,
-  "recorded_at": "2026-05-30T21:47:37Z"
+  "recorded_at": "2026-05-30T22:13:58Z"
 }
