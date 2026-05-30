@@ -205,15 +205,16 @@
   <h2>What's happening</h2>
   <p>
     The arm has six revolute joints in series with link lengths
-    [70, 60, 50, 40, 35, 25] px. Each joint angle θ<sub>i</sub>
-    is interpreted as the rotation of the i-th link relative to
-    the (i−1)-th, and each is bounded to ±90°. Forward kinematics
-    walks down the chain to give the position of every joint and
-    the end-effector tip.
+    [120, 105, 90, 75, 60, 45] px — a total reach of 495 px that
+    almost spans the canvas diagonally. Each joint angle
+    θ<sub>i</sub> is interpreted as the rotation of the i-th link
+    relative to the (i−1)-th, and each is bounded to ±90°. Forward
+    kinematics walks down the chain to give the position of every
+    joint and the end-effector tip.
   </p>
   <p>
     <strong>Score</strong> is reach minus collision:
-    <code>max(0, 100 − 0.4·tipErr) − 25·collisions − 0.4·deepest</code>.
+    <code>max(0, 100 − 0.25·tipErr) − 25·collisions − 0.4·deepest</code>.
     The reach term gives 100 when the tip touches the target and
     drops linearly with distance. The penalty fires every time a
     link segment intersects an obstacle disc, plus an extra
@@ -281,16 +282,19 @@ const W = canvas.width, H = canvas.height;
 
 const N_JOINTS = 6;
 const N_DIM = N_JOINTS;
-const LINK_LEN = [70, 60, 50, 40, 35, 25];
+// Sized so the workspace actually FILLS the 800×500 canvas — total
+// reach ≈ 495 px, target offset ≈ 470 px from the base, obstacles
+// large enough that no link can sneak through a tiny gap.
+const LINK_LEN = [120, 105, 90, 75, 60, 45];
 const JOINT_ANGLE_MAX = Math.PI / 2;   // each joint clamped to ±90°
-const LINK_HW = 6;                      // visual + collision half-thickness
-const BASE = { x: 400, y: 450 };
-const TARGET = { x: 510, y: 230 };
-const TARGET_R = 9;                    // visual size of target marker
+const LINK_HW = 9;                      // visual + collision half-thickness
+const BASE = { x: 400, y: 478 };
+const TARGET = { x: 700, y: 180 };       // dist from base ≈ 421 px (reach 495)
+const TARGET_R = 13;                    // visual size of target marker
 const OBSTACLES = [
-  { x: 460, y: 350, r: 38 },
-  { x: 520, y: 295, r: 28 },
-  { x: 365, y: 320, r: 30 },
+  { x: 450, y: 360, r: 55 },             // big near base
+  { x: 600, y: 320, r: 50 },             // mid-right
+  { x: 540, y: 190, r: 38 },             // near target
 ];
 
 // u ∈ [0,1]^6 → angles in [-π/2, +π/2].
@@ -340,7 +344,10 @@ function evaluatePose(u) {
       }
     }
   }
-  const reach = Math.max(0, 100 - tipErr * 0.4);
+  // Reach: 100 at touch, drops linearly with distance. 0.25 / px is
+  // tuned so the reachable region (radius ~495 px) maps usefully into
+  // the 0-100 score range.
+  const reach = Math.max(0, 100 - tipErr * 0.25);
   const penalty = collisions * 25 + deepest * 0.4;
   const score = reach - penalty;
   return { angles, positions, tip, tipErr, collisions, deepest, minClear, score };
@@ -451,7 +458,7 @@ function drawArm(state) {
     const p = pos[i];
     const isBase = i === 0, isTip = i === pos.length - 1;
     ctx.fillStyle = isTip ? '#7ed957' : (isBase ? '#5fb8ff' : '#3a3a4a');
-    ctx.beginPath(); ctx.arc(p.x, p.y, isTip ? 8 : (isBase ? 10 : 5), 0, Math.PI * 2); ctx.fill();
+    ctx.beginPath(); ctx.arc(p.x, p.y, isTip ? 11 : (isBase ? 14 : 7), 0, Math.PI * 2); ctx.fill();
     ctx.strokeStyle = 'rgba(0,0,0,0.55)';
     ctx.lineWidth = 1.5; ctx.stroke();
   }
