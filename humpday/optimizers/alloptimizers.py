@@ -21,7 +21,12 @@ from .evolutionary_algorithms import (
 )
 from .prima_algorithms import PRIMA_BOBYQA, PRIMA_NEWUOA, PRIMA_UOBYQA
 from .scipy_algorithms import LBFGSB, NelderMead, Powell
-from .search_algorithms import AdaptiveRandomSearch, CoordinateDescent, PatternSearch
+from .search_algorithms import (
+    AdaptiveRandomSearch,  # noqa: F401 — backwards-compat alias for Rechenberg
+    CoordinateDescent,
+    PatternSearch,
+    Rechenberg,
+)
 
 # Define PURE_OPTIMIZERS for backward compatibility - all 22 algorithms
 PURE_OPTIMIZERS = {
@@ -48,7 +53,7 @@ PURE_OPTIMIZERS = {
     "HillClimbing": HillClimbing,
     "HarmonySearch": HarmonySearch,
     # Search algorithms
-    "AdaptiveRandomSearch": AdaptiveRandomSearch,
+    "Rechenberg": Rechenberg,
     "CoordinateDescent": CoordinateDescent,
     "PatternSearch": PatternSearch,
 }
@@ -103,7 +108,10 @@ ant_colony_opt = create_optimizer_function(AntColonyOpt)
 evolution_strategy = create_optimizer_function(EvolutionStrategy)
 hill_climbing = create_optimizer_function(HillClimbing)
 harmony_search = create_optimizer_function(HarmonySearch)
-adaptive_random_search = create_optimizer_function(AdaptiveRandomSearch)
+rechenberg = create_optimizer_function(Rechenberg)
+# Backwards-compat alias for downstream code that imported the
+# function under the old name.
+adaptive_random_search = rechenberg
 coordinate_descent = create_optimizer_function(CoordinateDescent)
 pattern_search = create_optimizer_function(PatternSearch)
 
@@ -163,7 +171,7 @@ def suggest_pure(n_dim, n_trials):
             "DifferentialEvolution",
             "EvolutionStrategy",
             "ParticleSwarm",
-            "AdaptiveRandomSearch",
+            "Rechenberg",
             "FireflyAlgorithm",
             "AntColonyOpt",
             "RandomSearch",
@@ -171,13 +179,13 @@ def suggest_pure(n_dim, n_trials):
             "SimulatedAnnealing",
         ]
     else:
-        # n > 50. AdaptiveRandomSearch leads because it produces a monotone
+        # n > 50. Rechenberg leads because it produces a monotone
         # convergence curve on any objective with mild structure; plain
         # RandomSearch is i.i.d. and only competitive when the surface is
         # essentially structureless. RandomSearch is kept as #2 — a robust
-        # baseline when ARS's step adaptation stalls in a bad basin.
+        # baseline when Rechenberg's step adaptation stalls in a bad basin.
         return [
-            "AdaptiveRandomSearch",
+            "Rechenberg",
             "RandomSearch",
             "ParticleSwarm",
             "DifferentialEvolution",

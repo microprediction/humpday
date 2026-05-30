@@ -191,8 +191,8 @@ class ComprehensiveAlgorithmValidator:
                 "priority": "HIGH",
             },
             # Metaheuristic algorithms (using custom reference implementations)
-            "AdaptiveRandomSearch": {
-                "js_name": "AdaptiveRandomSearch",
+            "Rechenberg": {
+                "js_name": "Rechenberg",
                 "reference_test": self._test_adaptive_random_search_external,
                 "package": "nlopt (optional)",
                 "priority": "MEDIUM",

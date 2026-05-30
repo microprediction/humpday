@@ -74,9 +74,9 @@ def test_low_dim_auto_pick_matches_old_default():
 
 
 def test_high_dim_auto_pick_prefers_adaptive_random_search():
-    """At n > 50 the top pick should be AdaptiveRandomSearch, not RandomSearch.
+    """At n > 50 the top pick should be Rechenberg, not RandomSearch.
     ARS produces a monotone convergence curve on any objective with mild
     structure; plain RandomSearch is i.i.d. and only competitive when the
     surface is essentially structureless."""
-    assert suggest_pure(60, 100)[0] == "AdaptiveRandomSearch"
+    assert suggest_pure(60, 100)[0] == "Rechenberg"
     assert suggest_pure(60, 100)[1] == "RandomSearch"

@@ -43,7 +43,7 @@ cube_minimize(
   - `'NelderMead'`, `'DifferentialEvolution'`, `'ParticleSwarm'`
   - `'PRIMA_UOBYQA'`, `'PRIMA_NEWUOA'`, `'PRIMA_BOBYQA'`
   - `'CMAEvolutionStrategy'`, `'EvolutionStrategy'`, `'GeneticAlgorithm'`
-  - `'BayesianOpt'`, `'RandomSearch'`, `'AdaptiveRandomSearch'`
+  - `'BayesianOpt'`, `'RandomSearch'`, `'Rechenberg'`
   - `'HillClimbing'`, `'CoordinateDescent'`, `'PatternSearch'`
   - `'SimulatedAnnealing'`, `'TabuSearch'`, `'HarmonySearch'`
   - `'FireflyAlgorithm'`, `'AntColonyOpt'`, `'Powell'`, `'LBFGSB'`

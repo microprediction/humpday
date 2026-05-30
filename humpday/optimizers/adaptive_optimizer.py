@@ -313,8 +313,7 @@ def adaptive_optimize(
         "high_dim_complex": [
             alg
             for alg, _ in final_top_algorithms
-            if alg
-            in ["CMAEvolutionStrategy", "AdaptiveRandomSearch", "EvolutionStrategy"]
+            if alg in ["CMAEvolutionStrategy", "Rechenberg", "EvolutionStrategy"]
         ][:3],
         "general_purpose": [alg for alg, _ in final_top_algorithms[:5]],
     }
@@ -368,7 +367,7 @@ def suggest_algorithm_from_elo(
             "GeneticAlgorithm",
         ]
     elif problem_type == "noisy":
-        candidates = ["CMAEvolutionStrategy", "AdaptiveRandomSearch", "ParticleSwarm"]
+        candidates = ["CMAEvolutionStrategy", "Rechenberg", "ParticleSwarm"]
     else:  # general
         candidates = [alg for alg, _ in top_algorithms[:10]]
 

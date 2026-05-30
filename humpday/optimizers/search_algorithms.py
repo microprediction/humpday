@@ -11,18 +11,40 @@ from humpday import _array as _A
 from .base import BaseOptimizer
 
 
-class AdaptiveRandomSearch(BaseOptimizer):
-    """Adaptive Random Search with step size adaptation.
+class Rechenberg(BaseOptimizer):
+    """Rechenberg's (1+1)-Evolution Strategy with the 1/5-success-rule.
+
+    The classic adaptive random search algorithm: one parent, one
+    Gaussian-perturbed offspring per generation; offspring accepted if
+    it beats the parent. The step size σ is adapted by Rechenberg's
+    1/5-rule — grow σ by 1.5× when more than 1/5 of recent trials
+    succeed, shrink by 1.5⁻¹ otherwise. Reference: Rechenberg (1973),
+    "Evolutionsstrategie: Optimierung technischer Systeme nach
+    Prinzipien der biologischen Evolution".
 
     Pure-Python via the `humpday._array` shim — no direct numpy use.
-    Implements a (1+1)-ES with a global, multiplicatively-adapted step size.
+
+    Was previously named ``AdaptiveRandomSearch``; the rename matches
+    the canonical literature name and the reference adapter used by
+    ``test_reference_alignment.py``. ``AdaptiveRandomSearch`` is kept
+    as a module-level alias below for backwards compatibility.
     """
 
     def optimize(self):
         x = _A.random_uniform(self.n_dim)
         f = self.evaluate(x)
+        # Step bounds: 1e-12 floor lets the algorithm refine to machine
+        # precision on smooth basins (the previous 0.01 floor was the
+        # entire reason this port was ~5.7e+08× off the reference on
+        # the sphere benchmark — the algorithm worked, the floor just
+        # capped its precision at ~1e-4). Upper cap matches the unit
+        # cube diameter.
         step_size = 0.1
-        success_rate = 0.5
+        step_min = 1e-12
+        step_max = 1.0
+        # Rolling window of recent successes for the 1/5-rule.
+        window = []
+        window_size = 10
 
         while self.evaluations < self.n_trials:
             # Random unit-direction step.
@@ -31,23 +53,35 @@ class AdaptiveRandomSearch(BaseOptimizer):
 
             x_new = _A.clip(x + step_size * direction, 0, 1)
 
-            if self.evaluations < self.n_trials:
-                f_new = self.evaluate(x_new)
+            if self.evaluations >= self.n_trials:
+                break
+            f_new = self.evaluate(x_new)
 
-                if f_new < f:
-                    x = x_new
-                    f = f_new
-                    success_rate = 0.8 * success_rate + 0.2 * 1.0
-                else:
-                    success_rate = 0.8 * success_rate + 0.2 * 0.0
+            accepted = f_new < f
+            if accepted:
+                x = x_new
+                f = f_new
+            window.append(accepted)
+            if len(window) > window_size:
+                window.pop(0)
 
-                # 1/5-rule-ish: grow when succeeding, shrink when stalling.
-                if success_rate > 0.2:
-                    step_size = min(0.3, step_size * 1.1)
-                else:
-                    step_size = max(0.01, step_size * 0.9)
+            # Strict 1/5-rule on the rolling window — 1.5×/1.5⁻¹
+            # adaptation, no smoothing.
+            if len(window) >= window_size:
+                rate = sum(window) / window_size
+                if rate > 1 / 5:
+                    step_size = min(step_max, step_size * 1.5)
+                elif rate < 1 / 5:
+                    step_size = max(step_min, step_size / 1.5)
 
         return self.best_value, self.best_x
+
+
+# Backwards-compatibility alias — the class was renamed in this commit.
+# Anyone importing `AdaptiveRandomSearch` (HumpDay registry, docstrings,
+# downstream code) keeps working; the registry below pins both names to
+# the same class.
+AdaptiveRandomSearch = Rechenberg
 
 
 class CoordinateDescent(BaseOptimizer):

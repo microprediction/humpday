@@ -42,7 +42,7 @@ PORTED = [
     ("evolutionary_algorithms", "DifferentialEvolution"),
     ("evolutionary_algorithms", "GeneticAlgorithm"),
     ("evolutionary_algorithms", "EvolutionStrategy"),
-    ("search_algorithms", "AdaptiveRandomSearch"),
+    ("search_algorithms", "Rechenberg"),
     ("search_algorithms", "CoordinateDescent"),
     ("search_algorithms", "PatternSearch"),
     ("scipy_algorithms", "NelderMead"),
@@ -102,7 +102,7 @@ def test_pure_backend_works_for_ported_algorithms(tmp_path):
             AntColonyOpt, CMAEvolutionStrategy, BayesianOpt,
         )
         from humpday.optimizers.search_algorithms import (
-            AdaptiveRandomSearch, CoordinateDescent, PatternSearch,
+            Rechenberg, CoordinateDescent, PatternSearch,
         )
         from humpday.optimizers.scipy_algorithms import NelderMead, Powell, LBFGSB
         from humpday.optimizers.prima_algorithms import (
@@ -119,7 +119,7 @@ def test_pure_backend_works_for_ported_algorithms(tmp_path):
             ParticleSwarm, DifferentialEvolution, GeneticAlgorithm,
             EvolutionStrategy,
             AntColonyOpt, CMAEvolutionStrategy, BayesianOpt,
-            AdaptiveRandomSearch, CoordinateDescent, PatternSearch,
+            Rechenberg, CoordinateDescent, PatternSearch,
             NelderMead, Powell, LBFGSB,
             PRIMA_UOBYQA, PRIMA_NEWUOA, PRIMA_BOBYQA,
         ]

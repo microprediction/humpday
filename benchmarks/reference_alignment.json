@@ -541,34 +541,34 @@
       "ratio_humpday_over_reference": 339.59796264982305
     },
     {
-      "algorithm": "AdaptiveRandomSearch",
+      "algorithm": "Rechenberg",
       "reference": "(1+1)-ES 1/5-success-rule (Rechenberg)",
       "problem": "sphere",
-      "humpday_median": 2.0164074250563785e-05,
+      "humpday_median": 5.38740472301493e-12,
       "reference_median": 3.456938901965887e-14,
-      "humpday_to_opt": 2.0164074250563785e-05,
+      "humpday_to_opt": 5.38740472301493e-12,
       "reference_to_opt": 3.456938901965887e-14,
-      "ratio_humpday_over_reference": 566894029.0320784
+      "ratio_humpday_over_reference": 151.48994322159453
     },
     {
-      "algorithm": "AdaptiveRandomSearch",
+      "algorithm": "Rechenberg",
       "reference": "(1+1)-ES 1/5-success-rule (Rechenberg)",
       "problem": "rosenbrock",
-      "humpday_median": 0.2001628417931641,
+      "humpday_median": 0.14081797809809293,
       "reference_median": 0.0858730002482039,
-      "humpday_to_opt": 0.2001628417931641,
+      "humpday_to_opt": 0.14081797809809293,
       "reference_to_opt": 0.0858730002482039,
-      "ratio_humpday_over_reference": 2.3309170660698944
+      "ratio_humpday_over_reference": 1.6398399693859258
     },
     {
-      "algorithm": "AdaptiveRandomSearch",
+      "algorithm": "Rechenberg",
       "reference": "(1+1)-ES 1/5-success-rule (Rechenberg)",
       "problem": "ackley",
-      "humpday_median": 0.20408225616901676,
+      "humpday_median": 2.5799275627494542,
       "reference_median": 6.8833607014262554e-06,
-      "humpday_to_opt": 0.20408225616901676,
+      "humpday_to_opt": 2.5799275627494542,
       "reference_to_opt": 6.8833607014262554e-06,
-      "ratio_humpday_over_reference": 29648.636035749598
+      "ratio_humpday_over_reference": 374806.3880830884
     },
     {
       "algorithm": "CoordinateDescent",
@@ -634,5 +634,5 @@
   "n_runs": 4,
   "n_trials": 200,
   "n_dim": 2,
-  "recorded_at": "2026-05-30T20:04:38Z"
+  "recorded_at": "2026-05-30T20:26:11Z"
 }

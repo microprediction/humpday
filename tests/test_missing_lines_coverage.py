@@ -142,14 +142,14 @@ class TestMissingLinesCoverage:
         assert len(result) == 2
 
     def test_adaptive_random_search_improvement_conditions(self):
-        """Test AdaptiveRandomSearch improvement conditions (line 591, 600)."""
-        from humpday.optimizers.alloptimizers import AdaptiveRandomSearch
+        """Test Rechenberg improvement conditions (line 591, 600)."""
+        from humpday.optimizers.alloptimizers import Rechenberg
 
         def adaptive_objective(x):
             # Create valleys that require adaptive step sizing
             return sum((xi - 0.15) ** 4 for xi in x) + 0.01 * sum(xi**2 for xi in x)
 
-        optimizer = AdaptiveRandomSearch(adaptive_objective, n_trials=40, n_dim=2)
+        optimizer = Rechenberg(adaptive_objective, n_trials=40, n_dim=2)
         result = optimizer.optimize()
         assert len(result) == 2
 

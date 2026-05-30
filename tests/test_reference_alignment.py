@@ -359,7 +359,7 @@ def _ref_oneplusone_es_decay(func, n_trials, n_dim, seed):
 
 def _ref_oneplusone_es_oneFifth(func, n_trials, n_dim, seed):
     """(1+1)-ES with Rechenberg's 1/5-success-rule — the natural
-    reference for AdaptiveRandomSearch. Sigma grows by 1.5× when the
+    reference for Rechenberg. Sigma grows by 1.5× when the
     success rate over the last 10 trials exceeds 1/5, shrinks by 1/1.5
     otherwise."""
     rng = random.Random(seed)
@@ -602,7 +602,7 @@ REFERENCES = {
         _ref_oneplusone_es_decay,
         [],
     ),
-    "AdaptiveRandomSearch": (
+    "Rechenberg": (
         "(1+1)-ES 1/5-success-rule (Rechenberg)",
         _ref_oneplusone_es_oneFifth,
         [],

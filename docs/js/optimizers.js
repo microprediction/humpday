@@ -2527,10 +2527,10 @@ class CMAEvolutionStrategy extends Optimizer {
 }
 
 // Adaptive Random Search
-class AdaptiveRandomSearch extends Optimizer {
+class Rechenberg extends Optimizer {
     constructor(objective, nTrials, nDim) {
         super(objective, nTrials, nDim);
-        this.name = 'AdaptiveRandomSearch';
+        this.name = 'Rechenberg';
     }
 
     optimize() {
@@ -3090,8 +3090,8 @@ const OptimizerFactory = {
                 return new BayesianOpt(objective, nTrials, nDim);
             case 'CMAEvolutionStrategy':
                 return new CMAEvolutionStrategy(objective, nTrials, nDim);
-            case 'AdaptiveRandomSearch':
-                return new AdaptiveRandomSearch(objective, nTrials, nDim);
+            case 'Rechenberg':
+                return new Rechenberg(objective, nTrials, nDim);
             case 'CoordinateDescent':
                 return new CoordinateDescent(objective, nTrials, nDim);
             case 'PatternSearch':
@@ -3117,7 +3117,7 @@ const OptimizerFactory = {
         return [
             'PRIMA_UOBYQA', 'PRIMA_NEWUOA', 'SciPy_BFGS', 'SciPy_Powell', 'SciPy_NelderMead',
             'DifferentialEvolution', 'ParticleSwarm', 'SimulatedAnnealing', 'GeneticAlgorithm',
-            'RandomSearch', 'BayesianOpt', 'CMAEvolutionStrategy', 'AdaptiveRandomSearch',
+            'RandomSearch', 'BayesianOpt', 'CMAEvolutionStrategy', 'Rechenberg',
             'CoordinateDescent', 'PatternSearch', 'HillClimbing', 'TabuSearch', 'FireflyAlgorithm',
             'AntColonyOpt', 'HarmonySearch', 'EvolutionStrategy'
         ];
