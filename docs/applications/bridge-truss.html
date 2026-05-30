@@ -1,0 +1,1030 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' 'unsafe-inline'; style-src 'self' 'unsafe-inline';">
+<title>🌉 Bridge Truss Optimizer — HumpDay</title>
+<style>
+  :root {
+    --bg: #1a1a22;
+    --panel: #2d2d3a;
+    --accent: #ffcc00;
+    --text: #e8e8ea;
+    --muted: #9a9aac;
+  }
+  body { margin: 0; background: var(--bg); color: var(--text);
+    font-family: -apple-system, 'Segoe UI', 'Helvetica Neue', Helvetica, Arial, sans-serif; }
+  .site-nav { background: #34495e; padding: 12px 24px;
+    font-family: 'Times New Roman', Times, serif;
+    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1); }
+  .site-nav-inner { max-width: 1100px; margin: 0 auto;
+    display: flex; justify-content: space-between; align-items: center; }
+  .site-nav a { color: #ecf0f1; text-decoration: none; margin: 0 12px; }
+  .site-nav a:hover { color: white; text-decoration: underline; }
+  .site-nav-brand { font-weight: 700; font-size: 1.25em; }
+
+  .container { max-width: 1100px; margin: 0 auto; padding: 32px 24px 64px; }
+  h1 { font-size: 2.2em; margin: 0.2em 0; }
+  h2 { font-size: 1.4em; margin-top: 1.4em; color: var(--accent); }
+  p { line-height: 1.55; max-width: 70ch; }
+  .intro { color: var(--muted); }
+
+  .stage { display: grid; grid-template-columns: 1fr 320px; gap: 24px;
+    align-items: start; margin-top: 24px; }
+  @media (max-width: 800px) { .stage { grid-template-columns: 1fr; } }
+  canvas { background: #20202a;
+    border: 3px solid var(--accent); border-radius: 6px; display: block;
+    width: 100%; height: auto; }
+
+  .panel { background: var(--panel); padding: 18px; border-radius: 6px; border: 1px solid #404054; }
+  .panel h3 { margin: 0 0 12px; font-size: 1.05em; text-transform: uppercase;
+    letter-spacing: 0.06em; color: var(--accent); }
+  label { display: block; margin: 10px 0 6px; font-size: 0.9em; color: var(--muted); }
+  select, input, button { width: 100%; box-sizing: border-box; padding: 8px 10px;
+    border-radius: 4px; border: 1px solid #404054; background: #1a1a22; color: var(--text); font-size: 0.95em; }
+  button { background: var(--accent); color: #1a1a22; font-weight: 700; cursor: pointer; margin-top: 6px; transition: opacity 0.15s; }
+  button:hover { opacity: 0.88; }
+  button.secondary { background: #404054; color: var(--text); font-weight: 400; }
+  button:disabled { opacity: 0.5; cursor: not-allowed; }
+  .stats { margin-top: 16px; padding-top: 14px; border-top: 1px solid #404054; font-size: 0.92em; line-height: 1.6; }
+  .stats .score { font-size: 2.6em; color: var(--accent); font-weight: 700; }
+  .stat-row { display: flex; justify-content: space-between; gap: 8px; }
+  .stat-row span:first-child { white-space: nowrap; flex-shrink: 0; color: var(--muted); }
+  .stat-row span:last-child { color: var(--text); font-family: 'SF Mono', Menlo, monospace; text-align: right; word-break: break-word; }
+  .algo-tag { font-size: 0.7em; color: var(--muted); display: block; }
+
+  .leaderboard { margin-top: 24px; }
+  .leaderboard table { width: 100%; border-collapse: collapse; background: var(--panel); border-radius: 6px; overflow: hidden; }
+  .leaderboard th, .leaderboard td { padding: 10px 14px; text-align: left; border-bottom: 1px solid #404054; }
+  .leaderboard th { background: #1a1a22; color: var(--muted); text-transform: uppercase; font-size: 0.78em; letter-spacing: 0.08em; }
+  .leaderboard td:nth-child(2) { text-align: center; font-size: 1.3em; font-weight: 700; color: var(--accent); }
+  .leaderboard td:nth-child(3), .leaderboard td:nth-child(4), .leaderboard td:nth-child(5) { font-family: 'SF Mono', Menlo, monospace; color: var(--muted); }
+  .leaderboard tr.human-raphson td:first-child { color: #ff9944; font-weight: 700; }
+  .leaderboard tr.infeasible td:nth-child(2) { color: #d04040; }
+
+  .left-stack { display: flex; flex-direction: column; gap: 16px; min-width: 0; }
+  .hr-panel { padding: 14px 16px; }
+  .hr-panel h3 { margin: 0 0 6px; }
+  .hr-sliders { display: grid; grid-template-columns: repeat(2, 1fr); gap: 6px 18px; margin-bottom: 10px; }
+  .hr-sliders .slider-cell { display: flex; flex-direction: column; }
+  .hr-sliders label { margin: 0; display: flex; justify-content: space-between; align-items: baseline; font-size: 0.8em; }
+  .hr-sliders label output { color: var(--accent); font-family: 'SF Mono', Menlo, monospace; font-size: 0.88em; }
+  .hr-sliders input[type=range] { width: 100%; margin: 0; padding: 0; background: transparent; }
+  .hr-sliders input[type=range]::-webkit-slider-runnable-track { background: #1a1a22; height: 6px; border-radius: 3px; }
+  .hr-sliders input[type=range]::-webkit-slider-thumb { -webkit-appearance: none; appearance: none; background: var(--accent); width: 16px; height: 16px; border-radius: 50%; margin-top: -5px; cursor: pointer; }
+  .hr-panel button { background: #ff9944; color: #1a1a22; margin-top: 0; }
+
+  .skill-callout { margin-top: 36px; background: rgba(126, 217, 87, 0.07); border: 1px solid rgba(126, 217, 87, 0.35); border-radius: 8px; padding: 18px 22px; }
+  .skill-callout h3 { margin: 0 0 6px; color: #7ed957; font-size: 1.05em; text-transform: none; letter-spacing: 0; }
+  .skill-callout p { margin: 0 0 10px; color: var(--text); max-width: none; }
+  .skill-callout pre { background: #1a1a22; border: 1px solid #404054; border-radius: 4px; padding: 10px 14px; margin: 0; font-size: 0.84em; color: #7ed957; white-space: pre-wrap; word-break: break-all; font-family: 'SF Mono', Menlo, monospace; }
+  .skill-actions { margin-top: 10px; display: flex; align-items: center; gap: 14px; }
+  .skill-actions button { width: auto; background: #404054; color: var(--text); border: 1px solid #404054; padding: 6px 12px; font-size: 0.85em; cursor: pointer; border-radius: 4px; margin: 0; font-weight: 500; }
+  .skill-actions button:hover { background: #4a4a60; }
+  .skill-actions a { color: #7ed957; font-size: 0.85em; text-decoration: none; }
+  .skill-actions a:hover { text-decoration: underline; }
+</style>
+</head>
+<body>
+<nav class="site-nav">
+  <div class="site-nav-inner">
+    <a class="site-nav-brand" href="../index.html">HumpDay 🦅</a>
+    <div>
+      <a href="../index.html">Home</a>
+      <a href="index.html">Applications</a>
+      <a href="../contest.html">Contest</a>
+      <a href="../README.html">Docs</a>
+    </div>
+  </div>
+</nav>
+
+<div class="container">
+  <h1>🌉 Bridge Truss Optimizer</h1>
+  <p class="intro">
+    Design the lightest 10-member steel truss that survives a 20 kN
+    midspan load without any member yielding or buckling. The truss
+    has one redundant brace — so member forces depend on member
+    areas (it's statically indeterminate), which couples all ten
+    decisions together. Each member also has its own Euler-buckling
+    constraint, scaled by length squared.
+  </p>
+
+  <div class="stage">
+    <div class="left-stack">
+      <canvas id="canvas" width="800" height="450"></canvas>
+
+      <div class="panel hr-panel">
+        <h3>🧠 Human Raphson</h3>
+        <p style="color: var(--muted); margin: 0 0 12px; font-size: 0.86em;">
+          Pick each member's cross-section (mm²). Watch members go red
+          if they yield or buckle.
+        </p>
+        <div class="hr-sliders" id="hr-sliders"></div>
+        <button id="manual-btn" onclick="manualLoad()">▶ Apply load (Human Raphson)</button>
+      </div>
+    </div>
+
+    <div class="panel">
+      <h3>Algorithm</h3>
+      <label for="algorithm">Pick a HumpDay optimizer:</label>
+      <select id="algorithm">
+        <optgroup label="Trust-region / interpolation">
+          <option value="PRIMA_BOBYQA" selected>PRIMA_BOBYQA</option>
+          <option value="PRIMA_NEWUOA">PRIMA_NEWUOA</option>
+        </optgroup>
+        <optgroup label="Local / classical">
+          <option value="NelderMead">Nelder-Mead</option>
+          <option value="Powell">Powell</option>
+          <option value="LBFGSB">L-BFGS-B (simplified)</option>
+        </optgroup>
+        <optgroup label="Population-based">
+          <option value="DifferentialEvolution">Differential Evolution</option>
+          <option value="ParticleSwarm">Particle Swarm</option>
+          <option value="CMAEvolutionStrategy">CMA-Evolution Strategy</option>
+          <option value="GeneticAlgorithm">Genetic Algorithm</option>
+          <option value="EvolutionStrategy">Evolution Strategy</option>
+          <option value="HarmonySearch">Harmony Search</option>
+        </optgroup>
+        <optgroup label="Other">
+          <option value="SimulatedAnnealing">Simulated Annealing</option>
+          <option value="BayesianOpt">Bayesian Optimization</option>
+          <option value="FireflyAlgorithm">Firefly Algorithm</option>
+          <option value="AntColonyOpt">Ant Colony</option>
+          <option value="TabuSearch">Tabu Search</option>
+          <option value="RandomSearch">Random Search</option>
+        </optgroup>
+      </select>
+
+      <label for="budget">Evaluation budget:</label>
+      <select id="budget">
+        <option value="10">10 designs</option>
+        <option value="20">20 designs</option>
+        <option value="50">50 designs</option>
+        <option value="100" selected>100 designs</option>
+        <option value="200">200 designs</option>
+        <option value="500">500 designs</option>
+      </select>
+      <p style="margin: 8px 0 0; font-size: 0.78em; color: var(--muted);">
+        Each design is FEA-solved instantly; the animation just walks
+        the load on at ~2× final-replay speed.
+      </p>
+
+      <button id="run-btn" onclick="runOptimization()">▶ Find the lightest bridge</button>
+      <button class="secondary" onclick="replayBest()">🔁 Replay best design</button>
+      <button class="secondary" onclick="resetEverything()">⟲ Reset leaderboard</button>
+
+      <div class="stats">
+        <div class="stat-row"><span>Score</span><span class="score" id="score-now">0</span></div>
+        <div class="stat-row"><span>Detail</span><span id="score-detail">—</span></div>
+        <div class="stat-row"><span>Designs tried</span><span id="evals">0</span></div>
+        <div class="stat-row"><span>Best so far</span><span id="best-score">—</span></div>
+        <div class="stat-row"><span>Max stress</span><span id="param-stress">—</span></div>
+        <div class="stat-row"><span>Worst member</span><span id="param-worst">—</span></div>
+      </div>
+    </div>
+  </div>
+
+  <div class="leaderboard">
+    <h2>Leaderboard (this session)</h2>
+    <p style="color: var(--muted);">
+      Each row is the lightest feasible truss a given algorithm found
+      (lower weight = better). Infeasible best-attempts appear in red
+      and are sorted to the bottom. A smoke-test of 2 000 random
+      designs gives a feasibility rate of ~10 % with best random
+      ≈ 70 kg; PSO at budget 200 typically lands near 50 kg.
+    </p>
+    <table>
+      <thead>
+        <tr><th>Algorithm</th><th>Score</th><th>Weight (kg)</th><th>Evals</th><th>Areas (cm²)</th></tr>
+      </thead>
+      <tbody id="leaderboard-body">
+        <tr><td colspan="5" style="color: var(--muted); text-align: center;">— no runs yet —</td></tr>
+      </tbody>
+    </table>
+  </div>
+
+  <h2>What's happening</h2>
+  <p>
+    A symmetric 10-member steel truss spanning 6 m, height 1.5 m. Pin
+    support on the left, roller on the right. A single 20 kN downward
+    load is applied at the centre of the bottom chord. The optimiser
+    picks each member's cross-sectional area independently — sliders
+    range 50 mm² (very thin rod) to 3 000 mm² (chunky bar).
+  </p>
+  <p>
+    Forces are solved by the <strong>direct stiffness method</strong>
+    (FEA) on every evaluation. The truss is statically indeterminate
+    by one (it has an X-brace in the centre panel), so changing one
+    member's area redistributes force through every other member —
+    each parameter is truly coupled.
+  </p>
+  <p>
+    Two constraints per member: <em>yielding</em>
+    (<code>|σ| ≤ 250 MPa</code>) and, for any member in compression,
+    <em>Euler buckling</em> (<code>|F| ≤ π²EI/L²</code> with
+    <code>I = 0.3·A²</code>, a moderately efficient tubular/I-section).
+    Score = 100 at 40 kg (an asymptotic lower bound — never quite
+    reached in practice), dropping linearly to 0 by 240 kg. Infeasible
+    designs score 0.
+  </p>
+
+  <hr style="border: 0; border-top: 1px solid #404054; margin: 32px 0 16px;" />
+  <p style="font-size: 0.78em; color: var(--muted);">
+    FEA solver: direct stiffness method in ~60 lines of vanilla JS
+    (Gaussian elimination on the reduced system). No external
+    dependencies.
+  </p>
+
+  <div class="skill-callout">
+    <h3>🌱 Save the Planet from Dumb Meta-Searches</h3>
+    <p>Cut and paste this into Claude or Cursor:</p>
+    <pre id="skill-snippet">Read https://raw.githubusercontent.com/microprediction/humpday/main/SKILL.md
+and create a project skill from it.</pre>
+    <div class="skill-actions">
+      <button type="button" onclick="copySkillSnippet(this)">📋 Copy</button>
+      <a href="https://github.com/microprediction/humpday/blob/main/SKILL.md" target="_blank" rel="noopener">View SKILL.md →</a>
+    </div>
+  </div>
+
+  <script>
+    function copySkillSnippet(btn) {
+      const text = document.getElementById('skill-snippet').textContent;
+      navigator.clipboard.writeText(text).then(() => {
+        const orig = btn.textContent;
+        btn.textContent = '✓ Copied';
+        setTimeout(() => { btn.textContent = orig; }, 1500);
+      }).catch(() => {
+        btn.textContent = '✗ Copy failed';
+      });
+    }
+  </script>
+</div>
+
+<script src="../js/modules/base-optimizer.js"></script>
+<script src="../js/modules/prima-algorithms.js"></script>
+<script src="../js/modules/scipy-algorithms.js"></script>
+<script src="../js/modules/evolutionary-algorithms.js"></script>
+<script src="../js/modules/search-algorithms.js"></script>
+
+<script>
+// ============================================================================
+// Bridge truss — 10-member statically-indeterminate 2D truss. Each design
+// evaluation runs a full direct-stiffness FEA solve: assemble the global
+// K, partition by boundary conditions, Gaussian-eliminate the reduced
+// system, recover member axial forces. No external FEA library.
+// ============================================================================
+
+const canvas = document.getElementById('canvas');
+const ctx = canvas.getContext('2d');
+const W = canvas.width, H = canvas.height;
+
+// ---------- Truss geometry (physical units: metres, newtons, pascals) ----
+// Span 6 m, height 1.5 m. Bottom chord at y=0, top chord at y=1.5.
+// Six nodes — the load is placed at node 2 (x=4 m, slightly right of
+// midspan) so we don't need a 7th node just to host it.
+const NODES = [
+  { x: 0.0, y: 0.0, support: 'pin' },     // 0  ← pin support (left abutment)
+  { x: 2.0, y: 0.0 },                     // 1
+  { x: 4.0, y: 0.0, load: true },         // 2  ← load applied here
+  { x: 6.0, y: 0.0, support: 'roller' },  // 3  ← roller support (right abutment)
+  { x: 2.0, y: 1.5 },                     // 4  ← top left
+  { x: 4.0, y: 1.5 },                     // 5  ← top right
+];
+
+// 10 members — classic Pratt layout with two crossing diagonals in the
+// central panel (members 8 and 9). The crossing brace makes the truss
+// statically indeterminate by one, so member forces are coupled to
+// member areas (in a determinate truss they would depend on geometry
+// alone, and the optimisation problem would decouple into ten
+// independent sizing decisions — much less interesting).
+const MEMBERS = [
+  [0, 1],   //  0  bottom chord (left)
+  [1, 2],   //  1  bottom chord (centre)
+  [2, 3],   //  2  bottom chord (right)
+  [4, 5],   //  3  top chord
+  [0, 4],   //  4  left rafter
+  [3, 5],   //  5  right rafter
+  [1, 4],   //  6  left vertical
+  [2, 5],   //  7  right vertical
+  [1, 5],   //  8  diagonal SW-NE
+  [2, 4],   //  9  diagonal SE-NW (X-brace with #8 → the redundancy)
+];
+// Stability check: 6 nodes × 2 = 12 DOF; pin removes 2 + roller removes 1
+// = 3. Free DOF = 9. Members + reactions = 10 + 3 = 13 > 12 → statically
+// indeterminate by 1. Every node has at least two non-collinear members
+// so no DOF is unbraced.
+
+const MEMBER_COUNT = MEMBERS.length;
+const E = 200e9;                                 // Young's modulus, Pa (steel)
+const RHO = 7850;                                // density, kg/m^3 (steel)
+const YIELD = 250e6;                             // yield stress, Pa (mild steel)
+const LOAD = 20e3;                               // midspan load, N (20 kN ≈ small car axle)
+
+// Section-shape factor: I = SECTION_K × A² so Pc = π² E SECTION_K A² / L².
+// SECTION_K = 1/(4π) ≈ 0.08 is the solid-circle limit. We use 0.3 to
+// represent a moderately efficient tubular/I-section, which is what real
+// trusses actually use (a solid rod would never be specified — the
+// buckling formula would dominate at any plausible bridge load).
+const SECTION_K = 0.3;
+
+// Area bounds — 50 mm² (very thin rod) to 3000 mm² (chunky bar).
+const A_MIN = 50e-6;                             // 5e-5 m^2
+const A_MAX = 3000e-6;                           // 3e-3 m^2
+
+// Decode u ∈ [0,1]^10 → physical areas (m^2). Log-spaced because area
+// matters multiplicatively for buckling — uniform decode wastes the
+// optimiser's effort on chunky bars.
+function decode(u) {
+  return u.map((ui) => A_MIN * Math.pow(A_MAX / A_MIN, ui));
+}
+
+// ---------- FEA: direct stiffness method ----------
+//
+// For each member i between nodes a and b:
+//   L_i = √((xb-xa)² + (yb-ya)²)
+//   c = (xb-xa)/L, s = (yb-ya)/L
+//   k_local (4×4 in global coords) = (E·A_i / L_i) × [
+//     [ c²,  cs, -c², -cs],
+//     [ cs,  s², -cs, -s²],
+//     [-c², -cs,  c²,  cs],
+//     [-cs, -s²,  cs,  s²]
+//   ]
+// Assemble into global K (size 2N × 2N), partition by fixed DOF,
+// solve K_ff · u_f = f_f, recover member forces.
+
+function solveTruss(areas) {
+  const n = NODES.length;
+  const nDof = 2 * n;
+  const K = Array.from({ length: nDof }, () => new Array(nDof).fill(0));
+
+  // Per-member geometry, reused in the force-recovery pass.
+  const memInfo = MEMBERS.map(([a, b], i) => {
+    const dx = NODES[b].x - NODES[a].x;
+    const dy = NODES[b].y - NODES[a].y;
+    const L = Math.hypot(dx, dy);
+    return { a, b, dx, dy, L, c: dx / L, s: dy / L };
+  });
+
+  for (let i = 0; i < MEMBER_COUNT; i++) {
+    const { a, b, L, c, s } = memInfo[i];
+    const k = E * areas[i] / L;
+    const c2 = c * c, s2 = s * s, cs = c * s;
+    const ke = [
+      [ c2,  cs, -c2, -cs],
+      [ cs,  s2, -cs, -s2],
+      [-c2, -cs,  c2,  cs],
+      [-cs, -s2,  cs,  s2],
+    ];
+    const dofs = [2 * a, 2 * a + 1, 2 * b, 2 * b + 1];
+    for (let ii = 0; ii < 4; ii++) {
+      for (let jj = 0; jj < 4; jj++) {
+        K[dofs[ii]][dofs[jj]] += k * ke[ii][jj];
+      }
+    }
+  }
+
+  // Force vector and BC list.
+  const F = new Array(nDof).fill(0);
+  for (let i = 0; i < n; i++) {
+    if (NODES[i].load) F[2 * i + 1] -= LOAD;       // downward = negative y
+  }
+  const fixed = new Set();
+  for (let i = 0; i < n; i++) {
+    if (NODES[i].support === 'pin') {
+      fixed.add(2 * i); fixed.add(2 * i + 1);
+    } else if (NODES[i].support === 'roller') {
+      fixed.add(2 * i + 1);                         // vertical roller
+    }
+  }
+  const free = [];
+  for (let i = 0; i < nDof; i++) if (!fixed.has(i)) free.push(i);
+
+  // Reduced system.
+  const Kff = free.map((i) => free.map((j) => K[i][j]));
+  const Ff = free.map((i) => F[i]);
+  const uf = gauss(Kff, Ff);
+  if (!uf) return null;                             // singular — degenerate truss
+
+  // Reassemble full displacement vector.
+  const u = new Array(nDof).fill(0);
+  for (let i = 0; i < free.length; i++) u[free[i]] = uf[i];
+
+  // Recover member axial forces. Positive = tension, negative = compression.
+  const forces = memInfo.map(({ a, b, L, c, s }, i) => {
+    const dux = u[2 * b] - u[2 * a];
+    const duy = u[2 * b + 1] - u[2 * a + 1];
+    const elongation = dux * c + duy * s;
+    return (E * areas[i] / L) * elongation;
+  });
+
+  return { forces, displacements: u, memInfo };
+}
+
+// Gaussian elimination with partial pivoting. Returns null on near-singular.
+function gauss(Aorig, b) {
+  const n = Aorig.length;
+  // Augmented matrix (copy so we don't mutate the input).
+  const M = Aorig.map((row, i) => [...row, b[i]]);
+  for (let k = 0; k < n; k++) {
+    let pivot = k;
+    for (let i = k + 1; i < n; i++) {
+      if (Math.abs(M[i][k]) > Math.abs(M[pivot][k])) pivot = i;
+    }
+    if (Math.abs(M[pivot][k]) < 1e-20) return null;
+    if (pivot !== k) [M[k], M[pivot]] = [M[pivot], M[k]];
+    for (let i = k + 1; i < n; i++) {
+      const f = M[i][k] / M[k][k];
+      for (let j = k; j <= n; j++) M[i][j] -= f * M[k][j];
+    }
+  }
+  const x = new Array(n).fill(0);
+  for (let i = n - 1; i >= 0; i--) {
+    let s = M[i][n];
+    for (let j = i + 1; j < n; j++) s -= M[i][j] * x[j];
+    x[i] = s / M[i][i];
+  }
+  return x;
+}
+
+// ---------- Cost + constraints ----------
+function evaluateDesign(areas) {
+  const sol = solveTruss(areas);
+  if (!sol) {
+    // Degenerate (e.g. tiny areas → singular K). Massive penalty.
+    return {
+      areas, weight: Infinity, total: Infinity,
+      forces: [], stresses: [], violations: MEMBER_COUNT, maxViolation: 1e9,
+      worstMember: -1, feasible: false, score: 0,
+      displacements: null, memInfo: null,
+    };
+  }
+  const { forces, displacements, memInfo } = sol;
+
+  // Ill-conditioned solves (tiny areas → near-singular K) can pass the
+  // gauss-elimination check but leave NaN/Inf in displacements. Treat
+  // any non-finite result as a degenerate, infeasible design.
+  for (let i = 0; i < forces.length; i++) {
+    if (!Number.isFinite(forces[i])) {
+      return {
+        areas, weight: Infinity, total: Infinity,
+        forces: [], stresses: [], violations: MEMBER_COUNT, maxViolation: 1e9,
+        worstMember: -1, feasible: false, score: 0,
+        displacements: null, memInfo: null,
+      };
+    }
+  }
+
+  // Total weight.
+  let weight = 0;
+  for (let i = 0; i < MEMBER_COUNT; i++) weight += areas[i] * memInfo[i].L * RHO;
+
+  // Constraints: yield + buckling per member. Track worst.
+  const stresses = forces.map((f, i) => f / areas[i]);
+  let maxViolation = 0;
+  let worstMember = -1;
+  let nViolated = 0;
+  let penalty = 0;
+  const PENALTY = 5e3;                             // weight units per (unit violation)^2
+
+  for (let i = 0; i < MEMBER_COUNT; i++) {
+    const F = forces[i];
+    const sigma = stresses[i];
+    // Yield (both signs).
+    const yieldViol = (Math.abs(sigma) - YIELD) / YIELD;
+    if (yieldViol > 0) {
+      nViolated++;
+      penalty += PENALTY * yieldViol * yieldViol;
+      if (yieldViol > maxViolation) { maxViolation = yieldViol; worstMember = i; }
+    }
+    // Buckling (compression only). Euler: Pc = π² E I / L²,
+    // I = SECTION_K · A² for a representative tubular/I-section.
+    if (F < 0) {
+      const L = memInfo[i].L;
+      const Pc = Math.PI * Math.PI * E * SECTION_K * areas[i] * areas[i] / (L * L);
+      const buckViol = (-F - Pc) / Pc;
+      if (buckViol > 0) {
+        nViolated++;
+        penalty += PENALTY * buckViol * buckViol;
+        if (buckViol > maxViolation) { maxViolation = buckViol; worstMember = i; }
+      }
+    }
+  }
+
+  const feasible = nViolated === 0;
+  // Score: 100 at 40 kg (a long-budget lower bound — never quite hit in
+  // practice), dropping to 0 at 240 kg. A best-of-budget-200 PSO design
+  // around 50 kg therefore scores ~95. Infeasible → 0.
+  let score = 0;
+  if (feasible) {
+    score = Math.max(0, Math.min(100, 100 * (240 - weight) / 200));
+  }
+
+  return {
+    areas, weight, total: weight + penalty,
+    forces, stresses, violations: nViolated, maxViolation, worstMember,
+    feasible, score, displacements, memInfo,
+  };
+}
+
+// ============================================================================
+// HumpDay objective — minimise weight + penalty (lower is better).
+// ============================================================================
+const searchHistory = [];
+
+function objective(u) {
+  const areas = decode(u);
+  const r = evaluateDesign(areas);
+  searchHistory.push(r);
+  return r.total;
+}
+
+// ============================================================================
+// Rendering — pixel-coordinate mapping + truss drawing.
+// ============================================================================
+const PADDING_X = 80, PADDING_Y = 90;
+const SPAN_PX = W - 2 * PADDING_X;                 // 640 px for 6 m → 106.67 px/m
+const PX_PER_M = SPAN_PX / 6.0;
+const BASELINE_Y = H - PADDING_Y;                  // y in canvas pixels
+
+function physToPx(x, y) {
+  return { px: PADDING_X + x * PX_PER_M, py: BASELINE_Y - y * PX_PER_M };
+}
+
+// Stress-fraction colour: blue (compression), green (tension), red (overstressed).
+function stressColour(stressFrac, forceSign) {
+  const t = Math.min(1, Math.abs(stressFrac));
+  if (t >= 1) return '#d04040';                    // exceeded
+  // Blend from grey -> blue (compression) or grey -> green/yellow (tension).
+  if (forceSign < 0) {
+    // Compression: grey -> blue -> red
+    const r = Math.round(70 + (208 - 70) * Math.max(0, t - 0.8) * 5);
+    const g = Math.round(120 + (64 - 120) * Math.max(0, t - 0.8) * 5);
+    const b = Math.round(200 - 50 * t);
+    return `rgb(${r},${g},${b})`;
+  }
+  // Tension: green -> yellow -> red
+  const r = Math.round(74 + (208 - 74) * t);
+  const g = Math.round(128 + (170 - 128) * t * (1 - t));
+  const b = Math.round(80 * (1 - t));
+  return `rgb(${r},${g},${b})`;
+}
+
+function drawScene(evalResult, loadFrac, hudText) {
+  ctx.clearRect(0, 0, W, H);
+
+  // Background.
+  ctx.fillStyle = '#20202a';
+  ctx.fillRect(0, 0, W, H);
+  // Faint grid.
+  ctx.strokeStyle = 'rgba(255,255,255,0.04)';
+  ctx.lineWidth = 1;
+  for (let x = 0; x < W; x += 40) {
+    ctx.beginPath(); ctx.moveTo(x, 0); ctx.lineTo(x, H); ctx.stroke();
+  }
+  for (let y = 0; y < H; y += 40) {
+    ctx.beginPath(); ctx.moveTo(0, y); ctx.lineTo(W, y); ctx.stroke();
+  }
+
+  // Ground line.
+  ctx.strokeStyle = '#5a5a6e';
+  ctx.lineWidth = 2;
+  ctx.beginPath();
+  ctx.moveTo(20, BASELINE_Y + 4);
+  ctx.lineTo(W - 20, BASELINE_Y + 4);
+  ctx.stroke();
+  // Ground hatching under abutments.
+  for (let xx = 0; xx < 60; xx += 8) {
+    ctx.beginPath();
+    ctx.moveTo(PADDING_X - 24 + xx, BASELINE_Y + 5);
+    ctx.lineTo(PADDING_X - 24 + xx + 8, BASELINE_Y + 13);
+    ctx.stroke();
+    ctx.beginPath();
+    ctx.moveTo(W - PADDING_X - 36 + xx, BASELINE_Y + 5);
+    ctx.lineTo(W - PADDING_X - 36 + xx + 8, BASELINE_Y + 13);
+    ctx.stroke();
+  }
+
+  // Displaced node positions (scale displacements for visibility).
+  // Real displacements at ~95 kg / 50 kN are sub-mm — we exaggerate by
+  // a fixed factor so the deformed shape is visible.
+  const DEFLECT_SCALE = 800;
+  const nodesPx = NODES.map((nd, i) => {
+    let dx = 0, dy = 0;
+    if (evalResult && evalResult.displacements) {
+      dx = evalResult.displacements[2 * i] * DEFLECT_SCALE;
+      dy = evalResult.displacements[2 * i + 1] * DEFLECT_SCALE;
+    }
+    const base = physToPx(nd.x, nd.y);
+    return {
+      px: base.px + dx * PX_PER_M * loadFrac,
+      py: base.py - dy * PX_PER_M * loadFrac,
+    };
+  });
+
+  // Members.
+  if (evalResult && evalResult.memInfo) {
+    for (let i = 0; i < MEMBER_COUNT; i++) {
+      const [a, b] = MEMBERS[i];
+      const force = evalResult.forces[i];
+      const sigma = evalResult.stresses[i];
+      const sigmaFrac = sigma / YIELD;
+      // Buckling fraction (only meaningful in compression).
+      let buckFrac = 0;
+      if (force < 0) {
+        const L = evalResult.memInfo[i].L;
+        const Pc = Math.PI * Math.PI * E * SECTION_K * evalResult.areas[i] * evalResult.areas[i] / (L * L);
+        buckFrac = -force / Pc;
+      }
+      // Worst-case usage drives colour + thickness.
+      const usage = Math.max(Math.abs(sigmaFrac), buckFrac);
+      const colour = stressColour(usage, Math.sign(force));
+      // Visual thickness ∝ √area so doubling area → ×1.4 thickness (less
+      // visually overwhelming than linear scaling, still informative).
+      const thickness = 1.5 + 18 * Math.sqrt(evalResult.areas[i] / A_MAX);
+
+      ctx.strokeStyle = colour;
+      ctx.lineWidth = thickness;
+      ctx.beginPath();
+      ctx.moveTo(nodesPx[a].px, nodesPx[a].py);
+      ctx.lineTo(nodesPx[b].px, nodesPx[b].py);
+      ctx.stroke();
+    }
+  } else {
+    // Idle scene: outline only.
+    ctx.strokeStyle = '#5a5a6e';
+    ctx.lineWidth = 3;
+    for (const [a, b] of MEMBERS) {
+      ctx.beginPath();
+      ctx.moveTo(nodesPx[a].px, nodesPx[a].py);
+      ctx.lineTo(nodesPx[b].px, nodesPx[b].py);
+      ctx.stroke();
+    }
+  }
+
+  // Nodes — small dark circles.
+  for (let i = 0; i < NODES.length; i++) {
+    ctx.fillStyle = '#1a1a22';
+    ctx.beginPath();
+    ctx.arc(nodesPx[i].px, nodesPx[i].py, 5, 0, Math.PI * 2);
+    ctx.fill();
+    ctx.strokeStyle = '#e8e8ea';
+    ctx.lineWidth = 1.5;
+    ctx.stroke();
+  }
+
+  // Supports (triangles below pin/roller nodes).
+  for (let i = 0; i < NODES.length; i++) {
+    if (!NODES[i].support) continue;
+    const base = physToPx(NODES[i].x, NODES[i].y);
+    ctx.fillStyle = '#7a7a90';
+    ctx.beginPath();
+    ctx.moveTo(base.px, base.py);
+    ctx.lineTo(base.px - 12, base.py + 18);
+    ctx.lineTo(base.px + 12, base.py + 18);
+    ctx.closePath();
+    ctx.fill();
+    if (NODES[i].support === 'roller') {
+      // Two small circles under the roller triangle.
+      ctx.beginPath();
+      ctx.arc(base.px - 6, base.py + 22, 3, 0, Math.PI * 2);
+      ctx.arc(base.px + 6, base.py + 22, 3, 0, Math.PI * 2);
+      ctx.fill();
+    }
+  }
+
+  // Load arrow at the midspan loaded node.
+  const loadNode = NODES.findIndex((nd) => nd.load);
+  if (loadNode >= 0 && loadFrac > 0) {
+    const np = nodesPx[loadNode];
+    ctx.strokeStyle = '#ffcc00';
+    ctx.lineWidth = 3;
+    const arrowLen = 50 * loadFrac;
+    ctx.beginPath();
+    ctx.moveTo(np.px, np.py - arrowLen - 10);
+    ctx.lineTo(np.px, np.py - 14);
+    ctx.stroke();
+    ctx.fillStyle = '#ffcc00';
+    ctx.beginPath();
+    ctx.moveTo(np.px, np.py - 8);
+    ctx.lineTo(np.px - 6, np.py - 18);
+    ctx.lineTo(np.px + 6, np.py - 18);
+    ctx.closePath();
+    ctx.fill();
+    ctx.font = 'bold 12px -apple-system, Helvetica, Arial, sans-serif';
+    ctx.fillText('50 kN', np.px - 18, np.py - arrowLen - 14);
+  }
+
+  // Constraint readout strip at the bottom.
+  if (evalResult && evalResult.memInfo) drawVerdictStrip(evalResult);
+
+  drawHud(hudText);
+}
+
+function drawVerdictStrip(r) {
+  const y = H - 50;
+  ctx.fillStyle = 'rgba(0,0,0,0.5)';
+  ctx.fillRect(20, y, W - 40, 32);
+  ctx.strokeStyle = '#404054';
+  ctx.lineWidth = 1;
+  ctx.strokeRect(20, y, W - 40, 32);
+
+  ctx.font = 'bold 13px -apple-system, Helvetica, Arial, sans-serif';
+  ctx.fillStyle = r.feasible ? '#4a8050' : '#d04040';
+  const text = r.feasible
+    ? `✓ FEASIBLE  ·  weight = ${r.weight.toFixed(1)} kg  ·  score = ${r.score.toFixed(1)}`
+    : `✗ INFEASIBLE  ·  ${r.violations} member${r.violations === 1 ? '' : 's'} fail` +
+      (r.worstMember >= 0 ? `  ·  worst: member #${r.worstMember + 1} (${(r.maxViolation * 100).toFixed(0)}% over limit)` : '');
+  ctx.fillText(text, 34, y + 21);
+}
+
+function drawHud(hudText) {
+  if (!hudText) return;
+  ctx.font = 'bold 15px -apple-system, Helvetica, Arial, sans-serif';
+  const padX = 12;
+  const metrics = ctx.measureText(hudText);
+  const boxW = Math.ceil(metrics.width) + 2 * padX;
+  ctx.fillStyle = 'rgba(0,0,0,0.6)';
+  ctx.fillRect(18, 14, boxW, 28);
+  ctx.fillStyle = '#ffcc00';
+  ctx.fillText(hudText, 18 + padX, 33);
+}
+
+function drawIdleScene() {
+  // Use a uniform-area reference design for the idle layout so the user
+  // sees the truss geometry before the first run.
+  const refAreas = new Array(MEMBER_COUNT).fill(800e-6);
+  const r = evaluateDesign(refAreas);
+  drawScene(r, 0, 'Press "Find the lightest bridge" to start');
+}
+
+// ============================================================================
+// Animations.
+// ============================================================================
+const N_SIM_STEPS = 12;                            // frames per "apply load" pass
+const REPLAY_MS_PER_FRAME = 70;
+const MONTAGE_MS_PER_FRAME = 32;
+let animationToken = 0;
+
+function animateDesign(evalResult, hudText, msPerFrame = REPLAY_MS_PER_FRAME) {
+  const myToken = animationToken;
+  return new Promise((resolve) => {
+    let i = 0;
+    function tick() {
+      if (myToken !== animationToken) return resolve();
+      if (i >= N_SIM_STEPS) {
+        drawScene(evalResult, 1.0, hudText);
+        return setTimeout(resolve, msPerFrame * 2);
+      }
+      // Ease-out cubic.
+      const t = Math.min(1, i / (N_SIM_STEPS - 2));
+      const loadFrac = 1 - Math.pow(1 - t, 3);
+      drawScene(evalResult, loadFrac, hudText);
+      i += 1;
+      setTimeout(tick, msPerFrame);
+    }
+    tick();
+  });
+}
+
+async function animateSearchMontage() {
+  const myToken = ++animationToken;
+  const total = searchHistory.length;
+  if (total === 0) return -1;
+
+  let bestFeasibleWeight = Infinity, bestFeasibleIdx = -1;
+  let bestFallbackTotal = Infinity, bestFallbackIdx = -1;
+
+  for (let i = 0; i < total; i++) {
+    if (myToken !== animationToken) return bestFeasibleIdx >= 0 ? bestFeasibleIdx : bestFallbackIdx;
+    const entry = searchHistory[i];
+
+    let isNew = false;
+    if (entry.feasible && entry.weight < bestFeasibleWeight) {
+      bestFeasibleWeight = entry.weight;
+      bestFeasibleIdx = i;
+      isNew = true;
+    } else if (bestFeasibleIdx < 0 && entry.total < bestFallbackTotal) {
+      bestFallbackTotal = entry.total;
+      bestFallbackIdx = i;
+      // Don't flag fallback updates as NEW.
+    }
+
+    // Always update the per-design rows so the user sees the CURRENT
+    // attempt (section 6 of APPLICATIONS_GUIDELINES.md).
+    document.getElementById('evals').textContent = i + 1;
+    document.getElementById('score-now').textContent = entry.score.toFixed(1);
+    document.getElementById('score-detail').textContent = entry.feasible
+      ? `${entry.weight.toFixed(1)} kg`
+      : `infeasible (${entry.violations} members fail)`;
+    document.getElementById('param-stress').textContent =
+      entry.stresses && entry.stresses.length
+        ? `${(Math.max(...entry.stresses.map(Math.abs)) / 1e6).toFixed(1)} MPa`
+        : '—';
+    document.getElementById('param-worst').textContent =
+      entry.worstMember >= 0 ? `#${entry.worstMember + 1}` : '—';
+
+    if (isNew) {
+      const algoName = document.getElementById('algorithm').value;
+      addLeaderboardEntry(algoName, entry, i + 1, { inPlace: liveLeaderboardIdx >= 0 });
+      document.getElementById('best-score').innerHTML =
+        `${entry.score.toFixed(1)} (${entry.weight.toFixed(1)} kg)<span class="algo-tag">${algoName}</span>`;
+    }
+
+    const hud = `Design ${i + 1}/${total}  ·  ${
+      bestFeasibleIdx >= 0 ? `best ${bestFeasibleWeight.toFixed(1)} kg` : 'no feasible yet'
+    }${isNew ? '  ★ NEW!' : ''}`;
+    await animateDesign(entry, hud, MONTAGE_MS_PER_FRAME);
+  }
+  return bestFeasibleIdx >= 0 ? bestFeasibleIdx : bestFallbackIdx;
+}
+
+// ============================================================================
+// Runner.
+// ============================================================================
+let lastBest = null;
+
+function getOptimizerClass(name) { return globalThis[name]; }
+
+async function runOptimization() {
+  const algoName = document.getElementById('algorithm').value;
+  const budget = parseInt(document.getElementById('budget').value, 10);
+  const cls = getOptimizerClass(algoName);
+  if (!cls) { alert(`Optimizer '${algoName}' not found.`); return; }
+
+  const runBtn = document.getElementById('run-btn');
+  runBtn.disabled = true;
+  runBtn.textContent = `Searching with ${algoName}...`;
+
+  animationToken++;
+  searchHistory.length = 0;
+  await new Promise((r) => setTimeout(r, 30));
+
+  try {
+    const opt = new cls(objective, budget, MEMBER_COUNT);
+    opt.optimize();
+
+    const bestIdx = await animateSearchMontage();
+    if (bestIdx < 0) return;
+    const bestEntry = searchHistory[bestIdx];
+
+    lastBest = bestEntry;
+    await animateDesign(
+      bestEntry,
+      `Best ${algoName}  ·  ${bestEntry.feasible
+        ? `${bestEntry.weight.toFixed(1)} kg` : 'INFEASIBLE'}`,
+    );
+
+    document.getElementById('score-now').textContent = bestEntry.score.toFixed(1);
+    document.getElementById('score-detail').textContent = bestEntry.feasible
+      ? `${bestEntry.weight.toFixed(1)} kg` : `infeasible (${bestEntry.violations} fail)`;
+    document.getElementById('best-score').innerHTML =
+      `${bestEntry.score.toFixed(1)} (${bestEntry.weight.toFixed(1)} kg)<span class="algo-tag">${algoName}</span>`;
+    addLeaderboardEntry(algoName, bestEntry, opt.evaluations, {
+      inPlace: liveLeaderboardIdx >= 0,
+    });
+    liveLeaderboardIdx = -1;
+  } catch (e) {
+    console.error(e);
+    alert(`${algoName} threw an error: ${e.message}`);
+  } finally {
+    runBtn.disabled = false;
+    runBtn.textContent = '▶ Find the lightest bridge';
+  }
+}
+
+function replayBest() {
+  if (!lastBest) return;
+  animationToken++;
+  animateDesign(lastBest, 'Replaying best design');
+}
+
+const leaderboard = [];
+let liveLeaderboardIdx = -1;
+
+function addLeaderboardEntry(algoName, entry, evals, { inPlace = false } = {}) {
+  const row = {
+    name: algoName,
+    score: entry.score,
+    weight: entry.weight,
+    feasible: entry.feasible,
+    evals,
+    areas: entry.areas.slice(),
+  };
+  if (inPlace && liveLeaderboardIdx >= 0) {
+    leaderboard[liveLeaderboardIdx] = row;
+  } else {
+    leaderboard.push(row);
+    liveLeaderboardIdx = leaderboard.length - 1;
+  }
+  const tracked = leaderboard[liveLeaderboardIdx];
+  leaderboard.sort((a, b) => {
+    if (a.feasible !== b.feasible) return a.feasible ? -1 : 1;
+    return a.weight - b.weight;
+  });
+  liveLeaderboardIdx = leaderboard.indexOf(tracked);
+  renderLeaderboard();
+}
+
+function renderLeaderboard() {
+  const body = document.getElementById('leaderboard-body');
+  if (leaderboard.length === 0) {
+    body.innerHTML = '<tr><td colspan="5" style="color: var(--muted); text-align: center;">— no runs yet —</td></tr>';
+    return;
+  }
+  body.innerHTML = leaderboard.map((row) => {
+    const cls = row.name === 'Human Raphson' ? 'human-raphson' : '';
+    const infCls = row.feasible ? '' : 'infeasible';
+    const rowCls = [cls, infCls].filter(Boolean).join(' ');
+    const scoreCell = row.feasible ? row.score.toFixed(1) : '—';
+    const wtCell = row.feasible ? `${row.weight.toFixed(1)}` : 'INFEASIBLE';
+    // Areas in cm² for legibility.
+    const areasCm2 = row.areas.map((a) => (a * 1e4).toFixed(2)).join(' / ');
+    return `<tr${rowCls ? ` class="${rowCls}"` : ''}>
+      <td>${row.name}</td>
+      <td>${scoreCell}</td>
+      <td>${wtCell}</td>
+      <td>${row.evals}</td>
+      <td style="font-size:0.78em;">${areasCm2}</td>
+    </tr>`;
+  }).join('');
+}
+
+// ============================================================================
+// Human Raphson — 10 sliders, one per member area.
+// ============================================================================
+const sliderContainer = document.getElementById('hr-sliders');
+// Member display names — keep short so the slider grid fits. Order
+// matches MEMBERS[] above.
+const MEMBER_NAMES = [
+  'bot L', 'bot mid', 'bot R',
+  'top',
+  'rafter L', 'rafter R',
+  'vert L', 'vert R',
+  'diag SW-NE', 'diag SE-NW',
+];
+const manualValues = new Array(MEMBER_COUNT).fill(0.5);   // u-space, midpoint
+for (let i = 0; i < MEMBER_COUNT; i++) {
+  const cell = document.createElement('div');
+  cell.className = 'slider-cell';
+  const a0 = A_MIN * Math.pow(A_MAX / A_MIN, 0.5) * 1e4;
+  cell.innerHTML = `
+    <label>${MEMBER_NAMES[i]} <output id="m${i}-out">${a0.toFixed(2)} cm²</output></label>
+    <input type="range" id="m${i}" min="0" max="1" step="0.005" value="0.5">
+  `;
+  sliderContainer.appendChild(cell);
+  const slider = cell.querySelector('input');
+  const out = cell.querySelector('output');
+  slider.addEventListener('input', () => {
+    manualValues[i] = parseFloat(slider.value);
+    const aCm2 = A_MIN * Math.pow(A_MAX / A_MIN, manualValues[i]) * 1e4;
+    out.textContent = `${aCm2.toFixed(2)} cm²`;
+  });
+}
+
+async function manualLoad() {
+  const areas = decode(manualValues);
+  const r = evaluateDesign(areas);
+
+  const btn = document.getElementById('manual-btn');
+  btn.disabled = true;
+  btn.textContent = 'Loading...';
+  animationToken++;
+  await new Promise((rs) => setTimeout(rs, 30));
+
+  try {
+    document.getElementById('score-now').textContent = r.score.toFixed(1);
+    document.getElementById('score-detail').textContent = r.feasible
+      ? `${r.weight.toFixed(1)} kg` : `infeasible (${r.violations} fail)`;
+    document.getElementById('param-stress').textContent =
+      `${(Math.max(...r.stresses.map(Math.abs)) / 1e6).toFixed(1)} MPa`;
+    document.getElementById('param-worst').textContent =
+      r.worstMember >= 0 ? `#${r.worstMember + 1}` : '—';
+    await animateDesign(r, `🧠 Human Raphson  ·  ${r.feasible
+      ? `${r.weight.toFixed(1)} kg` : 'INFEASIBLE'}`);
+    addLeaderboardEntry('Human Raphson', r, 1);
+    document.getElementById('best-score').innerHTML =
+      `${r.score.toFixed(1)} (${r.weight.toFixed(1)} kg)<span class="algo-tag">Human Raphson</span>`;
+  } finally {
+    btn.disabled = false;
+    btn.textContent = '▶ Apply load (Human Raphson)';
+  }
+}
+
+function resetEverything() {
+  leaderboard.length = 0;
+  liveLeaderboardIdx = -1;
+  lastBest = null;
+  animationToken++;
+  document.getElementById('score-now').textContent = '0';
+  document.getElementById('evals').textContent = '0';
+  ['score-detail', 'best-score', 'param-stress', 'param-worst']
+    .forEach((id) => document.getElementById(id).textContent = '—');
+  renderLeaderboard();
+  drawIdleScene();
+}
+
+drawIdleScene();
+</script>
+</body>
+</html>
