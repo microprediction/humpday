@@ -843,7 +843,6 @@ async function animateSearchMontage() {
   const myToken = ++animationToken;
   const total = searchHistory.length;
   if (total === 0) return -1;
-  const fast = document.getElementById('fast-mode').checked;
 
   let bestSoFar = -Infinity;
   let bestIdx = -1;
