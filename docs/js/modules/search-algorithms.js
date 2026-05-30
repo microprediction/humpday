@@ -213,6 +213,12 @@ class PatternSearch extends Optimizer {
 }
 
 // Hill Climbing
+// Hill climbing with a geometric sigma-decay schedule — equivalent
+// to a (1+1)-Evolution Strategy with a deterministic step-size
+// schedule. Step size decays from sigma_init = 0.1 to sigma_final =
+// 1e-3 over the budget. Mirrors the Python port and the textbook
+// reference; the previous fixed-step uniform-perturbation variant
+// could not refine below ~1e-2.
 class HillClimbing extends Optimizer {
     constructor(objective, nTrials, nDim) {
         super(objective, nTrials, nDim);
@@ -220,22 +226,26 @@ class HillClimbing extends Optimizer {
     }
 
     optimize() {
-        let x = Array(this.nDim).fill(0).map(() => Math.random());
+        const n = this.nDim;
+        let x = Array(n).fill(0).map(() => Math.random());
         let fx = this.evaluate(x);
 
+        const sigmaInit = 0.1;
+        const sigmaFinal = 1e-3;
+        const decay = Math.pow(sigmaFinal / sigmaInit, 1.0 / Math.max(1, this.nTrials - 1));
+        let sigma = sigmaInit;
+
         while (this.evaluations < this.nTrials) {
-            // Generate neighbor
-            const neighbor = x.map(xi =>
-                MathUtils.clip(xi + (Math.random() - 0.5) * 0.1, 0, 1)
-            );
-
-            const neighborFx = this.evaluate(neighbor);
-
-            // Accept if better
-            if (neighborFx < fx) {
-                x = neighbor;
-                fx = neighborFx;
+            // Box-Muller Gaussian step.
+            const z = new Array(n);
+            for (let i = 0; i < n; i++) z[i] = this._gauss();
+            const xNew = x.map((xi, i) => MathUtils.clip(xi + sigma * z[i], 0, 1));
+            const fxNew = this.evaluate(xNew);
+            if (fxNew < fx) {
+                x = xNew;
+                fx = fxNew;
             }
+            sigma *= decay;
         }
 
         return {
@@ -245,6 +255,20 @@ class HillClimbing extends Optimizer {
             success: true,
             path: this.trackPath ? this.path : null
         };
+    }
+
+    _gauss() {
+        if (this._spare !== undefined) {
+            const s = this._spare;
+            this._spare = undefined;
+            return s;
+        }
+        const u = Math.random();
+        const v = Math.random();
+        const r = Math.sqrt(-2 * Math.log(Math.max(u, 1e-300)));
+        const theta = 2 * Math.PI * v;
+        this._spare = r * Math.sin(theta);
+        return r * Math.cos(theta);
     }
 }
 

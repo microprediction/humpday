@@ -1001,31 +1001,43 @@ class EvolutionStrategy(BaseOptimizer):
 
 
 class HillClimbing(BaseOptimizer):
-    """Hill climbing with random restarts.
+    """Hill climbing with a geometric sigma-decay schedule — equivalent
+    to a (1+1)-Evolution Strategy with a deterministic step-size
+    schedule (no 1/5-rule; see `Rechenberg` for that variant).
 
     Pure-Python via the `humpday._array` shim — no direct numpy use.
+
+    Step size geometrically decays from `sigma_init = 0.1` to
+    `sigma_final = 1e-3` over the budget. This is the standard
+    textbook hill-climbing reference and is what
+    `tests/test_reference_alignment.py::_ref_oneplusone_es_decay`
+    compares humpday against. The previous implementation had a fixed
+    `step_size = 0.1` (so the algorithm could never refine below ~1e-2
+    precision) and a 10% random restart on each unimproved step (a
+    humpday-ism not in any reference), which together left it ~2400×
+    behind the reference on the sphere benchmark.
     """
 
     def optimize(self):
-        current = _A.random_uniform(self.n_dim)
-        current_value = self.evaluate(current)
-        step_size = 0.1
+        n = self.n_dim
+        x = _A.random_uniform(n)
+        fx = self.evaluate(x)
+
+        sigma_init = 0.1
+        sigma_final = 1e-3
+        # Geometric decay so that after `n_trials - 1` iterations
+        # sigma == sigma_final. Matches the reference adapter
+        # line-for-line.
+        decay = (sigma_final / sigma_init) ** (1.0 / max(1, self.n_trials - 1))
+        sigma = sigma_init
 
         while self.evaluations < self.n_trials:
-            # Random neighbor: standard-normal step scaled by step_size.
-            # `_Vec`/ndarray both support `+` and scalar `*` elementwise.
-            neighbor = _A.clip(current + step_size * _A.random_normal(self.n_dim), 0, 1)
-            neighbor_value = self.evaluate(neighbor)
-
-            if neighbor_value < current_value:
-                current = neighbor
-                current_value = neighbor_value
-            else:
-                # 10% chance of a random restart.
-                if _A.random_scalar() < 0.1:
-                    current = _A.random_uniform(self.n_dim)
-                    if self.evaluations < self.n_trials:
-                        current_value = self.evaluate(current)
+            z = _A.random_normal(n)
+            x_new = _A.clip(x + sigma * z, 0, 1)
+            fx_new = self.evaluate(x_new)
+            if fx_new < fx:
+                x, fx = x_new, fx_new
+            sigma *= decay
 
         return self.best_value, self.best_x
 
