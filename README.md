@@ -10,17 +10,13 @@
 
 ## See it work
 
-Differential Evolution clears a 9-ball rack on a single break.
+[![Differential Evolution clears a 9-ball rack on a single break](docs/assets/images/the-perfect-break.png)](https://humpday.microprediction.org/applications/pool.html)
 
-<video src="https://github.com/microprediction/humpday/raw/main/docs/assets/video/the-perfect-break.mp4"
-       poster="https://github.com/microprediction/humpday/raw/main/docs/assets/images/the-perfect-break.png"
-       controls width="720">
-  <a href="https://github.com/microprediction/humpday/raw/main/docs/assets/video/the-perfect-break.mp4">
-    <img src="docs/assets/images/the-perfect-break.png" alt="The perfect break — click to play" width="720" />
-  </a>
-</video>
-
-— one of [**13+ interactive applications in the gallery. Browse them all →**](https://humpday.microprediction.org/applications/index.html)
+Differential Evolution clears a 9-ball rack on a single break — one of
+[13+ interactive applications](https://humpday.microprediction.org/applications/index.html)
+that pit every HumpDay optimizer against a real physics or engineering problem.
+([Watch the 14-second video](https://github.com/microprediction/humpday/raw/main/docs/assets/video/the-perfect-break.mp4)
+· [**Browse all applications →**](https://humpday.microprediction.org/applications/index.html))
 
 ## Install & Use
 
