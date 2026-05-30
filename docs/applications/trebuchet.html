@@ -704,8 +704,14 @@ function drawIdleScene() {
 // ============================================================================
 // Animations.
 // ============================================================================
-const REPLAY_MS_PER_FRAME = 16;
-const MONTAGE_MS_PER_FRAME = 8;
+// Replay playback rate. Was 16 ms/frame (62 fps real-time-ish) — too
+// fast for the eye to track the arm swing, sling whip, and projectile
+// release in the half-second the launch actually takes. Slowed to
+// 36 ms/frame (~28 fps) so you can SEE what's happening, then a brief
+// hold on the final frame so you can read the landing.
+const REPLAY_MS_PER_FRAME = 36;
+const MONTAGE_MS_PER_FRAME = 12;       // was 8
+const FINAL_FRAME_HOLD_MS = 700;       // linger on the last frame
 let animationToken = 0;
 
 function animateShot(frames, params, hudText, msPerFrame = REPLAY_MS_PER_FRAME) {
@@ -715,7 +721,16 @@ function animateShot(frames, params, hudText, msPerFrame = REPLAY_MS_PER_FRAME) 
     let i = 0;
     function tick() {
       if (myToken !== animationToken) return resolve();
-      if (i >= frames.length) return resolve();
+      if (i >= frames.length) {
+        // Hold the final frame so the landing is readable, but only
+        // when this is the slow replay (not the fast montage step).
+        if (msPerFrame >= REPLAY_MS_PER_FRAME) {
+          setTimeout(resolve, FINAL_FRAME_HOLD_MS);
+        } else {
+          resolve();
+        }
+        return;
+      }
       drawScene(frames[i], params, hudText);
       i += 1;
       setTimeout(tick, msPerFrame);
