@@ -30,6 +30,174 @@ class _PRIMALinAlgError(ValueError):
     use the broad `Exception` clause, so this never escapes the algorithm."""
 
 
+def _build_min_frobenius_quadratic(XPT, FVAL, H_prev, n):
+    """Powell's NEWUOA-style minimum-Frobenius-norm quadratic update.
+
+    Builds a *full*-Hessian quadratic m(s) = c + g·s + ½ sᵀ H s that
+    interpolates (XPT[k], FVAL[k]) for k = 0..npt-1, with H chosen to
+    minimise ‖H − H_prev‖_F² over the remaining degrees of freedom.
+
+    For npt = 2n+1 the interpolation system is underdetermined: it has
+    (n+1)(n+2)/2 unknowns but only 2n+1 equations, leaving n(n−1)/2
+    free directions in H. Powell resolves the under-determination by
+    keeping H as close as possible to the previous iteration's
+    Hessian — the "min-Frobenius update" that lets NEWUOA capture
+    off-diagonal Hessian information (e.g. Rosenbrock's 100·(y − x²)²
+    cross-coupling) despite using only 2n+1 points.
+
+    Derivation. Let H = H_prev + ΔH (symmetric). The interpolation
+    constraints become
+
+        c + g·s_k + ½ s_kᵀ ΔH s_k = FVAL[k] − ½ s_kᵀ H_prev s_k
+
+    where s_k = XPT[k]. Splitting the unknowns into linear
+    [c; g] (n+1 entries, no objective weight) and quadratic vech(ΔH)
+    (n(n+1)/2 entries, Frobenius-weighted), the KKT conditions reduce
+    to a small (n_null × n_null) symmetric system where
+    n_null = npt − (n+1) is the number of constraints "left over" for
+    the quadratic part. We solve that system, recover ΔH, then back-
+    solve A_l x_l = b − A_q vech(ΔH) for (c, g).
+
+    Returns (c, g, H) on success; raises _PRIMALinAlgError if the
+    linear-only design matrix A_l is rank-deficient — the caller then
+    falls back to the diagonal-only model that was the previous
+    implementation.
+    """
+    npt = len(FVAL)
+    p_lin = 1 + n               # c, g_1, ..., g_n
+    p_quad = n * (n + 1) // 2   # H_11..H_nn diagonals + H_12..H_(n-1)n off-diagonals
+    n_null = npt - p_lin
+
+    if n_null < 0:
+        raise _PRIMALinAlgError("npt < p_lin")
+
+    # Non-finite FVAL (objective returned inf/NaN at one of the init or TR
+    # points, common with bound-touching evaluations) makes the linear
+    # solve degenerate. Bail out early so the caller can use its FD-
+    # gradient fallback instead of propagating NaN through the SVD.
+    for v in FVAL:
+        if not math.isfinite(float(v)):
+            raise _PRIMALinAlgError("FVAL contains non-finite values")
+
+    # Build design columns. A_l is (npt × p_lin), A_q is (npt × p_quad).
+    # vech(H) ordering: first the n diagonals, then the n(n−1)/2 strict
+    # upper-triangle entries in row-major order.
+    A_l = _A.linalg.matrix_zeros(npt, p_lin)
+    A_q = _A.linalg.matrix_zeros(npt, p_quad)
+    b = [0.0] * npt
+
+    for k in range(npt):
+        x = XPT[k]
+        A_l[k][0] = 1.0
+        for i in range(n):
+            A_l[k][i + 1] = float(x[i])
+
+        col = 0
+        for i in range(n):
+            A_q[k][col] = 0.5 * float(x[i]) * float(x[i])
+            col += 1
+        for i in range(n):
+            for j in range(i + 1, n):
+                A_q[k][col] = float(x[i]) * float(x[j])
+                col += 1
+
+        # b[k] = FVAL[k] − ½ x_k^T H_prev x_k.
+        Hp_x = _A.linalg.matvec(H_prev, x)
+        quad_form = 0.5 * float(_A.dot(x, Hp_x))
+        b[k] = float(FVAL[k]) - quad_form
+
+    # Frobenius weights for vech(ΔH). Diagonals appear once in H, weight 1.
+    # Off-diagonals appear twice (above + below the diagonal), weight 2.
+    w_q = [1.0] * n + [2.0] * (p_quad - n)
+
+    # Full SVD of A_l so its null space U_perp = U[:, p_lin:] is available.
+    U_full, s_l, _Vt_l = _A.linalg.svd(A_l, full_matrices=True)
+    if len(s_l) < p_lin or float(s_l[p_lin - 1]) <= 1e-12 * float(s_l[0]):
+        raise _PRIMALinAlgError("A_l rank-deficient")
+
+    # x_q = -W_q^{-1} A_q^T Z μ  (vech of ΔH).
+    # x_l recovered from A_l x_l = b - A_q x_q via QR.
+    if n_null > 0:
+        # Z: orthonormal basis for null(A_l^T); shape npt × n_null.
+        Z = _A.linalg.matrix_zeros(npt, n_null)
+        for i in range(npt):
+            for j in range(n_null):
+                Z[i][j] = U_full[i][p_lin + j]
+
+        # A_q_scaled[k][c] = A_q[k][c] / w_q[c]; M = (Z^T A_q)(A_q_scaled^T Z).
+        ZT_b = [0.0] * n_null
+        for j in range(n_null):
+            acc = 0.0
+            for k in range(npt):
+                acc += Z[k][j] * b[k]
+            ZT_b[j] = acc
+
+        ZT_Aq = _A.linalg.matrix_zeros(n_null, p_quad)
+        for j in range(n_null):
+            for c in range(p_quad):
+                acc = 0.0
+                for k in range(npt):
+                    acc += Z[k][j] * A_q[k][c]
+                ZT_Aq[j][c] = acc
+
+        Aq_scaled_T_Z = _A.linalg.matrix_zeros(p_quad, n_null)
+        for c in range(p_quad):
+            inv_w = 1.0 / w_q[c]
+            for j in range(n_null):
+                acc = 0.0
+                for k in range(npt):
+                    acc += A_q[k][c] * inv_w * Z[k][j]
+                Aq_scaled_T_Z[c][j] = acc
+
+        M = _A.linalg.matmul(ZT_Aq, Aq_scaled_T_Z)
+        neg_ZT_b = [-v for v in ZT_b]
+        try:
+            mu = list(_A.linalg.solve(M, neg_ZT_b))
+        except Exception:
+            mu = list(_A.linalg.matvec(_A.linalg.pinv(M), neg_ZT_b))
+
+        x_q = [0.0] * p_quad
+        for c in range(p_quad):
+            acc = 0.0
+            for j in range(n_null):
+                acc += Aq_scaled_T_Z[c][j] * mu[j]
+            x_q[c] = -acc
+    else:
+        x_q = [0.0] * p_quad  # no underdetermination → ΔH = 0
+
+    # x_l: solve A_l x_l = b - A_q x_q via QR (overdetermined least-squares,
+    # but consistent by construction since x_q satisfied the null-space part).
+    Aq_xq = [0.0] * npt
+    for k in range(npt):
+        acc = 0.0
+        for c in range(p_quad):
+            acc += A_q[k][c] * x_q[c]
+        Aq_xq[k] = acc
+    rhs = [b[k] - Aq_xq[k] for k in range(npt)]
+
+    Q_l, R_l = _A.linalg.qr(A_l)
+    QlT_rhs = _A.linalg.matvec(_A.linalg.transpose(Q_l), rhs)
+    x_l = list(_A.linalg.solve(R_l, QlT_rhs))
+
+    c = x_l[0]
+    g_arr = _A.asarray(x_l[1:])
+
+    # Reconstruct symmetric H = H_prev + ΔH from vech(ΔH).
+    H = _A.linalg.matrix_zeros(n, n)
+    col = 0
+    for i in range(n):
+        H[i][i] = float(H_prev[i][i]) + x_q[col]
+        col += 1
+    for i in range(n):
+        for j in range(i + 1, n):
+            val = float(H_prev[i][j]) + x_q[col]
+            H[i][j] = val
+            H[j][i] = val
+            col += 1
+
+    return c, g_arr, H
+
+
 class PRIMA_UOBYQA(BaseOptimizer):
     """PRIMA UOBYQA — quadratic-interpolation trust-region method.
 
@@ -300,6 +468,13 @@ class PRIMA_NEWUOA(BaseOptimizer):
 
             kopt = min(range(len(FVAL)), key=FVAL.__getitem__)
 
+            # Reset the min-Frobenius update's prior Hessian for this TR
+            # pass. Powell's NEWUOA initialises H_prev = 0 at restart and
+            # carries it forward through each interpolation-set update;
+            # this is the state that lets the model accumulate off-
+            # diagonal curvature from non-axial points.
+            self._H_prev = _A.linalg.matrix_zeros(n, n)
+
             # Cap iteration count by budget directly. The previous
             # `min(100, n_trials // npt)` gave only floor(80/7) = 11
             # iterations on 3-D budget=80, terminating the TR loop long
@@ -423,26 +598,34 @@ class PRIMA_NEWUOA(BaseOptimizer):
         return A, b
 
     def _build_newuoa_model(self, XPT, FVAL, A, b, kopt, n):
-        """Build the NEWUOA quadratic model via QR factorisation."""
-        try:
-            Q, R = _A.linalg.qr(A)
-            QT = _A.linalg.transpose(Q)
-            QTb = _A.linalg.matvec(QT, b)
-            coeffs = list(_A.linalg.solve(R, QTb))
+        """Build the NEWUOA quadratic model via Powell's minimum-
+        Frobenius-norm Hessian update — a full symmetric H, not a
+        diagonal approximation.
 
-            g = _A.asarray(coeffs[1 : n + 1])
-            # Diagonal Hessian from the diagonal-quadratic coefficients.
-            diag_vals = list(coeffs[n + 1 : 2 * n + 1])
-            min_eigval = min(diag_vals) if diag_vals else 0.0
-            if min_eigval <= 0:
-                shift = -min_eigval + 1e-6
-                diag_vals = [v + shift for v in diag_vals]
-            H = _A.linalg.diag(diag_vals)
+        On rank-deficient interpolation sets (e.g. early iterations on
+        a degenerate configuration), falls back to a finite-difference
+        gradient with identity Hessian so the TR loop can still
+        progress. The previous diagonal-QR path is gone: when min-
+        Frobenius succeeds it strictly dominates diagonal-QR, and when
+        it fails on rank deficiency, diagonal-QR fails for the same
+        reason.
+
+        The ignored `A`, `b` arguments are left in the signature only
+        because they're still threaded through the optimize() loop;
+        the helper builds its own design matrix from XPT.
+        """
+        H_prev = getattr(self, "_H_prev", None)
+        if H_prev is None:
+            H_prev = _A.linalg.matrix_zeros(n, n)
+        try:
+            _c, g, H = _build_min_frobenius_quadratic(XPT, FVAL, H_prev, n)
+            self._H_prev = H
+            return g, H
         except Exception:
             g = self._finite_difference_gradient(XPT, FVAL, kopt, n)
             H = _A.linalg.eye(n)
-
-        return g, H
+            # Don't update H_prev — keep the last successful Hessian.
+            return g, H
 
     def _finite_difference_gradient(self, XPT, FVAL, kopt, n):
         """Best-effort central-difference gradient at XPT[kopt], using
@@ -611,6 +794,10 @@ class PRIMA_BOBYQA(BaseOptimizer):
             XPT, FVAL = self._initialize_bobyqa_points(xbase, rho, npt, n, xl, xu)
             kopt = min(range(len(FVAL)), key=FVAL.__getitem__)
 
+            # Reset the min-Frobenius update's prior Hessian for this TR
+            # pass (see NEWUOA comment for rationale).
+            self._H_prev = _A.linalg.matrix_zeros(n, n)
+
             # Cap by budget directly (see NEWUOA comment).
             max_iterations = self.n_trials
             iteration = 0
@@ -728,43 +915,27 @@ class PRIMA_BOBYQA(BaseOptimizer):
         return XPT, FVAL
 
     def _build_bobyqa_model(self, XPT, FVAL, kopt, n):
-        """Quadratic model via QR-based regression with diagonal Hessian."""
+        """BOBYQA quadratic model via Powell's minimum-Frobenius-norm
+        Hessian update (full symmetric H — see NEWUOA's
+        `_build_newuoa_model` and the module-level helper for the
+        derivation). BOBYQA's only structural difference from NEWUOA is
+        that its TR subproblem honours the [xl, xu] box bounds; the
+        model build itself is identical.
+
+        Falls back to a bound-aware finite-difference gradient with
+        identity Hessian on rank-deficient interpolation sets.
+        """
+        H_prev = getattr(self, "_H_prev", None)
+        if H_prev is None:
+            H_prev = _A.linalg.matrix_zeros(n, n)
         try:
-            nterms = 1 + n + n
-            nrows = len(FVAL)
-            A = _A.linalg.matrix_zeros(nrows, nterms)
-            b = [FVAL[i] - FVAL[kopt] for i in range(nrows)]
-
-            for k in range(nrows):
-                x = XPT[k]
-                row = A[k]
-                col = 0
-                row[col] = 1.0
-                col += 1
-                for i in range(n):
-                    row[col] = float(x[i])
-                    col += 1
-                for i in range(n):
-                    row[col] = 0.5 * float(x[i]) * float(x[i])
-                    col += 1
-
-            Q, R = _A.linalg.qr(A)
-            QT = _A.linalg.transpose(Q)
-            QTb = _A.linalg.matvec(QT, b)
-            coeffs = list(_A.linalg.solve(R, QTb))
-
-            g = _A.asarray(coeffs[1 : n + 1])
-            diag_vals = list(coeffs[n + 1 : 2 * n + 1])
-            min_eigval = min(diag_vals) if diag_vals else 0.0
-            if min_eigval <= 0:
-                shift = -min_eigval + 1e-6
-                diag_vals = [v + shift for v in diag_vals]
-            H = _A.linalg.diag(diag_vals)
+            _c, g, H = _build_min_frobenius_quadratic(XPT, FVAL, H_prev, n)
+            self._H_prev = H
+            return g, H
         except Exception:
             g = self._finite_difference_gradient_bounded(XPT, FVAL, kopt, n)
             H = _A.linalg.eye(n)
-
-        return g, H
+            return g, H
 
     def _finite_difference_gradient_bounded(self, XPT, FVAL, kopt, n):
         """Coordinate-wise finite-difference gradient using whichever
