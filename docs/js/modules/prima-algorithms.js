@@ -690,14 +690,6 @@ class PRIMA_NEWUOA extends Optimizer {
         const n = this.nDim;
         const npt = this.npt;
 
-        // DETERMINISTIC starting point at the cube centre, matching the
-        // Python reference impl (humpday/optimizers/prima_algorithms.py).
-        // The old `0.3 + 0.4 * Math.random()` random start was the
-        // dominant driver of the ~5% tail of unlucky-seed runs landing
-        // in [0.050, 0.058] on the sphere parity test.
-        let xbase = Array(n).fill(0.5);
-        let fbase = this.evaluate(xbase);
-
         // Trust region parameters mirroring the Python reference. The
         // old eta1=0.01/eta2=0.25 was very permissive (any step that
         // reduced the predicted-reduction-ratio above 1% counted as
@@ -706,6 +698,19 @@ class PRIMA_NEWUOA extends Optimizer {
         // ≥0.75 expands 2× capped at rhobeg.
         const rhobeg = 0.5;
         const rho_end = 1e-8;
+
+        // First-pass seed: deterministic cube centre, matching the
+        // Python reference impl. Subsequent restart passes perturb
+        // this.bestX so the user's budget actually gets spent on a
+        // non-smooth surface where a single TR run terminates early.
+        let xseed = Array(n).fill(0.5);
+
+        while (this.evaluations < this.nTrials) {
+        // ---------- one trust-region pass ----------
+        let xbase = xseed.slice();
+        let fbase = this.evaluate(xbase);
+        if (this.evaluations >= this.nTrials) break;
+
         let rho = rhobeg;
 
         let XPT = Array(npt).fill().map(() => Array(n).fill(0));
@@ -773,10 +778,25 @@ class PRIMA_NEWUOA extends Optimizer {
                 this.improveGeometry(XPT, FVAL, xopt, rho, xbase);
             }
         }
+        // ---------- end one trust-region pass ----------
+
+        // Prepare next-pass seed: jitter the global best by ~rhobeg
+        // in a uniformly-random direction, clipped into [0, 1]^n. The
+        // perturbation magnitude is large enough to escape the basin
+        // that just trapped us; if the global best is already at the
+        // true minimum, the restart costs the budget of one more pass
+        // but doesn't worsen the result.
+        if (this.evaluations < this.nTrials) {
+            xseed = this.bestX.map(x => {
+                const jitter = (Math.random() - 0.5) * 2 * rhobeg;
+                return Math.min(1, Math.max(0, x + jitter));
+            });
+        }
+        }   // end restart loop
 
         return {
-            bestValue: fopt,
-            bestX: xopt,
+            bestValue: this.bestValue,
+            bestX: this.bestX,
             evaluations: this.evaluations,
             success: true,
             path: this.trackPath ? this.path : null
@@ -1135,12 +1155,20 @@ class PRIMA_BOBYQA extends Optimizer {
 
         const rhobeg = 0.5;
         const rhoend = 1e-8;
-        let rho = rhobeg;
 
-        // Centre start, clipped a hair away from the bound so the initial
-        // coordinate-axis points have headroom on both sides.
-        let xbase = new Array(n).fill(0.5).map(v => Math.min(0.9, Math.max(0.1, v)));
+        // First-pass seed: cube centre, clipped a hair away from the
+        // bounds so the coordinate-axis init points have headroom.
+        // Subsequent restart passes perturb this.bestX, so the user's
+        // budget actually gets spent on non-smooth surfaces where a
+        // single TR pass converges in ~50 evals.
+        let xseed = new Array(n).fill(0.5).map(v => Math.min(0.9, Math.max(0.1, v)));
+
+        while (this.evaluations < this.nTrials) {
+        // ---------- one trust-region pass ----------
+        let rho = rhobeg;
+        let xbase = xseed.slice();
         this.evaluate(xbase);
+        if (this.evaluations >= this.nTrials) break;
 
         let { XPT, FVAL } = this._initBOBYQAPoints(xbase, rho, npt, n, xl, xu);
         let kopt = this._argmin(FVAL);
@@ -1196,12 +1224,26 @@ class PRIMA_BOBYQA extends Optimizer {
                 xbase = this._shiftBasePointBounded(XPT, xbase, kopt, npt, xl, xu);
             }
         }
+        // ---------- end one trust-region pass ----------
+
+        // Restart seed: jitter the global best by ~rhobeg in a random
+        // direction (clipped to [0.1, 0.9] for the same headroom reason
+        // as the first-pass init). One TR pass on a non-smooth surface
+        // costs ~50 evals; without this, the user's 5000-budget request
+        // returns in 50 evals stuck at the first local minimum.
+        if (this.evaluations < this.nTrials) {
+            xseed = this.bestX.map(x => {
+                const jitter = (Math.random() - 0.5) * 2 * rhobeg;
+                return Math.min(0.9, Math.max(0.1, x + jitter));
+            });
+        }
+        }   // end restart loop
 
         return {
             bestValue: this.bestValue,
             bestX: this.bestX,
             evaluations: this.evaluations,
-            success: rho <= rhoend,
+            success: true,
             path: this.trackPath ? this.path : null,
         };
     }

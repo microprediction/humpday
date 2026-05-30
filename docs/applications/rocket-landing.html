@@ -364,13 +364,16 @@ function evaluateSchedule(schedule) {
     const fuelBonus = sim.touchFuel * 10;
     score = landing + fuelBonus;
   } else {
-    // Did not land in SIM_T — but reward getting closer. effective_v
-    // combines remaining altitude and final speed, so the gradient
-    // toward "land softly" stays positive even from the airborne region.
-    // (Previously this was a flat -50 penalty, which trapped many
-    // optimizers in the local free-fall optimum.)
+    // Did not land in SIM_T. We still need a useful gradient so
+    // optimizers stuck "in space" (constant-max-thrust pushes the
+    // rocket far above the canvas) can find their way back down.
+    // No floor — flying further/faster off into space is strictly
+    // worse than flying less far. (A −25 floor here flattened the
+    // "rocket in space" basin into a giant zero-gradient plateau
+    // that trapped BOBYQA, NEWUOA, NM, Powell, and the seed-cloud
+    // of every population method.)
     const eff = Math.abs(sim.finalV) + sim.finalH * 0.5;
-    score = Math.max(-25, 50 - eff * 0.6);
+    score = 50 - eff * 0.6;
   }
   return { score, sim };
 }
