@@ -1,0 +1,770 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' 'unsafe-inline'; style-src 'self' 'unsafe-inline';">
+<title>⚡ Battery Storage Dispatch — HumpDay</title>
+<style>
+  :root {
+    --bg: #1a1a22;
+    --panel: #2d2d3a;
+    --accent: #ffcc00;
+    --text: #e8e8ea;
+    --muted: #9a9aac;
+  }
+  body { margin: 0; background: var(--bg); color: var(--text);
+    font-family: -apple-system, 'Segoe UI', 'Helvetica Neue', Helvetica, Arial, sans-serif; }
+  .site-nav { background: #34495e; padding: 12px 24px;
+    font-family: 'Times New Roman', Times, serif;
+    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1); }
+  .site-nav-inner { max-width: 1100px; margin: 0 auto;
+    display: flex; justify-content: space-between; align-items: center; }
+  .site-nav a { color: #ecf0f1; text-decoration: none; margin: 0 12px; }
+  .site-nav a:hover { color: white; text-decoration: underline; }
+  .site-nav-brand { font-weight: 700; font-size: 1.25em; }
+
+  .container { max-width: 1100px; margin: 0 auto; padding: 32px 24px 64px; }
+  h1 { font-size: 2.2em; margin: 0.2em 0; }
+  h2 { font-size: 1.4em; margin-top: 1.4em; color: var(--accent); }
+  p { line-height: 1.55; max-width: 70ch; }
+  .intro { color: var(--muted); }
+
+  .stage { display: grid; grid-template-columns: 1fr 320px; gap: 24px;
+    align-items: start; margin-top: 24px; }
+  @media (max-width: 800px) { .stage { grid-template-columns: 1fr; } }
+  canvas { background: #14141c;
+    border: 3px solid var(--accent); border-radius: 6px; display: block;
+    width: 100%; height: auto; }
+
+  .panel { background: var(--panel); padding: 18px; border-radius: 6px; border: 1px solid #404054; }
+  .panel h3 { margin: 0 0 12px; font-size: 1.05em; text-transform: uppercase;
+    letter-spacing: 0.06em; color: var(--accent); }
+  label { display: block; margin: 10px 0 6px; font-size: 0.9em; color: var(--muted); }
+  select, input, button { width: 100%; box-sizing: border-box; padding: 8px 10px;
+    border-radius: 4px; border: 1px solid #404054; background: #1a1a22; color: var(--text); font-size: 0.95em; }
+  button { background: var(--accent); color: #1a1a22; font-weight: 700; cursor: pointer; margin-top: 6px; transition: opacity 0.15s; }
+  button:hover { opacity: 0.88; }
+  button.secondary { background: #404054; color: var(--text); font-weight: 400; }
+  button:disabled { opacity: 0.5; cursor: not-allowed; }
+  .stats { margin-top: 16px; padding-top: 14px; border-top: 1px solid #404054; font-size: 0.92em; line-height: 1.6; }
+  .stats .score { font-size: 2.2em; color: var(--accent); font-weight: 700; }
+  .stat-row { display: flex; justify-content: space-between; align-items: baseline; gap: 12px; }
+  .stat-row span:first-child { white-space: nowrap; flex-shrink: 0; }
+  .stat-row span:last-child { color: var(--text); font-family: 'SF Mono', Menlo, monospace; text-align: right; word-break: break-word; }
+  .stat-row .algo-tag { display: block; color: var(--muted); font-size: 0.82em; margin-top: 2px; }
+
+  .leaderboard { margin-top: 24px; }
+  .leaderboard table { width: 100%; border-collapse: collapse; background: var(--panel); border-radius: 6px; overflow: hidden; }
+  .leaderboard th, .leaderboard td { padding: 10px 14px; text-align: left; border-bottom: 1px solid #404054; }
+  .leaderboard th { background: #1a1a22; color: var(--muted); text-transform: uppercase; font-size: 0.78em; letter-spacing: 0.08em; }
+  .leaderboard td:nth-child(2) { text-align: center; font-size: 1.2em; font-weight: 700; color: var(--accent); }
+  .leaderboard td:nth-child(3), .leaderboard td:nth-child(4) { font-family: 'SF Mono', Menlo, monospace; color: var(--muted); }
+  .leaderboard tr.human-raphson td:first-child { color: #ff9944; font-weight: 700; }
+
+  .left-stack { display: flex; flex-direction: column; gap: 16px; min-width: 0; }
+  .hr-panel { padding: 14px 16px; }
+  .hr-panel h3 { margin: 0 0 6px; }
+  .hr-panel p { margin: 0 0 8px; color: var(--muted); font-size: 0.86em; }
+  .hr-preset-row { display: flex; gap: 8px; margin-bottom: 8px; flex-wrap: wrap; }
+  .hr-preset-row button { width: auto; flex: 1 1 80px; background: #2d3a4a; color: var(--text); font-weight: 500; font-size: 0.84em; padding: 6px 10px; margin: 0; }
+  .hr-actions button.go { background: #ff9944; color: #1a1a22; margin-top: 0; }
+
+  .skill-callout { margin-top: 36px; background: rgba(126, 217, 87, 0.07); border: 1px solid rgba(126, 217, 87, 0.35); border-radius: 8px; padding: 18px 22px; }
+  .skill-callout h3 { margin: 0 0 6px; color: #7ed957; font-size: 1.05em; text-transform: none; letter-spacing: 0; }
+  .skill-callout p { margin: 0 0 10px; color: var(--text); max-width: none; }
+  .skill-callout pre { background: #1a1a22; border: 1px solid #404054; border-radius: 4px; padding: 10px 14px; margin: 0; font-size: 0.84em; color: #7ed957; white-space: pre-wrap; word-break: break-all; font-family: 'SF Mono', Menlo, monospace; }
+  .skill-actions { margin-top: 10px; display: flex; align-items: center; gap: 14px; }
+  .skill-actions button { width: auto; background: #404054; color: var(--text); border: 1px solid #404054; padding: 6px 12px; font-size: 0.85em; cursor: pointer; border-radius: 4px; margin: 0; font-weight: 500; }
+  .skill-actions button:hover { background: #4a4a60; }
+  .skill-actions a { color: #7ed957; font-size: 0.85em; text-decoration: none; }
+  .skill-actions a:hover { text-decoration: underline; }
+</style>
+</head>
+<body>
+<nav class="site-nav">
+  <div class="site-nav-inner">
+    <a class="site-nav-brand" href="../index.html">HumpDay ⚡</a>
+    <div>
+      <a href="../index.html">Home</a>
+      <a href="index.html">Applications</a>
+      <a href="../contest.html">Contest</a>
+      <a href="../README.html">Docs</a>
+    </div>
+  </div>
+</nav>
+
+<div class="container">
+  <h1>⚡ Battery Storage Dispatch</h1>
+  <p class="intro">
+    A 100 MWh / 25 MW grid-connected battery in the NYISO Zone J
+    day-ahead market needs an hourly schedule for the next 24
+    hours. The optimizer picks a power level for each hour —
+    positive sells to the grid, negative buys from it — subject to
+    physical constraints: state-of-charge must stay between 10 %
+    and 90 %, and round-trip efficiency is 85 %. Score is total
+    revenue across the day. Two distinct price peaks (a small
+    morning ramp and a big 5 pm evening peak) mean the optimum is
+    a <em>two-cycle</em> dispatch, which most algorithms find
+    only after they discover the midday charging window. 24-D
+    continuous problem.
+  </p>
+
+  <div class="stage">
+    <div class="left-stack">
+      <canvas id="canvas" width="800" height="500"></canvas>
+
+      <div class="panel hr-panel">
+        <h3>🧠 Human Raphson</h3>
+        <p>Pick a dispatch strategy and watch the day play out.</p>
+        <div class="hr-preset-row">
+          <button type="button" onclick="loadPreset('idle')">Idle</button>
+          <button type="button" onclick="loadPreset('alwaysSell')">Always sell</button>
+          <button type="button" onclick="loadPreset('oneCycle')">1-cycle (evening peak)</button>
+          <button type="button" onclick="loadPreset('twoCycle')">2-cycle (both peaks)</button>
+          <button type="button" onclick="loadPreset('random')">Random</button>
+        </div>
+        <div class="hr-actions">
+          <button class="go" onclick="manualEvaluate()">▶ Score this schedule</button>
+        </div>
+      </div>
+    </div>
+
+    <div class="panel">
+      <h3>Algorithm</h3>
+      <label for="algorithm">Pick a HumpDay optimizer:</label>
+      <select id="algorithm">
+        <optgroup label="Trust-region / interpolation">
+          <option value="PRIMA_BOBYQA">PRIMA_BOBYQA</option>
+          <option value="PRIMA_NEWUOA">PRIMA_NEWUOA</option>
+        </optgroup>
+        <optgroup label="Local / classical">
+          <option value="NelderMead">Nelder-Mead</option>
+          <option value="Powell">Powell</option>
+          <option value="LBFGSB">L-BFGS-B (simplified)</option>
+        </optgroup>
+        <optgroup label="Population-based">
+          <option value="DifferentialEvolution" selected>Differential Evolution</option>
+          <option value="ParticleSwarm">Particle Swarm</option>
+          <option value="CMAEvolutionStrategy">CMA-Evolution Strategy</option>
+          <option value="GeneticAlgorithm">Genetic Algorithm</option>
+          <option value="EvolutionStrategy">Evolution Strategy</option>
+          <option value="HarmonySearch">Harmony Search</option>
+        </optgroup>
+        <optgroup label="Other">
+          <option value="SimulatedAnnealing">Simulated Annealing</option>
+          <!-- BayesianOpt omitted: scales poorly past ~5-D; this is 24-D. -->
+          <option value="FireflyAlgorithm">Firefly Algorithm</option>
+          <option value="AntColonyOpt">Ant Colony</option>
+          <option value="TabuSearch">Tabu Search</option>
+          <option value="RandomSearch">Random Search</option>
+        </optgroup>
+      </select>
+
+      <label for="budget">Evaluation budget:</label>
+      <select id="budget">
+        <option value="200">200 schedules</option>
+        <option value="500">500 schedules</option>
+        <option value="1000" selected>1000 schedules</option>
+        <option value="2000">2000 schedules</option>
+        <option value="5000">5000 schedules</option>
+      </select>
+      <p style="margin: 8px 0 0; font-size: 0.78em; color: var(--muted);">
+        24-D problem. Population methods do well; trust-region needs
+        restarts to use the full budget.
+      </p>
+
+      <button id="run-btn" onclick="runOptimization()">▶ Find the best schedule</button>
+      <button class="secondary" onclick="replayBest()">🔁 Replay best</button>
+      <button class="secondary" onclick="resetEverything()">⟲ Reset leaderboard</button>
+
+      <div class="stats">
+        <div class="stat-row"><span>Revenue</span><span class="score" id="score-now">—</span></div>
+        <div class="stat-row"><span>End SoC</span><span id="stat-soc">—</span></div>
+        <div class="stat-row"><span>Cycles</span><span id="stat-cycles">—</span></div>
+        <div class="stat-row"><span>Schedules tried</span><span id="evals">0</span></div>
+        <div class="stat-row"><span>Best so far</span><span id="best-score">—</span></div>
+      </div>
+    </div>
+  </div>
+
+  <div class="leaderboard">
+    <h2>Leaderboard (this session)</h2>
+    <p style="color: var(--muted);">
+      Each row is the best schedule a given algorithm found (more
+      $/day = better).
+    </p>
+    <table>
+      <thead>
+        <tr><th>Algorithm</th><th>$/day</th><th>Schedules</th><th>Detail</th></tr>
+      </thead>
+      <tbody id="leaderboard-body">
+        <tr><td colspan="4" style="color: var(--muted); text-align: center;">— no runs yet —</td></tr>
+      </tbody>
+    </table>
+  </div>
+
+  <h2>What's happening</h2>
+  <p>
+    The battery is a 100 MWh / 25 MW asset — a 4-hour-duration
+    Li-ion utility-scale system. Each hour the dispatcher picks a
+    power level in [−25, +25] MW (charge or discharge). The state
+    of charge updates as
+    <code>SoC(h+1) = SoC(h) − p·Δt / η_d</code> when discharging
+    and <code>SoC(h+1) = SoC(h) + |p|·Δt · η_c</code> when charging,
+    with η<sub>c</sub> = η<sub>d</sub> = 0.92 (round-trip 85 %).
+    SoC is clipped to [10, 90] MWh — requested actions that would
+    overflow or underflow the battery are physically truncated.
+  </p>
+  <p>
+    The price curve is a stylised NYISO Zone J summer day: cheap
+    overnight (~$22/MWh at 3 am), a morning shoulder peak near
+    9 am (~$100), a midday lull around 2 pm (~$38), and a large
+    4–7 pm evening peak (~$240). The structure rewards a
+    <strong>two-cycle</strong> strategy — charge overnight,
+    discharge morning, charge midday, discharge evening — which is
+    the global optimum but lives in a fairly narrow region of the
+    24-D parameter space. Most algorithms find the one-cycle
+    optimum first.
+  </p>
+  <p>
+    <strong>Score</strong> is total revenue in $/day, summed over
+    24 hourly settlements at the day-ahead LMP. Charging at
+    negative power costs money; discharging at positive power
+    earns it. Cycles counted as half the cumulative |throughput| /
+    capacity. The naïve one-cycle preset earns ~$13,700; the
+    hand-tuned two-cycle earns ~$15,000; DE on 1000 schedules
+    typically lands $17,000+.
+  </p>
+
+  <hr style="border: 0; border-top: 1px solid #404054; margin: 32px 0 16px;" />
+  <p style="font-size: 0.78em; color: var(--muted);">
+    Day-ahead market only — real BESS optimisation also bids into
+    real-time, frequency-regulation, and ancillary services
+    markets, and respects degradation cost as a function of depth
+    of cycling. The 24-D dispatch structure is preserved.
+  </p>
+
+  <div class="skill-callout">
+    <h3>🌱 Save the Planet</h3>
+    <p>If your hyper-parameter searches are heating the Earth, drop this in Cursor or Claude:</p>
+    <pre id="skill-snippet">Read https://raw.githubusercontent.com/microprediction/humpday/main/SKILL.md
+and create a project skill from it.</pre>
+    <div class="skill-actions">
+      <button type="button" onclick="copySkillSnippet(this)">📋 Copy</button>
+      <a href="https://github.com/microprediction/humpday/blob/main/SKILL.md" target="_blank" rel="noopener">View SKILL.md →</a>
+    </div>
+  </div>
+
+  <script>
+    function copySkillSnippet(btn) {
+      const text = document.getElementById('skill-snippet').textContent;
+      navigator.clipboard.writeText(text).then(() => {
+        const orig = btn.textContent;
+        btn.textContent = '✓ Copied';
+        setTimeout(() => { btn.textContent = orig; }, 1500);
+      }).catch(() => {
+        btn.textContent = '✗ Copy failed';
+      });
+    }
+  </script>
+</div>
+
+<script src="../js/modules/base-optimizer.js"></script>
+<script src="../js/modules/prima-algorithms.js"></script>
+<script src="../js/modules/scipy-algorithms.js"></script>
+<script src="../js/modules/evolutionary-algorithms.js"></script>
+<script src="../js/modules/search-algorithms.js"></script>
+
+<script>
+// ============================================================================
+// Battery dispatch — 24-D hourly schedule under SoC + power constraints.
+// ============================================================================
+const canvas = document.getElementById('canvas');
+const ctx = canvas.getContext('2d');
+const W = canvas.width, H = canvas.height;
+
+const HOURS = 24;
+const N_DIM = HOURS;
+
+// Asset.
+const P_MAX  = 25;       // MW (charge/discharge limit)
+const E_MAX  = 100;      // MWh (nameplate)
+const SOC_LO = 10;       // MWh (10 % of nameplate)
+const SOC_HI = 90;       // MWh (90 %)
+const SOC_INIT = 50;     // MWh
+const ETA_C  = 0.92;
+const ETA_D  = 0.92;
+
+// Day-ahead price curve ($/MWh) — stylised NYISO Zone J summer day.
+const PRICE = [
+   30, 25, 22, 20, 22, 35, 55, 75,    // 0–7  (overnight + early morning)
+   90,100, 90, 75, 55, 40, 38, 45,    // 8–15 (morning peak, midday dip)
+   80,150,240,220,160,100, 60, 40,    // 16–23 (evening peak + tail)
+];
+
+// Decode u ∈ [0,1]^24 → power in [-P_MAX, +P_MAX]. u=0.5 → idle.
+function decode(u) {
+  const p = new Array(HOURS);
+  for (let h = 0; h < HOURS; h++) p[h] = (u[h] - 0.5) * 2 * P_MAX;
+  return p;
+}
+
+function simulate(schedule) {
+  let SoC = SOC_INIT;
+  let revenue = 0;
+  let totalThroughput = 0;
+  const trace = [];
+  for (let h = 0; h < HOURS; h++) {
+    let p_req = schedule[h];
+    let p_actual = p_req;
+    let clipped = false;
+
+    if (p_actual < 0) {
+      // Charging — limited by remaining SoC headroom and grid energy needed
+      // = SoC change / η_c.
+      const maxCharge = (SOC_HI - SoC) / ETA_C;
+      if (-p_actual > maxCharge) { p_actual = -maxCharge; clipped = true; }
+    } else if (p_actual > 0) {
+      // Discharging — limited by available SoC * η_d.
+      const maxDischarge = (SoC - SOC_LO) * ETA_D;
+      if (p_actual > maxDischarge) { p_actual = maxDischarge; clipped = true; }
+    }
+
+    revenue += p_actual * PRICE[h];     // $/h = MW · $/MWh
+    if (p_actual < 0) SoC += -p_actual * ETA_C;
+    else              SoC -=  p_actual / ETA_D;
+    totalThroughput += Math.abs(p_actual);
+
+    trace.push({
+      h, p_req, p_actual, clipped, SoC, price: PRICE[h], cumRev: revenue,
+    });
+  }
+  const cycles = totalThroughput / (2 * E_MAX);
+  return { trace, revenue, finalSoC: SoC, cycles };
+}
+
+function evaluateSchedule(u) {
+  const p = decode(u);
+  return simulate(p);
+}
+
+// ============================================================================
+// HumpDay objective — maximise revenue ↔ minimise −revenue.
+// ============================================================================
+const searchHistory = [];
+function objective(u) {
+  const r = evaluateSchedule(u);
+  searchHistory.push(r);
+  return -r.revenue;
+}
+
+// ============================================================================
+// Rendering — three stacked panels sharing a 24-hour x-axis.
+//
+//   PANEL_PRICE : day-ahead LMP curve, $/MWh
+//   PANEL_POWER : per-hour dispatch bars (green discharge, red charge)
+//                 + SoC line overlaid in white
+//   PANEL_CASH  : cumulative revenue line
+// ============================================================================
+const PAD_L = 56, PAD_R = 16, PAD_T = 38, PAD_B = 22;
+const PANEL_PRICE_H = 150, PANEL_POWER_H = 170, PANEL_CASH_H = 100, GAP = 14;
+const PANEL_PRICE_Y = PAD_T;
+const PANEL_POWER_Y = PANEL_PRICE_Y + PANEL_PRICE_H + GAP;
+const PANEL_CASH_Y  = PANEL_POWER_Y + PANEL_POWER_H + GAP;
+const PLOT_X0 = PAD_L, PLOT_X1 = W - PAD_R;
+
+function hourToX(h) {
+  return PLOT_X0 + (h / HOURS) * (PLOT_X1 - PLOT_X0);
+}
+function hourCentreX(h) {
+  return PLOT_X0 + ((h + 0.5) / HOURS) * (PLOT_X1 - PLOT_X0);
+}
+
+function drawScene(trace, hudText, currentH) {
+  ctx.fillStyle = '#14141c';
+  ctx.fillRect(0, 0, W, H);
+
+  drawPricePanel(trace, currentH);
+  drawPowerPanel(trace, currentH);
+  drawCashPanel(trace, currentH);
+  drawHourAxis();
+
+  if (hudText) {
+    ctx.font = 'bold 14px -apple-system, Helvetica, Arial, sans-serif';
+    const padX = 12;
+    const m = ctx.measureText(hudText);
+    const boxW = Math.ceil(m.width) + 2 * padX;
+    ctx.fillStyle = 'rgba(0,0,0,0.65)';
+    ctx.fillRect(W / 2 - boxW / 2, 8, boxW, 24);
+    ctx.fillStyle = '#ffcc00';
+    ctx.textAlign = 'center';
+    ctx.fillText(hudText, W / 2, 25);
+    ctx.textAlign = 'start';
+  }
+}
+
+function drawPanelBg(y0, h, title) {
+  ctx.fillStyle = '#0d0d16';
+  ctx.fillRect(PLOT_X0, y0, PLOT_X1 - PLOT_X0, h);
+  ctx.strokeStyle = '#404054';
+  ctx.lineWidth = 1;
+  ctx.strokeRect(PLOT_X0 + 0.5, y0 + 0.5, PLOT_X1 - PLOT_X0, h);
+  ctx.fillStyle = '#ffcc00';
+  ctx.font = 'bold 12px -apple-system, Helvetica, Arial, sans-serif';
+  ctx.textAlign = 'left';
+  ctx.fillText(title, PLOT_X0 + 6, y0 + 14);
+}
+
+function drawPricePanel(trace, currentH) {
+  const y0 = PANEL_PRICE_Y, h = PANEL_PRICE_H;
+  drawPanelBg(y0, h, 'Day-ahead price ($/MWh)');
+  const pmax = Math.max(...PRICE) * 1.05;
+  const yFromP = (p) => y0 + h - 8 - (p / pmax) * (h - 24);
+
+  // Bar-style filled price curve.
+  ctx.fillStyle = 'rgba(255, 204, 0, 0.15)';
+  ctx.beginPath();
+  ctx.moveTo(PLOT_X0, yFromP(0));
+  for (let i = 0; i < HOURS; i++) {
+    const x0 = hourToX(i), x1 = hourToX(i + 1);
+    const y = yFromP(PRICE[i]);
+    ctx.lineTo(x0, y);
+    ctx.lineTo(x1, y);
+  }
+  ctx.lineTo(PLOT_X1, yFromP(0));
+  ctx.closePath();
+  ctx.fill();
+  // Line.
+  ctx.strokeStyle = '#ffcc00';
+  ctx.lineWidth = 2;
+  ctx.beginPath();
+  for (let i = 0; i < HOURS; i++) {
+    const x0 = hourToX(i), x1 = hourToX(i + 1);
+    const y = yFromP(PRICE[i]);
+    ctx.lineTo(x0, y);
+    ctx.lineTo(x1, y);
+  }
+  ctx.stroke();
+
+  // y-axis labels.
+  ctx.fillStyle = 'rgba(255,255,255,0.45)';
+  ctx.font = '10px -apple-system, Helvetica, Arial, sans-serif';
+  ctx.textAlign = 'right';
+  for (let p = 0; p <= 240; p += 60) ctx.fillText(`$${p}`, PLOT_X0 - 6, yFromP(p) + 3);
+
+  drawCursor(y0, h, currentH);
+}
+
+function drawPowerPanel(trace, currentH) {
+  const y0 = PANEL_POWER_Y, h = PANEL_POWER_H;
+  drawPanelBg(y0, h, 'Dispatch (MW) + SoC');
+  const yMid = y0 + h / 2;
+  // Zero line.
+  ctx.strokeStyle = '#404054';
+  ctx.beginPath(); ctx.moveTo(PLOT_X0, yMid); ctx.lineTo(PLOT_X1, yMid); ctx.stroke();
+  // SoC line scale on right side.
+  const yFromP = (p) => yMid - (p / P_MAX) * (h / 2 - 8);
+  const yFromSoC = (soc) => y0 + h - 6 - (soc / E_MAX) * (h - 12);
+  if (trace) {
+    const barW = (PLOT_X1 - PLOT_X0) / HOURS;
+    for (let i = 0; i < trace.length; i++) {
+      const x = hourToX(i) + 1;
+      const p = trace[i].p_actual;
+      const y = yFromP(Math.max(0, p));
+      const yEnd = yFromP(Math.min(0, p));
+      ctx.fillStyle = p > 0.01 ? 'rgba(126, 217, 87, 0.85)'
+                  :  p < -0.01 ? 'rgba(255, 100, 100, 0.85)'
+                  : 'rgba(150,150,170,0.3)';
+      const top = Math.min(y, yEnd), height = Math.abs(yEnd - y);
+      if (Math.abs(p) > 0.01) ctx.fillRect(x, top, barW - 2, height);
+      // Clipped marker.
+      if (trace[i].clipped) {
+        ctx.strokeStyle = 'rgba(255, 255, 80, 0.9)';
+        ctx.lineWidth = 1.5;
+        ctx.beginPath(); ctx.moveTo(x, y0 + 3); ctx.lineTo(x + barW - 2, y0 + 3); ctx.stroke();
+      }
+    }
+    // SoC line (faint blue).
+    ctx.strokeStyle = 'rgba(95, 184, 255, 0.85)';
+    ctx.lineWidth = 2;
+    ctx.beginPath();
+    for (let i = 0; i < trace.length; i++) {
+      const x = hourCentreX(i), y = yFromSoC(trace[i].SoC);
+      if (i === 0) ctx.moveTo(x, y); else ctx.lineTo(x, y);
+    }
+    ctx.stroke();
+    // SoC bounds (dashed).
+    ctx.strokeStyle = 'rgba(95, 184, 255, 0.35)';
+    ctx.setLineDash([4, 4]);
+    ctx.beginPath();
+    ctx.moveTo(PLOT_X0, yFromSoC(SOC_LO)); ctx.lineTo(PLOT_X1, yFromSoC(SOC_LO));
+    ctx.moveTo(PLOT_X0, yFromSoC(SOC_HI)); ctx.lineTo(PLOT_X1, yFromSoC(SOC_HI));
+    ctx.stroke();
+    ctx.setLineDash([]);
+  }
+  // Left y-axis (power).
+  ctx.fillStyle = 'rgba(255,100,100,0.7)';
+  ctx.font = '10px -apple-system, Helvetica, Arial, sans-serif';
+  ctx.textAlign = 'right';
+  ctx.fillText('+25 MW', PLOT_X0 - 6, yFromP(25) + 3);
+  ctx.fillText('charge', PLOT_X0 - 6, yFromP(-12) + 3);
+  ctx.fillStyle = 'rgba(126,217,87,0.7)';
+  ctx.fillText('sell', PLOT_X0 - 6, yFromP(12) + 3);
+  ctx.fillText('-25 MW', PLOT_X0 - 6, yFromP(-25) + 3);
+  ctx.fillStyle = 'rgba(255,255,255,0.45)';
+  ctx.fillText('0', PLOT_X0 - 6, yMid + 3);
+  // Right y-axis (SoC) — small label.
+  ctx.fillStyle = 'rgba(95, 184, 255, 0.65)';
+  ctx.textAlign = 'left';
+  ctx.fillText('SoC 90', PLOT_X1 + 4, yFromSoC(SOC_HI) + 3);
+  ctx.fillText('SoC 10', PLOT_X1 + 4, yFromSoC(SOC_LO) + 3);
+
+  drawCursor(y0, h, currentH);
+}
+
+function drawCashPanel(trace, currentH) {
+  const y0 = PANEL_CASH_Y, h = PANEL_CASH_H;
+  drawPanelBg(y0, h, 'Cumulative revenue ($)');
+  if (!trace) return;
+  const minRev = Math.min(0, ...trace.map(t => t.cumRev));
+  const maxRev = Math.max(1, ...trace.map(t => t.cumRev));
+  const range = Math.max(1000, maxRev - minRev);
+  const yFromR = (r) => y0 + h - 6 - ((r - minRev) / range) * (h - 18);
+  // Zero line.
+  ctx.strokeStyle = 'rgba(255,255,255,0.15)';
+  ctx.setLineDash([3, 3]);
+  ctx.beginPath();
+  ctx.moveTo(PLOT_X0, yFromR(0)); ctx.lineTo(PLOT_X1, yFromR(0));
+  ctx.stroke();
+  ctx.setLineDash([]);
+  // Filled area.
+  ctx.fillStyle = 'rgba(126, 217, 87, 0.15)';
+  ctx.beginPath();
+  ctx.moveTo(PLOT_X0, yFromR(0));
+  for (let i = 0; i < trace.length; i++) ctx.lineTo(hourCentreX(i), yFromR(trace[i].cumRev));
+  ctx.lineTo(hourCentreX(trace.length - 1), yFromR(0));
+  ctx.closePath();
+  ctx.fill();
+  // Line.
+  ctx.strokeStyle = '#7ed957';
+  ctx.lineWidth = 2;
+  ctx.beginPath();
+  for (let i = 0; i < trace.length; i++) {
+    const x = hourCentreX(i), y = yFromR(trace[i].cumRev);
+    if (i === 0) ctx.moveTo(x, y); else ctx.lineTo(x, y);
+  }
+  ctx.stroke();
+  // Final ticker.
+  const finalR = trace[trace.length - 1].cumRev;
+  ctx.fillStyle = '#7ed957';
+  ctx.font = 'bold 13px -apple-system, Helvetica, Arial, sans-serif';
+  ctx.textAlign = 'right';
+  ctx.fillText(`$${finalR.toFixed(0)}`, PLOT_X1 - 6, y0 + 14);
+  // y-axis.
+  ctx.fillStyle = 'rgba(255,255,255,0.45)';
+  ctx.font = '10px -apple-system, Helvetica, Arial, sans-serif';
+  ctx.textAlign = 'right';
+  ctx.fillText('$0', PLOT_X0 - 6, yFromR(0) + 3);
+  ctx.fillText(`$${maxRev.toFixed(0)}`, PLOT_X0 - 6, yFromR(maxRev) + 3);
+  drawCursor(y0, h, currentH);
+}
+
+function drawCursor(y0, h, currentH) {
+  if (currentH === undefined || currentH === null) return;
+  ctx.strokeStyle = 'rgba(255, 204, 0, 0.55)';
+  ctx.lineWidth = 1.5;
+  ctx.beginPath();
+  const x = hourCentreX(currentH);
+  ctx.moveTo(x, y0); ctx.lineTo(x, y0 + h);
+  ctx.stroke();
+}
+
+function drawHourAxis() {
+  ctx.fillStyle = 'rgba(255,255,255,0.45)';
+  ctx.font = '10px -apple-system, Helvetica, Arial, sans-serif';
+  ctx.textAlign = 'center';
+  const y = PANEL_CASH_Y + PANEL_CASH_H + 12;
+  for (let h = 0; h <= 24; h += 4) ctx.fillText(`${h}h`, hourToX(h), y);
+}
+
+function drawIdleScene() {
+  drawScene(null, 'Pick a schedule or run the optimiser', null);
+}
+
+// ============================================================================
+// Animations.
+// ============================================================================
+let animationToken = 0;
+
+async function animateMontage() {
+  const myToken = ++animationToken;
+  const total = searchHistory.length;
+  if (total === 0) return -1;
+  const TARGET_MS = 12000, FRAME_MS = 70;
+  const step = Math.max(1, Math.floor(total / (TARGET_MS / FRAME_MS)));
+  let bestSoFar = -Infinity, bestIdx = -1;
+  for (let i = 0; i < total; i += step) {
+    if (myToken !== animationToken) return bestIdx;
+    const entry = searchHistory[i];
+    const isNew = entry.revenue > bestSoFar;
+    if (isNew) { bestSoFar = entry.revenue; bestIdx = i; }
+    document.getElementById('evals').textContent = i + 1;
+    setBigStats(entry);
+    if (isNew) {
+      addLeaderboardEntry(document.getElementById('algorithm').value, entry, i + 1, { inPlace: liveLeaderboardIdx >= 0 });
+      setBestScore(entry, document.getElementById('algorithm').value);
+    }
+    const label = `Schedule ${i + 1}/${total}  ·  best $${bestSoFar.toFixed(0)}${isNew ? '  ★' : ''}`;
+    drawScene(entry.trace, label, null);
+    await new Promise((r) => setTimeout(r, FRAME_MS));
+  }
+  for (let j = 0; j < total; j++) if (searchHistory[j].revenue > bestSoFar) { bestSoFar = searchHistory[j].revenue; bestIdx = j; }
+  return bestIdx;
+}
+
+async function animateReplay(entry, hudPrefix) {
+  const myToken = ++animationToken;
+  const FRAME_MS = 130;
+  for (let h = 0; h < HOURS; h++) {
+    if (myToken !== animationToken) return;
+    const sub = entry.trace.slice(0, h + 1);
+    const label = `${hudPrefix}  ·  hour ${h}  ·  $${entry.trace[h].cumRev.toFixed(0)} so far`;
+    drawScene(sub, label, h);
+    await new Promise((r) => setTimeout(r, FRAME_MS));
+  }
+  // Hold final frame.
+  drawScene(entry.trace, `${hudPrefix}  ·  total $${entry.revenue.toFixed(0)}/day`, HOURS - 1);
+}
+
+function setBigStats(entry) {
+  document.getElementById('score-now').textContent = `$${entry.revenue.toFixed(0)}`;
+  document.getElementById('stat-soc').textContent = `${entry.finalSoC.toFixed(1)} MWh`;
+  document.getElementById('stat-cycles').textContent = entry.cycles.toFixed(2);
+}
+function setBestScore(entry, algoName) {
+  const el = document.getElementById('best-score');
+  el.innerHTML = `$${entry.revenue.toFixed(0)} (${entry.cycles.toFixed(2)} cyc)<span class="algo-tag">${algoName}</span>`;
+}
+
+// ============================================================================
+// Runner.
+// ============================================================================
+let lastBest = null;
+function getOptimizerClass(name) { return globalThis[name]; }
+
+async function runOptimization() {
+  const algoName = document.getElementById('algorithm').value;
+  const budget = parseInt(document.getElementById('budget').value, 10);
+  const cls = getOptimizerClass(algoName);
+  if (!cls) { alert(`Optimizer '${algoName}' not found.`); return; }
+
+  const runBtn = document.getElementById('run-btn');
+  runBtn.disabled = true;
+  runBtn.textContent = `Searching with ${algoName}...`;
+  animationToken++;
+  searchHistory.length = 0;
+  await new Promise((r) => setTimeout(r, 30));
+
+  try {
+    const opt = new cls(objective, budget, N_DIM);
+    opt.optimize();
+    const bestIdx = await animateMontage();
+    const bestEntry = searchHistory[bestIdx];
+    lastBest = bestEntry;
+    setBigStats(bestEntry);
+    setBestScore(bestEntry, algoName);
+    addLeaderboardEntry(algoName, bestEntry, opt.evaluations, { inPlace: liveLeaderboardIdx >= 0 });
+    liveLeaderboardIdx = -1;
+    animateReplay(bestEntry, `Best: $${bestEntry.revenue.toFixed(0)}/day (${algoName})`);
+  } catch (e) {
+    console.error(e);
+    alert(`${algoName} threw an error: ${e.message}`);
+  } finally {
+    runBtn.disabled = false;
+    runBtn.textContent = '▶ Find the best schedule';
+  }
+}
+
+function replayBest() {
+  if (!lastBest) return;
+  animateReplay(lastBest, `Best: $${lastBest.revenue.toFixed(0)}/day`);
+}
+
+const leaderboard = [];
+let liveLeaderboardIdx = -1;
+function addLeaderboardEntry(algoName, entry, evals, { inPlace = false } = {}) {
+  const row = { name: algoName, rev: entry.revenue, cycles: entry.cycles, evals };
+  if (inPlace && liveLeaderboardIdx >= 0) leaderboard[liveLeaderboardIdx] = row;
+  else { leaderboard.push(row); liveLeaderboardIdx = leaderboard.length - 1; }
+  const tracked = leaderboard[liveLeaderboardIdx];
+  leaderboard.sort((a, b) => b.rev - a.rev || a.evals - b.evals);
+  liveLeaderboardIdx = leaderboard.indexOf(tracked);
+  renderLeaderboard();
+}
+function renderLeaderboard() {
+  const body = document.getElementById('leaderboard-body');
+  if (leaderboard.length === 0) {
+    body.innerHTML = '<tr><td colspan="4" style="color: var(--muted); text-align: center;">— no runs yet —</td></tr>';
+    return;
+  }
+  body.innerHTML = leaderboard.map((row) => {
+    const cls = row.name === 'Human Raphson' ? ' class="human-raphson"' : '';
+    return `<tr${cls}>
+      <td>${row.name}</td>
+      <td>$${row.rev.toFixed(0)}</td>
+      <td>${row.evals}</td>
+      <td>${row.cycles.toFixed(2)} cycles</td>
+    </tr>`;
+  }).join('');
+}
+
+// ============================================================================
+// Presets (in u-space).
+// ============================================================================
+const PRESETS = {
+  idle:        () => Array(HOURS).fill(0.5),
+  alwaysSell:  () => Array(HOURS).fill(1.0),
+  oneCycle:    () => Array.from({ length: HOURS }, (_, h) =>
+                   h <= 4 ? 0 : (h >= 17 && h <= 20) ? 1 : 0.5),
+  twoCycle:    () => Array.from({ length: HOURS }, (_, h) =>
+                   (h <= 4) ? 0 :
+                   (h >= 8 && h <= 10) ? 1 :
+                   (h >= 12 && h <= 14) ? 0 :
+                   (h >= 17 && h <= 20) ? 1 : 0.5),
+  random:      () => Array.from({ length: HOURS }, () => Math.random()),
+};
+
+let manualU = null;
+function loadPreset(name) {
+  manualU = PRESETS[name]();
+  const result = evaluateSchedule(manualU);
+  setBigStats(result);
+  animateReplay(result, `Preset: ${name} — $${result.revenue.toFixed(0)}/day`);
+}
+function manualEvaluate() {
+  if (!manualU) loadPreset('twoCycle');
+  const result = evaluateSchedule(manualU);
+  setBigStats(result);
+  addLeaderboardEntry('Human Raphson', result, 1);
+  setBestScore(result, 'Human Raphson');
+  animateReplay(result, `🧠 Human Raphson: $${result.revenue.toFixed(0)}/day`);
+}
+
+function resetEverything() {
+  leaderboard.length = 0;
+  liveLeaderboardIdx = -1;
+  lastBest = null;
+  manualU = null;
+  animationToken++;
+  ['evals'].forEach((id) => document.getElementById(id).textContent = '0');
+  ['score-now', 'stat-soc', 'stat-cycles', 'best-score'].forEach((id) =>
+    document.getElementById(id).textContent = '—');
+  renderLeaderboard();
+  drawIdleScene();
+}
+
+drawIdleScene();
+</script>
+</body>
+</html>
