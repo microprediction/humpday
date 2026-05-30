@@ -383,9 +383,12 @@ function buildWorld() {
   // pocket is reachable from along the rail.
   const cushion = (x, y, w, h) => Bodies.rectangle(x, y, w, h, {
     isStatic: true,
-    restitution: 0.85,        // bouncy cushion
-    friction: 0.01,           // minimal — balls don't bleed energy along rails
-    label: 'cushion',
+    restitution: 0.92,        // bouncy cushion
+    friction: 0,              // zero so the ball doesn't lose tangent
+    frictionStatic: 0,        // velocity when bouncing off at oblique angles
+    label: 'cushion',         // (Matter.js default frictionStatic = 0.5
+                              // would clamp the tangent component to 0
+                              // and make the ball *stick* to the rail)
   });
   const railThick = 20;
   const railOffset = railThick / 2 + 0.5;
