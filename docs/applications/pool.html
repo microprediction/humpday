@@ -169,9 +169,18 @@
         <option value="100">100 breaks</option>
         <option value="200">200 breaks</option>
         <option value="500">500 breaks</option>
+        <option value="1000">1000 breaks</option>
+        <option value="2000">2000 breaks</option>
+        <option value="5000">5000 breaks</option>
       </select>
+      <label style="display: flex; align-items: center; gap: 8px; margin-top: 10px; font-size: 0.86em; color: var(--text); cursor: pointer;">
+        <input type="checkbox" id="fast-mode" style="width: auto; margin: 0;">
+        Fast mode (skip per-break animation)
+      </label>
       <p style="margin: 8px 0 0; font-size: 0.78em; color: var(--muted);">
-        Each break is animated frame-by-frame at 2× the final-replay speed.
+        Default replays each break frame-by-frame. Fast mode just
+        updates the leaderboard as breaks come in, then replays
+        only the winner — recommended for 500+ breaks.
       </p>
 
       <button id="run-btn" onclick="runOptimization()">▶ Find the best break</button>
@@ -420,9 +429,9 @@ function buildWorld() {
   const objectBalls = RACK.map((p, i) =>
     Bodies.circle(p.x, p.y, BALL_R, {
       density: 0.008,
-      friction: 0.005,
-      frictionAir: 0.004,    // felt drag — much lower so balls roll a long way
-      restitution: 0.95,     // bouncy collisions
+      friction: 0.0035,        // ball-vs-ball; was 0.005 (−30 % for longer rolls)
+      frictionAir: 0.0028,     // felt drag; was 0.004 (−30 % for longer rolls)
+      restitution: 0.95,       // bouncy collisions
       label: `object-${i}`,
     })
   );
@@ -430,8 +439,8 @@ function buildWorld() {
   // Cue ball — slightly heavier, marked with `cue` label.
   const cue = Bodies.circle(CUE_HOME.x, CUE_HOME.y, BALL_R, {
     density: 0.010,
-    friction: 0.005,
-    frictionAir: 0.004,
+    friction: 0.0035,          // −30 % vs prior 0.005
+    frictionAir: 0.0028,       // −30 % vs prior 0.004
     restitution: 0.95,
     label: 'cue',
   });
@@ -834,16 +843,22 @@ async function animateSearchMontage() {
   const myToken = ++animationToken;
   const total = searchHistory.length;
   if (total === 0) return -1;
+  const fast = document.getElementById('fast-mode').checked;
 
   let bestSoFar = -Infinity;
   let bestIdx = -1;
+  // In fast mode we don't replay the physics frame-by-frame — just
+  // tick stats forward, redraw the final ball positions every Nth
+  // break so the table doesn't look frozen, and yield to the event
+  // loop every M breaks so the page stays responsive at 5000-budget.
+  const fastRedrawEvery = Math.max(1, Math.floor(total / 200));
+  const fastYieldEvery = 25;
   for (let i = 0; i < total; i++) {
     if (myToken !== animationToken) return bestIdx;
     const entry = searchHistory[i];
     const isNew = entry.score > bestSoFar;
     if (isNew) { bestSoFar = entry.score; bestIdx = i; }
 
-    const reF = runShot(entry.params, /*recordFrames=*/true);
     document.getElementById('evals').textContent = i + 1;
     document.getElementById('score-now').textContent = entry.score.toFixed(2);
     document.getElementById('score-detail').textContent = formatDetail(entry);
@@ -859,7 +874,20 @@ async function animateSearchMontage() {
     }
 
     const label = `Break ${i + 1}/${total}  ·  Best: ${bestSoFar.toFixed(2)}${isNew ? '  ★ NEW!' : ''}`;
-    await animateShot(reF.frames, label, MONTAGE_MS_PER_FRAME);
+    if (fast) {
+      // Periodically redraw the final ball positions of this break, so
+      // the canvas isn't a stale frame the whole way through.
+      if (isNew || (i % fastRedrawEvery === 0)) {
+        const reF = runShot(entry.params, /*recordFrames=*/true);
+        drawScene(reF.frames[reF.frames.length - 1], label);
+      }
+      // Yield to the event loop occasionally — without this the page
+      // freezes for the entire montage on big budgets.
+      if (i % fastYieldEvery === 0) await new Promise((r) => setTimeout(r, 0));
+    } else {
+      const reF = runShot(entry.params, /*recordFrames=*/true);
+      await animateShot(reF.frames, label, MONTAGE_MS_PER_FRAME);
+    }
   }
   return bestIdx;
 }
