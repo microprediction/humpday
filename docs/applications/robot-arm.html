@@ -1,0 +1,680 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' 'unsafe-inline'; style-src 'self' 'unsafe-inline';">
+<title>🦾 Robot Arm Reach — HumpDay</title>
+<style>
+  :root {
+    --bg: #1a1a22;
+    --panel: #2d2d3a;
+    --accent: #ffcc00;
+    --text: #e8e8ea;
+    --muted: #9a9aac;
+  }
+  body { margin: 0; background: var(--bg); color: var(--text);
+    font-family: -apple-system, 'Segoe UI', 'Helvetica Neue', Helvetica, Arial, sans-serif; }
+  .site-nav { background: #34495e; padding: 12px 24px;
+    font-family: 'Times New Roman', Times, serif;
+    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1); }
+  .site-nav-inner { max-width: 1100px; margin: 0 auto;
+    display: flex; justify-content: space-between; align-items: center; }
+  .site-nav a { color: #ecf0f1; text-decoration: none; margin: 0 12px; }
+  .site-nav a:hover { color: white; text-decoration: underline; }
+  .site-nav-brand { font-weight: 700; font-size: 1.25em; }
+
+  .container { max-width: 1100px; margin: 0 auto; padding: 32px 24px 64px; }
+  h1 { font-size: 2.2em; margin: 0.2em 0; }
+  h2 { font-size: 1.4em; margin-top: 1.4em; color: var(--accent); }
+  p { line-height: 1.55; max-width: 70ch; }
+  .intro { color: var(--muted); }
+
+  .stage { display: grid; grid-template-columns: 1fr 320px; gap: 24px;
+    align-items: start; margin-top: 24px; }
+  @media (max-width: 800px) { .stage { grid-template-columns: 1fr; } }
+  canvas { background: #14141c;
+    border: 3px solid var(--accent); border-radius: 6px; display: block;
+    width: 100%; height: auto; }
+
+  .panel { background: var(--panel); padding: 18px; border-radius: 6px; border: 1px solid #404054; }
+  .panel h3 { margin: 0 0 12px; font-size: 1.05em; text-transform: uppercase;
+    letter-spacing: 0.06em; color: var(--accent); }
+  label { display: block; margin: 10px 0 6px; font-size: 0.9em; color: var(--muted); }
+  select, input, button { width: 100%; box-sizing: border-box; padding: 8px 10px;
+    border-radius: 4px; border: 1px solid #404054; background: #1a1a22; color: var(--text); font-size: 0.95em; }
+  button { background: var(--accent); color: #1a1a22; font-weight: 700; cursor: pointer; margin-top: 6px; transition: opacity 0.15s; }
+  button:hover { opacity: 0.88; }
+  button.secondary { background: #404054; color: var(--text); font-weight: 400; }
+  button:disabled { opacity: 0.5; cursor: not-allowed; }
+  .stats { margin-top: 16px; padding-top: 14px; border-top: 1px solid #404054; font-size: 0.92em; line-height: 1.6; }
+  .stats .score { font-size: 2.2em; color: var(--accent); font-weight: 700; }
+  .stat-row { display: flex; justify-content: space-between; align-items: baseline; gap: 12px; }
+  .stat-row span:first-child { white-space: nowrap; flex-shrink: 0; }
+  .stat-row span:last-child { color: var(--text); font-family: 'SF Mono', Menlo, monospace; text-align: right; word-break: break-word; }
+  .stat-row .algo-tag { display: block; color: var(--muted); font-size: 0.82em; margin-top: 2px; }
+
+  .leaderboard { margin-top: 24px; }
+  .leaderboard table { width: 100%; border-collapse: collapse; background: var(--panel); border-radius: 6px; overflow: hidden; }
+  .leaderboard th, .leaderboard td { padding: 10px 14px; text-align: left; border-bottom: 1px solid #404054; }
+  .leaderboard th { background: #1a1a22; color: var(--muted); text-transform: uppercase; font-size: 0.78em; letter-spacing: 0.08em; }
+  .leaderboard td:nth-child(2) { text-align: center; font-size: 1.2em; font-weight: 700; color: var(--accent); }
+  .leaderboard td:nth-child(3), .leaderboard td:nth-child(4) { font-family: 'SF Mono', Menlo, monospace; color: var(--muted); }
+  .leaderboard tr.human-raphson td:first-child { color: #ff9944; font-weight: 700; }
+
+  .left-stack { display: flex; flex-direction: column; gap: 16px; min-width: 0; }
+  .hr-panel { padding: 14px 16px; }
+  .hr-panel h3 { margin: 0 0 6px; }
+  .hr-panel p { margin: 0 0 8px; color: var(--muted); font-size: 0.86em; }
+  .hr-preset-row { display: flex; gap: 8px; margin-bottom: 8px; flex-wrap: wrap; }
+  .hr-preset-row button { width: auto; flex: 1 1 80px; background: #2d3a4a; color: var(--text); font-weight: 500; font-size: 0.84em; padding: 6px 10px; margin: 0; }
+  .hr-actions button.go { background: #ff9944; color: #1a1a22; margin-top: 0; }
+
+  .skill-callout { margin-top: 36px; background: rgba(126, 217, 87, 0.07); border: 1px solid rgba(126, 217, 87, 0.35); border-radius: 8px; padding: 18px 22px; }
+  .skill-callout h3 { margin: 0 0 6px; color: #7ed957; font-size: 1.05em; text-transform: none; letter-spacing: 0; }
+  .skill-callout p { margin: 0 0 10px; color: var(--text); max-width: none; }
+  .skill-callout pre { background: #1a1a22; border: 1px solid #404054; border-radius: 4px; padding: 10px 14px; margin: 0; font-size: 0.84em; color: #7ed957; white-space: pre-wrap; word-break: break-all; font-family: 'SF Mono', Menlo, monospace; }
+  .skill-actions { margin-top: 10px; display: flex; align-items: center; gap: 14px; }
+  .skill-actions button { width: auto; background: #404054; color: var(--text); border: 1px solid #404054; padding: 6px 12px; font-size: 0.85em; cursor: pointer; border-radius: 4px; margin: 0; font-weight: 500; }
+  .skill-actions button:hover { background: #4a4a60; }
+  .skill-actions a { color: #7ed957; font-size: 0.85em; text-decoration: none; }
+  .skill-actions a:hover { text-decoration: underline; }
+</style>
+</head>
+<body>
+<nav class="site-nav">
+  <div class="site-nav-inner">
+    <a class="site-nav-brand" href="../index.html">HumpDay 🦾</a>
+    <div>
+      <a href="../index.html">Home</a>
+      <a href="index.html">Applications</a>
+      <a href="../contest.html">Contest</a>
+      <a href="../README.html">Docs</a>
+    </div>
+  </div>
+</nav>
+
+<div class="container">
+  <h1>🦾 Robot Arm Reach</h1>
+  <p class="intro">
+    A 6-joint serial robot arm needs to touch a target point with
+    its end-effector while staying clear of three obstacle spheres
+    in the workspace. The optimizer picks six joint angles
+    θ<sub>1</sub>…θ<sub>6</sub> (each ±90°); the score rewards
+    getting the tip close to the target and punishes any link
+    that intersects an obstacle. 6-D continuous, multi-modal —
+    different "elbow-up" / "elbow-down" / wrap-around branches all
+    reach the target, but only via specific clearance corridors
+    between the obstacles.
+  </p>
+
+  <div class="stage">
+    <div class="left-stack">
+      <canvas id="canvas" width="800" height="500"></canvas>
+
+      <div class="panel hr-panel">
+        <h3>🧠 Human Raphson</h3>
+        <p>Try a pose, see if it threads the obstacles.</p>
+        <div class="hr-preset-row">
+          <button type="button" onclick="loadPreset('straight')">Straight up</button>
+          <button type="button" onclick="loadPreset('right')">Curve right</button>
+          <button type="button" onclick="loadPreset('elbow')">Elbow right</button>
+          <button type="button" onclick="loadPreset('fold')">Fold over</button>
+          <button type="button" onclick="loadPreset('random')">Random</button>
+        </div>
+        <div class="hr-actions">
+          <button class="go" onclick="manualEvaluate()">▶ Score this pose</button>
+        </div>
+      </div>
+    </div>
+
+    <div class="panel">
+      <h3>Algorithm</h3>
+      <label for="algorithm">Pick a HumpDay optimizer:</label>
+      <select id="algorithm">
+        <optgroup label="Trust-region / interpolation">
+          <option value="PRIMA_BOBYQA">PRIMA_BOBYQA</option>
+          <option value="PRIMA_NEWUOA">PRIMA_NEWUOA</option>
+        </optgroup>
+        <optgroup label="Local / classical">
+          <option value="NelderMead">Nelder-Mead</option>
+          <option value="Powell">Powell</option>
+          <option value="LBFGSB">L-BFGS-B (simplified)</option>
+        </optgroup>
+        <optgroup label="Population-based">
+          <option value="DifferentialEvolution" selected>Differential Evolution</option>
+          <option value="ParticleSwarm">Particle Swarm</option>
+          <option value="CMAEvolutionStrategy">CMA-Evolution Strategy</option>
+          <option value="GeneticAlgorithm">Genetic Algorithm</option>
+          <option value="EvolutionStrategy">Evolution Strategy</option>
+          <option value="HarmonySearch">Harmony Search</option>
+        </optgroup>
+        <optgroup label="Other">
+          <option value="SimulatedAnnealing">Simulated Annealing</option>
+          <option value="BayesianOpt">Bayesian Optimization</option>
+          <option value="FireflyAlgorithm">Firefly Algorithm</option>
+          <option value="AntColonyOpt">Ant Colony</option>
+          <option value="TabuSearch">Tabu Search</option>
+          <option value="RandomSearch">Random Search</option>
+        </optgroup>
+      </select>
+
+      <label for="budget">Evaluation budget:</label>
+      <select id="budget">
+        <option value="100">100 poses</option>
+        <option value="200">200 poses</option>
+        <option value="500" selected>500 poses</option>
+        <option value="1000">1000 poses</option>
+        <option value="2000">2000 poses</option>
+      </select>
+      <p style="margin: 8px 0 0; font-size: 0.78em; color: var(--muted);">
+        6-D problem. Most optimizers find a collision-free pose by
+        ~500 evaluations.
+      </p>
+
+      <button id="run-btn" onclick="runOptimization()">▶ Find the best pose</button>
+      <button class="secondary" onclick="replayBest()">🔁 Replay best</button>
+      <button class="secondary" onclick="resetEverything()">⟲ Reset leaderboard</button>
+
+      <div class="stats">
+        <div class="stat-row"><span>Score</span><span class="score" id="score-now">—</span></div>
+        <div class="stat-row"><span>Tip error</span><span id="stat-tip">—</span></div>
+        <div class="stat-row"><span>Clearance</span><span id="stat-clear">—</span></div>
+        <div class="stat-row"><span>Collisions</span><span id="stat-coll">—</span></div>
+        <div class="stat-row"><span>Poses tried</span><span id="evals">0</span></div>
+        <div class="stat-row"><span>Best so far</span><span id="best-score">—</span></div>
+      </div>
+    </div>
+  </div>
+
+  <div class="leaderboard">
+    <h2>Leaderboard (this session)</h2>
+    <p style="color: var(--muted);">
+      Each row is the best pose a given algorithm found.
+    </p>
+    <table>
+      <thead>
+        <tr><th>Algorithm</th><th>Score</th><th>Poses</th><th>Detail</th></tr>
+      </thead>
+      <tbody id="leaderboard-body">
+        <tr><td colspan="4" style="color: var(--muted); text-align: center;">— no runs yet —</td></tr>
+      </tbody>
+    </table>
+  </div>
+
+  <h2>What's happening</h2>
+  <p>
+    The arm has six revolute joints in series with link lengths
+    [120, 105, 90, 75, 60, 45] px — a total reach of 495 px that
+    almost spans the canvas diagonally. Each joint angle
+    θ<sub>i</sub> is interpreted as the rotation of the i-th link
+    relative to the (i−1)-th, and each is bounded to ±90°. Forward
+    kinematics walks down the chain to give the position of every
+    joint and the end-effector tip.
+  </p>
+  <p>
+    <strong>Score</strong> is reach minus collision:
+    <code>max(0, 100 − 0.25·tipErr) − 25·collisions − 0.4·deepest</code>.
+    The reach term gives 100 when the tip touches the target and
+    drops linearly with distance. The penalty fires every time a
+    link segment intersects an obstacle disc, plus an extra
+    proportional to how deep the deepest intrusion is. A clean
+    pose that just touches the target scores ~100; any collision
+    pulls the score sharply negative.
+  </p>
+  <p>
+    The landscape is multi-modal. The arm can thread above or
+    below the centre obstacle, and from either side of the left
+    flanker, so there are several disjoint regions of 6-D angle
+    space where the score is near 100. Trust-region methods can
+    converge to whichever basin they happen to start in;
+    population methods explore multiple branches at once and
+    tend to find the highest-clearance one.
+  </p>
+
+  <hr style="border: 0; border-top: 1px solid #404054; margin: 32px 0 16px;" />
+  <p style="font-size: 0.78em; color: var(--muted);">
+    2-D side view of a 6-DOF planar serial arm; real industrial
+    robots add joint-velocity limits, self-collision, dynamic
+    obstacles, and path-planning over time. The structure —
+    constrained inverse kinematics with a configuration-space
+    obstacle field — is the same.
+  </p>
+
+  <div class="skill-callout">
+    <h3>🌱 Save the Planet</h3>
+    <p>If your hyper-parameter searches are heating the Earth, drop this in Cursor or Claude:</p>
+    <pre id="skill-snippet">Read https://raw.githubusercontent.com/microprediction/humpday/main/SKILL.md
+and create a project skill from it.</pre>
+    <div class="skill-actions">
+      <button type="button" onclick="copySkillSnippet(this)">📋 Copy</button>
+      <a href="https://github.com/microprediction/humpday/blob/main/SKILL.md" target="_blank" rel="noopener">View SKILL.md →</a>
+    </div>
+  </div>
+
+  <script>
+    function copySkillSnippet(btn) {
+      const text = document.getElementById('skill-snippet').textContent;
+      navigator.clipboard.writeText(text).then(() => {
+        const orig = btn.textContent;
+        btn.textContent = '✓ Copied';
+        setTimeout(() => { btn.textContent = orig; }, 1500);
+      }).catch(() => {
+        btn.textContent = '✗ Copy failed';
+      });
+    }
+  </script>
+</div>
+
+<script src="../js/modules/base-optimizer.js"></script>
+<script src="../js/modules/prima-algorithms.js"></script>
+<script src="../js/modules/scipy-algorithms.js"></script>
+<script src="../js/modules/evolutionary-algorithms.js"></script>
+<script src="../js/modules/search-algorithms.js"></script>
+
+<script>
+// ============================================================================
+// Robot arm reach — 6-D inverse kinematics with circular obstacles.
+// ============================================================================
+const canvas = document.getElementById('canvas');
+const ctx = canvas.getContext('2d');
+const W = canvas.width, H = canvas.height;
+
+const N_JOINTS = 6;
+const N_DIM = N_JOINTS;
+// Sized so the workspace actually FILLS the 800×500 canvas — total
+// reach ≈ 495 px, target offset ≈ 470 px from the base, obstacles
+// large enough that no link can sneak through a tiny gap.
+const LINK_LEN = [120, 105, 90, 75, 60, 45];
+const JOINT_ANGLE_MAX = Math.PI / 2;   // each joint clamped to ±90°
+const LINK_HW = 9;                      // visual + collision half-thickness
+const BASE = { x: 400, y: 478 };
+const TARGET = { x: 700, y: 180 };       // dist from base ≈ 421 px (reach 495)
+const TARGET_R = 13;                    // visual size of target marker
+const OBSTACLES = [
+  { x: 450, y: 360, r: 55 },             // big near base
+  { x: 600, y: 320, r: 50 },             // mid-right
+  { x: 540, y: 190, r: 38 },             // near target
+];
+
+// u ∈ [0,1]^6 → angles in [-π/2, +π/2].
+function decode(u) {
+  return u.map((v) => (v - 0.5) * 2 * JOINT_ANGLE_MAX);
+}
+
+// Forward kinematics — return list of 7 joint positions (base + 6 tips).
+function forwardKinematics(angles) {
+  const pos = [{ ...BASE }];
+  let acc = -Math.PI / 2;     // base joint points UP (negative-y in canvas)
+  for (let i = 0; i < N_JOINTS; i++) {
+    acc += angles[i];
+    const p = pos[pos.length - 1];
+    pos.push({ x: p.x + LINK_LEN[i] * Math.cos(acc), y: p.y + LINK_LEN[i] * Math.sin(acc) });
+  }
+  return pos;
+}
+
+function segCircleDist(p1, p2, c) {
+  const dx = p2.x - p1.x, dy = p2.y - p1.y;
+  const len2 = dx * dx + dy * dy;
+  if (len2 < 1e-9) return Math.hypot(p1.x - c.x, p1.y - c.y);
+  let t = ((c.x - p1.x) * dx + (c.y - p1.y) * dy) / len2;
+  t = Math.max(0, Math.min(1, t));
+  const px = p1.x + t * dx, py = p1.y + t * dy;
+  return Math.hypot(px - c.x, py - c.y);
+}
+
+function evaluatePose(u) {
+  const angles = decode(u);
+  const positions = forwardKinematics(angles);
+  const tip = positions[positions.length - 1];
+  const tipErr = Math.hypot(tip.x - TARGET.x, tip.y - TARGET.y);
+  let collisions = 0;
+  let deepest = 0;
+  let minClear = Infinity;
+  for (let i = 0; i < N_JOINTS; i++) {
+    const p1 = positions[i], p2 = positions[i + 1];
+    for (const o of OBSTACLES) {
+      const d = segCircleDist(p1, p2, o);
+      const clear = d - o.r;
+      if (clear < minClear) minClear = clear;
+      if (d < o.r + LINK_HW) {
+        collisions++;
+        deepest = Math.max(deepest, o.r + LINK_HW - d);
+      }
+    }
+  }
+  // Reach: 100 at touch, drops linearly with distance. 0.25 / px is
+  // tuned so the reachable region (radius ~495 px) maps usefully into
+  // the 0-100 score range.
+  const reach = Math.max(0, 100 - tipErr * 0.25);
+  const penalty = collisions * 25 + deepest * 0.4;
+  const score = reach - penalty;
+  return { angles, positions, tip, tipErr, collisions, deepest, minClear, score };
+}
+
+// ============================================================================
+// HumpDay objective — maximise score ↔ minimise −score.
+// ============================================================================
+const searchHistory = [];
+function objective(u) {
+  const r = evaluatePose(u);
+  searchHistory.push(r);
+  return -r.score;
+}
+
+// ============================================================================
+// Rendering.
+// ============================================================================
+function drawScene(state, hudText) {
+  // Background grid.
+  ctx.fillStyle = '#14141c';
+  ctx.fillRect(0, 0, W, H);
+  ctx.strokeStyle = '#1f1f2c';
+  ctx.lineWidth = 1;
+  for (let x = 0; x <= W; x += 50) {
+    ctx.beginPath(); ctx.moveTo(x, 0); ctx.lineTo(x, H); ctx.stroke();
+  }
+  for (let y = 0; y <= H; y += 50) {
+    ctx.beginPath(); ctx.moveTo(0, y); ctx.lineTo(W, y); ctx.stroke();
+  }
+  // Ground line.
+  ctx.strokeStyle = '#404054';
+  ctx.lineWidth = 2;
+  ctx.beginPath(); ctx.moveTo(0, BASE.y + 2); ctx.lineTo(W, BASE.y + 2); ctx.stroke();
+  // Obstacles.
+  for (const o of OBSTACLES) {
+    const grd = ctx.createRadialGradient(o.x - o.r * 0.3, o.y - o.r * 0.3, 0, o.x, o.y, o.r);
+    grd.addColorStop(0, '#ff8866');
+    grd.addColorStop(1, '#aa3322');
+    ctx.fillStyle = grd;
+    ctx.beginPath(); ctx.arc(o.x, o.y, o.r, 0, Math.PI * 2); ctx.fill();
+    ctx.strokeStyle = 'rgba(0,0,0,0.4)';
+    ctx.lineWidth = 1.5;
+    ctx.stroke();
+  }
+  // Target — yellow star + cross.
+  const t = TARGET;
+  ctx.fillStyle = '#ffcc00';
+  ctx.beginPath();
+  for (let i = 0; i < 10; i++) {
+    const ang = i * Math.PI / 5 - Math.PI / 2;
+    const r = i % 2 === 0 ? TARGET_R : TARGET_R * 0.45;
+    const x = t.x + r * Math.cos(ang), y = t.y + r * Math.sin(ang);
+    if (i === 0) ctx.moveTo(x, y); else ctx.lineTo(x, y);
+  }
+  ctx.closePath();
+  ctx.fill();
+  ctx.strokeStyle = 'rgba(0,0,0,0.4)';
+  ctx.lineWidth = 1;
+  ctx.stroke();
+
+  if (state) drawArm(state);
+
+  // HUD.
+  if (hudText) {
+    ctx.font = 'bold 14px -apple-system, Helvetica, Arial, sans-serif';
+    const padX = 12;
+    const m = ctx.measureText(hudText);
+    const boxW = Math.ceil(m.width) + 2 * padX;
+    ctx.fillStyle = 'rgba(0,0,0,0.65)';
+    ctx.fillRect(W / 2 - boxW / 2, 10, boxW, 26);
+    ctx.fillStyle = '#ffcc00';
+    ctx.textAlign = 'center';
+    ctx.fillText(hudText, W / 2, 28);
+    ctx.textAlign = 'start';
+  }
+}
+
+function drawArm(state) {
+  const pos = state.positions;
+  const collided = state.collisions > 0;
+  // Link bodies — pill-shaped capsules.
+  for (let i = 0; i < N_JOINTS; i++) {
+    const p1 = pos[i], p2 = pos[i + 1];
+    const dx = p2.x - p1.x, dy = p2.y - p1.y;
+    const len = Math.hypot(dx, dy);
+    const ang = Math.atan2(dy, dx);
+    ctx.save();
+    ctx.translate(p1.x, p1.y);
+    ctx.rotate(ang);
+    // Body.
+    const grd = ctx.createLinearGradient(0, -LINK_HW, 0, LINK_HW);
+    if (collided) {
+      grd.addColorStop(0, '#aa5050'); grd.addColorStop(1, '#642222');
+    } else {
+      grd.addColorStop(0, '#d8d8e2'); grd.addColorStop(1, '#7a7a88');
+    }
+    ctx.fillStyle = grd;
+    roundedRect(ctx, 0, -LINK_HW, len, LINK_HW * 2, LINK_HW);
+    ctx.fill();
+    ctx.strokeStyle = 'rgba(0,0,0,0.4)';
+    ctx.lineWidth = 1;
+    ctx.stroke();
+    ctx.restore();
+  }
+  // Joints — circles at each vertex.
+  for (let i = 0; i < pos.length; i++) {
+    const p = pos[i];
+    const isBase = i === 0, isTip = i === pos.length - 1;
+    ctx.fillStyle = isTip ? '#7ed957' : (isBase ? '#5fb8ff' : '#3a3a4a');
+    ctx.beginPath(); ctx.arc(p.x, p.y, isTip ? 11 : (isBase ? 14 : 7), 0, Math.PI * 2); ctx.fill();
+    ctx.strokeStyle = 'rgba(0,0,0,0.55)';
+    ctx.lineWidth = 1.5; ctx.stroke();
+  }
+  // Tip-to-target indicator line if close.
+  const tip = pos[pos.length - 1];
+  if (state.tipErr < 50 && state.collisions === 0) {
+    ctx.strokeStyle = 'rgba(126, 217, 87, 0.5)';
+    ctx.setLineDash([3, 3]);
+    ctx.lineWidth = 1;
+    ctx.beginPath(); ctx.moveTo(tip.x, tip.y); ctx.lineTo(TARGET.x, TARGET.y); ctx.stroke();
+    ctx.setLineDash([]);
+  }
+}
+
+function roundedRect(ctx, x, y, w, h, r) {
+  ctx.beginPath();
+  ctx.moveTo(x + r, y);
+  ctx.lineTo(x + w - r, y);
+  ctx.arcTo(x + w, y, x + w, y + r, r);
+  ctx.lineTo(x + w, y + h - r);
+  ctx.arcTo(x + w, y + h, x + w - r, y + h, r);
+  ctx.lineTo(x + r, y + h);
+  ctx.arcTo(x, y + h, x, y + h - r, r);
+  ctx.lineTo(x, y + r);
+  ctx.arcTo(x, y, x + r, y, r);
+  ctx.closePath();
+}
+
+function drawIdleScene() {
+  drawScene(null, 'Pick a pose or run the optimiser');
+}
+
+// ============================================================================
+// Animations.
+// ============================================================================
+const MONTAGE_MS = 50;
+let animationToken = 0;
+
+async function animateMontage() {
+  const myToken = ++animationToken;
+  const total = searchHistory.length;
+  if (total === 0) return -1;
+  const TARGET_MS = 10000;
+  const step = Math.max(1, Math.floor(total / (TARGET_MS / MONTAGE_MS)));
+  let bestSoFar = -Infinity, bestIdx = -1;
+  for (let i = 0; i < total; i += step) {
+    if (myToken !== animationToken) return bestIdx;
+    const entry = searchHistory[i];
+    const isNew = entry.score > bestSoFar;
+    if (isNew) { bestSoFar = entry.score; bestIdx = i; }
+    document.getElementById('evals').textContent = i + 1;
+    setBigStats(entry);
+    if (isNew) {
+      addLeaderboardEntry(document.getElementById('algorithm').value, entry, i + 1, { inPlace: liveLeaderboardIdx >= 0 });
+      setBestScore(entry, document.getElementById('algorithm').value);
+    }
+    const label = `Pose ${i + 1}/${total}  ·  best ${bestSoFar.toFixed(1)}${isNew ? '  ★' : ''}`;
+    drawScene(entry, label);
+    await new Promise((r) => setTimeout(r, MONTAGE_MS));
+  }
+  for (let j = 0; j < total; j++) if (searchHistory[j].score > bestSoFar) { bestSoFar = searchHistory[j].score; bestIdx = j; }
+  return bestIdx;
+}
+
+async function animateInterpolated(entry, hudPrefix) {
+  const myToken = ++animationToken;
+  // Smooth in from "straight up" pose to the chosen pose.
+  const startAngles = Array(N_JOINTS).fill(0);
+  const endAngles = entry.angles;
+  const FRAMES = 40, FRAME_MS = 30;
+  for (let f = 0; f <= FRAMES; f++) {
+    if (myToken !== animationToken) return;
+    const t = f / FRAMES;
+    const eased = t * t * (3 - 2 * t);   // smoothstep
+    const angles = startAngles.map((a, i) => a * (1 - eased) + endAngles[i] * eased);
+    const positions = forwardKinematics(angles);
+    const mid = {
+      angles, positions,
+      tip: positions[positions.length - 1],
+      tipErr: 0, collisions: 0, deepest: 0, minClear: 0, score: 0,
+    };
+    drawScene(mid, hudPrefix);
+    await new Promise((r) => setTimeout(r, FRAME_MS));
+  }
+  // Hold final with full stat overlay.
+  const label = `${hudPrefix}  ·  tip ${entry.tipErr.toFixed(1)} px  ·  clear ${entry.minClear.toFixed(1)} px  ·  ${entry.collisions} collisions`;
+  drawScene(entry, label);
+}
+
+function setBigStats(entry) {
+  document.getElementById('score-now').textContent = entry.score.toFixed(1);
+  document.getElementById('stat-tip').textContent = `${entry.tipErr.toFixed(1)} px`;
+  document.getElementById('stat-clear').textContent = `${entry.minClear.toFixed(1)} px`;
+  document.getElementById('stat-coll').textContent = entry.collisions;
+}
+function setBestScore(entry, algoName) {
+  const el = document.getElementById('best-score');
+  el.innerHTML = `${entry.score.toFixed(1)} (tip ${entry.tipErr.toFixed(1)})<span class="algo-tag">${algoName}</span>`;
+}
+
+// ============================================================================
+// Runner.
+// ============================================================================
+let lastBest = null;
+function getOptimizerClass(name) { return globalThis[name]; }
+
+async function runOptimization() {
+  const algoName = document.getElementById('algorithm').value;
+  const budget = parseInt(document.getElementById('budget').value, 10);
+  const cls = getOptimizerClass(algoName);
+  if (!cls) { alert(`Optimizer '${algoName}' not found.`); return; }
+
+  const runBtn = document.getElementById('run-btn');
+  runBtn.disabled = true;
+  runBtn.textContent = `Searching with ${algoName}...`;
+  animationToken++;
+  searchHistory.length = 0;
+  await new Promise((r) => setTimeout(r, 30));
+
+  try {
+    const opt = new cls(objective, budget, N_DIM);
+    opt.optimize();
+    const bestIdx = await animateMontage();
+    const bestEntry = searchHistory[bestIdx];
+    lastBest = bestEntry;
+    setBigStats(bestEntry);
+    setBestScore(bestEntry, algoName);
+    addLeaderboardEntry(algoName, bestEntry, opt.evaluations, { inPlace: liveLeaderboardIdx >= 0 });
+    liveLeaderboardIdx = -1;
+    animateInterpolated(bestEntry, `Best: ${bestEntry.score.toFixed(1)} (${algoName})`);
+  } catch (e) {
+    console.error(e);
+    alert(`${algoName} threw an error: ${e.message}`);
+  } finally {
+    runBtn.disabled = false;
+    runBtn.textContent = '▶ Find the best pose';
+  }
+}
+
+function replayBest() {
+  if (!lastBest) return;
+  animateInterpolated(lastBest, `Best: ${lastBest.score.toFixed(1)}`);
+}
+
+const leaderboard = [];
+let liveLeaderboardIdx = -1;
+function addLeaderboardEntry(algoName, entry, evals, { inPlace = false } = {}) {
+  const row = {
+    name: algoName, score: entry.score, tipErr: entry.tipErr,
+    minClear: entry.minClear, collisions: entry.collisions, evals,
+  };
+  if (inPlace && liveLeaderboardIdx >= 0) leaderboard[liveLeaderboardIdx] = row;
+  else { leaderboard.push(row); liveLeaderboardIdx = leaderboard.length - 1; }
+  const tracked = leaderboard[liveLeaderboardIdx];
+  leaderboard.sort((a, b) => b.score - a.score || a.evals - b.evals);
+  liveLeaderboardIdx = leaderboard.indexOf(tracked);
+  renderLeaderboard();
+}
+function renderLeaderboard() {
+  const body = document.getElementById('leaderboard-body');
+  if (leaderboard.length === 0) {
+    body.innerHTML = '<tr><td colspan="4" style="color: var(--muted); text-align: center;">— no runs yet —</td></tr>';
+    return;
+  }
+  body.innerHTML = leaderboard.map((row) => {
+    const cls = row.name === 'Human Raphson' ? ' class="human-raphson"' : '';
+    return `<tr${cls}>
+      <td>${row.name}</td>
+      <td>${row.score.toFixed(1)}</td>
+      <td>${row.evals}</td>
+      <td>tip ${row.tipErr.toFixed(1)} px · clear ${row.minClear.toFixed(1)} px · ${row.collisions} coll.</td>
+    </tr>`;
+  }).join('');
+}
+
+// ============================================================================
+// Presets (in u-space).
+// ============================================================================
+const PRESETS = {
+  straight: () => Array(N_JOINTS).fill(0.5),
+  right:    () => [0.65, 0.55, 0.55, 0.55, 0.55, 0.55],
+  elbow:    () => [0.7, 0.4, 0.55, 0.55, 0.55, 0.55],
+  fold:     () => [0.5, 0.7, 0.55, 0.55, 0.55, 0.55],
+  random:   () => Array.from({ length: N_JOINTS }, () => Math.random()),
+};
+
+let manualU = null;
+function loadPreset(name) {
+  manualU = PRESETS[name]();
+  const r = evaluatePose(manualU);
+  setBigStats(r);
+  animateInterpolated(r, `Preset: ${name} — score ${r.score.toFixed(1)}`);
+}
+function manualEvaluate() {
+  if (!manualU) loadPreset('straight');
+  const r = evaluatePose(manualU);
+  setBigStats(r);
+  addLeaderboardEntry('Human Raphson', r, 1);
+  setBestScore(r, 'Human Raphson');
+  animateInterpolated(r, `🧠 Human Raphson: ${r.score.toFixed(1)}`);
+}
+
+function resetEverything() {
+  leaderboard.length = 0;
+  liveLeaderboardIdx = -1;
+  lastBest = null;
+  manualU = null;
+  animationToken++;
+  ['evals'].forEach((id) => document.getElementById(id).textContent = '0');
+  ['score-now', 'stat-tip', 'stat-clear', 'stat-coll', 'best-score'].forEach((id) =>
+    document.getElementById(id).textContent = '—');
+  renderLeaderboard();
+  drawIdleScene();
+}
+
+drawIdleScene();
+</script>
+</body>
+</html>
