@@ -12,7 +12,13 @@
 
 Differential Evolution clears a 9-ball rack on a single break.
 
-https://github.com/microprediction/humpday/raw/main/docs/assets/video/the-perfect-break.mp4
+<video src="https://github.com/microprediction/humpday/raw/main/docs/assets/video/the-perfect-break.mp4"
+       poster="https://github.com/microprediction/humpday/raw/main/docs/assets/images/the-perfect-break.png"
+       controls width="720">
+  <a href="https://github.com/microprediction/humpday/raw/main/docs/assets/video/the-perfect-break.mp4">
+    <img src="docs/assets/images/the-perfect-break.png" alt="The perfect break — click to play" width="720" />
+  </a>
+</video>
 
 — one of [**13+ interactive applications in the gallery. Browse them all →**](https://humpday.microprediction.org/applications/index.html)
 
