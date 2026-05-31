@@ -511,6 +511,36 @@
       "ratio_humpday_over_reference": 2.345251292106925
     },
     {
+      "algorithm": "GridSearch",
+      "reference": "regular grid baseline",
+      "problem": "sphere",
+      "humpday_median": 0.002551020408163263,
+      "reference_median": 0.002551020408163263,
+      "humpday_to_opt": 0.002551020408163263,
+      "reference_to_opt": 0.002551020408163263,
+      "ratio_humpday_over_reference": 1.0
+    },
+    {
+      "algorithm": "GridSearch",
+      "reference": "regular grid baseline",
+      "problem": "rosenbrock",
+      "humpday_median": 0.0,
+      "reference_median": 0.0,
+      "humpday_to_opt": 0.0,
+      "reference_to_opt": 0.0,
+      "ratio_humpday_over_reference": 1.0
+    },
+    {
+      "algorithm": "GridSearch",
+      "reference": "regular grid baseline",
+      "problem": "ackley",
+      "humpday_median": 3.560955844352826,
+      "reference_median": 3.560955844352826,
+      "humpday_to_opt": 3.560955844352826,
+      "reference_to_opt": 3.560955844352826,
+      "ratio_humpday_over_reference": 1.0
+    },
+    {
       "algorithm": "HillClimbing",
       "reference": "(1+1)-ES sigma-decay schedule",
       "problem": "sphere",
@@ -634,5 +664,5 @@
   "n_runs": 4,
   "n_trials": 200,
   "n_dim": 2,
-  "recorded_at": "2026-05-31T16:19:02Z"
+  "recorded_at": "2026-05-31T22:39:45Z"
 }
