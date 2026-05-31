@@ -287,7 +287,7 @@
     <div class="controls">
         <div class="container">
             <button class="academic-button" onclick="runQuickTest()">Quick Test (5 algorithms)</button>
-            <button class="academic-button" onclick="runFullContest()">Full Contest (All 22 algorithms)</button>
+            <button class="academic-button" onclick="runFullContest()">Full Contest (All 21 algorithms)</button>
             <button class="academic-button" onclick="resetContest()">Reset</button>
         </div>
     </div>
@@ -384,7 +384,7 @@
         }
 
         function runFullContest() {
-            console.log('Running full contest with all 22 algorithms...');
+            console.log('Running full contest with all 21 algorithms...');
 
             // Verify all algorithms are available
             const verification = OptimizerFactory.verifyAll();
@@ -429,7 +429,7 @@
                     console.log(`Loaded ${available.length} algorithms:`, available);
 
                     if (available.length !== 22) {
-                        throw new Error(`Expected 22 algorithms, found ${available.length}`);
+                        throw new Error(`Expected 21 algorithms, found ${available.length}`);
                     }
 
                     loadingDiv.innerHTML = `Successfully loaded all ${available.length} optimization algorithms`;

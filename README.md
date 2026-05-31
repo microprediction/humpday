@@ -6,7 +6,7 @@
 
 **[Documentation & Live Demos](https://humpday.microprediction.org)**
 
-22 derivative-free optimization algorithms in pure Python. No compilation, no required dependencies.
+21 derivative-free optimization algorithms in pure Python. No compilation, no required dependencies.
 
 ## See it work
 

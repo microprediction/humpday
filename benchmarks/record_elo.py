@@ -1,5 +1,5 @@
 """
-Record current Elo ratings for all 22 HumpDay algorithms.
+Record current Elo ratings for all 21 HumpDay algorithms.
 
 Usage:
     python benchmarks/record_elo.py

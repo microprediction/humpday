@@ -1,5 +1,5 @@
 
-// Test all 22 algorithms in JavaScript modular implementation
+// Test all 21 algorithms in JavaScript modular implementation
 const expectedAlgorithms = [
     // PRIMA algorithms
     'PRIMA_UOBYQA', 'PRIMA_NEWUOA', 'PRIMA_BOBYQA',

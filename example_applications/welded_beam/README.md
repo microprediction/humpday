@@ -67,6 +67,6 @@ python -m example_applications.welded_beam.run
 ```
 
 Output is a small comparison table of optimiser → best cost → best
-geometry. A handful of HumpDay's 22 optimisers should consistently
+geometry. A handful of HumpDay's 21 optimisers should consistently
 discover designs below 2.0; the rest will reveal which families are
 ill-suited to constrained problems.

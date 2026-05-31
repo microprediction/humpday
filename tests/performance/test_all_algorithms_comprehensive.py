@@ -1630,7 +1630,7 @@ def main():
     test_all = len(sys.argv) > 1 and sys.argv[1] == "--all"
 
     if test_all:
-        print("🚀 TESTING ALL 22 ALGORITHMS...")
+        print("🚀 TESTING ALL 21 ALGORITHMS...")
         results = (
             validator.run_comprehensive_validation()
         )  # No priority filter = all algorithms
