@@ -838,8 +838,10 @@ class FireflyAlgorithm extends Optimizer {
         const fireflyBudget = Math.max(this.evaluations, this.nTrials - polishReserve);
 
         const nFireflies = Math.min(25, Math.max(10, this.nDim * 2));
-        const alpha = 0.1; // Randomization parameter
+        const alpha0 = 0.1; // Initial randomization parameter
         const gamma = 1.0; // Light absorption coefficient
+        const alphaDamp = 0.99; // Mirrors mealpy FFA's alpha_damp.
+        let alpha = alpha0;
 
         // Initialize fireflies
         const fireflies = [];
@@ -874,6 +876,8 @@ class FireflyAlgorithm extends Optimizer {
                     }
                 }
             }
+            // Anneal α (mealpy FFA alpha damping).
+            alpha *= alphaDamp;
         }
 
         // Polish stage: L-BFGS-B from the firefly best.

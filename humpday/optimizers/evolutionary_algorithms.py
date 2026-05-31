@@ -787,9 +787,19 @@ class FireflyAlgorithm(BaseOptimizer):
         firefly_budget = max(self.evaluations, self.n_trials - polish_reserve)
 
         n_fireflies = min(15, max(2, firefly_budget // 5))
-        alpha = 0.2  # Randomness coefficient.
+        alpha0 = 0.2  # Initial randomness coefficient.
         beta0 = 1.0  # Attractiveness at zero distance.
         gamma = 1.0  # Light-absorption coefficient.
+        # Geometric damping of the randomness coefficient — matches
+        # mealpy's FFA `alpha_damp` (default 0.99). The original Yang
+        # 2009 paper anneals α to focus exploration early and
+        # exploitation late; without damping the algorithm keeps
+        # injecting large random jitter even after fireflies cluster
+        # around the optimum, which is the snapshot's Ackley failure
+        # mode (median 2.58, 3/8 seeds stuck in a wrong basin because
+        # the constant α=0.2 kept proposing big steps away).
+        alpha_damp = 0.99
+        alpha = alpha0
 
         # Initialize fireflies — list-of-vectors, NOT a 2-D array.
         fireflies = [_A.random_uniform(self.n_dim) for _ in range(n_fireflies)]
@@ -817,6 +827,9 @@ class FireflyAlgorithm(BaseOptimizer):
 
                         if self.evaluations < firefly_budget:
                             intensities[i] = self.evaluate(fireflies[i])
+            # Anneal α at the end of each outer (i, j) sweep, matching
+            # mealpy FFA's `dyn_alpha = alpha_damp * alpha`.
+            alpha *= alpha_damp
 
         # Polish stage: L-BFGS-B from the firefly best.
         self._lbfgs_polish()
