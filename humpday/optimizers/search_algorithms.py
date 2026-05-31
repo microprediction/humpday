@@ -158,53 +158,77 @@ class CoordinateDescent(BaseOptimizer):
 
 
 class PatternSearch(BaseOptimizer):
-    """Pattern Search algorithm.
+    """Hooke-Jeeves pattern search with exploratory + pattern moves.
 
     Pure-Python via the `humpday._array` shim — no direct numpy use.
-    Probes both signs of each coordinate axis at the current step size;
-    grows the step when it succeeds, halves it when no probe improves;
-    restarts when the step gets too small.
+
+    The classic Hooke-Jeeves algorithm (1961):
+      1. Exploratory move from `base`: try `±step` along each axis,
+         keep improvements (single-shot per coordinate).
+      2. If the exploratory move improved on `base`, do a *pattern
+         move* — extrapolate from `base` through the new point:
+         `new_base = x + (x - base)`. This is the speed-up that
+         lets Hooke-Jeeves race down valleys like Rosenbrock that
+         pure coordinate descent zigzags through.
+      3. Do another exploratory move from `new_base`; accept it
+         (and the pattern move) if it beats the bare exploratory.
+      4. If no exploratory improvement after a full sweep, halve
+         `step` until it shrinks below 1e-12.
+
+    The previous implementation was "first-improvement among the 2n
+    axis directions" with a `step *= 0.5` shrink and a random restart
+    when `step < 1e-6` — neither the pattern-move acceleration nor
+    a precision floor below ~1e-6, which is why the snapshot showed
+    a ~1.2e+10× gap on Ackley vs scipy DIRECT.
     """
 
     def optimize(self):
-        x = _A.random_uniform(self.n_dim)
-        f = self.evaluate(x)
-        step_size = 0.1
+        base = _A.random_uniform(self.n_dim)
+        f_base = self.evaluate(base)
+        step = 0.1
+        step_min = 1e-12
 
-        while self.evaluations < self.n_trials:
-            improved = False
+        while self.evaluations < self.n_trials and step > step_min:
+            # 1. Exploratory move from base.
+            x, f = self._explore(base.copy(), f_base, step)
 
-            # Pattern directions: +/- each coordinate axis.
-            directions = []
-            for i in range(self.n_dim):
-                direction = _A.zeros(self.n_dim)
-                direction[i] = 1
-                directions.append(direction)
-                directions.append(-direction)
+            if f < f_base:
+                if self.evaluations < self.n_trials:
+                    # 2. Pattern move: extrapolate from base through x.
+                    new_base = _A.clip(x + (x - base), 0, 1)
+                    f_new_base = self.evaluate(new_base)
+                    # 3. Exploratory move from the pattern point.
+                    x2, f2 = self._explore(new_base.copy(), f_new_base, step)
+                    if f2 < f:
+                        base, f_base = x2, f2
+                    else:
+                        base, f_base = x, f
+                else:
+                    base, f_base = x, f
+            else:
+                # 4. No exploratory progress at this step: halve.
+                step *= 0.5
 
-            # First-improvement: take the first direction that helps.
-            for direction in directions:
+        return self.best_value, self.best_x
+
+    def _explore(self, x, f, step):
+        """Single exploratory sweep — try ±step on each axis in order,
+        keep improvements. First-improvement per coordinate (the +
+        direction wins immediately if it helps; otherwise try −)."""
+        for i in range(self.n_dim):
+            if self.evaluations >= self.n_trials:
+                break
+            for sign in (1, -1):
                 if self.evaluations >= self.n_trials:
                     break
-
-                x_trial = _A.clip(x + step_size * direction, 0, 1)
+                xi_new = max(0.0, min(1.0, float(x[i]) + sign * step))
+                if abs(xi_new - float(x[i])) < 1e-15:
+                    continue
+                x_trial = x.copy()
+                x_trial[i] = xi_new
                 f_trial = self.evaluate(x_trial)
-
                 if f_trial < f:
                     x = x_trial
                     f = f_trial
-                    improved = True
-                    break
-
-            if improved:
-                step_size = min(0.3, step_size * 1.2)
-            else:
-                step_size *= 0.5
-                if step_size < 1e-6:
-                    # Random restart.
-                    x = _A.random_uniform(self.n_dim)
-                    if self.evaluations < self.n_trials:
-                        f = self.evaluate(x)
-                    step_size = 0.1
-
-        return self.best_value, self.best_x
+                    break  # don't try the other sign on this coord
+        return x, f

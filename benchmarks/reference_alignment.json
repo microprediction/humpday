@@ -604,35 +604,35 @@
       "algorithm": "PatternSearch",
       "reference": "scipy.optimize.direct (DIRECT)",
       "problem": "sphere",
-      "humpday_median": 4.2138507759282547e-13,
+      "humpday_median": 1.6819036025804625e-15,
       "reference_median": 0.0,
-      "humpday_to_opt": 4.2138507759282547e-13,
+      "humpday_to_opt": 1.6819036025804625e-15,
       "reference_to_opt": 0.0,
-      "ratio_humpday_over_reference": 422.38507759282544
+      "ratio_humpday_over_reference": 2.681903602580462
     },
     {
       "algorithm": "PatternSearch",
       "reference": "scipy.optimize.direct (DIRECT)",
       "problem": "rosenbrock",
-      "humpday_median": 0.15215919320399093,
+      "humpday_median": 0.1349326594759448,
       "reference_median": 0.010564870537897215,
-      "humpday_to_opt": 0.15215919320399093,
+      "humpday_to_opt": 0.1349326594759448,
       "reference_to_opt": 0.010564870537897215,
-      "ratio_humpday_over_reference": 14.402371771444596
+      "ratio_humpday_over_reference": 12.771823279037495
     },
     {
       "algorithm": "PatternSearch",
       "reference": "scipy.optimize.direct (DIRECT)",
       "problem": "ackley",
-      "humpday_median": 1.771094968505693e-05,
+      "humpday_median": 5.508267794329669e-06,
       "reference_median": 4.440892098500626e-16,
-      "humpday_to_opt": 1.771094968505693e-05,
+      "humpday_to_opt": 5.508267794329669e-06,
       "reference_to_opt": 4.440892098500626e-16,
-      "ratio_humpday_over_reference": 12264442920.320574
+      "ratio_humpday_over_reference": 3814354236.3989987
     }
   ],
   "n_runs": 4,
   "n_trials": 200,
   "n_dim": 2,
-  "recorded_at": "2026-05-30T22:22:57Z"
+  "recorded_at": "2026-05-31T00:51:53Z"
 }
