@@ -587,6 +587,21 @@ class CMAEvolutionStrategy(BaseOptimizer):
 
         n = self.n_dim
 
+        # Reserve budget for the L-BFGS-B polish at the end. CMA-ES
+        # converges to a basin geometrically but its stochastic
+        # proposals plateau in a noise floor governed by σ. The polish
+        # closes the residual.
+        #
+        # Sweep at n_trials=200, n_dim=2 (8 seeds, median):
+        #   polish_factor=0   sphere=5.7e-10  rb=0.147  ackley=9.2e-4
+        #   polish_factor=10  sphere=0        rb=0.21   ackley=5.3e-4
+        #   polish_factor=20  sphere=0        rb=0.067  ackley=6.7e-4
+        # 20·n is the sweet spot: enough polish iterations to refine
+        # past the σ noise floor while leaving CMA-ES enough generations
+        # to find the basin. Matches the pattern in DE/SA/PSO/Firefly.
+        polish_reserve = min(20 * n, self.n_trials // 2)
+        cmaes_budget = max(self.evaluations, self.n_trials - polish_reserve)
+
         # Hansen's recommended parameters.
         lambda_ = min(50, 4 + int(3 * math.log(n)))  # population size
         mu = lambda_ // 2  # number of parents
@@ -627,7 +642,7 @@ class CMAEvolutionStrategy(BaseOptimizer):
         # protects against pathological infinite loops.
         max_generations = self.n_trials
 
-        while self.evaluations < self.n_trials and generation < max_generations:
+        while self.evaluations < cmaes_budget and generation < max_generations:
             generation += 1
 
             # Sample λ offspring from N(mean, sigma^2 * C). Use a
@@ -643,7 +658,7 @@ class CMAEvolutionStrategy(BaseOptimizer):
 
             population = []
             for _ in range(lambda_):
-                if self.evaluations >= self.n_trials:
+                if self.evaluations >= cmaes_budget:
                     break
                 std_z = _A.random_normal(n)
                 z = _A.linalg.matvec(L_C, std_z)
@@ -747,6 +762,9 @@ class CMAEvolutionStrategy(BaseOptimizer):
             # the cap was throttling exploration without changing the
             # feasible search space.
             sigma = sigma * math.exp((cs / damps) * (_A.norm(ps) / math.sqrt(n) - 1))
+
+        # Polish stage: L-BFGS-B from the CMA-ES best (shared on base).
+        self._lbfgs_polish()
 
         return self.best_value, self.best_x
 

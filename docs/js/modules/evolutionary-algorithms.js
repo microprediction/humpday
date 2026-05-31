@@ -629,6 +629,10 @@ class CMAEvolutionStrategy extends Optimizer {
     optimize() {
         const n = this.nDim;
 
+        // Reserve budget for L-BFGS-B polish (mirrors Python port).
+        const polishReserve = Math.min(20 * n, Math.floor(this.nTrials / 2));
+        const cmaesBudget = Math.max(this.evaluations, this.nTrials - polishReserve);
+
         // Hansen's recommended parameters.
         const lambda_ = Math.min(50, 4 + Math.floor(3 * Math.log(n)));
         const mu = Math.floor(lambda_ / 2);
@@ -666,7 +670,7 @@ class CMAEvolutionStrategy extends Optimizer {
         let generation = 0;
         const maxGenerations = this.nTrials;
 
-        while (this.evaluations < this.nTrials && generation < maxGenerations) {
+        while (this.evaluations < cmaesBudget && generation < maxGenerations) {
             generation += 1;
 
             // Sample λ offspring from N(mean, σ² C) via Cholesky.
@@ -679,7 +683,7 @@ class CMAEvolutionStrategy extends Optimizer {
 
             const population = [];
             for (let k = 0; k < lambda_; k++) {
-                if (this.evaluations >= this.nTrials) break;
+                if (this.evaluations >= cmaesBudget) break;
                 const stdZ = new Array(n);
                 for (let i = 0; i < n; i++) stdZ[i] = this._gaussian();
                 const z = Linalg.matvec(L_C, stdZ);
@@ -790,6 +794,9 @@ class CMAEvolutionStrategy extends Optimizer {
             // was preventing precise convergence on smooth basins).
             sigma = sigma * Math.exp((cs / damps) * (psNorm / Math.sqrt(n) - 1));
         }
+
+        // Polish stage: L-BFGS-B from the CMA-ES best (shared on base).
+        this._lbfgsPolish();
 
         return {
             bestValue: this.bestValue,
