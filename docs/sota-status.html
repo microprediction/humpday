@@ -220,7 +220,7 @@
         </p>
 
         <div class="summary">
-            <strong>TL;DR</strong> &mdash; 20 SOTA-class algorithms + 1 baseline.
+            <strong>TL;DR</strong> &mdash; 20 SOTA-class algorithms + 2 baselines.
             On the SOTA-class set (60 cells, 20 algorithms &times; 3 problems):
             <ul style="margin: 8px 0 0;">
                 <li><strong>36 cells (60%)</strong> &mdash; HumpDay wins reference (ratio &le; 1).</li>
@@ -472,7 +472,7 @@
             <tr><td colspan="6" class="notes">&nbsp;&nbsp;&nbsp;&nbsp;Rosenbrock gap reflects scipy's unbudgeted L-BFGS-B polish &mdash; scipy.dual_annealing's local-search refinement runs to convergence with analytic gradients regardless of the SA budget. HumpDay's polish is budgeted (50%) and uses FD gradients. Sphere and Ackley are clean wins.</td></tr>
         </table>
 
-        <h2>Baselines <span style="color:#888; font-weight:400; font-size:0.7em;">&middot; 1 algorithm</span></h2>
+        <h2>Baselines <span style="color:#888; font-weight:400; font-size:0.7em;">&middot; 2 algorithms</span></h2>
 
         <div class="baseline-note">
             <strong>Baselines are not SOTA algorithms.</strong> They're included
@@ -500,15 +500,21 @@
                 <td class="verdict v-baseline">BASELINE</td>
             </tr>
             <tr><td colspan="6" class="notes">&nbsp;&nbsp;&nbsp;&nbsp;RandomSearch is exactly what it sounds like: i.i.d. uniform draws. Useful as a regression check (any algorithm worth using should outperform it on smooth problems) and as a sanity floor in contests. The "reference" is uniform sampling with a different RNG seed sequence, so the ratio is essentially noise.</td></tr>
+            <tr>
+                <td class="algo">GridSearch</td>
+                <td class="ref">regular grid baseline</td>
+                <td class="cell wins">1.00</td>
+                <td class="cell wins">1.00</td>
+                <td class="cell wins">1.00</td>
+                <td class="verdict v-baseline">BASELINE</td>
+            </tr>
+            <tr><td colspan="6" class="notes">&nbsp;&nbsp;&nbsp;&nbsp;Enumerates a uniform Cartesian grid over <code>[0, 1]^n_dim</code> with <code>n_per_axis = round(n_trials^(1/n_dim))</code> bin-centred points. Deterministic in <code>n_trials</code> and <code>n_dim</code>; the reference adapter runs the same enumeration so ratios are exactly 1. Grid size scales as <code>n_per_axis^n_dim</code>, so GridSearch is impractical past <strong><code>n_dim ≈ 3</code></strong>; at higher dimensions the grid degenerates to a handful of points per axis.</td></tr>
         </table>
 
-        <p>
-            <strong>GridSearch</strong> is not currently in the catalogue. If added,
-            it would also belong in this section, with a strict cap on
-            <code>n_dim</code> &mdash; grid search scales as
-            <code>n_per_axis<sup>n_dim</sup></code> and is intractable past
-            ~4 dimensions.
-        </p>
+        <h2>Suggested contributions</h2>
+        <ul>
+            <li><a href="https://github.com/microprediction/humpday/issues/209"><strong>DIRECT</strong> (issue #209)</a> &mdash; DIviding RECTangles (Jones et al. 1993). SOTA derivative-free global optimizer with provable convergence. Step-by-step contribution guide on the issue.</li>
+        </ul>
 
         <h2>How to read the gaps</h2>
 
