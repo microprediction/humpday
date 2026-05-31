@@ -117,30 +117,11 @@ if (typeof module !== 'undefined' && module.exports) {
             }
         }
 
-        // --- Polish stage: coordinate descent from best DE point ----
-        // Halves the step on each unimproved round, refining until the
-        // step shrinks below 1e-14 or the budget is exhausted.
-        let center = this.bestX.slice();
-        let centerFx = this.bestValue;
-        let step = 0.05;
-        while (this.evaluations < this.nTrials && step > 1e-14) {
-            let improved = false;
-            for (let j = 0; j < n && !improved; j++) {
-                for (const sign of [-1, 1]) {
-                    if (this.evaluations >= this.nTrials) break;
-                    const trial = center.slice();
-                    trial[j] = Math.max(0, Math.min(1, trial[j] + sign * step));
-                    const fTrial = this.evaluate(trial);
-                    if (fTrial < centerFx) {
-                        center = trial;
-                        centerFx = fTrial;
-                        improved = true;
-                        break;
-                    }
-                }
-            }
-            if (!improved) step *= 0.5;
-        }
+        // --- Polish stage: L-BFGS from best DE point ----------------
+        // Matches scipy.differential_evolution `polish=True` (uses
+        // L-BFGS-B). Same inlined two-loop recursion as
+        // SimulatedAnnealing's polish.
+        this._lbfgsPolish();
 
         return {
             bestValue: this.bestValue,
@@ -149,6 +130,112 @@ if (typeof module !== 'undefined' && module.exports) {
             success: true,
             path: this.trackPath ? this.path : null
         };
+    }
+
+    _lbfgsPolish() {
+        const n = this.nDim;
+        let x = this.bestX.slice();
+        let f = this.bestValue;
+        let grad = this._fdGradient(x);
+
+        const memory = Math.min(5, n);
+        const sList = [];
+        const yList = [];
+
+        while (this.evaluations < this.nTrials - 2 * n) {
+            let direction = grad.map(g => -g);
+            const alpha = new Array(sList.length).fill(0);
+            for (let i = sList.length - 1; i >= 0; i--) {
+                let sy = 0;
+                for (let k = 0; k < n; k++) sy += sList[i][k] * yList[i][k];
+                if (Math.abs(sy) < 1e-30) continue;
+                const rho = 1.0 / sy;
+                let dot = 0;
+                for (let k = 0; k < n; k++) dot += sList[i][k] * direction[k];
+                alpha[i] = rho * dot;
+                for (let k = 0; k < n; k++) direction[k] -= alpha[i] * yList[i][k];
+            }
+            for (let i = 0; i < sList.length; i++) {
+                let sy = 0;
+                for (let k = 0; k < n; k++) sy += sList[i][k] * yList[i][k];
+                if (Math.abs(sy) < 1e-30) continue;
+                const rho = 1.0 / sy;
+                let dot = 0;
+                for (let k = 0; k < n; k++) dot += yList[i][k] * direction[k];
+                const beta = rho * dot;
+                for (let k = 0; k < n; k++) direction[k] += (alpha[i] - beta) * sList[i][k];
+            }
+
+            const c1 = 1e-4;
+            let gd = 0;
+            for (let k = 0; k < n; k++) gd += grad[k] * direction[k];
+            let step = 1.0;
+            let newX = x.slice();
+            let newF = f;
+            if (gd < -1e-30) {
+                while (step > 1e-12) {
+                    if (this.evaluations >= this.nTrials) break;
+                    const candidate = new Array(n);
+                    for (let k = 0; k < n; k++) {
+                        candidate[k] = Math.max(0, Math.min(1, x[k] + step * direction[k]));
+                    }
+                    const candF = this.evaluate(candidate);
+                    if (candF <= f + c1 * step * gd) {
+                        newX = candidate;
+                        newF = candF;
+                        break;
+                    }
+                    step *= 0.5;
+                }
+            } else {
+                sList.length = 0;
+                yList.length = 0;
+            }
+
+            const newGrad = this._fdGradient(newX);
+            let gNorm = 0;
+            for (let k = 0; k < n; k++) gNorm += newGrad[k] * newGrad[k];
+            if (Math.sqrt(gNorm) < 1e-6) break;
+
+            const s = new Array(n);
+            const y = new Array(n);
+            for (let k = 0; k < n; k++) {
+                s[k] = newX[k] - x[k];
+                y[k] = newGrad[k] - grad[k];
+            }
+            let sy = 0;
+            for (let k = 0; k < n; k++) sy += s[k] * y[k];
+            if (sy > 1e-12) {
+                sList.push(s);
+                yList.push(y);
+                if (sList.length > memory) {
+                    sList.shift();
+                    yList.shift();
+                }
+            }
+            x = newX;
+            f = newF;
+            grad = newGrad;
+        }
+    }
+
+    _fdGradient(x) {
+        const n = this.nDim;
+        const h = 1e-6;
+        const grad = new Array(n).fill(0);
+        for (let i = 0; i < n; i++) {
+            if (this.evaluations >= this.nTrials) break;
+            const xPlus = x.slice();
+            xPlus[i] = Math.min(1.0, x[i] + h);
+            const fPlus = this.evaluate(xPlus);
+            if (this.evaluations >= this.nTrials) break;
+            const xMinus = x.slice();
+            xMinus[i] = Math.max(0.0, x[i] - h);
+            const fMinus = this.evaluate(xMinus);
+            const denom = xPlus[i] - xMinus[i];
+            if (denom > 0) grad[i] = (fPlus - fMinus) / denom;
+        }
+        return grad;
     }
 }
 
