@@ -4,7 +4,7 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' 'unsafe-inline' https://cdnjs.cloudflare.com https://cdn.jsdelivr.net; style-src 'self' 'unsafe-inline';">
-    <title>Adaptive Random Search - Implementation Details</title>
+    <title>Rechenberg (1+1)-ES — Implementation Details</title>
     <style>
         .site-nav {
             position: sticky;
@@ -245,8 +245,8 @@
     </nav>
     <div class="container">
         <div class="header">
-            <h1>Adaptive Random Search (Custom)</h1>
-            <p>Intelligent Random Search with Learning</p>
+            <h1>Rechenberg's (1+1)-Evolution Strategy</h1>
+            <p>One-parent, one-offspring per generation, with the 1/5-success-rule step adaptation</p>
         </div>
 
         <div class="content">
@@ -255,23 +255,20 @@
             </div>
 
             <div class="algorithm-description">
-                <strong>Adaptive Random Search (ARS)</strong> extends basic random search with intelligent adaptation mechanisms that learn from the optimization history. Unlike pure random search, ARS adjusts its sampling strategy, step sizes, or search regions based on success patterns, making it more efficient while maintaining the simplicity and robustness of random search methods.
-            </div>
-
-            <div class="adaptive-note">
-                <h3>Adaptive Intelligence</h3>
-                <p><strong>Adaptive Random Search learns and adapts during optimization:</strong></p>
-                <ul>
-                    <li><strong>Success-Based Learning:</strong> Adjust strategy based on improvement patterns</li>
-                    <li><strong>Dynamic Step Size:</strong> Increase/decrease search radius based on success rate</li>
-                    <li>️ <strong>Region Focusing:</strong> Concentrate search in promising areas</li>
-                    <li>️ <strong>Exploration Balance:</strong> Maintain global search capability while exploiting good regions</li>
-                </ul>
+                <strong>Rechenberg's (1+1)-ES</strong> is the canonical
+                Evolution Strategy from Rechenberg (1973). A single parent
+                proposes one Gaussian-perturbed offspring per generation;
+                the offspring is accepted if it beats the parent. The step
+                size σ is adapted by the 1/5-success-rule: grow σ by 1.5×
+                when more than 1/5 of recent trials improved, shrink by
+                1.5⁻¹ otherwise. Was formerly named
+                <code>AdaptiveRandomSearch</code> in HumpDay; the new name
+                matches the canonical literature.
             </div>
 
             <div class="visualization-section">
                 <h3>Interactive 3D Visualization</h3>
-                <p>See Adaptive Random Search in action on 3D optimization surfaces:</p>
+                <p>See Rechenberg (1+1)-ES in action on 3D optimization surfaces:</p>
                 <div id="algorithmDemo" style="width: 100%; height: 600px; border: 1px solid #ddd; border-radius: 4px; margin: 15px 0; position: relative; background: #fafafa;">
                     <div id="loadingMessage" style="position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%); text-align: center; color: #666; z-index: 10; background: rgba(255,255,255,0.9); padding: 20px; border-radius: 4px;">
                         <p>Loading 3D visualization...</p>
@@ -323,10 +320,10 @@
                     <tr>
                         <td class="category">Humpday Python Implementation</td>
                         <td>
-                            <strong>Humpday Adaptive Random Search</strong><br>
+                            <strong>HumpDay Rechenberg</strong><br>
                             Custom implementation with success-rate adaptation<br>
                             Dynamic step size and region focusing<br>
-                            <em>File: humpday/optimizers/adaptiverandom.py</em>
+                            <em>File: humpday/optimizers/search_algorithms.py</em>
                         </td>
                         <td>
                             <a href="https://github.com/microprediction/humpday/blob/main/humpday/optimizers/search_algorithms.py#L14" target="_blank" class="link-button python">Source</a>
@@ -338,7 +335,7 @@
                             <strong>Browser Implementation</strong><br>
                             Pure JavaScript adaptive random search<br>
                             Success tracking and parameter adaptation<br>
-                            <em>Class: AdaptiveRandomSearch</em>
+                            <em>Class: Rechenberg</em>
                         </td>
                         <td>
                             <a href="https://github.com/microprediction/humpday/blob/main/docs/js/modules/search-algorithms.js#L16" target="_blank" class="link-button javascript">JS Implementation</a>
