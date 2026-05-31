@@ -194,7 +194,6 @@ class TestComprehensiveCoverage:
             GeneticAlgorithm,
             HarmonySearch,
             PatternSearch,
-            TabuSearch,
         )
 
         def edge_objective(x):
@@ -205,7 +204,6 @@ class TestComprehensiveCoverage:
             PatternSearch,
             HarmonySearch,
             FireflyAlgorithm,
-            TabuSearch,
             GeneticAlgorithm,
         ]
 

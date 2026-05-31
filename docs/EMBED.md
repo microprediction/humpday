@@ -40,7 +40,7 @@ document.addEventListener('DOMContentLoaded', function () {
   Python (PRIMA UOBYQA/NEWUOA/BOBYQA, NelderMead, Powell, LBFGSB,
   DifferentialEvolution, ParticleSwarm, SimulatedAnnealing,
   GeneticAlgorithm, RandomSearch, BayesianOpt, CMAEvolutionStrategy,
-  TabuSearch, FireflyAlgorithm, AntColonyOpt, EvolutionStrategy,
+  FireflyAlgorithm, AntColonyOpt, EvolutionStrategy,
   HillClimbing, HarmonySearch, Rechenberg, CoordinateDescent,
   PatternSearch).
 - **12 test surfaces** — Sphere, Rosenbrock, Ackley, Rastrigin,

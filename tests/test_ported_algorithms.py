@@ -36,7 +36,6 @@ PORTED = [
     ("evolutionary_algorithms", "HillClimbing"),
     ("evolutionary_algorithms", "SimulatedAnnealing"),
     ("evolutionary_algorithms", "HarmonySearch"),
-    ("evolutionary_algorithms", "TabuSearch"),
     ("evolutionary_algorithms", "FireflyAlgorithm"),
     ("evolutionary_algorithms", "ParticleSwarm"),
     ("evolutionary_algorithms", "DifferentialEvolution"),
@@ -96,7 +95,7 @@ def test_pure_backend_works_for_ported_algorithms(tmp_path):
 
         from humpday.optimizers.evolutionary_algorithms import (
             RandomSearch, HillClimbing, SimulatedAnnealing, HarmonySearch,
-            TabuSearch, FireflyAlgorithm,
+            FireflyAlgorithm,
             ParticleSwarm, DifferentialEvolution, GeneticAlgorithm,
             EvolutionStrategy,
             AntColonyOpt, CMAEvolutionStrategy, BayesianOpt,
@@ -115,7 +114,7 @@ def test_pure_backend_works_for_ported_algorithms(tmp_path):
         results = {}
         ALGORITHMS = [
             RandomSearch, HillClimbing, SimulatedAnnealing, HarmonySearch,
-            TabuSearch, FireflyAlgorithm,
+            FireflyAlgorithm,
             ParticleSwarm, DifferentialEvolution, GeneticAlgorithm,
             EvolutionStrategy,
             AntColonyOpt, CMAEvolutionStrategy, BayesianOpt,

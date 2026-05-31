@@ -17,7 +17,6 @@ from .evolutionary_algorithms import (
     ParticleSwarm,
     RandomSearch,
     SimulatedAnnealing,
-    TabuSearch,
 )
 from .prima_algorithms import PRIMA_BOBYQA, PRIMA_NEWUOA, PRIMA_UOBYQA
 from .scipy_algorithms import LBFGSB, NelderMead, Powell
@@ -28,7 +27,9 @@ from .search_algorithms import (
     Rechenberg,
 )
 
-# Define PURE_OPTIMIZERS for backward compatibility - all 22 algorithms
+# Define PURE_OPTIMIZERS for backward compatibility - all 21 algorithms.
+# TabuSearch was removed in this commit — no canonical continuous-domain
+# reference exists for it, so it lived purely as a humpday-ism.
 PURE_OPTIMIZERS = {
     # PRIMA algorithms
     "PRIMA_UOBYQA": PRIMA_UOBYQA,
@@ -46,7 +47,6 @@ PURE_OPTIMIZERS = {
     "RandomSearch": RandomSearch,
     "BayesianOpt": BayesianOpt,
     "CMAEvolutionStrategy": CMAEvolutionStrategy,
-    "TabuSearch": TabuSearch,
     "FireflyAlgorithm": FireflyAlgorithm,
     "AntColonyOpt": AntColonyOpt,
     "EvolutionStrategy": EvolutionStrategy,
@@ -102,7 +102,6 @@ genetic_algorithm = create_optimizer_function(GeneticAlgorithm)
 random_search = create_optimizer_function(RandomSearch)
 bayesian_opt = create_optimizer_function(BayesianOpt)
 cma_evolution_strategy = create_optimizer_function(CMAEvolutionStrategy)
-tabu_search = create_optimizer_function(TabuSearch)
 firefly_algorithm = create_optimizer_function(FireflyAlgorithm)
 ant_colony_opt = create_optimizer_function(AntColonyOpt)
 evolution_strategy = create_optimizer_function(EvolutionStrategy)
@@ -163,7 +162,6 @@ def suggest_pure(n_dim, n_trials):
             "GeneticAlgorithm",
             "PatternSearch",
             "EvolutionStrategy",
-            "TabuSearch",
         ]
     elif n_dim <= 50:
         return [
@@ -192,7 +190,6 @@ def suggest_pure(n_dim, n_trials):
             "HillClimbing",
             "CoordinateDescent",
             "SimulatedAnnealing",
-            "TabuSearch",
             "EvolutionStrategy",
             "GeneticAlgorithm",
         ]
@@ -219,7 +216,6 @@ __all__ = [
     "random_search",
     "bayesian_opt",
     "cma_evolution_strategy",
-    "tabu_search",
     "firefly_algorithm",
     "ant_colony_opt",
     "evolution_strategy",

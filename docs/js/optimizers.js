@@ -3118,7 +3118,7 @@ const OptimizerFactory = {
             'PRIMA_UOBYQA', 'PRIMA_NEWUOA', 'SciPy_BFGS', 'SciPy_Powell', 'SciPy_NelderMead',
             'DifferentialEvolution', 'ParticleSwarm', 'SimulatedAnnealing', 'GeneticAlgorithm',
             'RandomSearch', 'BayesianOpt', 'CMAEvolutionStrategy', 'Rechenberg',
-            'CoordinateDescent', 'PatternSearch', 'HillClimbing', 'TabuSearch', 'FireflyAlgorithm',
+            'CoordinateDescent', 'PatternSearch', 'HillClimbing', 'FireflyAlgorithm',
             'AntColonyOpt', 'HarmonySearch', 'EvolutionStrategy'
         ];
     }
