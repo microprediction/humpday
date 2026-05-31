@@ -239,21 +239,16 @@
         </p>
         <ul>
             <li><code>PatternSearch</code> (Hooke-Jeeves, 1961) is benchmarked against
-                a textbook Hooke-Jeeves implementation &mdash; <em>not</em> against
-                <code>scipy.optimize.direct</code>, which is a deterministic global
-                optimizer in a different class.</li>
+                a textbook Hooke-Jeeves implementation.</li>
             <li><code>CoordinateDescent</code> (greedy expansion per axis) is
-                benchmarked against textbook greedy coordinate descent &mdash;
-                <em>not</em> against scipy Powell with <code>direc=I</code>, which
-                uses golden-section line search per axis.</li>
+                benchmarked against textbook greedy coordinate descent.</li>
             <li><code>Rechenberg</code> ((1+1)-ES with 1/5 success rule) is benchmarked
-                against the canonical (1+1)-ES, not against a CMA-ES variant.</li>
+                against the canonical (1+1)-ES.</li>
         </ul>
         <p>
-            The result is that a "win" or "tie" on this page means HumpDay's
-            implementation is as good as or better than a canonical
-            implementation of <em>the same algorithm</em>. We don't claim
-            HumpDay's PatternSearch beats DIRECT; that would be silly.
+            A "win" or "tie" on this page means HumpDay's implementation
+            is as good as or better than a canonical implementation of the
+            same algorithm.
         </p>
 
         <h2>Categorization key</h2>
@@ -325,7 +320,7 @@
                 <td class="cell gap">395</td>
                 <td class="verdict v-tracked">TRACKED</td>
             </tr>
-            <tr><td colspan="6" class="notes">&nbsp;&nbsp;&nbsp;&nbsp;Rosenbrock matches. Sphere and Ackley gaps come from HumpDay's restart logic (added to escape Ackley basins): it breaks out at <code>step &le; 1e-6</code> when <code>f &le; 1e-8</code>, while the textbook reference iterates until <code>step &le; 1e-12</code>. Both implementations are correct; HumpDay trades a few orders of magnitude of precision on smooth basins for resilience on multimodal ones.</td></tr>
+            <tr><td colspan="6" class="notes">&nbsp;&nbsp;&nbsp;&nbsp;Rosenbrock matches. Sphere and Ackley gaps come from HumpDay's restart logic: it breaks out at <code>step &le; 1e-6</code> when <code>f &le; 1e-8</code>, while the textbook reference iterates until <code>step &le; 1e-12</code>. HumpDay trades precision on smooth basins for resilience on multimodal ones.</td></tr>
 
             <tr>
                 <td class="algo">DifferentialEvolution</td>
@@ -454,7 +449,7 @@
                 <td class="cell wins">3e-08</td>
                 <td class="verdict v-mostly">MOSTLY SOLID</td>
             </tr>
-            <tr><td colspan="6" class="notes">&nbsp;&nbsp;&nbsp;&nbsp;Rosenbrock 12&times; off &mdash; this was 4e13&times; off before this campaign. The residual is the Lagrange-polynomial geometry maintenance (BIGLAG/BIGDEN) used by the PDFO Fortran reference; HumpDay uses a simpler "furthest from k_opt" replacement rule. Tracked as a follow-up.</td></tr>
+            <tr><td colspan="6" class="notes">&nbsp;&nbsp;&nbsp;&nbsp;Rosenbrock 12&times; off. The residual is the Lagrange-polynomial geometry maintenance (BIGLAG/BIGDEN) used by the PDFO Fortran reference; HumpDay uses a simpler "furthest from k_opt" replacement rule. Tracked as a follow-up.</td></tr>
 
             <tr>
                 <td class="algo">Rechenberg</td>
@@ -524,7 +519,7 @@
 
         <h3>Where the gaps are implementation trade-offs</h3>
         <ul>
-            <li><strong>CoordinateDescent</strong> and <strong>PatternSearch</strong> on sphere/Ackley &mdash; HumpDay's implementations include a restart trigger that breaks out when <code>step</code> shrinks below <code>1e-6</code> with <code>f &le; 1e-8</code>. This loses a few orders of magnitude of refinement on smooth basins compared to a textbook implementation that runs to <code>step_min = 1e-12</code>, but it prevents trapping in local basins on multimodal landscapes like Ackley. Removing the restart would close these gaps but make the algorithm worse on multimodal problems.</li>
+            <li><strong>CoordinateDescent</strong> and <strong>PatternSearch</strong> on sphere/Ackley &mdash; HumpDay's implementations include a restart trigger that breaks out when <code>step</code> shrinks below <code>1e-6</code> with <code>f &le; 1e-8</code>. The textbook reference iterates to <code>step_min = 1e-12</code>, which gives a few extra orders of magnitude on smooth basins but traps in local basins on multimodal landscapes.</li>
         </ul>
 
         <h3>Where the gaps are 4-seed RNG variance</h3>
