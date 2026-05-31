@@ -232,86 +232,14 @@ class LBFGSB extends Optimizer {
     }
 
     optimize() {
-        let x = Array(this.nDim).fill(0).map(() => Math.random());
-        let fx = this.evaluate(x);
-        let grad = this.numericGradient(x);
-
-        const m = Math.min(5, this.nDim); // Memory size
-        const s_list = []; // Step vectors
-        const y_list = []; // Gradient difference vectors
-
-        while (this.evaluations < this.nTrials - this.nDim * 2) {
-            // L-BFGS direction calculation
-            let direction = [...grad].map(g => -g);
-
-            // Two-loop recursion
-            const alpha = [];
-            for (let i = s_list.length - 1; i >= 0; i--) {
-                const rho = 1 / MathUtils.dot(s_list[i], y_list[i]);
-                alpha[i] = rho * MathUtils.dot(s_list[i], direction);
-                direction = MathUtils.subtract(direction, MathUtils.scale(y_list[i], alpha[i]));
-            }
-
-            for (let i = 0; i < s_list.length; i++) {
-                const rho = 1 / MathUtils.dot(s_list[i], y_list[i]);
-                const beta = rho * MathUtils.dot(y_list[i], direction);
-                direction = MathUtils.add(direction, MathUtils.scale(s_list[i], alpha[i] - beta));
-            }
-
-            // Backtracking line search with Armijo (sufficient-decrease)
-            // condition. Starts at step=1 (the natural L-BFGS-B Newton
-            // step) and halves until the candidate satisfies the
-            // Armijo rule or the step shrinks below 1e-12.
-            const c1 = 1e-4;
-            let gd = 0;
-            for (let i = 0; i < this.nDim; i++) gd += grad[i] * direction[i];
-            let step = 1.0;
-            let newX = x.slice();
-            let newFx = fx;
-            if (gd < -1e-30) {
-                while (step > 1e-12) {
-                    if (this.evaluations >= this.nTrials) break;
-                    const candidate = x.map((xi, i) =>
-                        MathUtils.clip(xi + step * direction[i], 0, 1)
-                    );
-                    const candFx = this.evaluate(candidate);
-                    if (candFx <= fx + c1 * step * gd) {
-                        newX = candidate;
-                        newFx = candFx;
-                        break;
-                    }
-                    step *= 0.5;
-                }
-            } else {
-                // Non-descent direction — forget memory, restart.
-                s_list.length = 0;
-                y_list.length = 0;
-            }
-            const newGrad = this.numericGradient(newX);
-
-            // Check convergence
-            const gradNorm = MathUtils.norm(newGrad);
-            if (gradNorm < 1e-6) break;
-
-            // Update L-BFGS memory
-            const s = MathUtils.subtract(newX, x);
-            const y = MathUtils.subtract(newGrad, grad);
-
-            if (MathUtils.dot(s, y) > 1e-12) {
-                s_list.push(s);
-                y_list.push(y);
-
-                if (s_list.length > m) {
-                    s_list.shift();
-                    y_list.shift();
-                }
-            }
-
-            x = newX;
-            fx = newFx;
-            grad = newGrad;
-        }
-
+        // Seed bestX with a random starting point and delegate to the
+        // proper L-BFGS-B port (shared with DE/SA polish on the base
+        // Optimizer class): two-loop recursion + bound-aware direction
+        // projection + projected-gradient pgtol + factr·eps_mach
+        // termination + feasibility-capped Armijo line search.
+        this.bestX = Array(this.nDim).fill(0).map(() => Math.random());
+        this.bestValue = this.evaluate(this.bestX);
+        this._lbfgsPolish();
         return {
             bestValue: this.bestValue,
             bestX: this.bestX,
@@ -319,52 +247,6 @@ class LBFGSB extends Optimizer {
             success: true,
             path: this.trackPath ? this.path : null
         };
-    }
-
-    boundedLineSearch(x, direction) {
-        let bestX = [...x];
-        let bestFx = this.evaluate(x);  // FIXED: Use evaluate() not objective()
-
-        const stepSizes = [0.001, 0.01, 0.1];
-
-        for (const step of stepSizes) {
-            if (this.evaluations >= this.nTrials) break;
-
-            const candidateX = x.map((xi, i) =>
-                MathUtils.clip(xi + step * direction[i], 0, 1)
-            );
-
-            const candidateFx = this.evaluate(candidateX);
-
-            if (candidateFx < bestFx) {
-                bestX = candidateX;
-                bestFx = candidateFx;
-            }
-        }
-
-        return { x: bestX, fx: bestFx };
-    }
-
-    numericGradient(x) {
-        const gradient = Array(this.nDim).fill(0);
-        const h = 1e-6;
-
-        for (let i = 0; i < this.nDim; i++) {
-            if (this.evaluations >= this.nTrials - 1) break;
-
-            // Forward difference
-            const xForward = [...x];
-            xForward[i] = Math.min(1, x[i] + h);
-            const fForward = this.evaluate(xForward);
-
-            const xBackward = [...x];
-            xBackward[i] = Math.max(0, x[i] - h);
-            const fBackward = this.evaluate(xBackward);
-
-            gradient[i] = (fForward - fBackward) / (2 * h);
-        }
-
-        return gradient;
     }
 }
 
