@@ -364,11 +364,11 @@
       "algorithm": "FireflyAlgorithm",
       "reference": "mealpy FFA",
       "problem": "sphere",
-      "humpday_median": 1.2677518599846533e-27,
+      "humpday_median": 1.0241910554976659e-27,
       "reference_median": 0.00012471996637905398,
-      "humpday_to_opt": 1.2677518599846533e-27,
+      "humpday_to_opt": 1.0241910554976659e-27,
       "reference_to_opt": 0.00012471996637905398,
-      "ratio_humpday_over_reference": 8.017962392276545e-12
+      "ratio_humpday_over_reference": 8.017962392274592e-12
     },
     {
       "algorithm": "FireflyAlgorithm",
@@ -384,11 +384,11 @@
       "algorithm": "FireflyAlgorithm",
       "reference": "mealpy FFA",
       "problem": "ackley",
-      "humpday_median": 2.5799334454760516,
+      "humpday_median": 0.09647023072060223,
       "reference_median": 0.6221637617983586,
-      "humpday_to_opt": 2.5799334454760516,
+      "humpday_to_opt": 0.09647023072060223,
       "reference_to_opt": 0.6221637617983586,
-      "ratio_humpday_over_reference": 4.146711209953429
+      "ratio_humpday_over_reference": 0.1550560104011149
     },
     {
       "algorithm": "HarmonySearch",
@@ -634,5 +634,5 @@
   "n_runs": 4,
   "n_trials": 200,
   "n_dim": 2,
-  "recorded_at": "2026-05-31T14:57:29Z"
+  "recorded_at": "2026-05-31T16:08:08Z"
 }
