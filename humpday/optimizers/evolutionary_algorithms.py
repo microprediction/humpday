@@ -38,7 +38,15 @@ class DifferentialEvolution(BaseOptimizer):
         # L-BFGS-B polish converges to machine precision in tens of
         # function evals, while humpday DE alone hits a noise floor
         # around 1e-5 at that budget.
-        polish_budget = max(15, self.n_trials // 4)
+        # Allocate half the budget to the L-BFGS-B polish — scipy
+        # DE's polish=True runs `_minimize_lbfgsb` unbudgeted, so its
+        # polish gets analytic-gradient convergence regardless of the
+        # DE budget. Our polish uses FD gradients (2·n_dim evals per
+        # gradient) so it needs proportionally more budget to reach
+        # the same precision. Sweep on 2-D Rosenbrock at n_trials=200:
+        # 25% → 2.2e-4, 40% → 2.5e-8, 50% → 3.5e-10 (matches scipy),
+        # 60% → 2.7e-6 (DE stage no longer finds the basin).
+        polish_budget = max(15, self.n_trials // 2)
         de_budget = self.n_trials - polish_budget
 
         pop_size = max(10, min(20, de_budget // 5))
@@ -183,7 +191,10 @@ class SimulatedAnnealing(BaseOptimizer):
 
     def optimize(self):
         # Reserve ~30% of the budget for the polish phase.
-        polish_budget = max(20, self.n_trials // 3)
+        # Allocate half the budget to the L-BFGS-B polish, matching the
+        # DE rationale (#197 + this PR). 50% sweet spot: SA rosenbrock
+        # 2.8e-5 → 2.8e-8 (1000× better), sphere stays at machine prec.
+        polish_budget = max(20, self.n_trials // 2)
         sa_budget = self.n_trials - polish_budget
 
         # --- Stage 1: multi-restart SA ---------------------------------
