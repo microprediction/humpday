@@ -120,6 +120,14 @@ class ParticleSwarm(BaseOptimizer):
     """
 
     def optimize(self):
+        # Reserve budget for the L-BFGS-B polish stage. Same rationale
+        # as DE/SA/BayesianOpt: PSO converges to the basin but doesn't
+        # refine well past the noise floor of its inertial dynamics.
+        # The polish closes the residual on smooth basins. Reserve
+        # 20·n_dim evals capped at half the budget.
+        polish_reserve = min(20 * self.n_dim, self.n_trials // 2)
+        pso_budget = max(self.evaluations, self.n_trials - polish_reserve)
+
         swarm_size = min(40, max(15, self.n_dim * 3))
 
         # Initialize swarm — list-of-vectors instead of 2-D arrays.
@@ -130,10 +138,10 @@ class ParticleSwarm(BaseOptimizer):
         personal_best_pos = [p.copy() for p in positions]
         personal_best_fit = [self.evaluate(p) for p in positions]
 
-        max_iterations = self.n_trials // swarm_size
+        max_iterations = max(1, pso_budget // swarm_size)
 
         for iteration in range(max_iterations):
-            if self.evaluations >= self.n_trials:
+            if self.evaluations >= pso_budget:
                 break
 
             # Adaptive coefficients (anneal inertia / explore-exploit balance).
@@ -142,7 +150,7 @@ class ParticleSwarm(BaseOptimizer):
             c2 = 1.5 + 1.0 * (iteration / max_iterations)  # Social
 
             for i in range(swarm_size):
-                if self.evaluations >= self.n_trials:
+                if self.evaluations >= pso_budget:
                     break
 
                 # Update velocity (elementwise: r1, r2 are length-n_dim
@@ -168,6 +176,9 @@ class ParticleSwarm(BaseOptimizer):
                 if fitness < personal_best_fit[i]:
                     personal_best_fit[i] = fitness
                     personal_best_pos[i] = positions[i].copy()
+
+        # Polish stage: L-BFGS-B from the swarm best.
+        self._lbfgs_polish()
 
         return self.best_value, self.best_x
 
@@ -750,7 +761,14 @@ class FireflyAlgorithm(BaseOptimizer):
     """
 
     def optimize(self):
-        n_fireflies = min(15, self.n_trials // 5)
+        # Reserve budget for the L-BFGS-B polish stage (same pattern as
+        # DE/SA/PSO/BayesianOpt). Firefly's stochastic dynamics converge
+        # to the basin but stall in a noise floor — polish drives the
+        # last few orders of magnitude.
+        polish_reserve = min(20 * self.n_dim, self.n_trials // 2)
+        firefly_budget = max(self.evaluations, self.n_trials - polish_reserve)
+
+        n_fireflies = min(15, max(2, firefly_budget // 5))
         alpha = 0.2  # Randomness coefficient.
         beta0 = 1.0  # Attractiveness at zero distance.
         gamma = 1.0  # Light-absorption coefficient.
@@ -759,10 +777,10 @@ class FireflyAlgorithm(BaseOptimizer):
         fireflies = [_A.random_uniform(self.n_dim) for _ in range(n_fireflies)]
         intensities = [self.evaluate(f) for f in fireflies]
 
-        while self.evaluations < self.n_trials:
+        while self.evaluations < firefly_budget:
             for i in range(n_fireflies):
                 for j in range(n_fireflies):
-                    if self.evaluations >= self.n_trials:
+                    if self.evaluations >= firefly_budget:
                         break
 
                     if intensities[j] < intensities[i]:  # j is brighter
@@ -779,8 +797,11 @@ class FireflyAlgorithm(BaseOptimizer):
                             1,
                         )
 
-                        if self.evaluations < self.n_trials:
+                        if self.evaluations < firefly_budget:
                             intensities[i] = self.evaluate(fireflies[i])
+
+        # Polish stage: L-BFGS-B from the firefly best.
+        self._lbfgs_polish()
 
         return self.best_value, self.best_x
 

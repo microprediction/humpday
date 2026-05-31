@@ -148,11 +148,16 @@ class ParticleSwarm extends Optimizer {
     }
 
     optimize() {
+        // Reserve budget for the L-BFGS-B polish stage (same pattern
+        // as DE/SA/BayesianOpt). Mirrors the Python port.
+        const polishReserve = Math.min(20 * this.nDim, Math.floor(this.nTrials / 2));
+        const psoBudget = Math.max(this.evaluations, this.nTrials - polishReserve);
+
         const swarmSize = Math.min(40, Math.max(15, this.nDim * 3)); // Larger swarm for complex functions
 
         // Initialize swarm with diverse positions
         const particles = [];
-        for (let i = 0; i < swarmSize && this.evaluations < this.nTrials; i++) {
+        for (let i = 0; i < swarmSize && this.evaluations < psoBudget; i++) {
             let position;
             if (i < swarmSize / 4) {
                 // 25% near center for sphere-like functions
@@ -179,9 +184,9 @@ class ParticleSwarm extends Optimizer {
 
         // PSO loop with adaptive parameters
         let iteration = 0;
-        const maxIterations = Math.ceil(this.nTrials / swarmSize);
+        const maxIterations = Math.ceil(psoBudget / swarmSize);
 
-        while (this.evaluations < this.nTrials) {
+        while (this.evaluations < psoBudget) {
             iteration++;
 
             // Adaptive parameters based on iteration progress
@@ -193,7 +198,7 @@ class ParticleSwarm extends Optimizer {
             // Maximum velocity (velocity clamping)
             const vmax = 0.2 * (1 - 0.5 * progress); // Decreasing velocity limit
 
-            for (let i = 0; i < particles.length && this.evaluations < this.nTrials; i++) {
+            for (let i = 0; i < particles.length && this.evaluations < psoBudget; i++) {
                 const particle = particles[i];
 
                 // Update velocity with constriction factor
@@ -237,6 +242,10 @@ class ParticleSwarm extends Optimizer {
                 }
             }
         }
+
+        // Polish stage: L-BFGS-B from the swarm best (shared on base
+        // Optimizer). Closes the residual on smooth basins.
+        this._lbfgsPolish();
 
         return {
             bestValue: this.bestValue,
@@ -817,20 +826,24 @@ class FireflyAlgorithm extends Optimizer {
     }
 
     optimize() {
+        // Reserve budget for L-BFGS-B polish (mirrors Python port).
+        const polishReserve = Math.min(20 * this.nDim, Math.floor(this.nTrials / 2));
+        const fireflyBudget = Math.max(this.evaluations, this.nTrials - polishReserve);
+
         const nFireflies = Math.min(25, Math.max(10, this.nDim * 2));
         const alpha = 0.1; // Randomization parameter
         const gamma = 1.0; // Light absorption coefficient
 
         // Initialize fireflies
         const fireflies = [];
-        for (let i = 0; i < nFireflies && this.evaluations < this.nTrials; i++) {
+        for (let i = 0; i < nFireflies && this.evaluations < fireflyBudget; i++) {
             const position = Array(this.nDim).fill(0).map(() => Math.random());
             const intensity = this.evaluate(position);
             fireflies.push({ position: [...position], intensity });
         }
 
-        while (this.evaluations < this.nTrials) {
-            for (let i = 0; i < fireflies.length && this.evaluations < this.nTrials; i++) {
+        while (this.evaluations < fireflyBudget) {
+            for (let i = 0; i < fireflies.length && this.evaluations < fireflyBudget; i++) {
                 for (let j = 0; j < fireflies.length; j++) {
                     if (i !== j && fireflies[j].intensity < fireflies[i].intensity) {
                         // Move firefly i towards j
@@ -855,6 +868,9 @@ class FireflyAlgorithm extends Optimizer {
                 }
             }
         }
+
+        // Polish stage: L-BFGS-B from the firefly best.
+        this._lbfgsPolish();
 
         return {
             bestValue: this.bestValue,
