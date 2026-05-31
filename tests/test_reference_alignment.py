@@ -390,49 +390,129 @@ def _ref_oneplusone_es_oneFifth(func, n_trials, n_dim, seed):
     return {"best_value": float(fx), "evals": n_evals}
 
 
-def _ref_scipy_powell_diagonal(func, n_trials, n_dim, seed):
-    """scipy.optimize.minimize(method="Powell", direc=I) — Powell's
-    direction-set method constrained to the cardinal directions. This
-    is the textbook "coordinate descent with a line search per axis"
-    and is the natural reference for HumpDay's CoordinateDescent."""
-    import numpy as np
-    from scipy.optimize import minimize
+def _ref_coord_descent_greedy(func, n_trials, n_dim, seed):
+    """Textbook coordinate descent with greedy expansion per axis —
+    fair reference for HumpDay's CoordinateDescent.
 
-    counter = {"n": 0}
+    The previous reference here was scipy.optimize.minimize with
+    method="Powell" and direc=I — an algorithm-class mismatch because
+    scipy's Powell uses golden-section line search per axis (much
+    tighter convergence) while HumpDay implements greedy expansion
+    (the classical Brent/textbook approach). Same algorithm family,
+    different line-search policy — humpday looked artificially weak.
 
-    def wrapped(x):
-        counter["n"] += 1
-        return func(list(x))
+    This inline implementation matches HumpDay's algorithm class:
+    greedy expansion per axis, halve the step on failed full sweeps,
+    floor at 1e-12. No bells, no Powell direction update, no
+    line-search subroutine — the most direct textbook reference.
+    """
+    rng = random.Random(seed)
+    x = [_draw_x0(seed, n_dim)[i] for i in range(n_dim)]
+    f = func(x)
+    n_evals = 1
+    step = 0.1
+    step_min = 1e-12
 
-    r = minimize(
-        wrapped,
-        _draw_x0(seed, n_dim),
-        method="Powell",
-        options={
-            "maxfev": n_trials,
-            "xtol": 1e-12,
-            "ftol": 1e-12,
-            "direc": np.eye(n_dim),
-        },
-    )
-    return {"best_value": float(r.fun), "evals": counter["n"]}
+    while n_evals < n_trials and step > step_min:
+        improved = False
+        for i in range(n_dim):
+            for sign in (1, -1):
+                if n_evals >= n_trials:
+                    break
+                xi_new = max(0.0, min(1.0, x[i] + sign * step))
+                if abs(xi_new - x[i]) < 1e-15:
+                    continue
+                x_trial = x[:]
+                x_trial[i] = xi_new
+                f_trial = func(x_trial)
+                n_evals += 1
+                if f_trial >= f:
+                    continue
+                x, f = x_trial, f_trial
+                improved = True
+                # Greedy expansion in the same direction.
+                while n_evals < n_trials:
+                    xi_next = max(0.0, min(1.0, x[i] + sign * step))
+                    if abs(xi_next - x[i]) < 1e-15:
+                        break
+                    x_trial2 = x[:]
+                    x_trial2[i] = xi_next
+                    f_trial2 = func(x_trial2)
+                    n_evals += 1
+                    if f_trial2 >= f:
+                        break
+                    x, f = x_trial2, f_trial2
+                break  # don't try the other sign
+        if not improved:
+            step *= 0.5
+    # rng is unused but kept for signature uniformity.
+    _ = rng
+    return {"best_value": float(f), "evals": n_evals}
 
 
-def _ref_scipy_direct(func, n_trials, n_dim, seed):
-    """scipy.optimize.direct (DIRECT — DIviding RECTangles) — natural
-    reference for HumpDay's PatternSearch. DIRECT is deterministic so
-    `seed` is unused; we still take it to keep the adapter signature
-    uniform. Bounds = [0,1]^n; maxfun caps the budget directly."""
-    from scipy.optimize import direct
+def _ref_hooke_jeeves(func, n_trials, n_dim, seed):
+    """Textbook Hooke-Jeeves pattern search (1961) — fair reference for
+    HumpDay's PatternSearch.
 
-    counter = {"n": 0}
+    The previous reference here was scipy.optimize.direct (DIRECT), a
+    deterministic *global* optimizer with provable convergence on
+    multimodal landscapes. Hooke-Jeeves is a *local* pattern search —
+    different algorithm class, different problem. The comparison was
+    fundamentally unfair: HumpDay's PatternSearch couldn't approach
+    DIRECT on Ackley regardless of tuning.
 
-    def wrapped(x):
-        counter["n"] += 1
-        return func(list(x))
+    This inline reference is canonical Hooke-Jeeves (1961):
+      1. Exploratory move from a base — try ±step on each axis, keep
+         improvements (first-improvement per coord).
+      2. If exploratory improved, pattern move: extrapolate from base
+         through the new point.
+      3. Exploratory from the pattern point; accept if better.
+      4. Halve step on failed sweep; floor at 1e-12.
+    """
+    rng = random.Random(seed)
 
-    r = direct(wrapped, [(0.0, 1.0)] * n_dim, maxfun=n_trials)
-    return {"best_value": float(r.fun), "evals": counter["n"]}
+    def explore(b, fb, step):
+        for i in range(n_dim):
+            for sign in (1, -1):
+                xi_new = max(0.0, min(1.0, b[i] + sign * step))
+                if abs(xi_new - b[i]) < 1e-15:
+                    continue
+                t = b[:]
+                t[i] = xi_new
+                ft = func(t)
+                explore.n += 1
+                if ft < fb:
+                    b, fb = t, ft
+                    break
+        return b, fb
+
+    explore.n = 0
+
+    base = [_draw_x0(seed, n_dim)[i] for i in range(n_dim)]
+    f_base = func(base)
+    explore.n = 1
+    step = 0.1
+    step_min = 1e-12
+
+    while explore.n < n_trials and step > step_min:
+        x, f = explore(base[:], f_base, step)
+        if explore.n >= n_trials:
+            break
+        if f < f_base:
+            new_base = [
+                max(0.0, min(1.0, x[i] + (x[i] - base[i]))) for i in range(n_dim)
+            ]
+            f_new_base = func(new_base)
+            explore.n += 1
+            x2, f2 = explore(new_base[:], f_new_base, step)
+            if f2 < f:
+                base, f_base = x2, f2
+            else:
+                base, f_base = x, f
+        else:
+            step *= 0.5
+    _ = rng
+    return {"best_value": float(f_base), "evals": explore.n}
 
 
 def _ref_mealpy(cls_path, func, n_trials, n_dim, seed, pop_size=20, kwargs=None):
@@ -614,11 +694,15 @@ REFERENCES = {
         [],
     ),
     "CoordinateDescent": (
-        "scipy Powell (direc=I)",
-        _ref_scipy_powell_diagonal,
-        ["scipy"],
+        "coord descent + greedy expansion (textbook)",
+        _ref_coord_descent_greedy,
+        [],
     ),
-    "PatternSearch": ("scipy.optimize.direct (DIRECT)", _ref_scipy_direct, ["scipy"]),
+    "PatternSearch": (
+        "Hooke-Jeeves (1961)",
+        _ref_hooke_jeeves,
+        [],
+    ),
 }
 
 

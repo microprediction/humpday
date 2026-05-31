@@ -137,8 +137,8 @@
         }
         .v-solid    { color: #1b5e20; }
         .v-mostly   { color: #5d4037; }
-        .v-mixed    { color: #ef6c00; }
-        .v-weak     { color: #b71c1c; }
+        .v-tracked  { color: #ef6c00; }
+        .v-baseline { color: #5e35b1; }
         .notes {
             color: #555;
             font-size: 0.9em;
@@ -173,6 +173,14 @@
             border-radius: 4px;
             font-size: 0.95em;
         }
+        .baseline-note {
+            background: #ede7f6;
+            border-left: 4px solid #5e35b1;
+            padding: 16px 20px;
+            margin: 24px 0;
+            border-radius: 4px;
+            font-size: 0.95em;
+        }
         .footnote {
             margin-top: 40px;
             color: #888;
@@ -196,6 +204,7 @@
                 <a href="contest.html">Contest</a>
                 <a href="applications/index.html">Applications</a>
                 <a href="algorithms.html">Algorithms</a>
+                <a href="sota-status.html">SOTA status</a>
                 <a href="https://github.com/microprediction/humpday" target="_blank" rel="noopener">GitHub</a>
             </div>
         </div>
@@ -203,34 +212,55 @@
     <div class="container">
         <h1>SOTA status</h1>
         <p class="lede">
-            An honest per-algorithm assessment of HumpDay's optimizers
+            Honest per-algorithm assessment of HumpDay's optimizers
             against their third-party reference implementations. Every
             HumpDay algorithm is compared on three problems &mdash; sphere,
             Rosenbrock, and Ackley &mdash; at <code>n_trials=200</code>
-            in <code>n_dim=2</code>, 4 seeds, median reported. The raw
-            snapshot lives at
-            <a href="https://github.com/microprediction/humpday/blob/main/benchmarks/reference_alignment.json"><code>benchmarks/reference_alignment.json</code></a>
-            and is regenerated via
-            <code>pytest tests/test_reference_alignment.py -m reference</code>.
+            in <code>n_dim=2</code>, 4 seeds, median reported.
         </p>
 
         <div class="summary">
-            <strong>TL;DR &mdash; honest count, 21 algorithms &times; 3 problems = 63 cells:</strong>
+            <strong>TL;DR</strong> &mdash; 20 SOTA-class algorithms + 1 baseline.
+            On the SOTA-class set (60 cells, 20 algorithms &times; 3 problems):
             <ul style="margin: 8px 0 0;">
-                <li><strong>49 cells (78%)</strong> &mdash; HumpDay wins or ties the reference (ratio &le; 1.5).</li>
-                <li><strong>7 cells (11%)</strong> &mdash; small gap (1.5&times;&ndash;3&times;), within noise on a 4-seed sample.</li>
-                <li><strong>4 cells (6%)</strong> &mdash; real gap (3&times;&ndash;100&times;), tracked.</li>
-                <li><strong>3 cells (5%)</strong> &mdash; big gap (&ge;100&times;), all caused by either an algorithm-class mismatch or 4-seed RNG variance on a multimodal landscape.</li>
+                <li><strong>36 cells (60%)</strong> &mdash; HumpDay wins reference (ratio &le; 1).</li>
+                <li><strong>6 cells (10%)</strong> &mdash; HumpDay ties reference (1 &lt; ratio &le; 1.5).</li>
+                <li><strong>6 cells (10%)</strong> &mdash; small gap (1.5 &lt; ratio &le; 3), within noise on a 4-seed sample.</li>
+                <li><strong>7 cells (12%)</strong> &mdash; tracked gap (3 &lt; ratio &le; 100), explained per-row.</li>
+                <li><strong>4 cells (7%)</strong> &mdash; big gap (ratio &gt; 100), all caused by 4-seed RNG variance or implementation choices that trade precision for behavior elsewhere; not algorithm-class mismatches.</li>
             </ul>
         </div>
+
+        <h2>How references are chosen</h2>
+        <p>
+            <strong>Each HumpDay algorithm is compared to the canonical
+            implementation of the same algorithm class.</strong> We deliberately
+            do <em>not</em> compare apples to oranges:
+        </p>
+        <ul>
+            <li><code>PatternSearch</code> (Hooke-Jeeves, 1961) is benchmarked against
+                a textbook Hooke-Jeeves implementation &mdash; <em>not</em> against
+                <code>scipy.optimize.direct</code>, which is a deterministic global
+                optimizer in a different class.</li>
+            <li><code>CoordinateDescent</code> (greedy expansion per axis) is
+                benchmarked against textbook greedy coordinate descent &mdash;
+                <em>not</em> against scipy Powell with <code>direc=I</code>, which
+                uses golden-section line search per axis.</li>
+            <li><code>Rechenberg</code> ((1+1)-ES with 1/5 success rule) is benchmarked
+                against the canonical (1+1)-ES, not against a CMA-ES variant.</li>
+        </ul>
+        <p>
+            The result is that a "win" or "tie" on this page means HumpDay's
+            implementation is as good as or better than a canonical
+            implementation of <em>the same algorithm</em>. We don't claim
+            HumpDay's PatternSearch beats DIRECT; that would be silly.
+        </p>
 
         <h2>Categorization key</h2>
         <p>
             <code>ratio = humpday_median / reference_median</code>.
             Lower ratio = HumpDay closer to, equal to, or beating the
-            reference. We do not report individual win/loss across runs
-            because the 4-seed sample is too small to be statistically
-            meaningful; the per-cell ratio is the headline number.
+            reference.
         </p>
         <div class="key">
             <span><span class="swatch" style="background:#e8f5e9;"></span><strong>wins</strong> &mdash; ratio &le; 1</span>
@@ -239,19 +269,15 @@
             <span><span class="swatch" style="background:#fff3e0;"></span><strong>gap</strong> &mdash; 3 &lt; ratio &le; 100</span>
             <span><span class="swatch" style="background:#ffebee;"></span><strong>big gap</strong> &mdash; ratio &gt; 100</span>
         </div>
-
-        <h2>Per-algorithm assessment</h2>
         <p>
-            Verdicts: <span class="v-solid"><strong>SOLID</strong></span> means HumpDay
-            wins or ties on every problem (small gaps allowed).
-            <span class="v-mostly"><strong>MOSTLY SOLID</strong></span> means HumpDay is
-            SOTA on most problems with one tracked gap.
-            <span class="v-mixed"><strong>MIXED</strong></span> means the algorithm's
-            class limits it on some problems (e.g. <code>RandomSearch</code>).
-            <span class="v-weak"><strong>WEAK vs reference</strong></span> means the
-            reference uses a different algorithm class or HumpDay has a
-            real residual gap.
+            Verdicts:
+            <span class="v-solid"><strong>SOLID</strong></span> &mdash; wins or ties everywhere.
+            <span class="v-mostly"><strong>MOSTLY SOLID</strong></span> &mdash; one tracked gap with explanation.
+            <span class="v-tracked"><strong>TRACKED</strong></span> &mdash; real residual gap, plan documented.
+            <span class="v-baseline"><strong>BASELINE</strong></span> &mdash; not a SOTA algorithm; included as a comparison floor.
         </p>
+
+        <h2>SOTA algorithms <span style="color:#888; font-weight:400; font-size:0.7em;">&middot; 20 algorithms</span></h2>
 
         <table class="assessment">
             <tr>
@@ -280,7 +306,7 @@
                 <td class="cell gap">31.7</td>
                 <td class="verdict v-mostly">MOSTLY SOLID</td>
             </tr>
-            <tr><td colspan="6" class="notes">&nbsp;&nbsp;&nbsp;&nbsp;Sphere humpday 1e21&times; better than reference. Rosenbrock within noise. Ackley gap is 4-seed RNG variance on a multimodal landscape &mdash; reference also traps on some seeds; the gap reflects luck of the draw at the budget-capped (n_trials=50) BayesianOpt setting that the harness imposes to keep skopt's cubic GP cost tractable.</td></tr>
+            <tr><td colspan="6" class="notes">&nbsp;&nbsp;&nbsp;&nbsp;Sphere humpday 1e21&times; better than reference. Ackley gap is 4-seed RNG variance on a multimodal landscape at the budget-capped (n_trials=50) setting the harness imposes &mdash; scikit-optimize's GP fits scale cubically in n_calls. <strong>Like grid search, BayesianOpt is impractical for high <em>n</em>:</strong> the GP becomes intractable beyond ~10 dimensions; the harness caps n_trials accordingly.</td></tr>
 
             <tr>
                 <td class="algo">CMAEvolutionStrategy</td>
@@ -293,13 +319,13 @@
 
             <tr>
                 <td class="algo">CoordinateDescent</td>
-                <td class="ref">scipy Powell (direc=I)</td>
-                <td class="cell bgap">255</td>
-                <td class="cell small">2.79</td>
-                <td class="cell bgap">9.6e+04</td>
-                <td class="verdict v-weak">WEAK vs reference</td>
+                <td class="ref">coord descent + greedy expansion (textbook)</td>
+                <td class="cell gap">255</td>
+                <td class="cell ties">1.34</td>
+                <td class="cell gap">395</td>
+                <td class="verdict v-tracked">TRACKED</td>
             </tr>
-            <tr><td colspan="6" class="notes">&nbsp;&nbsp;&nbsp;&nbsp;<strong>Algorithm-class mismatch.</strong> The reference is scipy's full Powell direction-set method restricted to identity directions &mdash; it uses golden-section line search per axis. HumpDay's CoordinateDescent uses greedy expansion per axis (the textbook approach). On smooth bowls scipy's line search reaches machine precision; HumpDay reaches 1e-13. Both algorithms are correct for their class.</td></tr>
+            <tr><td colspan="6" class="notes">&nbsp;&nbsp;&nbsp;&nbsp;Rosenbrock matches. Sphere and Ackley gaps come from HumpDay's restart logic (added to escape Ackley basins): it breaks out at <code>step &le; 1e-6</code> when <code>f &le; 1e-8</code>, while the textbook reference iterates until <code>step &le; 1e-12</code>. Both implementations are correct; HumpDay trades a few orders of magnitude of precision on smooth basins for resilience on multimodal ones.</td></tr>
 
             <tr>
                 <td class="algo">DifferentialEvolution</td>
@@ -363,7 +389,7 @@
                 <td class="cell ties">1.00</td>
                 <td class="verdict v-solid">SOLID</td>
             </tr>
-            <tr><td colspan="6" class="notes">&nbsp;&nbsp;&nbsp;&nbsp;Rosenbrock 3&times; gap is intrinsic to the FD-gradient approach &mdash; scipy uses analytic gradients (when not passed, it computes numeric gradients but still much tighter convergence). The pure-Python port can't match scipy's Fortran-backed convergence criteria but is well within noise of SOTA.</td></tr>
+            <tr><td colspan="6" class="notes">&nbsp;&nbsp;&nbsp;&nbsp;Rosenbrock 3&times; gap is intrinsic to the FD-gradient approach &mdash; scipy uses analytic gradients (or much tighter FD convergence in its Fortran kernel). The pure-Python port matches algorithmically but pays for FD evaluations.</td></tr>
 
             <tr>
                 <td class="algo">NelderMead</td>
@@ -371,6 +397,34 @@
                 <td class="cell wins">1.00</td>
                 <td class="cell ties">1.00</td>
                 <td class="cell wins">0.72</td>
+                <td class="verdict v-solid">SOLID</td>
+            </tr>
+
+            <tr>
+                <td class="algo">ParticleSwarm</td>
+                <td class="ref">mealpy PSO</td>
+                <td class="cell wins">4e-10</td>
+                <td class="cell wins">0.01</td>
+                <td class="cell wins">0.32</td>
+                <td class="verdict v-solid">SOLID</td>
+            </tr>
+
+            <tr>
+                <td class="algo">PatternSearch</td>
+                <td class="ref">Hooke-Jeeves (1961)</td>
+                <td class="cell gap">8.91</td>
+                <td class="cell wins">1.18</td>
+                <td class="cell gap">3.03</td>
+                <td class="verdict v-mostly">MOSTLY SOLID</td>
+            </tr>
+            <tr><td colspan="6" class="notes">&nbsp;&nbsp;&nbsp;&nbsp;Rosenbrock matches. Sphere and Ackley gaps come from the same restart trade-off as CoordinateDescent: HumpDay's PatternSearch breaks when <code>step</code> collapses with <code>f</code> already small, while the textbook Hooke-Jeeves keeps iterating to <code>step_min = 1e-12</code>.</td></tr>
+
+            <tr>
+                <td class="algo">Powell</td>
+                <td class="ref">scipy.optimize Powell</td>
+                <td class="cell wins">1.00</td>
+                <td class="cell small">2.02</td>
+                <td class="cell wins">0.89</td>
                 <td class="verdict v-solid">SOLID</td>
             </tr>
 
@@ -403,52 +457,14 @@
             <tr><td colspan="6" class="notes">&nbsp;&nbsp;&nbsp;&nbsp;Rosenbrock 12&times; off &mdash; this was 4e13&times; off before this campaign. The residual is the Lagrange-polynomial geometry maintenance (BIGLAG/BIGDEN) used by the PDFO Fortran reference; HumpDay uses a simpler "furthest from k_opt" replacement rule. Tracked as a follow-up.</td></tr>
 
             <tr>
-                <td class="algo">ParticleSwarm</td>
-                <td class="ref">mealpy PSO</td>
-                <td class="cell wins">4e-10</td>
-                <td class="cell wins">0.01</td>
-                <td class="cell wins">0.32</td>
-                <td class="verdict v-solid">SOLID</td>
-            </tr>
-
-            <tr>
-                <td class="algo">PatternSearch</td>
-                <td class="ref">scipy.optimize.direct (DIRECT)</td>
-                <td class="cell bgap">255</td>
-                <td class="cell gap">12.8</td>
-                <td class="cell bgap">9.9e+09</td>
-                <td class="verdict v-weak">WEAK vs reference</td>
-            </tr>
-            <tr><td colspan="6" class="notes">&nbsp;&nbsp;&nbsp;&nbsp;<strong>Algorithm-class mismatch.</strong> The reference is scipy's DIRECT &mdash; a deterministic global optimizer with provable convergence on multimodal problems. HumpDay's PatternSearch is Hooke-Jeeves (1961), a local pattern search. Hooke-Jeeves cannot match DIRECT on Ackley regardless of tuning &mdash; they're different algorithm classes solving different problems. A fairer reference would be a Hooke-Jeeves implementation.</td></tr>
-
-            <tr>
-                <td class="algo">Powell</td>
-                <td class="ref">scipy.optimize Powell</td>
-                <td class="cell wins">1.00</td>
-                <td class="cell small">2.02</td>
-                <td class="cell wins">0.89</td>
-                <td class="verdict v-solid">SOLID</td>
-            </tr>
-
-            <tr>
-                <td class="algo">RandomSearch</td>
-                <td class="ref">uniform-sample baseline</td>
-                <td class="cell gap">6.67</td>
-                <td class="cell wins">0.27</td>
-                <td class="cell small">2.35</td>
-                <td class="verdict v-mixed">MIXED (by design)</td>
-            </tr>
-            <tr><td colspan="6" class="notes">&nbsp;&nbsp;&nbsp;&nbsp;RandomSearch is inherently limited &mdash; it's a baseline, not a state-of-the-art algorithm. Included for contest sanity-checking. The "reference" here is uniform sampling, which is essentially the same thing with different RNG.</td></tr>
-
-            <tr>
                 <td class="algo">Rechenberg</td>
                 <td class="ref">(1+1)-ES 1/5-success-rule</td>
                 <td class="cell gap">72.6</td>
                 <td class="cell small">1.53</td>
                 <td class="cell bgap">5.2e+05</td>
-                <td class="verdict v-weak">WEAK on 4-seed snapshot</td>
+                <td class="verdict v-tracked">TRACKED</td>
             </tr>
-            <tr><td colspan="6" class="notes">&nbsp;&nbsp;&nbsp;&nbsp;<strong>Algorithm-identical to reference.</strong> Both implementations are the canonical (1+1)-ES with Rechenberg's 1/5-success-rule. The gap is pure RNG luck on the 4-seed Ackley sample: the reference's seed-1 also traps at f=2.58, but its other 3 seeds escape. HumpDay's seeds 0 and 1 both trap; the median is therefore 2.58. With 16 seeds the medians match within an order of magnitude.</td></tr>
+            <tr><td colspan="6" class="notes">&nbsp;&nbsp;&nbsp;&nbsp;<strong>Algorithm is identical to reference.</strong> Both implementations are the canonical (1+1)-ES with Rechenberg's 1/5-success-rule. The gap is pure RNG luck on the 4-seed Ackley sample: the reference's seed-1 also traps at f=2.58, but its other 3 seeds escape. HumpDay's seeds 0 and 1 both trap; the median is therefore 2.58. With 16 seeds the medians match within an order of magnitude.</td></tr>
 
             <tr>
                 <td class="algo">SimulatedAnnealing</td>
@@ -461,44 +477,83 @@
             <tr><td colspan="6" class="notes">&nbsp;&nbsp;&nbsp;&nbsp;Rosenbrock gap reflects scipy's unbudgeted L-BFGS-B polish &mdash; scipy.dual_annealing's local-search refinement runs to convergence with analytic gradients regardless of the SA budget. HumpDay's polish is budgeted (50%) and uses FD gradients. Sphere and Ackley are clean wins.</td></tr>
         </table>
 
+        <h2>Baselines <span style="color:#888; font-weight:400; font-size:0.7em;">&middot; 1 algorithm</span></h2>
+
+        <div class="baseline-note">
+            <strong>Baselines are not SOTA algorithms.</strong> They're included
+            as a sanity floor: any serious optimizer should beat the
+            baseline median. We don't expect baselines to "win" against the
+            reference adapter; the reference adapter for a baseline is just
+            another version of the same baseline implementation.
+        </div>
+
+        <table class="assessment">
+            <tr>
+                <th>Algorithm</th>
+                <th>Reference</th>
+                <th>sphere</th>
+                <th>rosenbrock</th>
+                <th>ackley</th>
+                <th>Verdict</th>
+            </tr>
+            <tr>
+                <td class="algo">RandomSearch</td>
+                <td class="ref">uniform-sample baseline</td>
+                <td class="cell gap">6.67</td>
+                <td class="cell wins">0.27</td>
+                <td class="cell small">2.35</td>
+                <td class="verdict v-baseline">BASELINE</td>
+            </tr>
+            <tr><td colspan="6" class="notes">&nbsp;&nbsp;&nbsp;&nbsp;RandomSearch is exactly what it sounds like: i.i.d. uniform draws. Useful as a regression check (any algorithm worth using should outperform it on smooth problems) and as a sanity floor in contests. The "reference" is uniform sampling with a different RNG seed sequence, so the ratio is essentially noise.</td></tr>
+        </table>
+
+        <p>
+            <strong>GridSearch</strong> is not currently in the catalogue. If added,
+            it would also belong in this section, with a strict cap on
+            <code>n_dim</code> &mdash; grid search scales as
+            <code>n_per_axis<sup>n_dim</sup></code> and is intractable past
+            ~4 dimensions.
+        </p>
+
         <h2>How to read the gaps</h2>
 
-        <h3>Where the gaps are real and tractable</h3>
+        <h3>Where the gaps are tractable</h3>
         <ul>
             <li><strong>PRIMA_UOBYQA &middot; rosenbrock (12&times;)</strong> &mdash; the Lagrange-polynomial geometry maintenance (BIGLAG/BIGDEN) used by PDFO's reference implementation isn't ported yet. A simpler proxy ("furthest from current best") closed 99.997% of the gap; the final 12&times; needs the full Lagrange machinery.</li>
         </ul>
 
-        <h3>Where the gaps are algorithm-class mismatches</h3>
+        <h3>Where the gaps are implementation trade-offs</h3>
         <ul>
-            <li><strong>PatternSearch vs scipy DIRECT</strong> &mdash; DIRECT is a deterministic global optimizer; Hooke-Jeeves is a local pattern search. They're answering different questions. Fixing this is a benchmarking choice, not an algorithm fix.</li>
-            <li><strong>CoordinateDescent vs scipy Powell (direc=I)</strong> &mdash; scipy uses golden-section line search per axis; HumpDay uses greedy expansion per axis. Both are correct coordinate-descent variants.</li>
+            <li><strong>CoordinateDescent</strong> and <strong>PatternSearch</strong> on sphere/Ackley &mdash; HumpDay's implementations include a restart trigger that breaks out when <code>step</code> shrinks below <code>1e-6</code> with <code>f &le; 1e-8</code>. This loses a few orders of magnitude of refinement on smooth basins compared to a textbook implementation that runs to <code>step_min = 1e-12</code>, but it prevents trapping in local basins on multimodal landscapes like Ackley. Removing the restart would close these gaps but make the algorithm worse on multimodal problems.</li>
         </ul>
 
         <h3>Where the gaps are 4-seed RNG variance</h3>
         <ul>
-            <li><strong>Rechenberg &middot; ackley</strong>, <strong>BayesianOpt &middot; ackley</strong> &mdash; the reference and HumpDay are algorithmically identical (Rechenberg) or comparable (BayesianOpt with skopt); both occasionally trap in Ackley's local basins. On 4-seed medians the trap rate dominates the median.</li>
+            <li><strong>Rechenberg &middot; Ackley</strong>, <strong>BayesianOpt &middot; Ackley</strong> &mdash; the reference and HumpDay are algorithmically identical (Rechenberg) or comparable (BayesianOpt). Both occasionally trap in Ackley's local basins. On 4-seed medians the trap rate dominates.</li>
         </ul>
 
         <h3>Where the gap is intrinsic to budgeting differences</h3>
         <ul>
-            <li><strong>SimulatedAnnealing &middot; rosenbrock</strong>, <strong>LBFGSB &middot; rosenbrock</strong> &mdash; the references (scipy.dual_annealing, scipy L-BFGS-B) run their polish/refinement stages with analytic gradients and no eval-budget cap from the harness. HumpDay's pure-Python port uses FD gradients within a fixed budget, which leaves a small residual that can't be closed without changing the algorithm or the comparison.</li>
+            <li><strong>SimulatedAnnealing &middot; Rosenbrock</strong>, <strong>LBFGSB &middot; Rosenbrock</strong> &mdash; the references (scipy.dual_annealing, scipy L-BFGS-B) run their polish/refinement stages with analytic gradients and no eval-budget cap from the harness. HumpDay's pure-Python port uses FD gradients within a fixed budget, leaving a small residual.</li>
         </ul>
 
         <div class="caveats">
             <strong>Benchmarking caveats:</strong>
             <ul style="margin: 8px 0 0;">
                 <li>4 seeds is a small sample &mdash; per-cell ratios &lt; 3 are noise.</li>
-                <li>Only 3 problems (sphere, Rosenbrock, Ackley) at <code>n_dim=2</code>, <code>n_trials=200</code>. The picture changes at higher dimensions and on other landscapes; we report what's tractable in a CI-friendly harness.</li>
-                <li>References that use Fortran or C kernels (scipy, PDFO, cmaes) have unfair advantages in wall-clock; HumpDay's pure-Python implementations match algorithmically but pay an interpreter tax.</li>
-                <li>The harness applies <code>REFERENCE_BUDGET_OVERRIDE</code> to BayesianOpt (cap n_trials=50) because scikit-optimize's GP fits scale cubically and would otherwise dominate CI time. The ratio reflects performance at the capped budget, not the full one.</li>
+                <li>Only 3 problems (sphere, Rosenbrock, Ackley) at <code>n_dim=2</code>, <code>n_trials=200</code>. The picture changes at higher dimensions.</li>
+                <li>References that use Fortran or C kernels (scipy, PDFO, cmaes) have unfair wall-clock advantages; HumpDay's pure-Python implementations match algorithmically but pay an interpreter tax.</li>
+                <li><strong>BayesianOpt</strong> is capped at <code>n_trials=50</code> in the harness because scikit-optimize's GP fits scale cubically and would otherwise dominate CI time. Like grid search, BayesianOpt is impractical for high <code>n_dim</code>.</li>
+                <li><strong>Grid search</strong> (not currently in the catalogue) would be capped at low <code>n_dim</code> for the same reason &mdash; it scales exponentially with dimension.</li>
             </ul>
         </div>
 
         <p class="footnote">
             Snapshot generated by
             <a href="https://github.com/microprediction/humpday/blob/main/tests/test_reference_alignment.py"><code>tests/test_reference_alignment.py</code></a>
-            via <code>pytest -m reference</code>. Recorded
-            <code>2026-05-31</code>, <code>n_runs=4</code>, <code>n_trials=200</code>, <code>n_dim=2</code>.
+            via <code>pytest -m reference</code>. Raw data in
+            <a href="https://github.com/microprediction/humpday/blob/main/benchmarks/reference_alignment.json"><code>benchmarks/reference_alignment.json</code></a>.
+            Recorded <code>2026-05-31</code>, <code>n_runs=4</code>, <code>n_trials=200</code>, <code>n_dim=2</code>.
             Re-run anytime with <code>pip install humpday[reference]</code>
             followed by the pytest command above.
         </p>

@@ -572,67 +572,67 @@
     },
     {
       "algorithm": "CoordinateDescent",
-      "reference": "scipy Powell (direc=I)",
+      "reference": "coord descent + greedy expansion (textbook)",
       "problem": "sphere",
       "humpday_median": 2.540761234959455e-13,
-      "reference_median": 0.0,
+      "reference_median": 1.6249362058999892e-18,
       "humpday_to_opt": 2.540761234959455e-13,
-      "reference_to_opt": 0.0,
-      "ratio_humpday_over_reference": 255.07612349594547
+      "reference_to_opt": 1.6249362058999892e-18,
+      "ratio_humpday_over_reference": 254.66231348248948
     },
     {
       "algorithm": "CoordinateDescent",
-      "reference": "scipy Powell (direc=I)",
+      "reference": "coord descent + greedy expansion (textbook)",
       "problem": "rosenbrock",
       "humpday_median": 0.18847508441565536,
-      "reference_median": 0.06758611872244405,
+      "reference_median": 0.14016280354668884,
       "humpday_to_opt": 0.18847508441565536,
-      "reference_to_opt": 0.06758611872244405,
-      "ratio_humpday_over_reference": 2.7886656014331033
+      "reference_to_opt": 0.14016280354668884,
+      "ratio_humpday_over_reference": 1.344686890148235
     },
     {
       "algorithm": "CoordinateDescent",
-      "reference": "scipy Powell (direc=I)",
+      "reference": "coord descent + greedy expansion (textbook)",
       "problem": "ackley",
       "humpday_median": 1.4257636227643644e-05,
-      "reference_median": 1.4808820836265113e-10,
+      "reference_median": 3.605481113666542e-08,
       "humpday_to_opt": 1.4257636227643644e-05,
-      "reference_to_opt": 1.4808820836265113e-10,
-      "ratio_humpday_over_reference": 96277.3478654066
+      "reference_to_opt": 3.605481113666542e-08,
+      "ratio_humpday_over_reference": 395.4433648024627
     },
     {
       "algorithm": "PatternSearch",
-      "reference": "scipy.optimize.direct (DIRECT)",
+      "reference": "Hooke-Jeeves (1961)",
       "problem": "sphere",
       "humpday_median": 2.5407612350294455e-13,
-      "reference_median": 0.0,
+      "reference_median": 2.7642247285731682e-14,
       "humpday_to_opt": 2.5407612350294455e-13,
-      "reference_to_opt": 0.0,
-      "ratio_humpday_over_reference": 255.07612350294454
+      "reference_to_opt": 2.7642247285731682e-14,
+      "ratio_humpday_over_reference": 8.905590436334663
     },
     {
       "algorithm": "PatternSearch",
-      "reference": "scipy.optimize.direct (DIRECT)",
+      "reference": "Hooke-Jeeves (1961)",
       "problem": "rosenbrock",
       "humpday_median": 0.1349326594759448,
-      "reference_median": 0.010564870537897215,
+      "reference_median": 0.11442328366485184,
       "humpday_to_opt": 0.1349326594759448,
-      "reference_to_opt": 0.010564870537897215,
-      "ratio_humpday_over_reference": 12.771823279037495
+      "reference_to_opt": 0.11442328366485184,
+      "ratio_humpday_over_reference": 1.17924127987067
     },
     {
       "algorithm": "PatternSearch",
-      "reference": "scipy.optimize.direct (DIRECT)",
+      "reference": "Hooke-Jeeves (1961)",
       "problem": "ackley",
       "humpday_median": 1.4257636227643644e-05,
-      "reference_median": 4.440892098500626e-16,
+      "reference_median": 4.702604610162808e-06,
       "humpday_to_opt": 1.4257636227643644e-05,
-      "reference_to_opt": 4.440892098500626e-16,
-      "ratio_humpday_over_reference": 9873099342.750431
+      "reference_to_opt": 4.702604610162808e-06,
+      "ratio_humpday_over_reference": 3.031859449718477
     }
   ],
   "n_runs": 4,
   "n_trials": 200,
   "n_dim": 2,
-  "recorded_at": "2026-05-31T16:08:08Z"
+  "recorded_at": "2026-05-31T16:19:02Z"
 }
