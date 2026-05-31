@@ -361,8 +361,22 @@ class BayesianOpt(BaseOptimizer):
             self.X_observed.append(x)
             self.y_observed.append(float(y))
 
+        # Reserve budget for the L-BFGS-B polish stage. Reference:
+        # scikit-optimize's `gp_minimize` finishes with a
+        # `minimize(method='L-BFGS-B')` polish on the best observation;
+        # this is the same pattern.
+        #
+        # The polish takes 2·n_dim evals per gradient + a few per line
+        # search; 5-10 L-BFGS iterations on a smooth basin are enough to
+        # blow through the GP-EI noise floor (~1e-4) down to machine
+        # precision. Reserve 20·n_dim evals (≈ 10 polish iterations),
+        # capped at half the budget so very small budgets still get a
+        # real GP-EI phase.
+        polish_reserve = min(20 * self.n_dim, self.n_trials // 2)
+        loop_budget = max(self.evaluations, self.n_trials - polish_reserve)
+
         # Bayesian optimization loop.
-        while self.evaluations < self.n_trials:
+        while self.evaluations < loop_budget:
             try:
                 x_next = self._optimize_acquisition()
                 y_next = self.evaluate(x_next)
@@ -373,6 +387,11 @@ class BayesianOpt(BaseOptimizer):
                 y_next = self.evaluate(x_next)
             self.X_observed.append(x_next)
             self.y_observed.append(float(y_next))
+
+        # Polish: L-BFGS-B from the GP-EI best. Closes the residual ~5
+        # orders of magnitude on sphere by escaping the GP's RBF
+        # smoothing floor.
+        self._lbfgs_polish()
 
         return self.best_value, self.best_x
 
