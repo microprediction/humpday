@@ -839,106 +839,107 @@ class FireflyAlgorithm(BaseOptimizer):
 
 
 class AntColonyOpt(BaseOptimizer):
-    """Ant Colony Optimization (continuous via discretization).
+    """ACOR — Ant Colony Optimization for continuous domains (Socha &
+    Dorigo, 2008).
 
     Pure-Python via the `humpday._array` shim — no direct numpy use.
-    Each dimension is discretized into `n_nodes` bins. Each ant picks one
-    bin per dimension proportional to that dimension's pheromone weights,
-    evaluates the resulting point, and feeds back into the pheromone
-    update.
 
-    Bug fix (was previously a known flake)
-    --------------------------------------
-    The old code used `1.0 / (best_fitness + 1e-10)` as the pheromone
-    deposit. Whenever `best_fitness` was negative — possible on objectives
-    like Schwefel, Sharpe-ratio portfolios, anything below zero — the
-    deposit was negative and pheromone weights drifted downward. After
-    enough updates a weight could go strictly negative, and the next call
-    to multinomial-sample failed with `ValueError: probabilities are not
-    non-negative`. The fix here:
+    Maintains an *archive* of the `k` best solutions found so far,
+    sorted by fitness. Each generation samples `n_ants` new candidates
+    from a mixture of Gaussian kernels centred on the archive points;
+    the kernel weight w_i is a Gaussian on rank i (so better-ranked
+    archive entries are sampled-from more often), and the per-dimension
+    width sigma_d is `xi` times the mean absolute deviation of the
+    archive in that dimension. Better candidates replace the worst
+    archive entries.
 
-      1. Pheromone deposit becomes `1.0 / (1.0 + abs(best_fitness))`,
-         which is strictly positive for any finite best_fitness and
-         bounded in (0, 1]. Better-found solutions still deposit more,
-         preserving ACO's "shorter path = stronger reinforcement" intent.
-      2. After each deposit, the affected weight is floor-clipped at
-         `1e-12` as belt-and-suspenders against any future numerical
-         drift.
-      3. The sampling step clamps weights at zero before normalising,
-         so even if a weight DID go slightly negative from floating-point
-         noise, the multinomial draw would still succeed.
+    Replaces humpday's previous discrete-bin "continuous via
+    discretization" ACO — a humpday-ism that capped precision at
+    ~1/n_nodes per dimension and was ~457× off the mealpy reference
+    on the sphere benchmark.
 
-    Tests that previously had to special-case this error
-    (`test_portfolio.py`'s known_algorithm_bug branch) can now treat it
-    as a real failure.
+    Reference: Socha, K. & Dorigo, M. (2008). "Ant colony optimization
+    for continuous domains." European Journal of Operational Research
+    185(3): 1155–1173. Matches the mealpy `swarm_based.ACOR.OriginalACOR`
+    adapter used by `tests/test_reference_alignment.py`.
     """
 
     def optimize(self):
-        n_ants = min(15, self.n_trials // 5)
-        n_nodes = 10  # Bins per dimension.
-        evaporation = 0.1
+        n = self.n_dim
+        # Hansen-mealpy-style defaults.
+        k = min(50, max(10, self.n_trials // 10))  # archive size
+        n_ants = min(25, max(5, self.n_trials // 20))  # samples per gen
+        q = 0.5  # selection-pressure parameter (smaller → greedier)
+        xi = 1.0  # standard-deviation amplification
 
-        # Pheromone matrix as list-of-rows; rows are plain `list[float]`
-        # (we only ever do scalar indexing into them, no row-level
-        # arithmetic, so no `_Vec` wrapper needed).
-        pheromone = [[1.0] * n_nodes for _ in range(self.n_dim)]
+        # Pre-compute rank weights: w_i ∝ Gaussian on rank i.
+        # w_i = (1 / (q k √(2π))) · exp(−(i)² / (2 q² k²)) for i = 0..k−1
+        weights = []
+        for i in range(k):
+            ex = math.exp(-(i**2) / (2.0 * q * q * k * k))
+            weights.append(ex / (q * k * math.sqrt(2.0 * math.pi)))
+        wsum = sum(weights)
+        weights = [w / wsum for w in weights]
 
-        best_path = None
-        best_fitness = float("inf")
+        # Initial archive: k uniform samples (or as many as budget allows).
+        archive = []  # list of (x, f), sorted ascending by f
+        for _ in range(k):
+            if self.evaluations >= self.n_trials:
+                break
+            x = _A.random_uniform(n)
+            archive.append((x, self.evaluate(x)))
+        if not archive:
+            return self.best_value, self.best_x
+        archive.sort(key=lambda t: t[1])
 
         while self.evaluations < self.n_trials:
-            for _ant in range(n_ants):
+            # Per-dimension standard deviation = xi · mean |x_l[d] − x_i[d]|
+            # for the chosen kernel i. Precompute the absolute-deviation
+            # matrix once per generation (used for every sample).
+            sigmas_by_kernel = []
+            for i in range(len(archive)):
+                xi_vec = archive[i][0]
+                sigma = [0.0] * n
+                for l in range(len(archive)):
+                    if l == i:
+                        continue
+                    xl_vec = archive[l][0]
+                    for d in range(n):
+                        sigma[d] += abs(float(xl_vec[d]) - float(xi_vec[d]))
+                denom = max(1, len(archive) - 1)
+                for d in range(n):
+                    sigma[d] = xi * sigma[d] / denom
+                sigmas_by_kernel.append(sigma)
+
+            new_solutions = []
+            for _ in range(n_ants):
                 if self.evaluations >= self.n_trials:
                     break
+                # Roulette-pick a kernel (= an archive index) by weights.
+                r = _A.random_scalar()
+                cum = 0.0
+                kernel_idx = len(archive) - 1
+                for i, w in enumerate(weights[: len(archive)]):
+                    cum += w
+                    if r <= cum:
+                        kernel_idx = i
+                        break
 
-                # Per dimension, sample a bin index proportional to the
-                # row's pheromone weights via manual cumulative sampling.
-                # This avoids needing a `random_choice(seq, p=weights)`
-                # shim primitive — and gives us explicit control over the
-                # negative-weight defence below.
-                solution = _A.zeros(self.n_dim)
-                for dim in range(self.n_dim):
-                    row = pheromone[dim]
-                    # Floor-clip at 0 in case noise pushed any entry
-                    # slightly negative. Sum >= 1e-10 by the floor we
-                    # apply at deposit time, so this is a small extra
-                    # safety net.
-                    pos = [w if w > 0.0 else 0.0 for w in row]
-                    total = sum(pos)
-                    if total <= 0.0:
-                        # Pathological: every weight is zero. Fall back to
-                        # uniform.
-                        chosen = _A.random_int(n_nodes)
-                    else:
-                        r = _A.random_scalar() * total
-                        cum = 0.0
-                        chosen = n_nodes - 1  # default to last on rounding
-                        for i, w in enumerate(pos):
-                            cum += w
-                            if r <= cum:
-                                chosen = i
-                                break
-                    solution[dim] = chosen / (n_nodes - 1)
+                center = archive[kernel_idx][0]
+                sigma = sigmas_by_kernel[kernel_idx]
+                x_new = _A.zeros(n)
+                for d in range(n):
+                    s = max(sigma[d], 1e-12)
+                    # Box-Muller via the shim's random_normal.
+                    z = float(_A.random_normal(1)[0])
+                    x_new[d] = max(0.0, min(1.0, float(center[d]) + s * z))
+                f_new = self.evaluate(x_new)
+                new_solutions.append((x_new, f_new))
 
-                fitness = self.evaluate(solution)
-                if fitness < best_fitness:
-                    best_fitness = fitness
-                    best_path = solution.copy()
-
-            # Evaporation: every weight decays.
-            decay = 1 - evaporation
-            for row in pheromone:
-                for k in range(n_nodes):
-                    row[k] *= decay
-
-            # Strictly-positive deposit on the best-known path.
-            if best_path is not None:
-                deposit = 1.0 / (1.0 + abs(best_fitness))
-                for dim in range(self.n_dim):
-                    node = int(best_path[dim] * (n_nodes - 1))
-                    pheromone[dim][node] += deposit
-                    if pheromone[dim][node] < 1e-12:
-                        pheromone[dim][node] = 1e-12
+            # Merge: keep the k best across (archive ∪ new_solutions).
+            archive.extend(new_solutions)
+            archive.sort(key=lambda t: t[1])
+            archive = archive[:k]
 
         return self.best_value, self.best_x
 
