@@ -362,33 +362,33 @@
     },
     {
       "algorithm": "FireflyAlgorithm",
-      "reference": "mealpy FA",
+      "reference": "mealpy FFA",
       "problem": "sphere",
       "humpday_median": 0.0003427641233057633,
-      "reference_median": 6.53310220185996e-05,
+      "reference_median": 0.00012471996637905398,
       "humpday_to_opt": 0.0003427641233057633,
-      "reference_to_opt": 6.53310220185996e-05,
-      "ratio_humpday_over_reference": 5.246575251860173
+      "reference_to_opt": 0.00012471996637905398,
+      "ratio_humpday_over_reference": 2.7482698500917846
     },
     {
       "algorithm": "FireflyAlgorithm",
-      "reference": "mealpy FA",
+      "reference": "mealpy FFA",
       "problem": "rosenbrock",
       "humpday_median": 0.14790456664103044,
-      "reference_median": 0.047434829773585846,
+      "reference_median": 0.053947184329190434,
       "humpday_to_opt": 0.14790456664103044,
-      "reference_to_opt": 0.047434829773585846,
-      "ratio_humpday_over_reference": 3.1180583412442053
+      "reference_to_opt": 0.053947184329190434,
+      "ratio_humpday_over_reference": 2.741654981259116
     },
     {
       "algorithm": "FireflyAlgorithm",
-      "reference": "mealpy FA",
+      "reference": "mealpy FFA",
       "problem": "ackley",
       "humpday_median": 2.6920461682866876,
-      "reference_median": 0.35438596181007087,
+      "reference_median": 0.6221637617983586,
       "humpday_to_opt": 2.6920461682866876,
-      "reference_to_opt": 0.35438596181007087,
-      "ratio_humpday_over_reference": 7.5963679671077164
+      "reference_to_opt": 0.6221637617983586,
+      "ratio_humpday_over_reference": 4.326909301990443
     },
     {
       "algorithm": "HarmonySearch",
@@ -634,5 +634,5 @@
   "n_runs": 4,
   "n_trials": 200,
   "n_dim": 2,
-  "recorded_at": "2026-05-31T01:02:45Z"
+  "recorded_at": "2026-05-31T01:29:50Z"
 }
