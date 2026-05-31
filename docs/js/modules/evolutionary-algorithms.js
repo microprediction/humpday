@@ -942,6 +942,12 @@ class FireflyAlgorithm extends Optimizer {
 }
 
 // Ant Colony Optimization
+// ACOR — Ant Colony Optimization for continuous domains (Socha &
+// Dorigo, 2008). Maintains an archive of the k best solutions and
+// samples new candidates from a mixture of Gaussian kernels centred
+// on archive points. Mirrors the Python port; replaces humpday's
+// previous discrete-bin "continuous via discretization" ACO that was
+// ~457× off mealpy.swarm_based.ACOR on the sphere benchmark.
 class AntColonyOpt extends Optimizer {
     constructor(objective, nTrials, nDim) {
         super(objective, nTrials, nDim);
@@ -949,58 +955,83 @@ class AntColonyOpt extends Optimizer {
     }
 
     optimize() {
-        const nAnts = Math.min(20, Math.max(8, this.nDim));
-        const rho = 0.1; // Evaporation rate
+        const n = this.nDim;
+        const k = Math.min(50, Math.max(10, Math.floor(this.nTrials / 10)));
+        const nAnts = Math.min(25, Math.max(5, Math.floor(this.nTrials / 20)));
+        const q = 0.5;
+        const xi = 1.0;
 
-        // Discretize search space
-        const nLevels = 20;
-        const pheromones = Array(this.nDim).fill(0).map(() => Array(nLevels).fill(1.0));
+        // Rank weights: w_i ∝ Gaussian on rank i, normalised.
+        const weights = new Array(k);
+        for (let i = 0; i < k; i++) {
+            weights[i] = Math.exp(-(i * i) / (2.0 * q * q * k * k)) /
+                         (q * k * Math.sqrt(2.0 * Math.PI));
+        }
+        let wsum = 0;
+        for (let i = 0; i < k; i++) wsum += weights[i];
+        for (let i = 0; i < k; i++) weights[i] /= wsum;
+
+        // Initial archive: k uniform samples, sorted by f.
+        const archive = [];
+        for (let i = 0; i < k && this.evaluations < this.nTrials; i++) {
+            const x = new Array(n);
+            for (let d = 0; d < n; d++) x[d] = Math.random();
+            archive.push({ x, f: this.evaluate(x) });
+        }
+        if (!archive.length) {
+            return {
+                bestValue: this.bestValue,
+                bestX: this.bestX,
+                evaluations: this.evaluations,
+                success: true,
+                path: this.trackPath ? this.path : null
+            };
+        }
+        archive.sort((a, b) => a.f - b.f);
 
         while (this.evaluations < this.nTrials) {
-            const solutions = [];
-
-            // Construct solutions
-            for (let ant = 0; ant < nAnts && this.evaluations < this.nTrials; ant++) {
-                const solution = [];
-                for (let dim = 0; dim < this.nDim; dim++) {
-                    // Probabilistic selection based on pheromones
-                    const probabilities = pheromones[dim].map(p => Math.pow(p, 2));
-                    const total = probabilities.reduce((sum, p) => sum + p, 0);
-                    const normalizedProb = probabilities.map(p => p / total);
-
-                    let selected = 0;
-                    const rand = Math.random();
-                    let cumProb = 0;
-                    for (let level = 0; level < nLevels; level++) {
-                        cumProb += normalizedProb[level];
-                        if (rand <= cumProb) {
-                            selected = level;
-                            break;
-                        }
-                    }
-
-                    solution.push(selected / (nLevels - 1));
+            // Per-kernel per-dim sigma = xi · mean |x_l[d] − x_i[d]|.
+            const sigmasByKernel = new Array(archive.length);
+            for (let i = 0; i < archive.length; i++) {
+                const xi_vec = archive[i].x;
+                const sigma = new Array(n).fill(0);
+                for (let l = 0; l < archive.length; l++) {
+                    if (l === i) continue;
+                    const xl = archive[l].x;
+                    for (let d = 0; d < n; d++) sigma[d] += Math.abs(xl[d] - xi_vec[d]);
                 }
-
-                const fitness = this.evaluate(solution);
-                solutions.push({ solution, fitness });
+                const denom = Math.max(1, archive.length - 1);
+                for (let d = 0; d < n; d++) sigma[d] = xi * sigma[d] / denom;
+                sigmasByKernel[i] = sigma;
             }
 
-            // Evaporate pheromones
-            for (let dim = 0; dim < this.nDim; dim++) {
-                for (let level = 0; level < nLevels; level++) {
-                    pheromones[dim][level] *= (1 - rho);
+            const newSolutions = [];
+            for (let a = 0; a < nAnts; a++) {
+                if (this.evaluations >= this.nTrials) break;
+
+                // Roulette-pick a kernel by weights.
+                const r = Math.random();
+                let cum = 0;
+                let kernelIdx = archive.length - 1;
+                for (let i = 0; i < archive.length; i++) {
+                    cum += weights[i];
+                    if (r <= cum) { kernelIdx = i; break; }
                 }
+
+                const center = archive[kernelIdx].x;
+                const sigma = sigmasByKernel[kernelIdx];
+                const xNew = new Array(n);
+                for (let d = 0; d < n; d++) {
+                    const s = Math.max(sigma[d], 1e-12);
+                    const z = this._gauss();
+                    xNew[d] = Math.max(0, Math.min(1, center[d] + s * z));
+                }
+                newSolutions.push({ x: xNew, f: this.evaluate(xNew) });
             }
 
-            // Update pheromones (best solution gets more pheromone)
-            solutions.sort((a, b) => a.fitness - b.fitness);
-            const bestSol = solutions[0];
-
-            bestSol.solution.forEach((value, dim) => {
-                const level = Math.round(value * (nLevels - 1));
-                pheromones[dim][level] += 1.0 / (1.0 + bestSol.fitness);
-            });
+            for (const sol of newSolutions) archive.push(sol);
+            archive.sort((a, b) => a.f - b.f);
+            archive.length = k;
         }
 
         return {
@@ -1010,6 +1041,20 @@ class AntColonyOpt extends Optimizer {
             success: true,
             path: this.trackPath ? this.path : null
         };
+    }
+
+    _gauss() {
+        if (this._spare !== undefined) {
+            const s = this._spare;
+            this._spare = undefined;
+            return s;
+        }
+        const u = Math.random();
+        const v = Math.random();
+        const r = Math.sqrt(-2 * Math.log(Math.max(u, 1e-300)));
+        const theta = 2 * Math.PI * v;
+        this._spare = r * Math.sin(theta);
+        return r * Math.cos(theta);
     }
 }
 
