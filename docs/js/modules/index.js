@@ -12,7 +12,7 @@ if (typeof module !== 'undefined' && module.exports) {
     const { PRIMA_UOBYQA, PRIMA_NEWUOA, PRIMA_BOBYQA } = require('./prima-algorithms.js');
     const { NelderMead, Powell, LBFGSB } = require('./scipy-algorithms.js');
     const { DifferentialEvolution, ParticleSwarm, SimulatedAnnealing, GeneticAlgorithm, RandomSearch,
-            BayesianOpt, CMAEvolutionStrategy, TabuSearch, FireflyAlgorithm, AntColonyOpt,
+            BayesianOpt, CMAEvolutionStrategy, FireflyAlgorithm, AntColonyOpt,
             HarmonySearch, EvolutionStrategy } = require('./evolutionary-algorithms.js');
     const { Rechenberg, AdaptiveRandomSearch, CoordinateDescent, PatternSearch, HillClimbing } = require('./search-algorithms.js');
 
@@ -40,7 +40,6 @@ if (typeof module !== 'undefined' && module.exports) {
         RandomSearch,
         BayesianOpt,
         CMAEvolutionStrategy,
-        TabuSearch,
         FireflyAlgorithm,
         AntColonyOpt,
         HarmonySearch,
@@ -68,7 +67,6 @@ if (typeof module !== 'undefined' && module.exports) {
             'RandomSearch': RandomSearch,
             'BayesianOpt': BayesianOpt,
             'CMAEvolutionStrategy': CMAEvolutionStrategy,
-            'TabuSearch': TabuSearch,
             'FireflyAlgorithm': FireflyAlgorithm,
             'AntColonyOpt': AntColonyOpt,
             'HarmonySearch': HarmonySearch,
@@ -103,7 +101,6 @@ if (typeof module !== 'undefined' && module.exports) {
         RandomSearch: window.RandomSearch,
         BayesianOpt: window.BayesianOpt,
         CMAEvolutionStrategy: window.CMAEvolutionStrategy,
-        TabuSearch: window.TabuSearch,
         FireflyAlgorithm: window.FireflyAlgorithm,
         AntColonyOpt: window.AntColonyOpt,
         HarmonySearch: window.HarmonySearch,

@@ -45,7 +45,7 @@ cube_minimize(
   - `'CMAEvolutionStrategy'`, `'EvolutionStrategy'`, `'GeneticAlgorithm'`
   - `'BayesianOpt'`, `'RandomSearch'`, `'Rechenberg'`
   - `'HillClimbing'`, `'CoordinateDescent'`, `'PatternSearch'`
-  - `'SimulatedAnnealing'`, `'TabuSearch'`, `'HarmonySearch'`
+  - `'SimulatedAnnealing'`, `'HarmonySearch'`
   - `'FireflyAlgorithm'`, `'AntColonyOpt'`, `'Powell'`, `'LBFGSB'`
 - **`bounds`**: Bounds specification (see below)
 - **`options`**: Dictionary with `'maxiter'` for function evaluation limit

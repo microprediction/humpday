@@ -100,7 +100,6 @@ class TestOptimizersCoverage:
             HarmonySearch,
             HillClimbing,
             SimulatedAnnealing,
-            TabuSearch,
         )
 
         def objective(x):
@@ -112,7 +111,6 @@ class TestOptimizersCoverage:
             SimulatedAnnealing,
             HarmonySearch,
             FireflyAlgorithm,
-            TabuSearch,
         ]
 
         for alg_class in algorithms:

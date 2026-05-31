@@ -37,7 +37,6 @@ const OptimizerFactory = {
             'RandomSearch': window.RandomSearch,
             'BayesianOpt': window.BayesianOpt,
             'CMAEvolutionStrategy': window.CMAEvolutionStrategy,
-            'TabuSearch': window.TabuSearch,
             'FireflyAlgorithm': window.FireflyAlgorithm,
             'AntColonyOpt': window.AntColonyOpt,
             'HarmonySearch': window.HarmonySearch,
@@ -79,7 +78,7 @@ const OptimizerFactory = {
             // Evolutionary algorithms
             'DifferentialEvolution', 'ParticleSwarm', 'SimulatedAnnealing',
             'GeneticAlgorithm', 'RandomSearch', 'BayesianOpt', 'CMAEvolutionStrategy',
-            'TabuSearch', 'FireflyAlgorithm', 'AntColonyOpt', 'HarmonySearch', 'EvolutionStrategy',
+            'FireflyAlgorithm', 'AntColonyOpt', 'HarmonySearch', 'EvolutionStrategy',
             // Search algorithms
             'Rechenberg', 'CoordinateDescent', 'PatternSearch', 'HillClimbing'
         ];

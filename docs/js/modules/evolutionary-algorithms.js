@@ -998,68 +998,6 @@ class CMAEvolutionStrategy extends Optimizer {
     }
 }
 
-// Tabu Search
-class TabuSearch extends Optimizer {
-    constructor(objective, nTrials, nDim) {
-        super(objective, nTrials, nDim);
-        this.name = 'TabuSearch';
-        this.tabuList = [];
-        this.tabuTenure = Math.min(20, Math.max(5, this.nDim));
-    }
-
-    optimize() {
-        let x = Array(this.nDim).fill(0).map(() => Math.random());
-        let fx = this.evaluate(x);
-
-        while (this.evaluations < this.nTrials) {
-            let bestNeighbor = null;
-            let bestNeighborFx = Infinity;
-
-            // Generate multiple neighbors
-            for (let i = 0; i < Math.min(20, this.nTrials - this.evaluations); i++) {
-                const neighbor = x.map(xi =>
-                    MathUtils.clip(xi + (Math.random() - 0.5) * 0.15, 0, 1)
-                );
-
-                // Check if tabu
-                const isTabu = this.tabuList.some(tabu =>
-                    MathUtils.norm(MathUtils.subtract(neighbor, tabu)) < 0.05
-                );
-
-                if (!isTabu) {
-                    const neighborFx = this.evaluate(neighbor);
-                    if (neighborFx < bestNeighborFx) {
-                        bestNeighbor = neighbor;
-                        bestNeighborFx = neighborFx;
-                    }
-                }
-            }
-
-            if (bestNeighbor) {
-                // Add current solution to tabu list
-                this.tabuList.push([...x]);
-                if (this.tabuList.length > this.tabuTenure) {
-                    this.tabuList.shift();
-                }
-
-                x = bestNeighbor;
-                fx = bestNeighborFx;
-            } else {
-                // If all neighbors are tabu, clear tabu list
-                this.tabuList = [];
-            }
-        }
-
-        return {
-            bestValue: this.bestValue,
-            bestX: this.bestX,
-            evaluations: this.evaluations,
-            success: true,
-            path: this.trackPath ? this.path : null
-        };
-    }
-}
-
 // Firefly Algorithm
 class FireflyAlgorithm extends Optimizer {
     constructor(objective, nTrials, nDim) {
@@ -1362,7 +1300,7 @@ if (typeof module !== 'undefined' && module.exports) {
     // Node.js environment
     module.exports = {
         DifferentialEvolution, ParticleSwarm, SimulatedAnnealing, GeneticAlgorithm, RandomSearch,
-        BayesianOpt, CMAEvolutionStrategy, TabuSearch, FireflyAlgorithm, AntColonyOpt,
+        BayesianOpt, CMAEvolutionStrategy, FireflyAlgorithm, AntColonyOpt,
         HarmonySearch, EvolutionStrategy
     };
 } else {
@@ -1374,7 +1312,6 @@ if (typeof module !== 'undefined' && module.exports) {
     window.RandomSearch = RandomSearch;
     window.BayesianOpt = BayesianOpt;
     window.CMAEvolutionStrategy = CMAEvolutionStrategy;
-    window.TabuSearch = TabuSearch;
     window.FireflyAlgorithm = FireflyAlgorithm;
     window.AntColonyOpt = AntColonyOpt;
     window.HarmonySearch = HarmonySearch;

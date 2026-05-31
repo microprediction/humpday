@@ -8,7 +8,7 @@ const expectedAlgorithms = [
     // Evolutionary algorithms
     'DifferentialEvolution', 'ParticleSwarm', 'SimulatedAnnealing',
     'GeneticAlgorithm', 'RandomSearch', 'BayesianOpt', 'CMAEvolutionStrategy',
-    'TabuSearch', 'FireflyAlgorithm', 'AntColonyOpt', 'HarmonySearch', 'EvolutionStrategy',
+    'FireflyAlgorithm', 'AntColonyOpt', 'HarmonySearch', 'EvolutionStrategy',
     // Search algorithms
     'Rechenberg', 'CoordinateDescent', 'PatternSearch', 'HillClimbing'
 ];

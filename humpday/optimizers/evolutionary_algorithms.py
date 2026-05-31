@@ -919,55 +919,6 @@ class CMAEvolutionStrategy(BaseOptimizer):
         return self.best_value, self.best_x
 
 
-class TabuSearch(BaseOptimizer):
-    """Tabu Search algorithm.
-
-    Pure-Python via the `humpday._array` shim — no direct numpy use.
-    Maintains a small FIFO list of recently-visited points and rejects
-    neighbours that are within 0.05 (L2) of any of them.
-    """
-
-    def optimize(self):
-        x = _A.random_uniform(self.n_dim)
-        f = self.evaluate(x)
-
-        tabu_list = []
-        tabu_tenure = 5
-        step_size = 0.1
-
-        while self.evaluations < self.n_trials:
-            best_neighbor = None
-            best_neighbor_f = float("inf")
-
-            # Generate neighbours and accept the best non-tabu one.
-            for _ in range(min(10, self.n_trials - self.evaluations)):
-                if self.evaluations >= self.n_trials:
-                    break
-
-                # Random neighbour with sigma = step_size.
-                neighbor = _A.clip(x + step_size * _A.random_normal(self.n_dim), 0, 1)
-
-                # Check tabu: reject if too close to any recently-visited point.
-                is_tabu = any(_A.norm(neighbor - tabu_x) < 0.05 for tabu_x in tabu_list)
-
-                if not is_tabu:
-                    neighbor_f = self.evaluate(neighbor)
-                    if neighbor_f < best_neighbor_f:
-                        best_neighbor = neighbor
-                        best_neighbor_f = neighbor_f
-
-            if best_neighbor is not None:
-                x = best_neighbor
-                f = best_neighbor_f
-
-                # Update tabu list (FIFO).
-                tabu_list.append(x.copy())
-                if len(tabu_list) > tabu_tenure:
-                    tabu_list.pop(0)
-
-        return self.best_value, self.best_x
-
-
 class FireflyAlgorithm(BaseOptimizer):
     """Firefly Algorithm.
 

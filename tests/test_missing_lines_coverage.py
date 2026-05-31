@@ -201,17 +201,6 @@ class TestMissingLinesCoverage:
         result = optimizer.optimize()
         assert len(result) == 2
 
-    def test_tabu_search_tabu_conditions(self):
-        """Test TabuSearch tabu list conditions (line 814, 836)."""
-        from humpday.optimizers.alloptimizers import TabuSearch
-
-        def tabu_objective(x):
-            return sum((xi - 0.25) ** 2 for xi in x)
-
-        optimizer = TabuSearch(tabu_objective, n_trials=25, n_dim=2)
-        result = optimizer.optimize()
-        assert len(result) == 2
-
     def test_genetic_algorithm_selection_conditions(self):
         """Test GeneticAlgorithm selection conditions (line 896)."""
         from humpday.optimizers.alloptimizers import GeneticAlgorithm
