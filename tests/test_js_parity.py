@@ -199,48 +199,36 @@ WINRATE_RUNS = 20
 # trips it. The test fails only on near-sweeps — the catch this is for.
 WINRATE_MIN_WINS_PER_SIDE = 4
 
-# Known divergent ports as of 2026-05-27 — the win-rate test trips on
-# these with N=20 runs on the 2-D Rosenbrock objective. They xfail with
-# strict=False, so:
+# Known divergent ports — the win-rate test trips on these with N=20 runs
+# on the 2-D Rosenbrock objective. They xfail with strict=False, so:
 #
 #   - When a port is genuinely divergent (the common case), pytest
 #     reports XFAIL and the test passes.
 #   - When a port has been fixed and the test now passes, pytest
 #     reports XPASS (highlighted in the summary) so we know to delete
 #     the entry — but it does NOT fail the test, which keeps CI stable
-#     for the borderline algorithms (HillClimbing, BayesianOpt) that
-#     occasionally cross the threshold.
+#     for borderline algorithms that occasionally cross the threshold.
 #
-# Median Python vs median JS on Rosenbrock @ 300 trials (one run, the
-# pattern is consistent across runs):
-#   PRIMA_UOBYQA      0.43 vs   2.9    — Python ~7×  better
-#   PRIMA_NEWUOA      0.47 vs   4.0    — Python ~8×  better
-#   PRIMA_BOBYQA      0.36 vs  32      — Python ~88× better
-#   LBFGSB            0.29 vs  63      — Python ~217× better
-#   Powell            0.36 vs   1.84   — Python ~5×  better
-#   BayesianOpt       0.04 vs   0.11   — Python ~3×  better
-#   AntColonyOpt      1.54 vs   0.25   — JS ~6×  better
-#   TabuSearch        0.09 vs   0.02   — JS ~5×  better
-#   HillClimbing      0.11 vs   0.006  — JS ~17× better (borderline at N=20)
+# As of 2026-05-30, only the trust-region family remains divergent.
+# LBFGSB, BayesianOpt, AntColonyOpt, and HillClimbing all closed their
+# gaps after the recent algorithm rewrites (#188 SA polish, #189 DE polish,
+# ACOR port, Rechenberg/HillClimbing port) and are no longer divergent
+# (all XPASS in the 2026-05-30 run).
 #
-# The Python-dominant pattern on PRIMA + LBFGSB + Powell + BayesianOpt
-# matches benchmarks/elo_ratings.json (Python ratings >> JS ratings on
-# those four families).
+# PRIMA_BOBYQA was at 88× worse on Rosenbrock; the JS port was rewritten
+# to mirror the Python port (FD-gradient fallback when the model fit is
+# singular). Both ports now converge to within 2% of each other, but the
+# win-rate test still trips because both implementations are
+# deterministic — every paired matchup has the same winner.
+#
+# The remaining divergent set (PRIMA trio + Powell) tracks
+# benchmarks/elo_ratings.json: Python ratings substantially exceed JS
+# ratings on those four families.
 KNOWN_DIVERGENT_PORTS = {
     "PRIMA_UOBYQA",
     "PRIMA_NEWUOA",
-    # PRIMA_BOBYQA was at 88x worse on Rosenbrock; the JS port was rewritten
-    # to mirror the Python port (FD-gradient fallback when the model fit is
-    # singular). Both ports now converge to within 2% of each other.
-    # The win-rate test still trips because both implementations are
-    # deterministic — every paired matchup has the same winner — but the
-    # divergence is no longer real, so it's kept marked but documented.
     "PRIMA_BOBYQA",
-    "LBFGSB",
     "Powell",
-    "BayesianOpt",
-    "AntColonyOpt",
-    "HillClimbing",
 }
 
 
