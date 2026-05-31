@@ -23,6 +23,7 @@ from .scipy_algorithms import LBFGSB, NelderMead, Powell
 from .search_algorithms import (
     AdaptiveRandomSearch,  # noqa: F401 — backwards-compat alias for Rechenberg
     CoordinateDescent,
+    GridSearch,
     PatternSearch,
     Rechenberg,
 )
@@ -45,6 +46,7 @@ PURE_OPTIMIZERS = {
     "SimulatedAnnealing": SimulatedAnnealing,
     "GeneticAlgorithm": GeneticAlgorithm,
     "RandomSearch": RandomSearch,
+    "GridSearch": GridSearch,
     "BayesianOpt": BayesianOpt,
     "CMAEvolutionStrategy": CMAEvolutionStrategy,
     "FireflyAlgorithm": FireflyAlgorithm,

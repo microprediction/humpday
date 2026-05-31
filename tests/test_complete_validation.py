@@ -469,7 +469,7 @@ class TestOptimizerConsistency:
     """Test that our optimizers work correctly and consistently."""
 
     def test_all_optimizers_functional(self):
-        """Test that all 21 optimizers work on a simple problem."""
+        """Test that all 22 optimizers work on a simple problem."""
         from humpday.optimizers.alloptimizers import PURE_OPTIMIZERS
 
         # Simple quadratic with known minimum
@@ -497,7 +497,7 @@ class TestOptimizerConsistency:
                 failed_optimizers.append((name, str(e)))
 
         # Report results
-        print(f"✅ {len(successful_optimizers)}/21 optimizers working")
+        print(f"✅ {len(successful_optimizers)}/22 optimizers working")
         for name in failed_optimizers:
             print(f"❌ {name[0]}: {name[1]}")
 

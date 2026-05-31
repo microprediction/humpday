@@ -14,7 +14,7 @@ if (typeof module !== 'undefined' && module.exports) {
     const { DifferentialEvolution, ParticleSwarm, SimulatedAnnealing, GeneticAlgorithm, RandomSearch,
             BayesianOpt, CMAEvolutionStrategy, FireflyAlgorithm, AntColonyOpt,
             HarmonySearch, EvolutionStrategy } = require('./evolutionary-algorithms.js');
-    const { Rechenberg, AdaptiveRandomSearch, CoordinateDescent, PatternSearch, HillClimbing } = require('./search-algorithms.js');
+    const { Rechenberg, AdaptiveRandomSearch, CoordinateDescent, PatternSearch, HillClimbing, GridSearch } = require('./search-algorithms.js');
 
     // Export everything
     module.exports = {
@@ -51,6 +51,7 @@ if (typeof module !== 'undefined' && module.exports) {
         CoordinateDescent,
         PatternSearch,
         HillClimbing,
+        GridSearch,
 
         // Algorithm registry for factory pattern
         algorithms: {
@@ -75,7 +76,8 @@ if (typeof module !== 'undefined' && module.exports) {
             'AdaptiveRandomSearch': AdaptiveRandomSearch,  // backwards-compat alias
             'CoordinateDescent': CoordinateDescent,
             'PatternSearch': PatternSearch,
-            'HillClimbing': HillClimbing
+            'HillClimbing': HillClimbing,
+            'GridSearch': GridSearch
         }
     };
 } else {
@@ -111,7 +113,8 @@ if (typeof module !== 'undefined' && module.exports) {
         AdaptiveRandomSearch: window.AdaptiveRandomSearch,  // backwards-compat alias
         CoordinateDescent: window.CoordinateDescent,
         PatternSearch: window.PatternSearch,
-        HillClimbing: window.HillClimbing
+        HillClimbing: window.HillClimbing,
+        GridSearch: window.GridSearch
     };
 
     // Factory function for creating optimizers by name

@@ -265,3 +265,46 @@ class PatternSearch(BaseOptimizer):
                     f = f_trial
                     break  # don't try the other sign on this coord
         return x, f
+
+
+class GridSearch(BaseOptimizer):
+    """Regular-grid baseline.
+
+    Evaluates a uniform Cartesian grid over the unit cube `[0, 1]^n_dim`
+    with `n_per_axis = round(n_trials^(1/n_dim))` points per axis. Each
+    axis is split into equal-width bins; the evaluated point in each bin
+    is the bin centre `(i + 0.5) / n_per_axis`.
+
+    Like RandomSearch, this is included as a baseline (regression check,
+    contest sanity floor), not as a SOTA algorithm.
+
+    Note: grid size scales as `n_per_axis^n_dim`. For modest budgets and
+    `n_dim >= 5` the grid degenerates to fewer than 2 points per axis,
+    making the algorithm equivalent to evaluating a handful of corners.
+    Practically useful for `n_dim <= 3`.
+    """
+
+    def optimize(self):
+        n = self.n_dim
+        n_per_axis = max(2, int(round(self.n_trials ** (1.0 / n))))
+
+        # Lexicographic enumeration of indices across n axes, each in
+        # [0, n_per_axis). Bin-centred coordinates lie at (idx + 0.5) /
+        # n_per_axis, so they are evenly spread inside [0, 1] without
+        # ever sitting exactly on the bounds.
+        indices = [0] * n
+        while self.evaluations < self.n_trials:
+            x = _A.asarray([(idx + 0.5) / n_per_axis for idx in indices])
+            self.evaluate(x)
+            # Increment indices like an odometer; stop once all wrap.
+            d = n - 1
+            while d >= 0:
+                indices[d] += 1
+                if indices[d] < n_per_axis:
+                    break
+                indices[d] = 0
+                d -= 1
+            if d < 0:
+                break  # full grid exhausted
+
+        return self.best_value, self.best_x
