@@ -82,6 +82,12 @@ class Rechenberg extends Optimizer {
 const AdaptiveRandomSearch = Rechenberg;
 
 // Coordinate Descent
+// Coordinate descent with an adaptive expanding line search per axis.
+// For each coordinate i, take a step ± step; if it improves, keep
+// stepping in the same direction until it stops improving. After a
+// full sweep over all coordinates with no improvement, halve the
+// step. Mirrors the Python port; replaces the previous fixed-shrink
+// (× 0.8, floor 0.001) variant that could never refine below ~1e-3.
 class CoordinateDescent extends Optimizer {
     constructor(objective, nTrials, nDim) {
         super(objective, nTrials, nDim);
@@ -89,46 +95,53 @@ class CoordinateDescent extends Optimizer {
     }
 
     optimize() {
-        let x = Array(this.nDim).fill(0).map(() => Math.random());
+        const n = this.nDim;
+        let x = Array(n).fill(0).map(() => Math.random());
         let fx = this.evaluate(x);
 
-        let stepSize = 0.1;
+        let step = 0.1;
+        const stepMin = 1e-12;
 
-        while (this.evaluations < this.nTrials) {
-            let improved = false;
+        while (this.evaluations < this.nTrials && step > stepMin) {
+            let improvedAnywhere = false;
 
-            for (let i = 0; i < this.nDim && this.evaluations < this.nTrials - 1; i++) {
-                // Try positive direction
-                const xPos = [...x];
-                xPos[i] = MathUtils.clip(x[i] + stepSize, 0, 1);
-                const fxPos = this.evaluate(xPos);
+            for (let i = 0; i < n; i++) {
+                if (this.evaluations >= this.nTrials) break;
 
-                if (fxPos < fx) {
-                    x = xPos;
-                    fx = fxPos;
-                    improved = true;
-                    continue;
+                let foundDirection = false;
+                for (const sign of [1, -1]) {
+                    if (this.evaluations >= this.nTrials) break;
+
+                    const xiNew = MathUtils.clip(x[i] + sign * step, 0, 1);
+                    if (Math.abs(xiNew - x[i]) < 1e-15) continue;
+
+                    const xTrial = x.slice();
+                    xTrial[i] = xiNew;
+                    const fTrial = this.evaluate(xTrial);
+                    if (fTrial >= fx) continue;
+
+                    x = xTrial;
+                    fx = fTrial;
+                    improvedAnywhere = true;
+                    foundDirection = true;
+
+                    // Greedy expansion in the same direction.
+                    while (this.evaluations < this.nTrials) {
+                        const xiNext = MathUtils.clip(x[i] + sign * step, 0, 1);
+                        if (Math.abs(xiNext - x[i]) < 1e-15) break;
+                        const xTrial2 = x.slice();
+                        xTrial2[i] = xiNext;
+                        const fTrial2 = this.evaluate(xTrial2);
+                        if (fTrial2 >= fx) break;
+                        x = xTrial2;
+                        fx = fTrial2;
+                    }
+                    break;
                 }
-
-                // Try negative direction
-                const xNeg = [...x];
-                xNeg[i] = MathUtils.clip(x[i] - stepSize, 0, 1);
-                const fxNeg = this.evaluate(xNeg);
-
-                if (fxNeg < fx) {
-                    x = xNeg;
-                    fx = fxNeg;
-                    improved = true;
-                }
+                if (!foundDirection) continue;
             }
 
-            // Adapt step size
-            if (improved) {
-                stepSize = Math.min(0.2, stepSize * 1.1);
-            } else {
-                stepSize = Math.max(0.001, stepSize * 0.8);
-                if (stepSize < 0.005) break;
-            }
+            if (!improvedAnywhere) step *= 0.5;
         }
 
         return {

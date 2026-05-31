@@ -85,53 +85,74 @@ AdaptiveRandomSearch = Rechenberg
 
 
 class CoordinateDescent(BaseOptimizer):
-    """Coordinate Descent optimization.
+    """Coordinate Descent with an adaptive expanding line search per axis.
 
     Pure-Python via the `humpday._array` shim — no direct numpy use.
-    Cycles through axes; for each, takes a step in both directions and
-    keeps the better. Step size halves when a full sweep makes no progress;
-    resets when it gets too small.
+
+    For each coordinate `i`, take a step `± step_size`; if it improves,
+    keep stepping in the same direction until it stops improving
+    (greedy expansion — the same shape Powell uses). After a full
+    sweep over all coordinates, halve `step_size` until it drops below
+    1e-12.
+
+    The previous implementation shrank `step_size *= 0.8` per failed
+    sweep (so even after 30 sweeps it was only at ~0.001) and reset
+    to 0.05 once `step_size < 1e-6` — a humpday-ism that explicitly
+    prevented convergence below ~1e-3. That's why the snapshot showed
+    a ~5.6e+07× gap vs scipy Powell with `direc=I` on the sphere.
     """
 
     def optimize(self):
-        x = _A.random_uniform(self.n_dim)
+        n = self.n_dim
+        x = _A.random_uniform(n)
         f = self.evaluate(x)
-        step_size = 0.1
 
-        while self.evaluations < self.n_trials:
-            improved = False
+        step = 0.1
+        step_min = 1e-12
 
-            # Cycle through coordinates.
-            for i in range(self.n_dim):
+        while self.evaluations < self.n_trials and step > step_min:
+            improved_anywhere = False
+
+            for i in range(n):
                 if self.evaluations >= self.n_trials:
                     break
 
-                best_xi = x[i]
-                best_f = f
+                # Try both signs along axis i; on the first improving
+                # step, greedily expand in that direction.
+                for sign in (1, -1):
+                    if self.evaluations >= self.n_trials:
+                        break
 
-                # Try steps in both directions along axis `i`.
-                for direction in [-1, 1]:
+                    xi_new = max(0.0, min(1.0, float(x[i]) + sign * step))
+                    if abs(xi_new - float(x[i])) < 1e-15:
+                        continue  # already at the bound in this direction
                     x_trial = x.copy()
-                    # Clip the single perturbed coordinate to [0, 1].
-                    xi_new = x[i] + direction * step_size
-                    x_trial[i] = (
-                        0.0 if xi_new < 0.0 else (1.0 if xi_new > 1.0 else xi_new)
-                    )
+                    x_trial[i] = xi_new
+                    f_trial = self.evaluate(x_trial)
+                    if f_trial >= f:
+                        continue
 
-                    if self.evaluations < self.n_trials:
-                        f_trial = self.evaluate(x_trial)
-                        if f_trial < best_f:
-                            best_xi = x_trial[i]
-                            best_f = f_trial
-                            improved = True
+                    x = x_trial
+                    f = f_trial
+                    improved_anywhere = True
 
-                x[i] = best_xi
-                f = best_f
+                    # Greedy expansion in the same direction.
+                    while self.evaluations < self.n_trials:
+                        xi_next = max(0.0, min(1.0, float(x[i]) + sign * step))
+                        if abs(xi_next - float(x[i])) < 1e-15:
+                            break
+                        x_trial2 = x.copy()
+                        x_trial2[i] = xi_next
+                        f_trial2 = self.evaluate(x_trial2)
+                        if f_trial2 >= f:
+                            break
+                        x = x_trial2
+                        f = f_trial2
 
-            if not improved:
-                step_size *= 0.8
-                if step_size < 1e-6:
-                    step_size = 0.05  # Reset
+                    break  # don't try the other sign on this coordinate
+
+            if not improved_anywhere:
+                step *= 0.5
 
         return self.best_value, self.best_x
 
