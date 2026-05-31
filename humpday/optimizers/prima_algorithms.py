@@ -459,7 +459,7 @@ class PRIMA_UOBYQA(BaseOptimizer):
                 continue
 
             try:
-                d = self._solve_trust_region_advanced(g, H, rho, n)
+                d = self._solve_trust_region_steihaug(g, H, rho, n)
             except Exception:
                 d = self._fallback_step(g, rho, n)
 
@@ -475,13 +475,19 @@ class PRIMA_UOBYQA(BaseOptimizer):
             predicted_reduction = -(_A.dot(g, d) + 0.5 * _A.dot(d, Hd))
             actual_reduction = FVAL[kopt] - fnew
 
-            # Update interpolation set.
+            # Update interpolation set: replace the worst-FVAL point only
+            # when the new point is genuinely better, otherwise leave the
+            # set alone. Full PRIMA UOBYQA does Lagrange-polynomial-based
+            # geometry maintenance (BIGLAG/BIGDEN); without that, the
+            # cleaner "furthest from new position" rule from NEWUOA
+            # actually hurts UOBYQA because UOBYQA's overdetermined
+            # regression is more sensitive to placing two nearly-identical
+            # points in the set than NEWUOA's min-Frobenius update is.
             if nused < npt:
                 XPT.append(xnew - xbase)
                 FVAL.append(fnew)
                 nused += 1
             else:
-                # Replace worst point that isn't the current best.
                 candidates = [i for i in range(nused) if i != kopt]
                 if candidates and fnew < max(FVAL[i] for i in candidates):
                     worst_idx = max(candidates, key=lambda i: FVAL[i])
@@ -490,6 +496,10 @@ class PRIMA_UOBYQA(BaseOptimizer):
 
             kopt = min(range(nused), key=FVAL.__getitem__)
 
+            # Four-tier TR radius update — mirrors NEWUOA's
+            # `_update_trust_region_radius`. The intermediate (0.1, 0.25)
+            # tier with `rho *= 0.8` is PRIMA-canonical and keeps rho
+            # from collapsing too quickly on borderline iterations.
             if abs(predicted_reduction) > 1e-12:
                 ratio = actual_reduction / predicted_reduction
             else:
@@ -499,6 +509,8 @@ class PRIMA_UOBYQA(BaseOptimizer):
                 rho = min(rho * 2.0, rhobeg)
             elif ratio >= 0.25:
                 pass  # Keep rho
+            elif ratio >= 0.1:
+                rho = rho * 0.8
             else:
                 rho = max(rho * 0.5, rhoend)
 
@@ -580,35 +592,82 @@ class PRIMA_UOBYQA(BaseOptimizer):
 
         return g, H
 
-    def _solve_trust_region_advanced(self, g, H, rho, n):
-        """Trust-region subproblem solve. Tries the Newton direction if H is
-        positive-definite; falls back to the Cauchy point otherwise."""
-        try:
-            eigenvals, _Q = _A.linalg.eigh(H)
-            min_eigval = min(eigenvals)
-            if min_eigval > 1e-8:
-                # H is SPD — try the Newton step.
-                d_newton = -_A.linalg.solve(H, g)
-                if _A.norm(d_newton) <= rho:
-                    return d_newton
-        except Exception:
-            pass
-        return self._cauchy_point(g, H, rho)
+    def _solve_trust_region_steihaug(self, g, H, rho, n):
+        """Steihaug-Toint truncated CG for the TR subproblem
+        min g·d + ½ d·H·d s.t. ||d|| ≤ rho.
 
-    def _cauchy_point(self, g, H, rho):
-        """Cauchy point along the steepest-descent direction."""
-        g_norm = _A.norm(g)
-        if g_norm < 1e-12:
-            return _A.zeros(len(g))
+        Correctly handles indefinite H (the common case for UOBYQA's
+        overdetermined regression on non-quadratic objectives): when the
+        CG direction has negative curvature, step to the TR boundary
+        along that direction instead of trusting the Newton step.
 
-        Hg = _A.linalg.matvec(H, g)
-        gHg = _A.dot(g, Hg)
-        if gHg > 0:
-            tau = min(1, (g_norm**3) / (rho * gHg))
-        else:
-            tau = 1
+        Reference: Steihaug, T. (1983), "The conjugate gradient method
+        and trust regions in large scale optimization", SIAM J. Numer.
+        Anal. 20(3). Also section 7.5 of Nocedal & Wright (2006).
 
-        return -tau * rho * g / g_norm
+        Previous UOBYQA used Newton-if-SPD-else-Cauchy, which on
+        Rosenbrock returned a tiny Newton step from an indefinite H
+        (eigvals [-1087, +17119]) — wrong direction, wrong magnitude.
+        Steihaug-Toint catches negative curvature and steps to the
+        boundary in the descent direction instead.
+        """
+        g_norm = float(_A.norm(g))
+        if g_norm < 1e-15:
+            return _A.zeros(n)
+
+        # Standard CG tolerance: stop when the residual is 10% of the
+        # initial gradient norm (Steihaug's recommendation). The TR
+        # boundary / negative-curvature checks usually trip first.
+        tol = max(0.1 * g_norm, 1e-8)
+        max_iter = 2 * n + 5
+
+        d = _A.zeros(n)
+        r = _A.asarray([float(g[i]) for i in range(n)])  # residual at d=0
+        p = _A.asarray([-float(r[i]) for i in range(n)])
+
+        for _ in range(max_iter):
+            Hp = _A.linalg.matvec(H, p)
+            pHp = float(_A.dot(p, Hp))
+
+            if pHp <= 1e-15:
+                # Negative or zero curvature along p: step to TR boundary.
+                return self._steihaug_boundary_step(d, p, rho, n)
+
+            rr = float(_A.dot(r, r))
+            alpha = rr / pHp
+            d_new = _A.asarray([float(d[i]) + alpha * float(p[i]) for i in range(n)])
+
+            if float(_A.norm(d_new)) >= rho:
+                # Step would exit TR: cap at boundary along p.
+                return self._steihaug_boundary_step(d, p, rho, n)
+
+            r_new = _A.asarray([float(r[i]) + alpha * float(Hp[i]) for i in range(n)])
+            if float(_A.norm(r_new)) < tol:
+                return d_new
+
+            beta = float(_A.dot(r_new, r_new)) / rr
+            p = _A.asarray([-float(r_new[i]) + beta * float(p[i]) for i in range(n)])
+            d = d_new
+            r = r_new
+
+        return d
+
+    def _steihaug_boundary_step(self, d, p, rho, n):
+        """Find tau ≥ 0 such that ||d + tau·p|| = rho, return d + tau·p.
+
+        Solves the quadratic (d + tau·p)·(d + tau·p) = rho² for the
+        positive root, which is the standard Steihaug boundary step.
+        """
+        dd = float(_A.dot(d, d))
+        dp = float(_A.dot(d, p))
+        pp = float(_A.dot(p, p))
+        if pp < 1e-30:
+            return d
+        disc = dp * dp - pp * (dd - rho * rho)
+        if disc < 0:
+            return d  # d already outside TR — shouldn't happen
+        tau = (-dp + math.sqrt(disc)) / pp
+        return _A.asarray([float(d[i]) + tau * float(p[i]) for i in range(n)])
 
     def _initialize_interpolation_points(self, xbase, rho, npt, n):
         """Lay out the initial interpolation set. Returns (XPT_list, FVAL_list)
