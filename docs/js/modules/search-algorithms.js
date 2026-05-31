@@ -155,6 +155,11 @@ class CoordinateDescent extends Optimizer {
 }
 
 // Pattern Search (Hooke-Jeeves style)
+// Classic Hooke-Jeeves pattern search (1961): exploratory sweep
+// from a base point, then a *pattern move* (extrapolation through
+// the new point) followed by another exploratory from the
+// extrapolated point. Step halves on failed sweep; floor 1e-12.
+// Mirrors the Python port and the textbook reference.
 class PatternSearch extends Optimizer {
     constructor(objective, nTrials, nDim) {
         super(objective, nTrials, nDim);
@@ -162,56 +167,41 @@ class PatternSearch extends Optimizer {
     }
 
     optimize() {
-        let x = Array(this.nDim).fill(0).map(() => Math.random());
-        let fx = this.evaluate(x);
+        const n = this.nDim;
+        let base = Array(n).fill(0).map(() => Math.random());
+        let fBase = this.evaluate(base);
+        let step = 0.1;
+        const stepMin = 1e-12;
 
-        let stepSize = 0.1;
+        while (this.evaluations < this.nTrials && step > stepMin) {
+            // 1. Exploratory move from base.
+            const e1 = this._explore(base.slice(), fBase, step);
+            let x = e1.x;
+            let f = e1.f;
 
-        while (this.evaluations < this.nTrials && stepSize > 1e-6) {
-            const xStart = [...x];
-
-            // Exploratory moves
-            for (let i = 0; i < this.nDim && this.evaluations < this.nTrials - 1; i++) {
-                // Positive direction
-                const xPos = [...x];
-                xPos[i] = MathUtils.clip(x[i] + stepSize, 0, 1);
-                const fxPos = this.evaluate(xPos);
-
-                if (fxPos < fx) {
-                    x = xPos;
-                    fx = fxPos;
-                } else {
-                    // Negative direction
-                    const xNeg = [...x];
-                    xNeg[i] = MathUtils.clip(x[i] - stepSize, 0, 1);
-                    const fxNeg = this.evaluate(xNeg);
-
-                    if (fxNeg < fx) {
-                        x = xNeg;
-                        fx = fxNeg;
+            if (f < fBase) {
+                if (this.evaluations < this.nTrials) {
+                    // 2. Pattern move: extrapolate from base through x.
+                    const newBase = x.map((xi, i) =>
+                        MathUtils.clip(xi + (xi - base[i]), 0, 1)
+                    );
+                    const fNewBase = this.evaluate(newBase);
+                    // 3. Exploratory from the pattern point.
+                    const e2 = this._explore(newBase.slice(), fNewBase, step);
+                    if (e2.f < f) {
+                        base = e2.x;
+                        fBase = e2.f;
+                    } else {
+                        base = x;
+                        fBase = f;
                     }
+                } else {
+                    base = x;
+                    fBase = f;
                 }
-            }
-
-            // Pattern move
-            const improved = fx < this.evaluate(xStart);
-            if (improved && this.evaluations < this.nTrials) {
-                const direction = MathUtils.subtract(x, xStart);
-                const xPattern = MathUtils.add(x, direction);
-                const xClipped = MathUtils.clipArray(xPattern, 0, 1);
-
-                const fxPattern = this.evaluate(xClipped);
-                if (fxPattern < fx) {
-                    x = xClipped;
-                    fx = fxPattern;
-                }
-            }
-
-            // Update step size
-            if (improved) {
-                stepSize = Math.min(0.2, stepSize * 1.2);
             } else {
-                stepSize *= 0.5;
+                // 4. No exploratory progress at this step: halve.
+                step *= 0.5;
             }
         }
 
@@ -222,6 +212,27 @@ class PatternSearch extends Optimizer {
             success: true,
             path: this.trackPath ? this.path : null
         };
+    }
+
+    _explore(x, f, step) {
+        const n = this.nDim;
+        for (let i = 0; i < n; i++) {
+            if (this.evaluations >= this.nTrials) break;
+            for (const sign of [1, -1]) {
+                if (this.evaluations >= this.nTrials) break;
+                const xiNew = MathUtils.clip(x[i] + sign * step, 0, 1);
+                if (Math.abs(xiNew - x[i]) < 1e-15) continue;
+                const xTrial = x.slice();
+                xTrial[i] = xiNew;
+                const fTrial = this.evaluate(xTrial);
+                if (fTrial < f) {
+                    x = xTrial;
+                    f = fTrial;
+                    break;
+                }
+            }
+        }
+        return { x, f };
     }
 }
 
