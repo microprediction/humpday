@@ -328,6 +328,42 @@ class HillClimbing extends Optimizer {
     }
 }
 
+// Regular-grid baseline. Like RandomSearch, this is included as a
+// baseline (regression check, contest sanity floor), not as a SOTA
+// algorithm. Grid size scales as `nPerAxis^nDim`; practically useful
+// for nDim <= 3.
+class GridSearch extends Optimizer {
+    constructor(objective, nTrials, nDim) {
+        super(objective, nTrials, nDim);
+        this.name = 'GridSearch';
+    }
+
+    optimize() {
+        const n = this.nDim;
+        const nPerAxis = Math.max(2, Math.round(Math.pow(this.nTrials, 1.0 / n)));
+        const indices = new Array(n).fill(0);
+        while (this.evaluations < this.nTrials) {
+            const x = indices.map(i => (i + 0.5) / nPerAxis);
+            this.evaluate(x);
+            let d = n - 1;
+            while (d >= 0) {
+                indices[d]++;
+                if (indices[d] < nPerAxis) break;
+                indices[d] = 0;
+                d--;
+            }
+            if (d < 0) break;
+        }
+        return {
+            bestValue: this.bestValue,
+            bestX: this.bestX,
+            evaluations: this.evaluations,
+            success: true,
+            path: this.trackPath ? this.path : null
+        };
+    }
+}
+
 // Export search algorithms
 if (typeof module !== 'undefined' && module.exports) {
     // Node.js environment
@@ -337,6 +373,7 @@ if (typeof module !== 'undefined' && module.exports) {
         CoordinateDescent,
         PatternSearch,
         HillClimbing,
+        GridSearch,
     };
 } else {
     // Browser environment
@@ -345,4 +382,5 @@ if (typeof module !== 'undefined' && module.exports) {
     window.CoordinateDescent = CoordinateDescent;
     window.PatternSearch = PatternSearch;
     window.HillClimbing = HillClimbing;
+    window.GridSearch = GridSearch;
 }

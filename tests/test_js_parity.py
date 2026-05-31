@@ -62,6 +62,7 @@ WEAK_TOL = 1.0
 # Python and JS land in the same ballpark for these.
 WEAK_ON_SMALL_BUDGET = {
     "RandomSearch",
+    "GridSearch",
     "HillClimbing",
     "AntColonyOpt",
     "FireflyAlgorithm",

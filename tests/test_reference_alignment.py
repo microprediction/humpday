@@ -332,6 +332,34 @@ def _ref_random_search(func, n_trials, n_dim, seed):
     return {"best_value": float(best), "evals": n_evals}
 
 
+def _ref_grid_search(func, n_trials, n_dim, seed):
+    """Regular-grid baseline — `n_per_axis^n_dim` evaluations on a
+    uniform Cartesian grid with bin-centred coordinates. Like
+    `_ref_random_search`, this is included as a sanity floor and is
+    deterministic in `n_trials`/`n_dim` (the `seed` is unused)."""
+    n_per_axis = max(2, round(n_trials ** (1.0 / n_dim)))
+    indices = [0] * n_dim
+    best = float("inf")
+    n_evals = 0
+    while n_evals < n_trials:
+        x = [(i + 0.5) / n_per_axis for i in indices]
+        v = func(x)
+        n_evals += 1
+        if v < best:
+            best = v
+        d = n_dim - 1
+        while d >= 0:
+            indices[d] += 1
+            if indices[d] < n_per_axis:
+                break
+            indices[d] = 0
+            d -= 1
+        if d < 0:
+            break
+    _ = seed
+    return {"best_value": float(best), "evals": n_evals}
+
+
 def _ref_oneplusone_es_decay(func, n_trials, n_dim, seed):
     """(1+1)-ES with a geometric sigma decay schedule — the natural
     reference for HillClimbing. Starts at sigma=0.1 and decays so the
@@ -603,6 +631,7 @@ REFERENCES = {
     "EvolutionStrategy": ("mealpy ES", _ref_mealpy_es, ["mealpy", "numpy"]),
     "AntColonyOpt": ("mealpy ACOR", _ref_mealpy_acor, ["mealpy", "numpy"]),
     "RandomSearch": ("uniform-sample baseline", _ref_random_search, []),
+    "GridSearch": ("regular grid baseline", _ref_grid_search, []),
     "HillClimbing": (
         "(1+1)-ES sigma-decay schedule",
         _ref_oneplusone_es_decay,

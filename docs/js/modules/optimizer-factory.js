@@ -47,7 +47,8 @@ const OptimizerFactory = {
             'AdaptiveRandomSearch': window.AdaptiveRandomSearch,  // backwards-compat alias
             'CoordinateDescent': window.CoordinateDescent,
             'PatternSearch': window.PatternSearch,
-            'HillClimbing': window.HillClimbing
+            'HillClimbing': window.HillClimbing,
+            'GridSearch': window.GridSearch
         };
 
         const AlgorithmClass = algorithmMap[algorithmName];
@@ -80,7 +81,7 @@ const OptimizerFactory = {
             'GeneticAlgorithm', 'RandomSearch', 'BayesianOpt', 'CMAEvolutionStrategy',
             'FireflyAlgorithm', 'AntColonyOpt', 'HarmonySearch', 'EvolutionStrategy',
             // Search algorithms
-            'Rechenberg', 'CoordinateDescent', 'PatternSearch', 'HillClimbing'
+            'Rechenberg', 'CoordinateDescent', 'PatternSearch', 'HillClimbing', 'GridSearch'
         ];
     },
 
