@@ -833,66 +833,72 @@ class PRIMA_UOBYQA extends Optimizer {
     }
 
     solveTrustRegionSubproblem(model, rho) {
-        // Solve: min_s m(s) = c + g^T s + 0.5 s^T H s  subject to ||s|| <= rho
-        // Using dogleg method for proper trust region optimization
-
+        // Steihaug-Toint truncated CG for the TR subproblem
+        // min g·d + ½ d·H·d s.t. ||d|| ≤ rho.
+        //
+        // Correctly handles indefinite H (the common case for UOBYQA's
+        // overdetermined regression on non-quadratic objectives): when
+        // the CG direction has negative curvature, step to the TR
+        // boundary along that direction instead of trusting the Newton
+        // step. Mirrors the Python port (see
+        // `_solve_trust_region_steihaug` in prima_algorithms.py).
         const n = this.nDim;
         const g = model.g;
         const H = model.H;
 
-        // Compute Cauchy point (steepest descent step)
-        const gNorm = MathUtils.norm(g);
-        if (gNorm < 1e-4) { // Much more relaxed gradient tolerance for visualization
-            return Array(n).fill(0); // Zero gradient, no step
+        let gNorm = 0;
+        for (let i = 0; i < n; i++) gNorm += g[i] * g[i];
+        gNorm = Math.sqrt(gNorm);
+        if (gNorm < 1e-15) return Array(n).fill(0);
+
+        const tol = Math.max(0.1 * gNorm, 1e-8);
+        const maxIter = 2 * n + 5;
+
+        let d = Array(n).fill(0);
+        let r = g.slice();
+        let p = r.map(v => -v);
+
+        const boundaryStep = (d, p) => {
+            let dd = 0, dp = 0, pp = 0;
+            for (let i = 0; i < n; i++) { dd += d[i]*d[i]; dp += d[i]*p[i]; pp += p[i]*p[i]; }
+            if (pp < 1e-30) return d;
+            const disc = dp*dp - pp*(dd - rho*rho);
+            if (disc < 0) return d;
+            const tau = (-dp + Math.sqrt(disc)) / pp;
+            return d.map((di, i) => di + tau * p[i]);
+        };
+
+        for (let iter = 0; iter < maxIter; iter++) {
+            // Hp = H * p
+            const Hp = Array(n).fill(0);
+            for (let i = 0; i < n; i++) {
+                for (let j = 0; j < n; j++) Hp[i] += H[i][j] * p[j];
+            }
+            let pHp = 0;
+            for (let i = 0; i < n; i++) pHp += p[i] * Hp[i];
+
+            if (pHp <= 1e-15) return boundaryStep(d, p);  // negative curvature
+
+            let rr = 0;
+            for (let i = 0; i < n; i++) rr += r[i] * r[i];
+            const alpha = rr / pHp;
+            const dNew = d.map((di, i) => di + alpha * p[i]);
+
+            let dNewNorm = 0;
+            for (let i = 0; i < n; i++) dNewNorm += dNew[i] * dNew[i];
+            if (Math.sqrt(dNewNorm) >= rho) return boundaryStep(d, p);
+
+            const rNew = r.map((ri, i) => ri + alpha * Hp[i]);
+            let rNewNorm = 0;
+            for (let i = 0; i < n; i++) rNewNorm += rNew[i] * rNew[i];
+            if (Math.sqrt(rNewNorm) < tol) return dNew;
+
+            const beta = rNewNorm / rr;
+            p = rNew.map((ri, i) => -ri + beta * p[i]);
+            d = dNew;
+            r = rNew;
         }
-
-        // Cauchy step: s_c = -(tau * rho / ||g||) * g
-        // where tau is chosen to minimize the quadratic along steepest descent
-
-        const gHg = this.quadraticForm(g, H, g); // g^T H g
-        let tau;
-        if (gHg <= 0) {
-            tau = 1.0; // Indefinite Hessian, go to trust region boundary
-        } else {
-            tau = Math.min(1.0, (gNorm * gNorm * gNorm) / (rho * gHg));
-        }
-
-        const sCauchy = MathUtils.scale(g, -tau * rho / gNorm);
-
-        // If Cauchy point is on boundary or Hessian is indefinite, return Cauchy point
-        if (tau >= 0.99 || gHg <= 0) {
-            return sCauchy;
-        }
-
-        // Try Newton step: s_n = -H^{-1} g
-        const sNewton = this.solveLinearSystem(H, MathUtils.scale(g, -1));
-        if (!sNewton) {
-            return sCauchy; // Singular Hessian, use Cauchy point
-        }
-
-        const newtonNorm = MathUtils.norm(sNewton);
-
-        // If Newton step is within trust region, use it
-        if (newtonNorm <= rho) {
-            return sNewton;
-        }
-
-        // Dogleg path: combine Cauchy and Newton directions
-        // Find intersection of line from Cauchy to Newton with trust region boundary
-        const diff = MathUtils.subtract(sNewton, sCauchy);
-        const a = MathUtils.dot(diff, diff);
-        const b = 2 * MathUtils.dot(sCauchy, diff);
-        const c = MathUtils.dot(sCauchy, sCauchy) - rho * rho;
-
-        const discriminant = b * b - 4 * a * c;
-        if (discriminant < 0) {
-            return sCauchy; // No intersection, shouldn't happen
-        }
-
-        const alpha = (-b + Math.sqrt(discriminant)) / (2 * a);
-        const sDogleg = MathUtils.add(sCauchy, MathUtils.scale(diff, alpha));
-
-        return sDogleg;
+        return d;
     }
 
     quadraticForm(x, A, y) {
