@@ -32,47 +32,29 @@ class Rechenberg(BaseOptimizer):
 
     def optimize(self):
         # Step bounds: 1e-12 floor lets the algorithm refine to machine
-        # precision on smooth basins (the previous 0.01 floor was the
-        # entire reason this port was ~5.7e+08× off the reference on
-        # the sphere benchmark). Upper cap matches the unit cube.
+        # precision on smooth basins. Upper cap matches the unit cube.
         step_max = 1.0
         step_min = 1e-12
         window_size = 10
 
-        # Adaptive restart trigger: when σ has collapsed below
-        # `restart_step_threshold` AND no improvement for
-        # `restart_stagnation` consecutive evals, the run is stuck in a
-        # local basin. Restart from a fresh random point with σ = 0.1.
-        # This closes the Ackley trapping pathology (snapshot was 2.58
-        # vs reference 6.9e-6 — sat in the wrong basin the whole budget)
-        # without hurting unimodal convergence: on sphere a single run
-        # progresses for the whole budget because σ never collapses
-        # until f is near zero, by which point we're at machine
-        # precision and a restart can't help.
-        restart_step_threshold = 1e-8
-        restart_stagnation = 30
-
         x = _A.random_uniform(self.n_dim)
         f = self.evaluate(x)
-        step_size = 0.1
+        sigma = 0.1
         window: list[bool] = []
-        stagnation = 0
 
         while self.evaluations < self.n_trials:
-            if step_size < restart_step_threshold and stagnation >= restart_stagnation:
-                # Stuck in a local basin: restart.
-                x = _A.random_uniform(self.n_dim)
-                f = self.evaluate(x)
-                step_size = 0.1
-                window.clear()
-                stagnation = 0
-                continue
-
-            # Random unit-direction step.
-            direction = _A.random_normal(self.n_dim)
-            direction = direction / (_A.norm(direction) + 1e-10)
-
-            x_new = _A.clip(x + step_size * direction, 0, 1)
+            # Componentwise Gaussian perturbation — `sigma * z` where
+            # `z ~ N(0, I)`. This is the canonical (1+1)-ES formulation
+            # (Rechenberg 1973) and what the reference adapter at
+            # `tests/test_reference_alignment.py::_ref_oneplusone_es_oneFifth`
+            # uses. The previous implementation projected to a unit
+            # direction first, giving every step magnitude exactly =
+            # σ. That damps the stochastic spread (mean ≈ σ·√n with
+            # tails much wider) and made humpday's Rechenberg trap in
+            # local basins on multimodal landscapes — snapshot Ackley
+            # was 2.58 vs the reference's 6.9e-6 at identical settings.
+            z = _A.random_normal(self.n_dim)
+            x_new = _A.clip(x + sigma * z, 0, 1)
 
             if self.evaluations >= self.n_trials:
                 break
@@ -82,9 +64,6 @@ class Rechenberg(BaseOptimizer):
             if accepted:
                 x = x_new
                 f = f_new
-                stagnation = 0
-            else:
-                stagnation += 1
             window.append(accepted)
             if len(window) > window_size:
                 window.pop(0)
@@ -94,9 +73,9 @@ class Rechenberg(BaseOptimizer):
             if len(window) >= window_size:
                 rate = sum(window) / window_size
                 if rate > 1 / 5:
-                    step_size = min(step_max, step_size * 1.5)
+                    sigma = min(step_max, sigma * 1.5)
                 elif rate < 1 / 5:
-                    step_size = max(step_min, step_size / 1.5)
+                    sigma = max(step_min, sigma / 1.5)
 
         return self.best_value, self.best_x
 

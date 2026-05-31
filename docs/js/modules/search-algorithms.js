@@ -32,31 +32,24 @@ class Rechenberg extends Optimizer {
         let x = Array(this.nDim).fill(0).map(() => Math.random());
         let fx = this.evaluate(x);
 
-        let stepSize = 0.1;
+        let sigma = 0.1;
         const stepMin = 1e-12;
         const stepMax = 1.0;
-        let window = [];
+        const window = [];
         const windowSize = 10;
-        // Adaptive restart: when σ collapses AND stagnation persists,
-        // restart from a fresh random point. Closes the Ackley trapping
-        // pathology (snapshot was 2.58 vs reference 6.9e-6) without
-        // hurting unimodal convergence. Mirrors the Python port.
-        const restartStepThreshold = 1e-8;
-        const restartStagnation = 30;
-        let stagnation = 0;
+
+        // Box-Muller for componentwise standard normal samples.
+        const gaussian = () => {
+            const u1 = Math.max(Math.random(), 1e-300);
+            const u2 = Math.random();
+            return Math.sqrt(-2 * Math.log(u1)) * Math.cos(2 * Math.PI * u2);
+        };
 
         while (this.evaluations < this.nTrials) {
-            if (stepSize < restartStepThreshold && stagnation >= restartStagnation) {
-                x = Array(this.nDim).fill(0).map(() => Math.random());
-                fx = this.evaluate(x);
-                stepSize = 0.1;
-                window = [];
-                stagnation = 0;
-                continue;
-            }
-
+            // Componentwise Gaussian perturbation — sigma * z with
+            // z ~ N(0, I). Canonical (1+1)-ES, mirrors Python port.
             const candidate = x.map(xi =>
-                MathUtils.clip(xi + (Math.random() - 0.5) * stepSize, 0, 1)
+                MathUtils.clip(xi + sigma * gaussian(), 0, 1)
             );
 
             const candidateFx = this.evaluate(candidate);
@@ -64,9 +57,6 @@ class Rechenberg extends Optimizer {
             if (accepted) {
                 x = candidate;
                 fx = candidateFx;
-                stagnation = 0;
-            } else {
-                stagnation += 1;
             }
             window.push(accepted ? 1 : 0);
             if (window.length > windowSize) window.shift();
@@ -75,9 +65,9 @@ class Rechenberg extends Optimizer {
             if (window.length >= windowSize) {
                 const rate = window.reduce((s, v) => s + v, 0) / windowSize;
                 if (rate > 1 / 5) {
-                    stepSize = Math.min(stepMax, stepSize * 1.5);
+                    sigma = Math.min(stepMax, sigma * 1.5);
                 } else if (rate < 1 / 5) {
-                    stepSize = Math.max(stepMin, stepSize / 1.5);
+                    sigma = Math.max(stepMin, sigma / 1.5);
                 }
             }
         }

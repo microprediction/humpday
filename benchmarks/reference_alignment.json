@@ -574,11 +574,11 @@
       "algorithm": "CoordinateDescent",
       "reference": "scipy Powell (direc=I)",
       "problem": "sphere",
-      "humpday_median": 1.934869673211661e-18,
+      "humpday_median": 2.540761234959455e-13,
       "reference_median": 0.0,
-      "humpday_to_opt": 1.934869673211661e-18,
+      "humpday_to_opt": 2.540761234959455e-13,
       "reference_to_opt": 0.0,
-      "ratio_humpday_over_reference": 1.0019348696732118
+      "ratio_humpday_over_reference": 255.07612349594547
     },
     {
       "algorithm": "CoordinateDescent",
@@ -594,21 +594,21 @@
       "algorithm": "CoordinateDescent",
       "reference": "scipy Powell (direc=I)",
       "problem": "ackley",
-      "humpday_median": 4.4595687587190014e-08,
+      "humpday_median": 1.4257636227643644e-05,
       "reference_median": 1.4808820836265113e-10,
-      "humpday_to_opt": 4.4595687587190014e-08,
+      "humpday_to_opt": 1.4257636227643644e-05,
       "reference_to_opt": 1.4808820836265113e-10,
-      "ratio_humpday_over_reference": 301.1407048512339
+      "ratio_humpday_over_reference": 96277.3478654066
     },
     {
       "algorithm": "PatternSearch",
       "reference": "scipy.optimize.direct (DIRECT)",
       "problem": "sphere",
-      "humpday_median": 1.6819036025804625e-15,
+      "humpday_median": 2.5407612350294455e-13,
       "reference_median": 0.0,
-      "humpday_to_opt": 1.6819036025804625e-15,
+      "humpday_to_opt": 2.5407612350294455e-13,
       "reference_to_opt": 0.0,
-      "ratio_humpday_over_reference": 2.681903602580462
+      "ratio_humpday_over_reference": 255.07612350294454
     },
     {
       "algorithm": "PatternSearch",
@@ -624,15 +624,15 @@
       "algorithm": "PatternSearch",
       "reference": "scipy.optimize.direct (DIRECT)",
       "problem": "ackley",
-      "humpday_median": 5.508267794329669e-06,
+      "humpday_median": 1.4257636227643644e-05,
       "reference_median": 4.440892098500626e-16,
-      "humpday_to_opt": 5.508267794329669e-06,
+      "humpday_to_opt": 1.4257636227643644e-05,
       "reference_to_opt": 4.440892098500626e-16,
-      "ratio_humpday_over_reference": 3814354236.3989987
+      "ratio_humpday_over_reference": 9873099342.750431
     }
   ],
   "n_runs": 4,
   "n_trials": 200,
   "n_dim": 2,
-  "recorded_at": "2026-05-31T04:27:42Z"
+  "recorded_at": "2026-05-31T13:04:01Z"
 }
