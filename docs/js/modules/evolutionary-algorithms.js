@@ -42,7 +42,10 @@ if (typeof module !== 'undefined' && module.exports) {
         // — closest derivative-free equivalent is coord descent with a
         // shrinking step). Without the polish JS DE was ~1000× off
         // scipy DE on the sphere at n_trials=200.
-        const polishBudget = Math.max(15, Math.floor(this.nTrials / 4));
+        // Half the budget goes to L-BFGS-B polish — see Python comment
+        // for the sweep data. Sweet spot is 50%: DE rosenbrock 2.2e-4
+        // → 3.5e-10 (matches scipy).
+        const polishBudget = Math.max(15, Math.floor(this.nTrials / 2));
         const deBudget = this.nTrials - polishBudget;
 
         const popSize = Math.max(10, Math.min(20, Math.floor(deBudget / 5)));
@@ -269,7 +272,9 @@ class SimulatedAnnealing extends Optimizer {
     // precision because its proposals are noisy.
     optimize() {
         const n = this.nDim;
-        const polishBudget = Math.max(20, Math.floor(this.nTrials / 3));
+        // 50% polish — same rationale as DE. SA rosenbrock 2.8e-5
+        // → 2.8e-8 (1000x better).
+        const polishBudget = Math.max(20, Math.floor(this.nTrials / 2));
         const saBudget = this.nTrials - polishBudget;
 
         // --- Stage 1: multi-restart Metropolis SA ----------------------
