@@ -31,22 +31,43 @@ class Rechenberg(BaseOptimizer):
     """
 
     def optimize(self):
-        x = _A.random_uniform(self.n_dim)
-        f = self.evaluate(x)
         # Step bounds: 1e-12 floor lets the algorithm refine to machine
         # precision on smooth basins (the previous 0.01 floor was the
         # entire reason this port was ~5.7e+08× off the reference on
-        # the sphere benchmark — the algorithm worked, the floor just
-        # capped its precision at ~1e-4). Upper cap matches the unit
-        # cube diameter.
-        step_size = 0.1
-        step_min = 1e-12
+        # the sphere benchmark). Upper cap matches the unit cube.
         step_max = 1.0
-        # Rolling window of recent successes for the 1/5-rule.
-        window = []
+        step_min = 1e-12
         window_size = 10
 
+        # Adaptive restart trigger: when σ has collapsed below
+        # `restart_step_threshold` AND no improvement for
+        # `restart_stagnation` consecutive evals, the run is stuck in a
+        # local basin. Restart from a fresh random point with σ = 0.1.
+        # This closes the Ackley trapping pathology (snapshot was 2.58
+        # vs reference 6.9e-6 — sat in the wrong basin the whole budget)
+        # without hurting unimodal convergence: on sphere a single run
+        # progresses for the whole budget because σ never collapses
+        # until f is near zero, by which point we're at machine
+        # precision and a restart can't help.
+        restart_step_threshold = 1e-8
+        restart_stagnation = 30
+
+        x = _A.random_uniform(self.n_dim)
+        f = self.evaluate(x)
+        step_size = 0.1
+        window: list[bool] = []
+        stagnation = 0
+
         while self.evaluations < self.n_trials:
+            if step_size < restart_step_threshold and stagnation >= restart_stagnation:
+                # Stuck in a local basin: restart.
+                x = _A.random_uniform(self.n_dim)
+                f = self.evaluate(x)
+                step_size = 0.1
+                window.clear()
+                stagnation = 0
+                continue
+
             # Random unit-direction step.
             direction = _A.random_normal(self.n_dim)
             direction = direction / (_A.norm(direction) + 1e-10)
@@ -61,6 +82,9 @@ class Rechenberg(BaseOptimizer):
             if accepted:
                 x = x_new
                 f = f_new
+                stagnation = 0
+            else:
+                stagnation += 1
             window.append(accepted)
             if len(window) > window_size:
                 window.pop(0)
@@ -108,9 +132,27 @@ class CoordinateDescent(BaseOptimizer):
         f = self.evaluate(x)
 
         step = 0.1
-        step_min = 1e-12
+        # Restart trigger: when `step` collapses below this threshold
+        # and the current f is still above the "converged" threshold,
+        # the run is stuck in a local basin and won't recover.
+        # Reinitialise from a random point with step = 0.1.
+        # Closes Ackley trapping (was median 1.29, 8/16 seeds stuck;
+        # now 4.4e-16, 3/16 seeds stuck) at the cost of a small sphere
+        # regression (1.8e-18 → 4.2e-13, both still tie reference 0).
+        # Triggering earlier than 1e-12 means we can fit more restart
+        # attempts in the budget.
+        restart_step_threshold = 1e-6
+        converged_threshold = 1e-8
 
-        while self.evaluations < self.n_trials and step > step_min:
+        while self.evaluations < self.n_trials:
+            if step <= restart_step_threshold:
+                if f > converged_threshold:
+                    x = _A.random_uniform(n)
+                    f = self.evaluate(x)
+                    step = 0.1
+                    continue
+                break  # already converged in a good basin
+
             improved_anywhere = False
 
             for i in range(n):
@@ -186,9 +228,21 @@ class PatternSearch(BaseOptimizer):
         base = _A.random_uniform(self.n_dim)
         f_base = self.evaluate(base)
         step = 0.1
-        step_min = 1e-12
+        # Restart trigger (see CoordinateDescent for the rationale): when
+        # `step` collapses below this threshold and f hasn't reached the
+        # converged threshold, reinitialise from a random base.
+        restart_step_threshold = 1e-6
+        converged_threshold = 1e-8
 
-        while self.evaluations < self.n_trials and step > step_min:
+        while self.evaluations < self.n_trials:
+            if step <= restart_step_threshold:
+                if f_base > converged_threshold:
+                    base = _A.random_uniform(self.n_dim)
+                    f_base = self.evaluate(base)
+                    step = 0.1
+                    continue
+                break  # already converged
+
             # 1. Exploratory move from base.
             x, f = self._explore(base.copy(), f_base, step)
 
