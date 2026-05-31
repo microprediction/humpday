@@ -465,17 +465,27 @@ class BayesianOpt extends Optimizer {
             this.observations.push({ x: [...x], y });
         }
 
+        // Reserve budget for the L-BFGS-B polish stage. Reference:
+        // scikit-optimize's `gp_minimize` finishes with a
+        // `minimize(method='L-BFGS-B')` polish on the best observation.
+        // The polish takes 2·nDim evals per gradient + a few per line
+        // search; reserving 20·nDim evals (≈ 10 polish iterations)
+        // closes the residual ~5 orders of magnitude on smooth
+        // problems by escaping the GP's RBF smoothing floor.
+        const polishReserve = Math.min(20 * this.nDim, Math.floor(this.nTrials / 2));
+        const loopBudget = Math.max(this.evaluations, this.nTrials - polishReserve);
+
         // Bayesian optimization loop with intensification
-        while (this.evaluations < this.nTrials) {
+        while (this.evaluations < loopBudget) {
             const nextX = this.acquireNext();
             const y = this.evaluate(nextX);
             this.observations.push({ x: [...nextX], y });
 
             // Intensify search around best point if very good solution found
-            if (y < 1e-4 && this.evaluations < this.nTrials - 5) {
-                for (let i = 0; i < Math.min(3, this.nTrials - this.evaluations); i++) {
+            if (y < 1e-4 && this.evaluations < loopBudget - 5) {
+                for (let i = 0; i < Math.min(3, loopBudget - this.evaluations); i++) {
                     const localX = nextX.map(xi => {
-                        const noise = (Math.random() - 0.5) * 0.02; // Small perturbation
+                        const noise = (Math.random() - 0.5) * 0.02;
                         return MathUtils.clip(xi + noise, 0, 1);
                     });
                     const localY = this.evaluate(localX);
@@ -483,6 +493,9 @@ class BayesianOpt extends Optimizer {
                 }
             }
         }
+
+        // Polish: L-BFGS-B from the GP-EI best. Mirrors the Python port.
+        this._lbfgsPolish();
 
         return {
             bestValue: this.bestValue,
