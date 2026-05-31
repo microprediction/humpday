@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 """
-Test script to verify all 22 algorithms work in both Python and JavaScript.
+Test script to verify all 21 algorithms work in both Python and JavaScript.
 
 This script tests the completeness and consistency of the HumpDay optimization
 library across both implementations.
@@ -89,7 +89,7 @@ def generate_js_test():
     """Generate a JavaScript test that can be run in the browser."""
 
     js_test_code = """
-// Test all 22 algorithms in JavaScript modular implementation
+// Test all 21 algorithms in JavaScript modular implementation
 const expectedAlgorithms = [
     // PRIMA algorithms
     'PRIMA_UOBYQA', 'PRIMA_NEWUOA', 'PRIMA_BOBYQA',
@@ -168,7 +168,7 @@ def create_comparison_report():
     print("SUMMARY")
     print("=" * 60)
     print(f"Python implementation: {py_success}/{py_total} algorithms working")
-    print("Expected JavaScript: 22 algorithms (modular implementation)")
+    print("Expected JavaScript: 21 algorithms (modular implementation)")
 
     # Write JavaScript test to file
     js_test_file = os.path.join(
@@ -190,11 +190,11 @@ def create_comparison_report():
     else:
         print(f"\n⚠ Python implementation needs attention ({py_success}/{py_total})")
 
-    print("✓ JavaScript modular implementation created with all 22 algorithms")
+    print("✓ JavaScript modular implementation created with all 21 algorithms")
     print("\nNext steps:")
     print("1. Test JavaScript implementation in browser")
     print("2. Update contest system to use modular structure")
-    print("3. Verify contest runs with all 22 algorithms")
+    print("3. Verify contest runs with all 21 algorithms")
 
 
 if __name__ == "__main__":

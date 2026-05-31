@@ -1,5 +1,5 @@
 """
-Characterisation harness for the 22 algorithm pairs.
+Characterisation harness for the 21 algorithm pairs.
 
 This test isn't a pass/fail gate — it's a record of where each port
 stands relative to (a) the known global optimum of the test problem

@@ -31,7 +31,7 @@ The main interface provides simple functions for optimization without requiring 
 ### Optimizers (`humpday/optimizers/`)
 
 **Core Files:**
-- `optimizers.py` - **THE MAIN FILE**: Contains all 22 validated pure Python algorithms
+- `optimizers.py` - **THE MAIN FILE**: Contains all 21 validated pure Python algorithms
 - `alloptimizers.py` - Wrapper functions for backward compatibility
 - `adaptive_optimizer.py` - Elo rating system for algorithm selection
 
@@ -40,7 +40,7 @@ The main interface provides simple functions for optimization without requiring 
 - `comprehensive_derivative_free.py` - External package wrappers (deprecated)
 - `primacube.py` - PRIMA algorithm wrappers (deprecated)
 
-**Current Philosophy:** Pure Python implementations only, no external dependencies beyond numpy. All algorithms are in `optimizers.py` with the registry `PURE_OPTIMIZERS` containing exactly 22 algorithms that match the JavaScript implementations.
+**Current Philosophy:** Pure Python implementations only, no external dependencies beyond numpy. All algorithms are in `optimizers.py` with the registry `PURE_OPTIMIZERS` containing exactly 21 algorithms that match the JavaScript implementations.
 
 ### Objectives (`humpday/objectives/`)
 
@@ -101,7 +101,7 @@ result = sphere([0.1, 0.2])[0]  # Extract the value
 - No complex build requirements
 
 ### 2. JavaScript Compatibility
-- 22 algorithms exactly match JavaScript implementations
+- 21 algorithms exactly match JavaScript implementations
 - Validation tests ensure consistency
 - Web demos use identical algorithm logic
 
@@ -187,7 +187,7 @@ All algorithms are in `optimizers.py` with base class `BaseOptimizer`:
 ## Current Development Focus
 
 ### ✅ Completed
-- Pure Python implementations of 22 algorithms
+- Pure Python implementations of 21 algorithms
 - Elo rating system for adaptive selection
 - Interactive 3D visualization demos
 - Comprehensive test functions library
@@ -222,7 +222,7 @@ All algorithms are in `optimizers.py` with base class `BaseOptimizer`:
 - **DON'T** redefine existing test functions
 - **DO** use functions from `humpday.objectives.deapobjectives`
 - **FOCUS** on `optimizers.py` for algorithm implementations
-- **REMEMBER** the 22-algorithm limit and JavaScript compatibility requirements
+- **REMEMBER** the 21-algorithm limit and JavaScript compatibility requirements
 - **LEVERAGE** the existing adaptive optimization system instead of building new selection logic
 
 This organization reflects the evolution from a complex multi-dependency system to a streamlined, self-contained optimization library focused on reliability and ease of use.

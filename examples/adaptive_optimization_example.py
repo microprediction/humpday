@@ -259,7 +259,7 @@ To use adaptive optimization in your code:
     print("Best algorithms:", [alg for alg, rating in top_algorithms])
 
 This automatically:
-- Tests all 22 algorithms on diverse problems
+- Tests all 21 algorithms on diverse problems
 - Maintains Elo ratings based on performance
 - Adapts suggestions based on learned performance
 - Provides tailored recommendations for your problem domain
