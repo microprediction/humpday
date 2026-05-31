@@ -492,7 +492,13 @@ def _ref_mealpy_ga(func, n_trials, n_dim, seed):
 
 
 def _ref_mealpy_firefly(func, n_trials, n_dim, seed):
-    return _ref_mealpy("mealpy.swarm_based.FA.OriginalFA", func, n_trials, n_dim, seed)
+    # Use FFA (Firefly Algorithm) — `mealpy.swarm_based.FA` is the
+    # Fireworks Algorithm (different family). #176 picked the wrong
+    # one; the snapshot's previous "Firefly" comparison was actually
+    # humpday's Firefly vs mealpy's Fireworks.
+    return _ref_mealpy(
+        "mealpy.swarm_based.FFA.OriginalFFA", func, n_trials, n_dim, seed
+    )
 
 
 def _ref_mealpy_harmony(func, n_trials, n_dim, seed):
@@ -592,7 +598,7 @@ REFERENCES = {
     "PRIMA_UOBYQA": ("PDFO uobyqa", _ref_pdfo_uobyqa, ["pdfo", "numpy"]),
     "ParticleSwarm": ("mealpy PSO", _ref_mealpy_pso, ["mealpy", "numpy"]),
     "GeneticAlgorithm": ("mealpy GA", _ref_mealpy_ga, ["mealpy", "numpy"]),
-    "FireflyAlgorithm": ("mealpy FA", _ref_mealpy_firefly, ["mealpy", "numpy"]),
+    "FireflyAlgorithm": ("mealpy FFA", _ref_mealpy_firefly, ["mealpy", "numpy"]),
     "HarmonySearch": ("mealpy HS", _ref_mealpy_harmony, ["mealpy", "numpy"]),
     "EvolutionStrategy": ("mealpy ES", _ref_mealpy_es, ["mealpy", "numpy"]),
     "AntColonyOpt": ("mealpy ACOR", _ref_mealpy_acor, ["mealpy", "numpy"]),
