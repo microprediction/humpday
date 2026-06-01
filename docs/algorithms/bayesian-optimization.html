@@ -273,6 +273,16 @@
                 </p>
             </div>
 
+            <div class="auto-selection-metadata" style="background:#f8f9fa; border:1px solid #ddd; border-radius:8px; padding:14px 18px; margin:20px 0; font-size:0.95em;">
+                <strong>Auto-selection metadata.</strong>
+                Consulted by <a href="../recommendations.html"><code>humpday.minimize()</code></a> when picking a default algorithm.
+                <ul style="margin:8px 0 0 0;">
+                    <li><strong>Overhead tier 4:</strong> very heavy (~100ms/iter; O(n_obs<sup>3</sup>) GP fit). Eligible when measured <code>eval_time &ge; 10 ms</code>.</li>
+                    <li><strong>Dimensional cap:</strong> <code>n_dim &le; 10</code> &mdash; GP cost O(n_obs<sup>3</sup>) + RBF kernel degeneracy.</li>
+                    <li><strong>Minimum trials:</strong> <code>max(30, 5n)</code> &mdash; GP needs initialisation samples to amortise its O(n_obs<sup>3</sup>) fits.</li>
+                </ul>
+            </div>
+
             <h2>Implementation Details</h2>
             <table class="implementation-table">
                 <thead>

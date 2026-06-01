@@ -267,6 +267,16 @@
                 </p>
             </div>
 
+            <div class="auto-selection-metadata" style="background:#f8f9fa; border:1px solid #ddd; border-radius:8px; padding:14px 18px; margin:20px 0; font-size:0.95em;">
+                <strong>Auto-selection metadata.</strong>
+                Consulted by <a href="../recommendations.html"><code>humpday.minimize()</code></a> when picking a default algorithm.
+                <ul style="margin:8px 0 0 0;">
+                    <li><strong>Overhead tier 3:</strong> heavy (~10ms/iter; full quadratic model or O(n<sup>3</sup>) eigendecomposition). Eligible when measured <code>eval_time &ge; 1 ms</code>.</li>
+                    <li><strong>Dimensional cap:</strong> <code>n_dim &le; 12</code> &mdash; needs (n+1)(n+2)/2 interpolation points.</li>
+                    <li><strong>Minimum trials:</strong> <code>(n+1)(n+2)/2 + 5</code> &mdash; needs a full quadratic interpolation set.</li>
+                </ul>
+            </div>
+
 
             <h2>Implementation Details</h2>
             <table class="implementation-table">
