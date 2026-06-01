@@ -8,8 +8,9 @@ to work with arbitrary rectangular bounds, following SciPy conventions.
 from typing import Any, Callable, List, Optional, Tuple, Union
 
 from humpday import _array as _A
+from humpday import eligibility as _E
 
-from .alloptimizers import PURE_OPTIMIZERS, pure_optimize, suggest_pure
+from .alloptimizers import PURE_OPTIMIZERS, pure_optimize
 
 
 def unbounded_to_unit_cube(x_real, scale: Union[float, Any] = 1.0):
@@ -108,11 +109,20 @@ def cube_minimize(
     args : tuple, optional
         Extra arguments passed to objective function (currently not supported)
     method : str, optional
-        Optimization algorithm name. Must be one of the 22 available algorithms.
-        If None (default), an algorithm is auto-selected from `suggest_pure`
-        based on the problem dimension: NelderMead for n <= 2,
-        DifferentialEvolution for 3-10, CMAEvolutionStrategy for 11-50,
-        and Rechenberg for n > 50.
+        Optimization algorithm name. Must be one of the available algorithms.
+        If None (default), the algorithm is auto-selected by
+        `humpday.eligibility.recommend` using three filters:
+
+          1. Dimensional cap (GridSearch ≤ 4, BayesianOpt ≤ 10, ...).
+          2. Minimum trials needed to initialize / amortize.
+          3. Overhead tier vs. measured objective eval-time: when each
+             objective call is microseconds, we avoid CMA-ES (eigendecomp)
+             and BayesianOpt (GP fit); when each call is seconds, the
+             sample-efficient algorithms become eligible.
+
+        The timing step costs 4 objective evaluations at startup. Disable
+        with `options={'auto_timing': False}` for stochastic objectives or
+        when reproducibility matters more than expense-aware selection.
     bounds : sequence or tuple, optional
         Bounds for variables. Either:
         - List of (min, max) tuples for each dimension: [(x1_min, x1_max), (x2_min, x2_max), ...]
@@ -176,36 +186,59 @@ def cube_minimize(
         else:
             n_dim = len(bounds)
 
-    # Auto-pick a method when not specified, using the dimension-based
-    # heuristic in suggest_pure. This is a much better default than the old
-    # hard-coded "NelderMead" — Nelder-Mead is fine for n <= 2 but degrades
-    # rapidly with dimension. suggest_pure's top pick already matches
-    # NelderMead at n <= 2, so callers in that regime see no behavior change.
+    # Build the cube-space objective once. Auto-selection (next block) wants
+    # to time this same wrapped function so the measurement reflects what the
+    # optimizer will actually call.
+    if bounds is None:
+        if scale is None:
+            scale = 1.0
+        cube_obj = create_unbounded_objective(fun, scale)
+        lower = upper = None  # set below if bounded
+    else:
+        lower, upper = parse_bounds(bounds, n_dim)
+        cube_obj = create_bounded_objective(fun, lower, upper)
+
+    # Auto-select method via the eligibility module: time one call to learn
+    # how expensive the objective is, then pick the highest-ranked algorithm
+    # that (a) is structurally suited to n_dim, (b) has enough trials to
+    # initialize, and (c) carries overhead small relative to eval_time.
+    #
+    # Callers can disable the timing call with options={'auto_timing': False}
+    # — useful for stochastic objectives where one extra eval changes seeds.
+    eval_time_used: Optional[float] = None
     if method is None:
-        method = suggest_pure(n_dim, maxiter)[0]
+        auto_timing = options.get("auto_timing", True)
+        if auto_timing:
+            try:
+                x_sample = _A.asarray([0.5] * n_dim)
+                timing = _E.time_objective(cube_obj, x_sample, n_warmup=1, n_measure=3)
+                eval_time_used = timing.eval_time
+                # Account for the timing calls against the budget so the user
+                # gets the n_trials they asked for, not n_trials + 4.
+                maxiter = max(maxiter - 4, 1)
+            except Exception:
+                # If the objective throws on a random feasible point, skip
+                # timing and let recommend() fall back to dim/trials only.
+                eval_time_used = None
+        method = _E.recommend(
+            n_dim=n_dim,
+            n_trials=maxiter,
+            eval_time=eval_time_used,
+            available=list(PURE_OPTIMIZERS.keys()),
+        )
 
     # Validate method
     if method not in PURE_OPTIMIZERS:
         available = ", ".join(list(PURE_OPTIMIZERS.keys())[:10])
         raise ValueError(f"Unknown method '{method}'. Available: {available}...")
 
-    # Handle bounded vs unbounded optimization
-    if bounds is None:
-        # Unbounded optimization: map R^n to [0,1]^n
-        if scale is None:
-            scale = 1.0
-        unbounded_obj = create_unbounded_objective(fun, scale)
-        best_value, best_x_unit = pure_optimize(unbounded_obj, method, maxiter, n_dim)
+    # Run the optimizer on the prepared cube objective.
+    best_value, best_x_unit = pure_optimize(cube_obj, method, maxiter, n_dim)
 
-        # Transform solution back to unbounded space
+    # Transform solution back to caller's coordinate system.
+    if bounds is None:
         best_x = unit_cube_to_unbounded(_A.asarray(best_x_unit), scale)
     else:
-        # Bounded optimization: map rectangular bounds to [0,1]^n
-        lower, upper = parse_bounds(bounds, n_dim)
-        bounded_obj = create_bounded_objective(fun, lower, upper)
-        best_value, best_x_unit = pure_optimize(bounded_obj, method, maxiter, n_dim)
-
-        # Transform solution back to original domain
         best_x = transform_solution(_A.asarray(best_x_unit), lower, upper)
 
     # Create result object
@@ -215,25 +248,70 @@ def cube_minimize(
         nfev=maxiter,  # Our optimizers don't currently track exact evaluations
         success=True,  # We always return the best found solution
         message="Optimization completed successfully",
+        method=method,
+        eval_time_measured=eval_time_used,
+        tier=_E.TIER.get(method),
     )
 
     return result
 
 
 class OptimizeResult:
-    """Result object matching SciPy's OptimizeResult interface."""
+    """Result of a humpday.minimize() / cube_minimize() call.
 
-    def __init__(self, x, fun, nfev, success, message):
+    Mirrors `scipy.optimize.OptimizeResult` (``x``, ``fun``, ``nfev``,
+    ``success``, ``message``) and adds three humpday-specific fields:
+
+    - ``method``: the algorithm name that was actually run. Equals the
+      ``method=`` argument when the caller picked one explicitly, or the
+      name chosen by :func:`humpday.eligibility.recommend` when ``method``
+      was None.
+    - ``eval_time_measured``: seconds-per-objective-call as timed at
+      ``minimize`` entry, or None when auto-timing was off or the timing
+      call raised. Useful for understanding why a given algorithm was
+      picked.
+    - ``tier``: the overhead tier of the chosen algorithm (0 trivial …
+      4 GP-fit-heavy). Indexes into :data:`humpday.eligibility.TIER`.
+
+    The convenience method :meth:`tuple` returns ``(fun, x)`` for the
+    callers that prefer the original two-tuple shape used by
+    :func:`humpday.minimize_unit_cube`.
+    """
+
+    def __init__(
+        self,
+        x,
+        fun,
+        nfev,
+        success,
+        message,
+        method: Optional[str] = None,
+        eval_time_measured: Optional[float] = None,
+        tier: Optional[int] = None,
+    ):
         self.x = x
         self.fun = fun
         self.nfev = nfev
         self.success = success
         self.message = message
+        self.method = method
+        self.eval_time_measured = eval_time_measured
+        self.tier = tier
+
+    def tuple(self) -> Tuple[float, Any]:
+        """Return ``(fun, x)`` for callers that want the legacy two-tuple shape."""
+        return self.fun, self.x
 
     def __repr__(self):
+        method = f", method={self.method!r}" if self.method else ""
+        et = (
+            f", eval_time_measured={self.eval_time_measured:.2e}"
+            if self.eval_time_measured is not None
+            else ""
+        )
         return (
             f"OptimizeResult(x={self.x}, fun={self.fun:.6e}, "
-            f"nfev={self.nfev}, success={self.success})"
+            f"nfev={self.nfev}, success={self.success}{method}{et})"
         )
 
 
@@ -307,9 +385,9 @@ def minimize(
         Initial guess (currently ignored)
     method : str, optional
         Optimization algorithm name. If None (the default), the method is
-        chosen automatically based on problem dimension via `suggest_pure`:
-        NelderMead for n <= 2, DifferentialEvolution for 3-10,
-        CMAEvolutionStrategy for 11-50, Rechenberg for n > 50.
+        chosen automatically by `humpday.eligibility.recommend`, which
+        filters by problem dimension, trial budget, and the measured cost
+        of one objective call. See `cube_minimize` for the full description.
     bounds : sequence or tuple, optional
         Bounds for variables (None for unbounded optimization)
     scale : float or array_like, optional
