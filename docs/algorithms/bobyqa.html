@@ -242,7 +242,17 @@
             </div>
 
             <div class="algorithm-description">
-                <strong>BOBYQA</strong> is Powell's trust-region method specifically designed for bound-constrained optimization. It builds quadratic models while respecting variable bounds, making it ideal for optimization problems with simple constraints like the unit hypercube [0,1]ⁿ used in our competition.
+                <strong>BOBYQA</strong> (Bound Optimization BY Quadratic Approximation; Powell, 2009) is a trust-region method that extends NEWUOA with explicit handling of simple bound constraints <em>l<sub>i</sub> &le; x<sub>i</sub> &le; u<sub>i</sub></em>. Like NEWUOA it uses a <em>2n + 1</em>-point underdetermined interpolation set with the minimum-Frobenius-norm Hessian update, but the trust-region subproblem is solved within the active bound set (the "TRSBOX" subroutine in Powell's original Fortran). HumpDay's <code>PRIMA_BOBYQA</code> ports the algorithm directly with a bound-aware Cauchy/dogleg TR step and a finite-difference gradient fallback when the regression is rank-deficient.
+            </div>
+
+            <div class="coordinate-note" style="background:#e8f4fd; border:1px solid #bee5eb; border-radius:8px; padding:15px; margin:20px 0;">
+                <h3 style="color:#0c5460; margin-top:0;">HumpDay's BOBYQA at a glance</h3>
+                <ul>
+                    <li><strong>Bounds:</strong> the unit cube <code>[0, 1]<sup>n</sup></code>. Initial points are placed inside the cube (not on the boundary).</li>
+                    <li><strong>Interpolation set:</strong> <code>npt = 2&middot;n + 1</code> with the min-Frobenius Hessian update.</li>
+                    <li><strong>Trust-region step:</strong> bound-aware Cauchy / dogleg; projects step components that would push <em>x</em> past an active bound.</li>
+                    <li><strong>Fallback:</strong> finite-difference gradient when the regression is rank-deficient.</li>
+                </ul>
             </div>
 
             <div class="visualization-section">
@@ -298,24 +308,23 @@
                         </td>
                     </tr>
                     <tr>
-                        <td class="category">Humpday Python</td>
+                        <td class="category">HumpDay Python</td>
                         <td>
-                            <strong>HumpDay Python Implementation</strong><br>
-                            Pure-Python port of BOBYQA — bound-constrained trust region, no PDFO/Fortran call<br>
-                            No required dependencies<br>
-                            <em>File: humpday/optimizers/prima_algorithms.py</em>
+                            <strong>HumpDay <code>PRIMA_BOBYQA</code></strong><br>
+                            Pure-Python port: min-Frobenius Hessian update on <em>2n + 1</em> points, bound-aware TR step, FD-gradient fallback.<br>
+                            No required dependencies.<br>
+                            <em>File: <code>humpday/optimizers/prima_algorithms.py</code></em>
                         </td>
                         <td>
-                            <a href="https://github.com/microprediction/humpday/blob/main/humpday/optimizers/prima_algorithms.py#L1101" target="_blank" class="link-button python">Source Code</a>
+                            <a href="https://github.com/microprediction/humpday/blob/main/humpday/optimizers/prima_algorithms.py" target="_blank" class="link-button python">Source</a>
                         </td>
                     </tr>
                     <tr>
-                        <td class="category">Humpday JavaScript</td>
+                        <td class="category">HumpDay JavaScript</td>
                         <td>
-                            <strong>Browser Implementation</strong><br>
-                            Bound-aware trust region implementation<br>
-                            Optimized for unit hypercube constraints<br>
-                            <em>Class: PRIMA_BOBYQA</em>
+                            <strong>Browser <code>PRIMA_BOBYQA</code></strong><br>
+                            Mirrors the Python port (rewritten in PR #83 to match Python's FD-gradient fallback).<br>
+                            <em>Class: <code>PRIMA_BOBYQA</code></em>
                         </td>
                         <td>
                             <a href="https://github.com/microprediction/humpday/blob/main/docs/js/modules/prima-algorithms.js" target="_blank" class="link-button javascript">JS Port</a>
@@ -327,11 +336,10 @@
             <div class="performance-notes">
                 <h3>Performance Characteristics</h3>
                 <ul>
-                    <li><strong>Best for:</strong> Bound-constrained optimization problems, especially [0,1]ⁿ</li>
-                    <li><strong>Dimensions:</strong> Excellent performance up to 100+ dimensions</li>
-                    <li><strong>Function evaluations:</strong> Very efficient with bounds guidance</li>
-                    <li><strong>Convergence:</strong> Superior to UOBYQA/NEWUOA on bounded problems</li>
-                    <li><strong>Robustness:</strong> Handles boundary conditions elegantly</li>
+                    <li><strong>Best for:</strong> Smooth, bound-constrained problems &mdash; especially when the optimum is near a face of the cube where bound handling matters.</li>
+                    <li><strong>Worst for:</strong> Multimodal landscapes &mdash; like all PRIMA algorithms, BOBYQA is a local trust-region method.</li>
+                    <li><strong>Per iteration:</strong> one TR step + one evaluation. Bounds projected on both the step direction and the candidate point.</li>
+                    <li><strong>Relative to Py-BOBYQA</strong> at <code>n_trials=200, n_dim=2</code>: matches reference on sphere and Ackley, with a tiny gap on Rosenbrock. See <a href="../sota-status.html">SOTA status</a> for the live numbers.</li>
                 </ul>
             </div>
 

@@ -241,17 +241,16 @@
             </div>
 
             <div class="algorithm-description">
-                <strong>Harmony Search (HS)</strong> is a nature-inspired metaheuristic algorithm based on the improvisation process of musicians. Developed by Zong Woo Geem in 2001, it mimics how musicians compose harmonies by combining existing melodies with new variations. The algorithm maintains a harmony memory of good solutions and generates new candidates through musical improvisation rules.
+                <strong>Harmony Search</strong> (Geem, 2001) maintains a "harmony memory" (HM) of the <em>HMS</em> best solutions found so far and improvises a new candidate each iteration. For each coordinate: with probability <em>HMCR</em>, copy from a randomly selected memory entry, optionally adjusting the value with probability <em>PAR</em>; with probability <em>1 &minus; HMCR</em>, draw a uniform random value. Then evaluate and replace the worst harmony if the new one is better. HumpDay's <code>HarmonySearch</code> is the canonical formulation.
             </div>
 
-            <div class="harmony-note">
-                <h3>Musical Improvisation Metaphor</h3>
-                <p><strong>Harmony Search mimics musical composition process:</strong></p>
+            <div class="coordinate-note" style="background:#e8f4fd; border:1px solid #bee5eb; border-radius:8px; padding:15px; margin:20px 0;">
+                <h3 style="color:#0c5460; margin-top:0;">HumpDay's HarmonySearch at a glance</h3>
                 <ul>
-                    <li><strong>Harmony Memory:</strong> Collection of good musical pieces (solutions)</li>
-                    <li><strong>Memory Consideration:</strong> Play a note from existing harmonies</li>
-                    <li><strong>Pitch Adjustment:</strong> Slightly modify a selected note</li>
-                    <li><strong>Random Selection:</strong> Play a completely new note</li>
+                    <li><strong>Memory size:</strong> <em>HMS</em>, typically 5-15.</li>
+                    <li><strong>Harmony memory considering rate:</strong> <em>HMCR &approx; 0.9</em> &mdash; high memory bias.</li>
+                    <li><strong>Pitch adjusting rate:</strong> <em>PAR &approx; 0.3</em> &mdash; chance of locally perturbing a memory-copied value.</li>
+                    <li><strong>Per iteration:</strong> one new harmony evaluated; if better than the current worst, the worst is replaced and the memory is re-sorted.</li>
                 </ul>
             </div>
 
@@ -297,34 +296,32 @@
                     <tr>
                         <td class="category">Reference Implementation</td>
                         <td>
-                            <strong>pyHarmonySearch</strong><br>
-                            Tested against pyHarmonySearch package<br>
-                            Optional external dependency for validation<br>
-                            <em>Reference: PyPI harmony search implementation</em>
+                            <strong>mealpy HS</strong><br>
+                            Tested against mealpy's Original Harmony Search.<br>
+                            <em>Reference: <code>mealpy.music_based.HS.OriginalHS</code></em>
                         </td>
                         <td>
-                            <a href="https://pypi.org/project/pyHarmonySearch/" target="_blank" class="link-button">PyPI Package</a>
-                        </td>
-                    </tr>
-                    <tr>
-                        <td class="category">Humpday Python Implementation</td>
-                        <td>
-                            <strong>Humpday Harmony Search</strong><br>
-                            Custom implementation with classical HS operators<br>
-                            Harmony memory, pitch adjustment, and randomization<br>
-                            <em>File: humpday/optimizers/evolutionary_algorithms.py</em>
-                        </td>
-                        <td>
-                            <a href="https://github.com/microprediction/humpday/blob/main/humpday/optimizers/evolutionary_algorithms.py#L1045" target="_blank" class="link-button python">Source</a>
+                            <a href="https://github.com/thieu1995/mealpy" target="_blank" class="link-button python">mealpy</a>
                         </td>
                     </tr>
                     <tr>
-                        <td class="category">Humpday JavaScript</td>
+                        <td class="category">HumpDay Python</td>
                         <td>
-                            <strong>Browser Implementation</strong><br>
-                            Pure JavaScript harmony search<br>
-                            Memory management and improvisation rules<br>
-                            <em>Class: HarmonySearch</em>
+                            <strong>HumpDay <code>HarmonySearch</code></strong><br>
+                            Canonical Harmony Search: HM + HMCR + PAR + random selection. One new harmony per iteration.<br>
+                            Pure Python; no required dependencies.<br>
+                            <em>File: <code>humpday/optimizers/evolutionary_algorithms.py</code></em>
+                        </td>
+                        <td>
+                            <a href="https://github.com/microprediction/humpday/blob/main/humpday/optimizers/evolutionary_algorithms.py" target="_blank" class="link-button python">Source</a>
+                        </td>
+                    </tr>
+                    <tr>
+                        <td class="category">HumpDay JavaScript</td>
+                        <td>
+                            <strong>Browser <code>HarmonySearch</code></strong><br>
+                            Mirrors the Python port.<br>
+                            <em>Class: <code>HarmonySearch</code></em>
                         </td>
                         <td>
                             <a href="https://github.com/microprediction/humpday/blob/main/docs/js/modules/evolutionary-algorithms.js" target="_blank" class="link-button javascript">JS Implementation</a>
@@ -336,11 +333,10 @@
             <div class="performance-notes">
                 <h3>Performance Characteristics</h3>
                 <ul>
-                    <li><strong>Best for:</strong> Continuous optimization, parameter tuning, engineering design</li>
-                    <li><strong>Dimensions:</strong> Handles moderate to high dimensions well</li>
-                    <li><strong>Function evaluations:</strong> Memory-based, HMS × generations</li>
-                    <li><strong>Convergence:</strong> Steady improvement through memory exploitation</li>
-                    <li><strong>Robustness:</strong> Balance between exploitation and exploration through HS operators</li>
+                    <li><strong>Best for:</strong> Mid-range black-box objectives where memory-based exploitation balances against occasional random exploration.</li>
+                    <li><strong>Worst for:</strong> Smooth basins where directional methods (CMA-ES, PRIMA) converge much faster, and high dimensions where the memory bias struggles.</li>
+                    <li><strong>Per iteration:</strong> one new harmony evaluated; memory update is <em>O(HMS)</em>.</li>
+                    <li><strong>Relative to mealpy HS</strong> at <code>n_trials=200, n_dim=2</code>: HumpDay wins across sphere, Rosenbrock, and Ackley. See <a href="../sota-status.html">SOTA status</a> for the live numbers.</li>
                 </ul>
             </div>
 
