@@ -241,7 +241,7 @@
             </div>
 
             <div class="algorithm-description">
-                <strong>Evolution Strategy</strong> is one of the oldest evolutionary algorithms, dating to Rechenberg and Schwefel's work in 1960s Berlin. The (μ+λ) variant maintains μ parents, generates λ mutated offspring each generation, and selects the best μ individuals from the combined parent+offspring pool to form the next generation. It is the conceptual ancestor of CMA-ES.
+                <strong>Evolution Strategy</strong> dates to Rechenberg and Schwefel's work in 1960s Berlin and is the conceptual ancestor of CMA-ES. The (μ+λ) variant maintains μ parents, generates λ Gaussian-perturbed offspring each generation, and selects the best μ individuals from the combined parent + offspring pool. HumpDay's <code>EvolutionStrategy</code> uses a fixed step size σ=0.2 (no covariance adaptation — that's CMA-ES's contribution).
             </div>
 
             <div class="visualization-section">
@@ -310,11 +310,10 @@
             <div class="performance-notes">
                 <h3>Performance Characteristics</h3>
                 <ul>
-                    <li><strong>Best for:</strong> Continuous unconstrained optimization on moderate-dimensional problems</li>
-                    <li><strong>Dimensions:</strong> Works well from 2 up to a few dozen; favoured for "high-dimensional complex" routing in HumpDay's adaptive optimizer</li>
-                    <li><strong>Function evaluations:</strong> Each generation costs up to λ evaluations; total budget is set by <code>n_trials</code></li>
-                    <li><strong>Convergence:</strong> Reliable progress on smooth landscapes; can stall on highly multimodal surfaces without self-adaptation</li>
-                    <li><strong>Robustness:</strong> Tolerates noise via its population-and-selection structure; less robust than CMA-ES because step size σ is fixed</li>
+                    <li><strong>Best for:</strong> Continuous unconstrained objectives where rotation-invariance isn't critical and a fixed-σ baseline suffices.</li>
+                    <li><strong>Worst for:</strong> Ill-conditioned problems &mdash; without covariance adaptation, σ can't match the basin geometry the way CMA-ES does.</li>
+                    <li><strong>Per generation:</strong> up to λ evaluations; sort by fitness, keep μ best.</li>
+                    <li><strong>Relative to mealpy <code>OriginalES</code></strong> at <code>n_trials=200, n_dim=2</code>: HumpDay wins across sphere, Rosenbrock, and Ackley. See <a href="../sota-status.html">SOTA status</a> for the live numbers.</li>
                 </ul>
             </div>
 

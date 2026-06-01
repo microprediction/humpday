@@ -251,7 +251,7 @@
 
     <div class="abstract">
         <h3>Abstract</h3>
-        <p>Particle Swarm Optimization (PSO) is a population-based stochastic optimization technique inspired by the social behavior of bird flocking and fish schooling. Originally developed by Kennedy and Eberhart (1995), PSO optimizes a problem by iteratively improving candidate solutions (particles) with regard to a given measure of quality. Each particle adjusts its position based on its own best-known position and the swarm's best-known position, guided by velocity vectors that balance exploration and exploitation.</p>
+        <p>Particle Swarm Optimization (PSO) is a population-based stochastic optimization technique introduced by Kennedy and Eberhart (1995). A swarm of particles flies through the search space; each particle's velocity is steered toward its personal best position and the swarm's global best position. HumpDay's <code>ParticleSwarm</code> uses an annealed inertia / cognitive / social schedule, velocity clamping that shrinks over the run, and finishes with an L-BFGS-B polish from the swarm best.</p>
     </div>
 
     <h2>Algorithm Description</h2>
@@ -310,7 +310,7 @@
     </table>
 
     <div class="performance-note">
-        <p><strong>Implementation Notes:</strong> This implementation includes adaptive parameters, velocity clamping, and diversification mechanisms for improved convergence and global search capabilities. The swarm size scales with problem dimensionality, and the algorithm includes early termination criteria for efficient resource utilization.</p>
+        <p><strong>HumpDay's PSO at a glance.</strong> Annealed coefficients (<em>w</em>: 0.9 &rarr; 0.4, <em>c<sub>1</sub></em>: 2.5 &rarr; 1.5, <em>c<sub>2</sub></em>: 1.5 &rarr; 2.5) over the run shift the balance from exploration to exploitation. Velocity is clamped to <em>v<sub>max</sub> = 0.2&middot;(1 &minus; 0.5&middot;t/T)</em>. After the swarm exhausts its share of the budget, an <strong>L-BFGS-B polish</strong> from the swarm best (<code>min(20&middot;n_dim, n_trials/2)</code> evals) refines to high precision &mdash; this is the change that pushes HumpDay's PSO past mealpy PSO on the SOTA snapshot.</p>
     </div>
 
     <h2>Algorithmic Parameters</h2>
