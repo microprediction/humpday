@@ -140,6 +140,21 @@ class ParticleSwarm(BaseOptimizer):
 
         max_iterations = max(1, pso_budget // swarm_size)
 
+        # SPSO-2011 style stagnation detection. A canonical PSO has no
+        # restart and is known to converge prematurely on multimodal
+        # surfaces — once the global best stops improving, particles
+        # collapse onto it and there is no mechanism to escape. Track the
+        # global-best value across iterations and, when it has stalled
+        # for `stagnation_window` iterations, reseed the worst half of
+        # the swarm with fresh uniform positions and small random
+        # velocities. The personal-best memory of the *kept* half is
+        # preserved so prior progress isn't wasted.
+        stagnation_window = max(10, max_iterations // 5)
+        stagnation_counter = 0
+        last_global_best = self.best_value
+        # Tolerate tiny floating-point noise as "no improvement".
+        improvement_atol = 1e-12
+
         for iteration in range(max_iterations):
             if self.evaluations >= pso_budget:
                 break
@@ -176,6 +191,34 @@ class ParticleSwarm(BaseOptimizer):
                 if fitness < personal_best_fit[i]:
                     personal_best_fit[i] = fitness
                     personal_best_pos[i] = positions[i].copy()
+
+            # Stagnation check — measured against self.best_value because
+            # that's the global best across all evals (including any
+            # better point hit during the inner sweep).
+            if last_global_best - self.best_value > improvement_atol:
+                stagnation_counter = 0
+                last_global_best = self.best_value
+            else:
+                stagnation_counter += 1
+
+            if stagnation_counter >= stagnation_window:
+                # Reseed the worst half. Rank particles by personal_best_fit
+                # (ascending) and replace the bottom half with fresh
+                # uniform draws + small random velocities. The top half
+                # keeps its memory, so the swarm continues from the same
+                # global best but with re-energized exploration.
+                ranked = sorted(range(swarm_size), key=personal_best_fit.__getitem__)
+                worst = ranked[swarm_size // 2:]
+                for j in worst:
+                    positions[j] = _A.random_uniform(self.n_dim)
+                    velocities[j] = (_A.random_uniform(self.n_dim) - 0.5) * 0.2
+                    if self.evaluations >= pso_budget:
+                        break
+                    f_new = self.evaluate(positions[j])
+                    personal_best_pos[j] = positions[j].copy()
+                    personal_best_fit[j] = f_new
+                stagnation_counter = 0
+                last_global_best = self.best_value
 
         # Polish stage: L-BFGS-B from the swarm best.
         self._lbfgs_polish()
@@ -602,168 +645,257 @@ class CMAEvolutionStrategy(BaseOptimizer):
         polish_reserve = min(20 * n, self.n_trials // 2)
         cmaes_budget = max(self.evaluations, self.n_trials - polish_reserve)
 
-        # Hansen's recommended parameters.
-        lambda_ = min(50, 4 + int(3 * math.log(n)))  # population size
-        mu = lambda_ // 2  # number of parents
+        # IPOP-CMA-ES (Auger & Hansen 2005, "A Restart CMA Evolution
+        # Strategy with Increasing Population Size", CEC 2005). Vanilla
+        # CMA-ES converges to a single basin and has no mechanism to
+        # escape — on multimodal landscapes it routinely returns local
+        # optima. IPOP wraps the main CMA loop with: (a) standard
+        # termination checks (σ floor, condition number, TolFun stagnation)
+        # and (b) a restart that doubles λ and resets all state. Larger
+        # populations explore more aggressively, so successive restarts
+        # are progressively better at jumping basins.
+        IPOP_INCPOPSIZE = 2.0
+        IPOP_TOLFUN = 1e-12
+        IPOP_TOLX_FACTOR = 1e-12
+        IPOP_CONDITION_COV = 1e14
+        IPOP_TOLFUN_HISTORY = 10  # plus 30*n/lambda; bounded below
 
-        # Recombination weights: w_i = log(mu + 0.5) - log(i), normalised.
-        weights = _A.asarray([math.log(mu + 0.5) - math.log(i + 1) for i in range(mu)])
-        weights = weights / _A.sum(weights)
-        mueff = 1.0 / _A.sum(weights**2)
+        base_lambda = min(50, 4 + int(3 * math.log(n)))
+        restart_count = 0
 
-        # Adaptation constants.
-        cc = (4 + mueff / n) / (n + 4 + 2 * mueff / n)
-        cs = (mueff + 2) / (n + mueff + 5)
-        c1 = 2 / ((n + 1.3) ** 2 + mueff)
-        cmu = min(1 - c1, 2 * (mueff - 2 + 1 / mueff) / ((n + 2) ** 2 + mueff))
-        damps = 1 + 2 * max(0, math.sqrt((mueff - 1) / (n + 1)) - 1) + cs
+        # Carry the best across restarts via self.best_x / self.best_value
+        # (which BaseOptimizer.evaluate updates automatically). No need
+        # to thread it through manually.
 
-        # State. Initial mean is a random interior point in [0.3, 0.7]^n
-        # — same distribution the reference-alignment harness draws from
-        # via `_draw_x0`. The previous fixed-centre `0.5 * ones(n)` was a
-        # deterministic starting point that disadvantaged Rosenbrock
-        # (optimum at 0.75 ones, so distance 0.25) vs the reference's
-        # average of ~0.05. Also `sigma=0.2` to match the reference
-        # cmaes library's chosen initial step size (HumpDay was 0.3).
-        mean = 0.3 + 0.4 * _A.random_uniform(n)
-        sigma = 0.2
-        C = _A.linalg.eye(n)
-        pc = _A.zeros(n)
-        ps = _A.zeros(n)
-        invsqrtC = _A.linalg.eye(n)
+        # Outer IPOP loop: keep restarting (with growing λ) until budget
+        # is exhausted.
+        while self.evaluations < cmaes_budget:
+            # Hansen's recommended parameters at the current population size.
+            lambda_ = min(
+                cmaes_budget - self.evaluations,
+                int(base_lambda * (IPOP_INCPOPSIZE ** restart_count)),
+            )
+            lambda_ = max(lambda_, 4)
+            mu = lambda_ // 2  # number of parents
+            if mu < 1:
+                break
 
-        generation = 0
-        # Cap iterations by budget directly. The previous
-        # `min(100, n_trials // lambda_)` capped at 100 generations even
-        # when the user's n_trials budget allowed many more — at
-        # lambda_ ≈ 6 and budget 1000, only the first ~600 evals would
-        # be spent. Reference pycma has no such cap; the inner
-        # `evaluations < n_trials` guard is sufficient, this just
-        # protects against pathological infinite loops.
-        max_generations = self.n_trials
+            # Recombination weights: w_i = log(mu + 0.5) - log(i), normalised.
+            weights = _A.asarray(
+                [math.log(mu + 0.5) - math.log(i + 1) for i in range(mu)]
+            )
+            weights = weights / _A.sum(weights)
+            mueff = 1.0 / _A.sum(weights**2)
 
-        while self.evaluations < cmaes_budget and generation < max_generations:
-            generation += 1
+            # Adaptation constants.
+            cc = (4 + mueff / n) / (n + 4 + 2 * mueff / n)
+            cs = (mueff + 2) / (n + mueff + 5)
+            c1 = 2 / ((n + 1.3) ** 2 + mueff)
+            cmu = min(
+                1 - c1, 2 * (mueff - 2 + 1 / mueff) / ((n + 2) ** 2 + mueff)
+            )
+            damps = 1 + 2 * max(0, math.sqrt((mueff - 1) / (n + 1)) - 1) + cs
 
-            # Sample λ offspring from N(mean, sigma^2 * C). Use a
-            # Cholesky factor L of C so x = mean + sigma * (L @ N(0, I)),
-            # equivalent to numpy's `multivariate_normal(0, C)`.
-            try:
-                L_C = _A.linalg.cholesky(C)
-            except Exception:
-                # If C drifted non-SPD, fall back to identity sampling
-                # for this generation; the eigh-based recovery below
-                # will repair C before the next iteration.
-                L_C = _A.linalg.eye(n)
+            # Fresh state per restart. Initial mean is a random interior
+            # point in [0.3, 0.7]^n — same distribution the
+            # reference-alignment harness draws from via `_draw_x0`. The
+            # previous fixed-centre `0.5 * ones(n)` was a deterministic
+            # starting point that disadvantaged Rosenbrock (optimum at
+            # 0.75 ones, so distance 0.25) vs the reference's average of
+            # ~0.05. Also `sigma=0.2` to match the reference cmaes
+            # library's chosen initial step size (HumpDay was 0.3).
+            mean = 0.3 + 0.4 * _A.random_uniform(n)
+            sigma = 0.2
+            C = _A.linalg.eye(n)
+            pc = _A.zeros(n)
+            ps = _A.zeros(n)
+            invsqrtC = _A.linalg.eye(n)
 
-            population = []
-            for _ in range(lambda_):
-                if self.evaluations >= cmaes_budget:
+            # TolFun window: history of best-of-generation values for the
+            # most recent K generations. Length grows with the restart's
+            # population size per IPOP convention.
+            tolfun_window = max(IPOP_TOLFUN_HISTORY, int(30 * n / lambda_))
+            fbest_history: list[float] = []
+
+            generation = 0
+            # Cap iterations by budget directly. The previous
+            # `min(100, n_trials // lambda_)` capped at 100 generations
+            # even when the user's n_trials budget allowed many more —
+            # at lambda_ ≈ 6 and budget 1000, only the first ~600 evals
+            # would be spent. Reference pycma has no such cap; the inner
+            # `evaluations < n_trials` guard is sufficient, this just
+            # protects against pathological infinite loops.
+            max_generations = self.n_trials
+            converged = False
+
+            while (
+                self.evaluations < cmaes_budget
+                and generation < max_generations
+                and not converged
+            ):
+                generation += 1
+
+                # Sample λ offspring from N(mean, sigma^2 * C). Use a
+                # Cholesky factor L of C so x = mean + sigma * (L @ N(0, I)),
+                # equivalent to numpy's `multivariate_normal(0, C)`.
+                try:
+                    L_C = _A.linalg.cholesky(C)
+                except Exception:
+                    # If C drifted non-SPD, fall back to identity sampling
+                    # for this generation; the eigh-based recovery below
+                    # will repair C before the next iteration.
+                    L_C = _A.linalg.eye(n)
+
+                population = []
+                for _ in range(lambda_):
+                    if self.evaluations >= cmaes_budget:
+                        break
+                    std_z = _A.random_normal(n)
+                    z = _A.linalg.matvec(L_C, std_z)
+                    x = _A.clip(mean + sigma * z, 0, 1)
+                    f = self.evaluate(x)
+                    population.append((x, z, f))
+
+                if not population:
                     break
-                std_z = _A.random_normal(n)
-                z = _A.linalg.matvec(L_C, std_z)
-                x = _A.clip(mean + sigma * z, 0, 1)
-                f = self.evaluate(x)
-                population.append((x, z, f))
+                # If the budget ran out mid-sampling and we have fewer
+                # than μ offspring, the partial generation can't do a
+                # meaningful recombination — stop the inner loop so the
+                # restart layer (or polish stage) gets the remaining
+                # budget rather than letting noise pollute the next
+                # iteration's mean/sigma.
+                if len(population) < mu:
+                    break
 
-            if not population:
-                break
-            # If the budget ran out mid-sampling and we have fewer than μ
-            # offspring, we can't do a meaningful recombination — stop
-            # here so the partial generation doesn't pollute the next
-            # iteration's mean/sigma. Before #155 the
-            # `min(100, n_trials // lambda_)` cap on the outer loop made
-            # this case unreachable; now that the cap is gone we need to
-            # guard explicitly.
-            if len(population) < mu:
-                break
+                # Sort offspring by fitness ascending.
+                population.sort(key=lambda p: p[2])
 
-            # Sort offspring by fitness ascending.
-            population.sort(key=lambda p: p[2])
-
-            # Recombination: new mean is the weighted average of the
-            # μ best offspring.
-            old_mean = mean.copy()
-            mean = _A.zeros(n)
-            for i in range(mu):
-                mean = mean + weights[i] * population[i][0]
-
-            # Evolution paths.
-            y = (mean - old_mean) / sigma
-
-            ps = (1 - cs) * ps + math.sqrt(cs * (2 - cs) * mueff) * _A.linalg.matvec(
-                invsqrtC, y
-            )
-
-            hsig = (
-                1
-                if _A.norm(ps) / math.sqrt(1 - (1 - cs) ** (2 * generation))
-                < 1.4 + 2 / (n + 1)
-                else 0
-            )
-
-            pc = (1 - cc) * pc + hsig * math.sqrt(cc * (2 - cc) * mueff) * y
-
-            # Adapt covariance matrix C.
-            if len(population) >= mu:
-                # Rank-μ update: sum of weighted outer products.
-                weighted_diffs = _A.linalg.matrix_zeros(n, n)
+                # Recombination: new mean is the weighted average of the
+                # μ best offspring.
+                old_mean = mean.copy()
+                mean = _A.zeros(n)
                 for i in range(mu):
-                    diff = (population[i][0] - old_mean) / sigma
-                    w_outer = _A.linalg.outer(diff, diff)
+                    mean = mean + weights[i] * population[i][0]
+
+                # Evolution paths.
+                y = (mean - old_mean) / sigma
+
+                ps = (1 - cs) * ps + math.sqrt(cs * (2 - cs) * mueff) * _A.linalg.matvec(
+                    invsqrtC, y
+                )
+
+                hsig = (
+                    1
+                    if _A.norm(ps) / math.sqrt(1 - (1 - cs) ** (2 * generation))
+                    < 1.4 + 2 / (n + 1)
+                    else 0
+                )
+
+                pc = (1 - cc) * pc + hsig * math.sqrt(cc * (2 - cc) * mueff) * y
+
+                # Adapt covariance matrix C.
+                if len(population) >= mu:
+                    # Rank-μ update: sum of weighted outer products.
+                    weighted_diffs = _A.linalg.matrix_zeros(n, n)
+                    for i in range(mu):
+                        diff = (population[i][0] - old_mean) / sigma
+                        w_outer = _A.linalg.outer(diff, diff)
+                        for r in range(n):
+                            for c in range(n):
+                                weighted_diffs[r][c] += weights[i] * w_outer[r][c]
+
+                    pc_outer = _A.linalg.outer(pc, pc)
+                    new_C = _A.linalg.matrix_zeros(n, n)
+                    base = 1 - c1 - cmu
                     for r in range(n):
                         for c in range(n):
-                            weighted_diffs[r][c] += weights[i] * w_outer[r][c]
+                            new_C[r][c] = (
+                                base * C[r][c]
+                                + c1 * pc_outer[r][c]
+                                + cmu * weighted_diffs[r][c]
+                            )
+                    C = new_C
 
-                pc_outer = _A.linalg.outer(pc, pc)
-                new_C = _A.linalg.matrix_zeros(n, n)
-                base = 1 - c1 - cmu
-                for r in range(n):
-                    for c in range(n):
-                        new_C[r][c] = (
-                            base * C[r][c]
-                            + c1 * pc_outer[r][c]
-                            + cmu * weighted_diffs[r][c]
-                        )
-                C = new_C
+                    # Ensure C stays positive definite — bump up by the
+                    # smallest eigenvalue if needed.
+                    try:
+                        eigvals, _ = _A.linalg.eigh(C)
+                        min_eig = min(eigvals)
+                        if min_eig < 1e-14:
+                            shift = 1e-14 - min_eig
+                            for k in range(n):
+                                C[k][k] += shift
+                    except Exception:
+                        pass
 
-                # Ensure C stays positive definite — bump up by the
-                # smallest eigenvalue if needed.
+                # Refresh invsqrtC for the next iteration via eigendecomp:
+                # C = B diag(D) B^T  =>  invsqrtC = B diag(1/sqrt(D)) B^T.
+                # Also use the eigenvalues for IPOP's ConditionCov check.
                 try:
-                    eigvals, _ = _A.linalg.eigh(C)
-                    min_eig = min(eigvals)
-                    if min_eig < 1e-14:
-                        shift = 1e-14 - min_eig
-                        for k in range(n):
-                            C[k][k] += shift
+                    D, B = _A.linalg.eigh(C)
+                    D_inv_sqrt = [1.0 / math.sqrt(max(d, 1e-14)) for d in D]
+                    D_diag = _A.linalg.diag(D_inv_sqrt)
+                    Bt = _A.linalg.transpose(B)
+                    tmp = _A.linalg.matmul(B, D_diag)
+                    invsqrtC = _A.linalg.matmul(tmp, Bt)
+                    eig_max = max(D)
+                    eig_min = max(min(D), 1e-30)
+                    cond_C = eig_max / eig_min
                 except Exception:
-                    pass
+                    invsqrtC = _A.linalg.eye(n)
+                    eig_max = 1.0
+                    cond_C = 1.0
 
-            # Refresh invsqrtC for the next iteration via eigendecomp:
-            # C = B diag(D) B^T  =>  invsqrtC = B diag(1/sqrt(D)) B^T.
-            try:
-                D, B = _A.linalg.eigh(C)
-                D_inv_sqrt = [1.0 / math.sqrt(max(d, 1e-14)) for d in D]
-                # invsqrtC = B @ diag(D_inv_sqrt) @ B.T
-                D_diag = _A.linalg.diag(D_inv_sqrt)
-                Bt = _A.linalg.transpose(B)
-                tmp = _A.linalg.matmul(B, D_diag)
-                invsqrtC = _A.linalg.matmul(tmp, Bt)
-            except Exception:
-                invsqrtC = _A.linalg.eye(n)
+                # Step-size update. Do NOT floor at 1e-6 — that artificial
+                # floor was preventing convergence on smooth basins
+                # (Rosenbrock was 4.28× off the cmaes reference because
+                # sigma got pinned at 1e-6 rather than shrinking further).
+                # And do NOT cap at 0.5: reference pycma has no upper
+                # bound on sigma; oversized proposals are handled by the
+                # `_A.clip(..., 0, 1)` already applied to each x sample.
+                sigma = sigma * math.exp(
+                    (cs / damps) * (_A.norm(ps) / math.sqrt(n) - 1)
+                )
 
-            # Step-size update. Do NOT floor at 1e-6 — that artificial
-            # floor was preventing convergence on smooth basins
-            # (Rosenbrock was 4.28× off the cmaes reference because
-            # sigma got pinned at 1e-6 rather than shrinking further).
-            # And do NOT cap at 0.5: reference pycma has no upper bound
-            # on sigma; oversized proposals are handled by the
-            # `_A.clip(..., 0, 1)` already applied to each x sample, so
-            # the cap was throttling exploration without changing the
-            # feasible search space.
-            sigma = sigma * math.exp((cs / damps) * (_A.norm(ps) / math.sqrt(n) - 1))
+                # ---- IPOP termination checks ----
+                # Maintain a rolling window of best-of-generation values
+                # for the TolFun stagnation test.
+                fbest_history.append(population[0][2])
+                if len(fbest_history) > tolfun_window:
+                    fbest_history.pop(0)
 
-        # Polish stage: L-BFGS-B from the CMA-ES best (shared on base).
+                # TolFun: the f-value range over the last `tolfun_window`
+                # generations has collapsed to noise.
+                if (
+                    len(fbest_history) >= tolfun_window
+                    and max(fbest_history) - min(fbest_history) < IPOP_TOLFUN
+                ):
+                    converged = True
+                    continue
+
+                # TolX: step-size combined with the largest principal
+                # direction has fallen below numerical resolution.
+                if sigma * math.sqrt(eig_max) < IPOP_TOLX_FACTOR:
+                    converged = True
+                    continue
+
+                # ConditionCov: the search distribution has elongated to
+                # the point where further updates are numerically unsafe.
+                if cond_C > IPOP_CONDITION_COV:
+                    converged = True
+                    continue
+
+            # Inner loop exited — either budget exhausted, partial
+            # generation, or an IPOP termination check fired. If we
+            # still have budget, restart with a larger population.
+            restart_count += 1
+            if not converged:
+                # Budget-driven exit, not convergence. No more restarts
+                # would help — fall through to the polish stage.
+                break
+
+        # Polish stage: L-BFGS-B from the best-found point across all
+        # restarts (shared on base; self.best_x carries the global best).
         self._lbfgs_polish()
 
         return self.best_value, self.best_x
