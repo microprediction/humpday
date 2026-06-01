@@ -1,6 +1,6 @@
 # HumpDay Goals & Status
 
-Single source of truth for what's done and what's left, across all 21 algorithms.
+Single source of truth for what's done and what's left, across all 22 algorithms.
 **Supersedes** `RESUME.md` (stale, from a prior session) and `NUMPY_REMOVAL_RESUME.md` (focused on one work-stream; merge into this file when its goal column is fully ✅).
 
 Legend: ✅ done · 🟡 partial / in-progress · ❌ not done · ❓ unknown / unverified
@@ -22,15 +22,15 @@ Legend: ✅ done · 🟡 partial / in-progress · ❌ not done · ❓ unknown / 
 | RandomSearch | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ |
 | BayesianOpt | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | 🟡 | ✅ |
 | CMAEvolutionStrategy | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ |
-| TabuSearch | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ |
 | FireflyAlgorithm | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ |
 | AntColonyOpt | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ |
 | EvolutionStrategy | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ |
 | HillClimbing | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ |
 | HarmonySearch | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ |
-| AdaptiveRandomSearch | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ |
+| Rechenberg | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ |
 | CoordinateDescent | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ |
 | PatternSearch | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ |
+| GridSearch | ✅ | ✅ | ✅ | ❌ | ❌ | ✅ | ✅ | ✅ | ✅ | ✅ |
 
 ## Column meanings
 
@@ -65,7 +65,7 @@ Legend: ✅ done · 🟡 partial / in-progress · ❌ not done · ❓ unknown / 
 
 2. **PRIMA trio underperformance in the Elo benchmark.** `benchmarks/elo_ratings.json` (the 2-D sphere + Rosenbrock sweep, 100 trials per problem) has UOBYQA at 1466, BOBYQA at 1177, and NEWUOA at 1120 — bottom-three among the 21 algorithms. That's surprising: PRIMA is a sophisticated trust-region family designed to dominate on smooth surfaces in low dimensions, exactly the regime the benchmark covers. Investigate whether (a) the pure-Python ports have a numerical regression vs. the Fortran references, (b) 100 trials is below the budget where PRIMA pays off in 2-D, or (c) the Rosenbrock variants' ill-conditioning is hitting a PRIMA-specific failure mode. Re-running with `trials_per_problem=500` and a smooth-only objective family would help isolate which.
 
-3. **Recommendation should consider trials AND dimension, not just dimension.** Today `humpday.minimize(...)` auto-selects via `suggest_pure(n_dim, n_trials)`. Inspection shows the heuristic in `suggest_pure` collapses to dimension buckets only (NelderMead ≤2, DE 3–10, CMA-ES 11–50, AdaptiveRandomSearch >50). Trials should matter: e.g. BayesianOpt is the right choice for tight budgets on any reasonable dimension, but is currently never recommended by `minimize()`. The Elo sweep itself is dimension- and budget-conditioned, so the recorded ratings are a natural input. Replace the heuristic with an Elo-table lookup that conditions on `(n_dim_bucket, n_trials_bucket)`.
+3. **Recommendation should consider trials AND dimension, not just dimension.** Today `humpday.minimize(...)` auto-selects via `suggest_pure(n_dim, n_trials)`. Inspection shows the heuristic in `suggest_pure` collapses to dimension buckets only (NelderMead ≤2, DE 3–10, CMA-ES 11–50, Rechenberg >50). Trials should matter: e.g. BayesianOpt is the right choice for tight budgets on any reasonable dimension, but is currently never recommended by `minimize()`. The Elo sweep itself is dimension- and budget-conditioned, so the recorded ratings are a natural input. Replace the heuristic with an Elo-table lookup that conditions on `(n_dim_bucket, n_trials_bucket)`.
 
 ### Documentation bugs
 

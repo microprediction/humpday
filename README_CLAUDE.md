@@ -40,7 +40,7 @@ The main interface provides simple functions for optimization without requiring 
 - `comprehensive_derivative_free.py` - External package wrappers (deprecated)
 - `primacube.py` - PRIMA algorithm wrappers (deprecated)
 
-**Current Philosophy:** Pure Python implementations only, no external dependencies beyond numpy. All algorithms are in `optimizers.py` with the registry `PURE_OPTIMIZERS` containing exactly 21 algorithms that match the JavaScript implementations.
+**Current Philosophy:** Pure Python implementations only, no external dependencies beyond numpy. All algorithms are in `optimizers.py` with the registry `PURE_OPTIMIZERS` containing exactly 22 algorithms that match the JavaScript implementations.
 
 ### Objectives (`humpday/objectives/`)
 
@@ -101,7 +101,7 @@ result = sphere([0.1, 0.2])[0]  # Extract the value
 - No complex build requirements
 
 ### 2. JavaScript Compatibility
-- 21 algorithms exactly match JavaScript implementations
+- 22 algorithms exactly match JavaScript implementations
 - Validation tests ensure consistency
 - Web demos use identical algorithm logic
 
@@ -141,15 +141,15 @@ All algorithms are in `optimizers.py` with base class `BaseOptimizer`:
 **Metaheuristic:**
 12. `BayesianOpt` - Simplified Bayesian optimization
 13. `RandomSearch` - Pure random sampling
-14. `AdaptiveRandomSearch` - Adaptive step sizes
-15. `HillClimbing` - Local search with restarts
-16. `CoordinateDescent` - Coordinate-wise optimization
-17. `PatternSearch` - Direct search
-18. `SimulatedAnnealing` - Simulated annealing
-19. `TabuSearch` - Tabu search
+14. `GridSearch` - Regular Cartesian grid (baseline)
+15. `Rechenberg` - (1+1)-ES with 1/5-success-rule (formerly `AdaptiveRandomSearch`)
+16. `HillClimbing` - Local search with restarts
+17. `CoordinateDescent` - Coordinate-wise optimization
+18. `PatternSearch` - Hooke-Jeeves direct search
+19. `SimulatedAnnealing` - Simulated annealing
 20. `HarmonySearch` - Harmony search
 21. `FireflyAlgorithm` - Firefly algorithm
-22. `AntColonyOpt` - Ant colony optimization
+22. `AntColonyOpt` - Socha-Dorigo continuous ACOR
 
 ### Algorithm Selection Philosophy
 
@@ -187,7 +187,7 @@ All algorithms are in `optimizers.py` with base class `BaseOptimizer`:
 ## Current Development Focus
 
 ### ✅ Completed
-- Pure Python implementations of 21 algorithms
+- Pure Python implementations of 22 algorithms
 - Elo rating system for adaptive selection
 - Interactive 3D visualization demos
 - Comprehensive test functions library
@@ -222,7 +222,7 @@ All algorithms are in `optimizers.py` with base class `BaseOptimizer`:
 - **DON'T** redefine existing test functions
 - **DO** use functions from `humpday.objectives.deapobjectives`
 - **FOCUS** on `optimizers.py` for algorithm implementations
-- **REMEMBER** the 21-algorithm limit and JavaScript compatibility requirements
+- **REMEMBER** the 22-algorithm limit and JavaScript compatibility requirements
 - **LEVERAGE** the existing adaptive optimization system instead of building new selection logic
 
 This organization reflects the evolution from a complex multi-dependency system to a streamlined, self-contained optimization library focused on reliability and ease of use.
