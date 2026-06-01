@@ -243,7 +243,17 @@
             </div>
 
             <div class="algorithm-description">
-                <strong>CMA-ES (Covariance Matrix Adaptation Evolution Strategy)</strong> is a state-of-the-art evolutionary algorithm for continuous optimization. Developed by Nikolaus Hansen and Andreas Ostermeier, CMA-ES adapts its search distribution by learning from the covariance structure of successful mutations. It's considered one of the most effective black-box optimizers for continuous problems.
+                <strong>CMA-ES</strong> (Covariance Matrix Adaptation Evolution Strategy; Hansen &amp; Ostermeier, 1996) samples offspring from <em>N(mean, &sigma;<sup>2</sup>&middot;C)</em> and updates <em>C</em>, <em>&sigma;</em>, and <em>mean</em> from the &mu; best offspring each generation. HumpDay's <code>CMAEvolutionStrategy</code> implements <strong>Hansen-standard CMA-ES</strong> &mdash; evolution paths <em>p<sub>c</sub></em> and <em>p<sub>&sigma;</sub></em>, rank-1 + rank-&mu; covariance updates, cumulative step-size adaptation &mdash; with a Cholesky-based sampler, then finishes with an <strong>L-BFGS-B polish</strong> from the CMA-ES best.
+            </div>
+
+            <div class="coordinate-note" style="background:#e8f4fd; border:1px solid #bee5eb; border-radius:8px; padding:15px; margin:20px 0;">
+                <h3 style="color:#0c5460; margin-top:0;">HumpDay's CMA-ES at a glance</h3>
+                <ul>
+                    <li><strong>Recommended parameters:</strong> &lambda; = <code>min(50, 4 + ⌊3&middot;log(n)⌋)</code>, &mu; = &lambda;/2, recombination weights <em>w<sub>i</sub> = log(&mu; + 0.5) − log(i)</em> normalised.</li>
+                    <li><strong>Adaptation:</strong> rank-1 + rank-&mu; C-update with positive-definiteness guard, cumulative step-size adaptation, evolution paths.</li>
+                    <li><strong>Sampler:</strong> Cholesky factor <em>L</em> of <em>C</em>, with eigendecomp-based <em>C<sup>−&frac12;</sup></em> refresh each iteration.</li>
+                    <li><strong>Polish:</strong> reserve <code>min(20&middot;n_dim, n_trials/2)</code> evaluations for L-BFGS-B from the CMA-ES best.</li>
+                </ul>
             </div>
 
             <div class="visualization-section">
@@ -299,24 +309,23 @@
                         </td>
                     </tr>
                     <tr>
-                        <td class="category">Humpday Python</td>
+                        <td class="category">HumpDay Python</td>
                         <td>
-                            <strong>HumpDay Python Implementation</strong><br>
-                            Pure-Python CMA-ES following Hansen's standard — evolution paths and step-size adaptation, Cholesky-based sampling of the covariance<br>
-                            No required dependencies<br>
-                            <em>File: humpday/optimizers/evolutionary_algorithms.py</em>
+                            <strong>HumpDay <code>CMAEvolutionStrategy</code></strong><br>
+                            Hansen-standard CMA-ES with rank-1 + rank-&mu; C-update, evolution paths, CSA, then L-BFGS-B polish from the best CMA-ES point.<br>
+                            Pure Python; no required dependencies.<br>
+                            <em>File: <code>humpday/optimizers/evolutionary_algorithms.py</code></em>
                         </td>
                         <td>
-                            <a href="https://github.com/microprediction/humpday/blob/main/humpday/optimizers/evolutionary_algorithms.py#L574" target="_blank" class="link-button python">Source Code</a>
+                            <a href="https://github.com/microprediction/humpday/blob/main/humpday/optimizers/evolutionary_algorithms.py" target="_blank" class="link-button python">Source</a>
                         </td>
                     </tr>
                     <tr>
-                        <td class="category">Humpday JavaScript</td>
+                        <td class="category">HumpDay JavaScript</td>
                         <td>
-                            <strong>Browser Implementation</strong><br>
-                            JavaScript port of core CMA-ES algorithm<br>
-                            Covariance matrix adaptation and evolution paths<br>
-                            <em>Class: CMAEvolutionStrategy</em>
+                            <strong>Browser <code>CMAEvolutionStrategy</code></strong><br>
+                            Mirrors the Python port line-for-line, including the L-BFGS-B polish stage.<br>
+                            <em>Class: <code>CMAEvolutionStrategy</code></em>
                         </td>
                         <td>
                             <a href="https://github.com/microprediction/humpday/blob/main/docs/js/modules/evolutionary-algorithms.js" target="_blank" class="link-button javascript">JS Port</a>
@@ -326,13 +335,12 @@
             </table>
 
             <div class="performance-notes">
-                <h3>Performance Characteristics</h3>
+                <h3>Performance characteristics</h3>
                 <ul>
-                    <li><strong>Best for:</strong> Continuous optimization, ill-conditioned problems, noisy functions</li>
-                    <li><strong>Dimensions:</strong> Excellent from 2D up to hundreds of dimensions</li>
-                    <li><strong>Function evaluations:</strong> Population-based, typically λ ≈ 4+⌊3log(n)⌋</li>
-                    <li><strong>Convergence:</strong> Outstanding convergence on smooth and rugged landscapes</li>
-                    <li><strong>Robustness:</strong> Scale-invariant, rotation-invariant, noise-tolerant</li>
+                    <li><strong>Best for:</strong> Ill-conditioned and rotation-sensitive continuous objectives. CMA-ES learns anisotropy and is &mdash; for a single black-box algorithm &mdash; one of the most powerful continuous optimizers.</li>
+                    <li><strong>Worst for:</strong> Very high dimensions with tight budgets &mdash; the C-matrix update is <em>O(n<sup>2</sup>)</em> per generation, and the eigendecomp is <em>O(n<sup>3</sup>)</em>.</li>
+                    <li><strong>Per generation:</strong> &lambda; offspring evaluations + one rank-1/rank-&mu; C-update + one eigendecomp for <em>C<sup>−&frac12;</sup></em>.</li>
+                    <li><strong>Relative to the <code>cmaes</code> reference</strong> at <code>n_trials=200, n_dim=2</code>: HumpDay matches on sphere and Ackley, wins on Ackley by a margin. See <a href="../sota-status.html">SOTA status</a> for the live numbers.</li>
                 </ul>
             </div>
 
