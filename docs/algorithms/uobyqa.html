@@ -233,8 +233,8 @@
     </nav>
     <div class="container">
         <div class="header">
-            <h1>UOBYQA (PDFO)</h1>
-            <p>Unconstrained Optimization BY Quadratic Approximation</p>
+            <h1>PRIMA_UOBYQA</h1>
+            <p>Powell's full-quadratic-model trust-region method, with Steihaug-Toint TR subproblem and Powell-style geometry steps</p>
         </div>
 
         <div class="content">
@@ -243,7 +243,12 @@
             </div>
 
             <div class="algorithm-description">
-                <strong>UOBYQA</strong> is a trust-region method for derivative-free optimization that builds quadratic models using function values only. Developed by M.J.D. Powell, it's one of the foundational algorithms in the Prima library. UOBYQA is particularly effective for smooth, unimodal functions and forms the basis for more advanced methods like NEWUOA and BOBYQA.
+                <strong>UOBYQA</strong> (Unconstrained Optimization BY Quadratic Approximation, Powell 2002) is a trust-region method for derivative-free optimization that builds a full quadratic model from <code>(n+1)(n+2)/2</code> interpolation points. HumpDay's port uses three pieces that matter for correctness on non-quadratic objectives:
+                <ol>
+                    <li><strong>Steihaug-Toint truncated CG</strong> for the trust-region subproblem &mdash; correctly handles indefinite fitted Hessians (the common case for the overdetermined regression on non-quadratic objectives).</li>
+                    <li><strong>Unconditional base-point shifting</strong> at the end of every iteration so the model centre coincides with the current best.</li>
+                    <li><strong>Periodic geometry step</strong> &mdash; every <code>npt</code> TR iterations, pick the worst-positioned interpolation point and find a step in the trust region that maximises its Lagrange polynomial. Closes the residual gap to PDFO on Rosenbrock.</li>
+                </ol>
             </div>
             <div class="visualization-section">
                 <h3>Interactive 3D Visualization</h3>
@@ -299,24 +304,23 @@
                         </td>
                     </tr>
                     <tr>
-                        <td class="category">Humpday Python</td>
+                        <td class="category">HumpDay Python</td>
                         <td>
-                            <strong>HumpDay Python Implementation</strong><br>
-                            Pure-Python port of UOBYQA — quadratic-model trust region, no PDFO/Fortran call<br>
-                            No required dependencies<br>
-                            <em>File: humpday/optimizers/prima_algorithms.py</em>
+                            <strong>HumpDay <code>PRIMA_UOBYQA</code></strong><br>
+                            Pure-Python port: SVD-based regression on <code>(n+1)(n+2)/2</code> points, Steihaug-Toint TR subproblem, periodic geometry step that maximises <code>|&Lambda;<sub>t</sub>(x)|</code> in the trust region.<br>
+                            No required dependencies.<br>
+                            <em>File: <code>humpday/optimizers/prima_algorithms.py</code></em>
                         </td>
                         <td>
-                            <a href="https://github.com/microprediction/humpday/blob/main/humpday/optimizers/prima_algorithms.py#L400" target="_blank" class="link-button python">Source Code</a>
+                            <a href="https://github.com/microprediction/humpday/blob/main/humpday/optimizers/prima_algorithms.py" target="_blank" class="link-button python">Source</a>
                         </td>
                     </tr>
                     <tr>
-                        <td class="category">Humpday JavaScript</td>
+                        <td class="category">HumpDay JavaScript</td>
                         <td>
-                            <strong>Browser Implementation</strong><br>
-                            Pure JavaScript port maintaining core trust-region logic<br>
-                            Simplified quadratic model building for web performance<br>
-                            <em>Class: PRIMA_UOBYQA</em>
+                            <strong>Browser <code>PRIMA_UOBYQA</code></strong><br>
+                            JS port shares the Steihaug-Toint TR solver but uses a different geometry-update path; bringing it into line with the Python port is tracked separately.<br>
+                            <em>Class: <code>PRIMA_UOBYQA</code></em>
                         </td>
                         <td>
                             <a href="https://github.com/microprediction/humpday/blob/main/docs/js/modules/prima-algorithms.js" target="_blank" class="link-button javascript">JS Port</a>
@@ -326,13 +330,12 @@
             </table>
 
             <div class="performance-notes">
-                <h3>Performance Characteristics</h3>
+                <h3>Performance characteristics</h3>
                 <ul>
-                    <li><strong>Best for:</strong> Smooth, unimodal functions with moderate noise tolerance</li>
-                    <li><strong>Dimensions:</strong> Works well up to ~50 dimensions</li>
-                    <li><strong>Function evaluations:</strong> Typically requires O(n²) evaluations for n dimensions</li>
-                    <li><strong>Convergence:</strong> Fast local convergence on quadratic-like functions</li>
-                    <li><strong>Robustness:</strong> Handles discontinuous derivatives but sensitive to high noise</li>
+                    <li><strong>Best for:</strong> Smooth, low-dimensional problems where the full quadratic model gives a precise trust-region step.</li>
+                    <li><strong>Worst for:</strong> High dimensions &mdash; the interpolation set scales as <code>(n+1)(n+2)/2</code>, which becomes expensive to build and maintain past ~10 dimensions. NEWUOA's <code>2n+1</code> underdetermined model is the better choice there.</li>
+                    <li><strong>Per outer cycle:</strong> one TR descent step + one Steihaug-Toint solve. Every <code>(n+1)(n+2)/2</code> cycles, one additional geometry-step evaluation.</li>
+                    <li><strong>Relative to PDFO uobyqa</strong> at <code>n_trials=200, n_dim=2</code>: matches reference on sphere, Rosenbrock, and Ackley &mdash; all three at the numerical noise floor. See <a href="../sota-status.html">SOTA status</a> for the live numbers.</li>
                 </ul>
             </div>
 
