@@ -1,0 +1,370 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>HumpDay &mdash; Algorithm Recommendations</title>
+    <style>
+        .site-nav {
+            position: sticky;
+            top: 0;
+            z-index: 1000;
+            background: #34495e;
+            color: white;
+            padding: 12px 24px;
+            font-family: 'Times New Roman', Times, serif;
+            box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+        }
+        .site-nav-inner {
+            max-width: 1100px;
+            margin: 0 auto;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            gap: 16px;
+            flex-wrap: wrap;
+        }
+        .site-nav-brand {
+            color: white;
+            text-decoration: none;
+            font-weight: 700;
+            font-size: 1.25em;
+        }
+        .site-nav-links { display: flex; gap: 24px; }
+        .site-nav-links a { color: #ecf0f1; text-decoration: none; font-size: 1em; }
+        .site-nav-links a:hover { color: white; text-decoration: underline; }
+
+        body {
+            font-family: 'Times New Roman', Times, serif;
+            margin: 0; padding: 0;
+            background: #f8f9fa;
+            color: #2c3e50;
+            line-height: 1.6;
+        }
+        .container {
+            max-width: 1100px;
+            margin: 30px auto;
+            background: white;
+            padding: 40px 50px;
+            border-radius: 8px;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.06);
+        }
+        h1 { margin: 0 0 8px; font-weight: 400; font-size: 2.2em; }
+        .lede { color: #555; margin: 0 0 32px; font-size: 1.05em; }
+        h2 {
+            margin: 36px 0 12px;
+            padding-bottom: 6px;
+            border-bottom: 2px solid #ecf0f1;
+            font-weight: 600;
+            font-size: 1.35em;
+            color: #34495e;
+        }
+        h3 {
+            margin: 22px 0 8px;
+            font-weight: 600;
+            font-size: 1.1em;
+            color: #34495e;
+        }
+        table.spec {
+            width: 100%;
+            border-collapse: collapse;
+            margin: 0 0 28px;
+            font-size: 0.96em;
+        }
+        table.spec th, table.spec td {
+            padding: 8px 10px;
+            border-bottom: 1px solid #ecf0f1;
+            text-align: left;
+            vertical-align: top;
+        }
+        table.spec th {
+            background: #f8f9fa;
+            font-weight: 600;
+            color: #34495e;
+        }
+        table.spec td.center, table.spec th.center { text-align: center; }
+        table.spec td.algo { font-weight: 600; white-space: nowrap; }
+        table.spec td.cap { font-family: 'Courier New', monospace; font-size: 0.9em; }
+        .tier-0 { color: #1b5e20; }
+        .tier-1 { color: #33691e; }
+        .tier-2 { color: #6d4c00; }
+        .tier-3 { color: #b25e00; }
+        .tier-4 { color: #b71c1c; }
+        .summary {
+            background: #f1f8ff;
+            border-left: 4px solid #1976d2;
+            padding: 16px 20px;
+            margin: 24px 0;
+            border-radius: 4px;
+        }
+        .footnote { margin-top: 40px; color: #888; font-size: 0.9em; }
+        code {
+            font-family: 'Courier New', monospace;
+            background: #f4f6f8;
+            padding: 1px 5px;
+            border-radius: 3px;
+            font-size: 0.9em;
+        }
+        pre {
+            background: #f4f6f8;
+            padding: 12px 16px;
+            border-radius: 4px;
+            overflow-x: auto;
+            font-family: 'Courier New', monospace;
+            font-size: 0.88em;
+        }
+    </style>
+</head>
+<body>
+    <nav class="site-nav" data-site-nav="v1">
+        <div class="site-nav-inner">
+            <a href="index.html" class="site-nav-brand">HumpDay</a>
+            <div class="site-nav-links">
+                <a href="index.html">Home</a>
+                <a href="contest.html">Contest</a>
+                <a href="applications/index.html">Applications</a>
+                <a href="algorithms.html">Algorithms</a>
+                <a href="sota-status.html">SOTA status</a>
+                <a href="recommendations.html">Recommendations</a>
+                <a href="https://github.com/microprediction/humpday" target="_blank" rel="noopener">GitHub</a>
+            </div>
+        </div>
+    </nav>
+
+    <div class="container">
+        <h1>Algorithm Recommendations</h1>
+        <p class="lede">
+            How <code>humpday.minimize()</code> picks an algorithm when you don't
+            specify one &mdash; and which algorithms are eligible for which kinds
+            of problem.
+        </p>
+
+        <div class="summary">
+            HumpDay is most useful when each call to your objective costs more
+            than an optimizer's own per-iteration bookkeeping &mdash; that's the
+            regime where algorithm choice dominates wall-clock and solution
+            quality. The auto-selector tries to make that choice well without
+            requiring you to know which algorithms have heavy per-iter overhead
+            (GP fits, eigendecompositions) and which don't.
+        </div>
+
+        <h2>How auto-selection works</h2>
+        <p>
+            When you call <code>minimize(f, bounds=...)</code> without a
+            <code>method=</code> argument, three filters decide which optimizer
+            runs:
+        </p>
+        <ol>
+            <li>
+                <strong>Dimensional cap.</strong> Some algorithms are
+                structurally unfit above a certain <code>n_dim</code>:
+                <code>GridSearch</code> is exponential; <code>BayesianOpt</code>'s
+                Gaussian process scales cubically in observations and its RBF
+                kernel degenerates; <code>PRIMA_UOBYQA</code> needs
+                <code>(n+1)(n+2)/2</code> interpolation points before it can
+                build its full quadratic model.
+            </li>
+            <li>
+                <strong>Minimum trials.</strong> <code>BayesianOpt</code>'s GP
+                doesn't pay off until you've drawn enough samples to fit it;
+                <code>CMAEvolutionStrategy</code> wants several generations of
+                <code>4&middot;n</code> evaluations to adapt its covariance;
+                Powell's PRIMA family must initialize an interpolation set
+                before the first iteration.
+            </li>
+            <li>
+                <strong>Overhead tier vs. measured eval-time.</strong> At
+                <code>minimize()</code> entry we time your objective four times
+                and take the median. The resulting per-call cost decides which
+                algorithms are worth running: when each call is a microsecond,
+                <code>BayesianOpt</code>'s GP fit and CMA-ES's eigendecomposition
+                would dominate wall-clock and are filtered out; when each call
+                is a second, every algorithm is eligible and we lean toward the
+                sample-efficient ones.
+            </li>
+        </ol>
+        <p>
+            The recommender consults a benchmarks-driven grid
+            (<code>benchmarks/recommendation_grid.json</code>) when one is
+            available, picking the eligible algorithm with the smallest
+            median best-value on the nearest <code>(n_dim, n_trials)</code>
+            cell. When no grid is present it falls through to the rule-based
+            ranking that mirrors <code>suggest_pure</code>.
+        </p>
+
+        <h2>Dimensional caps</h2>
+        <p>
+            Algorithms not listed here are treated as having no cap (linear-in-
+            dim or better).
+        </p>
+        <table class="spec">
+            <thead>
+                <tr>
+                    <th>Algorithm</th>
+                    <th class="center">Max n_dim</th>
+                    <th>Why</th>
+                </tr>
+            </thead>
+            <tbody>
+                <tr><td class="algo">GridSearch</td><td class="cap center">4</td><td>n_per_axis<sup>n_dim</sup> grid explodes</td></tr>
+                <tr><td class="algo">BayesianOpt</td><td class="cap center">10</td><td>GP cost O(n_obs<sup>3</sup>) + RBF kernel degenerates in high dim</td></tr>
+                <tr><td class="algo">PRIMA_UOBYQA</td><td class="cap center">12</td><td>Needs (n+1)(n+2)/2 interpolation points</td></tr>
+                <tr><td class="algo">NelderMead</td><td class="cap center">20</td><td>Simplex degenerates past ~20 dims</td></tr>
+                <tr><td class="algo">PRIMA_NEWUOA</td><td class="cap center">25</td><td>Underdetermined quadratic model fit</td></tr>
+                <tr><td class="algo">Powell</td><td class="cap center">30</td><td>Direction-set line searches stall</td></tr>
+                <tr><td class="algo">PatternSearch</td><td class="cap center">30</td><td>2n directions per pattern</td></tr>
+                <tr><td class="algo">PRIMA_BOBYQA</td><td class="cap center">30</td><td>Geometry/BIGLAG steps make each optimize() call minutes past n=30</td></tr>
+                <tr><td class="algo">FireflyAlgorithm</td><td class="cap center">50</td><td>O(n_pop<sup>2</sup>) attractions per generation</td></tr>
+                <tr><td class="algo">AntColonyOpt</td><td class="cap center">50</td><td>Archive-sample interactions degrade</td></tr>
+                <tr><td class="algo">CMAEvolutionStrategy</td><td class="cap center">100</td><td>Eigendecomposition O(n<sup>3</sup>) per generation</td></tr>
+            </tbody>
+        </table>
+
+        <h2>Overhead tiers</h2>
+        <p>
+            Each algorithm is classified by its per-iteration bookkeeping cost.
+            An algorithm is eligible only when your objective's measured
+            eval-time is at least the tier's threshold &mdash; below that, the
+            algorithm's own work would dominate wall-clock.
+        </p>
+        <table class="spec">
+            <thead>
+                <tr>
+                    <th class="center">Tier</th>
+                    <th>Algorithms</th>
+                    <th>Per-iter overhead</th>
+                    <th class="center">Min eval-time</th>
+                </tr>
+            </thead>
+            <tbody>
+                <tr>
+                    <td class="center tier-0"><strong>0</strong></td>
+                    <td>RandomSearch, GridSearch, HillClimbing, Rechenberg</td>
+                    <td>~&micro;s &mdash; pure RNG or single componentwise step</td>
+                    <td class="cap center">0</td>
+                </tr>
+                <tr>
+                    <td class="center tier-1"><strong>1</strong></td>
+                    <td>NelderMead, Powell, DE, PSO, SA, GA, ES, FA, HS, ACO, LBFGSB, PatternSearch, CoordinateDescent</td>
+                    <td>~100&micro;s &mdash; small per-iter loops, no linear algebra</td>
+                    <td class="cap center">10 &micro;s</td>
+                </tr>
+                <tr>
+                    <td class="center tier-2"><strong>2</strong></td>
+                    <td>PRIMA_BOBYQA, PRIMA_NEWUOA</td>
+                    <td>~1ms &mdash; small linear-algebra updates per iter</td>
+                    <td class="cap center">100 &micro;s</td>
+                </tr>
+                <tr>
+                    <td class="center tier-3"><strong>3</strong></td>
+                    <td>PRIMA_UOBYQA, CMAEvolutionStrategy</td>
+                    <td>~10ms &mdash; full quadratic / eigendecomp per gen</td>
+                    <td class="cap center">1 ms</td>
+                </tr>
+                <tr>
+                    <td class="center tier-4"><strong>4</strong></td>
+                    <td>BayesianOpt</td>
+                    <td>~100ms &mdash; GP fit O(n_obs<sup>3</sup>) per iter</td>
+                    <td class="cap center">10 ms</td>
+                </tr>
+            </tbody>
+        </table>
+
+        <h2>Calling convention</h2>
+        <p>
+            The auto-selection is the default; you can always override.
+        </p>
+        <pre>from humpday import minimize
+
+# Auto-selection (the default).
+result = minimize(my_objective, bounds=[(-5, 5)] * 8)
+print(result.method)              # "DifferentialEvolution" (say)
+print(result.eval_time_measured)  # 1.4e-04 (s/call)
+print(result.tier)                # 1
+print(result.fun, result.x)
+
+# Disable the timing call &mdash; useful for stochastic objectives.
+result = minimize(my_objective, bounds=..., options={"auto_timing": False})
+
+# Force a specific algorithm.
+result = minimize(my_objective, bounds=..., method="CMAEvolutionStrategy")</pre>
+
+        <h2>Reading and building the grid</h2>
+        <p>
+            <code>benchmarks/recommendation_grid.json</code> is the empirical
+            input to auto-selection. Each cell is keyed
+            <code>"n_dim/n_trials"</code> and holds, for every algorithm that
+            cleared the structural eligibility filter at that cell, the raw
+            per-<code>(objective, seed)</code> best-value plus an aggregated
+            <code>median_best</code> / <code>mean_wall</code> summary. The
+            objective suite is sphere, Rosenbrock, Rastrigin, Griewank, and
+            Salomon &mdash; chosen to cover separable convex, banana, rugged
+            multimodal, and nearly-separable landscape regimes.
+        </p>
+        <p>
+            <strong>Parallel.</strong> Every
+            <code>(cell, algorithm, objective, seed)</code> tuple is an
+            independent unit of work; pass <code>--workers N</code> to use a
+            process pool. The script pins BLAS to one thread per worker so the
+            numpy-heavy algorithms (CMA-ES, BayesianOpt) don't contend.
+        </p>
+        <p>
+            <strong>Incremental.</strong> Re-running the script reads any
+            existing grid file, skips cells / algorithms / objectives / seeds
+            that already have a recorded result, and only runs the missing
+            tuples. Re-running with new <code>--dims</code> or
+            <code>--trials</code> extends the grid rather than overwriting it,
+            and the <code>meta.first_built</code> timestamp is preserved.
+            Writes are atomic (sibling-temp + rename) so a kill mid-write
+            can't corrupt the file.
+        </p>
+        <pre># Fast development sweep (~30s, parallel, default cpu_count - 1 workers).
+python benchmarks/build_recommendation_grid.py --quick
+
+# Full default sweep (dims 2,5,10,20,50,100 &times; trials 50,200,1000).
+python benchmarks/build_recommendation_grid.py --workers 16 --seeds 5
+
+# Extend an existing grid with a new dimension only.
+python benchmarks/build_recommendation_grid.py --dims 30
+
+# Retry algorithms previously marked "too slow" (e.g. on a beefier machine).
+python benchmarks/build_recommendation_grid.py --include-skipped</pre>
+        <p>
+            Algorithms whose probe run exceeds the per-call wall-clock budget
+            (default 30s) are marked <code>skipped_too_slow</code> for that
+            cell &mdash; the next run won't waste cycles on them unless you
+            pass <code>--include-skipped</code>.
+        </p>
+
+        <h2>When to override the recommender</h2>
+        <ul>
+            <li>
+                <strong>Stochastic objectives.</strong> The timing call samples
+                <code>f(x)</code> once at the cube centre &mdash; if your
+                objective is non-deterministic, that one sample sets random
+                state. Pass <code>options={"auto_timing": False}</code> to skip
+                it; the recommender then falls back to dim &amp; trials only.
+            </li>
+            <li>
+                <strong>Known landscape structure.</strong> If you know your
+                surface is convex-ish, pick <code>LBFGSB</code> or
+                <code>Powell</code> directly; if it's known multimodal with
+                expensive evaluations, pick <code>BayesianOpt</code>.
+            </li>
+            <li>
+                <strong>Reproducibility.</strong> Algorithm choice that depends
+                on timing isn't bitwise reproducible across machines. Pass
+                <code>method=</code> explicitly when you need byte-for-byte
+                determinism.
+            </li>
+        </ul>
+
+        <p class="footnote">
+            See <a href="sota-status.html">SOTA status</a> for how each
+            algorithm compares against its canonical reference implementation,
+            and <a href="algorithms.html">Algorithms</a> for the per-algorithm
+            implementation notes.
+        </p>
+    </div>
+</body>
+</html>

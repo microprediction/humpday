@@ -242,16 +242,24 @@
             </div>
 
             <div class="algorithm-description">
-                <strong>Nelder-Mead</strong> (Nelder &amp; Mead, 1965) maintains a simplex of <em>n + 1</em> vertices in <em>n</em>-dimensional space and updates it each iteration via reflection, expansion, contraction, or shrinkage moves. HumpDay's <code>NelderMead</code> is a faithful pure-Python port of scipy's implementation: same canonical coefficients (&rho;=1, &chi;=2, &psi;=&sigma;=&frac12;), same simplex-initialization rules (perturb one coordinate at a time with <code>nonzdelt=0.05</code> / <code>zdelt=0.00025</code>), same convergence test on simplex spread.
+                <strong>Nelder-Mead</strong> (Nelder &amp; Mead, 1965) maintains a simplex of <em>n + 1</em> vertices in <em>n</em>-dimensional space and updates it each iteration via reflection, expansion, contraction, or shrinkage moves. HumpDay's <code>NelderMead</code> is a faithful pure-Python port of scipy's implementation &mdash; same canonical coefficients (&rho;=1, &chi;=2, &psi;=&sigma;=&frac12;), same simplex-initialization rules, same convergence test on simplex spread &mdash; wrapped in a restart layer that handles the well-known simplex-collapse failure mode described by Kelley (1999).
             </div>
 
             <div class="coordinate-note" style="background:#e8f4fd; border:1px solid #bee5eb; border-radius:8px; padding:15px; margin:20px 0;">
                 <h3 style="color:#0c5460; margin-top:0;">HumpDay's Nelder-Mead at a glance</h3>
                 <ul>
                     <li><strong>Coefficients:</strong> &rho;=1 (reflection), &chi;=2 (expansion), &psi;=&frac12; (contraction), &sigma;=&frac12; (shrinkage) &mdash; scipy's defaults.</li>
-                    <li><strong>Simplex init:</strong> from a random interior point <em>x<sub>0</sub></em>, the remaining vertices perturb one coordinate at a time by <em>1 + nonzdelt</em> (or <em>zdelt</em> if the coordinate is zero).</li>
-                    <li><strong>Convergence:</strong> <code>xatol = fatol = 1e-12</code> &mdash; tightened from scipy's default 1e-4 so the algorithm uses the full budget where the landscape permits.</li>
+                    <li><strong>Simplex init:</strong> from a seed point <em>x<sub>0</sub></em>, the remaining vertices perturb one coordinate at a time by <em>1 + nonzdelt</em> (or <em>zdelt</em> if the coordinate is zero).</li>
+                    <li><strong>Convergence:</strong> <code>xatol = fatol = 1e-12</code>, tightened from scipy's default 1e-4 so the algorithm uses the full budget where the landscape permits.</li>
+                    <li><strong>Restart on collapse:</strong> when the simplex meets the convergence test, instead of terminating we reseed and continue (Kelley 1999). Restart 0 uses a fresh uniform draw; subsequent restarts alternate between intensification (reseed around the current best) and diversification (fresh uniform). Each restart uses a different <code>nonzdelt</code> from the schedule <code>[0.05, 0.15, 0.30, 0.10, 0.50, 0.20]</code> so the new simplex isn't a scaled copy of the collapsed one.</li>
                 </ul>
+            </div>
+
+            <div class="coordinate-note" style="background:#fff8e1; border:1px solid #f9a825; border-radius:8px; padding:15px; margin:20px 0;">
+                <h3 style="color:#6d4c00; margin-top:0;">Why restart matters</h3>
+                <p style="margin:0;">
+                    Kelley (1999, <em>SIAM J. Optim.</em> 10(1), <a href="https://doi.org/10.1137/S1052623496303482" target="_blank">DOI</a>) proved that vanilla Nelder-Mead can converge to a non-stationary point when the simplex collapses into a degenerate shape. On smooth landscapes the practical consequence is that the algorithm terminates well before the budget is exhausted &mdash; on a sphere objective with a 200-eval budget, the tightened tolerance still triggers around eval ~45, leaving most of the budget unused. The restart layer reseeds when convergence is detected and continues until the budget is consumed, dramatically improving global performance on multimodal surfaces and refining further on smooth ones.
+                </p>
             </div>
             <div class="visualization-section">
                 <h3>Interactive 3D Visualization</h3>

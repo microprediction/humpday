@@ -24,11 +24,11 @@
       "algorithm": "NelderMead",
       "reference": "scipy.optimize Nelder-Mead",
       "problem": "ackley",
-      "humpday_median": 2.5799275570298694,
+      "humpday_median": 0.020834195238041975,
       "reference_median": 3.57445187725768,
-      "humpday_to_opt": 2.5799275570298694,
+      "humpday_to_opt": 0.020834195238041975,
       "reference_to_opt": 3.57445187725768,
-      "ratio_humpday_over_reference": 0.7217687202461907
+      "ratio_humpday_over_reference": 0.005828640573006389
     },
     {
       "algorithm": "Powell",
@@ -664,5 +664,5 @@
   "n_runs": 4,
   "n_trials": 200,
   "n_dim": 2,
-  "recorded_at": "2026-06-01T01:18:56Z"
+  "recorded_at": "2026-06-01T17:32:12Z"
 }

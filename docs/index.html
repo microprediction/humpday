@@ -175,6 +175,7 @@
                 <a href="applications/index.html">Applications</a>
                 <a href="algorithms.html">Algorithms</a>
                 <a href="sota-status.html">SOTA status</a>
+                <a href="recommendations.html">Recommendations</a>
                 <a href="https://github.com/microprediction/humpday" target="_blank" rel="noopener">GitHub</a>
             </div>
         </div>
@@ -192,6 +193,16 @@
             in Python (and also JavaScript), with no external dependencies. All algorithms operate on
             the unit hypercube [0,1]ⁿ with automatic domain transformations for bounded and unbounded
             problems. Each algorithm is cross-validated against an established reference implementation.
+        </div>
+
+        <div style="background: #f1f8ff; padding: 16px 20px; border-left: 4px solid #1976d2; margin: 16px 0; border-radius: 4px;">
+            When you call <code>minimize()</code> without a <code>method=</code>,
+            HumpDay times one call to your objective and picks the algorithm
+            whose per-iteration overhead is small relative to that cost &mdash;
+            so cheap functions get lightweight algorithms and expensive ones
+            get sample-efficient ones. See
+            <a href="recommendations.html">Recommendations</a> for the
+            dimensional caps and overhead tiers that drive the choice.
         </div>
 
         <figure style="margin: 32px 0; text-align: center;">

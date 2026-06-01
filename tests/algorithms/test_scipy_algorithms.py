@@ -265,6 +265,61 @@ class TestSciPyAlgorithms:
         assert abs(best_x[0]) < 0.5  # Should get close to x=0
         assert abs(best_x[1]) < 0.3  # Should get close to y=0 (more important)
 
+    def test_nelder_mead_uses_full_budget_via_restart(self):
+        """Kelley (1999): vanilla NM terminates on simplex collapse and
+        leaves budget on the table. The restart fix should consume all
+        the evals offered to it on a smooth landscape — otherwise we know
+        the simplex collapsed and no restart triggered."""
+
+        def sphere(x):
+            return float(sum((xi - 0.5) ** 2 for xi in x))
+
+        np.random.seed(123)
+        optimizer = NelderMead(sphere, n_trials=200, n_dim=3)
+        optimizer.optimize()
+
+        # On a 200-eval budget at n=3, the simplex is tiny (4 vertices)
+        # and collapses well before 200 evals at xatol=fatol=1e-12. With
+        # restart, every collapse triggers a reseed and the budget gets
+        # spent. Allow a small tail since the inner-loop budget check can
+        # leave a handful of evals unused mid-restart.
+        assert optimizer.evaluations >= 180, (
+            f"NM consumed only {optimizer.evaluations}/200 evals — "
+            "restart did not trigger or the simplex isn't collapsing"
+        )
+
+    def test_nelder_mead_restart_finds_global_basin(self):
+        """On a multimodal landscape with a misleading initial basin, the
+        restart variant should outperform single-shot NM. We can't compare
+        against the old NM in-process, but we can verify the new NM
+        clears a threshold that bare NM would miss."""
+
+        # Two-bowl function: deeper minimum at x=0.8, shallow at x=0.2.
+        # Initial simplex around 0.3-0.7 sometimes lands in the shallow
+        # basin first; restart from a fresh draw should find the deep one.
+        def two_bowl(x):
+            x0 = x[0]
+            shallow = 0.5 * (x0 - 0.2) ** 2 + 0.05
+            deep = (x0 - 0.8) ** 2
+            return min(shallow, deep)
+
+        # Run multiple seeds; with restart, the fraction reaching the
+        # deep basin (f < 0.05) should be substantially better than 50%.
+        deep_hits = 0
+        for seed in range(20):
+            np.random.seed(seed)
+            opt = NelderMead(two_bowl, n_trials=300, n_dim=1)
+            v, _ = opt.optimize()
+            if v < 0.05:
+                deep_hits += 1
+        # With restart from uniform draws across [0,1] every other
+        # restart, hitting the deep basin should be the rule, not the
+        # exception. Bare NM with random init in [0.3, 0.7] would hit it
+        # ~0% of the time.
+        assert deep_hits >= 12, (
+            f"NM restart found the deep basin in only {deep_hits}/20 runs"
+        )
+
     def test_powell_line_search(self):
         """Test Powell method's line search behavior."""
 
