@@ -26,7 +26,9 @@ def _quadratic(x):
 
 
 @pytest.mark.parametrize("n_dim", [1, 2, 5, 20, 75])
-def test_minimize_no_method_no_timing_matches_rule_ranking(n_dim, monkeypatch, tmp_path):
+def test_minimize_no_method_no_timing_matches_rule_ranking(
+    n_dim, monkeypatch, tmp_path
+):
     """With auto_timing disabled AND no benchmarks grid, the recommender's
     pick should equal the rule-based top — which is suggest_pure[0] for the
     dimensions tested here when the trial budget is large enough to clear
@@ -34,9 +36,7 @@ def test_minimize_no_method_no_timing_matches_rule_ranking(n_dim, monkeypatch, t
     before it's eligible)."""
     # Point the grid lookup at a path that doesn't exist so we exercise the
     # rule-based fallback rather than the committed benchmarks grid.
-    monkeypatch.setattr(
-        eligibility, "_GRID_PATH_DEFAULT", tmp_path / "no_grid.json"
-    )
+    monkeypatch.setattr(eligibility, "_GRID_PATH_DEFAULT", tmp_path / "no_grid.json")
     eligibility._clear_grid_cache()
 
     bounds = [(-1.0, 1.0)] * n_dim
@@ -76,9 +76,7 @@ def test_minimize_explicit_method_is_respected():
 
 def test_cube_minimize_no_method_no_timing_matches_rule_ranking(monkeypatch, tmp_path):
     """cube_minimize (the lower-level entrypoint) auto-picks too."""
-    monkeypatch.setattr(
-        eligibility, "_GRID_PATH_DEFAULT", tmp_path / "no_grid.json"
-    )
+    monkeypatch.setattr(eligibility, "_GRID_PATH_DEFAULT", tmp_path / "no_grid.json")
     eligibility._clear_grid_cache()
 
     n_dim = 8
@@ -115,6 +113,7 @@ def test_high_dim_rule_pick_prefers_adaptive_random_search():
 # -----------------------------------------------------------------------------
 # Timing-driven auto-pick
 # -----------------------------------------------------------------------------
+
 
 def _stash_method(mock_pure):
     """Pull the method name passed to pure_optimize from a Mock's call_args."""

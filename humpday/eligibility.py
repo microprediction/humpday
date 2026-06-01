@@ -42,10 +42,10 @@ from pathlib import Path
 # only when the measured eval_time is at least MIN_EVAL_TIME_FOR_TIER[tier]:
 # this caps HumpDay overhead at roughly ~10% of total wall-clock.
 
-TIER_TRIVIAL = 0   # ~us per iter   — pure RNG draws or single componentwise step
-TIER_LIGHT = 1     # ~100us per iter — small per-iter loops, no linear algebra
-TIER_MEDIUM = 2    # ~1ms per iter   — small linear-algebra updates
-TIER_HEAVY = 3     # ~10ms per iter  — O(n^3) per generation
+TIER_TRIVIAL = 0  # ~us per iter   — pure RNG draws or single componentwise step
+TIER_LIGHT = 1  # ~100us per iter — small per-iter loops, no linear algebra
+TIER_MEDIUM = 2  # ~1ms per iter   — small linear-algebra updates
+TIER_HEAVY = 3  # ~10ms per iter  — O(n^3) per generation
 TIER_VERY_HEAVY = 4  # ~100ms per iter — O(n_obs^3) GP fit per iter
 
 
@@ -86,9 +86,9 @@ TIER: dict[str, int] = {
 # Below the threshold, that tier's overhead dominates wall-clock.
 MIN_EVAL_TIME_FOR_TIER: dict[int, float] = {
     TIER_TRIVIAL: 0.0,
-    TIER_LIGHT: 1e-5,    # 10 us — almost always allowed
-    TIER_MEDIUM: 1e-4,   # 100 us
-    TIER_HEAVY: 1e-3,    # 1 ms
+    TIER_LIGHT: 1e-5,  # 10 us — almost always allowed
+    TIER_MEDIUM: 1e-4,  # 100 us
+    TIER_HEAVY: 1e-3,  # 1 ms
     TIER_VERY_HEAVY: 1e-2,  # 10 ms — GP fit dominates below this
 }
 
@@ -100,18 +100,18 @@ MIN_EVAL_TIME_FOR_TIER: dict[int, float] = {
 # listed here are treated as having no cap (linear-in-dim or better).
 
 DIM_CAP: dict[str, int] = {
-    "GridSearch": 4,        # n_per_axis ** n_dim
-    "BayesianOpt": 10,      # GP cost + RBF kernel degeneracy
-    "PRIMA_UOBYQA": 12,     # (n+1)(n+2)/2 interpolation set
-    "NelderMead": 20,       # simplex degeneracy past ~20 dims
-    "PRIMA_NEWUOA": 25,     # underdetermined quadratic model fit
-    "PRIMA_BOBYQA": 30,     # same model machinery, bounds-aware — past
-                            # n=30 a single optimize() call takes minutes
-                            # because of the geometry/BIGLAG steps
-    "Powell": 30,           # direction-set line searches
-    "PatternSearch": 30,    # 2n directions per pattern
-    "FireflyAlgorithm": 50, # O(n_pop^2) attractions per gen
-    "AntColonyOpt": 50,     # archive-sample interactions
+    "GridSearch": 4,  # n_per_axis ** n_dim
+    "BayesianOpt": 10,  # GP cost + RBF kernel degeneracy
+    "PRIMA_UOBYQA": 12,  # (n+1)(n+2)/2 interpolation set
+    "NelderMead": 20,  # simplex degeneracy past ~20 dims
+    "PRIMA_NEWUOA": 25,  # underdetermined quadratic model fit
+    "PRIMA_BOBYQA": 30,  # same model machinery, bounds-aware — past
+    # n=30 a single optimize() call takes minutes
+    # because of the geometry/BIGLAG steps
+    "Powell": 30,  # direction-set line searches
+    "PatternSearch": 30,  # 2n directions per pattern
+    "FireflyAlgorithm": 50,  # O(n_pop^2) attractions per gen
+    "AntColonyOpt": 50,  # archive-sample interactions
     "CMAEvolutionStrategy": 100,  # eigendecomp O(n^3) per gen
 }
 
@@ -131,13 +131,14 @@ def min_trials(name: str, n_dim: int) -> int:
         return max(20, 4 * n_dim)
     if name == "GridSearch":
         # Need at least 3 points per axis to be meaningfully a grid.
-        return max(3 ** n_dim, 8)
+        return max(3**n_dim, 8)
     return 10
 
 
 # -----------------------------------------------------------------------------
 # Filters
 # -----------------------------------------------------------------------------
+
 
 def passes_dim(name: str, n_dim: int) -> bool:
     return n_dim <= DIM_CAP.get(name, 10_000)
@@ -182,10 +183,11 @@ def eligible(
 # Objective timing
 # -----------------------------------------------------------------------------
 
+
 @dataclass
 class TimingResult:
-    eval_time: float          # seconds per call (median of samples)
-    samples: list[float]      # all measured times
+    eval_time: float  # seconds per call (median of samples)
+    samples: list[float]  # all measured times
     used_for_recommendation: bool  # True if we let timing decide eligibility
 
 
@@ -222,6 +224,7 @@ def time_objective(
 # -----------------------------------------------------------------------------
 # Recommendation
 # -----------------------------------------------------------------------------
+
 
 def _rule_based_ranking(n_dim: int, n_trials: int) -> list[str]:
     """The pre-existing ordering from suggest_pure, copy-pasted here so the
@@ -313,9 +316,7 @@ def _load_grid(path: Path) -> dict | None:
     return grid
 
 
-def _snap_to_grid_cell(
-    grid: dict, n_dim: int, n_trials: int
-) -> dict[str, dict] | None:
+def _snap_to_grid_cell(grid: dict, n_dim: int, n_trials: int) -> dict[str, dict] | None:
     """Find the closest available cell to (n_dim, n_trials) in the grid.
 
     We snap to the nearest n_dim that is ≤ caller's n_dim (so we don't make
@@ -340,9 +341,7 @@ def _snap_to_grid_cell(
         feasible.sort(key=lambda dt: abs(dt[0] - n_dim) + abs(dt[1] - n_trials))
     else:
         # Pick the cell closest to (n_dim, n_trials) under the ≤ constraint.
-        feasible.sort(
-            key=lambda dt: (abs(dt[0] - n_dim), abs(dt[1] - n_trials))
-        )
+        feasible.sort(key=lambda dt: (abs(dt[0] - n_dim), abs(dt[1] - n_trials)))
     d, t = feasible[0]
     return cells.get(f"{d}/{t}")
 

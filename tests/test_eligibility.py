@@ -16,6 +16,7 @@ from humpday import eligibility as E
 # Catalogue invariants
 # -----------------------------------------------------------------------------
 
+
 def test_every_known_algorithm_has_a_tier():
     """If a new algorithm gets added to PURE_OPTIMIZERS, this test should fail
     until someone classifies its overhead tier in eligibility.TIER."""
@@ -46,6 +47,7 @@ def test_thresholds_are_monotone():
 # -----------------------------------------------------------------------------
 # Dimensional filter
 # -----------------------------------------------------------------------------
+
 
 def test_grid_search_blocked_in_high_dim():
     assert E.passes_dim("GridSearch", 4)
@@ -82,6 +84,7 @@ def test_filter_by_dim_strips_caps():
 # Trials filter
 # -----------------------------------------------------------------------------
 
+
 def test_uobyqa_needs_quadratic_trials():
     # n_dim=10 → (11*12)/2 + 5 = 71 (well below the n_dim=12 hard cap)
     assert E.min_trials("PRIMA_UOBYQA", 10) >= 66
@@ -105,6 +108,7 @@ def test_default_minimum_is_ten():
 # Eval-time filter
 # -----------------------------------------------------------------------------
 
+
 def test_trivial_tier_always_passes_eval_time():
     assert E.passes_eval_time("RandomSearch", 0.0)
     assert E.passes_eval_time("RandomSearch", 1e-9)
@@ -125,6 +129,7 @@ def test_cma_es_threshold_at_one_ms():
 # -----------------------------------------------------------------------------
 # Combined eligibility
 # -----------------------------------------------------------------------------
+
 
 def test_eligible_combines_all_three_filters():
     # 50-dim, 1000 trials, 10us per eval:
@@ -161,6 +166,7 @@ def test_eligible_eval_time_none_skips_overhead_filter():
 # -----------------------------------------------------------------------------
 # Recommendation
 # -----------------------------------------------------------------------------
+
 
 def test_recommend_low_dim_expensive_picks_quadratic_model():
     # 2D, 200 trials, 1 second per eval — UOBYQA dominates
@@ -200,9 +206,10 @@ def test_recommend_respects_available_whitelist():
 # Timing
 # -----------------------------------------------------------------------------
 
+
 def test_time_objective_returns_positive_seconds():
     def f(x):
-        return float(np.sum(x ** 2))
+        return float(np.sum(x**2))
 
     result = E.time_objective(f, np.zeros(5), n_warmup=1, n_measure=3)
     assert result.eval_time > 0.0
@@ -213,7 +220,7 @@ def test_time_objective_returns_positive_seconds():
 def test_time_objective_detects_slow_function():
     def f(x):
         time.sleep(0.005)  # 5 ms per call
-        return float(np.sum(x ** 2))
+        return float(np.sum(x**2))
 
     result = E.time_objective(f, np.zeros(3), n_warmup=1, n_measure=3)
     # Should comfortably exceed the LIGHT-tier threshold (10us) and clear
@@ -245,8 +252,10 @@ def test_time_objective_uses_median():
 # Grid-driven recommendation
 # -----------------------------------------------------------------------------
 
+
 def _write_grid(tmp_path, cells: dict) -> "Path":
     import json
+
     p = tmp_path / "grid.json"
     p.write_text(json.dumps({"meta": {}, "cells": cells}))
     E._clear_grid_cache()
@@ -325,9 +334,7 @@ def test_recommend_grid_snaps_to_nearest_lower_cell(tmp_path):
         },
     )
     # Caller asks for n_dim=8 / n_trials=500 — should snap onto 5/200.
-    pick = E.recommend(
-        n_dim=8, n_trials=500, eval_time=1.0, grid_path=grid_path
-    )
+    pick = E.recommend(n_dim=8, n_trials=500, eval_time=1.0, grid_path=grid_path)
     assert pick == "CMAEvolutionStrategy"
 
 
@@ -346,9 +353,7 @@ def test_recommend_reads_aggregated_median_best_only(tmp_path):
             }
         },
     )
-    pick = E.recommend(
-        n_dim=5, n_trials=200, eval_time=1.0, grid_path=grid_path
-    )
+    pick = E.recommend(n_dim=5, n_trials=200, eval_time=1.0, grid_path=grid_path)
     assert pick == "CMAEvolutionStrategy"
 
 
@@ -367,9 +372,7 @@ def test_recommend_skips_inf_median_best(tmp_path):
             }
         },
     )
-    pick = E.recommend(
-        n_dim=5, n_trials=200, eval_time=1.0, grid_path=grid_path
-    )
+    pick = E.recommend(n_dim=5, n_trials=200, eval_time=1.0, grid_path=grid_path)
     assert pick == "DifferentialEvolution"
 
 
@@ -384,9 +387,7 @@ def test_recommend_grid_with_no_eligible_entries_falls_back_to_rule(tmp_path):
             }
         },
     )
-    pick = E.recommend(
-        n_dim=2, n_trials=100, eval_time=1e-9, grid_path=grid_path
-    )
+    pick = E.recommend(n_dim=2, n_trials=100, eval_time=1e-9, grid_path=grid_path)
     # Eval_time 1ns blocks every non-trivial tier — only tier-0 algorithms
     # remain eligible. HillClimbing is the first tier-0 entry in the
     # n_dim<=2 rule-based ranking, so it wins the fallback.

@@ -74,8 +74,13 @@ from typing import Callable
 # every worker spawns its own thread-pool inside numpy/MKL/OpenBLAS, and
 # `--workers N` × ~K BLAS threads each saturates the CPU and slows every
 # task. The combinatorics matter most for BayesianOpt's O(n_obs^3) GP fits.
-for _var in ("OMP_NUM_THREADS", "OPENBLAS_NUM_THREADS", "MKL_NUM_THREADS",
-             "VECLIB_MAXIMUM_THREADS", "NUMEXPR_NUM_THREADS"):
+for _var in (
+    "OMP_NUM_THREADS",
+    "OPENBLAS_NUM_THREADS",
+    "MKL_NUM_THREADS",
+    "VECLIB_MAXIMUM_THREADS",
+    "NUMEXPR_NUM_THREADS",
+):
     os.environ.setdefault(_var, "1")
 
 REPO_ROOT = Path(__file__).parent.parent
@@ -132,6 +137,7 @@ PER_RUN_BUDGET_SECONDS = 30.0
 # Worker (process pool)
 # -----------------------------------------------------------------------------
 
+
 def _set_global_seed(seed: int) -> None:
     random.seed(seed)
     np.random.seed(seed)
@@ -153,7 +159,15 @@ def _run_one_in_worker(args) -> tuple:
     try:
         best_value, _ = pure_optimize(obj, algorithm, n_trials, n_dim)
         wall = time.perf_counter() - t0
-        return (cell_key, algorithm, objective_name, seed, float(best_value), wall, None)
+        return (
+            cell_key,
+            algorithm,
+            objective_name,
+            seed,
+            float(best_value),
+            wall,
+            None,
+        )
     except Exception as exc:  # noqa: BLE001
         wall = time.perf_counter() - t0
         return (cell_key, algorithm, objective_name, seed, float("inf"), wall, str(exc))
@@ -162,6 +176,7 @@ def _run_one_in_worker(args) -> tuple:
 # -----------------------------------------------------------------------------
 # Grid management — load, store, aggregate
 # -----------------------------------------------------------------------------
+
 
 def _empty_grid(dims: list[int], trials: list[int], n_seeds: int) -> dict:
     return {
@@ -185,9 +200,7 @@ def _load_or_init(path: Path, dims, trials, n_seeds) -> dict:
         with path.open() as fh:
             grid = json.load(fh)
     except (OSError, json.JSONDecodeError):
-        print(
-            f"  (existing {path} unreadable — starting fresh)", file=sys.stderr
-        )
+        print(f"  (existing {path} unreadable — starting fresh)", file=sys.stderr)
         return _empty_grid(dims, trials, n_seeds)
     # Extend meta with any newly-requested dims/trials.
     grid.setdefault("meta", {})
@@ -196,10 +209,13 @@ def _load_or_init(path: Path, dims, trials, n_seeds) -> dict:
     grid["meta"]["trials"] = sorted(set(grid["meta"].get("trials", [])) | set(trials))
     grid["meta"]["n_seeds"] = max(grid["meta"].get("n_seeds", 0), n_seeds)
     grid["meta"]["per_run_budget_seconds"] = PER_RUN_BUDGET_SECONDS
-    grid["meta"].setdefault("first_built", grid["meta"].get(
+    grid["meta"].setdefault(
         "first_built",
-        time.strftime("%Y-%m-%dT%H:%M:%SZ", time.gmtime()),
-    ))
+        grid["meta"].get(
+            "first_built",
+            time.strftime("%Y-%m-%dT%H:%M:%SZ", time.gmtime()),
+        ),
+    )
     grid.setdefault("cells", {})
     return grid
 
@@ -220,9 +236,7 @@ def _aggregate(entry: dict) -> None:
 def _save_atomic(path: Path, grid: dict) -> None:
     """Write via a sibling temp file + rename so a kill mid-write can't leave
     the grid file truncated or syntactically broken."""
-    grid["meta"]["last_updated"] = time.strftime(
-        "%Y-%m-%dT%H:%M:%SZ", time.gmtime()
-    )
+    grid["meta"]["last_updated"] = time.strftime("%Y-%m-%dT%H:%M:%SZ", time.gmtime())
     tmp = path.with_suffix(path.suffix + ".tmp")
     tmp.parent.mkdir(parents=True, exist_ok=True)
     tmp.write_text(json.dumps(grid, indent=2, sort_keys=True))
@@ -242,6 +256,7 @@ def _is_skipped_too_slow(entry: dict | None) -> bool:
 # -----------------------------------------------------------------------------
 # Task graph
 # -----------------------------------------------------------------------------
+
 
 def _build_tasks(
     grid: dict,
@@ -345,6 +360,7 @@ def _probe_first(
 # Main
 # -----------------------------------------------------------------------------
 
+
 def main() -> int:
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument(
@@ -394,13 +410,9 @@ def main() -> int:
         trials_list = QUICK_TRIALS
         n_seeds = QUICK_SEEDS
     else:
-        dims = (
-            [int(d) for d in args.dims.split(",")] if args.dims else DEFAULT_DIMS
-        )
+        dims = [int(d) for d in args.dims.split(",")] if args.dims else DEFAULT_DIMS
         trials_list = (
-            [int(t) for t in args.trials.split(",")]
-            if args.trials
-            else DEFAULT_TRIALS
+            [int(t) for t in args.trials.split(",")] if args.trials else DEFAULT_TRIALS
         )
         n_seeds = args.seeds
 
