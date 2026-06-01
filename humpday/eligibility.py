@@ -30,10 +30,9 @@ from __future__ import annotations
 
 import json
 import time
+from collections.abc import Callable, Iterable
 from dataclasses import dataclass
 from pathlib import Path
-from typing import Callable, Iterable, Optional
-
 
 # -----------------------------------------------------------------------------
 # Overhead tiers
@@ -169,7 +168,7 @@ def eligible(
     names: Iterable[str],
     n_dim: int,
     n_trials: int,
-    eval_time: Optional[float] = None,
+    eval_time: float | None = None,
 ) -> list[str]:
     """Apply all three filters. eval_time=None skips the overhead filter."""
     candidates = filter_by_dim(names, n_dim)
@@ -290,11 +289,11 @@ def _rule_based_ranking(n_dim: int, n_trials: int) -> list[str]:
 _GRID_PATH_DEFAULT = (
     Path(__file__).parent.parent / "benchmarks" / "recommendation_grid.json"
 )
-_grid_cache: Optional[dict] = None
-_grid_cache_path: Optional[Path] = None
+_grid_cache: dict | None = None
+_grid_cache_path: Path | None = None
 
 
-def _load_grid(path: Path) -> Optional[dict]:
+def _load_grid(path: Path) -> dict | None:
     """Return the parsed grid JSON, or None if the file is missing/unreadable.
 
     Cached per-path so repeated calls to ``recommend`` don't re-parse the JSON.
@@ -316,7 +315,7 @@ def _load_grid(path: Path) -> Optional[dict]:
 
 def _snap_to_grid_cell(
     grid: dict, n_dim: int, n_trials: int
-) -> Optional[dict[str, dict]]:
+) -> dict[str, dict] | None:
     """Find the closest available cell to (n_dim, n_trials) in the grid.
 
     We snap to the nearest n_dim that is ≤ caller's n_dim (so we don't make
@@ -351,9 +350,9 @@ def _snap_to_grid_cell(
 def recommend(
     n_dim: int,
     n_trials: int,
-    eval_time: Optional[float] = None,
-    available: Optional[Iterable[str]] = None,
-    grid_path: Optional[Path] = None,
+    eval_time: float | None = None,
+    available: Iterable[str] | None = None,
+    grid_path: Path | None = None,
 ) -> str:
     """Pick the best algorithm name for (n_dim, n_trials, eval_time).
 

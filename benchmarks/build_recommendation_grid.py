@@ -433,7 +433,7 @@ def main() -> int:
 
     # Probe pass (serial, fast) — prunes too-slow algorithms before we burn
     # parallel work on them.
-    print(f"  Probe pass: timing first run per (cell, algorithm) pair ...")
+    print("  Probe pass: timing first run per (cell, algorithm) pair ...")
     t0 = time.perf_counter()
     tasks, n_probed = _probe_first(tasks, grid, args.save_every, args.output)
     print(
