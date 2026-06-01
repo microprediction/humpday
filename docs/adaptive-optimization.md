@@ -5,7 +5,7 @@ Humpday now includes an advanced adaptive optimization system that learns which 
 ## Key Features
 
 - **Automatic Algorithm Selection**: System learns which algorithms work best through testing
-- **Elo Rating System**: Maintains skill ratings for all 21 algorithms based on head-to-head performance
+- **Elo Rating System**: Maintains skill ratings for all 22 algorithms based on head-to-head performance
 - **Objective Generator Interface**: Takes functions that generate diverse test problems
 - **Budget-Aware Testing**: Efficiently allocates evaluation budget between exploration and exploitation
 - **Adaptive Recommendations**: Provides suggestions tailored to problem characteristics
@@ -35,7 +35,7 @@ print("Best algorithms:", [alg for alg, rating in top_algorithms])
 ## How It Works
 
 ### 1. Warmup Phase
-- Tests all 21 algorithms on multiple diverse problems
+- Tests all 22 algorithms on multiple diverse problems
 - Each algorithm gets equal evaluation budget per problem
 - Builds initial Elo ratings based on relative performance
 
