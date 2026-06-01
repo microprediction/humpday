@@ -4,7 +4,7 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' 'unsafe-inline' https://cdnjs.cloudflare.com https://cdn.jsdelivr.net; style-src 'self' 'unsafe-inline';">
-    <title>Ant Colony Optimization (acopy) - Implementation Details</title>
+    <title>Ant Colony Optimization (ACOR) — Implementation Details</title>
     <style>
         .site-nav {
             position: sticky;
@@ -231,7 +231,7 @@
     </nav>
     <div class="container">
         <div class="header">
-            <h1>Ant Colony Optimization (acopy)</h1>
+            <h1>Ant Colony Optimization (ACOR)</h1>
             <p>Swarm Intelligence Algorithm</p>
         </div>
 
@@ -285,46 +285,44 @@
                     <tr>
                         <td class="category">Original Algorithm</td>
                         <td>
-                            <strong>Zong Woo Geem</strong><br>
-                            Music-inspired optimization metaheuristic<br>
-                            Based on musical improvisation and harmony composition<br>
-                            <em>Published: 2001</em>
+                            <strong>Marco Dorigo</strong><br>
+                            Pheromone-based metaheuristic inspired by ant foraging<br>
+                            Continuous variant: ACOR (Socha &amp; Dorigo, 2008)<br>
+                            <em>Published: 1992 (ACO), 2008 (ACOR)</em>
                         </td>
                         <td>
-                            <a href="https://doi.org/10.1109/3477.484436" target="_blank" class="link-button paper">Original Paper</a>
+                            <a href="https://doi.org/10.1016/j.ejor.2006.06.046" target="_blank" class="link-button paper">ACOR Paper</a>
                         </td>
                     </tr>
                     <tr>
                         <td class="category">Reference Implementation</td>
                         <td>
-                            <strong>pyHarmonySearch</strong><br>
-                            Tested against pyHarmonySearch package<br>
+                            <strong>mealpy ACOR</strong><br>
+                            Tested against mealpy's continuous ACOR<br>
                             Optional external dependency for validation<br>
-                            <em>Reference: PyPI harmony search implementation</em>
+                            <em>Reference: <code>mealpy.swarm_based.ACOR.OriginalACOR</code></em>
                         </td>
                         <td>
-                            <a href="https://pypi.org/project/pyHarmonySearch/" target="_blank" class="link-button">PyPI Package</a>
+                            <a href="https://github.com/thieu1995/mealpy" target="_blank" class="link-button">mealpy</a>
                         </td>
                     </tr>
                     <tr>
                         <td class="category">Humpday Python Implementation</td>
                         <td>
-                            <strong>Humpday Harmony Search</strong><br>
-                            Custom implementation with classical HS operators<br>
-                            Harmony memory, pitch adjustment, and randomization<br>
+                            <strong>HumpDay AntColonyOpt</strong><br>
+                            Socha-Dorigo continuous ACOR: Gaussian-kernel pheromone over an archive of solutions<br>
                             <em>File: humpday/optimizers/evolutionary_algorithms.py</em>
                         </td>
                         <td>
-                            <a href="https://github.com/microprediction/humpday/blob/main/humpday/optimizers/evolutionary_algorithms.py#L840" target="_blank" class="link-button python">Source</a>
+                            <a href="https://github.com/microprediction/humpday/blob/main/humpday/optimizers/evolutionary_algorithms.py" target="_blank" class="link-button python">Source</a>
                         </td>
                     </tr>
                     <tr>
                         <td class="category">Humpday JavaScript</td>
                         <td>
-                            <strong>Browser Implementation</strong><br>
-                            Pure JavaScript harmony search<br>
-                            Memory management and improvisation rules<br>
-                            <em>Class: HarmonySearch</em>
+                            <strong>Browser implementation</strong><br>
+                            Pure JavaScript ACOR mirroring the Python port<br>
+                            <em>Class: AntColonyOpt</em>
                         </td>
                         <td>
                             <a href="https://github.com/microprediction/humpday/blob/main/docs/js/modules/evolutionary-algorithms.js" target="_blank" class="link-button javascript">JS Implementation</a>
