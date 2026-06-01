@@ -74,7 +74,7 @@ WEAK_ON_SMALL_BUDGET = {
     "CoordinateDescent",
 }
 
-# All 21 algorithms (the keys of PURE_OPTIMIZERS). Each algorithm
+# All 22 algorithms (the keys of PURE_OPTIMIZERS). Each algorithm
 # spawns one Node subprocess, so the sweep runs in seconds, not minutes.
 PARITY_ALGORITHMS = list(PURE_OPTIMIZERS.keys())
 

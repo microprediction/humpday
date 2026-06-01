@@ -287,7 +287,6 @@
                 'CMAEvolutionStrategy': 0.7,            // Can be slow with large populations
                 'GeneticAlgorithm': 0.8,                // Large populations can be slow
                 'ParticleSwarm': 0.8,                   // Large swarms can be slow
-                'TabuSearch': 0.6,                      // Memory operations can be slow
                 'FireflyAlgorithm': 0.7,                // Many distance calculations
                 'AntColonyOpt': 0.6,                    // Complex pheromone updates
                 'HarmonySearch': 0.8                    // Memory search can be slow
@@ -456,7 +455,6 @@
             { name: 'Coordinate Descent (scikit-learn)', internalName: 'CoordinateDescent', elo: 1500, status: 'waiting', testsCompleted: 0 },
             { name: 'Pattern Search (SciPy)', internalName: 'PatternSearch', elo: 1500, status: 'waiting', testsCompleted: 0 },
             { name: 'Hill Climbing (SciPy)', internalName: 'HillClimbing', elo: 1500, status: 'waiting', testsCompleted: 0 },
-            { name: 'Tabu Search (SciPy)', internalName: 'TabuSearch', elo: 1500, status: 'waiting', testsCompleted: 0 },
             { name: 'Firefly Algorithm (SciPy)', internalName: 'FireflyAlgorithm', elo: 1500, status: 'waiting', testsCompleted: 0 },
             { name: 'Ant Colony Optimization (acopy)', internalName: 'AntColonyOpt', elo: 1500, status: 'waiting', testsCompleted: 0 },
             { name: 'Harmony Search (pyHarmonySearch)', internalName: 'HarmonySearch', elo: 1500, status: 'waiting', testsCompleted: 0 },

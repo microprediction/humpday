@@ -157,7 +157,7 @@
     <div class="container">
         <h1>Algorithms</h1>
         <p class="lede">
-            HumpDay ships 21 derivative-free optimizers grouped into six
+            HumpDay ships 22 derivative-free optimizers grouped into six
             families. Every algorithm sees only <code>f(x)</code> calls —
             no analytical gradients, no Jacobians — and is a pure-Python
             port with no required dependencies. Each row links to a
@@ -173,8 +173,8 @@
                 <td class="desc">Full quadratic interpolation model, no constraints. Best for small <em>n</em>.</td>
                 <td class="links">
                     <a href="algorithms/uobyqa.html">doc</a>
-                    <a href="https://github.com/microprediction/humpday/blob/main/humpday/optimizers/prima_algorithms.py#L32">py</a>
-                    <a href="https://github.com/microprediction/humpday/blob/main/docs/js/modules/prima-algorithms.js#L18">js</a>
+                    <a href="https://github.com/microprediction/humpday/blob/main/humpday/optimizers/prima_algorithms.py">py</a>
+                    <a href="https://github.com/microprediction/humpday/blob/main/docs/js/modules/prima-algorithms.js">js</a>
                 </td>
             </tr>
             <tr>
@@ -182,8 +182,8 @@
                 <td class="desc">Underdetermined quadratic model; scales better than UOBYQA in higher <em>n</em>.</td>
                 <td class="links">
                     <a href="algorithms/newuoa.html">doc</a>
-                    <a href="https://github.com/microprediction/humpday/blob/main/humpday/optimizers/prima_algorithms.py#L266">py</a>
-                    <a href="https://github.com/microprediction/humpday/blob/main/docs/js/modules/prima-algorithms.js#L672">js</a>
+                    <a href="https://github.com/microprediction/humpday/blob/main/humpday/optimizers/prima_algorithms.py">py</a>
+                    <a href="https://github.com/microprediction/humpday/blob/main/docs/js/modules/prima-algorithms.js">js</a>
                 </td>
             </tr>
             <tr>
@@ -191,8 +191,8 @@
                 <td class="desc">Bound-constrained variant of NEWUOA.</td>
                 <td class="links">
                     <a href="algorithms/bobyqa.html">doc</a>
-                    <a href="https://github.com/microprediction/humpday/blob/main/humpday/optimizers/prima_algorithms.py#L544">py</a>
-                    <a href="https://github.com/microprediction/humpday/blob/main/docs/js/modules/prima-algorithms.js#L1068">js</a>
+                    <a href="https://github.com/microprediction/humpday/blob/main/humpday/optimizers/prima_algorithms.py">py</a>
+                    <a href="https://github.com/microprediction/humpday/blob/main/docs/js/modules/prima-algorithms.js">js</a>
                 </td>
             </tr>
         </table>
@@ -205,8 +205,8 @@
                 <td class="desc">Simplex method (reflection / expansion / contraction / shrink). SciPy-faithful parameter values.</td>
                 <td class="links">
                     <a href="algorithms/nelder-mead.html">doc</a>
-                    <a href="https://github.com/microprediction/humpday/blob/main/humpday/optimizers/scipy_algorithms.py#L18">py</a>
-                    <a href="https://github.com/microprediction/humpday/blob/main/docs/js/modules/scipy-algorithms.js#L19">js</a>
+                    <a href="https://github.com/microprediction/humpday/blob/main/humpday/optimizers/scipy_algorithms.py">py</a>
+                    <a href="https://github.com/microprediction/humpday/blob/main/docs/js/modules/scipy-algorithms.js">js</a>
                 </td>
             </tr>
             <tr>
@@ -214,8 +214,8 @@
                 <td class="desc">Conjugate-direction line searches; bounded golden-section per direction.</td>
                 <td class="links">
                     <a href="algorithms/powell.html">doc</a>
-                    <a href="https://github.com/microprediction/humpday/blob/main/humpday/optimizers/scipy_algorithms.py#L142">py</a>
-                    <a href="https://github.com/microprediction/humpday/blob/main/docs/js/modules/scipy-algorithms.js#L140">js</a>
+                    <a href="https://github.com/microprediction/humpday/blob/main/humpday/optimizers/scipy_algorithms.py">py</a>
+                    <a href="https://github.com/microprediction/humpday/blob/main/docs/js/modules/scipy-algorithms.js">js</a>
                 </td>
             </tr>
             <tr>
@@ -223,8 +223,8 @@
                 <td class="desc">Finite-difference quasi-Newton baseline; named after L-BFGS-B but uses central differences (HumpDay has no gradients).</td>
                 <td class="links">
                     <a href="algorithms/lbfgsb.html">doc</a>
-                    <a href="https://github.com/microprediction/humpday/blob/main/humpday/optimizers/scipy_algorithms.py#L327">py</a>
-                    <a href="https://github.com/microprediction/humpday/blob/main/docs/js/modules/scipy-algorithms.js#L223">js</a>
+                    <a href="https://github.com/microprediction/humpday/blob/main/humpday/optimizers/scipy_algorithms.py">py</a>
+                    <a href="https://github.com/microprediction/humpday/blob/main/docs/js/modules/scipy-algorithms.js">js</a>
                 </td>
             </tr>
         </table>
@@ -237,8 +237,8 @@
                 <td class="desc">DE/rand/1/bin — vector-difference mutation, binomial crossover, greedy selection.</td>
                 <td class="links">
                     <a href="algorithms/differential-evolution.html">doc</a>
-                    <a href="https://github.com/microprediction/humpday/blob/main/humpday/optimizers/evolutionary_algorithms.py#L17">py</a>
-                    <a href="https://github.com/microprediction/humpday/blob/main/docs/js/modules/evolutionary-algorithms.js#L15">js</a>
+                    <a href="https://github.com/microprediction/humpday/blob/main/humpday/optimizers/evolutionary_algorithms.py">py</a>
+                    <a href="https://github.com/microprediction/humpday/blob/main/docs/js/modules/evolutionary-algorithms.js">js</a>
                 </td>
             </tr>
             <tr>
@@ -246,8 +246,8 @@
                 <td class="desc">Swarm of particles with velocity updates pulled toward personal and global best.</td>
                 <td class="links">
                     <a href="algorithms/particle-swarm.html">doc</a>
-                    <a href="https://github.com/microprediction/humpday/blob/main/humpday/optimizers/evolutionary_algorithms.py#L69">py</a>
-                    <a href="https://github.com/microprediction/humpday/blob/main/docs/js/modules/evolutionary-algorithms.js#L79">js</a>
+                    <a href="https://github.com/microprediction/humpday/blob/main/humpday/optimizers/evolutionary_algorithms.py">py</a>
+                    <a href="https://github.com/microprediction/humpday/blob/main/docs/js/modules/evolutionary-algorithms.js">js</a>
                 </td>
             </tr>
             <tr>
@@ -255,8 +255,8 @@
                 <td class="desc">Crossover, mutation and tournament-style selection on a real-valued population.</td>
                 <td class="links">
                     <a href="algorithms/genetic-algorithm.html">doc</a>
-                    <a href="https://github.com/microprediction/humpday/blob/main/humpday/optimizers/evolutionary_algorithms.py#L188">py</a>
-                    <a href="https://github.com/microprediction/humpday/blob/main/docs/js/modules/evolutionary-algorithms.js#L305">js</a>
+                    <a href="https://github.com/microprediction/humpday/blob/main/humpday/optimizers/evolutionary_algorithms.py">py</a>
+                    <a href="https://github.com/microprediction/humpday/blob/main/docs/js/modules/evolutionary-algorithms.js">js</a>
                 </td>
             </tr>
             <tr>
@@ -264,8 +264,8 @@
                 <td class="desc">Classical (μ+λ) ES — Rechenberg/Schwefel; elitist selection from parents+offspring.</td>
                 <td class="links">
                     <a href="algorithms/evolution-strategy.html">doc</a>
-                    <a href="https://github.com/microprediction/humpday/blob/main/humpday/optimizers/evolutionary_algorithms.py#L826">py</a>
-                    <a href="https://github.com/microprediction/humpday/blob/main/docs/js/modules/evolutionary-algorithms.js#L893">js</a>
+                    <a href="https://github.com/microprediction/humpday/blob/main/humpday/optimizers/evolutionary_algorithms.py">py</a>
+                    <a href="https://github.com/microprediction/humpday/blob/main/docs/js/modules/evolutionary-algorithms.js">js</a>
                 </td>
             </tr>
             <tr>
@@ -273,8 +273,8 @@
                 <td class="desc">CMA-ES with covariance-matrix adaptation; current state of the art for moderate <em>n</em>.</td>
                 <td class="links">
                     <a href="algorithms/cma-evolution-strategy.html">doc</a>
-                    <a href="https://github.com/microprediction/humpday/blob/main/humpday/optimizers/evolutionary_algorithms.py#L476">py</a>
-                    <a href="https://github.com/microprediction/humpday/blob/main/docs/js/modules/evolutionary-algorithms.js#L550">js</a>
+                    <a href="https://github.com/microprediction/humpday/blob/main/humpday/optimizers/evolutionary_algorithms.py">py</a>
+                    <a href="https://github.com/microprediction/humpday/blob/main/docs/js/modules/evolutionary-algorithms.js">js</a>
                 </td>
             </tr>
         </table>
@@ -287,8 +287,8 @@
                 <td class="desc">Pure-Python Gaussian-Process surrogate + Expected-Improvement acquisition. Best when <em>f</em> is expensive.</td>
                 <td class="links">
                     <a href="algorithms/bayesian-optimization.html">doc</a>
-                    <a href="https://github.com/microprediction/humpday/blob/main/humpday/optimizers/evolutionary_algorithms.py#L275">py</a>
-                    <a href="https://github.com/microprediction/humpday/blob/main/docs/js/modules/evolutionary-algorithms.js#L405">js</a>
+                    <a href="https://github.com/microprediction/humpday/blob/main/humpday/optimizers/evolutionary_algorithms.py">py</a>
+                    <a href="https://github.com/microprediction/humpday/blob/main/docs/js/modules/evolutionary-algorithms.js">js</a>
                 </td>
             </tr>
         </table>
@@ -301,8 +301,8 @@
                 <td class="desc">Metropolis acceptance with a cooling schedule; classic global optimization heuristic.</td>
                 <td class="links">
                     <a href="algorithms/simulated-annealing.html">doc</a>
-                    <a href="https://github.com/microprediction/humpday/blob/main/humpday/optimizers/evolutionary_algorithms.py#L129">py</a>
-                    <a href="https://github.com/microprediction/humpday/blob/main/docs/js/modules/evolutionary-algorithms.js#L190">js</a>
+                    <a href="https://github.com/microprediction/humpday/blob/main/humpday/optimizers/evolutionary_algorithms.py">py</a>
+                    <a href="https://github.com/microprediction/humpday/blob/main/docs/js/modules/evolutionary-algorithms.js">js</a>
                 </td>
             </tr>
             <tr>
@@ -310,8 +310,8 @@
                 <td class="desc">Fireflies attracted toward brighter neighbours; brightness inversely tied to <em>f</em>.</td>
                 <td class="links">
                     <a href="algorithms/firefly-algorithm.html">doc</a>
-                    <a href="https://github.com/microprediction/humpday/blob/main/humpday/optimizers/evolutionary_algorithms.py#L676">py</a>
-                    <a href="https://github.com/microprediction/humpday/blob/main/docs/js/modules/evolutionary-algorithms.js#L699">js</a>
+                    <a href="https://github.com/microprediction/humpday/blob/main/humpday/optimizers/evolutionary_algorithms.py">py</a>
+                    <a href="https://github.com/microprediction/humpday/blob/main/docs/js/modules/evolutionary-algorithms.js">js</a>
                 </td>
             </tr>
             <tr>
@@ -319,8 +319,8 @@
                 <td class="desc">Pheromone-trail bias on a discretised search grid.</td>
                 <td class="links">
                     <a href="algorithms/ant-colony-optimization.html">doc</a>
-                    <a href="https://github.com/microprediction/humpday/blob/main/humpday/optimizers/evolutionary_algorithms.py#L721">py</a>
-                    <a href="https://github.com/microprediction/humpday/blob/main/docs/js/modules/evolutionary-algorithms.js#L756">js</a>
+                    <a href="https://github.com/microprediction/humpday/blob/main/humpday/optimizers/evolutionary_algorithms.py">py</a>
+                    <a href="https://github.com/microprediction/humpday/blob/main/docs/js/modules/evolutionary-algorithms.js">js</a>
                 </td>
             </tr>
             <tr>
@@ -328,13 +328,13 @@
                 <td class="desc">Memory-based search that improvises new candidates from a harmony memory.</td>
                 <td class="links">
                     <a href="algorithms/harmony-search.html">doc</a>
-                    <a href="https://github.com/microprediction/humpday/blob/main/humpday/optimizers/evolutionary_algorithms.py#L913">py</a>
-                    <a href="https://github.com/microprediction/humpday/blob/main/docs/js/modules/evolutionary-algorithms.js#L828">js</a>
+                    <a href="https://github.com/microprediction/humpday/blob/main/humpday/optimizers/evolutionary_algorithms.py">py</a>
+                    <a href="https://github.com/microprediction/humpday/blob/main/docs/js/modules/evolutionary-algorithms.js">js</a>
                 </td>
             </tr>
         </table>
 
-        <h2>Local &amp; pattern search <span class="count">· 5 algorithms</span></h2>
+        <h2>Local &amp; pattern search <span class="count">· 6 algorithms</span></h2>
         <p>Simple greedy / structured search methods that probe neighbourhoods directly.</p>
         <table class="algo-list">
             <tr>
@@ -342,8 +342,8 @@
                 <td class="desc">Greedy local moves with occasional random restarts.</td>
                 <td class="links">
                     <a href="algorithms/hill-climbing.html">doc</a>
-                    <a href="https://github.com/microprediction/humpday/blob/main/humpday/optimizers/evolutionary_algorithms.py#L883">py</a>
-                    <a href="https://github.com/microprediction/humpday/blob/main/docs/js/modules/search-algorithms.js#L200">js</a>
+                    <a href="https://github.com/microprediction/humpday/blob/main/humpday/optimizers/evolutionary_algorithms.py">py</a>
+                    <a href="https://github.com/microprediction/humpday/blob/main/docs/js/modules/search-algorithms.js">js</a>
                 </td>
             </tr>
             <tr>
@@ -351,8 +351,16 @@
                 <td class="desc">Uniformly random sampling in the unit cube — the honest baseline.</td>
                 <td class="links">
                     <a href="algorithms/random-search.html">doc</a>
-                    <a href="https://github.com/microprediction/humpday/blob/main/humpday/optimizers/evolutionary_algorithms.py#L261">py</a>
-                    <a href="https://github.com/microprediction/humpday/blob/main/docs/js/modules/evolutionary-algorithms.js#L382">js</a>
+                    <a href="https://github.com/microprediction/humpday/blob/main/humpday/optimizers/evolutionary_algorithms.py">py</a>
+                    <a href="https://github.com/microprediction/humpday/blob/main/docs/js/modules/evolutionary-algorithms.js">js</a>
+                </td>
+            </tr>
+            <tr>
+                <td class="name">GridSearch</td>
+                <td class="desc">Regular Cartesian grid over the unit cube — the other honest baseline. Impractical past <em>n_dim &approx; 3</em>.</td>
+                <td class="links">
+                    <a href="https://github.com/microprediction/humpday/blob/main/humpday/optimizers/search_algorithms.py">py</a>
+                    <a href="https://github.com/microprediction/humpday/blob/main/docs/js/modules/search-algorithms.js">js</a>
                 </td>
             </tr>
             <tr>
@@ -360,8 +368,8 @@
                 <td class="desc">Rechenberg's (1+1)-Evolution Strategy with the 1/5-success-rule (formerly AdaptiveRandomSearch).</td>
                 <td class="links">
                     <a href="algorithms/adaptive-random-search.html">doc</a>
-                    <a href="https://github.com/microprediction/humpday/blob/main/humpday/optimizers/search_algorithms.py#L14">py</a>
-                    <a href="https://github.com/microprediction/humpday/blob/main/docs/js/modules/search-algorithms.js#L16">js</a>
+                    <a href="https://github.com/microprediction/humpday/blob/main/humpday/optimizers/search_algorithms.py">py</a>
+                    <a href="https://github.com/microprediction/humpday/blob/main/docs/js/modules/search-algorithms.js">js</a>
                 </td>
             </tr>
             <tr>
@@ -369,8 +377,8 @@
                 <td class="desc">Cycles through axes; takes the better of two probes along each.</td>
                 <td class="links">
                     <a href="algorithms/coordinate-descent.html">doc</a>
-                    <a href="https://github.com/microprediction/humpday/blob/main/humpday/optimizers/search_algorithms.py#L53">py</a>
-                    <a href="https://github.com/microprediction/humpday/blob/main/docs/js/modules/search-algorithms.js#L69">js</a>
+                    <a href="https://github.com/microprediction/humpday/blob/main/humpday/optimizers/search_algorithms.py">py</a>
+                    <a href="https://github.com/microprediction/humpday/blob/main/docs/js/modules/search-algorithms.js">js</a>
                 </td>
             </tr>
             <tr>
@@ -378,8 +386,8 @@
                 <td class="desc">Polls ±step along each coordinate axis; grows on success, halves on stall, random-restarts when tiny.</td>
                 <td class="links">
                     <a href="algorithms/pattern-search.html">doc</a>
-                    <a href="https://github.com/microprediction/humpday/blob/main/humpday/optimizers/search_algorithms.py#L105">py</a>
-                    <a href="https://github.com/microprediction/humpday/blob/main/docs/js/modules/search-algorithms.js#L129">js</a>
+                    <a href="https://github.com/microprediction/humpday/blob/main/humpday/optimizers/search_algorithms.py">py</a>
+                    <a href="https://github.com/microprediction/humpday/blob/main/docs/js/modules/search-algorithms.js">js</a>
                 </td>
             </tr>
         </table>

@@ -106,20 +106,20 @@ def _open(browser, url: str, wait_ms: int = 2500):
 
 @pytest.mark.browser
 def test_test_modular_shows_22_of_22(http_server, browser):
-    """`test-modular.html` should report `21/21 algorithms working`.
+    """`test-modular.html` should report `21/22 algorithms working`.
 
     Regression target: PR #73's `const Optimizer = ...` at module scope
     re-declared the same identifier across multiple per-family
     `<script>` tags, breaking module loading in the browser. The
     factory then couldn't find any algorithm and the page reported
-    `0/21 algorithms working` (per the user's screenshot 2026-05-27).
+    `0/22 algorithms working` (per the user's screenshot 2026-05-27).
     """
     page, errors = _open(browser, f"{http_server}/test-modular.html")
     body = page.locator("body").inner_text()
     page.close()
 
     assert not errors, "Page-level JS errors:\n  " + "\n  ".join(errors)
-    assert "21/21 algorithms working" in body, (
+    assert "21/22 algorithms working" in body, (
         f"test-modular.html did not report 21/21 — body excerpt: {body[:400]}"
     )
 

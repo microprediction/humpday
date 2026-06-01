@@ -36,7 +36,7 @@ document.addEventListener('DOMContentLoaded', function () {
 
 ## What you get
 
-- **21 derivative-free optimizers** — the same ones HumpDay ships in
+- **22 derivative-free optimizers** — the same ones HumpDay ships in
   Python (PRIMA UOBYQA/NEWUOA/BOBYQA, NelderMead, Powell, LBFGSB,
   DifferentialEvolution, ParticleSwarm, SimulatedAnnealing,
   GeneticAlgorithm, RandomSearch, BayesianOpt, CMAEvolutionStrategy,
