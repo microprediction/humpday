@@ -208,7 +208,7 @@ class ParticleSwarm(BaseOptimizer):
                 # keeps its memory, so the swarm continues from the same
                 # global best but with re-energized exploration.
                 ranked = sorted(range(swarm_size), key=personal_best_fit.__getitem__)
-                worst = ranked[swarm_size // 2:]
+                worst = ranked[swarm_size // 2 :]
                 for j in worst:
                     positions[j] = _A.random_uniform(self.n_dim)
                     velocities[j] = (_A.random_uniform(self.n_dim) - 0.5) * 0.2
@@ -673,7 +673,7 @@ class CMAEvolutionStrategy(BaseOptimizer):
             # Hansen's recommended parameters at the current population size.
             lambda_ = min(
                 cmaes_budget - self.evaluations,
-                int(base_lambda * (IPOP_INCPOPSIZE ** restart_count)),
+                int(base_lambda * (IPOP_INCPOPSIZE**restart_count)),
             )
             lambda_ = max(lambda_, 4)
             mu = lambda_ // 2  # number of parents
@@ -691,9 +691,7 @@ class CMAEvolutionStrategy(BaseOptimizer):
             cc = (4 + mueff / n) / (n + 4 + 2 * mueff / n)
             cs = (mueff + 2) / (n + mueff + 5)
             c1 = 2 / ((n + 1.3) ** 2 + mueff)
-            cmu = min(
-                1 - c1, 2 * (mueff - 2 + 1 / mueff) / ((n + 2) ** 2 + mueff)
-            )
+            cmu = min(1 - c1, 2 * (mueff - 2 + 1 / mueff) / ((n + 2) ** 2 + mueff))
             damps = 1 + 2 * max(0, math.sqrt((mueff - 1) / (n + 1)) - 1) + cs
 
             # Fresh state per restart. Initial mean is a random interior
@@ -780,9 +778,9 @@ class CMAEvolutionStrategy(BaseOptimizer):
                 # Evolution paths.
                 y = (mean - old_mean) / sigma
 
-                ps = (1 - cs) * ps + math.sqrt(cs * (2 - cs) * mueff) * _A.linalg.matvec(
-                    invsqrtC, y
-                )
+                ps = (1 - cs) * ps + math.sqrt(
+                    cs * (2 - cs) * mueff
+                ) * _A.linalg.matvec(invsqrtC, y)
 
                 hsig = (
                     1
