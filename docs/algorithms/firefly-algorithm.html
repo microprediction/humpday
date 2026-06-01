@@ -255,17 +255,20 @@
             </div>
 
             <div class="algorithm-description">
-                <strong>Firefly Algorithm (FA)</strong> is a nature-inspired metaheuristic optimization algorithm developed by Xin-She Yang in 2008. It mimics the flashing behavior and social interactions of fireflies, where the attractiveness and brightness of fireflies determine their movement patterns. The algorithm combines elements of swarm intelligence with local search capabilities.
+                <strong>Firefly Algorithm</strong> (Yang 2008) is a population-based metaheuristic where fireflies are attracted to brighter (lower-objective) fireflies. The movement of firefly <em>i</em> toward a brighter firefly <em>j</em> is <em>x<sub>i</sub> += &beta;&middot;(x<sub>j</sub> − x<sub>i</sub>) + &alpha;&middot;&epsilon;</em>, with attractiveness <em>&beta; = &beta;<sub>0</sub>&middot;exp(−&gamma;&middot;r<sup>2</sup>)</em> and a small random jitter <em>&alpha;&middot;&epsilon;</em>. HumpDay's <code>FireflyAlgorithm</code> follows Yang's recipe and adds the two ingredients that make it competitive on the SOTA benchmark:
+                <ol>
+                    <li><strong>Geometric damping of the randomness coefficient</strong>: <em>&alpha; &larr; 0.99&middot;&alpha;</em> at the end of each sweep. Without damping, the random jitter prevents convergence onto the optimum &mdash; this was the snapshot's Ackley failure mode before the fix.</li>
+                    <li><strong>L-BFGS-B polish</strong> from the firefly best at the end.</li>
+                </ol>
             </div>
 
-            <div class="nature-inspired">
-                <h3>Nature-Inspired Algorithm</h3>
-                <p><strong>Firefly Algorithm is inspired by firefly behavior:</strong></p>
+            <div class="coordinate-note" style="background:#e8f4fd; border:1px solid #bee5eb; border-radius:8px; padding:15px; margin:20px 0;">
+                <h3 style="color:#0c5460; margin-top:0;">HumpDay's Firefly at a glance</h3>
                 <ul>
-                    <li><strong>Bioluminescence:</strong> Fireflies communicate through light signals</li>
-                    <li><strong>Attractiveness:</strong> Brighter fireflies attract dimmer ones</li>
-                    <li><strong>Distance Decay:</strong> Light intensity decreases with distance</li>
-                    <li><strong>Random Movement:</strong> Exploration when no brighter fireflies exist</li>
+                    <li><strong>Population:</strong> <code>n_fireflies = min(15, max(2, budget // 5))</code>.</li>
+                    <li><strong>Attractiveness:</strong> <em>&beta;<sub>0</sub> = 1</em>, <em>&gamma; = 1</em>.</li>
+                    <li><strong>Randomness:</strong> <em>&alpha;<sub>0</sub> = 0.2</em> with geometric damping <em>0.99</em> per sweep (matches mealpy's <code>alpha_damp</code>).</li>
+                    <li><strong>Polish:</strong> reserve <code>min(20&middot;n_dim, n_trials/2)</code> evaluations for L-BFGS-B from the best firefly.</li>
                 </ul>
             </div>
             <div class="visualization-section">
@@ -311,25 +314,24 @@
                     <tr>
                         <td class="category">Reference Implementation</td>
                         <td>
-                            <strong>Custom Research Implementations</strong><br>
-                            Various academic and open-source implementations<br>
-                            No single standard package (multiple variants exist)<br>
-                            <em>Reference: Academic literature implementations</em>
+                            <strong>mealpy FFA</strong><br>
+                            Tested against mealpy's Original Firefly Algorithm.<br>
+                            <em>Reference: <code>mealpy.swarm_based.FFA.OriginalFFA</code></em>
                         </td>
                         <td>
-                            <a href="https://github.com/topics/firefly-algorithm" target="_blank" class="link-button python">GitHub Examples</a>
+                            <a href="https://github.com/thieu1995/mealpy" target="_blank" class="link-button python">mealpy</a>
                         </td>
                     </tr>
                     <tr>
-                        <td class="category">Humpday Python Implementation</td>
+                        <td class="category">HumpDay Python</td>
                         <td>
-                            <strong>Humpday Firefly Algorithm</strong><br>
-                            Custom implementation following Yang's original paper<br>
-                            Attractiveness-based movement with randomization<br>
-                            <em>File: humpday/optimizers/firefly*.py</em>
+                            <strong>HumpDay <code>FireflyAlgorithm</code></strong><br>
+                            Yang-standard Firefly with &alpha; damping, then L-BFGS-B polish from the best firefly.<br>
+                            Pure Python; no required dependencies.<br>
+                            <em>File: <code>humpday/optimizers/evolutionary_algorithms.py</code></em>
                         </td>
                         <td>
-                            <a href="https://github.com/microprediction/humpday/blob/main/humpday/optimizers/evolutionary_algorithms.py#L772" target="_blank" class="link-button python">Source</a>
+                            <a href="https://github.com/microprediction/humpday/blob/main/humpday/optimizers/evolutionary_algorithms.py" target="_blank" class="link-button python">Source</a>
                         </td>
                     </tr>
                     <tr>
@@ -350,11 +352,10 @@
             <div class="performance-notes">
                 <h3>Performance Characteristics</h3>
                 <ul>
-                    <li><strong>Best for:</strong> Multimodal optimization, continuous problems, exploration-heavy tasks</li>
-                    <li><strong>Dimensions:</strong> Works well up to moderate dimensions (~50)</li>
-                    <li><strong>Function evaluations:</strong> Population-based, n_fireflies × generations</li>
-                    <li><strong>Convergence:</strong> Good exploration, may converge slowly to global optimum</li>
-                    <li><strong>Robustness:</strong> Handles multimodal landscapes well due to swarm diversity</li>
+                    <li><strong>Best for:</strong> Multimodal continuous objectives. The swarm covers basins, &alpha; damping focuses the search late, and the L-BFGS-B polish refines the winner.</li>
+                    <li><strong>Worst for:</strong> Tight-budget problems where the pairwise <em>O(n_fireflies<sup>2</sup>)</em> attractor updates dominate.</li>
+                    <li><strong>Per sweep:</strong> up to <em>n_fireflies<sup>2</sup></em> attractive moves and evaluations; &alpha; damps by factor <em>0.99</em> at end of sweep.</li>
+                    <li><strong>Relative to mealpy FFA</strong> at <code>n_trials=200, n_dim=2</code>: HumpDay wins across sphere, Rosenbrock, and Ackley. See <a href="../sota-status.html">SOTA status</a> for the live numbers.</li>
                 </ul>
             </div>
 

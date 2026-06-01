@@ -243,7 +243,21 @@
             </div>
 
             <div class="algorithm-description">
-                <strong>Simulated Annealing</strong> is a probabilistic optimization technique inspired by the annealing process in metallurgy. Developed by Kirkpatrick, Gelatt, and Vecchi in 1983, it allows for occasional uphill moves that decrease with a "temperature" parameter, enabling escape from local optima. The algorithm gradually reduces the temperature, converging to a global optimum.
+                <strong>Simulated Annealing</strong> (Kirkpatrick et al. 1983) is a probabilistic optimization technique inspired by metallurgical annealing. HumpDay's <code>SimulatedAnnealing</code> follows the two-stage pattern of scipy's <code>dual_annealing</code>:
+                <ol>
+                    <li><strong>Stage 1 — multi-restart Metropolis SA</strong> explores globally with a geometric cooling schedule. Uphill moves are accepted with probability <code>exp(-(f_new - f) / T)</code>; restarts give the algorithm multiple shots at finding the basin.</li>
+                    <li><strong>Stage 2 — L-BFGS-B polish</strong> refines the SA best to high precision. scipy uses L-BFGS-B at this stage; HumpDay uses the same (with FD gradients).</li>
+                </ol>
+            </div>
+
+            <div class="coordinate-note" style="background:#e8f4fd; border:1px solid #bee5eb; border-radius:8px; padding:15px; margin:20px 0;">
+                <h3 style="color:#0c5460; margin-top:0;">HumpDay's SA at a glance</h3>
+                <ul>
+                    <li><strong>Budget split:</strong> 50% SA exploration, 50% L-BFGS-B polish. Tuned to match scipy.dual_annealing on Rosenbrock.</li>
+                    <li><strong>Cooling:</strong> geometric, computed so that <code>T_final / T_initial = (final/initial)<sup>1/trials_per_restart</sup></code>. Starts at <code>T=1.0</code>, ends at <code>T=1e-6</code>.</li>
+                    <li><strong>Restart structure:</strong> <code>max(3, sa_budget // 30)</code> restarts. First restart starts near the cube centre; subsequent restarts start uniformly at random.</li>
+                    <li><strong>Proposal:</strong> step size scales with current temperature (<code>step = 0.4 &middot; T</code>), uniform per coordinate.</li>
+                </ul>
             </div>
             <div class="visualization-section">
                 <h3>Interactive 3D Visualization</h3>
@@ -299,24 +313,23 @@
                         </td>
                     </tr>
                     <tr>
-                        <td class="category">Humpday Python</td>
+                        <td class="category">HumpDay Python</td>
                         <td>
-                            <strong>HumpDay Python Implementation</strong><br>
-                            Pure-Python simulated annealing with Metropolis acceptance and geometric cooling<br>
-                            No required dependencies<br>
-                            <em>File: humpday/optimizers/evolutionary_algorithms.py</em>
+                            <strong>HumpDay <code>SimulatedAnnealing</code></strong><br>
+                            Multi-restart Metropolis SA with geometric cooling, then L-BFGS-B polish from the best SA point.<br>
+                            Pure Python; no required dependencies.<br>
+                            <em>File: <code>humpday/optimizers/evolutionary_algorithms.py</code></em>
                         </td>
                         <td>
-                            <a href="https://github.com/microprediction/humpday/blob/main/humpday/optimizers/evolutionary_algorithms.py#L186" target="_blank" class="link-button python">Source Code</a>
+                            <a href="https://github.com/microprediction/humpday/blob/main/humpday/optimizers/evolutionary_algorithms.py" target="_blank" class="link-button python">Source</a>
                         </td>
                     </tr>
                     <tr>
-                        <td class="category">Humpday JavaScript</td>
+                        <td class="category">HumpDay JavaScript</td>
                         <td>
-                            <strong>Browser Implementation</strong><br>
-                            Classical simulated annealing with cooling schedule<br>
-                            Metropolis criterion for acceptance probability<br>
-                            <em>Class: SimulatedAnnealing</em>
+                            <strong>Browser <code>SimulatedAnnealing</code></strong><br>
+                            Mirrors the Python port: multi-restart SA + L-BFGS-B polish. Used in the contest and the in-browser visualizer.<br>
+                            <em>Class: <code>SimulatedAnnealing</code></em>
                         </td>
                         <td>
                             <a href="https://github.com/microprediction/humpday/blob/main/docs/js/modules/evolutionary-algorithms.js" target="_blank" class="link-button javascript">JS Port</a>
@@ -326,13 +339,12 @@
             </table>
 
             <div class="performance-notes">
-                <h3>Performance Characteristics</h3>
+                <h3>Performance characteristics</h3>
                 <ul>
-                    <li><strong>Best for:</strong> Discrete optimization, traveling salesman, combinatorial problems</li>
-                    <li><strong>Dimensions:</strong> Scalable to moderate dimensions, works on any space</li>
-                    <li><strong>Function evaluations:</strong> Typically requires many evaluations for good results</li>
-                    <li><strong>Convergence:</strong> Asymptotic global convergence with proper cooling</li>
-                    <li><strong>Robustness:</strong> Excellent at escaping local minima</li>
+                    <li><strong>Best for:</strong> Multimodal continuous objectives where temperature-controlled uphill moves matter. The L-BFGS-B polish closes the residual to scipy-level precision on smooth basins.</li>
+                    <li><strong>Worst for:</strong> Problems where global exploration is a waste and budget would be better spent on a single basin (PRIMA / CMA-ES territory).</li>
+                    <li><strong>Per restart:</strong> <code>trials_per_restart</code> Metropolis proposals. Each proposal is one evaluation; uphill accepts depend on temperature.</li>
+                    <li><strong>Relative to scipy.dual_annealing</strong> at <code>n_trials=200, n_dim=2</code>: ties on sphere; wins on Ackley; loses on Rosenbrock (scipy's polish is unbudgeted, ours is not). See <a href="../sota-status.html">SOTA status</a> for the live numbers.</li>
                 </ul>
             </div>
 

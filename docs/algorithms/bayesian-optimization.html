@@ -243,7 +243,17 @@
             </div>
 
             <div class="algorithm-description">
-                <strong>Bayesian Optimization</strong> is a sequential design strategy for global optimization of expensive-to-evaluate functions. It uses a probabilistic surrogate model (typically Gaussian Process) to model the objective function and an acquisition function to guide the search toward promising regions. It's particularly effective when function evaluations are costly.
+                <strong>Bayesian Optimization</strong> fits a Gaussian-process surrogate to the observed <code>(x, f(x))</code> pairs and proposes the next evaluation point by maximising an acquisition function. HumpDay's <code>BayesianOpt</code> uses an RBF kernel and the <strong>Expected Improvement</strong> acquisition. After the GP-EI loop exhausts its share of the budget, HumpDay finishes with a short <strong>L-BFGS-B polish</strong> from the best observed point &mdash; the same pattern scikit-optimize's <code>gp_minimize</code> uses, and the reason HumpDay's <code>BayesianOpt</code> reaches machine precision on smooth basins where the GP itself would plateau at the kernel's noise floor.
+            </div>
+
+            <div class="coordinate-note" style="background:#e8f4fd; border:1px solid #bee5eb; border-radius:8px; padding:15px; margin:20px 0;">
+                <h3 style="color:#0c5460; margin-top:0;">HumpDay's BayesianOpt at a glance</h3>
+                <ul>
+                    <li><strong>Initial design:</strong> <code>n_initial = min(5, max(2, n_dim))</code> uniform random samples.</li>
+                    <li><strong>Surrogate:</strong> Gaussian process with an RBF kernel; jitter on the kernel matrix for numerical stability.</li>
+                    <li><strong>Acquisition:</strong> Expected Improvement, optimised by random sampling + a short local refinement of the best candidate.</li>
+                    <li><strong>Polish:</strong> reserve <code>min(20&middot;n_dim, n_trials/2)</code> evaluations for an L-BFGS-B polish from the best observed point at the end.</li>
+                </ul>
             </div>
 
             <div class="visualization-section">
@@ -299,24 +309,23 @@
                         </td>
                     </tr>
                     <tr>
-                        <td class="category">Humpday Python</td>
+                        <td class="category">HumpDay Python</td>
                         <td>
-                            <strong>HumpDay Python Implementation</strong><br>
-                            Pure-Python Gaussian-Process surrogate with Expected-Improvement acquisition<br>
-                            No required dependencies; numpy used transparently when installed via <code>humpday[fast]</code><br>
-                            <em>File: humpday/optimizers/evolutionary_algorithms.py</em>
+                            <strong>HumpDay <code>BayesianOpt</code></strong><br>
+                            RBF-kernel GP surrogate + Expected Improvement acquisition + L-BFGS-B polish reserved at the end.<br>
+                            No required dependencies (numpy is used transparently when present for kernel construction; a pure-Python loop path covers the no-numpy install).<br>
+                            <em>File: <code>humpday/optimizers/evolutionary_algorithms.py</code></em>
                         </td>
                         <td>
-                            <a href="https://github.com/microprediction/humpday/blob/main/humpday/optimizers/evolutionary_algorithms.py#L354" target="_blank" class="link-button python">Source Code</a>
+                            <a href="https://github.com/microprediction/humpday/blob/main/humpday/optimizers/evolutionary_algorithms.py" target="_blank" class="link-button python">Source</a>
                         </td>
                     </tr>
                     <tr>
-                        <td class="category">Humpday JavaScript</td>
+                        <td class="category">HumpDay JavaScript</td>
                         <td>
-                            <strong>Browser Implementation</strong><br>
-                            Simplified Bayesian optimization with GP approximation<br>
-                            Expected Improvement acquisition function<br>
-                            <em>Class: BayesianOpt</em>
+                            <strong>Browser <code>BayesianOpt</code></strong><br>
+                            Mirrors the Python port (RBF + EI + L-BFGS-B polish). Used in the contest and the in-browser visualizer.<br>
+                            <em>Class: <code>BayesianOpt</code></em>
                         </td>
                         <td>
                             <a href="https://github.com/microprediction/humpday/blob/main/docs/js/modules/evolutionary-algorithms.js" target="_blank" class="link-button javascript">JS Port</a>
@@ -326,13 +335,12 @@
             </table>
 
             <div class="performance-notes">
-                <h3>Performance Characteristics</h3>
+                <h3>Performance characteristics</h3>
                 <ul>
-                    <li><strong>Best for:</strong> Expensive function evaluations, black-box optimization</li>
-                    <li><strong>Dimensions:</strong> Typically 1-20 dimensions (GP scaling limitations)</li>
-                    <li><strong>Function evaluations:</strong> Very sample efficient, 10-100 evaluations</li>
-                    <li><strong>Convergence:</strong> Excellent with limited budget, global optimization</li>
-                    <li><strong>Robustness:</strong> Handles noise well, uncertainty quantification</li>
+                    <li><strong>Best for:</strong> Expensive black-box objectives where every evaluation matters. The GP-EI loop is sample-efficient; the L-BFGS-B polish closes the residual on smooth basins to machine precision.</li>
+                    <li><strong>Worst for:</strong> High dimensions &mdash; the GP kernel cost grows as <em>O(n_samples<sup>3</sup>)</em> and the RBF surrogate degenerates past a dozen or so dimensions. Like grid search, BayesianOpt is impractical past <code>n_dim &approx; 10</code>.</li>
+                    <li><strong>Per outer iteration:</strong> rebuild the kernel matrix, optimise EI, evaluate one point. Then at the end, <code>min(20&middot;n_dim, n_trials/2)</code> evaluations on an L-BFGS-B polish.</li>
+                    <li><strong>Relative to scikit-optimize <code>gp_minimize</code></strong> at <code>n_trials=200, n_dim=2</code>: HumpDay wins by ~10<sup>21</sup>&times; on sphere (machine precision vs ref's 1e-8), and matches on Rosenbrock. The polish is the difference. See <a href="../sota-status.html">SOTA status</a> for the live numbers.</li>
                 </ul>
             </div>
 
