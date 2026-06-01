@@ -312,6 +312,7 @@
                 <td class="cell wins">0.23</td>
                 <td class="verdict v-solid">SOLID</td>
             </tr>
+            <tr><td colspan="6" class="notes">&nbsp;&nbsp;&nbsp;&nbsp;HumpDay's CMA-ES is IPOP-CMA-ES (Auger &amp; Hansen, 2005): when the inner Hansen-standard run hits a termination criterion (TolFun, TolX, or ConditionCov), the algorithm restarts with doubled <code>&lambda;</code> and a fresh covariance. Multimodal-benchmark performance benefits; the smooth-landscape comparison is unchanged from the pre-restart Hansen-standard port.</td></tr>
 
             <tr>
                 <td class="algo">CoordinateDescent</td>
@@ -390,11 +391,12 @@
             <tr>
                 <td class="algo">NelderMead</td>
                 <td class="ref">scipy.optimize Nelder-Mead</td>
-                <td class="cell wins">1.00</td>
                 <td class="cell ties">1.00</td>
-                <td class="cell wins">0.72</td>
+                <td class="cell ties">1.00</td>
+                <td class="cell wins">6e-03</td>
                 <td class="verdict v-solid">SOLID</td>
             </tr>
+            <tr><td colspan="6" class="notes">&nbsp;&nbsp;&nbsp;&nbsp;HumpDay's NM wraps the scipy simplex method in a restart layer (Kelley, 1999): on simplex collapse it reseeds and continues until the budget is consumed, alternating intensification (around the current best) and diversification (fresh uniform draw). Smooth-landscape ratios match scipy; on the Ackley multimodal benchmark the restart-driven reseeding makes HumpDay 100&times;+ better than scipy NM, which terminates on tolerance and leaves its budget unused.</td></tr>
 
             <tr>
                 <td class="algo">ParticleSwarm</td>
@@ -404,6 +406,7 @@
                 <td class="cell wins">0.32</td>
                 <td class="verdict v-solid">SOLID</td>
             </tr>
+            <tr><td colspan="6" class="notes">&nbsp;&nbsp;&nbsp;&nbsp;HumpDay's PSO tracks the global best across iterations and reseeds the worst half of the swarm when the global best has stalled for <code>max(10, max_iterations//5)</code> consecutive iterations (SPSO-2011-style; Clerc et al., 2012). The personal-best memory of the better half is preserved across the reseed, so prior progress isn't wasted.</td></tr>
 
             <tr>
                 <td class="algo">PatternSearch</td>

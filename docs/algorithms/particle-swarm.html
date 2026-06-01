@@ -311,6 +311,7 @@
 
     <div class="performance-note">
         <p><strong>HumpDay's PSO at a glance.</strong> Annealed coefficients (<em>w</em>: 0.9 &rarr; 0.4, <em>c<sub>1</sub></em>: 2.5 &rarr; 1.5, <em>c<sub>2</sub></em>: 1.5 &rarr; 2.5) over the run shift the balance from exploration to exploitation. Velocity is clamped to <em>v<sub>max</sub> = 0.2&middot;(1 &minus; 0.5&middot;t/T)</em>. After the swarm exhausts its share of the budget, an <strong>L-BFGS-B polish</strong> from the swarm best (<code>min(20&middot;n_dim, n_trials/2)</code> evals) refines to high precision &mdash; this is the change that pushes HumpDay's PSO past mealpy PSO on the SOTA snapshot.</p>
+        <p style="margin-top:12px;"><strong>Stagnation reseed (SPSO-2011-style).</strong> A canonical PSO has no restart mechanism &mdash; once the global best stops improving, particles collapse onto it and the swarm has no way to escape a local optimum. HumpDay's PSO tracks the global best across iterations and, when it has stalled for <code>K = max(10, max_iterations/5)</code> consecutive iterations, reseeds the worst half of the swarm with fresh uniform positions and small random velocities. The personal-best memory of the better half is preserved, so prior progress isn't wasted and the next reseed cycle starts from the global best already found. This follows the diversification mechanism used in the SPSO-2011 reference standard (Clerc et al., 2012, <a href="https://hal.inria.fr/inria-00609694" target="_blank">HAL preprint</a>).</p>
     </div>
 
     <h2>Algorithmic Parameters</h2>

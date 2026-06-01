@@ -243,17 +243,32 @@
             </div>
 
             <div class="algorithm-description">
-                <strong>CMA-ES</strong> (Covariance Matrix Adaptation Evolution Strategy; Hansen &amp; Ostermeier, 1996) samples offspring from <em>N(mean, &sigma;<sup>2</sup>&middot;C)</em> and updates <em>C</em>, <em>&sigma;</em>, and <em>mean</em> from the &mu; best offspring each generation. HumpDay's <code>CMAEvolutionStrategy</code> implements <strong>Hansen-standard CMA-ES</strong> &mdash; evolution paths <em>p<sub>c</sub></em> and <em>p<sub>&sigma;</sub></em>, rank-1 + rank-&mu; covariance updates, cumulative step-size adaptation &mdash; with a Cholesky-based sampler, then finishes with an <strong>L-BFGS-B polish</strong> from the CMA-ES best.
+                <strong>CMA-ES</strong> (Covariance Matrix Adaptation Evolution Strategy; Hansen &amp; Ostermeier, 1996) samples offspring from <em>N(mean, &sigma;<sup>2</sup>&middot;C)</em> and updates <em>C</em>, <em>&sigma;</em>, and <em>mean</em> from the &mu; best offspring each generation. HumpDay's <code>CMAEvolutionStrategy</code> implements <strong>Hansen-standard CMA-ES</strong> wrapped in an <strong>IPOP restart layer</strong> (Auger &amp; Hansen, 2005) so the optimizer can escape local optima on multimodal landscapes instead of converging once and stopping, then finishes with an <strong>L-BFGS-B polish</strong> from the best-found point across all restarts.
             </div>
 
             <div class="coordinate-note" style="background:#e8f4fd; border:1px solid #bee5eb; border-radius:8px; padding:15px; margin:20px 0;">
                 <h3 style="color:#0c5460; margin-top:0;">HumpDay's CMA-ES at a glance</h3>
                 <ul>
-                    <li><strong>Recommended parameters:</strong> &lambda; = <code>min(50, 4 + ⌊3&middot;log(n)⌋)</code>, &mu; = &lambda;/2, recombination weights <em>w<sub>i</sub> = log(&mu; + 0.5) − log(i)</em> normalised.</li>
+                    <li><strong>Recommended parameters:</strong> &lambda; = <code>min(50, 4 + ⌊3&middot;log(n)⌋)</code> (doubled at each IPOP restart), &mu; = &lambda;/2, recombination weights <em>w<sub>i</sub> = log(&mu; + 0.5) &minus; log(i)</em> normalised.</li>
                     <li><strong>Adaptation:</strong> rank-1 + rank-&mu; C-update with positive-definiteness guard, cumulative step-size adaptation, evolution paths.</li>
-                    <li><strong>Sampler:</strong> Cholesky factor <em>L</em> of <em>C</em>, with eigendecomp-based <em>C<sup>−&frac12;</sup></em> refresh each iteration.</li>
+                    <li><strong>Sampler:</strong> Cholesky factor <em>L</em> of <em>C</em>, with eigendecomp-based <em>C<sup>&minus;&frac12;</sup></em> refresh each iteration.</li>
                     <li><strong>Polish:</strong> reserve <code>min(20&middot;n_dim, n_trials/2)</code> evaluations for L-BFGS-B from the CMA-ES best.</li>
                 </ul>
+            </div>
+
+            <div class="coordinate-note" style="background:#e8f4fd; border:1px solid #bee5eb; border-radius:8px; padding:15px; margin:20px 0;">
+                <h3 style="color:#0c5460; margin-top:0;">IPOP-CMA-ES restart layer</h3>
+                <p>
+                    Auger &amp; Hansen (2005, <em>"A Restart CMA Evolution Strategy with Increasing Population Size"</em>, CEC 2005, <a href="https://hal.inria.fr/inria-00112858" target="_blank">HAL preprint</a>) introduced the standard restart mechanism that turns a single-basin local optimizer into a competitive global one. When the inner CMA run hits any of the canonical termination criteria, all state is reset and the algorithm restarts with a larger population.
+                </p>
+                <ul>
+                    <li><strong>TolFun:</strong> the range of best-of-generation values over the last <code>max(10, 30&middot;n/&lambda;)</code> generations falls below <code>1e-12</code>.</li>
+                    <li><strong>TolX:</strong> the effective step <code>&sigma; &middot; &sqrt;max(eig(C))</code> falls below <code>1e-12</code>.</li>
+                    <li><strong>ConditionCov:</strong> the condition number of <em>C</em> exceeds <code>1e14</code> &mdash; the search distribution has degenerated and further updates would be numerically unsafe.</li>
+                </ul>
+                <p style="margin-bottom:0;">
+                    On restart, &lambda; is doubled and the mean / &sigma; / <em>C</em> / evolution paths are all reset. Successive restarts therefore explore more aggressively, which is what gives IPOP-CMA-ES its global-search behavior. <code>self.best_x</code> persists across restarts via the base class, so the best point found in any prior run is preserved.
+                </p>
             </div>
 
             <div class="visualization-section">
@@ -388,8 +403,8 @@
                     <h3>CMA-ES Variants</h3>
                     <ul>
                         <li><strong>CMA-ES:</strong> Standard algorithm with full covariance adaptation</li>
-                        <li><strong>BIPOP-CMA-ES:</strong> Bi-population restart strategy</li>
-                        <li><strong>IPOP-CMA-ES:</strong> Increasing population restart strategy</li>
+                        <li><strong>IPOP-CMA-ES:</strong> Increasing population restart strategy &mdash; <em>what HumpDay implements</em></li>
+                        <li><strong>BIPOP-CMA-ES:</strong> Bi-population restart strategy (alternates large/small populations)</li>
                         <li><strong>sep-CMA-ES:</strong> Separable CMA-ES for high dimensions</li>
                         <li><strong>VD-CMA:</strong> VkD-CMA for very high dimensions</li>
                         <li><strong>xNES:</strong> Natural Evolution Strategy variant</li>

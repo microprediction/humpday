@@ -36,35 +36,7 @@ class NelderMead(BaseOptimizer):
         sigma = 0.5  # shrinkage
 
         # SciPy simplex-initialization constants.
-        nonzdelt = 0.05
         zdelt = 0.00025
-
-        # Initial simplex: n+1 vertices. Vertex 0 is an interior random
-        # point; the rest perturb one coordinate at a time.
-        x0 = 0.3 + 0.4 * _A.random_uniform(n)
-        sim = [x0.copy()]
-        for k in range(n):
-            y = x0.copy()
-            if y[k] != 0:
-                y[k] = (1 + nonzdelt) * y[k]
-            else:
-                y[k] = zdelt
-            sim.append(y)
-
-        # Clip every vertex into the unit cube.
-        sim = [_A.clip(v, 0, 1) for v in sim]
-
-        # Evaluate initial simplex.
-        fsim = [0.0] * (n + 1)
-        for k in range(n + 1):
-            if self.evaluations >= self.n_trials:
-                break
-            fsim[k] = self.evaluate(sim[k])
-
-        # Sort by fitness ascending (best first).
-        order = sorted(range(n + 1), key=fsim.__getitem__)
-        sim = [sim[i] for i in order]
-        fsim = [fsim[i] for i in order]
 
         # Convergence tolerances. scipy's defaults are 1e-4, but those
         # cause termination well before the budget is exhausted on easy
@@ -76,71 +48,134 @@ class NelderMead(BaseOptimizer):
         xatol = 1e-12
         fatol = 1e-12
 
+        # Kelley (1999, "Detection and Remediation of Stagnation in the
+        # Nelder-Mead Algorithm", SIAM J. Optim. 10(1)) showed that
+        # vanilla NM can converge to a non-stationary point when the
+        # simplex collapses into a degenerate shape. The fix in practice
+        # is to reseed the simplex around the current best each time
+        # convergence is reached and continue until the budget is gone.
+        # Without this, NM hands back unused budget on smooth landscapes
+        # while leaving plenty of room for improvement on multimodal
+        # ones. The per-restart perturbation magnitude is alternated so
+        # the new simplex isn't a scaled copy of the collapsed one.
+        nonzdelt_schedule = [0.05, 0.15, 0.30, 0.10, 0.50, 0.20]
+
+        # Initial seed point (used for restart 0; later restarts re-seed
+        # from a fresh uniform draw when the budget is large enough for
+        # the global behavior to matter, and from sim[0] otherwise — see
+        # below).
+        seed_point = 0.3 + 0.4 * _A.random_uniform(n)
+        sim = None  # populated by the (re)build below
+
+        restart_count = 0
         while self.evaluations < self.n_trials:
-            # SciPy convergence check, restated without numpy broadcasting:
-            # max over all (i, k) of |sim[i][k] - sim[0][k]| <= xatol AND
-            # max over i of |fsim[0] - fsim[i]| <= fatol.
-            x_max = max(
-                abs(sim[i][k] - sim[0][k]) for i in range(1, n + 1) for k in range(n)
-            )
-            f_max = max(abs(fsim[0] - fsim[i]) for i in range(1, n + 1))
-            if x_max <= xatol and f_max <= fatol:
-                break
+            # Build (or rebuild) the simplex around `seed_point`. The
+            # NM init uses one perturbation per coordinate; the schedule
+            # gives each restart a different perturbation magnitude.
+            nonzdelt = nonzdelt_schedule[restart_count % len(nonzdelt_schedule)]
+            sim = [seed_point.copy()]
+            for k in range(n):
+                y = seed_point.copy()
+                if y[k] != 0:
+                    y[k] = (1 + nonzdelt) * y[k]
+                else:
+                    y[k] = zdelt
+                sim.append(y)
+            sim = [_A.clip(v, 0, 1) for v in sim]
 
-            # Centroid of the best n vertices (sum-of-rows / n).
-            xbar = _A.zeros(n)
-            for v in sim[:-1]:
-                xbar = xbar + v
-            xbar = xbar / n
-
-            # Reflection.
-            xr = _A.clip((1 + rho) * xbar - rho * sim[-1], 0, 1)
-            if self.evaluations >= self.n_trials:
-                break
-            fxr = self.evaluate(xr)
-
-            if fxr < fsim[0]:
-                # Expansion.
-                xe = _A.clip((1 + rho * chi) * xbar - rho * chi * sim[-1], 0, 1)
+            # Evaluate the new simplex.
+            fsim = [0.0] * (n + 1)
+            for k in range(n + 1):
                 if self.evaluations >= self.n_trials:
                     break
-                fxe = self.evaluate(xe)
-                if fxe < fxr:
-                    sim[-1] = xe
-                    fsim[-1] = fxe
-                else:
-                    sim[-1] = xr
-                    fsim[-1] = fxr
-            elif fxr < fsim[-2]:
-                # Accept reflection.
-                sim[-1] = xr
-                fsim[-1] = fxr
-            else:
-                # Contraction (outside if fxr < fsim[-1], else inside).
-                if fxr < fsim[-1]:
-                    xc = (1 + psi * rho) * xbar - psi * rho * sim[-1]
-                else:
-                    xc = (1 - psi) * xbar + psi * sim[-1]
-                xc = _A.clip(xc, 0, 1)
-
-                if self.evaluations >= self.n_trials:
-                    break
-                fxc = self.evaluate(xc)
-
-                if fxc < min(fxr, fsim[-1]):
-                    sim[-1] = xc
-                    fsim[-1] = fxc
-                else:
-                    # Shrink: every non-best vertex moves toward sim[0].
-                    for j in range(1, n + 1):
-                        sim[j] = _A.clip(sim[0] + sigma * (sim[j] - sim[0]), 0, 1)
-                        if self.evaluations < self.n_trials:
-                            fsim[j] = self.evaluate(sim[j])
-
-            # Re-sort by fitness.
+                fsim[k] = self.evaluate(sim[k])
             order = sorted(range(n + 1), key=fsim.__getitem__)
             sim = [sim[i] for i in order]
             fsim = [fsim[i] for i in order]
+
+            # Standard NM inner loop until budget exhausted or simplex
+            # collapses.
+            while self.evaluations < self.n_trials:
+                # SciPy convergence check, restated without numpy broadcasting:
+                # max over all (i, k) of |sim[i][k] - sim[0][k]| <= xatol AND
+                # max over i of |fsim[0] - fsim[i]| <= fatol.
+                x_max = max(
+                    abs(sim[i][k] - sim[0][k]) for i in range(1, n + 1) for k in range(n)
+                )
+                f_max = max(abs(fsim[0] - fsim[i]) for i in range(1, n + 1))
+                if x_max <= xatol and f_max <= fatol:
+                    # Simplex collapsed — break the inner loop so the
+                    # outer restart loop reseeds and continues.
+                    break
+
+                # Centroid of the best n vertices (sum-of-rows / n).
+                xbar = _A.zeros(n)
+                for v in sim[:-1]:
+                    xbar = xbar + v
+                xbar = xbar / n
+
+                # Reflection.
+                xr = _A.clip((1 + rho) * xbar - rho * sim[-1], 0, 1)
+                if self.evaluations >= self.n_trials:
+                    break
+                fxr = self.evaluate(xr)
+
+                if fxr < fsim[0]:
+                    # Expansion.
+                    xe = _A.clip((1 + rho * chi) * xbar - rho * chi * sim[-1], 0, 1)
+                    if self.evaluations >= self.n_trials:
+                        break
+                    fxe = self.evaluate(xe)
+                    if fxe < fxr:
+                        sim[-1] = xe
+                        fsim[-1] = fxe
+                    else:
+                        sim[-1] = xr
+                        fsim[-1] = fxr
+                elif fxr < fsim[-2]:
+                    # Accept reflection.
+                    sim[-1] = xr
+                    fsim[-1] = fxr
+                else:
+                    # Contraction (outside if fxr < fsim[-1], else inside).
+                    if fxr < fsim[-1]:
+                        xc = (1 + psi * rho) * xbar - psi * rho * sim[-1]
+                    else:
+                        xc = (1 - psi) * xbar + psi * sim[-1]
+                    xc = _A.clip(xc, 0, 1)
+
+                    if self.evaluations >= self.n_trials:
+                        break
+                    fxc = self.evaluate(xc)
+
+                    if fxc < min(fxr, fsim[-1]):
+                        sim[-1] = xc
+                        fsim[-1] = fxc
+                    else:
+                        # Shrink: every non-best vertex moves toward sim[0].
+                        for j in range(1, n + 1):
+                            sim[j] = _A.clip(sim[0] + sigma * (sim[j] - sim[0]), 0, 1)
+                            if self.evaluations < self.n_trials:
+                                fsim[j] = self.evaluate(sim[j])
+
+                # Re-sort by fitness.
+                order = sorted(range(n + 1), key=fsim.__getitem__)
+                sim = [sim[i] for i in order]
+                fsim = [fsim[i] for i in order]
+
+            # Inner loop ended — either budget exhausted or simplex
+            # collapsed. If budget remains, alternate restart seeds: even
+            # restarts reseed around the current best (intensification);
+            # odd restarts reseed from a fresh uniform draw
+            # (diversification). This mirrors the "two-phase" restart
+            # heuristic widely used in NM++ implementations.
+            restart_count += 1
+            if self.evaluations >= self.n_trials:
+                break
+            if restart_count % 2 == 1:
+                seed_point = sim[0].copy()
+            else:
+                seed_point = _A.random_uniform(n)
 
         return self.best_value, self.best_x
 
