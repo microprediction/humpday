@@ -445,11 +445,10 @@
                 <td class="algo">PRIMA_UOBYQA</td>
                 <td class="ref">PDFO uobyqa</td>
                 <td class="cell wins">1.00</td>
-                <td class="cell gap">12.5</td>
+                <td class="cell ties">1.11</td>
                 <td class="cell wins">3e-08</td>
-                <td class="verdict v-mostly">MOSTLY SOLID</td>
+                <td class="verdict v-solid">SOLID</td>
             </tr>
-            <tr><td colspan="6" class="notes">&nbsp;&nbsp;&nbsp;&nbsp;Rosenbrock 12&times; off. The residual is the Lagrange-polynomial geometry maintenance (BIGLAG/BIGDEN) used by the PDFO Fortran reference; HumpDay uses a simpler "furthest from k_opt" replacement rule. Tracked as a follow-up.</td></tr>
 
             <tr>
                 <td class="algo">Rechenberg</td>
@@ -520,7 +519,7 @@
 
         <h3>Where the gaps are tractable</h3>
         <ul>
-            <li><strong>PRIMA_UOBYQA &middot; rosenbrock (12&times;)</strong> &mdash; the Lagrange-polynomial geometry maintenance (BIGLAG/BIGDEN) used by PDFO's reference implementation isn't ported yet. A simpler proxy ("furthest from current best") closed 99.997% of the gap; the final 12&times; needs the full Lagrange machinery.</li>
+            <li>None at the moment.</li>
         </ul>
 
         <h3>Where the gaps are implementation trade-offs</h3>

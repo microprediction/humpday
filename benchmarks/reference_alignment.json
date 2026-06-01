@@ -284,11 +284,11 @@
       "algorithm": "PRIMA_UOBYQA",
       "reference": "PDFO uobyqa",
       "problem": "rosenbrock",
-      "humpday_median": 1.1467030673457275e-14,
+      "humpday_median": 1.0573128592491201e-16,
       "reference_median": 2.8722354539921895e-21,
-      "humpday_to_opt": 1.1467030673457275e-14,
+      "humpday_to_opt": 1.0573128592491201e-16,
       "reference_to_opt": 2.8722354539921895e-21,
-      "ratio_humpday_over_reference": 12.466994865312618
+      "ratio_humpday_over_reference": 1.105728110013432
     },
     {
       "algorithm": "PRIMA_UOBYQA",
@@ -664,5 +664,5 @@
   "n_runs": 4,
   "n_trials": 200,
   "n_dim": 2,
-  "recorded_at": "2026-05-31T22:39:45Z"
+  "recorded_at": "2026-05-31T23:55:34Z"
 }

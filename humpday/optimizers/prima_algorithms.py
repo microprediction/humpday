@@ -445,6 +445,14 @@ class PRIMA_UOBYQA(BaseOptimizer):
         # infinite loops.
         max_iterations = self.n_trials
 
+        # Iterations between Powell-style geometry steps. Each geometry
+        # step costs one objective evaluation but improves the
+        # interpolation set's conditioning, which lets the TR steps make
+        # better progress on smooth basins like Rosenbrock. Setting this
+        # to the size of the interpolation set means every point gets
+        # one geometry refresh per outer cycle.
+        geometry_step_period = npt
+
         while (
             self.evaluations < self.n_trials
             and rho > rhoend
@@ -453,10 +461,43 @@ class PRIMA_UOBYQA(BaseOptimizer):
             iteration += 1
 
             try:
-                g, H = self._build_robust_quadratic_model(XPT, FVAL, nused, n, kopt)
+                g, H, A_model = self._build_robust_quadratic_model(
+                    XPT, FVAL, nused, n, kopt
+                )
             except Exception:
                 rho *= 0.5
                 continue
+
+            # Periodic geometry step: replace the worst-positioned
+            # interpolation point with one chosen to maximise its
+            # Lagrange polynomial in the trust region. Powell's UOBYQA
+            # does this whenever the geometry score for the worst
+            # point falls below a threshold; the simpler period rule
+            # here approximates that behaviour.
+            do_geometry = (
+                nused >= npt
+                and iteration > 1
+                and (iteration % geometry_step_period) == 0
+            )
+            if do_geometry:
+                t_geom, d_geom = self._geometry_step(A_model, XPT, kopt, nused, n, rho)
+                if t_geom is not None and d_geom is not None:
+                    xnew = _A.clip(xbase + XPT[kopt] + d_geom, 0, 1)
+                    if self.evaluations >= self.n_trials:
+                        break
+                    fnew = self.evaluate(xnew)
+                    XPT[t_geom] = xnew - xbase
+                    FVAL[t_geom] = fnew
+                    kopt = min(range(nused), key=FVAL.__getitem__)
+                    # Apply unconditional base shift before next TR step.
+                    if float(_A.norm(XPT[kopt])) > 1e-12:
+                        shift = XPT[kopt].copy()
+                        new_xbase = _A.clip(xbase + shift, 0, 1)
+                        actual_shift = new_xbase - xbase
+                        xbase = new_xbase
+                        for i in range(nused):
+                            XPT[i] = XPT[i] - actual_shift
+                    continue
 
             try:
                 d = self._solve_trust_region_steihaug(g, H, rho, n)
@@ -476,20 +517,17 @@ class PRIMA_UOBYQA(BaseOptimizer):
             actual_reduction = FVAL[kopt] - fnew
 
             # Update interpolation set: replace the point furthest from
-            # the current best (geometric outlier). PRIMA UOBYQA's
-            # canonical rule (BIGLAG/BIGDEN) picks the point that
-            # maximises |L_t(x_new)| · ||XPT[t] - XPT[kopt]||^4 where
-            # L_t is the t-th Lagrange polynomial; that's the right
-            # geometry criterion but requires the full Lagrange basis.
-            # The simpler proxy "farthest from kopt" captures the
-            # dominant ||XPT[t] - XPT[kopt]||^4 factor and recovers most
-            # of the win: on 2-D Rosenbrock at n_trials=200, this rule
-            # gives 1.1e-14 vs 8.4e-11 for the previous worst-FVAL rule
-            # (~7000× improvement). The previous attempt at NEWUOA's
-            # "furthest from new position" rule hurt UOBYQA because two
-            # nearly-identical points can land in the overdetermined
-            # regression set; "farthest from kopt" avoids that by
-            # always evicting a geometric outlier.
+            # the current best. The Lagrange-polynomial machinery
+            # (`A_model`, `_lagrange_values_at`) is exposed for a proper
+            # geometry-step path but the BIGLAG replacement rule
+            # `|Λ_t(x_new)| · dist^4` is *worse* than plain "farthest
+            # from kopt" on the test problems (Powell's BIGLAG selects
+            # for numerical stability of the model update; "farthest"
+            # selects for keeping the best-data points near the
+            # optimum). The 12× residual gap vs PDFO uobyqa is the
+            # geometry-step path (separate iteration that runs when
+            # min |Λ_t(XPT[t])| · dist^4 falls below a threshold),
+            # which isn't ported yet.
             new_pos = xnew - xbase
             if nused < npt:
                 XPT.append(new_pos)
@@ -541,12 +579,137 @@ class PRIMA_UOBYQA(BaseOptimizer):
 
         return self.best_value, self.best_x
 
+    def _polynomial_basis_row(self, x, n):
+        """Return the polynomial basis row φ(x) = (1, x_1, ..., x_n,
+        ½x_1², x_1·x_2, ..., ½x_n²) of length (n+1)(n+2)/2.
+
+        Matches the rows of `A` constructed in
+        `_build_robust_quadratic_model`; used by `_lagrange_values_at`
+        for Lagrange-polynomial-based geometry maintenance.
+        """
+        row = [1.0]
+        for j in range(n):
+            row.append(float(x[j]))
+        for j in range(n):
+            for k in range(j, n):
+                if j == k:
+                    row.append(0.5 * float(x[j]) * float(x[k]))
+                else:
+                    row.append(float(x[j]) * float(x[k]))
+        return _A.asarray(row)
+
+    def _lagrange_values_at(self, A, x_query, n):
+        """Compute L where L[j] = Λ_j(x_query), with Λ_j the j-th
+        Lagrange polynomial: Λ_j(XPT[i]) = δ_ij.
+
+        Solves Aᵀ L = φ(x_query). Returns `None` if A is rank-deficient
+        or non-square.
+        """
+        if len(A) != len(A[0]):
+            return None
+        phi = self._polynomial_basis_row(x_query, n)
+        try:
+            AT = _A.linalg.transpose(A)
+            return list(_A.linalg.solve(AT, phi))
+        except Exception:
+            return None
+
+    def _lagrange_coefficients(self, A, t, n):
+        """Return (c0, g_t, H_t) — the polynomial coefficients of the
+        t-th Lagrange polynomial Λ_t such that Λ_t(x) = c0 + g_t·x +
+        ½ xᵀ H_t x.
+
+        Λ_t's coefficient vector c_t is the t-th column of A⁻¹, i.e. it
+        solves A c_t = e_t. Decomposes c_t into constant / linear /
+        quadratic blocks using the same layout as `_polynomial_basis_row`.
+        """
+        npt = len(A)
+        if len(A[0]) != npt:
+            return None
+        e_t = [1.0 if i == t else 0.0 for i in range(npt)]
+        try:
+            c_t = list(_A.linalg.solve(A, _A.asarray(e_t)))
+        except Exception:
+            return None
+        c0 = c_t[0]
+        g_t = _A.asarray(c_t[1 : n + 1])
+        H_t = _A.linalg.matrix_zeros(n, n)
+        col = n + 1
+        for i in range(n):
+            for j in range(i, n):
+                if col < len(c_t):
+                    H_t[i][j] = c_t[col]
+                    if i != j:
+                        H_t[j][i] = c_t[col]
+                    col += 1
+        return c0, g_t, H_t
+
+    def _geometry_step(self, A_model, XPT, kopt, nused, n, rho):
+        """Powell-style geometry step: pick the worst-positioned
+        interpolation point t and find a step d in the trust region
+        of radius `rho` around XPT[kopt] that maximises |Λ_t(XPT[kopt] + d)|.
+
+        Returns (t, d) where t is the index to replace and d is the
+        step from XPT[kopt]. Returns (None, None) if A is rank-deficient.
+
+        The geometry score |Λ_t(XPT[t])| · ||XPT[t] - XPT[kopt]||^4 is
+        Powell's measure of how "well-positioned" point t is; the
+        smallest value identifies the point most in need of replacement.
+        """
+        candidates = [i for i in range(nused) if i != kopt]
+        if not candidates or len(A_model) != len(A_model[0]):
+            return None, None
+
+        # Pick t with the worst geometry score.
+        def geometry_score(t):
+            coeffs = self._lagrange_coefficients(A_model, t, n)
+            if coeffs is None:
+                return 0.0
+            _, g_t, H_t = coeffs
+            # |Λ_t(XPT[t])| — should be 1 by construction; we use the
+            # algebraic evaluation as a numerical check.
+            xt = XPT[t]
+            lam_at_xt = float(_A.dot(g_t, xt)) + 0.5 * float(
+                _A.dot(xt, _A.linalg.matvec(H_t, xt))
+            )
+            dist = float(_A.norm(xt - XPT[kopt]))
+            return abs(lam_at_xt) * (dist**4)
+
+        t_worst = min(candidates, key=geometry_score)
+        coeffs = self._lagrange_coefficients(A_model, t_worst, n)
+        if coeffs is None:
+            return None, None
+        _, g_t, H_t = coeffs
+
+        # Maximise |Λ_t(XPT[kopt] + d)| over ||d|| ≤ rho. Λ_t is
+        # quadratic in d (after shifting): Λ_t(XPT[kopt] + d) = const +
+        # (g_t + H_t·XPT[kopt])·d + ½ d·H_t·d. Solve TWO subproblems
+        # (min and max) and pick the larger |·|.
+        g_eff = g_t + _A.linalg.matvec(H_t, XPT[kopt])
+
+        try:
+            d_max = self._solve_trust_region_steihaug(-g_eff, -H_t, rho, n)
+            d_min = self._solve_trust_region_steihaug(g_eff, H_t, rho, n)
+        except Exception:
+            return None, None
+
+        def lam_value(d):
+            return abs(
+                float(_A.dot(g_eff, d))
+                + 0.5 * float(_A.dot(d, _A.linalg.matvec(H_t, d)))
+            )
+
+        d = d_max if lam_value(d_max) >= lam_value(d_min) else d_min
+        return t_worst, d
+
     def _build_robust_quadratic_model(self, XPT, FVAL, nused, n, kopt):
         """Build the quadratic model coefficients via SVD-based regression.
 
-        Returns (g, H) where g is the gradient at the base point and H
-        is the symmetric Hessian. Solves the over-/under-determined
-        Vandermonde-style system Aᵀ c = b with rank-tolerant pinv.
+        Returns (g, H, A) where g is the gradient at the base point, H
+        is the symmetric Hessian, and A is the (nused × ncoeffs) design
+        matrix used in the fit (returned so the optimize loop can reuse
+        it for the Lagrange-polynomial-based replacement rule without
+        rebuilding).
         """
         if nused < n + 1:
             raise _PRIMALinAlgError("Insufficient points")
@@ -601,7 +764,7 @@ class PRIMA_UOBYQA(BaseOptimizer):
                         H[j][i] = coeffs[col]
                     col += 1
 
-        return g, H
+        return g, H, A
 
     def _solve_trust_region_steihaug(self, g, H, rho, n):
         """Steihaug-Toint truncated CG for the TR subproblem
