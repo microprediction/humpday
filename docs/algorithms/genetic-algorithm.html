@@ -243,7 +243,18 @@
             </div>
 
             <div class="algorithm-description">
-                <strong>Genetic Algorithms (GA)</strong> are population-based metaheuristics inspired by the process of natural selection. Introduced by John Holland in the 1970s, GAs evolve a population of candidate solutions using selection, crossover, and mutation operators. They're particularly effective for combinatorial optimization and problems where the search space is large and complex.
+                <strong>Genetic Algorithm</strong> (Holland, 1970s) evolves a population of candidate solutions through selection, crossover, and mutation. HumpDay's <code>GeneticAlgorithm</code> uses a real-valued representation (no binary encoding), <strong>tournament-of-3 selection</strong>, one-point crossover, and per-coordinate Bernoulli mutation with uniform noise. The reference adapter for the SOTA snapshot is mealpy's <code>BaseGA</code>, not DEAP &mdash; mealpy is what the benchmark actually compares against.
+            </div>
+
+            <div class="coordinate-note" style="background:#e8f4fd; border:1px solid #bee5eb; border-radius:8px; padding:15px; margin:20px 0;">
+                <h3 style="color:#0c5460; margin-top:0;">HumpDay's GA at a glance</h3>
+                <ul>
+                    <li><strong>Representation:</strong> real-valued vectors in <code>[0, 1]<sup>n</sup></code>.</li>
+                    <li><strong>Selection:</strong> tournament-of-3.</li>
+                    <li><strong>Crossover:</strong> one-point.</li>
+                    <li><strong>Mutation:</strong> per-coordinate Bernoulli with uniform noise.</li>
+                    <li><strong>Elitism:</strong> the best individual is carried over each generation.</li>
+                </ul>
             </div>
             <div class="visualization-section">
                 <h3>Interactive 3D Visualization</h3>
@@ -299,24 +310,23 @@
                         </td>
                     </tr>
                     <tr>
-                        <td class="category">Humpday Python</td>
+                        <td class="category">HumpDay Python</td>
                         <td>
-                            <strong>HumpDay Python Implementation</strong><br>
-                            Pure-Python GA — tournament-of-3 selection, one-point crossover, per-coordinate Bernoulli mutation with uniform noise<br>
-                            No required dependencies<br>
-                            <em>File: humpday/optimizers/evolutionary_algorithms.py</em>
+                            <strong>HumpDay <code>GeneticAlgorithm</code></strong><br>
+                            Real-valued GA: tournament-of-3 selection, one-point crossover, per-coordinate Bernoulli mutation with uniform noise, elitism on the best individual.<br>
+                            Pure Python; no required dependencies.<br>
+                            <em>File: <code>humpday/optimizers/evolutionary_algorithms.py</code></em>
                         </td>
                         <td>
-                            <a href="https://github.com/microprediction/humpday/blob/main/humpday/optimizers/evolutionary_algorithms.py#L267" target="_blank" class="link-button python">Source Code</a>
+                            <a href="https://github.com/microprediction/humpday/blob/main/humpday/optimizers/evolutionary_algorithms.py" target="_blank" class="link-button python">Source</a>
                         </td>
                     </tr>
                     <tr>
-                        <td class="category">Humpday JavaScript</td>
+                        <td class="category">HumpDay JavaScript</td>
                         <td>
-                            <strong>Browser Implementation</strong><br>
-                            Pure JavaScript GA with selection, crossover, mutation<br>
-                            Real-valued representation for continuous problems<br>
-                            <em>Class: GeneticAlgorithm</em>
+                            <strong>Browser <code>GeneticAlgorithm</code></strong><br>
+                            Mirrors the Python port.<br>
+                            <em>Class: <code>GeneticAlgorithm</code></em>
                         </td>
                         <td>
                             <a href="https://github.com/microprediction/humpday/blob/main/docs/js/modules/evolutionary-algorithms.js" target="_blank" class="link-button javascript">JS Port</a>
@@ -328,11 +338,10 @@
             <div class="performance-notes">
                 <h3>Performance Characteristics</h3>
                 <ul>
-                    <li><strong>Best for:</strong> Combinatorial optimization, multimodal landscapes, large search spaces</li>
-                    <li><strong>Dimensions:</strong> Scales to hundreds of dimensions</li>
-                    <li><strong>Function evaluations:</strong> Population size × generations</li>
-                    <li><strong>Convergence:</strong> Good global exploration, premature convergence possible</li>
-                    <li><strong>Robustness:</strong> Robust to noise, handles discontinuous functions well</li>
+                    <li><strong>Best for:</strong> Multimodal continuous objectives where population diversity matters more than rapid local refinement.</li>
+                    <li><strong>Worst for:</strong> Tight-budget smooth basins &mdash; the population/generation overhead is a tax compared to CMA-ES or DE on the same problems.</li>
+                    <li><strong>Per generation:</strong> population_size evaluations + selection/crossover/mutation operators.</li>
+                    <li><strong>Relative to mealpy <code>BaseGA</code></strong> at <code>n_trials=200, n_dim=2</code>: HumpDay wins on sphere, Rosenbrock, and Ackley. See <a href="../sota-status.html">SOTA status</a> for the live numbers.</li>
                 </ul>
             </div>
 

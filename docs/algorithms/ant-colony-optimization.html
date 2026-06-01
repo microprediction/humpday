@@ -285,46 +285,44 @@
                     <tr>
                         <td class="category">Original Algorithm</td>
                         <td>
-                            <strong>Zong Woo Geem</strong><br>
-                            Music-inspired optimization metaheuristic<br>
-                            Based on musical improvisation and harmony composition<br>
-                            <em>Published: 2001</em>
+                            <strong>Marco Dorigo</strong><br>
+                            Pheromone-based metaheuristic inspired by ant foraging.<br>
+                            Continuous variant: ACOR (Socha &amp; Dorigo, 2008).<br>
+                            <em>Published: 1992 (ACO), 2008 (ACOR)</em>
                         </td>
                         <td>
-                            <a href="https://doi.org/10.1109/3477.484436" target="_blank" class="link-button paper">Original Paper</a>
+                            <a href="https://doi.org/10.1016/j.ejor.2006.06.046" target="_blank" class="link-button paper">ACOR Paper</a>
                         </td>
                     </tr>
                     <tr>
                         <td class="category">Reference Implementation</td>
                         <td>
-                            <strong>pyHarmonySearch</strong><br>
-                            Tested against pyHarmonySearch package<br>
-                            Optional external dependency for validation<br>
-                            <em>Reference: PyPI harmony search implementation</em>
+                            <strong>mealpy ACOR</strong><br>
+                            Tested against mealpy's continuous ACOR.<br>
+                            <em>Reference: <code>mealpy.swarm_based.ACOR.OriginalACOR</code></em>
                         </td>
                         <td>
-                            <a href="https://pypi.org/project/pyHarmonySearch/" target="_blank" class="link-button">PyPI Package</a>
-                        </td>
-                    </tr>
-                    <tr>
-                        <td class="category">Humpday Python Implementation</td>
-                        <td>
-                            <strong>Humpday Harmony Search</strong><br>
-                            Custom implementation with classical HS operators<br>
-                            Harmony memory, pitch adjustment, and randomization<br>
-                            <em>File: humpday/optimizers/evolutionary_algorithms.py</em>
-                        </td>
-                        <td>
-                            <a href="https://github.com/microprediction/humpday/blob/main/humpday/optimizers/evolutionary_algorithms.py#L840" target="_blank" class="link-button python">Source</a>
+                            <a href="https://github.com/thieu1995/mealpy" target="_blank" class="link-button">mealpy</a>
                         </td>
                     </tr>
                     <tr>
-                        <td class="category">Humpday JavaScript</td>
+                        <td class="category">HumpDay Python</td>
                         <td>
-                            <strong>Browser Implementation</strong><br>
-                            Pure JavaScript harmony search<br>
-                            Memory management and improvisation rules<br>
-                            <em>Class: HarmonySearch</em>
+                            <strong>HumpDay <code>AntColonyOpt</code></strong><br>
+                            Socha-Dorigo continuous ACOR: maintain an archive of <em>k</em> solutions ranked by fitness; sample new solutions from a Gaussian kernel over the archive (mixture weights from rank-based probabilities).<br>
+                            Pure Python; no required dependencies.<br>
+                            <em>File: <code>humpday/optimizers/evolutionary_algorithms.py</code></em>
+                        </td>
+                        <td>
+                            <a href="https://github.com/microprediction/humpday/blob/main/humpday/optimizers/evolutionary_algorithms.py" target="_blank" class="link-button python">Source</a>
+                        </td>
+                    </tr>
+                    <tr>
+                        <td class="category">HumpDay JavaScript</td>
+                        <td>
+                            <strong>Browser <code>AntColonyOpt</code></strong><br>
+                            Mirrors the Python ACOR port.<br>
+                            <em>Class: <code>AntColonyOpt</code></em>
                         </td>
                         <td>
                             <a href="https://github.com/microprediction/humpday/blob/main/docs/js/modules/evolutionary-algorithms.js" target="_blank" class="link-button javascript">JS Implementation</a>
@@ -334,13 +332,12 @@
             </table>
 
             <div class="performance-notes">
-                <h3>Performance Characteristics</h3>
+                <h3>Performance characteristics</h3>
                 <ul>
-                    <li><strong>Best for:</strong> Continuous optimization, parameter tuning, engineering design</li>
-                    <li><strong>Dimensions:</strong> Handles moderate to high dimensions well</li>
-                    <li><strong>Function evaluations:</strong> Memory-based, HMS × generations</li>
-                    <li><strong>Convergence:</strong> Steady improvement through memory exploitation</li>
-                    <li><strong>Robustness:</strong> Balance between exploitation and exploration through HS operators</li>
+                    <li><strong>Best for:</strong> Continuous optimization with multimodal landscapes. The archive sampler keeps diversity while concentrating mass near good solutions.</li>
+                    <li><strong>Worst for:</strong> Tight-budget smooth problems where a directional method (CMA-ES, PRIMA) would converge faster.</li>
+                    <li><strong>Per generation:</strong> draw new samples from the Gaussian-kernel mixture over the archive; evaluate; merge into the archive and keep the top <em>k</em>.</li>
+                    <li><strong>Relative to mealpy ACOR</strong> at <code>n_trials=200, n_dim=2</code>: HumpDay wins on sphere and Ackley; ties on Rosenbrock. See <a href="../sota-status.html">SOTA status</a> for the live numbers.</li>
                 </ul>
             </div>
 
@@ -348,157 +345,19 @@
             <div class="more-section">
                 <button class="more-toggle" onclick="toggleMore()">More Resources</button>
                 <div id="moreContent" class="more-content">
-                    <h3>Educational Resources</h3>
+                    <h3>Educational resources</h3>
                     <ul>
-                        <li><a href="https://en.wikipedia.org/wiki/Harmony_search" target="_blank">Harmony Search Wikipedia</a></li>
-                        <li><a href="https://doi.org/10.1109/3477.484436" target="_blank">Original HS Paper (Geem et al., 2001)</a></li>
-                        <li><a href="https://www.springer.com/gp/book/9783642007378" target="_blank">Music-Inspired Harmony Search Algorithm</a></li>
-                        <li><a href="https://ieeexplore.ieee.org/document/4531873" target="_blank">Improved Harmony Search Algorithm</a></li>
-                        <li><a href="https://link.springer.com/journal/10287" target="_blank">International Journal of Optimization</a></li>
+                        <li><a href="https://en.wikipedia.org/wiki/Ant_colony_optimization_algorithms" target="_blank">Ant Colony Optimization Wikipedia</a></li>
+                        <li><a href="https://doi.org/10.1016/j.ejor.2006.06.046" target="_blank">Socha &amp; Dorigo (2008): ACOR for continuous domains</a></li>
+                        <li><a href="https://www.iridia.ulb.ac.be/~mdorigo/HomePageDorigo/" target="_blank">Marco Dorigo's homepage</a></li>
                     </ul>
 
-                    <h3>Core Algorithm Components</h3>
+                    <h3>Core algorithm components</h3>
                     <ul>
-                        <li><strong>Harmony Memory (HM):</strong> Population of HMS best solutions found</li>
-                        <li><strong>Harmony Memory Size (HMS):</strong> Number of solutions stored</li>
-                        <li><strong>Memory Consideration Rate (HMCR):</strong> Probability of choosing from memory</li>
-                        <li><strong>Pitch Adjusting Rate (PAR):</strong> Probability of local adjustment</li>
-                        <li><strong>Pitch Adjustment:</strong> Local search around selected value</li>
-                        <li><strong>Random Selection:</strong> Generate completely new value</li>
-                    </ul>
-
-                    <h3>Mathematical Formulation</h3>
-                    <ul>
-                        <li><strong>Memory Selection:</strong> x'ᵢ = HMⱼ(i) with probability HMCR</li>
-                        <li><strong>Pitch Adjustment:</strong> x'ᵢ = x'ᵢ ± rand() × bw with probability PAR</li>
-                        <li><strong>Random Selection:</strong> x'ᵢ ~ Uniform(LBᵢ, UBᵢ) with probability (1-HMCR)</li>
-                        <li><strong>Memory Update:</strong> Replace worst harmony if new harmony is better</li>
-                    </ul>
-
-                    <h3>️ Key Parameters</h3>
-                    <ul>
-                        <li><strong>HMS:</strong> Harmony Memory Size, typically 10-50</li>
-                        <li><strong>HMCR:</strong> Memory Consideration Rate, usually 0.7-0.95</li>
-                        <li><strong>PAR:</strong> Pitch Adjusting Rate, usually 0.1-0.5</li>
-                        <li><strong>bw:</strong> Bandwidth for pitch adjustment</li>
-                        <li><strong>Termination:</strong> Maximum iterations or convergence criteria</li>
-                    </ul>
-
-                    <h3>Harmony Search Algorithm Pseudocode</h3>
-                    <pre style="background: #f8f9fa; padding: 15px; border-radius: 8px; font-family: monospace;">
-function harmonySearch(objectiveFunction, HMS, HMCR, PAR, maxIter):
-    // Step 1: Initialize Harmony Memory
-    HM = []
-    for i in 1 to HMS:
-        harmony = generateRandomSolution()
-        HM.add(harmony, objectiveFunction(harmony))
-
-    sortByFitness(HM)
-
-    // Step 2: Improvise New Harmony
-    for iteration in 1 to maxIter:
-        newHarmony = []
-
-        for j in 1 to problemDimension:
-            if random() < HMCR:  // Memory consideration
-                // Choose value from memory
-                randomHarmonyIndex = randomInt(0, HMS-1)
-                newValue = HM[randomHarmonyIndex][j]
-
-                if random() < PAR:  // Pitch adjustment
-                    newValue += (random() - 0.5) * 2 * bandwidth
-                    newValue = clip(newValue, lowerBound, upperBound)
-
-            else:  // Random selection
-                newValue = random() * (upperBound - lowerBound) + lowerBound
-
-            newHarmony[j] = newValue
-
-        // Step 3: Update Harmony Memory
-        newFitness = objectiveFunction(newHarmony)
-
-        if newFitness < HM[HMS-1].fitness:  // Better than worst
-            HM[HMS-1] = (newHarmony, newFitness)
-            sortByFitness(HM)
-
-    return HM[0]  // Best harmony
-                    </pre>
-
-                    <h3>Harmony Search Variants</h3>
-                    <ul>
-                        <li><strong>Classical HS:</strong> Original algorithm with fixed parameters</li>
-                        <li><strong>Improved HS (IHS):</strong> Dynamic PAR and bandwidth adjustment</li>
-                        <li><strong>Self-Adaptive HS:</strong> Automatic parameter tuning</li>
-                        <li><strong>Global-Best HS:</strong> Use best harmony for pitch adjustment</li>
-                        <li><strong>Differential HS:</strong> Incorporate differential evolution operators</li>
-                        <li><strong>Multi-Objective HS:</strong> Pareto-based harmony search</li>
-                    </ul>
-
-                    <h3>Musical Analogy Details</h3>
-                    <ul>
-                        <li><strong>Musician:</strong> Decision variable (instrument)</li>
-                        <li><strong>Musical Note:</strong> Value of decision variable</li>
-                        <li><strong>Harmony:</strong> Complete solution vector</li>
-                        <li><strong>Harmony Memory:</strong> Collection of good musical pieces</li>
-                        <li><strong>Improvisation:</strong> Generation of new solution</li>
-                        <li><strong>Aesthetic Quality:</strong> Objective function value</li>
-                    </ul>
-
-                    <h3>Applications</h3>
-                    <ul>
-                        <li><strong>Engineering Design:</strong> Structural optimization, water distribution</li>
-                        <li><strong>Energy Systems:</strong> Power system optimization, renewable energy</li>
-                        <li><strong>Manufacturing:</strong> Production scheduling, resource allocation</li>
-                        <li><strong>Transportation:</strong> Vehicle routing, traffic optimization</li>
-                        <li><strong>Machine Learning:</strong> Feature selection, neural network training</li>
-                        <li><strong>Economics:</strong> Portfolio optimization, supply chain management</li>
-                    </ul>
-
-                    <h3>Advantages of Harmony Search</h3>
-                    <ul>
-                        <li><strong>Simplicity:</strong> Easy to understand and implement</li>
-                        <li><strong>Few Parameters:</strong> Only HMS, HMCR, PAR to tune</li>
-                        <li><strong>Memory-Based:</strong> Maintains population of good solutions</li>
-                        <li><strong>Flexibility:</strong> Adapts to continuous and discrete problems</li>
-                        <li><strong>Balance:</strong> Good trade-off between exploration and exploitation</li>
-                        <li><strong>No Gradient Needed:</strong> Works with black-box functions</li>
-                    </ul>
-
-                    <h3>️ Limitations</h3>
-                    <ul>
-                        <li><strong>Parameter Sensitivity:</strong> Performance depends on HMCR and PAR</li>
-                        <li><strong>Premature Convergence:</strong> May converge too quickly with wrong parameters</li>
-                        <li><strong>Slow Convergence:</strong> Can be slow on some problem types</li>
-                        <li><strong>Local Search Ability:</strong> Limited fine-tuning capability</li>
-                        <li><strong>Memory Management:</strong> Fixed memory size may be suboptimal</li>
-                    </ul>
-
-                    <h3>Parameter Guidelines</h3>
-                    <ul>
-                        <li><strong>HMCR = 0.9:</strong> High memory consideration for exploitation</li>
-                        <li><strong>HMCR = 0.1:</strong> Low memory consideration for exploration</li>
-                        <li><strong>PAR = 0.3:</strong> Moderate pitch adjustment</li>
-                        <li><strong>HMS = 10-30:</strong> Small memory for fast convergence</li>
-                        <li><strong>HMS = 50-100:</strong> Large memory for diverse population</li>
-                        <li><strong>Dynamic Parameters:</strong> Adapt HMCR, PAR during search</li>
-                    </ul>
-
-                    <h3>Creative Aspects</h3>
-                    <ul>
-                        <li><strong>Artistic Inspiration:</strong> Based on human creativity and musical composition</li>
-                        <li><strong>Improvisation Process:</strong> Mimics how musicians create new melodies</li>
-                        <li><strong>Harmony Aesthetics:</strong> Better solutions are like more beautiful music</li>
-                        <li><strong>Cultural Bridge:</strong> Connects optimization with arts and music</li>
-                        <li><strong>Intuitive Understanding:</strong> Easy to explain through musical metaphor</li>
-                    </ul>
-
-                    <h3>Comparison with Other Metaheuristics</h3>
-                    <ul>
-                        <li><strong>vs GA:</strong> Memory-based vs generation-based evolution</li>
-                        <li><strong>vs PSO:</strong> Discrete memory vs continuous population movement</li>
-                        <li><strong>vs SA:</strong> Population-based vs single solution approach</li>
-                        <li><strong>vs ACO:</strong> Direct memory vs pheromone-based communication</li>
-                        <li><strong>vs DE:</strong> Musical improvisation vs biological evolution</li>
+                        <li><strong>Archive:</strong> a sorted set of the <em>k</em> best solutions found so far. Each archive entry is a vector in <code>[0, 1]<sup>n</sup></code>.</li>
+                        <li><strong>Rank-based weights:</strong> archive entry <em>i</em> gets sampling weight <em>w<sub>i</sub> &propto; exp(−i<sup>2</sup>/(2q<sup>2</sup>k<sup>2</sup>))</em>, concentrating mass at the top.</li>
+                        <li><strong>Gaussian kernel sampler:</strong> draw a new solution by (1) picking an archive entry by weight, then (2) sampling each coordinate from a Gaussian centred on that entry's coordinate, with bandwidth equal to a scaled mean absolute deviation across the archive.</li>
+                        <li><strong>Archive update:</strong> evaluate the new sample and merge it into the archive; drop the worst entry to maintain size <em>k</em>.</li>
                     </ul>
                 </div>
             </div>

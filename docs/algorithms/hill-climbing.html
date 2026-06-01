@@ -255,17 +255,16 @@
             </div>
 
             <div class="algorithm-description">
-                <strong>Hill Climbing</strong> is one of the simplest local search optimization algorithms. It repeatedly moves to neighboring solutions that improve the objective function, stopping when no better neighbors exist. Despite its simplicity, hill climbing forms the foundation for many more sophisticated optimization methods and serves as an important baseline for local search techniques.
+                <strong>Hill Climbing</strong> in HumpDay is a <strong>(1+1)-Evolution Strategy with a deterministic &sigma; decay schedule</strong>. Each iteration proposes one Gaussian-perturbed offspring; the offspring is accepted if it improves the objective. There is no 1/5-success rule (that's the <a href="adaptive-random-search.html">Rechenberg</a> variant) &mdash; &sigma; decays geometrically from <em>&sigma;<sub>init</sub> = 0.1</em> to <em>&sigma;<sub>final</sub> = 1e&minus;3</em> over the budget. This matches the textbook "hill climbing with shrinking perturbations" intuition and what <code>tests/test_reference_alignment.py</code> compares against.
             </div>
 
             <div class="local-search-note">
-                <h3>️ Local Search Algorithm Notice</h3>
-                <p><strong>Hill Climbing is a pure local search method:</strong></p>
+                <h3>HumpDay's HillClimbing at a glance</h3>
                 <ul>
-                    <li><strong>Local Optima:</strong> Gets trapped in local minima - no global search capability</li>
-                    <li><strong>Starting Point Dependent:</strong> Final solution depends heavily on initialization</li>
-                    <li><strong>Fast Convergence:</strong> Very efficient for local refinement</li>
-                    <li><strong>Baseline Method:</strong> Useful as starting point or component in hybrid algorithms</li>
+                    <li><strong>Initial &sigma;:</strong> <code>0.1</code>.</li>
+                    <li><strong>Decay:</strong> geometric, computed so that &sigma; ends at <code>1e-3</code> after <code>n_trials &minus; 1</code> iterations.</li>
+                    <li><strong>Acceptance:</strong> greedy (1+1) selection &mdash; accept only if <em>f<sub>new</sub> &lt; f</em>.</li>
+                    <li><strong>Proposal:</strong> componentwise Gaussian, <em>x<sub>new</sub> = clip(x + &sigma;&middot;z)</em> with <em>z &sim; N(0, I)</em>.</li>
                 </ul>
             </div>
             <div class="visualization-section">
@@ -321,24 +320,23 @@
                         </td>
                     </tr>
                     <tr>
-                        <td class="category">Humpday Python Implementation</td>
+                        <td class="category">HumpDay Python</td>
                         <td>
-                            <strong>Humpday Hill Climbing</strong><br>
-                            Custom local search with neighborhood generation<br>
-                            Steepest ascent or first improvement strategies<br>
-                            <em>File: humpday/optimizers/localsearch*.py</em>
+                            <strong>HumpDay <code>HillClimbing</code></strong><br>
+                            (1+1)-ES with geometric &sigma; decay from 0.1 to 1e&minus;3 over the budget. Greedy acceptance, componentwise Gaussian proposals.<br>
+                            Pure Python; no required dependencies.<br>
+                            <em>File: <code>humpday/optimizers/evolutionary_algorithms.py</code></em>
                         </td>
                         <td>
-                            <a href="https://github.com/microprediction/humpday/blob/main/humpday/optimizers/evolutionary_algorithms.py#L1003" target="_blank" class="link-button python">Source</a>
+                            <a href="https://github.com/microprediction/humpday/blob/main/humpday/optimizers/evolutionary_algorithms.py" target="_blank" class="link-button python">Source</a>
                         </td>
                     </tr>
                     <tr>
-                        <td class="category">Humpday JavaScript</td>
+                        <td class="category">HumpDay JavaScript</td>
                         <td>
-                            <strong>Browser Implementation</strong><br>
-                            Pure JavaScript hill climbing with random neighbors<br>
-                            Configurable step size and neighborhood sampling<br>
-                            <em>Class: HillClimbing</em>
+                            <strong>Browser <code>HillClimbing</code></strong><br>
+                            Mirrors the Python port.<br>
+                            <em>Class: <code>HillClimbing</code></em>
                         </td>
                         <td>
                             <a href="https://github.com/microprediction/humpday/blob/main/docs/js/modules/search-algorithms.js" target="_blank" class="link-button javascript">JS Implementation</a>
@@ -350,11 +348,10 @@
             <div class="performance-notes">
                 <h3>Performance Characteristics</h3>
                 <ul>
-                    <li><strong>Best for:</strong> Local refinement, unimodal functions, quick improvements</li>
-                    <li><strong>Dimensions:</strong> Scalable to any dimension</li>
-                    <li><strong>Function evaluations:</strong> Very efficient, minimal evaluations per step</li>
-                    <li><strong>Convergence:</strong> Fast local convergence, no global guarantees</li>
-                    <li><strong>Robustness:</strong> Simple and reliable, but limited by local optima</li>
+                    <li><strong>Best for:</strong> Smooth basins where the geometric &sigma; schedule lines up with the budget. One evaluation per iteration makes it cheap.</li>
+                    <li><strong>Worst for:</strong> Multimodal landscapes &mdash; HillClimbing has no escape mechanism. Once trapped in a local basin, it refines into it.</li>
+                    <li><strong>Per iteration:</strong> one Gaussian proposal, one evaluation, one greedy comparison.</li>
+                    <li><strong>Relative to its inline (1+1)-ES &sigma;-decay reference</strong> at <code>n_trials=200, n_dim=2</code>: HumpDay matches across sphere, Rosenbrock, and Ackley &mdash; algorithmically identical. See <a href="../sota-status.html">SOTA status</a> for the live numbers.</li>
                 </ul>
             </div>
 
