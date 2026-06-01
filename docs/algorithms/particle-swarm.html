@@ -254,6 +254,16 @@
         <p>Particle Swarm Optimization (PSO) is a population-based stochastic optimization technique introduced by Kennedy and Eberhart (1995). A swarm of particles flies through the search space; each particle's velocity is steered toward its personal best position and the swarm's global best position. HumpDay's <code>ParticleSwarm</code> uses an annealed inertia / cognitive / social schedule, velocity clamping that shrinks over the run, and finishes with an L-BFGS-B polish from the swarm best.</p>
     </div>
 
+            <div class="auto-selection-metadata" style="background:#f8f9fa; border:1px solid #ddd; border-radius:8px; padding:14px 18px; margin:20px 0; font-size:0.95em;">
+                <strong>Auto-selection metadata.</strong>
+                Consulted by <a href="../recommendations.html"><code>humpday.minimize()</code></a> when picking a default algorithm.
+                <ul style="margin:8px 0 0 0;">
+                    <li><strong>Overhead tier 1:</strong> light (~100&micro;s/iter). Eligible when measured <code>eval_time &ge; 10 &micro;s</code>.</li>
+                    <li><strong>Dimensional cap:</strong> no cap &mdash; linear-in-dim or better.</li>
+                    <li><strong>Minimum trials:</strong> 10 &mdash; baseline minimum.</li>
+                </ul>
+            </div>
+
     <h2>Algorithm Description</h2>
 
     <p>The Particle Swarm Optimization algorithm maintains a swarm of particles, where each particle $i$ has a position $\mathbf{x}_i$ and velocity $\mathbf{v}_i$ in the $D$-dimensional search space. The algorithm updates these parameters according to the following equations:</p>

@@ -258,6 +258,16 @@
                 </div>
             </div>
 
+            <div class="auto-selection-metadata" style="background:#f8f9fa; border:1px solid #ddd; border-radius:8px; padding:14px 18px; margin:20px 0; font-size:0.95em;">
+                <strong>Auto-selection metadata.</strong>
+                Consulted by <a href="../recommendations.html"><code>humpday.minimize()</code></a> when picking a default algorithm.
+                <ul style="margin:8px 0 0 0;">
+                    <li><strong>Overhead tier 1:</strong> light (~100&micro;s/iter). Eligible when measured <code>eval_time &ge; 10 &micro;s</code>.</li>
+                    <li><strong>Dimensional cap:</strong> no cap &mdash; linear-in-dim or better.</li>
+                    <li><strong>Minimum trials:</strong> 10 &mdash; baseline minimum.</li>
+                </ul>
+            </div>
+
             <h2>Implementation Details</h2>
             <table class="implementation-table">
                 <thead>

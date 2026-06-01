@@ -242,6 +242,16 @@
         <p><strong>RandomSearch is a baseline, not a SOTA algorithm.</strong> It draws <em>n_trials</em> i.i.d. uniform samples from <em>[0, 1]<sup>n</sup></em> and keeps the best. Two reasons to ship it: (1) <em>regression check</em> &mdash; any optimizer worth using should clearly beat RandomSearch on smooth problems; (2) <em>contest sanity floor</em> &mdash; ensures the benchmarking harness scores absolute performance, not just relative ranking among SOTA methods. The companion baseline is <code>GridSearch</code>, which enumerates a regular Cartesian grid instead.</p>
     </div>
 
+            <div class="auto-selection-metadata" style="background:#f8f9fa; border:1px solid #ddd; border-radius:8px; padding:14px 18px; margin:20px 0; font-size:0.95em;">
+                <strong>Auto-selection metadata.</strong>
+                Consulted by <a href="../recommendations.html"><code>humpday.minimize()</code></a> when picking a default algorithm.
+                <ul style="margin:8px 0 0 0;">
+                    <li><strong>Overhead tier 0:</strong> trivial (~&micro;s/iter). Always eligible by the timing filter.</li>
+                    <li><strong>Dimensional cap:</strong> no cap &mdash; linear-in-dim or better.</li>
+                    <li><strong>Minimum trials:</strong> 10 &mdash; baseline minimum.</li>
+                </ul>
+            </div>
+
     <h2>Algorithm Description</h2>
 
     <p>The Random Search algorithm generates candidate solutions by uniform random sampling from the feasible region. For a $D$-dimensional optimization problem on the unit hypercube $[0,1]^D$, the algorithm operates as follows:</p>
