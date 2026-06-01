@@ -233,8 +233,8 @@
     </nav>
     <div class="container">
         <div class="header">
-            <h1>Pattern Search (MATLAB/Custom)</h1>
-            <p>Direct Search with Coordinate Patterns</p>
+            <h1>Pattern Search (Hooke-Jeeves)</h1>
+            <p>Exploratory move + pattern move, with restart on multimodal landscapes</p>
         </div>
 
         <div class="content">
@@ -243,7 +243,18 @@
             </div>
 
             <div class="algorithm-description">
-                <strong>Pattern Search</strong> is a family of derivative-free optimization methods that explore the search space using a structured pattern of points around the current best solution. These algorithms use a set of polling directions to systematically search for improvements, making them particularly effective for problems with discontinuities or noise where gradient information is unreliable.
+                <strong>Pattern Search</strong> in HumpDay is the classical <strong>Hooke-Jeeves</strong> algorithm (1961). Each cycle does an <em>exploratory move</em> &mdash; try &plusmn;<code>step</code> on each axis, keep first improvement per coordinate &mdash; followed by a <em>pattern move</em> that extrapolates from the previous base point through the new exploratory point. A second exploratory move from the pattern point either confirms the pattern (accept it) or falls back to the bare exploratory move. The step is halved after sweeps with no improvement.
+            </div>
+
+            <div class="coordinate-note">
+                <h3>HumpDay's pattern search at a glance</h3>
+                <ul>
+                    <li><strong>Exploratory move:</strong> try &plusmn;<code>step</code> on each coordinate, keep first improvement per axis.</li>
+                    <li><strong>Pattern move:</strong> if the exploratory improved, extrapolate <code>new_base = clip(x + (x - base))</code> and re-explore.</li>
+                    <li><strong>Step halving:</strong> failed sweep &rArr; halve the step.</li>
+                    <li><strong>Restart on multimodal trapping:</strong> when <code>step &le; 1e-6</code> with <code>f &gt; 1e-8</code>, reinitialise from a random base. On smooth basins the run exits naturally before the restart fires.</li>
+                    <li><strong>Initial step <code>0.1</code></strong>, floor <code>1e-12</code>, on the unit cube <code>[0, 1]<sup>n</sup></code>.</li>
+                </ul>
             </div>
             <div class="visualization-section">
                 <h3>Interactive 3D Visualization</h3>
@@ -274,15 +285,16 @@
                 </thead>
                 <tbody>
                     <tr>
-                        <td class="category">Algorithmic Family</td>
+                        <td class="category">Algorithm</td>
                         <td>
-                            <strong>Direct Search Methods</strong><br>
-                            Generalized Pattern Search (GPS), Mesh Adaptive Direct Search<br>
-                            Coordinate search with adaptive step sizes<br>
-                            <em>Developed: 1950s-1990s (Hooke-Jeeves, Torczon, etc.)</em>
+                            <strong>Hooke-Jeeves direct search (1961)</strong><br>
+                            Exploratory move + pattern move; step halved on failed sweeps.<br>
+                            One of the earliest published derivative-free methods.<br>
+                            <em>Reference: Hooke &amp; Jeeves (1961), "'Direct search' solution of numerical and statistical problems", J. ACM 8(2)</em>
                         </td>
                         <td>
-                            <a href="https://epubs.siam.org/doi/book/10.1137/1.9781611971200" target="_blank" class="link-button paper">Direct Search Book</a>
+                            <a href="https://doi.org/10.1145/321062.321069" target="_blank" class="link-button paper">Original Paper</a>
+                            <a href="https://epubs.siam.org/doi/book/10.1137/1.9781611971200" target="_blank" class="link-button paper">DFO Book</a>
                         </td>
                     </tr>
                     <tr>
@@ -298,24 +310,23 @@
                         </td>
                     </tr>
                     <tr>
-                        <td class="category">Humpday Python</td>
+                        <td class="category">HumpDay Python</td>
                         <td>
-                            <strong>HumpDay Python Implementation</strong><br>
-                            Pure-Python pattern search — probes ±step along each coordinate axis; grows step on success, halves on stall, random-restarts when tiny<br>
-                            No required dependencies<br>
-                            <em>File: humpday/optimizers/search_algorithms.py</em>
+                            <strong>HumpDay <code>PatternSearch</code></strong><br>
+                            Faithful Hooke-Jeeves: exploratory + pattern move, step halved on failed sweep, restart on multimodal trapping.<br>
+                            Pure Python; no required dependencies.<br>
+                            <em>File: <code>humpday/optimizers/search_algorithms.py</code></em>
                         </td>
                         <td>
-                            <a href="https://github.com/microprediction/humpday/blob/main/humpday/optimizers/search_algorithms.py#L181" target="_blank" class="link-button python">Custom Implementation</a>
+                            <a href="https://github.com/microprediction/humpday/blob/main/humpday/optimizers/search_algorithms.py" target="_blank" class="link-button python">Source</a>
                         </td>
                     </tr>
                     <tr>
-                        <td class="category">Humpday JavaScript</td>
+                        <td class="category">HumpDay JavaScript</td>
                         <td>
-                            <strong>Browser Implementation</strong><br>
-                            JavaScript pattern search with coordinate polling<br>
-                            Adaptive mesh refinement and pattern expansion<br>
-                            <em>Class: PatternSearch</em>
+                            <strong>Browser <code>PatternSearch</code></strong><br>
+                            Mirrors the Python port. Used in the contest and the in-browser visualizer.<br>
+                            <em>Class: <code>PatternSearch</code></em>
                         </td>
                         <td>
                             <a href="https://github.com/microprediction/humpday/blob/main/docs/js/modules/search-algorithms.js" target="_blank" class="link-button javascript">JS Port</a>
@@ -325,13 +336,12 @@
             </table>
 
             <div class="performance-notes">
-                <h3>Performance Characteristics</h3>
+                <h3>Performance characteristics</h3>
                 <ul>
-                    <li><strong>Best for:</strong> Discontinuous functions, noisy problems, constrained optimization</li>
-                    <li><strong>Dimensions:</strong> Works well up to moderate dimensions (~50)</li>
-                    <li><strong>Function evaluations:</strong> Typically 2n evaluations per iteration</li>
-                    <li><strong>Convergence:</strong> Reliable local convergence, mesh refinement guarantees</li>
-                    <li><strong>Robustness:</strong> Excellent for problems where gradients don't exist</li>
+                    <li><strong>Best for:</strong> Smooth, low-dimensional black-box objectives where the pattern move can race along a valley.</li>
+                    <li><strong>Worst for:</strong> Highly multimodal landscapes (Ackley) where Hooke-Jeeves traps in local basins. HumpDay's restart trigger softens this but doesn't eliminate it &mdash; Hooke-Jeeves is local, not global.</li>
+                    <li><strong>Dimensions:</strong> Each exploratory sweep is <em>O(n_dim)</em> evaluations; pattern move adds one more per cycle.</li>
+                    <li><strong>Relative to a textbook Hooke-Jeeves reference</strong> at <code>n_trials=200, n_dim=2</code>: ties on Rosenbrock; the restart trigger leaves a small precision gap on sphere and Ackley (see <a href="../sota-status.html">SOTA status</a>).</li>
                 </ul>
             </div>
 

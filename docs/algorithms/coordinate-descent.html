@@ -245,8 +245,8 @@
     </nav>
     <div class="container">
         <div class="header">
-            <h1>Coordinate Descent (Custom)</h1>
-            <p>Alternating Single-Variable Optimization</p>
+            <h1>Coordinate Descent</h1>
+            <p>Greedy expansion per axis, with restart on multimodal landscapes</p>
         </div>
 
         <div class="content">
@@ -255,17 +255,16 @@
             </div>
 
             <div class="algorithm-description">
-                <strong>Coordinate Descent</strong> is a fundamental optimization algorithm that cyclically optimizes along individual coordinate directions. At each iteration, it minimizes the objective function with respect to one coordinate while keeping all others fixed. This simple approach is surprisingly effective for many problems and forms the basis for more sophisticated optimization methods.
+                <strong>Coordinate Descent</strong> minimises a black-box objective by sweeping one coordinate at a time. Each sweep tries a step of size <code>step</code> in the &plusmn; direction on each axis; on the first improving move, the algorithm <em>greedily expands</em> &mdash; it keeps stepping in the same direction with the same step size while the objective keeps improving. After a full sweep with no improvement the step is halved.
             </div>
 
             <div class="coordinate-note">
-                <h3>Coordinate-Wise Optimization</h3>
-                <p><strong>Coordinate descent alternates between variables systematically:</strong></p>
+                <h3>HumpDay's coordinate descent at a glance</h3>
                 <ul>
-                    <li><strong>One Variable at a Time:</strong> Optimize x₁, then x₂, then x₃, etc.</li>
-                    <li><strong>Cyclical Updates:</strong> Return to x₁ after reaching xₙ</li>
-                    <li><strong>Line Search:</strong> Exact or approximate minimization along each axis</li>
-                    <li><strong>Simplicity:</strong> Reduces n-dimensional to many 1-dimensional problems</li>
+                    <li><strong>Greedy expansion per axis:</strong> on first improvement at a coordinate, keep stepping in that direction with the same step until f stops improving.</li>
+                    <li><strong>Step halving:</strong> when a full coordinate sweep finds no improvement, halve the step.</li>
+                    <li><strong>Restart on multimodal landscapes:</strong> when <code>step &le; 1e-6</code> with <code>f &gt; 1e-8</code> the run is presumed trapped in a local basin and reinitialises from a random point. On smooth basins (sphere, Rosenbrock) the run exits naturally before the restart fires.</li>
+                    <li><strong>Initial step <code>0.1</code></strong>, floor <code>1e-12</code>, on the unit cube <code>[0, 1]<sup>n</sup></code>.</li>
                 </ul>
             </div>
             <div class="visualization-section">
@@ -299,10 +298,10 @@
                     <tr>
                         <td class="category">Algorithm Foundation</td>
                         <td>
-                            <strong>Classic Optimization Method</strong><br>
-                            Alternating minimization along coordinate axes<br>
-                            Gauss-Seidel style iterative updates<br>
-                            <em>Historical: Early numerical optimization (1950s+)</em>
+                            <strong>Coordinate descent (cyclic)</strong><br>
+                            One of the oldest derivative-free methods; predates the optimization literature.<br>
+                            HumpDay's variant uses Brent-style greedy expansion per axis (no inner line-search subroutine) and step halving on failed sweeps.<br>
+                            <em>Reference: Wright (2015), "Coordinate descent algorithms", Math. Programming 151(1)</em>
                         </td>
                         <td>
                             <a href="https://en.wikipedia.org/wiki/Coordinate_descent" target="_blank" class="link-button info">Wikipedia</a>
@@ -321,24 +320,23 @@
                         </td>
                     </tr>
                     <tr>
-                        <td class="category">Humpday Python Implementation</td>
+                        <td class="category">HumpDay Python</td>
                         <td>
-                            <strong>Humpday Coordinate Descent</strong><br>
-                            Custom implementation with line search<br>
-                            Cyclical coordinate selection<br>
-                            <em>File: humpday/optimizers/search_algorithms.py</em>
+                            <strong>HumpDay <code>CoordinateDescent</code></strong><br>
+                            Cyclic sweeps, greedy expansion on the first improving axis step, halve step on failed sweeps, restart trigger on multimodal trapping.<br>
+                            Pure Python; no required dependencies.<br>
+                            <em>File: <code>humpday/optimizers/search_algorithms.py</code></em>
                         </td>
                         <td>
-                            <a href="https://github.com/microprediction/humpday/blob/main/humpday/optimizers/search_algorithms.py#L90" target="_blank" class="link-button python">Source</a>
+                            <a href="https://github.com/microprediction/humpday/blob/main/humpday/optimizers/search_algorithms.py" target="_blank" class="link-button python">Source</a>
                         </td>
                     </tr>
                     <tr>
-                        <td class="category">Humpday JavaScript</td>
+                        <td class="category">HumpDay JavaScript</td>
                         <td>
-                            <strong>Browser Implementation</strong><br>
-                            Pure JavaScript coordinate descent<br>
-                            Golden section search for line minimization<br>
-                            <em>Class: CoordinateDescent</em>
+                            <strong>Browser <code>CoordinateDescent</code></strong><br>
+                            Same algorithm as the Python port (greedy expansion + restart). Used in the contest and the in-browser visualizer.<br>
+                            <em>Class: <code>CoordinateDescent</code></em>
                         </td>
                         <td>
                             <a href="https://github.com/microprediction/humpday/blob/main/docs/js/modules/search-algorithms.js" target="_blank" class="link-button javascript">JS Implementation</a>
@@ -348,13 +346,13 @@
             </table>
 
             <div class="performance-notes">
-                <h3>Performance Characteristics</h3>
+                <h3>Performance characteristics</h3>
                 <ul>
-                    <li><strong>Best for:</strong> Separable problems, sparse optimization, large-scale problems</li>
-                    <li><strong>Dimensions:</strong> Excellent scalability to high dimensions</li>
-                    <li><strong>Function evaluations:</strong> Efficient, especially with exact line search</li>
-                    <li><strong>Convergence:</strong> Linear convergence on smooth, strongly convex problems</li>
-                    <li><strong>Robustness:</strong> Simple, stable, handles non-smooth functions reasonably</li>
+                    <li><strong>Best for:</strong> Smooth, near-axis-aligned objectives where greedy expansion gets traction.</li>
+                    <li><strong>Worst for:</strong> Curved valleys and highly multimodal landscapes &mdash; coordinate moves zigzag down a curved valley (Rosenbrock) and trap easily in Ackley-style basins.</li>
+                    <li><strong>Dimensions:</strong> Each sweep is <em>O(n_dim)</em> function evaluations; the algorithm scales cheaply with dimension but precision suffers as the basin shape becomes less axis-aligned.</li>
+                    <li><strong>Convergence:</strong> Geometric reduction of the step size; a single run halts when step falls to the floor (or the restart trigger fires).</li>
+                    <li><strong>Relative to a textbook greedy coordinate descent reference</strong> at <code>n_trials=200, n_dim=2</code>: matches on Rosenbrock; the restart trigger leaves a precision gap on sphere and Ackley (see <a href="../sota-status.html">SOTA status</a> for the live numbers).</li>
                 </ul>
             </div>
 
