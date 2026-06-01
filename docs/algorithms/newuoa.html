@@ -244,7 +244,18 @@
             </div>
 
             <div class="algorithm-description">
-                <strong>NEWUOA</strong> is an advanced trust-region method that builds underdetermined quadratic models using fewer interpolation points than UOBYQA. Developed by M.J.D. Powell as an improvement over UOBYQA, it uses 2n+1 interpolation points instead of the full (n+1)(n+2)/2, making it more efficient for higher-dimensional problems while maintaining good approximation quality.
+                <strong>NEWUOA</strong> (Powell, 2006) is a trust-region method for derivative-free optimization that builds <em>underdetermined</em> quadratic models from <em>2n + 1</em> interpolation points (compared to UOBYQA's full <em>(n+1)(n+2)/2</em>). The underdetermination is resolved by Powell's <strong>minimum-Frobenius-norm update</strong>: pick the Hessian closest in Frobenius norm to the previous Hessian, subject to the interpolation constraints. This lets NEWUOA capture cross-coupling (e.g., Rosenbrock's <em>(b &minus; a<sup>2</sup>)<sup>2</sup></em> term) despite using only <em>2n + 1</em> points. HumpDay's <code>PRIMA_NEWUOA</code> implements the min-Frobenius update directly, with a dogleg trust-region step and unconditional base-point shifting.
+            </div>
+
+            <div class="coordinate-note" style="background:#e8f4fd; border:1px solid #bee5eb; border-radius:8px; padding:15px; margin:20px 0;">
+                <h3 style="color:#0c5460; margin-top:0;">HumpDay's NEWUOA at a glance</h3>
+                <ul>
+                    <li><strong>Interpolation set:</strong> <code>npt = 2&middot;n + 1</code> points. Initial design: base point + &plusmn;&rho; along each coordinate.</li>
+                    <li><strong>Model fit:</strong> minimum-Frobenius-norm Hessian update (Powell's recipe) &mdash; keeps <em>H</em> as close as possible to the previous Hessian, subject to the interpolation constraints.</li>
+                    <li><strong>Trust-region step:</strong> dogleg path (Cauchy &rarr; Newton).</li>
+                    <li><strong>Geometry:</strong> furthest-from-new-position replacement for the interpolation set.</li>
+                    <li><strong>Base-point shifting:</strong> unconditional at the end of each iteration, so <code>XPT[kopt] &approx; 0</code> at the start of every model fit.</li>
+                </ul>
             </div>
             <div class="visualization-section">
                 <h3>Interactive 3D Visualization</h3>
@@ -300,24 +311,23 @@
                         </td>
                     </tr>
                     <tr>
-                        <td class="category">Humpday Python</td>
+                        <td class="category">HumpDay Python</td>
                         <td>
-                            <strong>HumpDay Python Implementation</strong><br>
-                            Pure-Python port of NEWUOA — underdetermined quadratic trust region, no PDFO/Fortran call<br>
-                            No required dependencies<br>
-                            <em>File: humpday/optimizers/prima_algorithms.py</em>
+                            <strong>HumpDay <code>PRIMA_NEWUOA</code></strong><br>
+                            Pure-Python port: minimum-Frobenius-norm Hessian update on a <em>2n + 1</em>-point interpolation set, dogleg trust-region step, furthest-from-new-position geometry, unconditional base-point shifting.<br>
+                            No required dependencies.<br>
+                            <em>File: <code>humpday/optimizers/prima_algorithms.py</code></em>
                         </td>
                         <td>
-                            <a href="https://github.com/microprediction/humpday/blob/main/humpday/optimizers/prima_algorithms.py#L735" target="_blank" class="link-button python">Source Code</a>
+                            <a href="https://github.com/microprediction/humpday/blob/main/humpday/optimizers/prima_algorithms.py" target="_blank" class="link-button python">Source</a>
                         </td>
                     </tr>
                     <tr>
-                        <td class="category">Humpday JavaScript</td>
+                        <td class="category">HumpDay JavaScript</td>
                         <td>
-                            <strong>Browser Implementation</strong><br>
-                            JavaScript port attempting to match PDFO behavior<br>
-                            Underdetermined quadratic model building<br>
-                            <em>Class: PRIMA_NEWUOA</em>
+                            <strong>Browser <code>PRIMA_NEWUOA</code></strong><br>
+                            Mirrors the Python port.<br>
+                            <em>Class: <code>PRIMA_NEWUOA</code></em>
                         </td>
                         <td>
                             <a href="https://github.com/microprediction/humpday/blob/main/docs/js/modules/prima-algorithms.js" target="_blank" class="link-button javascript">JS Port</a>
@@ -329,11 +339,10 @@
             <div class="performance-notes">
                 <h3>Performance Characteristics</h3>
                 <ul>
-                    <li><strong>Best for:</strong> Smooth, unconstrained problems in moderate to high dimensions</li>
-                    <li><strong>Dimensions:</strong> Particularly effective for n > 10 where UOBYQA becomes expensive</li>
-                    <li><strong>Function evaluations:</strong> Uses 2n+1 points, more efficient than UOBYQA's (n+1)(n+2)/2</li>
-                    <li><strong>Convergence:</strong> Excellent convergence on smooth functions</li>
-                    <li><strong>Robustness:</strong> Handles moderate noise, good balance of exploration and exploitation</li>
+                    <li><strong>Best for:</strong> Smooth, unconstrained problems in moderate to high dimensions. The <em>2n+1</em>-point design scales better than UOBYQA's full-quadratic and the min-Frobenius update keeps the model curvature informative.</li>
+                    <li><strong>Worst for:</strong> Multimodal landscapes &mdash; like all PRIMA algorithms, NEWUOA is a local trust-region method.</li>
+                    <li><strong>Per iteration:</strong> one TR step + one evaluation. Each iteration also requires a small linear-algebra solve for the min-Frobenius Hessian update.</li>
+                    <li><strong>Relative to PDFO NEWUOA</strong> at <code>n_trials=200, n_dim=2</code>: matches reference across sphere, Rosenbrock, and Ackley. See <a href="../sota-status.html">SOTA status</a> for the live numbers.</li>
                 </ul>
             </div>
 

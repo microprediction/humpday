@@ -239,7 +239,7 @@
 
     <div class="abstract">
         <h3>Abstract</h3>
-        <p>Random Search is a fundamental optimization technique that explores the search space by uniformly sampling random points and tracking the best solution found. Despite its simplicity, Random Search serves as an important baseline for evaluating more sophisticated optimization algorithms and can be surprisingly effective for high-dimensional problems with complex landscapes.</p>
+        <p><strong>RandomSearch is a baseline, not a SOTA algorithm.</strong> It draws <em>n_trials</em> i.i.d. uniform samples from <em>[0, 1]<sup>n</sup></em> and keeps the best. Two reasons to ship it: (1) <em>regression check</em> &mdash; any optimizer worth using should clearly beat RandomSearch on smooth problems; (2) <em>contest sanity floor</em> &mdash; ensures the benchmarking harness scores absolute performance, not just relative ranking among SOTA methods. The companion baseline is <code>GridSearch</code>, which enumerates a regular Cartesian grid instead.</p>
     </div>
 
     <h2>Algorithm Description</h2>
@@ -297,7 +297,7 @@
     </table>
 
     <div class="validation-status">
-        <p><strong>Validation Status:</strong> VALIDATED - Random search implementation verified against mathematical specification. Cross-platform consistency confirmed between Python and JavaScript versions.</p>
+        <p>The Python and JS implementations are i.i.d. uniform samplers; the reference adapter in <code>tests/test_reference_alignment.py</code> is also a uniform sampler with a different RNG seed. The ratio on <a href="../sota-status.html">SOTA status</a> is therefore close to 1 and not a quality signal &mdash; it's there as a sanity check that the harness is wired correctly.</p>
     </div>
 
     <h2>Theoretical Properties</h2>
