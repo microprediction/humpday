@@ -233,8 +233,8 @@
     </nav>
     <div class="container">
         <div class="header">
-            <h1>Finite-Difference Quasi-Newton</h1>
-            <p>(HumpDay's <code>LBFGSB</code> class — a derivative-free baseline)</p>
+            <h1>L-BFGS-B</h1>
+            <p>Byrd-Lu-Nocedal-Zhu (1995) limited-memory quasi-Newton with simple bounds, on finite-difference gradients</p>
         </div>
 
         <div class="content">
@@ -243,7 +243,14 @@
             </div>
 
             <div class="algorithm-description">
-                HumpDay is a <strong>derivative-free</strong> library: every algorithm sees only <code>f(x)</code>, never an analytical gradient. This one estimates a descent direction by central finite differences from function calls, then moves along it with an adaptive step size and momentum. It is named <code>LBFGSB</code> in the codebase as a nod to the limited-memory BFGS family it sits closest to in spirit, but it is <em>not</em> a faithful Byrd–Lu–Nocedal–Zhu L-BFGS-B implementation — that algorithm needs true gradients, which HumpDay does not have. Think of this as a finite-difference gradient-descent baseline.
+                HumpDay's <code>LBFGSB</code> is a faithful pure-Python port of scipy's <code>_minimize_lbfgsb</code> with four elements that distinguish it from a textbook two-loop L-BFGS:
+                <ol>
+                    <li><strong>Bound-aware direction projection</strong> &mdash; direction components that would push x past an active bound are zeroed (the simple-bounds reduction of the Cauchy-point step).</li>
+                    <li><strong>Projected-gradient sup-norm</strong> convergence test (<code>pgtol</code>).</li>
+                    <li><strong>f-tolerance termination</strong> &mdash; stop when <code>(f_old − f_new) &lt; factr&middot;eps_mach&middot;max(|f|, 1)</code>, scipy's headline criterion.</li>
+                    <li><strong>Feasibility-capped initial step</strong> &mdash; cap step length so <code>x + step&middot;direction</code> stays in <code>[0,1]<sup>n</sup></code> before backtracking.</li>
+                </ol>
+                HumpDay is a <strong>derivative-free</strong> library &mdash; algorithms see only <code>f(x)</code>, never an analytical gradient. Where scipy's L-BFGS-B uses analytic gradients (or a tighter Fortran-backed FD), HumpDay computes a central finite-difference gradient (2&middot;n_dim evaluations) per L-BFGS iteration. That's the only structural deviation from the reference algorithm.
             </div>
             <div class="visualization-section">
                 <h3>Interactive 3D Visualization</h3>
@@ -299,24 +306,23 @@
                         </td>
                     </tr>
                     <tr>
-                        <td class="category">Humpday Python</td>
+                        <td class="category">HumpDay Python</td>
                         <td>
-                            <strong>HumpDay Python Implementation</strong><br>
-                            Pure-Python finite-difference gradient descent with momentum<br>
-                            No required dependencies; named after L-BFGS-B but structurally closer to gradient descent + momentum<br>
-                            <em>File: humpday/optimizers/scipy_algorithms.py</em>
+                            <strong>HumpDay <code>LBFGSB</code></strong><br>
+                            Pure-Python port of scipy's <code>_minimize_lbfgsb</code>: two-loop recursion + bound-aware direction projection + projected-gradient pgtol + factr&middot;eps_mach termination + feasibility-capped Armijo line search.<br>
+                            FD gradient (2&middot;n_dim evals per iteration); memory <code>m = min(10, n_dim)</code>.<br>
+                            <em>File: <code>humpday/optimizers/scipy_algorithms.py</code></em>
                         </td>
                         <td>
-                            <a href="https://github.com/microprediction/humpday/blob/main/humpday/optimizers/scipy_algorithms.py#L448" target="_blank" class="link-button python">Source Code</a>
+                            <a href="https://github.com/microprediction/humpday/blob/main/humpday/optimizers/scipy_algorithms.py" target="_blank" class="link-button python">Source</a>
                         </td>
                     </tr>
                     <tr>
-                        <td class="category">Humpday JavaScript</td>
+                        <td class="category">HumpDay JavaScript</td>
                         <td>
-                            <strong>Browser Implementation</strong><br>
-                            JavaScript L-BFGS-B with finite difference gradients<br>
-                            Limited-memory Hessian approximation<br>
-                            <em>Class: LBFGSB</em>
+                            <strong>Browser <code>LBFGSB</code></strong><br>
+                            Mirrors the Python port line-for-line. Also shared via <code>BaseOptimizer._lbfgsPolish</code> as the polish stage for DE / SA / BayesianOpt / PSO / CMA-ES / FA.<br>
+                            <em>Class: <code>LBFGSB</code></em>
                         </td>
                         <td>
                             <a href="https://github.com/microprediction/humpday/blob/main/docs/js/modules/scipy-algorithms.js" target="_blank" class="link-button javascript">JS Port</a>
@@ -326,13 +332,13 @@
             </table>
 
             <div class="performance-notes">
-                <h3>Performance Characteristics</h3>
+                <h3>Performance characteristics</h3>
                 <ul>
-                    <li><strong>Best for:</strong> Large-scale smooth optimization with bound constraints</li>
-                    <li><strong>Dimensions:</strong> Excellent for high dimensions (hundreds to thousands)</li>
-                    <li><strong>Function evaluations:</strong> Very efficient, typically O(n) per iteration</li>
-                    <li><strong>Convergence:</strong> Superlinear convergence on smooth problems</li>
-                    <li><strong>Memory:</strong> Limited memory - only stores recent gradient information</li>
+                    <li><strong>Best for:</strong> Smooth, near-quadratic basins where the L-BFGS curvature estimate is informative. Routinely the polish stage of choice at the end of population-based methods.</li>
+                    <li><strong>Worst for:</strong> Multimodal landscapes &mdash; L-BFGS-B is local, not global. The bound-aware direction projection keeps it from wandering off the cube but it has no escape from a wrong basin.</li>
+                    <li><strong>Per iteration:</strong> central FD gradient (2&middot;n_dim evaluations) + one or more line-search trials. Memory <code>m = min(10, n_dim)</code>.</li>
+                    <li><strong>Relative to scipy.optimize L-BFGS-B</strong> at <code>n_trials=200, n_dim=2</code>: ties on sphere and Ackley; a small residual on Rosenbrock from the FD-gradient cost. See <a href="../sota-status.html">SOTA status</a> for the live numbers.</li>
+                    <li><strong>Reused as a polish stage</strong> by DE, SA, BayesianOpt, PSO, CMA-ES, and FireflyAlgorithm via <code>BaseOptimizer._lbfgs_polish</code>.</li>
                 </ul>
             </div>
 

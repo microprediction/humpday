@@ -345,13 +345,13 @@
             </table>
 
             <div class="performance-notes">
-                <h3>Performance Characteristics</h3>
+                <h3>Performance characteristics</h3>
                 <ul>
-                    <li><strong>Best for:</strong> Problems where pure random search works but can be improved</li>
-                    <li><strong>Dimensions:</strong> Scalable to high dimensions like random search</li>
-                    <li><strong>Function evaluations:</strong> More efficient than pure random search</li>
-                    <li><strong>Convergence:</strong> Better than O(1/√n) through adaptive learning</li>
-                    <li><strong>Robustness:</strong> Maintains random search robustness with added intelligence</li>
+                    <li><strong>Best for:</strong> Smooth basins where the 1/5 rule keeps &sigma; near the right exploration scale.</li>
+                    <li><strong>Worst for:</strong> Multimodal landscapes (Ackley). Rechenberg has no escape from a local basin; once trapped, it refines into the wrong optimum.</li>
+                    <li><strong>Step distribution:</strong> componentwise Gaussian. Each component of the offspring is drawn from <em>N(0, &sigma;<sup>2</sup>)</em>, so the step magnitude varies stochastically (mean &approx; &sigma;&middot;&radic;n with heavier tails). The previous HumpDay variant projected to a unit direction, which damped the stochastic spread; the current implementation matches the canonical (1+1)-ES.</li>
+                    <li><strong>Dimensions:</strong> Inexpensive per iteration; reasonable into the dozens.</li>
+                    <li><strong>Relative to a canonical (1+1)-ES 1/5-rule reference</strong> at <code>n_trials=200, n_dim=2</code>: algorithmically identical to the reference. Per-cell ratios drift with the seed (both implementations trap on Ackley about half the time at 4-seed samples). See <a href="../sota-status.html">SOTA status</a> for the live numbers.</li>
                 </ul>
             </div>
 
