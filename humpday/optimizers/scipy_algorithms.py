@@ -100,7 +100,9 @@ class NelderMead(BaseOptimizer):
                 # max over all (i, k) of |sim[i][k] - sim[0][k]| <= xatol AND
                 # max over i of |fsim[0] - fsim[i]| <= fatol.
                 x_max = max(
-                    abs(sim[i][k] - sim[0][k]) for i in range(1, n + 1) for k in range(n)
+                    abs(sim[i][k] - sim[0][k])
+                    for i in range(1, n + 1)
+                    for k in range(n)
                 )
                 f_max = max(abs(fsim[0] - fsim[i]) for i in range(1, n + 1))
                 if x_max <= xatol and f_max <= fatol:

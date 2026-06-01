@@ -22,6 +22,7 @@ from humpday.optimizers.evolutionary_algorithms import (
 # ParticleSwarm — SPSO-2011 stagnation reseed
 # -----------------------------------------------------------------------------
 
+
 def _two_basin_1d(x):
     """Misleading shallow basin near 0.2; deeper one at 0.8."""
     x0 = float(x[0])
@@ -55,6 +56,7 @@ def test_pso_stagnation_reseed_escapes_shallow_basin():
 # CMAEvolutionStrategy — IPOP restart
 # -----------------------------------------------------------------------------
 
+
 def test_cma_es_ipop_escapes_local_optimum():
     """A 2D Rastrigin-style landscape with many local minima — vanilla
     CMA-ES converges to whichever basin its initial mean lands in. IPOP
@@ -80,8 +82,7 @@ def test_cma_es_ipop_escapes_local_optimum():
         if v < 0.5:
             near_global += 1
     assert near_global >= 9, (
-        f"CMA-ES IPOP found the global Rastrigin minimum in only "
-        f"{near_global}/15 runs"
+        f"CMA-ES IPOP found the global Rastrigin minimum in only {near_global}/15 runs"
     )
 
 
