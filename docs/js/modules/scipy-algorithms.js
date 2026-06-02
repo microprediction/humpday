@@ -170,8 +170,12 @@ class Powell extends Optimizer {
                 fx = result.fx;
             }
 
-            // Check for improvement
-            if (Math.abs(fx - fx_start) < 1e-8) break;
+            // Check for improvement. Tightened from 1e-8 to 1e-12 to
+            // match the Python port — scipy's default 1e-4 stops far
+            // below Powell's potential; 1e-12 lets the direction set
+            // run to numerical noise on smooth landscapes with no
+            // downside on multimodal ones (the budget cap kicks in).
+            if (Math.abs(fx - fx_start) < 1e-12) break;
 
             // Update direction set
             const newDirection = MathUtils.subtract(x, x_start);
