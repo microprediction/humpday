@@ -248,14 +248,20 @@ and create a project skill from it.</code></pre>
             <p>Install via pip with minimal dependencies:</p>
             <pre class="code-block"><code>pip install humpday</code></pre>
 
-            <p>Basic usage for optimization problems:</p>
+            <p><strong>You don't need to pick an algorithm.</strong> Call <code>minimize</code> with just the objective and bounds &mdash; HumpDay times one call to your objective and consults a benchmarks-driven recommendation grid to pick the algorithm whose dimensional cap, overhead tier, and Borda mean-rank on a 12-objective suite match your problem:</p>
             <pre class="code-block"><code>from humpday import minimize
 
 def objective(x):
     return (x[0] - 2)**2 + (x[1] - 3)**2
 
-result = minimize(objective, bounds=[(-5, 5), (-5, 5)], method='DifferentialEvolution')
-print(f"Solution: {result.x}")  # [2.0, 3.0]</code></pre>
+result = minimize(objective, bounds=[(-5, 5), (-5, 5)])
+print(result.x)                  # [2.0, 3.0]
+print(result.method)             # which algorithm was picked
+print(result.eval_time_measured) # cost of one objective call, in seconds
+print(result.tier)               # overhead tier (0 trivial &rarr; 4 GP-fit-heavy)</code></pre>
+
+            <p>If you do want a specific algorithm, pass <code>method=</code>:</p>
+            <pre class="code-block"><code>result = minimize(objective, bounds=[(-5, 5), (-5, 5)], method='DifferentialEvolution')</code></pre>
 
             <details class="algorithm-list">
                 <summary>Available Algorithm Methods</summary>
@@ -264,7 +270,7 @@ print(f"Solution: {result.x}")  # [2.0, 3.0]</code></pre>
                     <code>'NelderMead'</code>, <code>'Powell'</code>, <code>'LBFGSB'</code>,
                     <code>'DifferentialEvolution'</code>, <code>'ParticleSwarm'</code>, <code>'CMAEvolutionStrategy'</code>,
                     <code>'EvolutionStrategy'</code>, <code>'GeneticAlgorithm'</code>, <code>'BayesianOpt'</code>,
-                    <code>'RandomSearch'</code>, <code>'Rechenberg'</code>, <code>'HillClimbing'</code>,
+                    <code>'RandomSearch'</code>, <code>'GridSearch'</code>, <code>'Rechenberg'</code>, <code>'HillClimbing'</code>,
                     <code>'CoordinateDescent'</code>, <code>'PatternSearch'</code>, <code>'SimulatedAnnealing'</code>,
                     <code>'HarmonySearch'</code>, <code>'FireflyAlgorithm'</code>,
                     <code>'AntColonyOpt'</code>

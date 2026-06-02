@@ -239,11 +239,11 @@
             <strong>TL;DR</strong> &mdash; 20 SOTA-class algorithms + 2 baselines.
             On the SOTA-class set (60 cells, 20 algorithms &times; 3 problems):
             <ul style="margin: 8px 0 0;">
-                <li><strong>36 cells (60%)</strong> &mdash; HumpDay wins reference (ratio &le; 1).</li>
-                <li><strong>6 cells (10%)</strong> &mdash; HumpDay ties reference (1 &lt; ratio &le; 1.5).</li>
+                <li><strong>38 cells (63%)</strong> &mdash; HumpDay wins reference (ratio &le; 1).</li>
+                <li><strong>7 cells (12%)</strong> &mdash; HumpDay ties reference (1 &lt; ratio &le; 1.5).</li>
                 <li><strong>6 cells (10%)</strong> &mdash; small gap (1.5 &lt; ratio &le; 3), within noise on a 4-seed sample.</li>
                 <li><strong>7 cells (12%)</strong> &mdash; tracked gap (3 &lt; ratio &le; 100), explained per-row.</li>
-                <li><strong>4 cells (7%)</strong> &mdash; big gap (ratio &gt; 100), all caused by 4-seed RNG variance or implementation choices that trade precision for behavior elsewhere; not algorithm-class mismatches.</li>
+                <li><strong>2 cells (3%)</strong> &mdash; big gap (ratio &gt; 100), both caused by 4-seed RNG variance on a multimodal landscape; not algorithm-class mismatches.</li>
             </ul>
         </div>
 
@@ -572,7 +572,7 @@
             <a href="https://github.com/microprediction/humpday/blob/main/tests/test_reference_alignment.py"><code>tests/test_reference_alignment.py</code></a>
             via <code>pytest -m reference</code>. Raw data in
             <a href="https://github.com/microprediction/humpday/blob/main/benchmarks/reference_alignment.json"><code>benchmarks/reference_alignment.json</code></a>.
-            Recorded <code>2026-05-31</code>, <code>n_runs=4</code>, <code>n_trials=200</code>, <code>n_dim=2</code>.
+            Recorded <code>2026-06-01</code>, <code>n_runs=4</code>, <code>n_trials=200</code>, <code>n_dim=2</code>.
             Re-run anytime with <code>pip install humpday[reference]</code>
             followed by the pytest command above.
         </p>
