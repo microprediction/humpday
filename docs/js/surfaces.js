@@ -135,7 +135,121 @@ const TestSurfaces = {
             }
             return sum / 2; // Normalize
         };
-    }
+    },
+
+    // Rotated benchmarks — Rosenbrock, Rastrigin, and Ackley
+    // pre-multiplied by a deterministic uniform-random orthogonal Q.
+    // Each strips the axis-alignment bonus that coordinate-wise methods
+    // collect on the standard benchmarks above. Q is computed once per
+    // n_dim by a seeded Linear Congruential Generator + Mezzadri-2007
+    // sign-corrected QR (see _rotationFor below), so the landscape is
+    // reproducible and parity-test-safe but no longer coordinate-
+    // aligned. Matches `humpday.objectives.classic.rotated_*_on_cube`.
+    rotatedRosenbrock(params = {}) {
+        return function(x) {
+            const n = x.length;
+            const Q = TestSurfaces._rotationFor(n);
+            const s = x.map(xi => 4.0 * (xi - 0.5)); // [-2, 2]^n
+            const y = TestSurfaces._matvec(Q, s);
+            let sum = 0;
+            for (let i = 0; i < n - 1; i++) {
+                sum += 100.0 * Math.pow(y[i + 1] - y[i] * y[i], 2)
+                     + Math.pow(1 - y[i], 2);
+            }
+            return sum;
+        };
+    },
+
+    rotatedRastrigin(params = {}) {
+        return function(x) {
+            const n = x.length;
+            const Q = TestSurfaces._rotationFor(n);
+            const s = x.map(xi => 10.24 * (xi - 0.5)); // [-5.12, 5.12]^n
+            const y = TestSurfaces._matvec(Q, s);
+            let sum = 10.0 * n;
+            for (let i = 0; i < n; i++) {
+                sum += y[i] * y[i] - 10.0 * Math.cos(2.0 * Math.PI * y[i]);
+            }
+            return sum;
+        };
+    },
+
+    rotatedAckley(params = {}) {
+        return function(x) {
+            const n = x.length;
+            if (n === 0) return 0;
+            const Q = TestSurfaces._rotationFor(n);
+            const s = x.map(xi => 65.536 * (xi - 0.5)); // [-32.768, 32.768]^n
+            const y = TestSurfaces._matvec(Q, s);
+            const a = 20.0, b = 0.2, c = 2.0 * Math.PI;
+            let sum1 = 0, sum2 = 0;
+            for (let i = 0; i < n; i++) {
+                sum1 += y[i] * y[i];
+                sum2 += Math.cos(c * y[i]);
+            }
+            return -a * Math.exp(-b * Math.sqrt(sum1 / n))
+                 - Math.exp(sum2 / n)
+                 + a + Math.E;
+        };
+    },
+
+    // Cache of deterministic rotation matrices, keyed by n_dim. Uses a
+    // simple LCG (Park-Miller, period 2^31 - 2) seeded by 12345 + n_dim
+    // so JS and Python don't need to share an RNG — each side just
+    // needs a deterministic-per-n_dim orthogonal matrix. The matrix Q
+    // is uniformly distributed on O(n) via Mezzadri's (2007)
+    // sign-corrected QR construction: take Q from QR of a Gaussian
+    // matrix, then sign-correct by diag(sign(diag(R))).
+    _rotationCache: {},
+
+    _rotationFor(n) {
+        if (TestSurfaces._rotationCache[n]) return TestSurfaces._rotationCache[n];
+
+        // Seeded RNG.
+        let s = (12345 + n) | 0;
+        if (s === 0) s = 1;
+        const rand = () => {
+            s = (s * 48271) % 2147483647;
+            return s / 2147483647;
+        };
+        // Box-Muller for standard normal.
+        const gauss = () => {
+            const u1 = Math.max(rand(), 1e-12);
+            const u2 = rand();
+            return Math.sqrt(-2 * Math.log(u1)) * Math.cos(2 * Math.PI * u2);
+        };
+
+        // Random Gaussian matrix A (n × n).
+        const A = new Array(n);
+        for (let i = 0; i < n; i++) {
+            A[i] = new Array(n);
+            for (let j = 0; j < n; j++) A[i][j] = gauss();
+        }
+
+        // QR via Linalg.householderQR (loaded as a script before this
+        // file in the browser; in Node we require it manually below).
+        const _Linalg = (typeof Linalg !== 'undefined')
+            ? Linalg
+            : require('./modules/linalg.js');
+        const { Q, R } = _Linalg.householderQR(A);
+
+        // Sign-correct so Q is uniform on O(n) per Mezzadri (2007).
+        for (let j = 0; j < n; j++) {
+            const sign = R[j][j] >= 0 ? 1 : -1;
+            for (let i = 0; i < n; i++) Q[i][j] *= sign;
+        }
+
+        TestSurfaces._rotationCache[n] = Q;
+        return Q;
+    },
+
+    _matvec(M, v) {
+        const out = new Array(M.length).fill(0);
+        for (let i = 0; i < M.length; i++) {
+            for (let j = 0; j < v.length; j++) out[i] += M[i][j] * v[j];
+        }
+        return out;
+    },
 };
 
 // Surface generator for contests
