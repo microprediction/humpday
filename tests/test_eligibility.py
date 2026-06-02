@@ -114,6 +114,25 @@ def test_trivial_tier_always_passes_eval_time():
     assert E.passes_eval_time("RandomSearch", 1e-9)
 
 
+def test_tier_0_is_pure_sampling_baselines_only():
+    """Tier-0 is reserved for algorithms with no adaptive structure. After
+    moving HillClimbing and Rechenberg to tier-1, only the true sampling
+    baselines remain."""
+    tier_0 = {a for a, t in E.TIER.items() if t == E.TIER_TRIVIAL}
+    assert tier_0 == {"RandomSearch", "GridSearch"}
+
+
+def test_hillclimbing_now_tier_1():
+    """HillClimbing's σ-decay (1+1)-ES + 10% random-restart per
+    unimproved step is adaptive enough that picking it for cheap
+    objectives was misleading — it now needs the 10 µs tier-1 threshold."""
+    assert E.TIER["HillClimbing"] == E.TIER_LIGHT
+    assert E.TIER["Rechenberg"] == E.TIER_LIGHT
+    # And the threshold for tier-1 is what we expect.
+    assert not E.passes_eval_time("HillClimbing", 1e-6)
+    assert E.passes_eval_time("HillClimbing", 1e-4)
+
+
 def test_bayesian_opt_blocked_for_cheap_objective():
     # 1 microsecond per eval — GP fit will dominate
     assert not E.passes_eval_time("BayesianOpt", 1e-6)
@@ -262,6 +281,67 @@ def _write_grid(tmp_path, cells: dict) -> "Path":
     return p
 
 
+def test_recommend_prefers_borda_score_over_median_best(tmp_path):
+    """When the grid carries a Borda mean-rank, the recommender uses it
+    instead of median_best — capturing reliability across the objective
+    suite rather than absolute best-value on one objective."""
+    import json
+
+    p = tmp_path / "grid.json"
+    p.write_text(
+        json.dumps(
+            {
+                "meta": {},
+                "cells": {
+                    "5/200": {
+                        # DifferentialEvolution wins median_best but loses
+                        # the reliability comparison: it ranks badly on the
+                        # rest of the suite (Borda 4.0).
+                        "DifferentialEvolution": {
+                            "median_best": 1e-9,
+                            "borda_score": 4.0,
+                        },
+                        # CMA-ES has higher median_best but ranks #1 across
+                        # the suite (Borda 1.2).
+                        "CMAEvolutionStrategy": {
+                            "median_best": 1e-3,
+                            "borda_score": 1.2,
+                        },
+                    }
+                },
+            }
+        )
+    )
+    E._clear_grid_cache()
+    pick = E.recommend(n_dim=5, n_trials=200, eval_time=1.0, grid_path=p)
+    assert pick == "CMAEvolutionStrategy"
+
+
+def test_recommend_falls_back_to_median_best_when_borda_absent(tmp_path):
+    """Older grids built before the Borda upgrade have only median_best.
+    The recommender should still work on them."""
+    p = _write_grid_legacy(
+        tmp_path,
+        {
+            "5/200": {
+                "DifferentialEvolution": {"median_best": 1e-9},
+                "CMAEvolutionStrategy": {"median_best": 1e-3},
+            }
+        },
+    )
+    pick = E.recommend(n_dim=5, n_trials=200, eval_time=1.0, grid_path=p)
+    assert pick == "DifferentialEvolution"
+
+
+def _write_grid_legacy(tmp_path, cells: dict) -> "Path":
+    import json
+
+    p = tmp_path / "legacy_grid.json"
+    p.write_text(json.dumps({"meta": {}, "cells": cells}))
+    E._clear_grid_cache()
+    return p
+
+
 def test_recommend_uses_grid_when_present(tmp_path):
     """When a grid is on disk, the recommender picks the eligible algorithm
     with the smallest median_best on the matching cell — not the rule top."""
@@ -388,7 +468,8 @@ def test_recommend_grid_with_no_eligible_entries_falls_back_to_rule(tmp_path):
         },
     )
     pick = E.recommend(n_dim=2, n_trials=100, eval_time=1e-9, grid_path=grid_path)
-    # Eval_time 1ns blocks every non-trivial tier — only tier-0 algorithms
-    # remain eligible. HillClimbing is the first tier-0 entry in the
-    # n_dim<=2 rule-based ranking, so it wins the fallback.
-    assert pick == "HillClimbing"
+    # Eval_time 1ns blocks every non-trivial tier. HillClimbing used to be
+    # tier-0 but was moved to tier-1 — only true pure-sampling baselines
+    # (RandomSearch, GridSearch) remain eligible, and RandomSearch is the
+    # first entry in the rule ranking's tier-0 baseline tail.
+    assert pick == "RandomSearch"

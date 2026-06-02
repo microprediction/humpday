@@ -239,14 +239,14 @@
             <tbody>
                 <tr>
                     <td class="center tier-0"><strong>0</strong></td>
-                    <td>RandomSearch, GridSearch, HillClimbing, Rechenberg</td>
-                    <td>~&micro;s &mdash; pure RNG or single componentwise step</td>
+                    <td>RandomSearch, GridSearch</td>
+                    <td>~&micro;s &mdash; pure sampling baselines, no adaptive structure</td>
                     <td class="cap center">0</td>
                 </tr>
                 <tr>
                     <td class="center tier-1"><strong>1</strong></td>
-                    <td>NelderMead, Powell, DE, PSO, SA, GA, ES, FA, HS, ACO, LBFGSB, PatternSearch, CoordinateDescent</td>
-                    <td>~100&micro;s &mdash; small per-iter loops, no linear algebra</td>
+                    <td>HillClimbing, Rechenberg, NelderMead, Powell, DE, PSO, SA, GA, ES, FA, HS, ACO, LBFGSB, PatternSearch, CoordinateDescent</td>
+                    <td>~100&micro;s &mdash; single-trajectory adaptation, simplex updates, population loops</td>
                     <td class="cap center">10 &micro;s</td>
                 </tr>
                 <tr>
@@ -295,11 +295,27 @@ result = minimize(my_objective, bounds=..., method="CMAEvolutionStrategy")</pre>
             input to auto-selection. Each cell is keyed
             <code>"n_dim/n_trials"</code> and holds, for every algorithm that
             cleared the structural eligibility filter at that cell, the raw
-            per-<code>(objective, seed)</code> best-value plus an aggregated
-            <code>median_best</code> / <code>mean_wall</code> summary. The
-            objective suite is sphere, Rosenbrock, Rastrigin, Griewank, and
-            Salomon &mdash; chosen to cover separable convex, banana, rugged
-            multimodal, and nearly-separable landscape regimes.
+            per-<code>(objective, seed)</code> best-value plus aggregated
+            <code>borda_score</code>, <code>borda_worst</code>,
+            <code>median_best</code>, and <code>mean_wall</code> summaries.
+            The objective suite covers nine landscape regimes &mdash; sphere,
+            Rosenbrock, Rastrigin, Griewank, Salomon, plus four deceptive
+            multimodal benchmarks (Ackley, Schwefel, Michalewicz with m=20,
+            Styblinski-Tang) that prevent locally-greedy algorithms from
+            winning the recommendation just because they shine on the
+            separable cases.
+        </p>
+        <p>
+            <strong>Borda mean-rank.</strong> The recommender picks by the
+            Borda score (lower is better): for each
+            <code>(objective, seed)</code> run, every algorithm in the cell
+            gets a rank 1..k by best-value; the per-algorithm Borda score
+            is the mean rank across the suite. This rewards reliability
+            (consistently in the top few) over occasional brilliance
+            (winning by 1e-8 on one benchmark while ranking last on
+            another). <code>borda_worst</code> reports the worst single
+            rank an algorithm achieved &mdash; a tie-breaker for the
+            risk-averse.
         </p>
         <p>
             <strong>Parallel.</strong> Every
