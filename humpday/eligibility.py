@@ -50,14 +50,23 @@ TIER_VERY_HEAVY = 4  # ~100ms per iter — O(n_obs^3) GP fit per iter
 
 
 # Per-algorithm overhead tier. Values come from rough profiling at n=10;
-# Stage B will measure these systematically and may shift entries.
+# the eval-time threshold per tier is in MIN_EVAL_TIME_FOR_TIER below.
 TIER: dict[str, int] = {
-    # Trivial
+    # Trivial — pure sampling baselines only. No internal state, no
+    # per-iteration adaptation. These are the only algorithms eligible
+    # when the objective is so cheap (sub-microsecond) that any per-iter
+    # bookkeeping would dominate wall-clock.
     "RandomSearch": TIER_TRIVIAL,
     "GridSearch": TIER_TRIVIAL,
-    "HillClimbing": TIER_TRIVIAL,
-    "Rechenberg": TIER_TRIVIAL,
-    # Light
+    # Light — single-trajectory σ-adaptation and componentwise Gaussian
+    # samplers. HillClimbing (a (1+1)-ES with σ decay + 10% random
+    # restart on unimproved steps) and Rechenberg (1/5-rule σ adaptation)
+    # belong here because their per-iter cost is comparable to
+    # NelderMead's simplex update. Tier-0 is reserved for algorithms
+    # with no adaptive structure so the recommender can't quietly pick
+    # a locally-greedy method for cheap objectives.
+    "HillClimbing": TIER_LIGHT,
+    "Rechenberg": TIER_LIGHT,
     "NelderMead": TIER_LIGHT,
     "Powell": TIER_LIGHT,
     "DifferentialEvolution": TIER_LIGHT,
@@ -230,7 +239,14 @@ def _rule_based_ranking(n_dim: int, n_trials: int) -> list[str]:
     """The pre-existing ordering from suggest_pure, copy-pasted here so the
     eligibility module stays import-light. Kept in sync with
     humpday.optimizers.alloptimizers.suggest_pure.
+
+    Tier-0 baselines (RandomSearch, GridSearch) are appended to every
+    ranking so the recommender has a deterministic fallback when an
+    extremely cheap objective filters every other algorithm out.
     """
+    # Tier-0 baseline tail. RandomSearch first because it works at any
+    # n_dim, n_trials; GridSearch only at n_dim ≤ 4 with enough budget.
+    BASELINE_TAIL = ["RandomSearch", "GridSearch"]
     if n_dim <= 2:
         return [
             "NelderMead",
@@ -241,6 +257,7 @@ def _rule_based_ranking(n_dim: int, n_trials: int) -> list[str]:
             "HillClimbing",
             "PatternSearch",
             "CoordinateDescent",
+            *BASELINE_TAIL,
         ]
     if n_dim <= 10:
         return [
@@ -253,6 +270,7 @@ def _rule_based_ranking(n_dim: int, n_trials: int) -> list[str]:
             "GeneticAlgorithm",
             "PatternSearch",
             "EvolutionStrategy",
+            *BASELINE_TAIL,
         ]
     if n_dim <= 50:
         return [
@@ -359,10 +377,13 @@ def recommend(
     None we consider every algorithm we have a tier for.
 
     ``grid_path`` overrides the default benchmarks/recommendation_grid.json
-    path (handy for tests). When a grid is available, the chosen algorithm is
-    the eligible candidate with the smallest median_best on the nearest
-    (n_dim, n_trials) cell. When no grid is present we fall through to the
-    rule-based ranking that mirrors :func:`suggest_pure`.
+    path (handy for tests). When a grid is available, the chosen algorithm
+    is the eligible candidate with the smallest **Borda mean-rank** on the
+    nearest (n_dim, n_trials) cell — measuring reliability across the
+    objective suite rather than absolute best-value. Older grids without
+    Borda scores fall back to median_best. When no grid is present at all
+    we fall through to the rule-based ranking that mirrors
+    :func:`suggest_pure`.
 
     If nothing passes the filters (e.g. n_trials too small for any sane
     algorithm), falls back to RandomSearch — it works at any
@@ -376,12 +397,19 @@ def recommend(
     if grid is not None:
         cell = _snap_to_grid_cell(grid, n_dim, n_trials)
         if cell:
-            scored = [
-                (cell[name]["median_best"], name)
-                for name in candidates
-                if name in cell
-                and cell[name].get("median_best") not in (None, float("inf"))
-            ]
+            # Prefer Borda mean-rank (reliability) when the grid carries it;
+            # fall back to median_best for grids built by an older script.
+            scored: list[tuple[float, str]] = []
+            for name in candidates:
+                if name not in cell:
+                    continue
+                entry = cell[name]
+                score = entry.get("borda_score")
+                if score is None or score == float("inf"):
+                    score = entry.get("median_best")
+                if score is None or score == float("inf"):
+                    continue
+                scored.append((score, name))
             if scored:
                 scored.sort()
                 return scored[0][1]

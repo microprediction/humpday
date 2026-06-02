@@ -287,7 +287,7 @@
                 <strong>Auto-selection metadata.</strong>
                 Consulted by <a href="../recommendations.html"><code>humpday.minimize()</code></a> when picking a default algorithm.
                 <ul style="margin:8px 0 0 0;">
-                    <li><strong>Overhead tier 0:</strong> trivial (~&micro;s/iter). Always eligible by the timing filter.</li>
+                    <li><strong>Overhead tier 1:</strong> light (~100&micro;s/iter). Eligible when measured <code>eval_time &ge; 10 &micro;s</code>.</li>
                     <li><strong>Dimensional cap:</strong> no cap &mdash; linear-in-dim or better.</li>
                     <li><strong>Minimum trials:</strong> 10 &mdash; baseline minimum.</li>
                 </ul>

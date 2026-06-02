@@ -90,10 +90,14 @@ import numpy as np  # noqa: E402
 
 from humpday import eligibility as E  # noqa: E402
 from humpday.objectives.classic import (  # noqa: E402
+    ackley_on_cube,
     griewank_on_cube,
+    michaelewicz_on_cube,
     rastrigin_on_cube,
     rosenbrock_on_cube,
     salomon_on_cube,
+    schwefel_on_cube,
+    styblinski_tang_on_cube,
 )
 from humpday.optimizers.alloptimizers import (  # noqa: E402
     PURE_OPTIMIZERS,
@@ -107,15 +111,32 @@ def _sphere_on_cube(u):
     return float(sum((x - 0.5) ** 2 for x in u))
 
 
-# Objectives are unit-cube benchmarks. They cover separable convex (sphere),
-# banana (rosenbrock), rugged multimodal (rastrigin, salomon), and nearly-
-# separable-with-global-structure (griewank).
+# Objectives are unit-cube benchmarks chosen to cover the regimes that
+# stress different algorithm families:
+#
+#   - sphere               separable convex (easy baseline)
+#   - rosenbrock           non-separable banana valley
+#   - rastrigin            separable multimodal
+#   - griewank             nearly-separable + weak global structure
+#   - salomon              radially symmetric, no coordinate alignment
+#   - ackley               highly multimodal with smooth global structure
+#   - schwefel             deceptive: global at corner, deep local minima away
+#   - michalewicz          steep deceptive peaks (m=20 in humpday's port)
+#   - styblinski_tang      multiple deep basins, ill-conditioned
+#
+# The last four are the "deceptive" set added to stop the recommender
+# from picking locally-greedy algorithms (HillClimbing-style) just
+# because they shine on the four mostly-separable problems above.
 TEST_FUNCTIONS: list[tuple[str, Callable]] = [
     ("sphere", _sphere_on_cube),
     ("rosenbrock", rosenbrock_on_cube),
     ("rastrigin", rastrigin_on_cube),
     ("griewank", griewank_on_cube),
     ("salomon", salomon_on_cube),
+    ("ackley", ackley_on_cube),
+    ("schwefel", schwefel_on_cube),
+    ("michalewicz", michaelewicz_on_cube),
+    ("styblinski_tang", styblinski_tang_on_cube),
 ]
 
 
@@ -220,10 +241,10 @@ def _load_or_init(path: Path, dims, trials, n_seeds) -> dict:
     return grid
 
 
-def _aggregate(entry: dict) -> None:
+def _aggregate_entry(entry: dict) -> None:
     """Recompute median_best, mean_wall, n_runs, n_failures from entry['runs']
-    in-place so the on-disk format always carries the summary that
-    eligibility.recommend reads."""
+    in-place. Per-entry aggregation only — Borda ranks need cell-level data
+    and are computed by `_aggregate_cell`."""
     runs = entry.get("runs", {})
     values = [r["best"] for r in runs.values() if r["best"] != float("inf")]
     walls = [r["wall"] for r in runs.values()]
@@ -233,9 +254,75 @@ def _aggregate(entry: dict) -> None:
     entry["n_failures"] = len(runs) - len(values)
 
 
+def _aggregate_cell(cell: dict) -> None:
+    """Re-aggregate every entry in a cell, then compute a Borda mean-rank
+    score for each algorithm.
+
+    Borda ranks are computed per (objective, seed) run: among algorithms that
+    have a recorded best for that run, the best gets rank 1, second rank 2,
+    and so on. An algorithm's borda_score is the mean of its ranks across all
+    runs in the cell. Lower is better (1.0 = wins every run; higher means it
+    placed worse on at least some objectives).
+
+    This is the recommender's preferred score because it measures reliability:
+    a median-best winner can rank #1 on three smooth benchmarks and #last on
+    a deceptive one and still win on median; Borda penalizes that.
+
+    Algorithms marked `skipped_too_slow` are excluded from ranking (their
+    runs are absent or +inf). An algorithm participating in some but not all
+    runs is ranked on the subset where it has data, with the missing runs
+    not counted — this prevents a partial sweep from spuriously penalising
+    algorithms that haven't finished yet.
+    """
+    for entry in cell.values():
+        _aggregate_entry(entry)
+
+    # Collect (algo → run_key → best) for ranking.
+    ranks_by_algo: dict[str, list[int]] = {a: [] for a in cell}
+    run_keys: set[str] = set()
+    for entry in cell.values():
+        run_keys.update(entry.get("runs", {}).keys())
+
+    for run_key in run_keys:
+        scored: list[tuple[float, str]] = []
+        for algo, entry in cell.items():
+            run = entry.get("runs", {}).get(run_key)
+            if run is None or run["best"] == float("inf"):
+                continue
+            scored.append((run["best"], algo))
+        if not scored:
+            continue
+        scored.sort()
+        # Dense ranking with ties: equal best-values share a rank.
+        prev_value = None
+        prev_rank = 0
+        for i, (val, algo) in enumerate(scored, start=1):
+            if prev_value is not None and val == prev_value:
+                rank = prev_rank
+            else:
+                rank = i
+                prev_value = val
+                prev_rank = i
+            ranks_by_algo[algo].append(rank)
+
+    for algo, entry in cell.items():
+        ranks = ranks_by_algo[algo]
+        if ranks:
+            entry["borda_score"] = sum(ranks) / len(ranks)
+            entry["borda_worst"] = max(ranks)
+            entry["borda_n"] = len(ranks)
+        else:
+            entry["borda_score"] = float("inf")
+            entry["borda_worst"] = float("inf")
+            entry["borda_n"] = 0
+
+
 def _save_atomic(path: Path, grid: dict) -> None:
     """Write via a sibling temp file + rename so a kill mid-write can't leave
-    the grid file truncated or syntactically broken."""
+    the grid file truncated or syntactically broken. Recomputes cell-level
+    Borda scores before writing so the on-disk format is always consistent."""
+    for cell in grid["cells"].values():
+        _aggregate_cell(cell)
     grid["meta"]["last_updated"] = time.strftime("%Y-%m-%dT%H:%M:%SZ", time.gmtime())
     tmp = path.with_suffix(path.suffix + ".tmp")
     tmp.parent.mkdir(parents=True, exist_ok=True)
@@ -341,13 +428,13 @@ def _probe_first(
                 file=sys.stderr,
             )
             entry["skipped_too_slow"] = True
-            _aggregate(entry)
+            _aggregate_entry(entry)
             # Drop every other task for this (cell, algorithm) pair.
             drop_idx.update(idxs[1:])
         else:
             # We already ran the first task; drop it from the remaining list.
             drop_idx.add(idxs[0])
-            _aggregate(entry)
+            _aggregate_entry(entry)
 
         if n_probed % save_every == 0:
             _save_atomic(output, grid)
@@ -434,11 +521,9 @@ def main() -> int:
         )
 
     if not tasks:
-        # Nothing new to do — still re-aggregate (cheap) and write so any
-        # meta-only updates (dims/trials added) are persisted.
-        for cell in grid["cells"].values():
-            for entry in cell.values():
-                _aggregate(entry)
+        # Nothing new to do — _save_atomic re-aggregates internally, so any
+        # meta-only updates (dims/trials added) and any newly-computed Borda
+        # scores from a code change in this script land on disk.
         _save_atomic(args.output, grid)
         print("Nothing to run — grid is already complete for this configuration.")
         return 0
@@ -495,7 +580,7 @@ def _merge_result(grid: dict, result: tuple) -> None:
     }
     if err:
         entry.setdefault("errors", []).append(err)
-    _aggregate(entry)
+    _aggregate_entry(entry)
 
 
 def _report_progress(done: int, total: int, t0: float) -> None:
