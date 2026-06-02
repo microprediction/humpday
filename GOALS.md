@@ -62,6 +62,21 @@ Legend: ✅ done · 🟡 partial / in-progress · ❌ not done · ❓ unknown / 
 
 1. **Python ↔ JavaScript port equivalence** (issue #78). PR #83 brought PRIMA_BOBYQA from 88× to 0.98× equivalence on Rosenbrock — full Phase-1 success. 8 algorithms remain divergent on the same scale. Working notes, the validated porting recipe, and the prioritised order of remaining work are in [`notes/PORT_EQUIVALENCE.md`](notes/PORT_EQUIVALENCE.md). Next target: PRIMA_NEWUOA (shares infrastructure with BOBYQA, same recipe applies). Done when all 9 algorithms clear the |ratio − 1| < 0.10 bar on the characterisation harness (`tests/test_port_behavior.py`).
 
+   **JS parity gap, as of v0.21.0.** The substantive Python-side improvements that have NOT been ported to JS yet (audited 2026-06-02 against `docs/js/modules/`):
+
+   | Python feature | JS status | Where it lives in Python | Effort |
+   |--|--|--|--|
+   | NelderMead Kelley-1999 simplex-collapse restart | ❌ missing — JS NM exits on `worst-best < 1e-8`, no reseed | `humpday/optimizers/scipy_algorithms.py` (NM with `nonzdelt_schedule`) | ~20 LOC |
+   | ParticleSwarm SPSO-2011-style global-best stagnation reseed | ❌ JS uses per-particle stagnation count instead of the global-best K-iteration window | `humpday/optimizers/evolutionary_algorithms.py::ParticleSwarm` | ~15 LOC |
+   | CMA-ES IPOP restart layer (Auger & Hansen 2005) | ❌ JS is vanilla Hansen, single while loop, no TolFun/TolX/ConditionCov + λ-doubling | `humpday/optimizers/evolutionary_algorithms.py::CMAEvolutionStrategy` | ~40 LOC |
+   | NelderMead 1e-12 convergence tolerances | ❌ JS still on 1e-8 (vs Python's 1e-12 since the restart fix) | same NM port | trivial |
+   | Rotated benchmark functions (`rotated_rosenbrock_on_cube` / `rotated_rastrigin_on_cube` / `rotated_ackley_on_cube`) | ❌ no JS objective module has these | `humpday/objectives/classic.py` | ~30 LOC + a JS port of the `_rotation_for(n_dim, seed)` Mezzadri-2007 cache |
+   | Auto-selection: dimensional cap, overhead tier, Borda grid lookup | ❌ no JS equivalent of `humpday.eligibility` | `humpday/eligibility.py` + `benchmarks/recommendation_grid.json` | ~150 LOC + ship the grid JSON as a JS asset |
+
+   Goal: **JS ≡ Python** for every algorithm-level behavioral feature, with the JS-side modules under `docs/js/modules/` running on the browser-side parity test in `tests/test_js_parity.py`. The auto-selector is the only feature that requires *also* shipping data (the grid JSON) — every other gap is pure code.
+
+   Already-ported (this row's the good news, so a maintainer doesn't think the whole thing is on fire): L-BFGS-B port (Byrd-Lu-Nocedal-Zhu with bound-aware projection) ✅, L-BFGS-B polish stages on DE/SA/CMA/BO/PSO/FA ✅, PRIMA UOBYQA Steihaug-Toint TR ✅, GridSearch ✅, Firefly α-damping ✅, CoordinateDescent / PatternSearch restart-on-step-threshold ✅.
+
 2. **PRIMA trio underperformance in the Elo benchmark.** `benchmarks/elo_ratings.json` (the 2-D sphere + Rosenbrock sweep, 100 trials per problem) has UOBYQA at 1466, BOBYQA at 1177, and NEWUOA at 1120 — bottom-three among the 21 algorithms. That's surprising: PRIMA is a sophisticated trust-region family designed to dominate on smooth surfaces in low dimensions, exactly the regime the benchmark covers. Investigate whether (a) the pure-Python ports have a numerical regression vs. the Fortran references, (b) 100 trials is below the budget where PRIMA pays off in 2-D, or (c) the Rosenbrock variants' ill-conditioning is hitting a PRIMA-specific failure mode. Re-running with `trials_per_problem=500` and a smooth-only objective family would help isolate which.
 
 3. ~~Recommendation should consider trials AND dimension, not just dimension.~~ **Done in v0.20.0 / v0.21.0.** `humpday.minimize(...)` now auto-selects via `humpday.eligibility.recommend(n_dim, n_trials, eval_time)` which combines a dimensional cap filter, a min-trials filter, an overhead-tier vs. eval-time filter, and a Borda mean-rank lookup against `benchmarks/recommendation_grid.json` (12 objectives × 11 dims × 3 trial budgets × 3 seeds). See `docs/recommendations.html` for the full picture.
