@@ -155,67 +155,60 @@ class ParticleSwarm extends Optimizer {
 
         const swarmSize = Math.min(40, Math.max(15, this.nDim * 3)); // Larger swarm for complex functions
 
-        // Initialize swarm with diverse positions
+        // Initialize swarm uniformly (matches Python — the earlier
+        // heuristic of seeding 25% near centre and 25% on edges was a
+        // JS-only deviation that biased the early-stage search).
         const particles = [];
         for (let i = 0; i < swarmSize && this.evaluations < psoBudget; i++) {
-            let position;
-            if (i < swarmSize / 4) {
-                // 25% near center for sphere-like functions
-                position = Array(this.nDim).fill(0).map(() => 0.5 + (Math.random() - 0.5) * 0.3);
-            } else if (i < swarmSize / 2) {
-                // 25% near corners and edges
-                position = Array(this.nDim).fill(0).map(() => Math.random() < 0.5 ? 0.1 : 0.9);
-            } else {
-                // 50% random distribution
-                position = Array(this.nDim).fill(0).map(() => Math.random());
-            }
-
+            const position = Array(this.nDim).fill(0).map(() => Math.random());
             const velocity = Array(this.nDim).fill(0).map(() => (Math.random() - 0.5) * 0.2);
             const fitness = this.evaluate(position);
-
             particles.push({
                 position: [...position],
                 velocity: [...velocity],
                 bestPosition: [...position],
                 bestFitness: fitness,
-                stagnationCount: 0
             });
         }
 
-        // PSO loop with adaptive parameters
         let iteration = 0;
-        const maxIterations = Math.ceil(psoBudget / swarmSize);
+        const maxIterations = Math.max(1, Math.ceil(psoBudget / swarmSize));
+
+        // SPSO-2011-style stagnation detection (Clerc et al. 2012). A
+        // canonical PSO has no restart and is known to converge
+        // prematurely on multimodal surfaces — once the global best
+        // stops improving, particles collapse onto it. Track the
+        // global-best value across iterations; when it has stalled for
+        // `stagnationWindow` iterations, reseed the worst half of the
+        // swarm with fresh uniform positions and small random
+        // velocities. The personal-best memory of the better half is
+        // preserved so prior progress isn't wasted.
+        const stagnationWindow = Math.max(10, Math.floor(maxIterations / 5));
+        let stagnationCounter = 0;
+        let lastGlobalBest = this.bestValue;
+        const improvementAtol = 1e-12;
 
         while (this.evaluations < psoBudget) {
             iteration++;
 
-            // Adaptive parameters based on iteration progress
             const progress = iteration / maxIterations;
-            const w = 0.9 - 0.5 * progress; // Decreasing inertia (0.9 → 0.4)
-            const c1 = 2.5 - 1.0 * progress; // Decreasing cognitive (2.5 → 1.5)
-            const c2 = 1.5 + 1.0 * progress; // Increasing social (1.5 → 2.5)
-
-            // Maximum velocity (velocity clamping)
-            const vmax = 0.2 * (1 - 0.5 * progress); // Decreasing velocity limit
+            const w = 0.9 - 0.5 * progress;
+            const c1 = 2.5 - 1.0 * progress;
+            const c2 = 1.5 + 1.0 * progress;
+            const vmax = 0.2 * (1 - 0.5 * progress);
 
             for (let i = 0; i < particles.length && this.evaluations < psoBudget; i++) {
                 const particle = particles[i];
 
-                // Update velocity with constriction factor
                 for (let j = 0; j < this.nDim; j++) {
                     const r1 = Math.random();
                     const r2 = Math.random();
-
-                    // Standard PSO velocity update
                     particle.velocity[j] = w * particle.velocity[j] +
                         c1 * r1 * (particle.bestPosition[j] - particle.position[j]) +
                         c2 * r2 * (this.bestX[j] - particle.position[j]);
-
-                    // Velocity clamping
                     particle.velocity[j] = MathUtils.clip(particle.velocity[j], -vmax, vmax);
                 }
 
-                // Update position
                 for (let j = 0; j < this.nDim; j++) {
                     particle.position[j] = MathUtils.clip(
                         particle.position[j] + particle.velocity[j], 0, 1
@@ -223,23 +216,40 @@ class ParticleSwarm extends Optimizer {
                 }
 
                 const fitness = this.evaluate(particle.position);
-
-                // Update personal best
                 if (fitness < particle.bestFitness) {
                     particle.bestFitness = fitness;
                     particle.bestPosition = [...particle.position];
-                    particle.stagnationCount = 0;
-                } else {
-                    particle.stagnationCount++;
                 }
+            }
 
-                // Diversification for stagnant particles
-                if (particle.stagnationCount > 15 && Math.random() < 0.1) {
-                    // Reinitialize position with small probability
-                    particle.position = Array(this.nDim).fill(0).map(() => Math.random());
-                    particle.velocity = Array(this.nDim).fill(0).map(() => (Math.random() - 0.5) * 0.1);
-                    particle.stagnationCount = 0;
+            // Stagnation check — measured against this.bestValue because
+            // that's the global best across all evals (which the base
+            // Optimizer.evaluate updates automatically).
+            if (lastGlobalBest - this.bestValue > improvementAtol) {
+                stagnationCounter = 0;
+                lastGlobalBest = this.bestValue;
+            } else {
+                stagnationCounter++;
+            }
+
+            if (stagnationCounter >= stagnationWindow) {
+                // Reseed the worst half. Rank particles by personal-best
+                // fitness ascending, replace the bottom half.
+                const ranked = particles
+                    .map((p, idx) => ({idx, fit: p.bestFitness}))
+                    .sort((a, b) => a.fit - b.fit);
+                const half = Math.floor(swarmSize / 2);
+                for (let r = half; r < ranked.length; r++) {
+                    const j = ranked[r].idx;
+                    particles[j].position = Array(this.nDim).fill(0).map(() => Math.random());
+                    particles[j].velocity = Array(this.nDim).fill(0).map(() => (Math.random() - 0.5) * 0.2);
+                    if (this.evaluations >= psoBudget) break;
+                    const fNew = this.evaluate(particles[j].position);
+                    particles[j].bestPosition = [...particles[j].position];
+                    particles[j].bestFitness = fNew;
                 }
+                stagnationCounter = 0;
+                lastGlobalBest = this.bestValue;
             }
         }
 
@@ -618,14 +628,12 @@ class CMAEvolutionStrategy extends Optimizer {
         this.name = 'CMAEvolutionStrategy';
     }
 
-    // Hansen-standard CMA-ES with rank-1 + rank-μ covariance adaptation
-    // and evolution paths. Mirrors `humpday/optimizers/
-    // evolutionary_algorithms.py::CMAEvolutionStrategy` step-for-step.
-    // Before this rewrite the JS port was sigma-only adaptation with an
-    // identity-covariance proposal — it could never learn anisotropy,
-    // and the win-rate parity test ran against a Python port that does
-    // full rank-1 + rank-μ updates, making the JS side the obvious
-    // outlier on Rosenbrock and similar coupled objectives.
+    // IPOP-CMA-ES (Auger & Hansen 2005, "A Restart CMA Evolution
+    // Strategy with Increasing Population Size", CEC 2005). The
+    // Hansen-standard inner CMA loop is wrapped in a restart layer:
+    // when any of TolFun / TolX / ConditionCov fires, all state is
+    // reset and λ is doubled. Mirrors humpday/optimizers/
+    // evolutionary_algorithms.py::CMAEvolutionStrategy step-for-step.
     optimize() {
         const n = this.nDim;
 
@@ -633,166 +641,211 @@ class CMAEvolutionStrategy extends Optimizer {
         const polishReserve = Math.min(20 * n, Math.floor(this.nTrials / 2));
         const cmaesBudget = Math.max(this.evaluations, this.nTrials - polishReserve);
 
-        // Hansen's recommended parameters.
-        const lambda_ = Math.min(50, 4 + Math.floor(3 * Math.log(n)));
-        const mu = Math.floor(lambda_ / 2);
+        // IPOP termination constants.
+        const IPOP_INCPOPSIZE = 2.0;
+        const IPOP_TOLFUN = 1e-12;
+        const IPOP_TOLX_FACTOR = 1e-12;
+        const IPOP_CONDITION_COV = 1e14;
+        const IPOP_TOLFUN_HISTORY = 10;
 
-        // Recombination weights w_i = log(μ + 0.5) − log(i + 1), normalised.
-        const wRaw = new Array(mu);
-        for (let i = 0; i < mu; i++) wRaw[i] = Math.log(mu + 0.5) - Math.log(i + 1);
-        const sumW = wRaw.reduce((s, w) => s + w, 0);
-        const weights = wRaw.map(w => w / sumW);
-        const sumWsq = weights.reduce((s, w) => s + w * w, 0);
-        const mueff = 1.0 / sumWsq;
+        const baseLambda = Math.min(50, 4 + Math.floor(3 * Math.log(n)));
+        let restartCount = 0;
 
-        // Adaptation constants.
-        const cc = (4 + mueff / n) / (n + 4 + 2 * mueff / n);
-        const cs = (mueff + 2) / (n + mueff + 5);
-        const c1 = 2 / ((n + 1.3) ** 2 + mueff);
-        const cmu = Math.min(
-            1 - c1,
-            2 * (mueff - 2 + 1 / mueff) / ((n + 2) ** 2 + mueff)
-        );
-        const damps = 1 + 2 * Math.max(0, Math.sqrt((mueff - 1) / (n + 1)) - 1) + cs;
+        // Outer IPOP loop: keep restarting (with growing λ) until budget
+        // is exhausted. self.bestX / self.bestValue persist across
+        // restarts via the base Optimizer's evaluate(), so the best
+        // point found in any prior run is preserved.
+        while (this.evaluations < cmaesBudget) {
+            // Hansen-recommended parameters at the current population size.
+            let lambda_ = Math.floor(baseLambda * Math.pow(IPOP_INCPOPSIZE, restartCount));
+            lambda_ = Math.min(lambda_, cmaesBudget - this.evaluations);
+            lambda_ = Math.max(lambda_, 4);
+            const mu = Math.floor(lambda_ / 2);
+            if (mu < 1) break;
 
-        // State. Initial mean is a random interior point in [0.3, 0.7]^n
-        // (matching the Python port — the previous fixed-centre 0.5*ones
-        // gave the same starting point every restart and disadvantaged
-        // objectives whose optimum isn't at the centre).
-        let mean = new Array(n);
-        for (let i = 0; i < n; i++) mean[i] = 0.3 + 0.4 * Math.random();
-        let sigma = 0.2;
-        let C = Linalg.eye(n);
-        let pc = new Array(n).fill(0);
-        let ps = new Array(n).fill(0);
-        let invsqrtC = Linalg.eye(n);
+            // Recombination weights w_i = log(μ + 0.5) − log(i + 1).
+            const wRaw = new Array(mu);
+            for (let i = 0; i < mu; i++) wRaw[i] = Math.log(mu + 0.5) - Math.log(i + 1);
+            const sumW = wRaw.reduce((s, w) => s + w, 0);
+            const weights = wRaw.map(w => w / sumW);
+            const sumWsq = weights.reduce((s, w) => s + w * w, 0);
+            const mueff = 1.0 / sumWsq;
 
-        let generation = 0;
-        const maxGenerations = this.nTrials;
+            // Adaptation constants.
+            const cc = (4 + mueff / n) / (n + 4 + 2 * mueff / n);
+            const cs = (mueff + 2) / (n + mueff + 5);
+            const c1 = 2 / ((n + 1.3) ** 2 + mueff);
+            const cmu = Math.min(
+                1 - c1,
+                2 * (mueff - 2 + 1 / mueff) / ((n + 2) ** 2 + mueff)
+            );
+            const damps = 1 + 2 * Math.max(0, Math.sqrt((mueff - 1) / (n + 1)) - 1) + cs;
 
-        while (this.evaluations < cmaesBudget && generation < maxGenerations) {
-            generation += 1;
+            // Fresh state per restart.
+            let mean = new Array(n);
+            for (let i = 0; i < n; i++) mean[i] = 0.3 + 0.4 * Math.random();
+            let sigma = 0.2;
+            let C = Linalg.eye(n);
+            let pc = new Array(n).fill(0);
+            let ps = new Array(n).fill(0);
+            let invsqrtC = Linalg.eye(n);
 
-            // Sample λ offspring from N(mean, σ² C) via Cholesky.
-            let L_C;
-            try {
-                L_C = Linalg.cholesky(C);
-            } catch (e) {
-                L_C = Linalg.eye(n);
-            }
+            // TolFun window: rolling history of best-of-generation values.
+            const tolfunWindow = Math.max(IPOP_TOLFUN_HISTORY, Math.floor(30 * n / lambda_));
+            const fbestHistory = [];
 
-            const population = [];
-            for (let k = 0; k < lambda_; k++) {
-                if (this.evaluations >= cmaesBudget) break;
-                const stdZ = new Array(n);
-                for (let i = 0; i < n; i++) stdZ[i] = this._gaussian();
-                const z = Linalg.matvec(L_C, stdZ);
-                const x = new Array(n);
+            let generation = 0;
+            const maxGenerations = this.nTrials;
+            let converged = false;
+
+            while (this.evaluations < cmaesBudget && generation < maxGenerations && !converged) {
+                generation += 1;
+
+                // Sample λ offspring from N(mean, σ² C) via Cholesky.
+                let L_C;
+                try {
+                    L_C = Linalg.cholesky(C);
+                } catch (e) {
+                    L_C = Linalg.eye(n);
+                }
+
+                const population = [];
+                for (let k = 0; k < lambda_; k++) {
+                    if (this.evaluations >= cmaesBudget) break;
+                    const stdZ = new Array(n);
+                    for (let i = 0; i < n; i++) stdZ[i] = this._gaussian();
+                    const z = Linalg.matvec(L_C, stdZ);
+                    const x = new Array(n);
+                    for (let i = 0; i < n; i++) {
+                        x[i] = MathUtils.clip(mean[i] + sigma * z[i], 0, 1);
+                    }
+                    const f = this.evaluate(x);
+                    population.push({ x, z, f });
+                }
+
+                if (!population.length) break;
+                if (population.length < mu) break;
+
+                population.sort((a, b) => a.f - b.f);
+
+                // Recombination.
+                const oldMean = mean.slice();
+                mean = new Array(n).fill(0);
+                for (let i = 0; i < mu; i++) {
+                    for (let j = 0; j < n; j++) mean[j] += weights[i] * population[i].x[j];
+                }
+
+                // Evolution paths.
+                const y = new Array(n);
+                for (let i = 0; i < n; i++) y[i] = (mean[i] - oldMean[i]) / sigma;
+
+                const psFactor = Math.sqrt(cs * (2 - cs) * mueff);
+                const invsqrtY = Linalg.matvec(invsqrtC, y);
                 for (let i = 0; i < n; i++) {
-                    x[i] = MathUtils.clip(mean[i] + sigma * z[i], 0, 1);
+                    ps[i] = (1 - cs) * ps[i] + psFactor * invsqrtY[i];
                 }
-                const f = this.evaluate(x);
-                population.push({ x, z, f });
-            }
 
-            if (!population.length) break;
-            // Partial-generation guard (same as the Python port — if the
-            // budget ran out before μ samples, recombination would be
-            // ill-defined).
-            if (population.length < mu) break;
+                let psNorm = 0;
+                for (let i = 0; i < n; i++) psNorm += ps[i] * ps[i];
+                psNorm = Math.sqrt(psNorm);
 
-            population.sort((a, b) => a.f - b.f);
+                const hsigDenom = Math.sqrt(1 - Math.pow(1 - cs, 2 * generation));
+                const hsig = psNorm / hsigDenom < 1.4 + 2 / (n + 1) ? 1 : 0;
 
-            // Recombination: new mean = Σ w_i x_i over the μ best.
-            const oldMean = mean.slice();
-            mean = new Array(n).fill(0);
-            for (let i = 0; i < mu; i++) {
-                for (let j = 0; j < n; j++) mean[j] += weights[i] * population[i].x[j];
-            }
-
-            // Evolution paths.
-            const y = new Array(n);
-            for (let i = 0; i < n; i++) y[i] = (mean[i] - oldMean[i]) / sigma;
-
-            const psFactor = Math.sqrt(cs * (2 - cs) * mueff);
-            const invsqrtY = Linalg.matvec(invsqrtC, y);
-            for (let i = 0; i < n; i++) {
-                ps[i] = (1 - cs) * ps[i] + psFactor * invsqrtY[i];
-            }
-
-            let psNorm = 0;
-            for (let i = 0; i < n; i++) psNorm += ps[i] * ps[i];
-            psNorm = Math.sqrt(psNorm);
-
-            const hsigDenom = Math.sqrt(1 - Math.pow(1 - cs, 2 * generation));
-            const hsig = psNorm / hsigDenom < 1.4 + 2 / (n + 1) ? 1 : 0;
-
-            const pcFactor = hsig * Math.sqrt(cc * (2 - cc) * mueff);
-            for (let i = 0; i < n; i++) {
-                pc[i] = (1 - cc) * pc[i] + pcFactor * y[i];
-            }
-
-            // Rank-μ update: weighted sum of outer products of the μ
-            // best (population[i].x − oldMean) / σ.
-            const weightedDiffs = Linalg.zeros(n, n);
-            for (let i = 0; i < mu; i++) {
-                const diff = new Array(n);
-                for (let j = 0; j < n; j++) {
-                    diff[j] = (population[i].x[j] - oldMean[j]) / sigma;
+                const pcFactor = hsig * Math.sqrt(cc * (2 - cc) * mueff);
+                for (let i = 0; i < n; i++) {
+                    pc[i] = (1 - cc) * pc[i] + pcFactor * y[i];
                 }
-                for (let r = 0; r < n; r++) {
-                    for (let c = 0; c < n; c++) {
-                        weightedDiffs[r][c] += weights[i] * diff[r] * diff[c];
+
+                // Rank-μ update.
+                const weightedDiffs = Linalg.zeros(n, n);
+                for (let i = 0; i < mu; i++) {
+                    const diff = new Array(n);
+                    for (let j = 0; j < n; j++) {
+                        diff[j] = (population[i].x[j] - oldMean[j]) / sigma;
+                    }
+                    for (let r = 0; r < n; r++) {
+                        for (let c = 0; c < n; c++) {
+                            weightedDiffs[r][c] += weights[i] * diff[r] * diff[c];
+                        }
                     }
                 }
-            }
 
-            // C ← (1 − c1 − cμ) C + c1 (pc pcᵀ) + cμ weightedDiffs.
-            const base = 1 - c1 - cmu;
-            const newC = Linalg.zeros(n, n);
-            for (let r = 0; r < n; r++) {
-                for (let c = 0; c < n; c++) {
-                    newC[r][c] =
-                        base * C[r][c] +
-                        c1 * pc[r] * pc[c] +
-                        cmu * weightedDiffs[r][c];
+                const base = 1 - c1 - cmu;
+                const newC = Linalg.zeros(n, n);
+                for (let r = 0; r < n; r++) {
+                    for (let c = 0; c < n; c++) {
+                        newC[r][c] =
+                            base * C[r][c] +
+                            c1 * pc[r] * pc[c] +
+                            cmu * weightedDiffs[r][c];
+                    }
+                }
+                C = newC;
+
+                // Ensure C stays positive definite.
+                try {
+                    const { eigvals } = Linalg.eigh(C);
+                    let minEig = Infinity;
+                    for (let i = 0; i < n; i++) {
+                        if (eigvals[i] < minEig) minEig = eigvals[i];
+                    }
+                    if (minEig < 1e-14) {
+                        const shift = 1e-14 - minEig;
+                        for (let k = 0; k < n; k++) C[k][k] += shift;
+                    }
+                } catch (e) {
+                    /* leave C as-is */
+                }
+
+                // Refresh invsqrtC and capture eig_max + cond(C) for IPOP.
+                let eigMax = 1.0;
+                let condC = 1.0;
+                try {
+                    const { eigvals: D, eigvecs: B } = Linalg.eigh(C);
+                    const Dinvsqrt = D.map(d => 1.0 / Math.sqrt(Math.max(d, 1e-14)));
+                    const Ddiag = Linalg.diag(Dinvsqrt);
+                    const tmp = Linalg.matmul(B, Ddiag);
+                    invsqrtC = Linalg.matmul(tmp, Linalg.transpose(B));
+                    eigMax = Math.max(...D);
+                    const eigMin = Math.max(Math.min(...D), 1e-30);
+                    condC = eigMax / eigMin;
+                } catch (e) {
+                    invsqrtC = Linalg.eye(n);
+                }
+
+                // Step-size update.
+                sigma = sigma * Math.exp((cs / damps) * (psNorm / Math.sqrt(n) - 1));
+
+                // ---- IPOP termination checks ----
+                fbestHistory.push(population[0].f);
+                if (fbestHistory.length > tolfunWindow) fbestHistory.shift();
+
+                if (fbestHistory.length >= tolfunWindow) {
+                    const fMax = Math.max(...fbestHistory);
+                    const fMin = Math.min(...fbestHistory);
+                    if (fMax - fMin < IPOP_TOLFUN) {
+                        converged = true;
+                        continue;
+                    }
+                }
+
+                if (sigma * Math.sqrt(eigMax) < IPOP_TOLX_FACTOR) {
+                    converged = true;
+                    continue;
+                }
+
+                if (condC > IPOP_CONDITION_COV) {
+                    converged = true;
+                    continue;
                 }
             }
-            C = newC;
 
-            // Ensure C stays positive definite — bump up by the smallest
-            // eigenvalue if it drifted non-PD.
-            try {
-                const { eigvals } = Linalg.eigh(C);
-                let minEig = Infinity;
-                for (let i = 0; i < n; i++) {
-                    if (eigvals[i] < minEig) minEig = eigvals[i];
-                }
-                if (minEig < 1e-14) {
-                    const shift = 1e-14 - minEig;
-                    for (let k = 0; k < n; k++) C[k][k] += shift;
-                }
-            } catch (e) {
-                /* leave C as-is — eigh failed; sampling will hit the
-                   identity-fallback on the next iteration. */
-            }
-
-            // Refresh invsqrtC for the next iteration.
-            try {
-                const { eigvals: D, eigvecs: B } = Linalg.eigh(C);
-                const Dinvsqrt = D.map(d => 1.0 / Math.sqrt(Math.max(d, 1e-14)));
-                const Ddiag = Linalg.diag(Dinvsqrt);
-                const tmp = Linalg.matmul(B, Ddiag);
-                invsqrtC = Linalg.matmul(tmp, Linalg.transpose(B));
-            } catch (e) {
-                invsqrtC = Linalg.eye(n);
-            }
-
-            // Step-size update (CSA). Do NOT cap sigma at 0.5 (pycma has
-            // no cap; clipping each x to [0,1]^n already enforces the
-            // feasible search space) and do NOT floor at 1e-6 (the floor
-            // was preventing precise convergence on smooth basins).
-            sigma = sigma * Math.exp((cs / damps) * (psNorm / Math.sqrt(n) - 1));
+            // Inner loop ended. If it ended on convergence, restart with
+            // a larger population; if it ran out of budget, fall through
+            // to the polish stage.
+            restartCount++;
+            if (!converged) break;
         }
 
         // Polish stage: L-BFGS-B from the CMA-ES best (shared on base).
