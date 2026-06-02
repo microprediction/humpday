@@ -220,6 +220,21 @@
             in <code>n_dim=2</code>, 4 seeds, median reported.
         </p>
 
+        <div class="summary" style="background:#f1f8ff; border-left-color:#1976d2;">
+            <strong>What's new in v0.20.0.</strong> Three of the algorithm
+            ports below got restart layers from the literature: IPOP-CMA-ES
+            (Auger &amp; Hansen, 2005) for CMA-ES, Kelley-1999 simplex-collapse
+            restart for NelderMead, SPSO-2011 stagnation reseed for
+            ParticleSwarm. NelderMead's Ackley ratio dropped from 0.72 to
+            6e-03 (124&times; better than scipy NM at the same budget).
+            Separately, <a href="recommendations.html">a new auto-selector</a>
+            picks the algorithm for you when <code>humpday.minimize()</code>
+            is called without <code>method=</code>, ranking algorithms by
+            Borda mean-rank across a 12-objective suite (now including
+            rotated benchmarks that level the playing field for
+            covariance-adapting algorithms like CMA-ES).
+        </div>
+
         <div class="summary">
             <strong>TL;DR</strong> &mdash; 20 SOTA-class algorithms + 2 baselines.
             On the SOTA-class set (60 cells, 20 algorithms &times; 3 problems):

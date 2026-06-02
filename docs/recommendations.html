@@ -118,7 +118,7 @@
 <body>
     <nav class="site-nav" data-site-nav="v1">
         <div class="site-nav-inner">
-            <a href="index.html" class="site-nav-brand">HumpDay</a>
+            <a href="index.html" class="site-nav-brand"><svg class="site-nav-camel" data-site-logo="camel-v3" viewBox="0 0 100 50" width="44" height="22" xmlns="http://www.w3.org/2000/svg" aria-hidden="true"><rect x="20.5" y="30" width="1.8" height="11" fill="white" fill-opacity="0.55"/><rect x="60.5" y="30" width="1.8" height="11" fill="white" fill-opacity="0.55"/><path fill="white" fill-opacity="0.92" d="M 14 30 C 10 30 8 28 8 24 C 7 22 7 19 9 18 C 11 16 13 14 16 13 C 20 8 26 6 31 9 C 34 11 35 13 35 16 C 37 18 40 18 43 17 C 47 13 53 7 59 9 C 63 11 65 13 65 16 C 66 18 68 18 70 17 C 73 13 76 9 80 7 C 84 5 89 6 90 9 L 92 9 L 93 12 L 91 13 L 87 13 L 87 15 C 82 16 79 18 76 21 C 73 25 71 28 68 30 L 66 30 L 66 42 L 64 42 L 64 30 L 26 30 L 26 42 L 24 42 L 24 30 L 14 30 Z"/><circle cx="88" cy="10" r="0.9" fill="#34495e"/></svg>HumpDay</a>
             <div class="site-nav-links">
                 <a href="index.html">Home</a>
                 <a href="contest.html">Contest</a>
@@ -298,12 +298,19 @@ result = minimize(my_objective, bounds=..., method="CMAEvolutionStrategy")</pre>
             per-<code>(objective, seed)</code> best-value plus aggregated
             <code>borda_score</code>, <code>borda_worst</code>,
             <code>median_best</code>, and <code>mean_wall</code> summaries.
-            The objective suite covers nine landscape regimes &mdash; sphere,
-            Rosenbrock, Rastrigin, Griewank, Salomon, plus four deceptive
-            multimodal benchmarks (Ackley, Schwefel, Michalewicz with m=20,
-            Styblinski-Tang) that prevent locally-greedy algorithms from
-            winning the recommendation just because they shine on the
-            separable cases.
+            The objective suite covers twelve landscape regimes &mdash; the
+            five classics (sphere, Rosenbrock, Rastrigin, Griewank, Salomon),
+            four deceptive multimodal benchmarks that prevent locally-greedy
+            algorithms from winning on separable cases (Ackley, Schwefel,
+            Michalewicz with m=20, Styblinski-Tang), and three
+            <em>rotated</em> benchmarks (rotated Rosenbrock, rotated
+            Rastrigin, rotated Ackley) that strip the axis-alignment bonus
+            from coordinate-wise methods. The rotation matrix Q is
+            deterministic per (n_dim, seed) so the benchmark stays
+            reproducible while still penalizing algorithms that rely on
+            coordinate-axis structure (CoordinateDescent, Powell, NelderMead)
+            and rewarding ones whose adaptation is rotation-invariant
+            (CMA-ES, DE, PSO).
         </p>
         <p>
             <strong>Borda mean-rank.</strong> The recommender picks by the
