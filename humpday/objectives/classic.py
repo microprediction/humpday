@@ -336,6 +336,77 @@ SWARM_OBJECTIVES = [
     drop_wave_on_cube,
 ]
 
+
+# -----------------------------------------------------------------------------
+# Rotated benchmarks
+# -----------------------------------------------------------------------------
+# Standard benchmarks like Rosenbrock and Rastrigin are axis-aligned — their
+# coordinate-wise structure means coordinate-descent / Powell / NM all get a
+# structural bonus that doesn't generalise. The literature standard for
+# levelling the playing field is to multiply the input by a random rotation
+# matrix Q before evaluating: the global optimum stays put, the function
+# value is unchanged, but the level sets are no longer axis-aligned.
+#
+# We pick Q deterministically per (n_dim, seed) using the
+# Mezzadri (2007) sign-corrected QR construction, which gives Q drawn from
+# the Haar measure on O(n). Cached so the same Q is used by every worker
+# process and every evaluation, without touching np.random's global state
+# (instance-based RNG only).
+import functools
+
+
+@functools.cache
+def _rotation_for(n_dim: int, seed: int = 12345):
+    """Deterministic uniform-random orthogonal matrix Q(n_dim, seed)."""
+    rng = np.random.default_rng(seed)
+    A = rng.standard_normal((n_dim, n_dim))
+    Q, R = np.linalg.qr(A)
+    Q = Q * np.sign(np.diag(R))
+    return Q
+
+
+def rotated_rosenbrock_on_cube(u):
+    """Rosenbrock evaluated on Q·x, where x is the unit-cube point linearly
+    mapped to a domain wide enough to contain Rosenbrock's banana valley.
+    Q removes the axis-aligned structure that coordinate-wise methods
+    exploit."""
+    n = len(u)
+    Q = _rotation_for(n)
+    x = 4.0 * (np.asarray(u, dtype=float) - 0.5)  # [-2, 2]^n
+    y = Q @ x
+    return float(
+        sum(100.0 * (y[i + 1] - y[i] ** 2) ** 2 + (1 - y[i]) ** 2 for i in range(n - 1))
+    )
+
+
+def rotated_rastrigin_on_cube(u):
+    """Rastrigin evaluated on Q·x. Tests algorithms' ability to handle a
+    multimodal landscape whose local-minima grid is rotated off-axis."""
+    n = len(u)
+    Q = _rotation_for(n)
+    x = 10.24 * (np.asarray(u, dtype=float) - 0.5)  # [-5.12, 5.12]^n
+    y = Q @ x
+    return float(10.0 * n + np.sum(y * y - 10.0 * np.cos(2.0 * np.pi * y)))
+
+
+def rotated_ackley_on_cube(u):
+    """Ackley evaluated on Q·x. Ackley is mildly multimodal with smooth
+    global structure; rotating it specifically tests whether covariance-
+    adapting algorithms (CMA-ES) recover their literature advantage on
+    non-separable landscapes."""
+    n = len(u)
+    Q = _rotation_for(n)
+    x = 65.536 * (np.asarray(u, dtype=float) - 0.5)  # [-32.768, 32.768]^n
+    y = Q @ x
+    a, b, c = 20.0, 0.2, 2.0 * math.pi
+    return float(
+        -a * np.exp(-b * np.sqrt(np.sum(y * y) / n))
+        - np.exp(np.sum(np.cos(c * y)) / n)
+        + a
+        + math.e
+    )
+
+
 A_CLASSIC_OBJECTIVE = rastrigin_on_cube  # Just pick one for testing
 
 MISC_OBJECTIVES = [

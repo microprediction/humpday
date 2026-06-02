@@ -95,6 +95,9 @@ from humpday.objectives.classic import (  # noqa: E402
     michaelewicz_on_cube,
     rastrigin_on_cube,
     rosenbrock_on_cube,
+    rotated_ackley_on_cube,
+    rotated_rastrigin_on_cube,
+    rotated_rosenbrock_on_cube,
     salomon_on_cube,
     schwefel_on_cube,
     styblinski_tang_on_cube,
@@ -119,14 +122,22 @@ def _sphere_on_cube(u):
 #   - rastrigin            separable multimodal
 #   - griewank             nearly-separable + weak global structure
 #   - salomon              radially symmetric, no coordinate alignment
-#   - ackley               highly multimodal with smooth global structure
+#   - ackley               multimodal with smooth global structure
 #   - schwefel             deceptive: global at corner, deep local minima away
 #   - michalewicz          steep deceptive peaks (m=20 in humpday's port)
 #   - styblinski_tang      multiple deep basins, ill-conditioned
+#   - rotated_rosenbrock   non-separable Rosenbrock, axis structure removed
+#   - rotated_rastrigin    rotated multimodal — tests covariance adaptation
+#   - rotated_ackley       rotated mildly-multimodal — CMA's natural turf
 #
-# The last four are the "deceptive" set added to stop the recommender
-# from picking locally-greedy algorithms (HillClimbing-style) just
-# because they shine on the four mostly-separable problems above.
+# The first nine were the v0.20.1 deceptive set. The three rotated
+# benchmarks added in v0.20.2 remove the axis-alignment bonus that
+# coordinate-wise methods (CoordinateDescent / PatternSearch / Powell)
+# had been collecting — every standard benchmark above had its
+# structure aligned with the coordinate axes, which gave coordinate
+# methods an unfair structural advantage over CMA-ES / DE / PSO whose
+# strength is rotation-invariance. The rotation matrix Q is
+# deterministic per (n_dim, seed) so the benchmark stays reproducible.
 TEST_FUNCTIONS: list[tuple[str, Callable]] = [
     ("sphere", _sphere_on_cube),
     ("rosenbrock", rosenbrock_on_cube),
@@ -137,6 +148,9 @@ TEST_FUNCTIONS: list[tuple[str, Callable]] = [
     ("schwefel", schwefel_on_cube),
     ("michalewicz", michaelewicz_on_cube),
     ("styblinski_tang", styblinski_tang_on_cube),
+    ("rotated_rosenbrock", rotated_rosenbrock_on_cube),
+    ("rotated_rastrigin", rotated_rastrigin_on_cube),
+    ("rotated_ackley", rotated_ackley_on_cube),
 ]
 
 
