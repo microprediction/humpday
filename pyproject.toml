@@ -176,11 +176,10 @@ addopts = [
     "--strict-markers",
     "--strict-config",
     "--verbose",
-    "-m", "not validation and not slow and not browser and not reference",
+    "-m", "not slow and not browser and not reference",
 ]
 
 markers = [
-    "validation: opt-in algorithm-validation regression tests (slow, run with -m validation)",
     "slow: tests that take seconds-to-minutes (run with -m slow or skip with -m 'not slow')",
     "browser: headless-browser smoke tests; requires `pip install playwright && playwright install chromium`",
     "reference: cross-checks HumpDay ports against third-party reference implementations (scipy, scikit-optimize, cmaes, pyswarms, Py-BOBYQA, DEAP, PDFO). Install with `pip install humpday[reference]`.",

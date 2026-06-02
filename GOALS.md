@@ -1,7 +1,6 @@
 # HumpDay Goals & Status
 
 Single source of truth for what's done and what's left, across all 22 algorithms.
-**Supersedes** `RESUME.md` (stale, from a prior session) and `NUMPY_REMOVAL_RESUME.md` (focused on one work-stream; merge into this file when its goal column is fully ✅).
 
 Legend: ✅ done · 🟡 partial / in-progress · ❌ not done · ❓ unknown / unverified
 
@@ -65,11 +64,7 @@ Legend: ✅ done · 🟡 partial / in-progress · ❌ not done · ❓ unknown / 
 
 2. **PRIMA trio underperformance in the Elo benchmark.** `benchmarks/elo_ratings.json` (the 2-D sphere + Rosenbrock sweep, 100 trials per problem) has UOBYQA at 1466, BOBYQA at 1177, and NEWUOA at 1120 — bottom-three among the 21 algorithms. That's surprising: PRIMA is a sophisticated trust-region family designed to dominate on smooth surfaces in low dimensions, exactly the regime the benchmark covers. Investigate whether (a) the pure-Python ports have a numerical regression vs. the Fortran references, (b) 100 trials is below the budget where PRIMA pays off in 2-D, or (c) the Rosenbrock variants' ill-conditioning is hitting a PRIMA-specific failure mode. Re-running with `trials_per_problem=500` and a smooth-only objective family would help isolate which.
 
-3. **Recommendation should consider trials AND dimension, not just dimension.** Today `humpday.minimize(...)` auto-selects via `suggest_pure(n_dim, n_trials)`. Inspection shows the heuristic in `suggest_pure` collapses to dimension buckets only (NelderMead ≤2, DE 3–10, CMA-ES 11–50, Rechenberg >50). Trials should matter: e.g. BayesianOpt is the right choice for tight budgets on any reasonable dimension, but is currently never recommended by `minimize()`. The Elo sweep itself is dimension- and budget-conditioned, so the recorded ratings are a natural input. Replace the heuristic with an Elo-table lookup that conditions on `(n_dim_bucket, n_trials_bucket)`.
-
-### Documentation bugs
-
-1. **`docs/RESUME.md`** — older session notes; delete or move to a historical folder once this `GOALS.md` is fully established as the canonical doc.
+3. ~~Recommendation should consider trials AND dimension, not just dimension.~~ **Done in v0.20.0 / v0.21.0.** `humpday.minimize(...)` now auto-selects via `humpday.eligibility.recommend(n_dim, n_trials, eval_time)` which combines a dimensional cap filter, a min-trials filter, an overhead-tier vs. eval-time filter, and a Borda mean-rank lookup against `benchmarks/recommendation_grid.json` (12 objectives × 11 dims × 3 trial budgets × 3 seeds). See `docs/recommendations.html` for the full picture.
 
 ### Test-infrastructure debts
 
