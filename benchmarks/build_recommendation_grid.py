@@ -154,7 +154,7 @@ TEST_FUNCTIONS: list[tuple[str, Callable]] = [
 ]
 
 
-DEFAULT_DIMS = [2, 5, 10, 20, 50, 100]
+DEFAULT_DIMS = [2, 3, 4, 5, 6, 7, 8, 10, 20, 50, 100]
 DEFAULT_TRIALS = [50, 200, 1000]
 DEFAULT_SEEDS = 3
 QUICK_DIMS = [2, 10, 50]
