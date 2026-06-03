@@ -176,6 +176,50 @@ quality at much lower wall-clock. Sometimes the soft variant matches
 the cost-aware oracle exactly; sometimes it picks a different cheap
 algorithm that's almost as good.
 
+#### Per-eval-time λ schedule
+
+The row-wise envelope of the λ sweep gives a natural product design:
+at each eval_time, use the λ that maximised cost-aware match in the
+sweep. The resulting schedule is a step function:
+
+| eval_time | λ |
+|--|--|
+| ≤ 10 µs | 3.0 |
+| 10 µs to 1 ms | 1.0 |
+| 1 ms to 10 ms | 1.0 |
+| ≥ 1 s | 0 |
+
+Evaluation (Table 5, `analysis.py::schedule_evaluation`):
+
+| Strategy | Mean cost-aware match |
+|--|--|
+| Current recommender (λ = 0) | 54.0 % |
+| Best fixed λ (= 30) | 70.1 % |
+| **Per-eval-time schedule** | **72.6 %** |
+
+The schedule beats the best fixed λ by 2.5 pp and the current
+recommender by 18.6 pp — without the catastrophic 1 s degradation
+that a high fixed λ would cause.
+
+This is essentially a continuous-valued version of the existing
+hard tier filter. The current filter is a step function from
+λ_implicit = ∞ (algorithm not allowed) to λ_implicit = 0 (algorithm
+allowed); the soft schedule replaces that step with three intermediate
+values. Both are eval-time-dependent; the soft one is just less
+binary.
+
+#### Figures
+
+Figure 1 (`figures/fig1_cost_aware_heatmap.pdf`): cost-aware match
+rate as a function of (λ, eval_time). Shows the row-wise envelope
+clearly — at every eval_time except 1 s, some λ > 0 beats λ = 0.
+
+Figure 2 (`figures/fig2_pareto.pdf`): naive match vs cost-aware match
+across the λ sweep, lines connecting a single eval_time. The cheap
+eval_times (10 µs, 100 µs) trace genuine trade-off curves; the
+expensive ones (1 s, 10 ms) cluster in the upper-right corner where
+both metrics agree.
+
 ### § 5 Discussion
 
 - Limitations: 12 objectives (no real-world tasks yet), 22 algorithms
@@ -192,8 +236,17 @@ algorithm that's almost as good.
 ## What's next
 
 - (a) Fix `meta.objectives` in the canonical grid so the LOO numbers
-  include the three rotated objectives. **Done in this commit.**
-- (b) Soft cost-weighted Borda implementation + § 3.2 re-run.
-- (c) Per-cell regret heatmap — Figure 1.
-- (d) Cost-of-mistake distribution — Figure 2.
-- (e) Companion paper on benchmark-to-demonstration transfer.
+  include the three rotated objectives. **Done.**
+- (b) Soft cost-weighted Borda implementation + § 3.2 re-run. **Done.**
+- (c) Per-eval-time λ schedule + comparison vs single λ. **Done.**
+- (d) Figure 1 (heatmap) + Figure 2 (Pareto). **Done.**
+- (e) Wire the soft schedule into `humpday/eligibility.py` as an
+  opt-in recommender mode (probably `recommend(..., cost_weight=λ)`),
+  so users can choose between solution-quality optimization and
+  wall-clock-aware optimization. Open question for the paper: should
+  the schedule become the default?
+- (f) Cost-of-mistake distribution — when the recommender (or its soft
+  variant) misses the oracle, how bad is the miss?
+- (g) Companion paper on benchmark-to-demonstration transfer: do the
+  bowling / pool / brachistochrone / slingshot / robot arm demos rank
+  algorithms the same way the benchmark grid does?
