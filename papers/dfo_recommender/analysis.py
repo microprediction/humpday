@@ -725,11 +725,21 @@ def _set_seed(seed: int) -> None:
 
 def run_demos(_grid: dict, n_seeds: int = 3) -> dict:
     """For every (demo, eligible algo, seed) tuple, run the optimizer and
-    record best_value + wall-clock. Writes demo_results.json."""
+    record best_value + wall-clock. Writes demo_results.json.
+
+    Incremental: if demo_results.json already has results for a demo name,
+    skip it. Delete the JSON to force a full rerun."""
     from demos import DEMOS  # demos.py lives next to this script
 
-    results: dict[str, dict] = {}
+    if DEMO_RESULTS_PATH.exists():
+        results: dict[str, dict] = json.loads(DEMO_RESULTS_PATH.read_text())
+        print(f"  Loaded existing results: {list(results.keys())}")
+    else:
+        results = {}
     for demo in DEMOS:
+        if demo.name in results:
+            print(f"\n=== {demo.name}  (cached — skipping) ===")
+            continue
         print(
             f"\n=== {demo.name}  "
             f"(n_dim={demo.n_dim}, n_trials={demo.suggested_n_trials}) ==="
