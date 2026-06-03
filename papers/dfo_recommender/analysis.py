@@ -860,8 +860,7 @@ def transfer_table(grid: dict) -> None:
         f"{'Spearman ρ':>12s}  {'p < ?':>8s}"
     )
     print(
-        f"{'-' * 20:>20s}  {'-' * 6:>6s}  {'-' * 6:>6s}  "
-        f"{'-' * 12:>12s}  {'-' * 8:>8s}"
+        f"{'-' * 20:>20s}  {'-' * 6:>6s}  {'-' * 6:>6s}  {'-' * 12:>12s}  {'-' * 8:>8s}"
     )
 
     all_d: list[float] = []
@@ -888,8 +887,7 @@ def transfer_table(grid: dict) -> None:
         threshold = 2 / (len(common) ** 0.5)
         sig = "0.05" if abs(rho) > threshold else "—"
         print(
-            f"{demo_name:>20s}  {n_dim:>6d}  {len(common):>6d}  "
-            f"{rho:>12.3f}  {sig:>8s}"
+            f"{demo_name:>20s}  {n_dim:>6d}  {len(common):>6d}  {rho:>12.3f}  {sig:>8s}"
         )
         all_d.extend(xs)
         all_g.extend(ys)
@@ -907,13 +905,9 @@ def per_demo_top_pick_table(grid: dict) -> None:
     results = json.loads(DEMO_RESULTS_PATH.read_text())
     print("\n# Table 7: Per-demo winner vs grid recommendation\n")
     print(
-        f"{'demo':>20s}  {'demo winner':>24s}  "
-        f"{'grid recommends':>24s}  {'agree?':>7s}"
+        f"{'demo':>20s}  {'demo winner':>24s}  {'grid recommends':>24s}  {'agree?':>7s}"
     )
-    print(
-        f"{'-' * 20:>20s}  {'-' * 24:>24s}  "
-        f"{'-' * 24:>24s}  {'-' * 7:>7s}"
-    )
+    print(f"{'-' * 20:>20s}  {'-' * 24:>24s}  {'-' * 24:>24s}  {'-' * 7:>7s}")
     demo_borda = _per_demo_borda(results)
     matches = total = 0
     for demo_name, data in results.items():
@@ -959,10 +953,7 @@ def wind_farm_forensics(_grid: dict) -> None:
 
     from humpday.optimizers.prima_algorithms import PRIMA_NEWUOA
 
-    print(
-        "\n# § 6 — wind_farm forensics: "
-        "why PRIMA_NEWUOA fails deterministically\n"
-    )
+    print("\n# § 6 — wind_farm forensics: why PRIMA_NEWUOA fails deterministically\n")
 
     print("  Per-seed PRIMA_NEWUOA best on wind_farm:")
     results = json.loads(DEMO_RESULTS_PATH.read_text())
