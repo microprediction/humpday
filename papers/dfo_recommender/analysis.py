@@ -20,20 +20,31 @@ from __future__ import annotations
 
 import argparse
 import json
+import random
 import sys
+import time
 from collections import defaultdict
 from pathlib import Path
 from statistics import mean, median
 
+import numpy as np
+
 PAPER_DIR = Path(__file__).parent
 REPO_ROOT = PAPER_DIR.parent.parent
 GRID_PATH = REPO_ROOT / "benchmarks" / "recommendation_grid.json"
+DEMO_RESULTS_PATH = PAPER_DIR / "demo_results.json"
 FIGURES = PAPER_DIR / "figures"
 TABLES = PAPER_DIR / "tables"
 
 sys.path.insert(0, str(REPO_ROOT))
+sys.path.insert(0, str(PAPER_DIR))
+
 from humpday import eligibility as E  # noqa: E402
-from humpday.optimizers.alloptimizers import suggest_pure  # noqa: E402
+from humpday.optimizers.alloptimizers import (  # noqa: E402
+    PURE_OPTIMIZERS,
+    pure_optimize,
+    suggest_pure,
+)
 
 EVAL_TIMES = [
     ("1µs", 1e-6),
@@ -699,6 +710,321 @@ def make_figures(grid: dict, overhead_budget: float = 1.0) -> None:
 
 
 # -----------------------------------------------------------------------------
+# § 5  Transfer to demonstrations
+# -----------------------------------------------------------------------------
+# Out-of-distribution test of the recommender. For each Python-ported demo in
+# papers/dfo_recommender/demos.py, run every eligible HumpDay algorithm,
+# compute per-demo Borda mean-rank, and compare to the recommendation grid's
+# Borda at the matching (n_dim, n_trials) cell via Spearman ρ.
+
+
+def _set_seed(seed: int) -> None:
+    random.seed(seed)
+    np.random.seed(seed)
+
+
+def run_demos(_grid: dict, n_seeds: int = 3) -> dict:
+    """For every (demo, eligible algo, seed) tuple, run the optimizer and
+    record best_value + wall-clock. Writes demo_results.json."""
+    from demos import DEMOS  # demos.py lives next to this script
+
+    results: dict[str, dict] = {}
+    for demo in DEMOS:
+        print(
+            f"\n=== {demo.name}  "
+            f"(n_dim={demo.n_dim}, n_trials={demo.suggested_n_trials}) ==="
+        )
+        eligible = E.eligible(
+            PURE_OPTIMIZERS.keys(),
+            n_dim=demo.n_dim,
+            n_trials=demo.suggested_n_trials,
+            eval_time=None,
+        )
+        print(f"  eligible algorithms: {len(eligible)}")
+        results[demo.name] = {
+            "n_dim": demo.n_dim,
+            "n_trials": demo.suggested_n_trials,
+            "runs": {},
+        }
+        for algo in eligible:
+            best_values: list[float] = []
+            walls: list[float] = []
+            for seed in range(n_seeds):
+                _set_seed(seed)
+                t0 = time.perf_counter()
+                try:
+                    v, _ = pure_optimize(
+                        demo.objective,
+                        algo,
+                        demo.suggested_n_trials,
+                        demo.n_dim,
+                    )
+                    best_values.append(float(v))
+                    walls.append(time.perf_counter() - t0)
+                except Exception as e:  # noqa: BLE001
+                    print(f"    ! {algo} seed {seed}: {e}")
+                    best_values.append(float("inf"))
+                    walls.append(time.perf_counter() - t0)
+            results[demo.name]["runs"][algo] = {
+                "best_values": best_values,
+                "walls": walls,
+            }
+            valid = [v for v in best_values if v != float("inf")]
+            med = median(valid) if valid else float("inf")
+            print(f"    {algo:24s}  median best = {med:>12.4g}")
+    DEMO_RESULTS_PATH.write_text(json.dumps(results, indent=2))
+    print(f"\nWrote {DEMO_RESULTS_PATH.relative_to(REPO_ROOT)}")
+    return results
+
+
+def _per_demo_borda(results: dict) -> dict[str, dict[str, float]]:
+    out: dict[str, dict[str, float]] = {}
+    for demo_name, data in results.items():
+        runs = data["runs"]
+        algos = list(runs.keys())
+        if not algos:
+            continue
+        n_seeds = max(len(runs[a]["best_values"]) for a in algos)
+        ranks: dict[str, list[int]] = {a: [] for a in algos}
+        for seed in range(n_seeds):
+            scored = [
+                (runs[a]["best_values"][seed], a)
+                for a in algos
+                if seed < len(runs[a]["best_values"])
+                and runs[a]["best_values"][seed] != float("inf")
+            ]
+            scored.sort()
+            for i, (_, a) in enumerate(scored, start=1):
+                ranks[a].append(i)
+        out[demo_name] = {
+            a: (mean(rs) if rs else float("inf")) for a, rs in ranks.items()
+        }
+    return out
+
+
+def _snap_grid(grid_cells: dict, n_dim: int, n_trials: int) -> dict | None:
+    candidates: list[tuple[int, int, str]] = []
+    for k in grid_cells:
+        d_s, t_s = k.split("/")
+        candidates.append((int(d_s), int(t_s), k))
+    feasible = [(d, t, k) for d, t, k in candidates if d <= n_dim and t <= n_trials]
+    if feasible:
+        feasible.sort(key=lambda x: (abs(x[0] - n_dim), abs(x[1] - n_trials)))
+        return grid_cells[feasible[0][2]]
+    if not candidates:
+        return None
+    candidates.sort(key=lambda x: abs(x[0] - n_dim) + abs(x[1] - n_trials))
+    return grid_cells[candidates[0][2]]
+
+
+def _spearman(xs: list[float], ys: list[float]) -> float:
+    n = len(xs)
+    if n < 2:
+        return float("nan")
+
+    def average_ranks(vals: list[float]) -> list[float]:
+        order = sorted(range(n), key=vals.__getitem__)
+        ranks = [0.0] * n
+        i = 0
+        while i < n:
+            j = i
+            while j + 1 < n and vals[order[j + 1]] == vals[order[i]]:
+                j += 1
+            avg = (i + j) / 2 + 1
+            for k in range(i, j + 1):
+                ranks[order[k]] = avg
+            i = j + 1
+        return ranks
+
+    rx = average_ranks(xs)
+    ry = average_ranks(ys)
+    mx, my = mean(rx), mean(ry)
+    num = sum((a - mx) * (b - my) for a, b in zip(rx, ry))
+    dx = sum((a - mx) ** 2 for a in rx) ** 0.5
+    dy = sum((b - my) ** 2 for b in ry) ** 0.5
+    return num / (dx * dy) if dx > 0 and dy > 0 else float("nan")
+
+
+def transfer_table(grid: dict) -> None:
+    """Table 6: per-demo Spearman ρ between demo Borda and grid Borda."""
+    if not DEMO_RESULTS_PATH.exists():
+        print("\n# Table 6: skipped — run `--section run_demos` first.")
+        return
+    results = json.loads(DEMO_RESULTS_PATH.read_text())
+    cells = grid["cells"]
+    demo_borda = _per_demo_borda(results)
+
+    print("\n# Table 6: Benchmark→demo Borda correlation\n")
+    print(
+        f"{'demo':>20s}  {'n_dim':>6s}  {'algos':>6s}  "
+        f"{'Spearman ρ':>12s}  {'p < ?':>8s}"
+    )
+    print(
+        f"{'-' * 20:>20s}  {'-' * 6:>6s}  {'-' * 6:>6s}  "
+        f"{'-' * 12:>12s}  {'-' * 8:>8s}"
+    )
+
+    all_d: list[float] = []
+    all_g: list[float] = []
+    for demo_name, data in results.items():
+        n_dim = data["n_dim"]
+        n_trials = data["n_trials"]
+        d_borda = demo_borda.get(demo_name, {})
+        cell = _snap_grid(cells, n_dim, n_trials)
+        if cell is None:
+            continue
+        common = [
+            a
+            for a in d_borda
+            if d_borda[a] != float("inf")
+            and a in cell
+            and cell[a].get("borda_score", float("inf")) != float("inf")
+        ]
+        if len(common) < 3:
+            continue
+        xs = [d_borda[a] for a in common]
+        ys = [cell[a]["borda_score"] for a in common]
+        rho = _spearman(xs, ys)
+        threshold = 2 / (len(common) ** 0.5)
+        sig = "0.05" if abs(rho) > threshold else "—"
+        print(
+            f"{demo_name:>20s}  {n_dim:>6d}  {len(common):>6d}  "
+            f"{rho:>12.3f}  {sig:>8s}"
+        )
+        all_d.extend(xs)
+        all_g.extend(ys)
+
+    if len(all_d) >= 4:
+        pooled = _spearman(all_d, all_g)
+        print(f"\n  Pooled across all demos: ρ = {pooled:.3f}  (n = {len(all_d)})")
+
+
+def per_demo_top_pick_table(grid: dict) -> None:
+    """Table 7: best algorithm per demo vs recommendation grid's pick."""
+    if not DEMO_RESULTS_PATH.exists():
+        print("\n# Table 7: skipped — run `--section run_demos` first.")
+        return
+    results = json.loads(DEMO_RESULTS_PATH.read_text())
+    print("\n# Table 7: Per-demo winner vs grid recommendation\n")
+    print(
+        f"{'demo':>20s}  {'demo winner':>24s}  "
+        f"{'grid recommends':>24s}  {'agree?':>7s}"
+    )
+    print(
+        f"{'-' * 20:>20s}  {'-' * 24:>24s}  "
+        f"{'-' * 24:>24s}  {'-' * 7:>7s}"
+    )
+    demo_borda = _per_demo_borda(results)
+    matches = total = 0
+    for demo_name, data in results.items():
+        d_borda = demo_borda.get(demo_name, {})
+        finite = {a: b for a, b in d_borda.items() if b != float("inf")}
+        if not finite:
+            continue
+        winner = min(finite, key=finite.get)
+        rec = E.recommend(
+            n_dim=data["n_dim"],
+            n_trials=data["n_trials"],
+            eval_time=None,
+            grid_path=GRID_PATH,
+        )
+        total += 1
+        if rec == winner:
+            matches += 1
+        match = "✓" if rec == winner else "—"
+        print(f"{demo_name:>20s}  {winner:>24s}  {rec:>24s}  {match:>7s}")
+    if total:
+        print(f"\n  Match rate: {matches}/{total}")
+
+
+# -----------------------------------------------------------------------------
+# § 6  Case study — why PRIMA_NEWUOA fails on wind_farm
+# -----------------------------------------------------------------------------
+
+
+def wind_farm_forensics(_grid: dict) -> None:
+    """Reproduce PRIMA_NEWUOA's deterministic-across-seeds failure on
+    wind_farm and characterise the configuration it converges to."""
+    import math as _math
+
+    from demos import (  # noqa: E402  — demos.py lives next to this script
+        _WF_FIELD_X0,
+        _WF_FIELD_X1,
+        _WF_FIELD_Y0,
+        _WF_FIELD_Y1,
+        _WF_MIN_SPACING,
+        _WF_N_TURBINES,
+        wind_farm_objective,
+    )
+
+    from humpday.optimizers.prima_algorithms import PRIMA_NEWUOA
+
+    print(
+        "\n# § 6 — wind_farm forensics: "
+        "why PRIMA_NEWUOA fails deterministically\n"
+    )
+
+    print("  Per-seed PRIMA_NEWUOA best on wind_farm:")
+    results = json.loads(DEMO_RESULTS_PATH.read_text())
+    nw = results.get("wind_farm", {}).get("runs", {}).get("PRIMA_NEWUOA", {})
+    bs = nw.get("best_values", [])
+    print(f"    {[round(v, 4) for v in bs]}")
+    if bs and len({round(v, 4) for v in bs}) == 1:
+        print(
+            "  → identical across seeds: PRIMA's initialization + "
+            "TR trajectory are deterministic,\n"
+            "    so it converges to the same point every run."
+        )
+
+    _set_seed(0)
+    opt = PRIMA_NEWUOA(wind_farm_objective, n_trials=200, n_dim=16)
+    v, x = opt.optimize()
+    print(f"\n  Reproduced best = {v:.4f}")
+
+    positions = [
+        (
+            _WF_FIELD_X0 + x[2 * i] * (_WF_FIELD_X1 - _WF_FIELD_X0),
+            _WF_FIELD_Y0 + x[2 * i + 1] * (_WF_FIELD_Y1 - _WF_FIELD_Y0),
+        )
+        for i in range(_WF_N_TURBINES)
+    ]
+    print(
+        f"\n  Turbine positions (field is "
+        f"{_WF_FIELD_X1 - _WF_FIELD_X0:.0f}×"
+        f"{_WF_FIELD_Y1 - _WF_FIELD_Y0:.0f} canvas px):"
+    )
+    for i, (px, py) in enumerate(positions):
+        print(f"    turbine {i}: ({px:6.1f}, {py:6.1f})")
+
+    violations = 0
+    n_pairs = 0
+    for i in range(_WF_N_TURBINES):
+        for j in range(i + 1, _WF_N_TURBINES):
+            d = _math.hypot(
+                positions[i][0] - positions[j][0],
+                positions[i][1] - positions[j][1],
+            )
+            n_pairs += 1
+            if d < _WF_MIN_SPACING:
+                violations += 1
+    print(
+        f"\n  Pairs violating MIN_SPACING ({_WF_MIN_SPACING:.0f} px): "
+        f"{violations}/{n_pairs}"
+    )
+
+    u_centre = [0.5] * 16
+    v_centre = wind_farm_objective(u_centre)
+    print(
+        f"\n  For comparison, u=0.5 (all turbines at field centre): "
+        f"objective = {v_centre:.2f}"
+    )
+    print(
+        f"  PRIMA at converged point: objective = {v:.2f} "
+        f"({n_pairs - violations}/{n_pairs} pairs feasible)"
+    )
+
+
+# -----------------------------------------------------------------------------
 # Driver
 # -----------------------------------------------------------------------------
 
@@ -709,6 +1035,10 @@ SECTIONS = {
     "soft_borda": soft_borda_sweep,
     "schedule": schedule_evaluation,
     "figures": make_figures,
+    "run_demos": run_demos,
+    "transfer": transfer_table,
+    "top_pick": per_demo_top_pick_table,
+    "wind_farm": wind_farm_forensics,
 }
 
 
