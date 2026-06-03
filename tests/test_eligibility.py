@@ -342,6 +342,125 @@ def _write_grid_legacy(tmp_path, cells: dict) -> "Path":
     return p
 
 
+# -----------------------------------------------------------------------------
+# Cost-aware recommender (papers/dfo_recommender/ §4)
+# -----------------------------------------------------------------------------
+
+
+def test_cost_weight_zero_reproduces_quality_only(tmp_path):
+    """cost_weight=0.0 should give exactly the same pick as the default."""
+    p = _write_grid(
+        tmp_path,
+        {
+            "5/200": {
+                "DifferentialEvolution": {"borda_score": 2.0, "mean_wall": 0.001},
+                "CMAEvolutionStrategy": {"borda_score": 1.0, "mean_wall": 0.05},
+            }
+        },
+    )
+    a = E.recommend(n_dim=5, n_trials=200, eval_time=1.0, grid_path=p)
+    b = E.recommend(n_dim=5, n_trials=200, eval_time=1.0, grid_path=p, cost_weight=0.0)
+    assert a == b == "CMAEvolutionStrategy"
+
+
+def test_cost_weight_penalises_heavy_algorithm_on_cheap_objective(tmp_path):
+    """At an eval_time where the quality-only filter admits both algorithms,
+    cost_weight > 0 should still penalise the heavy one enough that the
+    lighter algorithm wins despite a worse raw Borda."""
+    p = _write_grid(
+        tmp_path,
+        {
+            "5/200": {
+                # Heavy algorithm: small Borda edge but huge mean_wall.
+                "CMAEvolutionStrategy": {"borda_score": 1.5, "mean_wall": 10.0},
+                # Light algorithm: slightly worse Borda, near-zero overhead.
+                "Powell": {"borda_score": 2.5, "mean_wall": 0.001},
+            }
+        },
+    )
+    # eval_time = 1ms (above tier-3 threshold so quality-only admits CMA-ES).
+    quality_pick = E.recommend(
+        n_dim=5, n_trials=200, eval_time=1e-3, grid_path=p, cost_weight=0.0
+    )
+    # cost_weight=10: CMA's mean_wall=10s vs baseline=0.2s gives a big
+    # penalty; Powell's penalty is tiny. Cost-aware should switch to Powell.
+    cost_aware_pick = E.recommend(
+        n_dim=5, n_trials=200, eval_time=1e-3, grid_path=p, cost_weight=10.0
+    )
+    assert quality_pick == "CMAEvolutionStrategy"
+    assert cost_aware_pick == "Powell"
+
+
+def test_cost_weight_auto_picks_from_schedule(tmp_path):
+    """cost_weight='auto' should use the per-eval-time schedule."""
+    p = _write_grid(
+        tmp_path,
+        {
+            "5/200": {
+                "CMAEvolutionStrategy": {"borda_score": 1.5, "mean_wall": 1.0},
+                "Powell": {"borda_score": 2.5, "mean_wall": 0.001},
+            }
+        },
+    )
+    # At eval_time = 1µs the schedule's λ = 3.0 (the ≤10µs bucket), so
+    # auto should match cost_weight=3.0.
+    auto_pick = E.recommend(
+        n_dim=5, n_trials=200, eval_time=1e-6, grid_path=p, cost_weight="auto"
+    )
+    fixed_pick = E.recommend(
+        n_dim=5, n_trials=200, eval_time=1e-6, grid_path=p, cost_weight=3.0
+    )
+    assert auto_pick == fixed_pick == "Powell"
+
+
+def test_cost_weight_schedule_collapses_to_quality_at_expensive(tmp_path):
+    """At eval_time ≥ 1s the schedule sets λ = 0, so cost_weight='auto'
+    should give the same pick as the quality-only recommender."""
+    p = _write_grid(
+        tmp_path,
+        {
+            "5/200": {
+                "CMAEvolutionStrategy": {"borda_score": 1.5, "mean_wall": 1.0},
+                "Powell": {"borda_score": 2.5, "mean_wall": 0.001},
+            }
+        },
+    )
+    auto_pick = E.recommend(
+        n_dim=5, n_trials=200, eval_time=1.0, grid_path=p, cost_weight="auto"
+    )
+    quality_pick = E.recommend(
+        n_dim=5, n_trials=200, eval_time=1.0, grid_path=p, cost_weight=0.0
+    )
+    assert auto_pick == quality_pick == "CMAEvolutionStrategy"
+
+
+def test_cost_weight_bypasses_hard_tier_filter(tmp_path):
+    """When cost_weight > 0 the hard tier-eval-time filter is bypassed —
+    the soft penalty replaces it. Without bypass, a high-overhead
+    algorithm could never be picked at sub-µs eval_time even if it's the
+    Borda winner; the soft penalty lets it compete on a continuous
+    scale instead."""
+    p = _write_grid(
+        tmp_path,
+        {
+            "5/200": {
+                # CMA-ES is tier 3 (1ms threshold); at eval_time=1µs the
+                # hard filter would normally drop it. With cost_weight=0.001
+                # (tiny penalty) it should make it through because the
+                # filter is bypassed.
+                "CMAEvolutionStrategy": {"borda_score": 1.0, "mean_wall": 0.0001},
+                "Powell": {"borda_score": 5.0, "mean_wall": 0.0001},
+            }
+        },
+    )
+    pick = E.recommend(
+        n_dim=5, n_trials=200, eval_time=1e-6, grid_path=p, cost_weight=0.001
+    )
+    # With tiny penalty and identical overheads, Borda dominates and
+    # CMA-ES wins despite being below its tier threshold.
+    assert pick == "CMAEvolutionStrategy"
+
+
 def test_recommend_uses_grid_when_present(tmp_path):
     """When a grid is on disk, the recommender picks the eligible algorithm
     with the smallest median_best on the matching cell — not the rule top."""

@@ -241,10 +241,12 @@ both metrics agree.
 - (c) Per-eval-time λ schedule + comparison vs single λ. **Done.**
 - (d) Figure 1 (heatmap) + Figure 2 (Pareto). **Done.**
 - (e) Wire the soft schedule into `humpday/eligibility.py` as an
-  opt-in recommender mode (probably `recommend(..., cost_weight=λ)`),
-  so users can choose between solution-quality optimization and
-  wall-clock-aware optimization. Open question for the paper: should
-  the schedule become the default?
+  opt-in recommender mode. **Done.** `humpday.eligibility.recommend`
+  now accepts `cost_weight=0.0` (default, current behavior),
+  `cost_weight=<float>` (fixed λ), or `cost_weight="auto"` (the
+  per-eval-time schedule). `humpday.minimize` reads it from
+  `options={"cost_weight": ...}`. Open question for the paper: should
+  `"auto"` become the default in a future release?
 - (f) Cost-of-mistake distribution — when the recommender (or its soft
   variant) misses the oracle, how bad is the miss?
 - (g) Companion paper on benchmark-to-demonstration transfer: do the

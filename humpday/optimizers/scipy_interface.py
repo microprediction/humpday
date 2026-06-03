@@ -220,11 +220,16 @@ def cube_minimize(
                 # If the objective throws on a random feasible point, skip
                 # timing and let recommend() fall back to dim/trials only.
                 eval_time_used = None
+        # `options['cost_weight']` opts in to the cost-aware recommender
+        # described in papers/dfo_recommender/ §4. Default 0.0 preserves the
+        # original quality-only behavior; "auto" picks λ from the per-eval-
+        # time schedule; a numeric value pins λ across all eval-times.
         method = _E.recommend(
             n_dim=n_dim,
             n_trials=maxiter,
             eval_time=eval_time_used,
             available=list(PURE_OPTIMIZERS.keys()),
+            cost_weight=options.get("cost_weight", 0.0),
         )
 
     # Validate method
