@@ -293,6 +293,134 @@ def loo_table(grid: dict) -> None:
 
 
 # -----------------------------------------------------------------------------
+# § 4 Soft cost-weighted Borda
+# -----------------------------------------------------------------------------
+# Motivated by the 100µs gap (§ 3.2): the current recommender applies the
+# overhead tier as a hard binary filter, which means at the tier-2
+# threshold (100µs) it admits PRIMA_BOBYQA / PRIMA_NEWUOA and picks one by
+# Borda even when a lighter tier-1 algorithm would deliver comparable
+# solution quality with much smaller wall-clock cost.
+#
+# The soft variant replaces the hard tier filter with a continuous penalty:
+#
+#   adjusted_borda(a) = borda(a) + λ · log(1 + mean_wall(a) / user_baseline)
+#
+# where user_baseline = n_trials · eval_time is the wall-clock the user
+# expects to spend if the algorithm itself were free. λ=0 reproduces the
+# current recommender; λ→∞ picks the algorithm with the smallest overhead
+# regardless of Borda quality. The dimensional-cap and minimum-trials
+# filters still apply on top of the soft penalty.
+
+import math
+
+
+def soft_cost_pick(cell: dict, n_dim: int, n_trials: int, eval_time: float,
+                   lam: float) -> str | None:
+    """Pick the algorithm with the lowest adjusted_borda among algorithms
+    that pass the dim cap and min-trials filters at this cell. Tier filter
+    is intentionally not applied — that's what the soft penalty replaces."""
+    user_baseline = max(n_trials * eval_time, 1e-15)
+    best = None
+    for a, e in cell.items():
+        if e.get("skipped_too_slow"):
+            continue
+        if not E.passes_dim(a, n_dim) or not E.passes_trials(a, n_dim, n_trials):
+            continue
+        borda = e.get("borda_score", float("inf"))
+        if borda == float("inf"):
+            continue
+        overhead = e.get("mean_wall", 0.0)
+        penalty = lam * math.log(1.0 + overhead / user_baseline)
+        adjusted = borda + penalty
+        if best is None or adjusted < best[0]:
+            best = (adjusted, a)
+    return best[1] if best else None
+
+
+LAMBDA_SWEEP = [0.0, 0.1, 0.3, 1.0, 3.0, 10.0, 30.0]
+
+
+def soft_borda_sweep(grid: dict, overhead_budget: float = 1.0) -> None:
+    """Table 4: λ sweep of the soft cost-weighted Borda recommender,
+    evaluated against both naive and cost-aware oracles at each eval_time."""
+    cells = grid["cells"]
+    print(f"\n# Table 4: λ sweep for soft cost-weighted Borda")
+    print(f"# (penalty = λ · log(1 + mean_wall / (n_trials · eval_time)))\n")
+    print(f"# Each cell shows (naive_match% / cost_aware_match%) at (eval_time, λ).")
+    print(f"# λ=0 reproduces the current recommender. "
+          f"Cost-aware oracle uses overhead_budget={overhead_budget}.\n")
+
+    headers = ["eval_time"] + [f"λ={lam}" for lam in LAMBDA_SWEEP]
+    widths = [10] + [12 for _ in LAMBDA_SWEEP]
+    print("  " + "  ".join(f"{h:>{w}s}" for h, w in zip(headers, widths)))
+    print("  " + "  ".join("-" * w for w in widths))
+
+    per_lambda_cost_match: dict[float, list[float]] = {lam: [] for lam in LAMBDA_SWEEP}
+
+    for label, et in EVAL_TIMES:
+        row = [label]
+        for lam in LAMBDA_SWEEP:
+            naive_m = cost_m = n = 0
+            for ck, cell in cells.items():
+                n_dim, n_trials = map(int, ck.split("/"))
+                naive_o = borda_oracle(cell)
+                cost_o = cost_aware_oracle(cell, n_trials, et, overhead_budget)
+                if naive_o is None or cost_o is None:
+                    continue
+                pick = soft_cost_pick(cell, n_dim, n_trials, et, lam)
+                if pick is None:
+                    continue
+                n += 1
+                if pick == naive_o:
+                    naive_m += 1
+                if pick == cost_o:
+                    cost_m += 1
+            if n == 0:
+                row.append("—")
+                continue
+            row.append(f"{naive_m / n:>4.0%} / {cost_m / n:>4.0%}")
+            per_lambda_cost_match[lam].append(cost_m / n)
+        print("  " + "  ".join(f"{c:>{w}s}" for c, w in zip(row, widths)))
+
+    # λ* — best mean cost-aware match across eval_time buckets.
+    print()
+    print(f"  {'λ':>8s}  {'mean cost-aware match':>22s}")
+    print(f"  {'-' * 8:>8s}  {'-' * 22:>22s}")
+    best_lam: float | None = None
+    best_mean = -1.0
+    for lam in LAMBDA_SWEEP:
+        if not per_lambda_cost_match[lam]:
+            continue
+        m = mean(per_lambda_cost_match[lam])
+        marker = "  ← best" if m > best_mean else ""
+        if m > best_mean:
+            best_mean = m
+            best_lam = lam
+        print(f"  {lam:>8.1f}  {m:>22.1%}{marker}")
+    print(f"\n  λ* = {best_lam} (mean cost-aware match {best_mean:.1%})")
+
+    # Example switches at λ*.
+    if best_lam and best_lam > 0:
+        print(f"\n# Example switches at λ* = {best_lam} (eval_time=10µs):\n")
+        print(f"  {'cell':>10s}  {'λ=0 pick':>22s}  {'λ=λ* pick':>22s}  "
+              f"{'cost-aware oracle':>22s}")
+        shown = 0
+        for ck, cell in cells.items():
+            if shown >= 8:
+                break
+            n_dim, n_trials = map(int, ck.split("/"))
+            old = soft_cost_pick(cell, n_dim, n_trials, 1e-5, 0.0)
+            new = soft_cost_pick(cell, n_dim, n_trials, 1e-5, best_lam)
+            if old == new or new is None:
+                continue
+            co = cost_aware_oracle(cell, n_trials, 1e-5, overhead_budget)
+            if co is None:
+                continue
+            print(f"  {ck:>10s}  {str(old):>22s}  {str(new):>22s}  {str(co):>22s}")
+            shown += 1
+
+
+# -----------------------------------------------------------------------------
 # Driver
 # -----------------------------------------------------------------------------
 
@@ -300,6 +428,7 @@ SECTIONS = {
     "oracle_gap": oracle_gap_table,
     "wallclock": wallclock_table,
     "loo": loo_table,
+    "soft_borda": soft_borda_sweep,
 }
 
 

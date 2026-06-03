@@ -128,8 +128,53 @@ among those still passing the dimensional cap and min-trials filters.
 λ is a single hyperparameter that smoothly trades solution quality for
 wall-clock.
 
-Evaluation: re-run § 3.2 with this rule. Expected: cost-aware match at
-100 µs rises from 39 % toward the cost-aware oracle's natural ceiling.
+#### Result: the gap is closeable but no single λ wins
+
+Match rates against the cost-aware oracle across the λ sweep
+(`analysis.py::soft_borda_sweep`):
+
+| eval_time | λ=0 (current) | λ=0.3 | λ=1.0 | λ=3.0 |
+|--|--|--|--|--|
+| 10 µs | 12 % | 32 % | 60 % | **84 %** |
+| 100 µs | 45 % | 61 % | **79 %** | 73 % |
+| 1 ms | 73 % | 76 % | **76 %** | 73 % |
+| 10 ms | 94 % | 94 % | **97 %** | 91 % |
+| 1 s | **100 %** | 97 % | 97 % | 97 % |
+
+At every eval time except 1 s, *some* λ > 0 improves cost-aware match
+substantially. The 100 µs gap closes from 45 % → 79 %. The 10 µs
+regime improves dramatically.
+
+But the **optimal λ is eval-time-dependent**: 3.0 at 10 µs, 1.0 at 100 µs
+to 10 ms, 0 at 1 s. A single global λ pessimises one regime or the
+other. The natural product design is a **per-tier λ schedule** rather
+than a single hyperparameter — essentially a continuous-valued version
+of the current overhead-tier filter.
+
+#### Trade-off is genuine
+
+The same λ that improves cost-aware match degrades naive (solution-
+quality-only) match. At 100 µs, λ = 1.0 gives 79 % cost-aware match
+but naive match drops from 100 % to 61 %. **The improvement is in
+wall-clock-aware solution quality, paid for in raw solution quality at
+arbitrarily large wall-clock budget.** Users who care about wall-clock
+are better served; users who don't (and just want the best solution at
+any budget) are slightly worse off.
+
+#### Example switches at λ = 3.0, eval_time = 10 µs
+
+| cell | λ = 0 | λ = 3.0 | cost-aware oracle |
+|--|--|--|--|
+| 10/200 | PRIMA_NEWUOA | CoordinateDescent | CoordinateDescent |
+| 10/50 | PRIMA_BOBYQA | CoordinateDescent | CoordinateDescent |
+| 2/1000 | PRIMA_BOBYQA | Powell | NelderMead |
+| 20/200 | PRIMA_BOBYQA | CoordinateDescent | LBFGSB |
+
+Tier-2 PRIMA algorithms (high overhead) get replaced by tier-1
+coordinate-wise or simplex methods that deliver similar solution
+quality at much lower wall-clock. Sometimes the soft variant matches
+the cost-aware oracle exactly; sometimes it picks a different cheap
+algorithm that's almost as good.
 
 ### § 5 Discussion
 
