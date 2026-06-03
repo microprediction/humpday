@@ -49,27 +49,33 @@ EVAL_TIMES = [
 # Grid helpers
 # -----------------------------------------------------------------------------
 
+
 def load_grid() -> dict:
     return json.loads(GRID_PATH.read_text())
 
 
 def algos_with_runs(cell: dict) -> list[str]:
-    return [n for n, e in cell.items()
-            if e.get("runs") and not e.get("skipped_too_slow")]
+    return [
+        n for n, e in cell.items() if e.get("runs") and not e.get("skipped_too_slow")
+    ]
 
 
 def borda_oracle(cell: dict) -> str | None:
-    scored = [(e.get("borda_score", float("inf")), n) for n, e in cell.items()
-              if not e.get("skipped_too_slow")
-              and e.get("borda_score", float("inf")) != float("inf")]
+    scored = [
+        (e.get("borda_score", float("inf")), n)
+        for n, e in cell.items()
+        if not e.get("skipped_too_slow")
+        and e.get("borda_score", float("inf")) != float("inf")
+    ]
     if not scored:
         return None
     scored.sort()
     return scored[0][1]
 
 
-def cost_aware_oracle(cell: dict, n_trials: int, eval_time: float,
-                      overhead_budget: float = 1.0) -> str | None:
+def cost_aware_oracle(
+    cell: dict, n_trials: int, eval_time: float, overhead_budget: float = 1.0
+) -> str | None:
     """Best Borda among algorithms whose recorded mean_wall is within
     `overhead_budget` × (n_trials × eval_time). At expensive eval_times this
     converges to `borda_oracle`; at cheap eval_times it strips out heavy
@@ -79,7 +85,10 @@ def cost_aware_oracle(cell: dict, n_trials: int, eval_time: float,
     for a, e in cell.items():
         if e.get("skipped_too_slow"):
             continue
-        if user_baseline > 0 and e.get("mean_wall", 0.0) > overhead_budget * user_baseline:
+        if (
+            user_baseline > 0
+            and e.get("mean_wall", 0.0) > overhead_budget * user_baseline
+        ):
             continue
         borda = e.get("borda_score", float("inf"))
         if borda == float("inf"):
@@ -92,6 +101,7 @@ def cost_aware_oracle(cell: dict, n_trials: int, eval_time: float,
 # -----------------------------------------------------------------------------
 # § 3.1 Oracle gap — recommender vs oracle vs baselines
 # -----------------------------------------------------------------------------
+
 
 def oracle_gap_table(grid: dict) -> None:
     """Table 1: recommender vs naive oracle vs three baselines."""
@@ -125,7 +135,9 @@ def oracle_gap_table(grid: dict) -> None:
                 continue
             picks = {
                 "recommender": E.recommend(n_dim, n_trials, et, grid_path=GRID_PATH),
-                "fixed_best": fixed_best if fixed_best in eligible_names else "RandomSearch",
+                "fixed_best": fixed_best
+                if fixed_best in eligible_names
+                else "RandomSearch",
                 "suggest_pure": next(
                     (a for a in suggest_pure(n_dim, n_trials) if a in eligible_names),
                     "RandomSearch",
@@ -143,35 +155,46 @@ def oracle_gap_table(grid: dict) -> None:
                 if p_med != float("inf") and o_med > 0:
                     r["ratio_best"].append(p_med / o_med)
 
-    print(f"# Table 1: Recommender vs oracle vs baselines\n")
+    print("# Table 1: Recommender vs oracle vs baselines\n")
     print(f"Fixed-best baseline algorithm: {fixed_best}\n")
-    print(f"{'strategy':>14s}  {'match':>8s}  {'mean reg':>10s}  {'med reg':>10s}  {'med ratio':>12s}  {'n':>4s}")
-    print(f"{'-' * 14:>14s}  {'-' * 8:>8s}  {'-' * 10:>10s}  {'-' * 10:>10s}  {'-' * 12:>12s}  {'-' * 4:>4s}")
+    print(
+        f"{'strategy':>14s}  {'match':>8s}  {'mean reg':>10s}  {'med reg':>10s}  {'med ratio':>12s}  {'n':>4s}"
+    )
+    print(
+        f"{'-' * 14:>14s}  {'-' * 8:>8s}  {'-' * 10:>10s}  {'-' * 10:>10s}  {'-' * 12:>12s}  {'-' * 4:>4s}"
+    )
     for name in ("recommender", "fixed_best", "suggest_pure", "random"):
         r = results[name]
         if r["n"] == 0:
             continue
-        print(f"{name:>14s}  {r['match'] / r['n']:>8.1%}  "
-              f"{mean(r['regret_borda']):>10.2f}  "
-              f"{median(r['regret_borda']):>10.2f}  "
-              f"{median(r['ratio_best']):>12.2e}  "
-              f"{r['n']:>4d}")
+        print(
+            f"{name:>14s}  {r['match'] / r['n']:>8.1%}  "
+            f"{mean(r['regret_borda']):>10.2f}  "
+            f"{median(r['regret_borda']):>10.2f}  "
+            f"{median(r['ratio_best']):>12.2e}  "
+            f"{r['n']:>4d}"
+        )
 
 
 # -----------------------------------------------------------------------------
 # § 3.2 Wall-clock-aware oracle — the 100µs gap finding
 # -----------------------------------------------------------------------------
 
+
 def wallclock_table(grid: dict, overhead_budget: float = 1.0) -> None:
     """Table 2: recommender matches naive vs cost-aware oracle per eval_time."""
     cells = grid["cells"]
 
-    print(f"\n# Table 2: Recommender vs naive oracle vs wall-clock-aware oracle")
+    print("\n# Table 2: Recommender vs naive oracle vs wall-clock-aware oracle")
     print(f"# (overhead_budget = {overhead_budget}× user wall-clock)\n")
-    print(f"{'eval_time':>10s}  {'naive match':>12s}  {'cost-aware':>12s}  "
-          f"{'oracles ≠':>10s}  {'n':>4s}")
-    print(f"{'-' * 10:>10s}  {'-' * 12:>12s}  {'-' * 12:>12s}  "
-          f"{'-' * 10:>10s}  {'-' * 4:>4s}")
+    print(
+        f"{'eval_time':>10s}  {'naive match':>12s}  {'cost-aware':>12s}  "
+        f"{'oracles ≠':>10s}  {'n':>4s}"
+    )
+    print(
+        f"{'-' * 10:>10s}  {'-' * 12:>12s}  {'-' * 12:>12s}  "
+        f"{'-' * 10:>10s}  {'-' * 4:>4s}"
+    )
 
     for label, et in EVAL_TIMES:
         naive = cost = diff = n = 0
@@ -191,16 +214,20 @@ def wallclock_table(grid: dict, overhead_budget: float = 1.0) -> None:
                 diff += 1
         if n == 0:
             continue
-        print(f"{label:>10s}  {naive / n:>12.0%}  {cost / n:>12.0%}  "
-              f"{diff / n:>10.0%}  {n:>4d}")
+        print(
+            f"{label:>10s}  {naive / n:>12.0%}  {cost / n:>12.0%}  "
+            f"{diff / n:>10.0%}  {n:>4d}"
+        )
 
 
 # -----------------------------------------------------------------------------
 # § 3.3 Leave-one-objective-out cross-validation
 # -----------------------------------------------------------------------------
 
-def borda_excluding(cell: dict, objectives: list[str], seeds: list[int],
-                    excluded: str) -> dict[str, float]:
+
+def borda_excluding(
+    cell: dict, objectives: list[str], seeds: list[int], excluded: str
+) -> dict[str, float]:
     """Recompute per-algorithm Borda mean-rank using all (objective, seed)
     runs in `cell` except those where objective == excluded."""
     candidates = algos_with_runs(cell)
@@ -232,13 +259,16 @@ def borda_excluding(cell: dict, objectives: list[str], seeds: list[int],
     return {a: (mean(rs) if rs else float("inf")) for a, rs in ranks_by_algo.items()}
 
 
-def median_best_on_objective(cell: dict, algo: str, objective: str,
-                             seeds: list[int]) -> float:
+def median_best_on_objective(
+    cell: dict, algo: str, objective: str, seeds: list[int]
+) -> float:
     runs = cell.get(algo, {}).get("runs", {})
-    vals = [runs[f"{objective}/{s}"]["best"]
-            for s in seeds
-            if f"{objective}/{s}" in runs
-            and runs[f"{objective}/{s}"]["best"] != float("inf")]
+    vals = [
+        runs[f"{objective}/{s}"]["best"]
+        for s in seeds
+        if f"{objective}/{s}" in runs
+        and runs[f"{objective}/{s}"]["best"] != float("inf")
+    ]
     return median(vals) if vals else float("inf")
 
 
@@ -248,11 +278,15 @@ def loo_table(grid: dict) -> None:
     objectives = grid["meta"]["objectives"]
     seeds = list(range(grid["meta"]["n_seeds"]))
 
-    print(f"\n# Table 3: Leave-one-objective-out reproducibility\n")
-    print(f"{'held-out objective':>22s}  {'LOO match':>10s}  "
-          f"{'med ratio':>10s}  {'mean ratio':>12s}  {'n':>4s}")
-    print(f"{'-' * 22:>22s}  {'-' * 10:>10s}  {'-' * 10:>10s}  "
-          f"{'-' * 12:>12s}  {'-' * 4:>4s}")
+    print("\n# Table 3: Leave-one-objective-out reproducibility\n")
+    print(
+        f"{'held-out objective':>22s}  {'LOO match':>10s}  "
+        f"{'med ratio':>10s}  {'mean ratio':>12s}  {'n':>4s}"
+    )
+    print(
+        f"{'-' * 22:>22s}  {'-' * 10:>10s}  {'-' * 10:>10s}  "
+        f"{'-' * 12:>12s}  {'-' * 4:>4s}"
+    )
 
     all_match = 0
     all_n = 0
@@ -267,8 +301,10 @@ def loo_table(grid: dict) -> None:
             if not new_borda or all(v == float("inf") for v in new_borda.values()):
                 continue
             loo_pick = min(new_borda, key=new_borda.get)
-            scored = [(median_best_on_objective(cell, a, held, seeds), a)
-                      for a in algos_with_runs(cell)]
+            scored = [
+                (median_best_on_objective(cell, a, held, seeds), a)
+                for a in algos_with_runs(cell)
+            ]
             scored = [(s, a) for s, a in scored if s != float("inf")]
             if not scored:
                 continue
@@ -286,10 +322,14 @@ def loo_table(grid: dict) -> None:
         all_match += matches
         all_n += n
         all_ratios.extend(ratios)
-        print(f"{held:>22s}  {matches / n:>10.0%}  {median(ratios):>10.2e}  "
-              f"{mean(ratios):>12.2e}  {n:>4d}")
-    print(f"{'OVERALL':>22s}  {all_match / all_n:>10.0%}  "
-          f"{median(all_ratios):>10.2e}  {mean(all_ratios):>12.2e}  {all_n:>4d}")
+        print(
+            f"{held:>22s}  {matches / n:>10.0%}  {median(ratios):>10.2e}  "
+            f"{mean(ratios):>12.2e}  {n:>4d}"
+        )
+    print(
+        f"{'OVERALL':>22s}  {all_match / all_n:>10.0%}  "
+        f"{median(all_ratios):>10.2e}  {mean(all_ratios):>12.2e}  {all_n:>4d}"
+    )
 
 
 # -----------------------------------------------------------------------------
@@ -314,8 +354,9 @@ def loo_table(grid: dict) -> None:
 import math
 
 
-def soft_cost_pick(cell: dict, n_dim: int, n_trials: int, eval_time: float,
-                   lam: float) -> str | None:
+def soft_cost_pick(
+    cell: dict, n_dim: int, n_trials: int, eval_time: float, lam: float
+) -> str | None:
     """Pick the algorithm with the lowest adjusted_borda among algorithms
     that pass the dim cap and min-trials filters at this cell. Tier filter
     is intentionally not applied — that's what the soft penalty replaces."""
@@ -347,10 +388,10 @@ LAMBDA_SWEEP = [0.0, 0.1, 0.3, 1.0, 3.0, 10.0, 30.0]
 LAMBDA_SCHEDULE = [
     # (eval_time_threshold, lambda_) — uses the first match where
     # eval_time ≤ threshold. Beyond the last entry, λ=0.
-    (1e-5, 3.0),    # ≤10 µs
-    (1e-4, 1.0),    # ≤100 µs
-    (1e-3, 1.0),    # ≤1 ms
-    (1e-2, 1.0),    # ≤10 ms
+    (1e-5, 3.0),  # ≤10 µs
+    (1e-4, 1.0),  # ≤100 µs
+    (1e-3, 1.0),  # ≤1 ms
+    (1e-2, 1.0),  # ≤10 ms
     (float("inf"), 0.0),
 ]
 
@@ -366,11 +407,13 @@ def soft_borda_sweep(grid: dict, overhead_budget: float = 1.0) -> None:
     """Table 4: λ sweep of the soft cost-weighted Borda recommender,
     evaluated against both naive and cost-aware oracles at each eval_time."""
     cells = grid["cells"]
-    print(f"\n# Table 4: λ sweep for soft cost-weighted Borda")
-    print(f"# (penalty = λ · log(1 + mean_wall / (n_trials · eval_time)))\n")
-    print(f"# Each cell shows (naive_match% / cost_aware_match%) at (eval_time, λ).")
-    print(f"# λ=0 reproduces the current recommender. "
-          f"Cost-aware oracle uses overhead_budget={overhead_budget}.\n")
+    print("\n# Table 4: λ sweep for soft cost-weighted Borda")
+    print("# (penalty = λ · log(1 + mean_wall / (n_trials · eval_time)))\n")
+    print("# Each cell shows (naive_match% / cost_aware_match%) at (eval_time, λ).")
+    print(
+        f"# λ=0 reproduces the current recommender. "
+        f"Cost-aware oracle uses overhead_budget={overhead_budget}.\n"
+    )
 
     headers = ["eval_time"] + [f"λ={lam}" for lam in LAMBDA_SWEEP]
     widths = [10] + [12 for _ in LAMBDA_SWEEP]
@@ -424,8 +467,10 @@ def soft_borda_sweep(grid: dict, overhead_budget: float = 1.0) -> None:
     # Example switches at λ*.
     if best_lam and best_lam > 0:
         print(f"\n# Example switches at λ* = {best_lam} (eval_time=10µs):\n")
-        print(f"  {'cell':>10s}  {'λ=0 pick':>22s}  {'λ=λ* pick':>22s}  "
-              f"{'cost-aware oracle':>22s}")
+        print(
+            f"  {'cell':>10s}  {'λ=0 pick':>22s}  {'λ=λ* pick':>22s}  "
+            f"{'cost-aware oracle':>22s}"
+        )
         shown = 0
         for ck, cell in cells.items():
             if shown >= 8:
@@ -448,10 +493,12 @@ def schedule_evaluation(grid: dict, overhead_budget: float = 1.0) -> None:
     (best λ at each eval time), so it can't lose — but the table shows
     by how much."""
     cells = grid["cells"]
-    print(f"\n# Table 5: Per-eval-time λ schedule vs single λ choices\n")
-    print(f"  {'eval_time':>10s}  {'λ from schedule':>16s}  "
-          f"{'schedule cost-aware':>20s}  {'best single λ':>14s}  "
-          f"{'best cost-aware':>16s}")
+    print("\n# Table 5: Per-eval-time λ schedule vs single λ choices\n")
+    print(
+        f"  {'eval_time':>10s}  {'λ from schedule':>16s}  "
+        f"{'schedule cost-aware':>20s}  {'best single λ':>14s}  "
+        f"{'best cost-aware':>16s}"
+    )
     print("  " + "-" * 88)
 
     schedule_matches: list[float] = []
@@ -509,19 +556,26 @@ def schedule_evaluation(grid: dict, overhead_budget: float = 1.0) -> None:
         sched_match = cost_m / n
         schedule_matches.append(sched_match)
 
-        best_lam_here = max(single_lam_match_per_et[label],
-                            key=single_lam_match_per_et[label].get)
+        best_lam_here = max(
+            single_lam_match_per_et[label], key=single_lam_match_per_et[label].get
+        )
         best_lam_match = single_lam_match_per_et[label][best_lam_here]
-        print(f"  {label:>10s}  {sched_lam:>16.1f}  "
-              f"{sched_match:>20.0%}  {best_lam_here:>14.1f}  "
-              f"{best_lam_match:>16.0%}")
+        print(
+            f"  {label:>10s}  {sched_lam:>16.1f}  "
+            f"{sched_match:>20.0%}  {best_lam_here:>14.1f}  "
+            f"{best_lam_match:>16.0%}"
+        )
 
-    print(f"\n  Mean across eval times:")
+    print("\n  Mean across eval times:")
     print(f"    Schedule:                {mean(schedule_matches):>5.1%}")
-    print(f"    Best single λ ({best_single_lam_overall}):    "
-          f"{best_single_lam_score:>5.1%}")
-    print(f"    Current recommender λ=0: "
-          f"{mean(single_lam_match_per_et[lbl][0.0] for lbl, _ in EVAL_TIMES if 0.0 in single_lam_match_per_et[lbl]):>5.1%}")
+    print(
+        f"    Best single λ ({best_single_lam_overall}):    "
+        f"{best_single_lam_score:>5.1%}"
+    )
+    print(
+        f"    Current recommender λ=0: "
+        f"{mean(single_lam_match_per_et[lbl][0.0] for lbl, _ in EVAL_TIMES if 0.0 in single_lam_match_per_et[lbl]):>5.1%}"
+    )
 
 
 def make_figures(grid: dict, overhead_budget: float = 1.0) -> None:
@@ -531,6 +585,7 @@ def make_figures(grid: dict, overhead_budget: float = 1.0) -> None:
     Figure 2: Pareto frontier — naive match vs cost-aware match across λ.
     """
     import matplotlib
+
     matplotlib.use("Agg")
     import matplotlib.pyplot as plt
     import numpy as np
@@ -579,8 +634,15 @@ def make_figures(grid: dict, overhead_budget: float = 1.0) -> None:
             v = cost_arr[i, j]
             if np.isnan(v):
                 continue
-            ax.text(j, i, f"{v:.0%}", ha="center", va="center",
-                    color="white" if v < 0.5 else "black", fontsize=8)
+            ax.text(
+                j,
+                i,
+                f"{v:.0%}",
+                ha="center",
+                va="center",
+                color="white" if v < 0.5 else "black",
+                fontsize=8,
+            )
     fig.tight_layout()
     out1 = FIGURES / "fig1_cost_aware_heatmap.pdf"
     fig.savefig(out1)
@@ -595,20 +657,35 @@ def make_figures(grid: dict, overhead_budget: float = 1.0) -> None:
         x = naive_arr[i, :]
         y = cost_arr[i, :]
         ax.plot(x, y, "-", color=colors[i], alpha=0.5, linewidth=1)
-        ax.scatter(x, y, s=40, color=colors[i], marker=markers[i],
-                   label=label, edgecolor="black", linewidth=0.5)
+        ax.scatter(
+            x,
+            y,
+            s=40,
+            color=colors[i],
+            marker=markers[i],
+            label=label,
+            edgecolor="black",
+            linewidth=0.5,
+        )
         for j, lam in enumerate(lambdas):
             if not (np.isnan(x[j]) or np.isnan(y[j])):
-                ax.annotate(f"{lam:g}", (x[j], y[j]),
-                            textcoords="offset points", xytext=(5, 5),
-                            fontsize=7, color=colors[i])
+                ax.annotate(
+                    f"{lam:g}",
+                    (x[j], y[j]),
+                    textcoords="offset points",
+                    xytext=(5, 5),
+                    fontsize=7,
+                    color=colors[i],
+                )
     ax.plot([0, 1], [0, 1], "k:", alpha=0.3, linewidth=1)
     ax.set_xlim(-0.02, 1.02)
     ax.set_ylim(-0.02, 1.02)
     ax.set_xlabel("Naive match rate (solution quality, ignoring cost)")
     ax.set_ylabel("Cost-aware match rate")
-    ax.set_title("$\\lambda$ trades naive match for cost-aware match\n"
-                 "(annotations are $\\lambda$ values; lines connect a single eval_time)")
+    ax.set_title(
+        "$\\lambda$ trades naive match for cost-aware match\n"
+        "(annotations are $\\lambda$ values; lines connect a single eval_time)"
+    )
     ax.legend(title="eval_time", loc="lower left", fontsize=9)
     ax.grid(alpha=0.2)
     fig.tight_layout()
