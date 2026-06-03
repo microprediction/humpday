@@ -354,8 +354,9 @@ def loo_table(grid: dict) -> None:
 import math
 
 
-def soft_cost_pick(cell: dict, n_dim: int, n_trials: int, eval_time: float,
-                   lam: float) -> str | None:
+def soft_cost_pick(
+    cell: dict, n_dim: int, n_trials: int, eval_time: float, lam: float
+) -> str | None:
     """Pick the algorithm with the lowest adjusted_borda among algorithms
     that pass the dim cap and min-trials filters at this cell. Tier filter
     is intentionally not applied — that's what the soft penalty replaces."""
@@ -387,10 +388,10 @@ LAMBDA_SWEEP = [0.0, 0.1, 0.3, 1.0, 3.0, 10.0, 30.0]
 LAMBDA_SCHEDULE = [
     # (eval_time_threshold, lambda_) — uses the first match where
     # eval_time ≤ threshold. Beyond the last entry, λ=0.
-    (1e-5, 3.0),    # ≤10 µs
-    (1e-4, 1.0),    # ≤100 µs
-    (1e-3, 1.0),    # ≤1 ms
-    (1e-2, 1.0),    # ≤10 ms
+    (1e-5, 3.0),  # ≤10 µs
+    (1e-4, 1.0),  # ≤100 µs
+    (1e-3, 1.0),  # ≤1 ms
+    (1e-2, 1.0),  # ≤10 ms
     (float("inf"), 0.0),
 ]
 
@@ -406,11 +407,13 @@ def soft_borda_sweep(grid: dict, overhead_budget: float = 1.0) -> None:
     """Table 4: λ sweep of the soft cost-weighted Borda recommender,
     evaluated against both naive and cost-aware oracles at each eval_time."""
     cells = grid["cells"]
-    print(f"\n# Table 4: λ sweep for soft cost-weighted Borda")
-    print(f"# (penalty = λ · log(1 + mean_wall / (n_trials · eval_time)))\n")
-    print(f"# Each cell shows (naive_match% / cost_aware_match%) at (eval_time, λ).")
-    print(f"# λ=0 reproduces the current recommender. "
-          f"Cost-aware oracle uses overhead_budget={overhead_budget}.\n")
+    print("\n# Table 4: λ sweep for soft cost-weighted Borda")
+    print("# (penalty = λ · log(1 + mean_wall / (n_trials · eval_time)))\n")
+    print("# Each cell shows (naive_match% / cost_aware_match%) at (eval_time, λ).")
+    print(
+        f"# λ=0 reproduces the current recommender. "
+        f"Cost-aware oracle uses overhead_budget={overhead_budget}.\n"
+    )
 
     headers = ["eval_time"] + [f"λ={lam}" for lam in LAMBDA_SWEEP]
     widths = [10] + [12 for _ in LAMBDA_SWEEP]
@@ -464,8 +467,10 @@ def soft_borda_sweep(grid: dict, overhead_budget: float = 1.0) -> None:
     # Example switches at λ*.
     if best_lam and best_lam > 0:
         print(f"\n# Example switches at λ* = {best_lam} (eval_time=10µs):\n")
-        print(f"  {'cell':>10s}  {'λ=0 pick':>22s}  {'λ=λ* pick':>22s}  "
-              f"{'cost-aware oracle':>22s}")
+        print(
+            f"  {'cell':>10s}  {'λ=0 pick':>22s}  {'λ=λ* pick':>22s}  "
+            f"{'cost-aware oracle':>22s}"
+        )
         shown = 0
         for ck, cell in cells.items():
             if shown >= 8:
@@ -488,10 +493,12 @@ def schedule_evaluation(grid: dict, overhead_budget: float = 1.0) -> None:
     (best λ at each eval time), so it can't lose — but the table shows
     by how much."""
     cells = grid["cells"]
-    print(f"\n# Table 5: Per-eval-time λ schedule vs single λ choices\n")
-    print(f"  {'eval_time':>10s}  {'λ from schedule':>16s}  "
-          f"{'schedule cost-aware':>20s}  {'best single λ':>14s}  "
-          f"{'best cost-aware':>16s}")
+    print("\n# Table 5: Per-eval-time λ schedule vs single λ choices\n")
+    print(
+        f"  {'eval_time':>10s}  {'λ from schedule':>16s}  "
+        f"{'schedule cost-aware':>20s}  {'best single λ':>14s}  "
+        f"{'best cost-aware':>16s}"
+    )
     print("  " + "-" * 88)
 
     schedule_matches: list[float] = []
@@ -549,19 +556,26 @@ def schedule_evaluation(grid: dict, overhead_budget: float = 1.0) -> None:
         sched_match = cost_m / n
         schedule_matches.append(sched_match)
 
-        best_lam_here = max(single_lam_match_per_et[label],
-                            key=single_lam_match_per_et[label].get)
+        best_lam_here = max(
+            single_lam_match_per_et[label], key=single_lam_match_per_et[label].get
+        )
         best_lam_match = single_lam_match_per_et[label][best_lam_here]
-        print(f"  {label:>10s}  {sched_lam:>16.1f}  "
-              f"{sched_match:>20.0%}  {best_lam_here:>14.1f}  "
-              f"{best_lam_match:>16.0%}")
+        print(
+            f"  {label:>10s}  {sched_lam:>16.1f}  "
+            f"{sched_match:>20.0%}  {best_lam_here:>14.1f}  "
+            f"{best_lam_match:>16.0%}"
+        )
 
-    print(f"\n  Mean across eval times:")
+    print("\n  Mean across eval times:")
     print(f"    Schedule:                {mean(schedule_matches):>5.1%}")
-    print(f"    Best single λ ({best_single_lam_overall}):    "
-          f"{best_single_lam_score:>5.1%}")
-    print(f"    Current recommender λ=0: "
-          f"{mean(single_lam_match_per_et[lbl][0.0] for lbl, _ in EVAL_TIMES if 0.0 in single_lam_match_per_et[lbl]):>5.1%}")
+    print(
+        f"    Best single λ ({best_single_lam_overall}):    "
+        f"{best_single_lam_score:>5.1%}"
+    )
+    print(
+        f"    Current recommender λ=0: "
+        f"{mean(single_lam_match_per_et[lbl][0.0] for lbl, _ in EVAL_TIMES if 0.0 in single_lam_match_per_et[lbl]):>5.1%}"
+    )
 
 
 def make_figures(grid: dict, overhead_budget: float = 1.0) -> None:
@@ -571,6 +585,7 @@ def make_figures(grid: dict, overhead_budget: float = 1.0) -> None:
     Figure 2: Pareto frontier — naive match vs cost-aware match across λ.
     """
     import matplotlib
+
     matplotlib.use("Agg")
     import matplotlib.pyplot as plt
     import numpy as np
@@ -619,8 +634,15 @@ def make_figures(grid: dict, overhead_budget: float = 1.0) -> None:
             v = cost_arr[i, j]
             if np.isnan(v):
                 continue
-            ax.text(j, i, f"{v:.0%}", ha="center", va="center",
-                    color="white" if v < 0.5 else "black", fontsize=8)
+            ax.text(
+                j,
+                i,
+                f"{v:.0%}",
+                ha="center",
+                va="center",
+                color="white" if v < 0.5 else "black",
+                fontsize=8,
+            )
     fig.tight_layout()
     out1 = FIGURES / "fig1_cost_aware_heatmap.pdf"
     fig.savefig(out1)
@@ -635,20 +657,35 @@ def make_figures(grid: dict, overhead_budget: float = 1.0) -> None:
         x = naive_arr[i, :]
         y = cost_arr[i, :]
         ax.plot(x, y, "-", color=colors[i], alpha=0.5, linewidth=1)
-        ax.scatter(x, y, s=40, color=colors[i], marker=markers[i],
-                   label=label, edgecolor="black", linewidth=0.5)
+        ax.scatter(
+            x,
+            y,
+            s=40,
+            color=colors[i],
+            marker=markers[i],
+            label=label,
+            edgecolor="black",
+            linewidth=0.5,
+        )
         for j, lam in enumerate(lambdas):
             if not (np.isnan(x[j]) or np.isnan(y[j])):
-                ax.annotate(f"{lam:g}", (x[j], y[j]),
-                            textcoords="offset points", xytext=(5, 5),
-                            fontsize=7, color=colors[i])
+                ax.annotate(
+                    f"{lam:g}",
+                    (x[j], y[j]),
+                    textcoords="offset points",
+                    xytext=(5, 5),
+                    fontsize=7,
+                    color=colors[i],
+                )
     ax.plot([0, 1], [0, 1], "k:", alpha=0.3, linewidth=1)
     ax.set_xlim(-0.02, 1.02)
     ax.set_ylim(-0.02, 1.02)
     ax.set_xlabel("Naive match rate (solution quality, ignoring cost)")
     ax.set_ylabel("Cost-aware match rate")
-    ax.set_title("$\\lambda$ trades naive match for cost-aware match\n"
-                 "(annotations are $\\lambda$ values; lines connect a single eval_time)")
+    ax.set_title(
+        "$\\lambda$ trades naive match for cost-aware match\n"
+        "(annotations are $\\lambda$ values; lines connect a single eval_time)"
+    )
     ax.legend(title="eval_time", loc="lower left", fontsize=9)
     ax.grid(alpha=0.2)
     fig.tight_layout()

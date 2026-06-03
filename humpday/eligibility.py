@@ -29,6 +29,7 @@ filter logic without instantiating any optimizers.
 from __future__ import annotations
 
 import json
+import math
 import time
 from collections.abc import Callable, Iterable
 from dataclasses import dataclass
@@ -364,12 +365,47 @@ def _snap_to_grid_cell(grid: dict, n_dim: int, n_trials: int) -> dict[str, dict]
     return cells.get(f"{d}/{t}")
 
 
+# -----------------------------------------------------------------------------
+# Soft cost-weighted Borda schedule (opt-in cost-aware recommender)
+# -----------------------------------------------------------------------------
+# A per-eval-time λ schedule that replaces the hard tier filter with a
+# continuous overhead penalty. Derived empirically in
+# papers/dfo_recommender/ as the row-wise envelope of the λ sweep —
+# at each eval_time, the λ that maximised cost-aware match. λ=0
+# reproduces the existing quality-only recommender; λ>0 trades raw
+# solution quality for wall-clock cost.
+
+# Schedule: (eval_time_threshold, lambda). Uses the first match where
+# eval_time ≤ threshold. The current values come from Table 5 of
+# papers/dfo_recommender/OUTLINE.md.
+_COST_WEIGHT_SCHEDULE: tuple[tuple[float, float], ...] = (
+    (1e-5, 3.0),  # ≤ 10 µs
+    (1e-4, 1.0),  # ≤ 100 µs
+    (1e-3, 1.0),  # ≤ 1 ms
+    (1e-2, 1.0),  # ≤ 10 ms
+)
+
+
+def _lambda_for(eval_time: float | None) -> float:
+    """Pick λ from the per-eval-time schedule. Beyond the schedule's largest
+    threshold (currently 10 ms), λ = 0 — the cost-aware mode collapses to
+    the quality-only recommender for expensive objectives where overhead
+    is irrelevant."""
+    if eval_time is None:
+        return 0.0
+    for threshold, lam in _COST_WEIGHT_SCHEDULE:
+        if eval_time <= threshold:
+            return lam
+    return 0.0
+
+
 def recommend(
     n_dim: int,
     n_trials: int,
     eval_time: float | None = None,
     available: Iterable[str] | None = None,
     grid_path: Path | None = None,
+    cost_weight: float | str = 0.0,
 ) -> str:
     """Pick the best algorithm name for (n_dim, n_trials, eval_time).
 
@@ -385,12 +421,44 @@ def recommend(
     we fall through to the rule-based ranking that mirrors
     :func:`suggest_pure`.
 
+    ``cost_weight`` activates the opt-in cost-aware recommender (the soft
+    cost-weighted Borda variant from papers/dfo_recommender/ §4). The
+    score becomes ``borda + cost_weight·log(1 + mean_wall/(n_trials·eval_time))``
+    so high-overhead algorithms get penalised when the user's objective is
+    cheap to evaluate. The hard tier-eligibility filter is bypassed in this
+    mode — the soft penalty replaces it. Accepted values:
+
+      * ``0.0`` (default) — quality-only recommender, current behavior.
+      * a positive float — fixed λ across all eval_times.
+      * ``"auto"`` — per-eval-time schedule (3.0 at ≤ 10 µs, 1.0 in
+        the µs–ms band, 0 at ≥ 1 s). Closes the 100 µs cost-aware gap
+        identified in the paper. Recommended setting when wall-clock
+        cost matters.
+
     If nothing passes the filters (e.g. n_trials too small for any sane
     algorithm), falls back to RandomSearch — it works at any
     (n_dim, n_trials) and gives a defensible baseline.
     """
     universe = list(available) if available is not None else list(TIER.keys())
-    candidates = set(eligible(universe, n_dim, n_trials, eval_time))
+
+    # Resolve cost_weight into a concrete λ. The hard tier filter only
+    # applies when cost_weight == 0 (quality-only mode); otherwise the
+    # soft penalty replaces it.
+    if cost_weight == "auto":
+        lam: float = _lambda_for(eval_time)
+    else:
+        lam = float(cost_weight)
+    cost_aware = lam > 0
+
+    if cost_aware:
+        # Apply dim cap + min trials, but skip the tier filter.
+        candidates = {
+            n
+            for n in universe
+            if passes_dim(n, n_dim) and passes_trials(n, n_dim, n_trials)
+        }
+    else:
+        candidates = set(eligible(universe, n_dim, n_trials, eval_time))
 
     # Grid-driven pick when available.
     grid = _load_grid(grid_path or _GRID_PATH_DEFAULT)
@@ -400,6 +468,7 @@ def recommend(
             # Prefer Borda mean-rank (reliability) when the grid carries it;
             # fall back to median_best for grids built by an older script.
             scored: list[tuple[float, str]] = []
+            user_baseline = max((eval_time or 0.0) * n_trials, 1e-15)
             for name in candidates:
                 if name not in cell:
                     continue
@@ -409,8 +478,13 @@ def recommend(
                     score = entry.get("median_best")
                 if score is None or score == float("inf"):
                     continue
+                if cost_aware:
+                    overhead = entry.get("mean_wall", 0.0)
+                    score = score + lam * math.log(1.0 + overhead / user_baseline)
                 scored.append((score, name))
             if scored:
+                # Sort by (score, name) so ties break on algorithm name —
+                # same convention as the JS port (test_js_eligibility_parity).
                 scored.sort()
                 return scored[0][1]
 
