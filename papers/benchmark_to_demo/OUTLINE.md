@@ -17,29 +17,49 @@ outline are current as of the demo set checked in at
 
 ## Headline finding
 
-Across the four demos ported so far, the **pooled Spearman ρ between
-benchmark Borda and demonstration Borda is 0.290** — weak positive
-correlation. Per demo the picture is much messier:
+Across **seven demos** ported so far, the **pooled Spearman ρ between
+benchmark Borda and demonstration Borda is 0.316** — weak positive
+correlation overall. Per demo the picture is much messier:
 
-| Demo | n_dim | Spearman ρ | Demo winner | Grid recommendation |
-|--|--|--|--|--|
-| welded_beam | 4 | 0.006 | ParticleSwarm | Powell |
-| robot_arm | 6 | **−0.418** | FireflyAlgorithm | Powell |
-| slingshot | 2 | 0.769 | PRIMA_UOBYQA | PRIMA_NEWUOA |
-| brachistochrone | 10 | 0.635 | LBFGSB | PRIMA_NEWUOA |
+| Demo | n_dim | Spearman ρ | Demo winner | Grid recommendation | Match? |
+|--|--|--|--|--|--|
+| welded_beam | 4 | 0.006 | ParticleSwarm | Powell | — |
+| robot_arm | 6 | **−0.418** | FireflyAlgorithm | Powell | — |
+| slingshot | 2 | 0.769 | PRIMA_UOBYQA | PRIMA_NEWUOA | — |
+| brachistochrone | 10 | 0.635 | LBFGSB | PRIMA_NEWUOA | — |
+| battery_dispatch | 24 | −0.036 | Rechenberg | PRIMA_BOBYQA | — |
+| **reactor_tprofile** | 10 | **0.919** | PRIMA_NEWUOA | PRIMA_NEWUOA | **✓** |
+| wind_farm | 16 | −0.139 | PatternSearch | PRIMA_NEWUOA | — |
 
-**The grid never picks the actual demo winner.** Sometimes it's close
-(slingshot — PRIMA_UOBYQA vs PRIMA_NEWUOA, both PRIMA family) and
-sometimes it's not even the right algorithmic family (welded_beam —
-recommends Powell, but ParticleSwarm wins).
+**The grid matches the actual demo winner on 1 of 7 demos.** The one
+match (`reactor_tprofile`) is also the only demo with extremely high
+correlation (ρ = 0.919) — a smooth, well-conditioned chemistry
+kinetics problem with a monotonic temperature-to-yield relationship.
+Exactly what the benchmark suite is built for.
 
-Most striking is the **robot_arm anti-correlation**: the benchmark-
-favoured PRIMA / Powell methods got the worst results (-58 to -88
-out of 100), while benchmark-mid-tier methods like Firefly (-96)
-and BayesianOpt (-91) won. The robot_arm landscape has discrete
-collision penalties and a reach payoff that varies smoothly only
-locally — exactly the regime where smooth-function trust-region
-methods fail.
+Everything with **constraint penalties, dynamics, or geometric
+structure** shows weak or negative correlation:
+
+- **robot_arm** anti-correlation (ρ = −0.418): benchmark-favoured
+  PRIMA / Powell got the worst results (-58 to -88 out of 100), while
+  benchmark-mid-tier Firefly (-96) and BayesianOpt (-91) won. The
+  collision penalty + reach-payoff landscape kills smooth-function
+  trust-region methods.
+- **battery_dispatch** zero correlation (ρ = −0.036): a 24-D *smooth*
+  scheduling problem with state-of-charge bounds. The grid has no
+  comparable structure — its benchmarks are mostly low-dim
+  unconstrained.
+- **wind_farm** small negative (ρ = −0.139): the spacing penalty
+  creates the same discontinuity that hurt robot_arm. PRIMA_NEWUOA
+  catastrophically fails here (returns +50.25 while every other
+  algorithm reaches -90 to -98).
+
+The **clean takeaway**: benchmark rankings predict performance on
+real tasks only when those tasks happen to be smooth, monotonic, and
+unconstrained — i.e., already representable by the benchmark suite.
+On any task with structure the benchmarks don't capture (dynamics,
+penalties, packing, scheduling), the recommender's pick is at best
+uncorrelated and at worst actively misleading.
 
 ## Structure
 
@@ -67,7 +87,7 @@ seeds. Compute per-demo Borda rank for each algorithm. Compare to
 the recommendation grid's Borda at the corresponding cell via
 Spearman ρ.
 
-Demos ported so far (more to follow):
+Demos ported so far (seven; more to follow):
 
 | Demo | n_dim | n_trials | Real-world correspondence |
 |--|--|--|--|
@@ -75,6 +95,9 @@ Demos ported so far (more to follow):
 | robot_arm | 6 | 200 | 6-DOF inverse kinematics with obstacle avoidance |
 | slingshot | 2 | 50 | Projectile aiming under gravity |
 | brachistochrone | 10 | 200 | Discretised curve-of-fastest-descent |
+| battery_dispatch | 24 | 200 | 24-hour battery charge/discharge schedule, NYISO-Zone-J prices |
+| reactor_tprofile | 10 | 200 | A→B→C series reactor temperature profile, Arrhenius kinetics |
+| wind_farm | 16 | 200 | 8-turbine placement, Jensen wake model + 12-bin wind rose |
 
 ### § 3 Experiments
 

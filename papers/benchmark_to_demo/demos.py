@@ -278,6 +278,217 @@ def brachistochrone_objective(u: list[float]) -> float:
 
 
 # -----------------------------------------------------------------------------
+# Battery dispatch — 24-D charge/discharge schedule against a day-ahead
+# price curve. State-of-charge bounds couple consecutive hours, so the
+# landscape is smooth but constrained.
+# Source: docs/applications/battery-dispatch.html.
+# -----------------------------------------------------------------------------
+
+_BD_HOURS = 24
+_BD_P_MAX = 25.0  # MW
+_BD_E_MAX = 100.0  # MWh
+_BD_SOC_LO = 10.0
+_BD_SOC_HI = 90.0
+_BD_SOC_INIT = 50.0
+_BD_ETA_C = 0.92
+_BD_ETA_D = 0.92
+_BD_PRICE = (
+    30,
+    25,
+    22,
+    20,
+    22,
+    35,
+    55,
+    75,
+    90,
+    100,
+    90,
+    75,
+    55,
+    40,
+    38,
+    45,
+    80,
+    150,
+    240,
+    220,
+    160,
+    100,
+    60,
+    40,
+)
+
+
+def battery_dispatch_objective(u: list[float]) -> float:
+    schedule = [(u[h] - 0.5) * 2 * _BD_P_MAX for h in range(_BD_HOURS)]
+    SoC = _BD_SOC_INIT
+    revenue = 0.0
+    for h in range(_BD_HOURS):
+        p_actual = schedule[h]
+        if p_actual < 0:
+            max_charge = (_BD_SOC_HI - SoC) / _BD_ETA_C
+            if -p_actual > max_charge:
+                p_actual = -max_charge
+        elif p_actual > 0:
+            max_discharge = (SoC - _BD_SOC_LO) * _BD_ETA_D
+            if p_actual > max_discharge:
+                p_actual = max_discharge
+        revenue += p_actual * _BD_PRICE[h]
+        if p_actual < 0:
+            SoC += -p_actual * _BD_ETA_C
+        else:
+            SoC -= p_actual / _BD_ETA_D
+    return -revenue  # maximise revenue ↔ minimise -revenue
+
+
+# -----------------------------------------------------------------------------
+# Reactor T-profile — 10-D temperature profile for an A→B→C series
+# reactor with Arrhenius kinetics. Maximise yield of intermediate B.
+# Source: docs/applications/reactor-tprofile.html.
+# -----------------------------------------------------------------------------
+
+_RX_N_ZONES = 10
+_RX_TAU_PER_ZONE = 0.1
+_RX_T_REF = 400.0
+_RX_B1 = 6.0
+_RX_B2 = 22.0
+_RX_T_MIN = 300.0
+_RX_T_MAX = 480.0
+_RX_N_PROFILE_SAMPLES = 80
+
+
+def _rx_arr(T: float, B: float) -> float:
+    return math.exp(B * (1 - _RX_T_REF / T))
+
+
+def _rx_advance(CA: float, CB: float, T: float, dtau: float) -> tuple[float, float]:
+    k1 = _rx_arr(T, _RX_B1)
+    k2 = _rx_arr(T, _RX_B2)
+    e1 = math.exp(-k1 * dtau)
+    e2 = math.exp(-k2 * dtau)
+    CAn = CA * e1
+    if abs(k2 - k1) < 1e-9:
+        CBn = (CA * k1 * dtau + CB) * e1
+    else:
+        CBn = (k1 * CA / (k2 - k1)) * (e1 - e2) + CB * e2
+    return CAn, CBn
+
+
+def reactor_tprofile_objective(u: list[float]) -> float:
+    T = [_RX_T_MIN + ui * (_RX_T_MAX - _RX_T_MIN) for ui in u]
+    sub_per_zone = max(1, _RX_N_PROFILE_SAMPLES // _RX_N_ZONES)
+    dsub = _RX_TAU_PER_ZONE / sub_per_zone
+    CA, CB = 1.0, 0.0
+    for zi in range(_RX_N_ZONES):
+        for _ in range(sub_per_zone):
+            CA, CB = _rx_advance(CA, CB, T[zi], dsub)
+    return -CB  # maximise yield of B
+
+
+# -----------------------------------------------------------------------------
+# Wind farm — 16-D placement of 8 turbines in a rectangular field. Jensen
+# wake model, 12-bin wind rose. Maximise expected farm power.
+# Source: docs/applications/wind-farm.html.
+# -----------------------------------------------------------------------------
+
+_WF_FIELD_X0, _WF_FIELD_X1 = 60.0, 740.0
+_WF_FIELD_Y0, _WF_FIELD_Y1 = 60.0, 390.0
+_WF_N_TURBINES = 8
+_WF_ROTOR_R = 14.0
+_WF_ROTOR_D = _WF_ROTOR_R * 2
+_WF_AXIAL_INDUCTION = 0.42
+_WF_WAKE_DECAY = 0.08
+_WF_MIN_SPACING = _WF_ROTOR_D * 3
+_WF_BOUNDARY_BONUS_PTS = 2.5
+
+_WF_WIND_ROSE = (
+    (270, 0.22),
+    (300, 0.14),
+    (330, 0.10),
+    (0, 0.04),
+    (30, 0.03),
+    (60, 0.03),
+    (90, 0.03),
+    (120, 0.04),
+    (150, 0.05),
+    (180, 0.06),
+    (210, 0.10),
+    (240, 0.16),
+)
+_WF_WIND_ROSE_RAD = tuple(
+    ((compass + 90) * math.pi / 180.0, weight) for compass, weight in _WF_WIND_ROSE
+)
+
+
+def _wf_wind_speeds(
+    positions: list[tuple[float, float]], wind_angle: float
+) -> list[float]:
+    cos = math.cos(-wind_angle)
+    sin = math.sin(-wind_angle)
+    rot = [(p[0] * cos - p[1] * sin, p[0] * sin + p[1] * cos) for p in positions]
+    v: list[float] = []
+    for i, (xi, yi) in enumerate(rot):
+        def_sq = 0.0
+        for j, (xj, yj) in enumerate(rot):
+            if i == j:
+                continue
+            dx = xi - xj  # downwind distance from j to i
+            dy = yi - yj
+            if dx <= 0:
+                continue
+            wake_r = _WF_ROTOR_R + _WF_WAKE_DECAY * dx
+            if abs(dy) > wake_r:
+                continue
+            deficit = (2 * _WF_AXIAL_INDUCTION) / (
+                1 + _WF_WAKE_DECAY * dx / _WF_ROTOR_R
+            ) ** 2
+            def_sq += deficit * deficit
+        v.append(max(0.0, 1 - math.sqrt(def_sq)))
+    return v
+
+
+def wind_farm_objective(u: list[float]) -> float:
+    positions = [
+        (
+            _WF_FIELD_X0 + u[2 * i] * (_WF_FIELD_X1 - _WF_FIELD_X0),
+            _WF_FIELD_Y0 + u[2 * i + 1] * (_WF_FIELD_Y1 - _WF_FIELD_Y0),
+        )
+        for i in range(_WF_N_TURBINES)
+    ]
+    expected_power = 0.0
+    for angle, weight in _WF_WIND_ROSE_RAD:
+        speeds = _wf_wind_speeds(positions, angle)
+        p = sum(v**3 for v in speeds)
+        expected_power += weight * p
+    power_fraction = expected_power / _WF_N_TURBINES
+
+    # Spacing penalty (squared violation per pair).
+    penalty = 0.0
+    for i in range(_WF_N_TURBINES):
+        for j in range(i + 1, _WF_N_TURBINES):
+            dx = positions[i][0] - positions[j][0]
+            dy = positions[i][1] - positions[j][1]
+            d = math.hypot(dx, dy)
+            if d < _WF_MIN_SPACING:
+                violation = (_WF_MIN_SPACING - d) / _WF_MIN_SPACING
+                penalty += violation * violation
+
+    # Boundary bonus (Chebyshev distance from centre, averaged).
+    cxf = (_WF_FIELD_X0 + _WF_FIELD_X1) / 2
+    cyf = (_WF_FIELD_Y0 + _WF_FIELD_Y1) / 2
+    halfW = (_WF_FIELD_X1 - _WF_FIELD_X0) / 2
+    halfH = (_WF_FIELD_Y1 - _WF_FIELD_Y0) / 2
+    boundary = (
+        sum(max(abs(x - cxf) / halfW, abs(y - cyf) / halfH) for x, y in positions)
+        / _WF_N_TURBINES
+    )
+
+    score = 100 * power_fraction + _WF_BOUNDARY_BONUS_PTS * boundary - 40 * penalty
+    return -score
+
+
+# -----------------------------------------------------------------------------
 # Registry
 # -----------------------------------------------------------------------------
 
@@ -305,6 +516,24 @@ DEMOS: list[Demo] = [
         n_dim=10,
         suggested_n_trials=200,
         objective=brachistochrone_objective,
+    ),
+    Demo(
+        name="battery_dispatch",
+        n_dim=24,
+        suggested_n_trials=200,
+        objective=battery_dispatch_objective,
+    ),
+    Demo(
+        name="reactor_tprofile",
+        n_dim=10,
+        suggested_n_trials=200,
+        objective=reactor_tprofile_objective,
+    ),
+    Demo(
+        name="wind_farm",
+        n_dim=16,
+        suggested_n_trials=200,
+        objective=wind_farm_objective,
     ),
 ]
 
