@@ -207,16 +207,16 @@
     <a class="card live" href="chess.html" style="text-decoration:none;">
       <div class="emoji">♟️</div>
       <span class="tag">Live</span>
-      <h3>Chess Piece Values</h3>
+      <h3>Chess Evaluation</h3>
       <p class="desc">
-        Tune the 4 piece values (knight/bishop/rook/queen) of a depth-2
-        minimax bot to beat a twin bot using the textbook 1/3/3/5/9. The
-        twist: the optimiser doesn't rediscover the textbook values — it
-        exploits the shallow opponent. Self-contained, perft-verified
-        chess engine.
+        Tune the 8-number evaluation (piece values + per-piece positional
+        weights) of a depth-2 minimax bot to beat a standard-evaluation
+        twin over random games. It overfits the small training sample, so
+        the demo scores in-sample vs held-out to expose the gap.
+        Self-contained, perft-verified chess engine.
       </p>
       <div class="meta">
-        <span>n=4 · win % vs textbook</span>
+        <span>n=8 · in vs out-of-sample</span>
         <span class="play">Open →</span>
       </div>
     </a>
