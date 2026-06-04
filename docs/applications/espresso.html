@@ -1,0 +1,457 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' 'unsafe-inline'; style-src 'self' 'unsafe-inline';">
+<title>☕ Espresso Dial-In Optimizer — HumpDay</title>
+<style>
+  :root { --bg:#1a1a22; --panel:#2d2d3a; --accent:#ffcc00; --text:#e8e8ea; --muted:#9a9aac; }
+  body { margin:0; background:var(--bg); color:var(--text); font-family:-apple-system,'Segoe UI','Helvetica Neue',Helvetica,Arial,sans-serif; }
+  .site-nav { background:#34495e; padding:12px 24px; font-family:'Times New Roman',Times,serif; box-shadow:0 2px 4px rgba(0,0,0,0.1); }
+  .site-nav-inner { max-width:1100px; margin:0 auto; display:flex; justify-content:space-between; align-items:center; }
+  .site-nav a { color:#ecf0f1; text-decoration:none; margin:0 12px; }
+  .site-nav a:hover { color:white; text-decoration:underline; }
+  .site-nav-brand { font-weight:700; font-size:1.25em; }
+  .container { max-width:1100px; margin:0 auto; padding:32px 24px 64px; }
+  h1 { font-size:2.2em; margin:0.2em 0; }
+  h2 { font-size:1.4em; margin-top:1.4em; color:var(--accent); }
+  p { line-height:1.55; max-width:70ch; }
+  .intro { color:var(--muted); }
+  .stage { display:grid; grid-template-columns:1fr 320px; gap:24px; align-items:start; margin-top:24px; }
+  @media (max-width:800px){ .stage { grid-template-columns:1fr; } }
+  canvas { background:#14141b; border:3px solid var(--accent); border-radius:6px; display:block; width:100%; height:auto; }
+  .panel { background:var(--panel); padding:18px; border-radius:6px; border:1px solid #404054; }
+  .panel h3 { margin:0 0 12px; font-size:1.05em; text-transform:uppercase; letter-spacing:0.06em; color:var(--accent); }
+  label { display:block; margin:10px 0 6px; font-size:0.9em; color:var(--muted); }
+  select, input, button { width:100%; box-sizing:border-box; padding:8px 10px; border-radius:4px; border:1px solid #404054; background:#1a1a22; color:var(--text); font-size:0.95em; }
+  button { background:var(--accent); color:#1a1a22; font-weight:700; cursor:pointer; margin-top:6px; transition:opacity 0.15s; }
+  button:hover { opacity:0.88; }
+  button.secondary { background:#404054; color:var(--text); font-weight:400; }
+  button:disabled { opacity:0.5; cursor:not-allowed; }
+  .stats { margin-top:16px; padding-top:14px; border-top:1px solid #404054; font-size:0.92em; line-height:1.6; }
+  .stats .score { font-size:2.6em; color:var(--accent); font-weight:700; }
+  .stat-row { display:flex; justify-content:space-between; }
+  .stat-row span:first-child { white-space:nowrap; flex-shrink:0; }
+  .stat-row span:last-child { color:var(--text); font-family:'SF Mono',Menlo,monospace; text-align:right; word-break:break-word; }
+  .leaderboard { margin-top:24px; }
+  .leaderboard table { width:100%; border-collapse:collapse; background:var(--panel); border-radius:6px; overflow:hidden; }
+  .leaderboard th, .leaderboard td { padding:10px 14px; text-align:left; border-bottom:1px solid #404054; }
+  .leaderboard th { background:#1a1a22; color:var(--muted); text-transform:uppercase; font-size:0.78em; letter-spacing:0.08em; }
+  .leaderboard td:nth-child(2){ text-align:center; font-size:1.3em; font-weight:700; color:var(--accent); }
+  .leaderboard td:nth-child(3),.leaderboard td:nth-child(4){ font-family:'SF Mono',Menlo,monospace; color:var(--muted); }
+  .leaderboard tr.human-raphson td:first-child { color:#ff9944; font-weight:700; }
+  .left-stack { display:flex; flex-direction:column; gap:16px; min-width:0; }
+  .hr-panel { padding:14px 16px; }
+  .hr-panel h3 { margin:0 0 6px; }
+  .hr-sliders { display:grid; grid-template-columns:repeat(2,1fr); gap:6px 18px; margin-bottom:10px; }
+  .hr-sliders label { margin:0; display:flex; justify-content:space-between; align-items:baseline; font-size:0.84em; }
+  .hr-sliders label output { color:var(--accent); font-family:'SF Mono',Menlo,monospace; font-size:0.9em; }
+  .hr-sliders input[type=range] { width:100%; margin:0 0 6px; padding:0; background:transparent; }
+  .hr-sliders input[type=range]::-webkit-slider-runnable-track { background:#1a1a22; height:6px; border-radius:3px; }
+  .hr-sliders input[type=range]::-webkit-slider-thumb { -webkit-appearance:none; appearance:none; background:var(--accent); width:18px; height:18px; border-radius:50%; margin-top:-6px; cursor:pointer; }
+  .hr-panel > button { background:#ff9944; color:#1a1a22; margin-top:0; }
+  .skill-callout { margin-top:36px; background:rgba(126,217,87,0.07); border:1px solid rgba(126,217,87,0.35); border-radius:8px; padding:18px 22px; }
+  .skill-callout h3 { margin:0 0 6px; color:#7ed957; font-size:1.05em; text-transform:none; letter-spacing:0; }
+  .skill-callout p { margin:0 0 10px; color:var(--text); max-width:none; }
+  .skill-callout pre { background:#1a1a22; border:1px solid #404054; border-radius:4px; padding:10px 14px; margin:0; font-size:0.84em; color:#7ed957; white-space:pre-wrap; word-break:break-all; font-family:'SF Mono',Menlo,monospace; }
+  .skill-actions { margin-top:10px; display:flex; align-items:center; gap:14px; }
+  .skill-actions button { width:auto; background:#404054; color:var(--text); border:1px solid #404054; padding:6px 12px; font-size:0.85em; cursor:pointer; border-radius:4px; margin:0; font-weight:500; }
+  .skill-actions a { color:#7ed957; font-size:0.85em; text-decoration:none; }
+</style>
+</head>
+<body>
+    <nav class="site-nav" data-site-nav="v1">
+        <div class="site-nav-inner">
+            <a href="../index.html" class="site-nav-brand"><svg class="site-nav-camel" data-site-logo="camel-v3" viewBox="0 0 100 50" width="44" height="22" xmlns="http://www.w3.org/2000/svg" aria-hidden="true"><rect x="20.5" y="30" width="1.8" height="11" fill="white" fill-opacity="0.55"/><rect x="60.5" y="30" width="1.8" height="11" fill="white" fill-opacity="0.55"/><path fill="white" fill-opacity="0.92" d="M 14 30 C 10 30 8 28 8 24 C 7 22 7 19 9 18 C 11 16 13 14 16 13 C 20 8 26 6 31 9 C 34 11 35 13 35 16 C 37 18 40 18 43 17 C 47 13 53 7 59 9 C 63 11 65 13 65 16 C 66 18 68 18 70 17 C 73 13 76 9 80 7 C 84 5 89 6 90 9 L 92 9 L 93 12 L 91 13 L 87 13 L 87 15 C 82 16 79 18 76 21 C 73 25 71 28 68 30 L 66 30 L 66 42 L 64 42 L 64 30 L 26 30 L 26 42 L 24 42 L 24 30 L 14 30 Z"/><circle cx="88" cy="10" r="0.9" fill="#34495e"/></svg>HumpDay</a>
+            <div class="site-nav-links">
+                <a href="../index.html">Home</a>
+                <a href="../contest.html">Contest</a>
+                <a href="../applications/index.html">Demonstrations</a>
+                <a href="../algorithms.html">Algorithms</a>
+                <a href="../sota-status.html">SOTA status</a>
+                <a href="../recommendations.html">Recommendations</a>
+                <a href="https://github.com/microprediction/humpday" target="_blank" rel="noopener">GitHub</a>
+            </div>
+        </div>
+    </nav>
+
+<div class="container">
+  <h1>☕ Espresso Dial-In Optimizer</h1>
+  <p class="intro">
+    Dial in the perfect shot by tuning <strong>grind, dose, temperature</strong>
+    and <strong>shot time</strong>. A great shot needs both the right
+    <strong>extraction</strong> (~20%) and the right <strong>brew ratio</strong>
+    (~1:2) at once, so the sweet spot is small — only about 1 in 20 random
+    recipes is any good. The catch: <strong>every shot is expensive</strong>,
+    so you get a tiny budget. This is where <em>sample-efficient</em>
+    optimisers shine — a trust-region method can dial in within a dozen
+    pulls while others are still hunting for the sweet spot.
+  </p>
+
+  <div class="stage">
+    <div class="left-stack">
+      <canvas id="canvas" width="800" height="450"></canvas>
+      <div class="panel hr-panel">
+        <h3>🧠 Human Raphson</h3>
+        <p style="color:var(--muted); margin:0 0 10px; font-size:0.86em;">
+          Pull a shot by hand — see if you can beat the optimisers' recipe.
+        </p>
+        <div class="hr-sliders">
+          <label for="m-grind">Grind <output id="m-grind-out">0.50</output></label>
+          <label for="m-dose">Dose g <output id="m-dose-out">18.0</output></label>
+          <input type="range" id="m-grind" min="0" max="1" step="0.01" value="0.5">
+          <input type="range" id="m-dose" min="14" max="22" step="0.1" value="18">
+          <label for="m-temp">Temp °C <output id="m-temp-out">92.0</output></label>
+          <label for="m-time">Time s <output id="m-time-out">29</output></label>
+          <input type="range" id="m-temp" min="88" max="96" step="0.1" value="92">
+          <input type="range" id="m-time" min="20" max="38" step="0.5" value="29">
+        </div>
+        <button onclick="pullManual()">▶ Pull a shot (Human Raphson)</button>
+      </div>
+    </div>
+
+    <div class="panel">
+      <h3>Algorithm</h3>
+      <label for="algorithm">Pick a HumpDay optimizer:</label>
+      <select id="algorithm">
+        <optgroup label="Trust-region / interpolation">
+          <option value="PRIMA_BOBYQA" selected>PRIMA_BOBYQA</option>
+          <option value="PRIMA_NEWUOA">PRIMA_NEWUOA</option>
+        </optgroup>
+        <optgroup label="Local / classical">
+          <option value="NelderMead">Nelder-Mead</option>
+          <option value="Powell">Powell</option>
+          <option value="LBFGSB">L-BFGS-B (simplified)</option>
+        </optgroup>
+        <optgroup label="Population-based">
+          <option value="DifferentialEvolution">Differential Evolution</option>
+          <option value="ParticleSwarm">Particle Swarm</option>
+          <option value="CMAEvolutionStrategy">CMA-Evolution Strategy</option>
+          <option value="GeneticAlgorithm">Genetic Algorithm</option>
+          <option value="EvolutionStrategy">Evolution Strategy</option>
+          <option value="HarmonySearch">Harmony Search</option>
+        </optgroup>
+        <optgroup label="Other">
+          <option value="BayesianOpt">Bayesian Optimization</option>
+          <option value="SimulatedAnnealing">Simulated Annealing</option>
+          <option value="FireflyAlgorithm">Firefly Algorithm</option>
+          <option value="AntColonyOpt">Ant Colony</option>
+          <option value="RandomSearch">Random Search</option>
+          <option value="Rechenberg">Rechenberg (1+1)-ES</option>
+        </optgroup>
+      </select>
+
+      <label for="budget">Shots allowed (budget):</label>
+      <select id="budget">
+        <option value="8">8 shots</option>
+        <option value="12">12 shots</option>
+        <option value="15" selected>15 shots</option>
+        <option value="20">20 shots</option>
+        <option value="30">30 shots</option>
+        <option value="50">50 shots</option>
+      </select>
+      <p style="margin:8px 0 0; font-size:0.78em; color:var(--muted);">
+        Each shot is a real (noisy) pull. With so few, sample-efficient
+        optimisers matter — compare a trust-region method against random
+        search at 12–15 shots.
+      </p>
+
+      <button id="run-btn" onclick="runOptimization()">▶ Dial in the shot</button>
+      <button class="secondary" onclick="replayBest()">🔁 Pull best shot</button>
+      <button class="secondary" onclick="resetEverything()">⟲ Reset leaderboard</button>
+
+      <div class="stats">
+        <div class="stat-row"><span>Shot score</span><span class="score" id="score-now">—</span></div>
+        <div class="stat-row"><span>Tasting note</span><span id="note-now">—</span></div>
+        <div class="stat-row"><span>Shots pulled</span><span id="evals">0</span></div>
+        <div class="stat-row"><span>Best so far</span><span id="best-score">—</span></div>
+        <div class="stat-row"><span>Grind / Dose</span><span id="param-a">—</span></div>
+        <div class="stat-row"><span>Temp / Time</span><span id="param-b">—</span></div>
+      </div>
+    </div>
+  </div>
+
+  <div class="leaderboard">
+    <h2>Leaderboard (this session)</h2>
+    <p style="color:var(--muted);">
+      Each row is the best shot a given optimiser found within its budget.
+      At a tiny budget the interpolation / trust-region methods
+      (PRIMA_BOBYQA, NEWUOA) tend to dial in fastest; the other methods
+      usually need more shots to catch up.
+    </p>
+    <table>
+      <thead>
+        <tr><th>Algorithm</th><th>Best score</th><th>Shots</th><th>Recipe (grind / dose / temp / time)</th></tr>
+      </thead>
+      <tbody id="leaderboard-body">
+        <tr><td colspan="4" style="color:var(--muted); text-align:center;">— no runs yet —</td></tr>
+      </tbody>
+    </table>
+  </div>
+
+  <h2>What's happening</h2>
+  <p>
+    The bot pulls an espresso for each candidate recipe and scores how it
+    tastes (0–100). Under the hood, the recipe sets an <strong>extraction
+    yield</strong> (finer / hotter / longer pulls extract more; a bigger
+    dose dilutes the percentage) and a <strong>brew ratio</strong>
+    (beverage out ÷ coffee in). The shot tastes best when extraction is
+    near 20% <em>and</em> the ratio is near 1:2 — two coupled conditions, so
+    the good region is a thin sliver of the four-dimensional space. Each
+    pull also carries <strong>shot-to-shot noise</strong>, like a real
+    machine.
+  </p>
+  <p>
+    Because every pull is "expensive", the budget is small. That's the
+    regime where <strong>sample efficiency</strong> matters: a trust-region
+    or Bayesian optimiser builds a little model of the surface and spends
+    its few shots climbing toward the peak, while random search just
+    sprays the space and population methods haven't had enough
+    generations to converge. Run PRIMA_BOBYQA at 12 shots, then Random
+    Search at 12 shots, and compare the leaderboard — the gap is the whole
+    point of derivative-free optimisation on expensive black boxes.
+  </p>
+  <p>
+    The gauges on the right show the shot's extraction and ratio against
+    their target bands, so you can see <em>why</em> a recipe is sour
+    (under-extracted), bitter (over-extracted), or watery (ratio too high).
+  </p>
+
+  <hr style="border:0; border-top:1px solid #404054; margin:32px 0 16px;" />
+  <p style="font-size:0.78em; color:var(--muted);">
+    A stylised response surface, not a fluid-dynamics model of a
+    portafilter — but it has the real structure: a small sweet spot from
+    two coupled requirements, plus noise, which is exactly what makes
+    expensive black-box tuning hard.
+  </p>
+
+  <div class="skill-callout">
+    <h3>🌱 Save the Planet</h3>
+    <p>If your hyper-parameter searches are heating the Earth, drop this in Cursor or Claude:</p>
+    <pre id="skill-snippet">Read https://raw.githubusercontent.com/microprediction/humpday/main/SKILL.md
+and create a project skill from it.</pre>
+    <div class="skill-actions">
+      <button type="button" onclick="copySkillSnippet(this)">📋 Copy</button>
+      <a href="https://github.com/microprediction/humpday/blob/main/SKILL.md" target="_blank" rel="noopener">View SKILL.md →</a>
+    </div>
+  </div>
+
+  <script>
+    function copySkillSnippet(btn){const t=document.getElementById('skill-snippet').textContent;navigator.clipboard.writeText(t).then(()=>{const o=btn.textContent;btn.textContent='✓ Copied';setTimeout(()=>{btn.textContent=o;},1500);}).catch(()=>{btn.textContent='✗ Copy failed';});}
+  </script>
+</div>
+
+<script src="../js/modules/base-optimizer.js"></script>
+<script src="../js/modules/linalg.js"></script>
+<script src="../js/modules/prima-algorithms.js"></script>
+<script src="../js/modules/scipy-algorithms.js"></script>
+<script src="../js/modules/evolutionary-algorithms.js"></script>
+<script src="../js/modules/search-algorithms.js"></script>
+
+<script>
+// ============================================================================
+// Espresso response surface (stylised). A good shot needs extraction ~20%
+// AND brew ratio ~1:2 — coupled, so the sweet spot is small. Noisy per pull.
+// ============================================================================
+function decode(u){ return { grind:u[0], dose:14+8*u[1], temp:88+8*u[2], time:20+18*u[3] }; }
+function evalShot(p){
+  const gN=p.grind, dN=(p.dose-14)/8, TN=(p.temp-88)/8, tN=(p.time-20)/18;
+  const EY = 10 + 8.5*gN + 3.5*TN + 5.5*tN - 4.5*dN + 2.5*gN*tN;
+  const vol = (0.9 + 1.7*tN) * (1 - 0.35*gN);
+  const ratio = vol / (0.65 + 0.7*dN);
+  const eyB = Math.exp(-Math.pow((EY-20)/3.2,2));
+  const rB = Math.exp(-Math.pow((ratio-1.75)/0.42,2));
+  return { EY, ratio, score: 100*eyB*rB };
+}
+function gauss(){ return (Math.random()+Math.random()+Math.random()+Math.random()-2)*1.4142; }
+const NOISE_SD=5.0;
+function pull(p){ return Math.max(0, Math.min(100, evalShot(p).score + gauss()*NOISE_SD)); }
+
+function tastingNote(ev){
+  // describe the dominant flaw (or praise)
+  if (ev.score > 82) return 'Balanced — god shot! ☕';
+  const flaws=[];
+  if (ev.EY < 17) flaws.push('sour (under-extracted)');
+  else if (ev.EY > 23) flaws.push('bitter (over-extracted)');
+  if (ev.ratio < 1.4) flaws.push('intense/ristretto');
+  else if (ev.ratio > 2.1) flaws.push('watery/lungo');
+  return flaws.length ? flaws.join(', ') : (ev.score>60?'decent, a touch off':'flat / unbalanced');
+}
+
+const searchHistory=[];
+function objective(u){ const p=decode(u); const s=pull(p); searchHistory.push({score:s, p, ev:evalShot(p)}); return -s; }
+
+// ============================================================================
+// Rendering — a cup filling with espresso + extraction/ratio gauges.
+// ============================================================================
+const canvas=document.getElementById('canvas'),ctx=canvas.getContext('2d');
+const W=canvas.width,H=canvas.height;
+function lerp(a,b,t){return a+(b-a)*t;}
+function coffeeColor(EY){ // pale tan (under) -> rich brown (ideal) -> near black (over)
+  const t=Math.max(0,Math.min(1,(EY-13)/14));
+  const r=Math.round(lerp(201,40,t)), g=Math.round(lerp(160,24,t)), b=Math.round(lerp(106,16,t));
+  return `rgb(${r},${g},${b})`;
+}
+// Cup geometry
+const CUP_CX=250, CUP_TOP=150, CUP_W=150, CUP_H=170, CUP_BOT=CUP_TOP+CUP_H;
+function drawMachine(){
+  // group head + portafilter
+  ctx.fillStyle='#3a3a48'; ctx.fillRect(CUP_CX-70,60,140,26);
+  ctx.fillStyle='#4a4a5a'; ctx.fillRect(CUP_CX-40,86,80,16);
+  ctx.fillStyle='#2a2a36'; ctx.fillRect(CUP_CX-24,102,12,14); ctx.fillRect(CUP_CX+12,102,12,14); // two spouts
+}
+function drawCup(fillFrac,color,cremaH){
+  // saucer
+  ctx.fillStyle='#cfd6e0'; ctx.beginPath(); ctx.ellipse(CUP_CX,CUP_BOT+18,CUP_W*0.7,12,0,0,Math.PI*2); ctx.fill();
+  // cup body (trapezoid-ish)
+  ctx.fillStyle='#f1f3f7';
+  ctx.beginPath(); ctx.moveTo(CUP_CX-CUP_W/2,CUP_TOP); ctx.lineTo(CUP_CX+CUP_W/2,CUP_TOP);
+  ctx.lineTo(CUP_CX+CUP_W*0.36,CUP_BOT); ctx.lineTo(CUP_CX-CUP_W*0.36,CUP_BOT); ctx.closePath(); ctx.fill();
+  // handle
+  ctx.strokeStyle='#f1f3f7'; ctx.lineWidth=10; ctx.beginPath(); ctx.arc(CUP_CX+CUP_W/2+10,CUP_TOP+60,34,-1.1,1.1); ctx.stroke();
+  // liquid (clipped to cup)
+  ctx.save();
+  ctx.beginPath(); ctx.moveTo(CUP_CX-CUP_W/2+6,CUP_TOP+6); ctx.lineTo(CUP_CX+CUP_W/2-6,CUP_TOP+6);
+  ctx.lineTo(CUP_CX+CUP_W*0.36-4,CUP_BOT-4); ctx.lineTo(CUP_CX-CUP_W*0.36+4,CUP_BOT-4); ctx.closePath(); ctx.clip();
+  const liqTop = lerp(CUP_BOT-6, CUP_TOP+18, fillFrac);
+  ctx.fillStyle=color; ctx.fillRect(CUP_CX-CUP_W/2, liqTop, CUP_W, CUP_BOT);
+  // crema
+  ctx.fillStyle='#c79a5a'; ctx.fillRect(CUP_CX-CUP_W/2, liqTop, CUP_W, Math.max(2,cremaH));
+  ctx.restore();
+}
+function drawStream(active,color){
+  if(!active)return;
+  ctx.strokeStyle=color; ctx.lineWidth=3;
+  for(const dx of [-18,18]){ ctx.beginPath(); ctx.moveTo(CUP_CX+dx,116); ctx.lineTo(CUP_CX+dx*0.5,CUP_TOP+12); ctx.stroke(); }
+}
+function gauge(x,y,w,label,val,min,max,lo,hi,unit){
+  ctx.fillStyle='#9a9aac'; ctx.font='12px -apple-system,Helvetica,Arial,sans-serif'; ctx.textAlign='left'; ctx.textBaseline='alphabetic';
+  ctx.fillText(label,x,y-6);
+  ctx.fillStyle='#1a1a22'; ctx.fillRect(x,y,w,12);
+  // target band
+  const fx=v=>x+w*Math.max(0,Math.min(1,(v-min)/(max-min)));
+  ctx.fillStyle='rgba(126,217,87,0.35)'; ctx.fillRect(fx(lo),y,fx(hi)-fx(lo),12);
+  // marker
+  const mx=fx(val); ctx.fillStyle='#ffcc00'; ctx.fillRect(mx-2,y-3,4,18);
+  ctx.fillStyle='#e8e8ea'; ctx.textAlign='right'; ctx.fillText(val.toFixed(1)+unit,x+w,y-6); ctx.textAlign='left';
+}
+function drawScene(ev,fillFrac,hud){
+  ctx.clearRect(0,0,W,H); ctx.fillStyle='#14141b'; ctx.fillRect(0,0,W,H);
+  drawMachine();
+  const color = ev ? coffeeColor(ev.EY) : '#6b3f1d';
+  const cremaH = ev ? Math.max(2, ev.score/100*10) : 4;
+  drawStream(fillFrac!==undefined && fillFrac<1, color);
+  drawCup(fillFrac===undefined?0:fillFrac, color, cremaH);
+  // gauges panel (right of cup)
+  const px=470, pw=300;
+  ctx.fillStyle='#ffcc00'; ctx.font='bold 13px -apple-system,Helvetica,Arial,sans-serif'; ctx.textAlign='left'; ctx.textBaseline='alphabetic';
+  ctx.fillText('SHOT ANALYSIS',px,150);
+  if(ev){
+    gauge(px,180,pw,'Extraction yield (target 18–22%)',ev.EY,12,28,18,22,'%');
+    gauge(px,228,pw,'Brew ratio (target ~1.6–1.9)',ev.ratio,0.8,2.4,1.5,2.0,':1');
+    ctx.fillStyle='#e8e8ea'; ctx.font='13px -apple-system,Helvetica,Arial,sans-serif';
+    ctx.fillText('Tasting: '+tastingNote(ev),px,270);
+  }
+  if(hud){ ctx.font='bold 14px -apple-system,Helvetica,Arial,sans-serif'; const pad=10,bw=Math.ceil(ctx.measureText(hud).width)+2*pad;
+    ctx.fillStyle='rgba(0,0,0,0.6)'; ctx.fillRect(14,14,bw,24); ctx.fillStyle='#ffcc00'; ctx.fillText(hud,14+pad,31); }
+}
+function drawIdle(){ drawScene(null,0,'Press "Dial in the shot" to start'); }
+
+// ============================================================================
+// Animation — pour each shot (fill the cup) then hold briefly.
+// ============================================================================
+let animationToken=0;
+function pourShot(ev,label,ms){
+  const my=animationToken; const FR=12;
+  return new Promise((res)=>{ let f=0;
+    (function step(){ if(my!==animationToken)return res(); if(f>FR){return res();}
+      drawScene(ev, f/FR, label); f++; setTimeout(step, ms||30); })();
+  });
+}
+async function montage(){
+  const my=++animationToken; const total=searchHistory.length; if(!total)return -1;
+  let best=-1,bi=-1;
+  for(let i=0;i<total;i++){ if(my!==animationToken)return bi;
+    const e=searchHistory[i]; const isNew=e.score>best; if(isNew){best=e.score;bi=i;}
+    document.getElementById('evals').textContent=i+1;
+    document.getElementById('score-now').textContent=e.score.toFixed(0);
+    document.getElementById('note-now').textContent=tastingNote(e.ev);
+    updateParams(e.p);
+    if(isNew){ addLeaderboardEntry(document.getElementById('algorithm').value, e, i+1, {inPlace:liveIdx>=0});
+      document.getElementById('best-score').textContent=`${e.score.toFixed(0)} (${document.getElementById('algorithm').value})`; }
+    await pourShot(e.ev, `Shot ${i+1}/${total} · score ${e.score.toFixed(0)} · best ${best.toFixed(0)}${isNew?' ★':''}`, 26);
+    if(my!==animationToken)return bi;
+    await new Promise(z=>setTimeout(z,120));
+  }
+  return bi;
+}
+
+// ============================================================================
+// Runner.
+// ============================================================================
+let lastBest=null;
+function getOptimizerClass(n){return globalThis[n];}
+async function runOptimization(){
+  const algoName=document.getElementById('algorithm').value; const budget=parseInt(document.getElementById('budget').value,10);
+  const cls=getOptimizerClass(algoName); if(!cls){alert(`Optimizer '${algoName}' not found.`);return;}
+  const runBtn=document.getElementById('run-btn'); runBtn.disabled=true; runBtn.textContent=`Pulling with ${algoName}…`;
+  animationToken++; searchHistory.length=0; await new Promise(r=>setTimeout(r,20));
+  try{
+    const opt=new cls(objective,budget,4); opt.optimize();
+    const bi=await montage(); const best=searchHistory[bi]; lastBest=best;
+    document.getElementById('best-score').textContent=`${best.score.toFixed(0)} (${algoName})`;
+    updateParams(best.p);
+    addLeaderboardEntry(algoName,best,opt.evaluations,{inPlace:liveIdx>=0}); liveIdx=-1;
+    await pourShot(best.ev, `Best shot: ${best.score.toFixed(0)} (${algoName}) — ${tastingNote(best.ev)}`, 34);
+  }catch(e){ console.error(e); alert(`${algoName} threw an error: ${e.message}`); }
+  finally{ runBtn.disabled=false; runBtn.textContent='▶ Dial in the shot'; }
+}
+function updateParams(p){
+  document.getElementById('param-a').textContent=`${p.grind.toFixed(2)} / ${p.dose.toFixed(1)}g`;
+  document.getElementById('param-b').textContent=`${p.temp.toFixed(1)}°C / ${p.time.toFixed(0)}s`;
+}
+function replayBest(){ if(!lastBest)return; animationToken++; pourShot(lastBest.ev,`Best shot: ${lastBest.score.toFixed(0)}`,34); }
+
+const leaderboard=[]; let liveIdx=-1;
+function addLeaderboardEntry(name,e,evals,{inPlace=false}={}){
+  const row={name,score:e.score,p:e.p,evals};
+  if(inPlace&&liveIdx>=0)leaderboard[liveIdx]=row; else {leaderboard.push(row);liveIdx=leaderboard.length-1;}
+  const tracked=leaderboard[liveIdx]; leaderboard.sort((a,b)=>b.score-a.score||a.evals-b.evals); liveIdx=leaderboard.indexOf(tracked);
+  renderLeaderboard();
+}
+function renderLeaderboard(){
+  const body=document.getElementById('leaderboard-body');
+  if(!leaderboard.length){body.innerHTML='<tr><td colspan="4" style="color:var(--muted); text-align:center;">— no runs yet —</td></tr>';return;}
+  body.innerHTML=leaderboard.map(r=>{const p=r.p,cls=r.name==='Human Raphson'?' class="human-raphson"':'';
+    return `<tr${cls}><td>${r.name}</td><td>${r.score.toFixed(0)}</td><td>${r.evals}</td><td>${p.grind.toFixed(2)} / ${p.dose.toFixed(1)}g / ${p.temp.toFixed(1)}° / ${p.time.toFixed(0)}s</td></tr>`;
+  }).join('');
+}
+
+// ---- Human Raphson ----
+const HR=['m-grind','m-dose','m-temp','m-time'];
+for(const id of HR){const s=document.getElementById(id),o=document.getElementById(id+'-out');const dec=(id==='m-time')?0:(id==='m-grind'?2:1);const upd=()=>{o.textContent=parseFloat(s.value).toFixed(dec);};s.addEventListener('input',upd);upd();}
+async function pullManual(){
+  const p={grind:parseFloat(document.getElementById('m-grind').value),dose:parseFloat(document.getElementById('m-dose').value),temp:parseFloat(document.getElementById('m-temp').value),time:parseFloat(document.getElementById('m-time').value)};
+  const btn=document.querySelector('.hr-panel>button'); btn.disabled=true; btn.textContent='Pulling…';
+  animationToken++; await new Promise(r=>setTimeout(r,20));
+  try{
+    const s=pull(p); const ev=evalShot(p); const e={score:s,p,ev}; lastBest=e;
+    document.getElementById('score-now').textContent=s.toFixed(0);
+    document.getElementById('note-now').textContent=tastingNote(ev);
+    updateParams(p);
+    document.getElementById('best-score').textContent=`${s.toFixed(0)} (Human Raphson)`;
+    addLeaderboardEntry('Human Raphson',e,1);
+    await pourShot(ev,`🧠 Human Raphson: ${s.toFixed(0)} — ${tastingNote(ev)}`,34);
+  } finally { btn.disabled=false; btn.textContent='▶ Pull a shot (Human Raphson)'; }
+}
+function resetEverything(){ leaderboard.length=0; liveIdx=-1; lastBest=null; animationToken++;
+  document.getElementById('evals').textContent='0';
+  ['score-now','note-now','best-score','param-a','param-b'].forEach(id=>document.getElementById(id).textContent='—');
+  renderLeaderboard(); drawIdle();
+}
+
+drawIdle();
+</script>
+</body>
+</html>
