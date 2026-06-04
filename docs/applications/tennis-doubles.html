@@ -284,6 +284,19 @@ function simulatePoint(seed,A,B,server,record){
   for(let shot=0;shot<MAX_SHOTS;shot++){
     const strat=hitting==='A'?A:B;const recvSide=hitting==='A'?'B':'A';const recvStrat=hitting==='A'?B:A;const recvPos=hitting==='A'?posB:posA;
     const intoFar=hitting==='A';const baseY=intoFar?COURT_L:0;const midY=NET+(intoFar?1:-1)*6;
+    if(shot===0){ // serve: from deuce/ad corner, diagonally into the service box
+      const deuce=(seed%2===0),near=intoFar;
+      hitter={x:deuce?25:11,y:near?2:COURT_L-2};
+      const boxX=deuce?11:25;
+      const sx=boxX+gauss(rng)*2.0+(strat.depthRisk-0.5)*5*(deuce?-1:1);
+      const sy=(near?NET+5+rng()*13:NET-5-rng()*13)+gauss(rng)*1.5;
+      const target={x:sx,y:sy};
+      const boxXok=deuce?(sx>4&&sx<18):(sx>18&&sx<32);
+      const boxYok=near?(sy>NET+1&&sy<NET+21):(sy<NET-1&&sy>NET-21);
+      if(!boxXok||!boxYok||rng()<0.03){if(record)log.push({from:{...hitter},target,kind:'out',by:hitting,serve:true});return {winner:recvSide,log};}
+      if(record)log.push({from:{...hitter},target,kind:'rally',by:hitting,serve:true});
+      hitter={x:sx,y:sy};hitting=recvSide;continue;
+    }
     const isLob=rng()<strat.lob;let tx,ty;
     if(isLob){tx=recvPos.net.x+(rng()<0.5?1:-1)*(4+rng()*6);ty=baseY+(intoFar?-1:1)*(3+rng()*5);}
     else{const cross=rng()<strat.aimCross;const hitterLeft=hitter.x<CENTER;const aimLeft=cross?!hitterLeft:hitterLeft;
