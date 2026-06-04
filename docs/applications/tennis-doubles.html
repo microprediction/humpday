@@ -151,6 +151,9 @@
         <option value="40" selected>40</option>
         <option value="80">80</option>
         <option value="150">150</option>
+        <option value="500">500</option>
+        <option value="1000">1000</option>
+        <option value="5000">5000</option>
       </select>
 
       <label for="points">Points per strategy (training sample):</label>
@@ -164,6 +167,10 @@
         Each point is a noisy rally. Fewer training points = faster but
         more overfitting; more points = a steadier estimate.
       </p>
+
+      <label style="display:flex; align-items:center; gap:8px; margin-top:10px; cursor:pointer;">
+        <input type="checkbox" id="fast-mode" style="width:auto;"> ⚡ Fast mode (skip animation — for big budgets like 5000)
+      </label>
 
       <button id="run-btn" onclick="runOptimization()">▶ Find the best strategy</button>
       <button class="secondary" onclick="playBest()">▶ Watch best strategy (new point)</button>
@@ -430,7 +437,11 @@ async function runOptimization(){
     document.getElementById('gap-now').textContent=(inS-outS).toFixed(1)+' pts';
     updateBestParams(best.A);
     addLeaderboardEntry(algoName,best.A,inS,outS,opt.evaluations);
-    await playSeries(best.A,`${algoName}: out ${outS.toFixed(0)}% / in ${inS.toFixed(0)}%`,6);
+    if(document.getElementById('fast-mode').checked){
+      drawScene(defaultPlayers(best.A),null,`${algoName}: out ${outS.toFixed(0)}% / in ${inS.toFixed(0)}% · ${searchHistory.length} evals (fast)`);
+    } else {
+      await playSeries(best.A,`${algoName}: out ${outS.toFixed(0)}% / in ${inS.toFixed(0)}%`,6);
+    }
   }catch(e){console.error(e);alert(`${algoName} threw an error: ${e.message}`);}
   finally{runBtn.disabled=false;runBtn.textContent='▶ Find the best strategy';}
 }
