@@ -1,0 +1,666 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' 'unsafe-inline'; style-src 'self' 'unsafe-inline';">
+<title>⭕ Circle Packing Optimizer — HumpDay</title>
+<style>
+  :root {
+    --bg: #1a1a22;
+    --panel: #2d2d3a;
+    --accent: #ffcc00;
+    --text: #e8e8ea;
+    --muted: #9a9aac;
+  }
+  body { margin: 0; background: var(--bg); color: var(--text);
+    font-family: -apple-system, 'Segoe UI', 'Helvetica Neue', Helvetica, Arial, sans-serif; }
+  .site-nav { background: #34495e; padding: 12px 24px;
+    font-family: 'Times New Roman', Times, serif;
+    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1); }
+  .site-nav-inner { max-width: 1100px; margin: 0 auto;
+    display: flex; justify-content: space-between; align-items: center; }
+  .site-nav a { color: #ecf0f1; text-decoration: none; margin: 0 12px; }
+  .site-nav a:hover { color: white; text-decoration: underline; }
+  .site-nav-brand { font-weight: 700; font-size: 1.25em; }
+
+  .container { max-width: 1100px; margin: 0 auto; padding: 32px 24px 64px; }
+  h1 { font-size: 2.2em; margin: 0.2em 0; }
+  h2 { font-size: 1.4em; margin-top: 1.4em; color: var(--accent); }
+  p { line-height: 1.55; max-width: 70ch; }
+  .intro { color: var(--muted); }
+
+  .stage { display: grid; grid-template-columns: 1fr 320px; gap: 24px;
+    align-items: start; margin-top: 24px; }
+  @media (max-width: 800px) { .stage { grid-template-columns: 1fr; } }
+  canvas { background: #14141b;
+    border: 3px solid var(--accent); border-radius: 6px; display: block;
+    width: 100%; height: auto; }
+
+  .panel { background: var(--panel); padding: 18px; border-radius: 6px; border: 1px solid #404054; }
+  .panel h3 { margin: 0 0 12px; font-size: 1.05em; text-transform: uppercase;
+    letter-spacing: 0.06em; color: var(--accent); }
+  label { display: block; margin: 10px 0 6px; font-size: 0.9em; color: var(--muted); }
+  select, input, button { width: 100%; box-sizing: border-box; padding: 8px 10px;
+    border-radius: 4px; border: 1px solid #404054; background: #1a1a22; color: var(--text); font-size: 0.95em; }
+  button { background: var(--accent); color: #1a1a22; font-weight: 700; cursor: pointer; margin-top: 6px; transition: opacity 0.15s; }
+  button:hover { opacity: 0.88; }
+  button.secondary { background: #404054; color: var(--text); font-weight: 400; }
+  button:disabled { opacity: 0.5; cursor: not-allowed; }
+  .stats { margin-top: 16px; padding-top: 14px; border-top: 1px solid #404054; font-size: 0.92em; line-height: 1.6; }
+  .stats .score { font-size: 2.6em; color: var(--accent); font-weight: 700; }
+  .stat-row { display: flex; justify-content: space-between; }
+  .stat-row span:first-child { white-space: nowrap; flex-shrink: 0; }
+  .stat-row span:last-child { color: var(--text); font-family: 'SF Mono', Menlo, monospace; text-align: right; word-break: break-word; }
+
+  .leaderboard { margin-top: 24px; }
+  .leaderboard table { width: 100%; border-collapse: collapse; background: var(--panel); border-radius: 6px; overflow: hidden; }
+  .leaderboard th, .leaderboard td { padding: 10px 14px; text-align: left; border-bottom: 1px solid #404054; }
+  .leaderboard th { background: #1a1a22; color: var(--muted); text-transform: uppercase; font-size: 0.78em; letter-spacing: 0.08em; }
+  .leaderboard td:nth-child(2) { text-align: center; font-size: 1.3em; font-weight: 700; color: var(--accent); }
+  .leaderboard td:nth-child(3), .leaderboard td:nth-child(4) { font-family: 'SF Mono', Menlo, monospace; color: var(--muted); }
+  .leaderboard tr.human-raphson td:first-child { color: #ff9944; font-weight: 700; }
+
+  /* HR panel — sits under the canvas in the left column. Preset-layout
+     buttons rather than sliders: a 12-D position vector can't be steered
+     by hand, but a human can pick a sensible arrangement and see how it
+     scores against the optimisers. */
+  .left-stack { display: flex; flex-direction: column; gap: 16px; min-width: 0; }
+  .hr-panel { padding: 14px 16px; }
+  .hr-panel h3 { margin: 0 0 6px; }
+  .hr-presets { display: grid; grid-template-columns: repeat(4, 1fr); gap: 8px; margin-bottom: 10px; }
+  .hr-presets button { background: #1a1a22; color: var(--text); font-weight: 500; margin: 0; font-size: 0.86em; padding: 8px 4px; }
+  .hr-presets button:hover { background: #383850; opacity: 1; }
+  .hr-panel > button { background: #ff9944; color: #1a1a22; margin-top: 0; }
+
+  .skill-callout { margin-top: 36px; background: rgba(126, 217, 87, 0.07); border: 1px solid rgba(126, 217, 87, 0.35); border-radius: 8px; padding: 18px 22px; }
+  .skill-callout h3 { margin: 0 0 6px; color: #7ed957; font-size: 1.05em; text-transform: none; letter-spacing: 0; }
+  .skill-callout p { margin: 0 0 10px; color: var(--text); max-width: none; }
+  .skill-callout pre { background: #1a1a22; border: 1px solid #404054; border-radius: 4px; padding: 10px 14px; margin: 0; font-size: 0.84em; color: #7ed957; white-space: pre-wrap; word-break: break-all; font-family: 'SF Mono', Menlo, monospace; }
+  .skill-actions { margin-top: 10px; display: flex; align-items: center; gap: 14px; }
+  .skill-actions button { width: auto; background: #404054; color: var(--text); border: 1px solid #404054; padding: 6px 12px; font-size: 0.85em; cursor: pointer; border-radius: 4px; margin: 0; font-weight: 500; }
+  .skill-actions button:hover { background: #4a4a60; }
+  .skill-actions a { color: #7ed957; font-size: 0.85em; text-decoration: none; }
+  .skill-actions a:hover { text-decoration: underline; }
+
+</style>
+</head>
+<body>
+    <nav class="site-nav" data-site-nav="v1">
+        <div class="site-nav-inner">
+            <a href="../index.html" class="site-nav-brand"><svg class="site-nav-camel" data-site-logo="camel-v3" viewBox="0 0 100 50" width="44" height="22" xmlns="http://www.w3.org/2000/svg" aria-hidden="true"><rect x="20.5" y="30" width="1.8" height="11" fill="white" fill-opacity="0.55"/><rect x="60.5" y="30" width="1.8" height="11" fill="white" fill-opacity="0.55"/><path fill="white" fill-opacity="0.92" d="M 14 30 C 10 30 8 28 8 24 C 7 22 7 19 9 18 C 11 16 13 14 16 13 C 20 8 26 6 31 9 C 34 11 35 13 35 16 C 37 18 40 18 43 17 C 47 13 53 7 59 9 C 63 11 65 13 65 16 C 66 18 68 18 70 17 C 73 13 76 9 80 7 C 84 5 89 6 90 9 L 92 9 L 93 12 L 91 13 L 87 13 L 87 15 C 82 16 79 18 76 21 C 73 25 71 28 68 30 L 66 30 L 66 42 L 64 42 L 64 30 L 26 30 L 26 42 L 24 42 L 24 30 L 14 30 Z"/><circle cx="88" cy="10" r="0.9" fill="#34495e"/></svg>HumpDay</a>
+            <div class="site-nav-links">
+                <a href="../index.html">Home</a>
+                <a href="../contest.html">Contest</a>
+                <a href="../applications/index.html">Demonstrations</a>
+                <a href="../algorithms.html">Algorithms</a>
+                <a href="../sota-status.html">SOTA status</a>
+                <a href="../recommendations.html">Recommendations</a>
+                <a href="https://github.com/microprediction/humpday" target="_blank" rel="noopener">GitHub</a>
+            </div>
+        </div>
+    </nav>
+
+<div class="container">
+  <h1>⭕ Circle Packing Optimizer</h1>
+  <p class="intro">
+    Pack <strong id="circle-count">…</strong> equal circles into a square so they're
+    as <strong>big as possible</strong> without overlapping or spilling
+    out. HumpDay's optimisers place every circle centre — a
+    <strong id="dim-count">…</strong>-dimensional problem — and grow all the circles
+    together until the tightest gap closes. The landscape is riddled with
+    near-equal arrangements, which makes it a genuine test of a
+    derivative-free optimiser.
+  </p>
+
+  <div class="stage">
+    <div class="left-stack">
+      <canvas id="canvas" width="800" height="450"></canvas>
+
+      <div class="panel hr-panel">
+        <h3>🧠 Human Raphson</h3>
+        <p style="color: var(--muted); margin: 0 0 12px; font-size: 0.86em;">
+          Pick an arrangement by hand and see how big it packs — then
+          beat it with an optimiser.
+        </p>
+        <div class="hr-presets">
+          <button onclick="manualLayout('grid')">Grid</button>
+          <button onclick="manualLayout('hex')">Hex rows</button>
+          <button onclick="manualLayout('ring')">Ring</button>
+          <button onclick="manualLayout('random')">Random</button>
+        </div>
+        <button onclick="scoreManualLayout()">▶ Score this layout (Human Raphson)</button>
+      </div>
+    </div>
+
+    <div class="panel">
+      <h3>Algorithm</h3>
+      <label for="algorithm">Pick a HumpDay optimizer:</label>
+      <select id="algorithm">
+        <optgroup label="Trust-region / interpolation">
+          <option value="PRIMA_BOBYQA">PRIMA_BOBYQA</option>
+          <option value="PRIMA_NEWUOA">PRIMA_NEWUOA</option>
+        </optgroup>
+        <optgroup label="Local / classical">
+          <option value="NelderMead">Nelder-Mead</option>
+          <option value="Powell">Powell</option>
+          <option value="LBFGSB">L-BFGS-B (simplified)</option>
+        </optgroup>
+        <optgroup label="Population-based">
+          <option value="DifferentialEvolution" selected>Differential Evolution</option>
+          <option value="ParticleSwarm">Particle Swarm</option>
+          <option value="CMAEvolutionStrategy">CMA-Evolution Strategy</option>
+          <option value="GeneticAlgorithm">Genetic Algorithm</option>
+          <option value="EvolutionStrategy">Evolution Strategy</option>
+          <option value="HarmonySearch">Harmony Search</option>
+        </optgroup>
+        <optgroup label="Other">
+          <option value="SimulatedAnnealing">Simulated Annealing</option>
+          <option value="BayesianOpt">Bayesian Optimization</option>
+          <option value="FireflyAlgorithm">Firefly Algorithm</option>
+          <option value="AntColonyOpt">Ant Colony</option>
+          <option value="RandomSearch">Random Search</option>
+          <option value="Rechenberg">Rechenberg (1+1)-ES</option>
+        </optgroup>
+      </select>
+
+      <label for="budget">Evaluation budget:</label>
+      <select id="budget">
+        <option value="20">20 layouts</option>
+        <option value="50">50 layouts</option>
+        <option value="100">100 layouts</option>
+        <option value="200" selected>200 layouts</option>
+        <option value="500">500 layouts</option>
+        <option value="1000">1000 layouts</option>
+      </select>
+      <p style="margin: 8px 0 0; font-size: 0.78em; color: var(--muted);">
+        12-D problem (two coordinates per circle). Higher budgets give
+        the search more room to spread the circles out — try the same
+        method at 50 and at 500 to see the difference.
+      </p>
+
+      <button id="run-btn" onclick="runOptimization()">▶ Find the best packing</button>
+      <button class="secondary" onclick="replayBest()">🔁 Show best packing</button>
+      <button class="secondary" onclick="resetEverything()">⟲ Reset leaderboard</button>
+
+      <div class="stats">
+        <div class="stat-row"><span>Score</span><span class="score" id="score-now">0</span></div>
+        <div class="stat-row"><span>Detail</span><span id="detail-now">—</span></div>
+        <div class="stat-row"><span>Layouts tried</span><span id="evals">0</span></div>
+        <div class="stat-row"><span>Best so far</span><span id="best-score">—</span></div>
+        <div class="stat-row"><span>Circle radius</span><span id="param-radius">—</span></div>
+        <div class="stat-row"><span>Tightest gap</span><span id="param-gap">—</span></div>
+      </div>
+    </div>
+  </div>
+
+  <div class="leaderboard">
+    <h2>Leaderboard (this session)</h2>
+    <p style="color: var(--muted);">
+      Each row is the best single packing a given algorithm found —
+      score is the common circle radius as a percentage of the best
+      packing known for six circles (radius ≈ 0.188 of the square's side).
+    </p>
+    <table>
+      <thead>
+        <tr><th>Algorithm</th><th>Score</th><th>Layouts used</th><th>Circle radius (of square side)</th></tr>
+      </thead>
+      <tbody id="leaderboard-body">
+        <tr><td colspan="4" style="color: var(--muted); text-align: center;">— no runs yet —</td></tr>
+      </tbody>
+    </table>
+  </div>
+
+  <h2>What's happening</h2>
+  <p>
+    The optimiser chooses an <em>(x, y)</em> centre for each of
+    <strong id="circle-count-2">…</strong> circles — a continuous
+    <strong id="dim-count-2">…</strong>-dimensional search over the unit
+    square. Given those centres, every circle is grown to the same
+    radius until the first thing touches: either two circles meet, or a
+    circle reaches a wall. That common radius is the score (shown as a
+    percentage of the best packing known for this count). No layout is
+    ever "invalid" — crowding just shrinks every circle, so the
+    objective is smooth.
+  </p>
+  <p>
+    What makes it hard is the sheer number of near-equal arrangements.
+    Nudge one circle and the binding constraint jumps to a different
+    pair of neighbours, so the landscape is dimpled with shallow local
+    optima separated by flat ridges. Some methods polish whatever
+    arrangement they start near; others keep sampling fresh ones. Which
+    approach wins here depends on the method and the budget — run a few
+    and compare on the leaderboard.
+  </p>
+  <p>
+    Run the same optimiser at 50 layouts and again at 500, or pit a
+    local method against a population one at equal budget, and watch how
+    close each gets to the tidy symmetric packing. The dashed red line
+    marks the tightest pair of circles — the contact that's currently
+    stopping every circle from growing any larger.
+  </p>
+
+  <div class="skill-callout">
+    <h3>🌱 Save the Planet</h3>
+    <p>If your hyper-parameter searches are heating the Earth, drop this in Cursor or Claude:</p>
+    <pre id="skill-snippet">Read https://raw.githubusercontent.com/microprediction/humpday/main/SKILL.md
+and create a project skill from it.</pre>
+    <div class="skill-actions">
+      <button type="button" onclick="copySkillSnippet(this)">📋 Copy</button>
+      <a href="https://github.com/microprediction/humpday/blob/main/SKILL.md" target="_blank" rel="noopener">View SKILL.md →</a>
+    </div>
+  </div>
+
+  <script>
+    function copySkillSnippet(btn) {
+      const text = document.getElementById('skill-snippet').textContent;
+      navigator.clipboard.writeText(text).then(() => {
+        const orig = btn.textContent;
+        btn.textContent = '✓ Copied';
+        setTimeout(() => { btn.textContent = orig; }, 1500);
+      }).catch(() => {
+        btn.textContent = '✗ Copy failed';
+      });
+    }
+  </script>
+</div>
+
+<script src="../js/modules/base-optimizer.js"></script>
+<script src="../js/modules/linalg.js"></script>
+<script src="../js/modules/prima-algorithms.js"></script>
+<script src="../js/modules/scipy-algorithms.js"></script>
+<script src="../js/modules/evolutionary-algorithms.js"></script>
+<script src="../js/modules/search-algorithms.js"></script>
+
+<script>
+// ============================================================================
+// Circle packing — a pure-geometry layout problem (no physics engine).
+//
+// N equal circles live in the unit square. The optimiser picks every
+// centre (2N numbers in [0,1]). Given the centres, all circles share one
+// radius, grown until the first contact: r = min( half the closest pair
+// distance, the nearest wall clearance ). Maximising that radius is the
+// classic "maximise the minimum" packing problem — every layout is valid
+// (crowding just shrinks r), and the landscape is full of near-equal
+// local optima, which is what separates broad searchers from local ones.
+// ============================================================================
+
+const canvas = document.getElementById('canvas');
+const ctx = canvas.getContext('2d');
+const W = canvas.width, H = canvas.height;
+
+// ---- Geometry ----------------------------------------------------------
+const N_CIRCLES = 6;
+const N_DIM = N_CIRCLES * 2;
+
+// Best radius known for N equal circles in a unit square, as a fraction
+// of the side. Used only to normalise the score to ~0..100 so "100" means
+// a near-optimal pack. For N=6 the optimum is r* ≈ 0.1875 (two offset
+// columns of three). Confirmed against an empirical optimiser sweep in
+// the build smoke-test.
+const R_REF = 0.1875;
+
+// On-screen square container (a true square inside the 800×450 canvas).
+const FIELD_PAD = 20;
+const FIELD_SIDE = H - 2 * FIELD_PAD;            // 410 px
+const FIELD_X0 = (W - FIELD_SIDE) / 2;           // centred horizontally
+const FIELD_Y0 = FIELD_PAD;
+
+// ---- Decoder: u in [0,1]^(2N) → N centres in the unit square -----------
+function decode(u) {
+  const centres = [];
+  for (let i = 0; i < N_CIRCLES; i++) {
+    centres.push([u[2 * i], u[2 * i + 1]]);
+  }
+  return centres;
+}
+
+// ---- Packing radius: the shared radius all circles can grow to ---------
+// Works in normalised [0,1] coordinates; returns r in (0, 0.5]. Also
+// reports which constraint is binding (the tightest gap) for the HUD.
+function packingRadius(centres) {
+  let r = Infinity;
+  // Wall clearance — distance from each centre to the nearest of 4 walls.
+  for (const c of centres) {
+    r = Math.min(r, c[0], 1 - c[0], c[1], 1 - c[1]);
+  }
+  // Half the closest centre-to-centre distance.
+  for (let i = 0; i < centres.length; i++) {
+    for (let j = i + 1; j < centres.length; j++) {
+      const d = Math.hypot(centres[i][0] - centres[j][0],
+                           centres[i][1] - centres[j][1]);
+      r = Math.min(r, d / 2);
+    }
+  }
+  return r;
+}
+
+function scoreOf(r) { return 100 * r / R_REF; }
+
+// ============================================================================
+// HumpDay objective.
+// ============================================================================
+const searchHistory = [];
+
+function objective(u) {
+  const centres = decode(u);
+  const r = packingRadius(centres);
+  searchHistory.push({ score: scoreOf(r), r, centres });
+  return -scoreOf(r);
+}
+
+// ============================================================================
+// Rendering — canvas2d. Draws the square container and the N circles at
+// their packed radius. The single pair (or circle/wall) that is binding
+// the radius is highlighted so the user sees *why* the circles can't grow.
+// ============================================================================
+function toPx(c) {
+  return [FIELD_X0 + c[0] * FIELD_SIDE, FIELD_Y0 + c[1] * FIELD_SIDE];
+}
+
+function drawScene(centres, r, hudText) {
+  ctx.clearRect(0, 0, W, H);
+
+  // Container.
+  ctx.fillStyle = '#1d1d28';
+  ctx.fillRect(FIELD_X0, FIELD_Y0, FIELD_SIDE, FIELD_SIDE);
+  ctx.strokeStyle = '#4a4a60';
+  ctx.lineWidth = 2;
+  ctx.strokeRect(FIELD_X0, FIELD_Y0, FIELD_SIDE, FIELD_SIDE);
+
+  if (centres) {
+    const rPx = r * FIELD_SIDE;
+
+    // Circles.
+    for (let i = 0; i < centres.length; i++) {
+      const [x, y] = toPx(centres[i]);
+      const g = ctx.createRadialGradient(x - rPx / 3, y - rPx / 3, rPx / 8, x, y, rPx);
+      g.addColorStop(0, '#ffe06a');
+      g.addColorStop(1, '#e0a000');
+      ctx.fillStyle = g;
+      ctx.beginPath();
+      ctx.arc(x, y, Math.max(rPx, 1), 0, Math.PI * 2);
+      ctx.fill();
+      ctx.strokeStyle = '#7a5a00';
+      ctx.lineWidth = 1.5;
+      ctx.stroke();
+      // Centre dot.
+      ctx.fillStyle = 'rgba(0,0,0,0.45)';
+      ctx.beginPath();
+      ctx.arc(x, y, 2, 0, Math.PI * 2);
+      ctx.fill();
+    }
+
+    // Highlight the binding contact (the tightest pair, if a pair binds).
+    let bi = -1, bj = -1, bestD = Infinity;
+    for (let i = 0; i < centres.length; i++) {
+      for (let j = i + 1; j < centres.length; j++) {
+        const d = Math.hypot(centres[i][0] - centres[j][0],
+                             centres[i][1] - centres[j][1]);
+        if (d < bestD) { bestD = d; bi = i; bj = j; }
+      }
+    }
+    if (bi >= 0 && bestD / 2 <= r + 1e-9) {
+      const a = toPx(centres[bi]), b = toPx(centres[bj]);
+      ctx.strokeStyle = 'rgba(255, 90, 90, 0.9)';
+      ctx.lineWidth = 2;
+      ctx.setLineDash([5, 4]);
+      ctx.beginPath();
+      ctx.moveTo(a[0], a[1]); ctx.lineTo(b[0], b[1]);
+      ctx.stroke();
+      ctx.setLineDash([]);
+    }
+  }
+
+  // HUD.
+  if (hudText) {
+    ctx.font = 'bold 15px -apple-system, Helvetica, Arial, sans-serif';
+    const padX = 12;
+    const metrics = ctx.measureText(hudText);
+    const boxW = Math.ceil(metrics.width) + 2 * padX;
+    ctx.fillStyle = 'rgba(0,0,0,0.6)';
+    ctx.fillRect(18, 14, boxW, 28);
+    ctx.fillStyle = '#ffcc00';
+    ctx.fillText(hudText, 18 + padX, 33);
+  }
+}
+
+function drawIdleScene() {
+  const centres = PRESETS.grid();
+  drawScene(centres, packingRadius(centres), 'Press "Find the best packing" to start');
+}
+
+// ============================================================================
+// Animations — each evaluated layout is drawn statically (there is no
+// trajectory to animate). One token guards the montage so a new run or a
+// manual layout cancels any in-flight playback.
+// ============================================================================
+const MONTAGE_MS_PER_FRAME = 45;
+let animationToken = 0;
+
+function delay(ms) { return new Promise((res) => setTimeout(res, ms)); }
+
+async function animateSearchMontage() {
+  const myToken = ++animationToken;
+  const total = searchHistory.length;
+  if (total === 0) return -1;
+
+  let bestSoFar = -Infinity;
+  let bestIdx = -1;
+  for (let i = 0; i < total; i++) {
+    if (myToken !== animationToken) return bestIdx;
+    const entry = searchHistory[i];
+    const isNew = entry.score > bestSoFar;
+    if (isNew) { bestSoFar = entry.score; bestIdx = i; }
+
+    document.getElementById('evals').textContent = i + 1;
+    document.getElementById('score-now').textContent = entry.score.toFixed(1);
+    document.getElementById('detail-now').textContent = `r = ${entry.r.toFixed(4)}`;
+    updateBestParams(entry);                       // every eval, not just isNew
+
+    if (isNew) {
+      addLeaderboardEntry(
+        document.getElementById('algorithm').value,
+        entry, i + 1,
+        { inPlace: liveLeaderboardIdx >= 0 },
+      );
+      document.getElementById('best-score').textContent =
+        `${entry.score.toFixed(1)} (${document.getElementById('algorithm').value})`;
+    }
+
+    drawScene(
+      entry.centres, entry.r,
+      `Layout ${i + 1}/${total}  ·  Best: ${bestSoFar.toFixed(1)}${isNew ? '  ★ NEW!' : ''}`,
+    );
+    await delay(MONTAGE_MS_PER_FRAME);
+  }
+  return bestIdx;
+}
+
+// ============================================================================
+// Runner.
+// ============================================================================
+let lastBest = null;
+
+function getOptimizerClass(name) { return globalThis[name]; }
+
+async function runOptimization() {
+  const algoName = document.getElementById('algorithm').value;
+  const budget = parseInt(document.getElementById('budget').value, 10);
+  const cls = getOptimizerClass(algoName);
+  if (!cls) { alert(`Optimizer '${algoName}' not found.`); return; }
+
+  const runBtn = document.getElementById('run-btn');
+  runBtn.disabled = true;
+  runBtn.textContent = `Packing with ${algoName}...`;
+
+  animationToken++;
+  searchHistory.length = 0;
+  await delay(30);
+
+  try {
+    const opt = new cls(objective, budget, N_DIM);
+    opt.optimize();
+
+    const bestIdx = await animateSearchMontage();
+    const bestEntry = searchHistory[bestIdx];
+    lastBest = bestEntry;
+
+    drawScene(
+      bestEntry.centres, bestEntry.r,
+      `Best packing: ${bestEntry.score.toFixed(1)} (${algoName})`,
+    );
+
+    document.getElementById('best-score').textContent =
+      `${bestEntry.score.toFixed(1)} (${algoName})`;
+    updateBestParams(bestEntry);
+    addLeaderboardEntry(algoName, bestEntry, opt.evaluations, {
+      inPlace: liveLeaderboardIdx >= 0,
+    });
+    liveLeaderboardIdx = -1;
+  } catch (e) {
+    console.error(e);
+    alert(`${algoName} threw an error: ${e.message}`);
+  } finally {
+    runBtn.disabled = false;
+    runBtn.textContent = '▶ Find the best packing';
+  }
+}
+
+function updateBestParams(entry) {
+  document.getElementById('param-radius').textContent = entry.r.toFixed(4);
+  // The tightest gap is the slack between the two closest circles' rims;
+  // at the packed radius it's ~0, so report the closest centre distance.
+  let dMin = Infinity;
+  const c = entry.centres;
+  for (let i = 0; i < c.length; i++)
+    for (let j = i + 1; j < c.length; j++)
+      dMin = Math.min(dMin, Math.hypot(c[i][0] - c[j][0], c[i][1] - c[j][1]));
+  document.getElementById('param-gap').textContent = dMin.toFixed(4);
+}
+
+function replayBest() {
+  if (!lastBest) return;
+  animationToken++;                                // cancel any in-flight animation
+  drawScene(lastBest.centres, lastBest.r,
+    `Best packing: ${lastBest.score.toFixed(1)}`);
+}
+
+const leaderboard = [];
+let liveLeaderboardIdx = -1;                       // index of the currently-running row
+
+function addLeaderboardEntry(algoName, entry, evals, { inPlace = false } = {}) {
+  const row = { name: algoName, score: entry.score, r: entry.r, evals };
+  if (inPlace && liveLeaderboardIdx >= 0) {
+    leaderboard[liveLeaderboardIdx] = row;
+  } else {
+    leaderboard.push(row);
+    liveLeaderboardIdx = leaderboard.length - 1;
+  }
+  const tracked = leaderboard[liveLeaderboardIdx];
+  leaderboard.sort((a, b) => b.score - a.score || a.evals - b.evals);
+  liveLeaderboardIdx = leaderboard.indexOf(tracked);
+  renderLeaderboard();
+}
+function renderLeaderboard() {
+  const body = document.getElementById('leaderboard-body');
+  if (leaderboard.length === 0) {
+    body.innerHTML = '<tr><td colspan="4" style="color: var(--muted); text-align: center;">— no runs yet —</td></tr>';
+    return;
+  }
+  body.innerHTML = leaderboard.map((row) => {
+    const cls = row.name === 'Human Raphson' ? ' class="human-raphson"' : '';
+    return `<tr${cls}>
+      <td>${row.name}</td>
+      <td>${row.score.toFixed(1)}</td>
+      <td>${row.evals}</td>
+      <td>${row.r.toFixed(4)}</td>
+    </tr>`;
+  }).join('');
+}
+
+// ============================================================================
+// Human Raphson — preset arrangements. Each builds N centres; "Score this
+// layout" evaluates it as one objective call and puts it on the board.
+// ============================================================================
+const PRESETS = {
+  // Two columns of three — the family the optimum lives in.
+  grid() {
+    const xs = [0.27, 0.73];
+    const ys = [0.2, 0.5, 0.8];
+    const c = [];
+    for (const x of xs) for (const y of ys) c.push([x, y]);
+    return c.slice(0, N_CIRCLES);
+  },
+  // Offset (hex-style) rows.
+  hex() {
+    return [
+      [0.22, 0.25], [0.5, 0.25], [0.78, 0.25],
+      [0.36, 0.72], [0.64, 0.72], [0.5, 0.5],
+    ].slice(0, N_CIRCLES);
+  },
+  // Evenly spaced ring.
+  ring() {
+    const c = [];
+    for (let i = 0; i < N_CIRCLES; i++) {
+      const a = (2 * Math.PI * i) / N_CIRCLES - Math.PI / 2;
+      c.push([0.5 + 0.32 * Math.cos(a), 0.5 + 0.32 * Math.sin(a)]);
+    }
+    return c;
+  },
+  // Deterministic "scatter" — fixed so the demo is reproducible.
+  random() {
+    const pts = [
+      [0.18, 0.62], [0.41, 0.2], [0.83, 0.34],
+      [0.6, 0.78], [0.29, 0.88], [0.72, 0.55],
+    ];
+    return pts.slice(0, N_CIRCLES);
+  },
+};
+
+let manualCentres = PRESETS.grid();
+
+function manualLayout(kind) {
+  animationToken++;                                // stop any montage
+  manualCentres = PRESETS[kind]();
+  const r = packingRadius(manualCentres);
+  drawScene(manualCentres, r, `Human Raphson: ${kind} (preview)`);
+  document.getElementById('score-now').textContent = scoreOf(r).toFixed(1);
+  document.getElementById('detail-now').textContent = `r = ${r.toFixed(4)}`;
+}
+
+function scoreManualLayout() {
+  animationToken++;
+  const r = packingRadius(manualCentres);
+  const entry = { score: scoreOf(r), r, centres: manualCentres };
+  drawScene(manualCentres, r, `🧠 Human Raphson: ${entry.score.toFixed(1)}`);
+  document.getElementById('score-now').textContent = entry.score.toFixed(1);
+  document.getElementById('detail-now').textContent = `r = ${r.toFixed(4)}`;
+  updateBestParams(entry);
+  addLeaderboardEntry('Human Raphson', entry, 1);
+  document.getElementById('best-score').textContent = `${entry.score.toFixed(1)} (Human Raphson)`;
+}
+
+function resetEverything() {
+  leaderboard.length = 0;
+  liveLeaderboardIdx = -1;
+  lastBest = null;
+  animationToken++;
+  document.getElementById('evals').textContent = '0';
+  document.getElementById('score-now').textContent = '0';
+  ['detail-now', 'best-score', 'param-radius', 'param-gap'].forEach((id) =>
+    document.getElementById(id).textContent = '—');
+  renderLeaderboard();
+  drawIdleScene();
+}
+
+// ---- Fill in the count placeholders in the prose. ----------------------
+['circle-count', 'circle-count-2'].forEach((id) =>
+  document.getElementById(id).textContent = N_CIRCLES);
+['dim-count', 'dim-count-2'].forEach((id) =>
+  document.getElementById(id).textContent = N_DIM);
+
+drawIdleScene();
+</script>
+</body>
+</html>
