@@ -489,6 +489,99 @@ def wind_farm_objective(u: list[float]) -> float:
 
 
 # -----------------------------------------------------------------------------
+# CartPole-v1 direct policy search — 5-dim linear policy weights trained by
+# black-box optimization. Direct port of docs/applications/cart-pole.html,
+# which is itself a port of OpenAI Gym's classic CartPole-v1 physics.
+# Non-smooth objective: returns are integer step counts (1..MAX_STEPS).
+# -----------------------------------------------------------------------------
+
+_CP_N_EPISODES = 8
+_CP_MAX_STEPS = 500
+_CP_WEIGHT_RANGE = 5.0
+_CP_GRAVITY = 9.8
+_CP_MASS_CART = 1.0
+_CP_MASS_POLE = 0.1
+_CP_TOTAL_MASS = _CP_MASS_CART + _CP_MASS_POLE
+_CP_LENGTH = 0.5  # half pole length (m)
+_CP_POLEMASS_LENGTH = _CP_MASS_POLE * _CP_LENGTH
+_CP_FORCE_MAG = 10.0
+_CP_TAU = 0.02  # seconds per step
+_CP_X_THRESHOLD = 2.4
+_CP_THETA_THRESHOLD = 12.0 * math.pi / 180.0
+
+
+def _cp_mulberry32(seed: int) -> Callable[[], float]:
+    """Reproduce the Mulberry32 PRNG used in the JS cart-pole demo. The
+    `& 0xFFFFFFFF` masks emulate JS's `| 0` int32 truncation so the same
+    seed yields the same sequence as the in-browser run."""
+    s = (seed & 0xFFFFFFFF) or 1
+
+    def next_value() -> float:
+        nonlocal s
+        s = (s + 0x6D2B79F5) & 0xFFFFFFFF
+        t = (s ^ (s >> 15)) * (1 | s) & 0xFFFFFFFF
+        t = ((t + ((t ^ (t >> 7)) * (61 | t) & 0xFFFFFFFF)) & 0xFFFFFFFF) ^ t
+        return ((t ^ (t >> 14)) & 0xFFFFFFFF) / 4294967296.0
+
+    return next_value
+
+
+def _cp_step(
+    state: tuple[float, float, float, float], action: int
+) -> tuple[float, float, float, float]:
+    x, x_dot, theta, theta_dot = state
+    force = _CP_FORCE_MAG if action == 1 else -_CP_FORCE_MAG
+    cos_t = math.cos(theta)
+    sin_t = math.sin(theta)
+    temp = (
+        force + _CP_POLEMASS_LENGTH * theta_dot * theta_dot * sin_t
+    ) / _CP_TOTAL_MASS
+    theta_acc = (_CP_GRAVITY * sin_t - cos_t * temp) / (
+        _CP_LENGTH * (4.0 / 3.0 - _CP_MASS_POLE * cos_t * cos_t / _CP_TOTAL_MASS)
+    )
+    x_acc = temp - _CP_POLEMASS_LENGTH * theta_acc * cos_t / _CP_TOTAL_MASS
+    return (
+        x + _CP_TAU * x_dot,
+        x_dot + _CP_TAU * x_acc,
+        theta + _CP_TAU * theta_dot,
+        theta_dot + _CP_TAU * theta_acc,
+    )
+
+
+def _cp_rollout(policy: tuple[float, float, float, float, float], seed: int) -> int:
+    """Run one CartPole episode under the given linear policy and return
+    the number of steps survived (1..MAX_STEPS)."""
+    rng = _cp_mulberry32(seed)
+    state = (
+        rng() * 0.1 - 0.05,
+        rng() * 0.1 - 0.05,
+        rng() * 0.1 - 0.05,
+        rng() * 0.1 - 0.05,
+    )
+    w1, w2, w3, w4, bias = policy
+    for t in range(_CP_MAX_STEPS):
+        x, x_dot, theta, theta_dot = state
+        score = w1 * x + w2 * x_dot + w3 * theta + w4 * theta_dot + bias
+        action = 1 if score > 0 else 0
+        state = _cp_step(state, action)
+        if abs(state[0]) > _CP_X_THRESHOLD or abs(state[2]) > _CP_THETA_THRESHOLD:
+            return t + 1
+    return _CP_MAX_STEPS
+
+
+def cart_pole_objective(u: list[float]) -> float:
+    """Minimise −(mean return) across N_EPISODES rollouts of a linear
+    policy whose 5 weights are decoded from u ∈ [0,1]^5 via the affine
+    map w = 10u − 5. Best achievable value is −500 (perfectly balanced
+    across all eight rollouts of MAX_STEPS = 500)."""
+    policy = tuple(_CP_WEIGHT_RANGE * (2.0 * ui - 1.0) for ui in u)
+    total = 0
+    for i in range(_CP_N_EPISODES):
+        total += _cp_rollout(policy, i)
+    return -total / _CP_N_EPISODES
+
+
+# -----------------------------------------------------------------------------
 # MLP-on-XOR — 17-dim weight-space optimisation of a 2-4-1 tanh/sigmoid net
 # trained on the four XOR examples. Pure stdlib math, no torch/numpy dep.
 # Famously non-convex: many local minima where the net learns 3 of 4 patterns.
@@ -588,6 +681,12 @@ DEMOS: list[Demo] = [
         n_dim=17,
         suggested_n_trials=200,
         objective=mlp_xor_objective,
+    ),
+    Demo(
+        name="cart_pole",
+        n_dim=5,
+        suggested_n_trials=200,
+        objective=cart_pole_objective,
     ),
 ]
 
