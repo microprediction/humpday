@@ -489,6 +489,54 @@ def wind_farm_objective(u: list[float]) -> float:
 
 
 # -----------------------------------------------------------------------------
+# MLP-on-XOR — 17-dim weight-space optimisation of a 2-4-1 tanh/sigmoid net
+# trained on the four XOR examples. Pure stdlib math, no torch/numpy dep.
+# Famously non-convex: many local minima where the net learns 3 of 4 patterns.
+# -----------------------------------------------------------------------------
+
+_MLP_X: tuple[tuple[float, float], ...] = (
+    (0.0, 0.0),
+    (0.0, 1.0),
+    (1.0, 0.0),
+    (1.0, 1.0),
+)
+_MLP_Y: tuple[float, ...] = (0.0, 1.0, 1.0, 0.0)
+_MLP_N_HIDDEN = 4
+_MLP_WEIGHT_SCALE = 3.0  # u∈[0,1] → weight in [-3, 3]
+
+
+def _mlp_sigmoid(z: float) -> float:
+    if z >= 0:
+        return 1.0 / (1.0 + math.exp(-z))
+    e = math.exp(z)
+    return e / (1.0 + e)
+
+
+def mlp_xor_objective(u: list[float]) -> float:
+    """MSE of a 2-4-1 MLP (tanh hidden, sigmoid output) on the XOR truth table,
+    with the 17 weights drawn from u∈[0,1]^17 via the affine map w = 6u − 3.
+
+    Decode order: W1 (8 = 2 inputs × 4 hidden), b1 (4), W2 (4), b2 (1)."""
+    w = [_MLP_WEIGHT_SCALE * (2 * ui - 1) for ui in u]
+    # W1[i][j] is the weight from input i to hidden unit j.
+    W1 = [w[4 * i : 4 * (i + 1)] for i in range(2)]
+    b1 = w[8:12]
+    W2 = w[12:16]
+    b2 = w[16]
+
+    loss = 0.0
+    for (x0, x1), y in zip(_MLP_X, _MLP_Y):
+        h = [
+            math.tanh(W1[0][j] * x0 + W1[1][j] * x1 + b1[j])
+            for j in range(_MLP_N_HIDDEN)
+        ]
+        z = sum(W2[j] * h[j] for j in range(_MLP_N_HIDDEN)) + b2
+        yhat = _mlp_sigmoid(z)
+        loss += (yhat - y) ** 2
+    return loss / len(_MLP_X)
+
+
+# -----------------------------------------------------------------------------
 # Registry
 # -----------------------------------------------------------------------------
 
@@ -534,6 +582,12 @@ DEMOS: list[Demo] = [
         n_dim=16,
         suggested_n_trials=200,
         objective=wind_farm_objective,
+    ),
+    Demo(
+        name="mlp_xor",
+        n_dim=17,
+        suggested_n_trials=200,
+        objective=mlp_xor_objective,
     ),
 ]
 
