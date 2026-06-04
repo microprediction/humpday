@@ -1,0 +1,719 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' 'unsafe-inline'; style-src 'self' 'unsafe-inline';">
+<title>♟️ Chess Piece-Value Optimizer — HumpDay</title>
+<style>
+  :root {
+    --bg: #1a1a22;
+    --panel: #2d2d3a;
+    --accent: #ffcc00;
+    --text: #e8e8ea;
+    --muted: #9a9aac;
+  }
+  body { margin: 0; background: var(--bg); color: var(--text);
+    font-family: -apple-system, 'Segoe UI', 'Helvetica Neue', Helvetica, Arial, sans-serif; }
+  .site-nav { background: #34495e; padding: 12px 24px;
+    font-family: 'Times New Roman', Times, serif;
+    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1); }
+  .site-nav-inner { max-width: 1100px; margin: 0 auto;
+    display: flex; justify-content: space-between; align-items: center; }
+  .site-nav a { color: #ecf0f1; text-decoration: none; margin: 0 12px; }
+  .site-nav a:hover { color: white; text-decoration: underline; }
+  .site-nav-brand { font-weight: 700; font-size: 1.25em; }
+
+  .container { max-width: 1100px; margin: 0 auto; padding: 32px 24px 64px; }
+  h1 { font-size: 2.2em; margin: 0.2em 0; }
+  h2 { font-size: 1.4em; margin-top: 1.4em; color: var(--accent); }
+  p { line-height: 1.55; max-width: 70ch; }
+  .intro { color: var(--muted); }
+
+  .stage { display: grid; grid-template-columns: 1fr 320px; gap: 24px;
+    align-items: start; margin-top: 24px; }
+  @media (max-width: 800px) { .stage { grid-template-columns: 1fr; } }
+  canvas { background: #14141b;
+    border: 3px solid var(--accent); border-radius: 6px; display: block;
+    width: 100%; height: auto; }
+
+  .panel { background: var(--panel); padding: 18px; border-radius: 6px; border: 1px solid #404054; }
+  .panel h3 { margin: 0 0 12px; font-size: 1.05em; text-transform: uppercase;
+    letter-spacing: 0.06em; color: var(--accent); }
+  label { display: block; margin: 10px 0 6px; font-size: 0.9em; color: var(--muted); }
+  select, input, button { width: 100%; box-sizing: border-box; padding: 8px 10px;
+    border-radius: 4px; border: 1px solid #404054; background: #1a1a22; color: var(--text); font-size: 0.95em; }
+  button { background: var(--accent); color: #1a1a22; font-weight: 700; cursor: pointer; margin-top: 6px; transition: opacity 0.15s; }
+  button:hover { opacity: 0.88; }
+  button.secondary { background: #404054; color: var(--text); font-weight: 400; }
+  button:disabled { opacity: 0.5; cursor: not-allowed; }
+  .stats { margin-top: 16px; padding-top: 14px; border-top: 1px solid #404054; font-size: 0.92em; line-height: 1.6; }
+  .stats .score { font-size: 2.6em; color: var(--accent); font-weight: 700; }
+  .stat-row { display: flex; justify-content: space-between; }
+  .stat-row span:first-child { white-space: nowrap; flex-shrink: 0; }
+  .stat-row span:last-child { color: var(--text); font-family: 'SF Mono', Menlo, monospace; text-align: right; word-break: break-word; }
+
+  .leaderboard { margin-top: 24px; }
+  .leaderboard table { width: 100%; border-collapse: collapse; background: var(--panel); border-radius: 6px; overflow: hidden; }
+  .leaderboard th, .leaderboard td { padding: 10px 14px; text-align: left; border-bottom: 1px solid #404054; }
+  .leaderboard th { background: #1a1a22; color: var(--muted); text-transform: uppercase; font-size: 0.78em; letter-spacing: 0.08em; }
+  .leaderboard td:nth-child(2) { text-align: center; font-size: 1.3em; font-weight: 700; color: var(--accent); }
+  .leaderboard td:nth-child(3), .leaderboard td:nth-child(4) { font-family: 'SF Mono', Menlo, monospace; color: var(--muted); }
+  .leaderboard tr.human-raphson td:first-child { color: #ff9944; font-weight: 700; }
+
+  .left-stack { display: flex; flex-direction: column; gap: 16px; min-width: 0; }
+  .hr-panel { padding: 14px 16px; }
+  .hr-panel h3 { margin: 0 0 6px; }
+  .hr-sliders { display: grid; grid-template-columns: repeat(2, 1fr); gap: 6px 18px; margin-bottom: 10px; }
+  .hr-sliders label { margin: 0; display: flex; justify-content: space-between; align-items: baseline; font-size: 0.84em; }
+  .hr-sliders label output { color: var(--accent); font-family: 'SF Mono', Menlo, monospace; font-size: 0.92em; }
+  .hr-sliders input[type=range] { width: 100%; margin: 0 0 6px; padding: 0; background: transparent; }
+  .hr-sliders input[type=range]::-webkit-slider-runnable-track { background: #1a1a22; height: 6px; border-radius: 3px; }
+  .hr-sliders input[type=range]::-webkit-slider-thumb { -webkit-appearance: none; appearance: none; background: var(--accent); width: 18px; height: 18px; border-radius: 50%; margin-top: -6px; cursor: pointer; }
+  .hr-panel button { background: #ff9944; color: #1a1a22; margin-top: 0; }
+
+  .skill-callout { margin-top: 36px; background: rgba(126, 217, 87, 0.07); border: 1px solid rgba(126, 217, 87, 0.35); border-radius: 8px; padding: 18px 22px; }
+  .skill-callout h3 { margin: 0 0 6px; color: #7ed957; font-size: 1.05em; text-transform: none; letter-spacing: 0; }
+  .skill-callout p { margin: 0 0 10px; color: var(--text); max-width: none; }
+  .skill-callout pre { background: #1a1a22; border: 1px solid #404054; border-radius: 4px; padding: 10px 14px; margin: 0; font-size: 0.84em; color: #7ed957; white-space: pre-wrap; word-break: break-all; font-family: 'SF Mono', Menlo, monospace; }
+  .skill-actions { margin-top: 10px; display: flex; align-items: center; gap: 14px; }
+  .skill-actions button { width: auto; background: #404054; color: var(--text); border: 1px solid #404054; padding: 6px 12px; font-size: 0.85em; cursor: pointer; border-radius: 4px; margin: 0; font-weight: 500; }
+  .skill-actions button:hover { background: #4a4a60; }
+  .skill-actions a { color: #7ed957; font-size: 0.85em; text-decoration: none; }
+  .skill-actions a:hover { text-decoration: underline; }
+</style>
+</head>
+<body>
+    <nav class="site-nav" data-site-nav="v1">
+        <div class="site-nav-inner">
+            <a href="../index.html" class="site-nav-brand"><svg class="site-nav-camel" data-site-logo="camel-v3" viewBox="0 0 100 50" width="44" height="22" xmlns="http://www.w3.org/2000/svg" aria-hidden="true"><rect x="20.5" y="30" width="1.8" height="11" fill="white" fill-opacity="0.55"/><rect x="60.5" y="30" width="1.8" height="11" fill="white" fill-opacity="0.55"/><path fill="white" fill-opacity="0.92" d="M 14 30 C 10 30 8 28 8 24 C 7 22 7 19 9 18 C 11 16 13 14 16 13 C 20 8 26 6 31 9 C 34 11 35 13 35 16 C 37 18 40 18 43 17 C 47 13 53 7 59 9 C 63 11 65 13 65 16 C 66 18 68 18 70 17 C 73 13 76 9 80 7 C 84 5 89 6 90 9 L 92 9 L 93 12 L 91 13 L 87 13 L 87 15 C 82 16 79 18 76 21 C 73 25 71 28 68 30 L 66 30 L 66 42 L 64 42 L 64 30 L 26 30 L 26 42 L 24 42 L 24 30 L 14 30 Z"/><circle cx="88" cy="10" r="0.9" fill="#34495e"/></svg>HumpDay</a>
+            <div class="site-nav-links">
+                <a href="../index.html">Home</a>
+                <a href="../contest.html">Contest</a>
+                <a href="../applications/index.html">Demonstrations</a>
+                <a href="../algorithms.html">Algorithms</a>
+                <a href="../sota-status.html">SOTA status</a>
+                <a href="../recommendations.html">Recommendations</a>
+                <a href="https://github.com/microprediction/humpday" target="_blank" rel="noopener">GitHub</a>
+            </div>
+        </div>
+    </nav>
+
+<div class="container">
+  <h1>♟️ Chess Piece-Value Optimizer</h1>
+  <p class="intro">
+    A depth-2 minimax bot plays chess using only material — it judges every
+    position by adding up piece values. HumpDay's optimisers tune those four
+    values (knight, bishop, rook, queen; pawn fixed at 1) to <strong>beat a
+    twin bot that uses the textbook 1 / 3 / 3 / 5 / 9</strong>. Each candidate
+    plays a small suite of games as both colours; the score is its win rate.
+    Tellingly, the optimisers do <em>not</em> rediscover the textbook values
+    — they find whatever exploits this particular shallow opponent.
+  </p>
+
+  <div class="stage">
+    <div class="left-stack">
+      <canvas id="canvas" width="800" height="450"></canvas>
+
+      <div class="panel hr-panel">
+        <h3>🧠 Human Raphson</h3>
+        <p style="color: var(--muted); margin: 0 0 12px; font-size: 0.86em;">
+          Set your own piece values and see if your bot beats the textbook
+          bot. (Pawn is fixed at 1 — only ratios matter.)
+        </p>
+        <div class="hr-sliders">
+          <label for="manual-n">Knight <output id="manual-n-out">3.0</output></label>
+          <label for="manual-b">Bishop <output id="manual-b-out">3.0</output></label>
+          <input type="range" id="manual-n" min="1" max="6" step="0.1" value="3">
+          <input type="range" id="manual-b" min="1" max="6" step="0.1" value="3">
+
+          <label for="manual-r">Rook <output id="manual-r-out">5.0</output></label>
+          <label for="manual-q">Queen <output id="manual-q-out">9.0</output></label>
+          <input type="range" id="manual-r" min="2" max="9" step="0.1" value="5">
+          <input type="range" id="manual-q" min="3" max="15" step="0.1" value="9">
+        </div>
+        <button id="manual-btn" onclick="scoreManual()">▶ Play the suite (Human Raphson)</button>
+      </div>
+    </div>
+
+    <div class="panel">
+      <h3>Algorithm</h3>
+      <label for="algorithm">Pick a HumpDay optimizer:</label>
+      <select id="algorithm">
+        <optgroup label="Trust-region / interpolation">
+          <option value="PRIMA_BOBYQA">PRIMA_BOBYQA</option>
+          <option value="PRIMA_NEWUOA">PRIMA_NEWUOA</option>
+        </optgroup>
+        <optgroup label="Local / classical">
+          <option value="NelderMead">Nelder-Mead</option>
+          <option value="Powell">Powell</option>
+          <option value="LBFGSB">L-BFGS-B (simplified)</option>
+        </optgroup>
+        <optgroup label="Population-based">
+          <option value="DifferentialEvolution">Differential Evolution</option>
+          <option value="ParticleSwarm">Particle Swarm</option>
+          <option value="CMAEvolutionStrategy" selected>CMA-Evolution Strategy</option>
+          <option value="GeneticAlgorithm">Genetic Algorithm</option>
+          <option value="EvolutionStrategy">Evolution Strategy</option>
+          <option value="HarmonySearch">Harmony Search</option>
+        </optgroup>
+        <optgroup label="Other">
+          <option value="SimulatedAnnealing">Simulated Annealing</option>
+          <option value="BayesianOpt">Bayesian Optimization</option>
+          <option value="FireflyAlgorithm">Firefly Algorithm</option>
+          <option value="AntColonyOpt">Ant Colony</option>
+          <option value="RandomSearch">Random Search</option>
+          <option value="Rechenberg">Rechenberg (1+1)-ES</option>
+        </optgroup>
+      </select>
+
+      <label for="budget">Evaluation budget:</label>
+      <select id="budget">
+        <option value="8">8 candidates</option>
+        <option value="12">12 candidates</option>
+        <option value="16" selected>16 candidates</option>
+        <option value="24">24 candidates</option>
+      </select>
+      <p style="margin: 8px 0 0; font-size: 0.78em; color: var(--muted);">
+        Each candidate plays 8 games of depth-2 minimax, so the search is
+        slow and runs <strong>synchronously</strong> — the page pauses for a
+        few seconds while it thinks, then replays the best bot's game.
+      </p>
+
+      <button id="run-btn" onclick="runOptimization()">▶ Find values that win</button>
+      <button class="secondary" onclick="replayBest()">🔁 Replay best game</button>
+      <button class="secondary" onclick="resetEverything()">⟲ Reset leaderboard</button>
+
+      <div class="stats">
+        <div class="stat-row"><span>Win rate vs textbook</span><span class="score" id="score-now">—</span></div>
+        <div class="stat-row"><span>Detail</span><span id="detail-now">—</span></div>
+        <div class="stat-row"><span>Candidates tried</span><span id="evals">0</span></div>
+        <div class="stat-row"><span>Best so far</span><span id="best-score">—</span></div>
+        <div class="stat-row"><span>Knight / Bishop</span><span id="param-nb">—</span></div>
+        <div class="stat-row"><span>Rook / Queen</span><span id="param-rq">—</span></div>
+      </div>
+    </div>
+  </div>
+
+  <div class="leaderboard">
+    <h2>Leaderboard (this session)</h2>
+    <p style="color: var(--muted);">
+      Each row is the best value-set a given algorithm found — score is its
+      win rate (win = 1, draw = ½) over the 8-game suite against the
+      textbook-values bot. Compare the value-sets: they rarely agree, and
+      almost never match 1 / 3 / 3 / 5 / 9.
+    </p>
+    <table>
+      <thead>
+        <tr><th>Algorithm</th><th>Win %</th><th>Cands</th><th>Best values (N / B / R / Q)</th></tr>
+      </thead>
+      <tbody id="leaderboard-body">
+        <tr><td colspan="4" style="color: var(--muted); text-align: center;">— no runs yet —</td></tr>
+      </tbody>
+    </table>
+  </div>
+
+  <h2>What's happening</h2>
+  <p>
+    The bot is the simplest chess engine that still plays legal chess: a
+    full legal move generator (castling, en passant, promotion — perft-verified)
+    with a <strong>depth-2 alpha-beta minimax</strong> search whose only
+    evaluation is material, the dot-product of the board with a piece-value
+    vector. The optimiser controls four numbers (knight, bishop, rook,
+    queen; pawn = 1). Every evaluation plays a fixed suite of four openings
+    as both White and Black against a reference bot wired to 1 / 3 / 3 / 5 / 9,
+    and scores the candidate's win rate.
+  </p>
+  <p>
+    The fun part: the optimisers <strong>don't converge on the textbook
+    values.</strong> They converge on whatever beats a <em>depth-2</em>
+    opponent — which usually means wildly over-valuing the queen, and
+    sometimes deciding a bishop is barely worth a pawn. Different optimisers
+    land on different, mutually-contradictory value-sets, all scoring well
+    above 50%. It's a compact lesson in objective design: a derivative-free
+    search will exploit exactly the objective you give it, and "beat this
+    one shallow bot" is not the same objective as "play good chess".
+  </p>
+  <p>
+    After the search finishes, the board replays the best bot (your tuned
+    values, White) against the textbook bot (Black) from the first opening,
+    with the four value bars on the right; the dotted ticks mark the
+    textbook 1 / 3 / 3 / 5 / 9.
+  </p>
+
+  <hr style="border: 0; border-top: 1px solid #404054; margin: 32px 0 16px;" />
+  <p style="font-size: 0.78em; color: var(--muted);">
+    Self-contained vanilla-JS chess engine — no external libraries. Move
+    generation validated with perft (start position to depth 4, "Kiwipete"
+    to depth 3). Depth-2 search and a short game suite keep it inside a
+    browser; deeper search would change which values win.
+  </p>
+
+  <div class="skill-callout">
+    <h3>🌱 Save the Planet</h3>
+    <p>If your hyper-parameter searches are heating the Earth, drop this in Cursor or Claude:</p>
+    <pre id="skill-snippet">Read https://raw.githubusercontent.com/microprediction/humpday/main/SKILL.md
+and create a project skill from it.</pre>
+    <div class="skill-actions">
+      <button type="button" onclick="copySkillSnippet(this)">📋 Copy</button>
+      <a href="https://github.com/microprediction/humpday/blob/main/SKILL.md" target="_blank" rel="noopener">View SKILL.md →</a>
+    </div>
+  </div>
+
+  <script>
+    function copySkillSnippet(btn) {
+      const text = document.getElementById('skill-snippet').textContent;
+      navigator.clipboard.writeText(text).then(() => {
+        const orig = btn.textContent;
+        btn.textContent = '✓ Copied';
+        setTimeout(() => { btn.textContent = orig; }, 1500);
+      }).catch(() => { btn.textContent = '✗ Copy failed'; });
+    }
+  </script>
+</div>
+
+<script src="../js/modules/base-optimizer.js"></script>
+<script src="../js/modules/linalg.js"></script>
+<script src="../js/modules/prima-algorithms.js"></script>
+<script src="../js/modules/scipy-algorithms.js"></script>
+<script src="../js/modules/evolutionary-algorithms.js"></script>
+<script src="../js/modules/search-algorithms.js"></script>
+
+<script>
+// ============================================================================
+// Self-contained 0x88 chess engine (perft-verified) + depth-2 minimax.
+// Each side searches with its own piece values; games are judged by TRUE
+// (standard) material so a candidate can't win by over-valuing its pieces.
+// ============================================================================
+const KNIGHT_D = [33, 31, 18, 14, -33, -31, -18, -14];
+const KING_D = [16, -16, 1, -1, 17, 15, -17, -15];
+const BISHOP_D = [17, 15, -17, -15];
+const ROOK_D = [16, -16, 1, -1];
+const QUEEN_D = [16, -16, 1, -1, 17, 15, -17, -15];
+function onBoard(sq) { return (sq & 0x88) === 0; }
+function rankOf(sq) { return sq >> 4; }
+function fileOf(sq) { return sq & 7; }
+function colorOf(p) { return p === '.' ? null : (p === p.toUpperCase() ? 'w' : 'b'); }
+
+function parseFEN(fen) {
+  const [placement, side, castling, ep] = fen.split(/\s+/);
+  const board = new Array(128).fill('.');
+  const rows = placement.split('/');
+  for (let r = 0; r < 8; r++) {
+    const rank = 7 - r; let file = 0;
+    for (const ch of rows[r]) {
+      if (/\d/.test(ch)) file += parseInt(ch, 10);
+      else { board[rank * 16 + file] = ch; file++; }
+    }
+  }
+  const rights = { K: castling.includes('K'), Q: castling.includes('Q'), k: castling.includes('k'), q: castling.includes('q') };
+  let epSq = -1;
+  if (ep && ep !== '-') epSq = (parseInt(ep[1], 10) - 1) * 16 + (ep.charCodeAt(0) - 97);
+  return { board, side: side === 'w' ? 'w' : 'b', rights, ep: epSq };
+}
+
+function isAttacked(board, sq, by) {
+  if (by === 'w') { for (const d of [-15, -17]) { const s = sq + d; if (onBoard(s) && board[s] === 'P') return true; } }
+  else { for (const d of [15, 17]) { const s = sq + d; if (onBoard(s) && board[s] === 'p') return true; } }
+  const kn = by === 'w' ? 'N' : 'n';
+  for (const d of KNIGHT_D) { const s = sq + d; if (onBoard(s) && board[s] === kn) return true; }
+  const kg = by === 'w' ? 'K' : 'k';
+  for (const d of KING_D) { const s = sq + d; if (onBoard(s) && board[s] === kg) return true; }
+  const B = by === 'w' ? 'B' : 'b', R = by === 'w' ? 'R' : 'r', Q = by === 'w' ? 'Q' : 'q';
+  for (const d of BISHOP_D) { let s = sq + d; while (onBoard(s)) { const p = board[s]; if (p !== '.') { if (p === B || p === Q) return true; break; } s += d; } }
+  for (const d of ROOK_D) { let s = sq + d; while (onBoard(s)) { const p = board[s]; if (p !== '.') { if (p === R || p === Q) return true; break; } s += d; } }
+  return false;
+}
+function kingSquare(board, color) { const k = color === 'w' ? 'K' : 'k'; for (let sq = 0; sq < 128; sq++) if (onBoard(sq) && board[sq] === k) return sq; return -1; }
+function inCheck(state, color) { return isAttacked(state.board, kingSquare(state.board, color), color === 'w' ? 'b' : 'w'); }
+
+function genPseudo(state) {
+  const { board, side, rights, ep } = state;
+  const moves = []; const us = side, them = side === 'w' ? 'b' : 'w';
+  for (let sq = 0; sq < 128; sq++) {
+    if (!onBoard(sq)) continue;
+    const p = board[sq]; if (p === '.' || colorOf(p) !== us) continue;
+    const up = p.toUpperCase();
+    if (up === 'P') {
+      const dir = us === 'w' ? 16 : -16, startRank = us === 'w' ? 1 : 6, promoRank = us === 'w' ? 7 : 0;
+      const one = sq + dir;
+      if (onBoard(one) && board[one] === '.') {
+        if (rankOf(one) === promoRank) for (const pr of 'QRBN') moves.push({ from: sq, to: one, piece: p, captured: '.', promo: us === 'w' ? pr : pr.toLowerCase() });
+        else moves.push({ from: sq, to: one, piece: p, captured: '.' });
+        const two = sq + 2 * dir;
+        if (rankOf(sq) === startRank && board[two] === '.') moves.push({ from: sq, to: two, piece: p, captured: '.', flag: 'double' });
+      }
+      for (const cd of (us === 'w' ? [15, 17] : [-15, -17])) {
+        const t = sq + cd; if (!onBoard(t)) continue;
+        if (board[t] !== '.' && colorOf(board[t]) === them) {
+          if (rankOf(t) === promoRank) for (const pr of 'QRBN') moves.push({ from: sq, to: t, piece: p, captured: board[t], promo: us === 'w' ? pr : pr.toLowerCase() });
+          else moves.push({ from: sq, to: t, piece: p, captured: board[t] });
+        } else if (t === ep && ep >= 0) {
+          const capSq = us === 'w' ? t - 16 : t + 16;
+          moves.push({ from: sq, to: t, piece: p, captured: board[capSq], flag: 'ep' });
+        }
+      }
+    } else if (up === 'N') {
+      for (const d of KNIGHT_D) { const t = sq + d; if (onBoard(t) && (board[t] === '.' || colorOf(board[t]) === them)) moves.push({ from: sq, to: t, piece: p, captured: board[t] }); }
+    } else if (up === 'K') {
+      for (const d of KING_D) { const t = sq + d; if (onBoard(t) && (board[t] === '.' || colorOf(board[t]) === them)) moves.push({ from: sq, to: t, piece: p, captured: board[t] }); }
+      const homeRank = us === 'w' ? 0 : 7;
+      if (rankOf(sq) === homeRank && fileOf(sq) === 4 && !isAttacked(board, sq, them)) {
+        const kR = us === 'w' ? rights.K : rights.k, qR = us === 'w' ? rights.Q : rights.q;
+        if (kR && board[sq + 1] === '.' && board[sq + 2] === '.' && board[sq + 3] === (us === 'w' ? 'R' : 'r') && !isAttacked(board, sq + 1, them) && !isAttacked(board, sq + 2, them)) moves.push({ from: sq, to: sq + 2, piece: p, captured: '.', flag: 'castleK' });
+        if (qR && board[sq - 1] === '.' && board[sq - 2] === '.' && board[sq - 3] === '.' && board[sq - 4] === (us === 'w' ? 'R' : 'r') && !isAttacked(board, sq - 1, them) && !isAttacked(board, sq - 2, them)) moves.push({ from: sq, to: sq - 2, piece: p, captured: '.', flag: 'castleQ' });
+      }
+    } else {
+      const dirs = up === 'B' ? BISHOP_D : up === 'R' ? ROOK_D : QUEEN_D;
+      for (const d of dirs) { let t = sq + d; while (onBoard(t)) { if (board[t] === '.') moves.push({ from: sq, to: t, piece: p, captured: '.' }); else { if (colorOf(board[t]) === them) moves.push({ from: sq, to: t, piece: p, captured: board[t] }); break; } t += d; } }
+    }
+  }
+  return moves;
+}
+
+function makeMove(state, m) {
+  const board = state.board.slice();
+  const us = state.side, them = us === 'w' ? 'b' : 'w';
+  const rights = { ...state.rights }; let ep = -1;
+  board[m.to] = m.promo ? m.promo : m.piece; board[m.from] = '.';
+  if (m.flag === 'ep') { const capSq = us === 'w' ? m.to - 16 : m.to + 16; board[capSq] = '.'; }
+  else if (m.flag === 'castleK') { board[m.from + 1] = board[m.from + 3]; board[m.from + 3] = '.'; }
+  else if (m.flag === 'castleQ') { board[m.from - 1] = board[m.from - 4]; board[m.from - 4] = '.'; }
+  else if (m.flag === 'double') { ep = us === 'w' ? m.to - 16 : m.to + 16; }
+  if (m.piece === 'K') { rights.K = rights.Q = false; } if (m.piece === 'k') { rights.k = rights.q = false; }
+  if (m.from === 0 || m.to === 0) rights.Q = false;
+  if (m.from === 7 || m.to === 7) rights.K = false;
+  if (m.from === 112 || m.to === 112) rights.q = false;
+  if (m.from === 119 || m.to === 119) rights.k = false;
+  return { board, side: them, rights, ep };
+}
+
+function genLegal(state) {
+  const us = state.side, opp = us === 'w' ? 'b' : 'w'; const out = [];
+  for (const m of genPseudo(state)) { const ns = makeMove(state, m); if (!isAttacked(ns.board, kingSquare(ns.board, us), opp)) out.push(m); }
+  return out;
+}
+
+// ---- minimax + match ----------------------------------------------------
+const STANDARD = { P: 1, N: 3, B: 3, R: 5, Q: 9, K: 0 };
+const MATE = 100000;
+function evalMaterial(state, vals) {
+  const b = state.board; let s = 0;
+  for (let sq = 0; sq < 128; sq++) { if (!onBoard(sq)) continue; const p = b[sq]; if (p === '.') continue; const v = vals[p.toUpperCase()]; s += colorOf(p) === state.side ? v : -v; }
+  return s;
+}
+function orderMoves(moves) { moves.sort((a, b) => { const ca = a.captured === '.' ? 0 : STANDARD[a.captured.toUpperCase()]; const cb = b.captured === '.' ? 0 : STANDARD[b.captured.toUpperCase()]; return cb - ca; }); }
+function search(state, depth, alpha, beta, vals, kSq) {
+  if (depth === 0) return evalMaterial(state, vals);
+  const us = state.side, opp = us === 'w' ? 'b' : 'w';
+  const moves = genPseudo(state); orderMoves(moves);
+  let best = -Infinity, anyLegal = false;
+  for (const m of moves) {
+    const ns = makeMove(state, m);
+    const ourK = (m.piece === 'K' || m.piece === 'k') ? m.to : kSq;
+    if (isAttacked(ns.board, ourK, opp)) continue;
+    anyLegal = true;
+    const sc = -search(ns, depth - 1, -beta, -alpha, vals, kingSquare(ns.board, opp));
+    if (sc > best) { best = sc; if (best > alpha) alpha = best; }
+    if (alpha >= beta) break;
+  }
+  if (!anyLegal) return inCheck(state, us) ? -MATE - depth : 0;
+  return best;
+}
+function bestMove(state, depth, vals) {
+  const us = state.side, opp = us === 'w' ? 'b' : 'w';
+  const kSq = kingSquare(state.board, us);
+  const moves = genPseudo(state); orderMoves(moves);
+  let best = -Infinity, chosen = null;
+  for (const m of moves) {
+    const ns = makeMove(state, m);
+    const ourK = (m.piece === 'K' || m.piece === 'k') ? m.to : kSq;
+    if (isAttacked(ns.board, ourK, opp)) continue;
+    const sc = -search(ns, depth - 1, -Infinity, Infinity, vals, kingSquare(ns.board, opp));
+    if (sc > best) { best = sc; chosen = m; }
+  }
+  return chosen;
+}
+function trueBalance(state) { const b = state.board; let s = 0; for (let sq = 0; sq < 128; sq++) { if (!onBoard(sq)) continue; const p = b[sq]; if (p === '.') continue; s += (colorOf(p) === 'w' ? 1 : -1) * STANDARD[p.toUpperCase()]; } return s; }
+function boardString(state) { let s = ''; for (let r = 7; r >= 0; r--) for (let f = 0; f < 8; f++) s += state.board[r * 16 + f]; return s; }
+
+const DEPTH = 2, PLY_CAP = 50, WIN_MARGIN = 3;
+function playGame(fen, whiteVals, blackVals, record) {
+  let state = parseFEN(fen);
+  const history = record ? [boardString(state)] : null;
+  for (let ply = 0; ply < PLY_CAP; ply++) {
+    const vals = state.side === 'w' ? whiteVals : blackVals;
+    if (genLegal(state).length === 0) {
+      const mated = inCheck(state, state.side);
+      const res = !mated ? 0 : (state.side === 'w' ? -1 : 1);
+      return { result: res, reason: mated ? 'checkmate' : 'stalemate', history };
+    }
+    state = makeMove(state, bestMove(state, DEPTH, vals));
+    if (record) history.push(boardString(state));
+  }
+  const bal = trueBalance(state);
+  let res;
+  if (bal >= WIN_MARGIN) res = 1; else if (bal <= -WIN_MARGIN) res = -1;
+  else res = Math.max(-1, Math.min(1, bal / WIN_MARGIN)) * 0.5;
+  return { result: res, reason: 'cap', balance: bal, history };
+}
+
+const OPENINGS = [
+  'rnbqkbnr/pppp1ppp/8/4p3/4P3/8/PPPP1PPP/RNBQKBNR w KQkq - 0 2',  // 1.e4 e5
+  'rnbqkbnr/ppp1pppp/8/3p4/3P4/8/PPP1PPPP/RNBQKBNR w KQkq - 0 2',  // 1.d4 d5
+  'rnbqkbnr/pp1ppppp/8/2p5/4P3/8/PPPP1PPP/RNBQKBNR w KQkq - 0 2',  // 1.e4 c5
+  'rnbqkbnr/pppppppp/8/8/2P5/8/PP1PPPPP/RNBQKBNR b KQkq - 0 1',    // 1.c4
+];
+function valsFromArray(a) { return { P: 1, N: a[0], B: a[1], R: a[2], Q: a[3], K: 0 }; }
+function scoreCandidate(arr) {
+  const cand = valsFromArray(arr); let total = 0, n = 0;
+  for (const fen of OPENINGS) {
+    let g = playGame(fen, cand, STANDARD, false); total += (g.result + 1) / 2; n++;
+    g = playGame(fen, STANDARD, cand, false); total += ((-g.result) + 1) / 2; n++;
+  }
+  return 100 * total / n;
+}
+
+// ============================================================================
+// HumpDay objective. u in [0,1]^4 → [N, B, R, Q]; pawn = 1.
+// ============================================================================
+const N_DIM = 4;
+function decode(u) { return [1 + 5 * u[0], 1 + 5 * u[1], 2 + 7 * u[2], 3 + 12 * u[3]]; }
+const searchHistory = [];
+function objective(u) {
+  const vals = decode(u);
+  const score = scoreCandidate(vals);
+  searchHistory.push({ score, vals });
+  return -score;
+}
+
+// ============================================================================
+// Rendering — board on the left, four value bars on the right.
+// ============================================================================
+const canvas = document.getElementById('canvas');
+const ctx = canvas.getContext('2d');
+const W = canvas.width, H = canvas.height;
+const SQ = 46, BOARD = SQ * 8, BX = 36, BY = (H - BOARD) / 2;
+const GLYPH = { K: '♔', Q: '♕', R: '♖', B: '♗', N: '♘', P: '♙' };
+const VAL_LABEL = [['N', 'Knight'], ['B', 'Bishop'], ['R', 'Rook'], ['Q', 'Queen']];
+const VAL_MAX = 15, STD_REF = [3, 3, 5, 9];
+
+function drawBoard(pos) {           // pos = 64-char string, index 0 = a8
+  for (let r = 0; r < 8; r++) {
+    for (let f = 0; f < 8; f++) {
+      const light = (r + f) % 2 === 0;
+      ctx.fillStyle = light ? '#cdd6e0' : '#5a6678';
+      ctx.fillRect(BX + f * SQ, BY + r * SQ, SQ, SQ);
+    }
+  }
+  ctx.strokeStyle = '#404054'; ctx.lineWidth = 2; ctx.strokeRect(BX, BY, BOARD, BOARD);
+  ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
+  ctx.font = `${SQ - 6}px "Arial Unicode MS", "DejaVu Sans", sans-serif`;
+  for (let i = 0; i < 64; i++) {
+    const p = pos[i]; if (p === '.') continue;
+    const r = Math.floor(i / 8), f = i % 8;
+    const cx = BX + f * SQ + SQ / 2, cy = BY + r * SQ + SQ / 2 + 2;
+    const glyph = GLYPH[p.toUpperCase()];
+    if (colorOf(p) === 'w') { ctx.fillStyle = '#f7f7fa'; ctx.fillText(glyph, cx, cy); ctx.lineWidth = 1; ctx.strokeStyle = '#33333a'; ctx.strokeText(glyph, cx, cy); }
+    else { ctx.fillStyle = '#1a1a22'; ctx.fillText(glyph, cx, cy); }
+  }
+}
+
+function drawValuePanel(vals, hud2) {
+  const px = BX + BOARD + 26, pw = W - px - 24;
+  ctx.textAlign = 'left'; ctx.textBaseline = 'alphabetic';
+  ctx.fillStyle = '#ffcc00'; ctx.font = 'bold 14px -apple-system, Helvetica, Arial, sans-serif';
+  ctx.fillText('PIECE VALUES', px, BY + 4);
+  ctx.font = '12px -apple-system, Helvetica, Arial, sans-serif';
+  ctx.fillStyle = '#9a9aac';
+  ctx.fillText('bars = your bot · ticks = textbook', px, BY + 22);
+  const barH = 26, gap = 22, top = BY + 44;
+  for (let i = 0; i < 4; i++) {
+    const y = top + i * (barH + gap);
+    const v = vals ? vals[i] : STD_REF[i];
+    // track
+    ctx.fillStyle = '#1a1a22'; ctx.fillRect(px, y, pw, barH);
+    // fill
+    const frac = Math.max(0, Math.min(1, v / VAL_MAX));
+    ctx.fillStyle = '#ffcc00'; ctx.fillRect(px, y, pw * frac, barH);
+    // textbook tick
+    const tx = px + pw * (STD_REF[i] / VAL_MAX);
+    ctx.strokeStyle = '#7ed957'; ctx.lineWidth = 2; ctx.setLineDash([3, 3]);
+    ctx.beginPath(); ctx.moveTo(tx, y - 3); ctx.lineTo(tx, y + barH + 3); ctx.stroke(); ctx.setLineDash([]);
+    // label
+    ctx.fillStyle = '#e8e8ea'; ctx.font = 'bold 13px -apple-system, Helvetica, Arial, sans-serif';
+    ctx.fillText(`${GLYPH[VAL_LABEL[i][0]]} ${VAL_LABEL[i][1]}`, px, y - 5);
+    ctx.fillStyle = '#1a1a22'; ctx.font = 'bold 13px "SF Mono", Menlo, monospace';
+    ctx.textAlign = 'right'; ctx.fillText(v.toFixed(1), px + pw * frac - 5 > px + 22 ? px + pw * frac - 5 : px + 5, y + barH - 8); ctx.textAlign = 'left';
+  }
+  if (hud2) {
+    ctx.fillStyle = '#9a9aac'; ctx.font = '12px -apple-system, Helvetica, Arial, sans-serif';
+    ctx.fillText(hud2, px, top + 4 * (barH + gap) + 4);
+  }
+}
+
+function drawScene(pos, vals, hudText, hud2) {
+  ctx.clearRect(0, 0, W, H);
+  ctx.fillStyle = '#14141b'; ctx.fillRect(0, 0, W, H);
+  drawBoard(pos);
+  drawValuePanel(vals, hud2);
+  if (hudText) {
+    ctx.font = 'bold 15px -apple-system, Helvetica, Arial, sans-serif';
+    ctx.textAlign = 'left'; ctx.textBaseline = 'alphabetic';
+    const padX = 12, mw = ctx.measureText(hudText).width, boxW = Math.ceil(mw) + 2 * padX;
+    ctx.fillStyle = 'rgba(0,0,0,0.6)'; ctx.fillRect(BX, BY - 30, boxW, 24);
+    ctx.fillStyle = '#ffcc00'; ctx.fillText(hudText, BX + padX, BY - 13);
+  }
+}
+
+const START_POS = boardString(parseFEN('rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1'));
+function drawIdleScene() { drawScene(START_POS, STD_REF, 'Press "Find values that win" to start', 'Textbook bot: N3 B3 R5 Q9'); }
+
+// ============================================================================
+// Animation of one representative game (best bot White vs textbook Black).
+// ============================================================================
+let animationToken = 0;
+const MOVE_MS = 230;
+function animateGame(history, vals, label) {
+  const myToken = ++animationToken;
+  return new Promise((resolve) => {
+    if (!history || !history.length) return resolve();
+    let i = 0;
+    (function tick() {
+      if (myToken !== animationToken) return resolve();
+      if (i >= history.length) return resolve();
+      drawScene(history[i], vals, `${label}  ·  move ${Math.ceil(i / 2)}`, 'Your bot (White) vs Textbook bot (Black)');
+      i++; setTimeout(tick, MOVE_MS);
+    })();
+  });
+}
+
+// ============================================================================
+// Runner.
+// ============================================================================
+let lastBest = null;
+function getOptimizerClass(name) { return globalThis[name]; }
+
+async function runOptimization() {
+  const algoName = document.getElementById('algorithm').value;
+  const budget = parseInt(document.getElementById('budget').value, 10);
+  const cls = getOptimizerClass(algoName);
+  if (!cls) { alert(`Optimizer '${algoName}' not found.`); return; }
+
+  const runBtn = document.getElementById('run-btn');
+  runBtn.disabled = true;
+  runBtn.textContent = `Searching ${algoName}… (page pauses)`;
+  animationToken++;
+  searchHistory.length = 0;
+  // Let the button text paint before the synchronous (blocking) search.
+  drawScene(START_POS, STD_REF, `Searching with ${algoName}…`, 'thinking — the page is busy');
+  await new Promise((r) => setTimeout(r, 60));
+
+  try {
+    const opt = new cls(objective, budget, N_DIM);
+    opt.optimize();                                  // BLOCKS the tab for a few seconds
+
+    // Best candidate.
+    let bestIdx = 0;
+    for (let i = 1; i < searchHistory.length; i++) if (searchHistory[i].score > searchHistory[bestIdx].score) bestIdx = i;
+    const best = searchHistory[bestIdx];
+    lastBest = best;
+
+    document.getElementById('evals').textContent = searchHistory.length;
+    document.getElementById('score-now').textContent = best.score.toFixed(1) + '%';
+    document.getElementById('detail-now').textContent = `best of ${searchHistory.length} candidates`;
+    document.getElementById('best-score').textContent = `${best.score.toFixed(1)}% (${algoName})`;
+    updateBestParams(best.vals);
+    addLeaderboardEntry(algoName, best, opt.evaluations);
+
+    // Replay the best bot's game from opening 1.
+    const game = playGame(OPENINGS[0], valsFromArray(best.vals), STANDARD, true);
+    await animateGame(game.history, best.vals, `${algoName}: ${best.score.toFixed(1)}% win rate`);
+    drawScene(game.history[game.history.length - 1], best.vals,
+      `Best: ${best.score.toFixed(1)}% (${algoName}) — game ${gameOutcome(game)}`,
+      'Your bot (White) vs Textbook bot (Black)');
+  } catch (e) {
+    console.error(e);
+    alert(`${algoName} threw an error: ${e.message}`);
+  } finally {
+    runBtn.disabled = false;
+    runBtn.textContent = '▶ Find values that win';
+  }
+}
+
+function gameOutcome(g) {
+  if (g.reason === 'checkmate') return 'won by checkmate';
+  if (g.reason === 'stalemate') return 'drawn (stalemate)';
+  const b = g.balance;
+  return b >= WIN_MARGIN ? `won (+${b} material)` : b <= -WIN_MARGIN ? `lost (${b} material)` : 'even';
+}
+
+function updateBestParams(v) {
+  document.getElementById('param-nb').textContent = `${v[0].toFixed(1)} / ${v[1].toFixed(1)}`;
+  document.getElementById('param-rq').textContent = `${v[2].toFixed(1)} / ${v[3].toFixed(1)}`;
+}
+
+function replayBest() {
+  if (!lastBest) return;
+  animationToken++;
+  const game = playGame(OPENINGS[0], valsFromArray(lastBest.vals), STANDARD, true);
+  animateGame(game.history, lastBest.vals, `Best: ${lastBest.score.toFixed(1)}% win rate`);
+}
+
+const leaderboard = [];
+function addLeaderboardEntry(algoName, entry, evals) {
+  leaderboard.push({ name: algoName, score: entry.score, evals, vals: entry.vals });
+  leaderboard.sort((a, b) => b.score - a.score || a.evals - b.evals);
+  renderLeaderboard();
+}
+function renderLeaderboard() {
+  const body = document.getElementById('leaderboard-body');
+  if (!leaderboard.length) { body.innerHTML = '<tr><td colspan="4" style="color: var(--muted); text-align: center;">— no runs yet —</td></tr>'; return; }
+  body.innerHTML = leaderboard.map((row) => {
+    const v = row.vals, cls = row.name === 'Human Raphson' ? ' class="human-raphson"' : '';
+    return `<tr${cls}><td>${row.name}</td><td>${row.score.toFixed(1)}%</td><td>${row.evals}</td><td>${v[0].toFixed(1)} / ${v[1].toFixed(1)} / ${v[2].toFixed(1)} / ${v[3].toFixed(1)}</td></tr>`;
+  }).join('');
+}
+
+// ---- Human Raphson ------------------------------------------------------
+const sliderIds = ['manual-n', 'manual-b', 'manual-r', 'manual-q'];
+for (const id of sliderIds) {
+  const s = document.getElementById(id), o = document.getElementById(`${id}-out`);
+  const upd = () => { o.textContent = parseFloat(s.value).toFixed(1); };
+  s.addEventListener('input', upd); upd();
+}
+async function scoreManual() {
+  const vals = sliderIds.map((id) => parseFloat(document.getElementById(id).value));
+  const btn = document.getElementById('manual-btn');
+  btn.disabled = true; btn.textContent = 'Playing… (page pauses)';
+  animationToken++;
+  drawScene(START_POS, vals, 'Playing the suite…', 'thinking — the page is busy');
+  await new Promise((r) => setTimeout(r, 60));
+  try {
+    const score = scoreCandidate(vals);
+    document.getElementById('score-now').textContent = score.toFixed(1) + '%';
+    document.getElementById('detail-now').textContent = 'Human Raphson';
+    document.getElementById('best-score').textContent = `${score.toFixed(1)}% (Human Raphson)`;
+    updateBestParams(vals);
+    addLeaderboardEntry('Human Raphson', { score, vals }, 1);
+    const game = playGame(OPENINGS[0], valsFromArray(vals), STANDARD, true);
+    await animateGame(game.history, vals, `Human Raphson: ${score.toFixed(1)}% win rate`);
+    drawScene(game.history[game.history.length - 1], vals,
+      `Human Raphson: ${score.toFixed(1)}% — game ${gameOutcome(game)}`,
+      'Your bot (White) vs Textbook bot (Black)');
+  } finally {
+    btn.disabled = false; btn.textContent = '▶ Play the suite (Human Raphson)';
+  }
+}
+
+function resetEverything() {
+  leaderboard.length = 0; lastBest = null; animationToken++;
+  document.getElementById('evals').textContent = '0';
+  ['score-now', 'detail-now', 'best-score', 'param-nb', 'param-rq'].forEach((id) => document.getElementById(id).textContent = '—');
+  renderLeaderboard(); drawIdleScene();
+}
+
+drawIdleScene();
+</script>
+</body>
+</html>
