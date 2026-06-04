@@ -262,7 +262,7 @@ and create a project skill from it.</pre>
 // vs fixed-strategy textbook Team B (blue). Seeded → reproducible per point.
 // ============================================================================
 const COURT_W=36, COURT_L=78, NET=39, CENTER=18;
-const COVER=14.5, SKILL_SD=2.6, MARGIN=0.5, MAX_SHOTS=18;
+const COVER=15.0, VOLLEY_REACH=9, SKILL_SD=2.6, MARGIN=0.5, MAX_SHOTS=24;
 function makeRng(seed){let s=(seed>>>0)||1;return ()=>{s=(s*1103515245+12345)&0x7fffffff;return s/0x7fffffff;};}
 function gauss(rng){return (rng()+rng()+rng()+rng()-2)*1.4142;}
 const TEXTBOOK_B={netX:18,baseDepth:5,poach:0.30,aimCross:0.65,depthRisk:0.50,lob:0.15};
@@ -283,16 +283,20 @@ function simulatePoint(seed,A,B,server,record){
       tx=aimLeft?(4+rng()*12):(20+rng()*12);const depthFrac=0.45+0.5*strat.depthRisk;ty=midY+(baseY-midY)*depthFrac;}
     tx+=gauss(rng)*SKILL_SD;ty+=gauss(rng)*SKILL_SD;const target={x:tx,y:ty};
     const outGeom=tx<-MARGIN||tx>COURT_W+MARGIN||(intoFar?(ty>COURT_L+MARGIN||ty<NET):(ty<-MARGIN||ty>NET));
-    const outRisk=!isLob&&rng()<(0.02+0.26*strat.depthRisk*strat.depthRisk);
+    const outRisk=!isLob&&rng()<(0.012+0.16*strat.depthRisk*strat.depthRisk);
     if(outGeom||outRisk){if(record)log.push({from:{...hitter},target,kind:'out',by:hitting});return {winner:recvSide,log};}
-    const netErr=rng()<(isLob?0.02:0.03+0.05*strat.depthRisk);
+    const netErr=rng()<(isLob?0.015:0.02+0.035*strat.depthRisk);
     if(netErr){if(record)log.push({from:{...hitter},target,kind:'net',by:hitting});return {winner:recvSide,log};}
-    const timeFactor=isLob?1.35:(1.25-0.45*strat.depthRisk);
-    const hitterLeft=hitter.x<CENTER;const targetCrossSide=(target.x<CENTER)!==hitterLeft;
-    let netReach=COVER*timeFactor;
-    if(!isLob)netReach*=targetCrossSide?(1+0.6*recvStrat.poach):(1-0.5*recvStrat.poach);else netReach*=0.4;
-    const baseReach=COVER*timeFactor*(isLob?1.15:1.0);
-    const reached=(dist(recvPos.net,target)<=netReach)||(dist(recvPos.base,target)<=baseReach);
+    const netShot=Math.abs(hitter.y-NET)<10;
+    const timeFactor=(isLob?1.35:(1.25-0.45*strat.depthRisk))*(netShot?0.82:1.0);
+    // receiving NET player intercepts (volley/poach) balls passing near them; down-the-line slips past
+    const np=recvPos.net;let volleyed=false,contact=null;
+    if(!isLob){const denom=target.y-hitter.y;if(Math.abs(denom)>1e-6){const frac=(np.y-hitter.y)/denom;
+      if(frac>0.05&&frac<1){const bx=hitter.x+(target.x-hitter.x)*frac;const lat=Math.abs(bx-np.x);
+        if(lat<VOLLEY_REACH&&rng()<recvStrat.poach*(1-lat/VOLLEY_REACH)+0.05){volleyed=true;contact={x:bx,y:np.y};}}}}
+    if(volleyed){if(record)log.push({from:{...hitter},target:contact,kind:'rally',by:hitting,volley:true});hitter={x:contact.x,y:contact.y};hitting=recvSide;continue;}
+    const baseReach=COVER*timeFactor*(isLob?1.18:1.0);
+    const reached=dist(recvPos.base,target)<=baseReach;
     if(record)log.push({from:{...hitter},target,kind:reached?'rally':'winner',by:hitting});
     if(!reached)return {winner:hitting,log};
     hitter={x:target.x,y:target.y};hitting=recvSide;
