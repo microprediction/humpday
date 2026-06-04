@@ -497,7 +497,7 @@
                 'rastrigin': 'Highly multimodal, regular local optima (50 frequency/scale variants)',
                 'ackley': 'Multimodal with global structure, steep near optimum (50 parameter variants)',
                 'griewank': 'Multimodal, product structure, scale-dependent (50 rotation/scale variants)',
-                'mixed': 'Tests robustness across all function types (10 of each: sphere, rastrigin, rosenbrock, ackley, griewank)',
+                'mixed': 'Tests robustness across all function types — cycles sphere → rastrigin → rosenbrock → ackley → griewank, so every type is sampled within the first five trials',
                 'noisy': 'Function evaluations corrupted with noise (50 variants with different noise levels)'
             };
 
@@ -791,7 +791,7 @@
                 'rastrigin': 'Highly multimodal, regular local optima (50 frequency/scale variants)',
                 'ackley': 'Multimodal with global structure, steep near optimum (50 parameter variants)',
                 'griewank': 'Multimodal, product structure, scale-dependent (50 rotation/scale variants)',
-                'mixed': 'Tests robustness across all function types (10 of each: sphere, rastrigin, rosenbrock, ackley, griewank)',
+                'mixed': 'Tests robustness across all function types — cycles sphere → rastrigin → rosenbrock → ackley → griewank, so every type is sampled within the first five trials',
                 'noisy': 'Function evaluations corrupted with noise (50 variants with different noise levels)'
             };
 
