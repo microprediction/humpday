@@ -265,6 +265,7 @@ and create a project skill from it.</pre>
 </div>
 
 <script src="../js/modules/base-optimizer.js"></script>
+<script src="../js/modules/linalg.js"></script>
 <script src="../js/modules/prima-algorithms.js"></script>
 <script src="../js/modules/scipy-algorithms.js"></script>
 <script src="../js/modules/evolutionary-algorithms.js"></script>
@@ -608,21 +609,28 @@ function drawScene(evalResult, loadFrac, hudText) {
     ctx.stroke();
   }
 
-  // Displaced node positions (scale displacements for visibility).
-  // Real displacements at ~95 kg / 50 kN are sub-mm — we exaggerate by
-  // a fixed factor so the deformed shape is visible.
-  const DEFLECT_SCALE = 800;
+  // Displaced node positions. Real axial strains on a feasible truss at
+  // 20 kN are sub-mm, so we exaggerate them — but cap the visual offset
+  // so a light-area design's huge displacements don't turn the bridge
+  // into a sinking-spaghetti silhouette (user feedback: "I don't
+  // understand what I'm looking at, a sinking bridge?"). Cap at 14 px
+  // per node, which reads as "the bridge is loaded" without misleading
+  // the viewer into thinking it's collapsing.
+  const DEFLECT_SCALE = 200;
+  const MAX_VISUAL_PX = 14;
   const nodesPx = NODES.map((nd, i) => {
-    let dx = 0, dy = 0;
+    let dxPx = 0, dyPx = 0;
     if (evalResult && evalResult.displacements) {
-      dx = evalResult.displacements[2 * i] * DEFLECT_SCALE;
-      dy = evalResult.displacements[2 * i + 1] * DEFLECT_SCALE;
+      dxPx = evalResult.displacements[2 * i] * DEFLECT_SCALE * PX_PER_M * loadFrac;
+      dyPx = -evalResult.displacements[2 * i + 1] * DEFLECT_SCALE * PX_PER_M * loadFrac;
+      const mag = Math.hypot(dxPx, dyPx);
+      if (mag > MAX_VISUAL_PX) {
+        const k = MAX_VISUAL_PX / mag;
+        dxPx *= k; dyPx *= k;
+      }
     }
     const base = physToPx(nd.x, nd.y);
-    return {
-      px: base.px + dx * PX_PER_M * loadFrac,
-      py: base.py - dy * PX_PER_M * loadFrac,
-    };
+    return { px: base.px + dxPx, py: base.py + dyPx };
   });
 
   // Members.
@@ -715,7 +723,7 @@ function drawScene(evalResult, loadFrac, hudText) {
     ctx.closePath();
     ctx.fill();
     ctx.font = 'bold 12px -apple-system, Helvetica, Arial, sans-serif';
-    ctx.fillText('50 kN', np.px - 18, np.py - arrowLen - 14);
+    ctx.fillText('20 kN', np.px - 18, np.py - arrowLen - 14);
   }
 
   // Constraint readout strip at the bottom.

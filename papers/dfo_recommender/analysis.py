@@ -1026,6 +1026,259 @@ def wind_farm_forensics(_grid: dict) -> None:
 
 
 # -----------------------------------------------------------------------------
+# § 5.3 / § 7  Probe-feature classifier — can a tiny landscape probe predict
+# which algorithm will win on a held-out demo?
+# -----------------------------------------------------------------------------
+# No optimizer API change: we spend k extra trials on a random probe, extract
+# features (probe.py), then for the held-out demo predict the per-demo winner
+# from the nearest training demo in feature space. Baseline to beat is the
+# current recommender's 1/8 top-pick match.
+
+
+def _demo_winners(results: dict) -> dict[str, str]:
+    """Per-demo lowest median best-value algorithm."""
+    out: dict[str, str] = {}
+    for name, data in results.items():
+        runs = data["runs"]
+        scored = [
+            (median([v for v in r["best_values"] if v != float("inf")]), a)
+            for a, r in runs.items()
+            if any(v != float("inf") for v in r["best_values"])
+        ]
+        if scored:
+            scored.sort()
+            out[name] = scored[0][1]
+    return out
+
+
+def _demo_rankings(results: dict) -> dict[str, list[str]]:
+    """Per-demo full ranking of algorithms by median best-value (low→high)."""
+    out: dict[str, list[str]] = {}
+    for name, data in results.items():
+        runs = data["runs"]
+        scored = [
+            (median([v for v in r["best_values"] if v != float("inf")]), a)
+            for a, r in runs.items()
+            if any(v != float("inf") for v in r["best_values"])
+        ]
+        scored.sort()
+        out[name] = [a for _, a in scored]
+    return out
+
+
+def _normalise(feature_rows: list[list[float]]) -> list[list[float]]:
+    """Z-score each column so distances are scale-balanced."""
+    arr = np.asarray(feature_rows, dtype=float)
+    mu = arr.mean(axis=0)
+    sd = arr.std(axis=0)
+    sd = np.where(sd > 0, sd, 1.0)
+    return ((arr - mu) / sd).tolist()
+
+
+def probe_experiment(_grid: dict, k_values: tuple[int, ...] = (5, 10, 20, 40)) -> None:
+    """For each probe budget k, LOO-classify each demo by 1-NN in
+    feature space, predict the winner, and report match rate. Frames
+    the probe overhead k against the gain in OOD match-rate."""
+    from demos import DEMOS  # noqa: E402  — demos.py lives next to this script
+    from probe import probe_landscape
+
+    if not DEMO_RESULTS_PATH.exists():
+        print("\n# probe_experiment: skipped — run `--section run_demos` first.")
+        return
+    results = json.loads(DEMO_RESULTS_PATH.read_text())
+    winners = _demo_winners(results)
+    rankings = _demo_rankings(results)
+    demo_names = [d.name for d in DEMOS if d.name in winners]
+    if len(demo_names) < 3:
+        print("\n# probe_experiment: need ≥3 demos with results.")
+        return
+    demo_by_name = {d.name: d for d in DEMOS}
+
+    print("\n# § 5.3: Probe-feature classifier — LOO match rate by probe budget\n")
+    print(
+        f"{'k (probe)':>10s}  {'extra/cell':>11s}  "
+        f"{'top-1':>7s}  {'top-3':>7s}  {'top-5':>7s}  "
+        f"{'mean rank':>10s}  {'med rank':>10s}"
+    )
+    print(
+        f"{'-' * 10:>10s}  {'-' * 11:>11s}  "
+        f"{'-' * 7:>7s}  {'-' * 7:>7s}  {'-' * 7:>7s}  "
+        f"{'-' * 10:>10s}  {'-' * 10:>10s}"
+    )
+
+    for k in k_values:
+        # Compute features once for all demos at this probe budget.
+        features: dict[str, list[float]] = {}
+        n_extra = 0
+        for name in demo_names:
+            demo = demo_by_name[name]
+            feats = probe_landscape(demo.objective, demo.n_dim, k=k, seed=0)
+            features[name] = feats.as_vector()
+            n_extra = k + feats.n_extra_evals  # same per demo
+
+        # LOO 2-NN top-3-vote classifier. For each test demo, find its
+        # 2 nearest training demos in z-scored feature space, pool each
+        # demo's top-3 winners into candidates, and pick the candidate
+        # with the lowest mean rank across the 2 nearest demos. More
+        # robust than 1-NN-winner transfer when training set is thin.
+        top1 = top3 = top5 = 0
+        ranks: list[int] = []
+        K_NN = 2
+        TOP_M = 3
+        for test_name in demo_names:
+            train_names = [n for n in demo_names if n != test_name]
+            train_rows = [features[n] for n in train_names]
+            test_row = features[test_name]
+            arr = np.asarray(train_rows, dtype=float)
+            mu = arr.mean(axis=0)
+            sd = arr.std(axis=0)
+            sd = np.where(sd > 0, sd, 1.0)
+            train_z = (arr - mu) / sd
+            test_z = (np.asarray(test_row) - mu) / sd
+            dists = np.linalg.norm(train_z - test_z, axis=1)
+            order = np.argsort(dists)
+            nn_demos = [train_names[i] for i in order[:K_NN]]
+            candidates: set[str] = set()
+            for nm in nn_demos:
+                candidates.update(rankings[nm][:TOP_M])
+            scored: list[tuple[float, str]] = []
+            for c in candidates:
+                avg = mean(
+                    rankings[nm].index(c) + 1
+                    if c in rankings[nm]
+                    else len(rankings[nm])
+                    for nm in nn_demos
+                )
+                scored.append((avg, c))
+            scored.sort()
+            predicted = scored[0][1]
+            ranking = rankings[test_name]
+            rank = (
+                ranking.index(predicted) + 1 if predicted in ranking else len(ranking)
+            )
+            ranks.append(rank)
+            top1 += int(rank == 1)
+            top3 += int(rank <= 3)
+            top5 += int(rank <= 5)
+
+        n = len(demo_names)
+        print(
+            f"{k:>10d}  {n_extra:>11d}  "
+            f"{top1}/{n:1d} ({top1 / n:>3.0%}) "
+            f"{top3}/{n:1d} ({top3 / n:>3.0%}) "
+            f"{top5}/{n:1d} ({top5 / n:>3.0%}) "
+            f"{mean(ranks):>10.2f}  {median(ranks):>10.1f}"
+        )
+
+    # Hybrid: use probe as a 1-bit non-smooth flag. If axis_advantage > 2
+    # OR rel_std > 1.5 on the test demo's probe (both signals of non-smooth
+    # / multi-scale landscapes), demote PRIMA / Powell / LBFGSB in the grid
+    # and re-pick.
+    _PRIMA = {"PRIMA_NEWUOA", "PRIMA_BOBYQA", "PRIMA_UOBYQA", "Powell", "LBFGSB"}
+    hybrid_ranks: list[int] = []
+    hybrid_top1 = hybrid_top3 = hybrid_top5 = 0
+    k_hybrid = 10
+    for name in demo_names:
+        demo = demo_by_name[name]
+        feats = probe_landscape(demo.objective, demo.n_dim, k=k_hybrid, seed=0)
+        non_smooth_flag = feats.axis_advantage > 2.0 or feats.rel_std > 1.5
+        rec = E.recommend(
+            n_dim=demo.n_dim,
+            n_trials=demo.suggested_n_trials,
+            eval_time=None,
+            grid_path=GRID_PATH,
+        )
+        if non_smooth_flag and rec in _PRIMA:
+            # Re-pick from the grid, skipping quadratic-model methods.
+            cells = json.loads(GRID_PATH.read_text())["cells"]
+            snapped = _snap_grid(cells, demo.n_dim, demo.suggested_n_trials)
+            if snapped:
+                scored = sorted(
+                    (e.get("borda_score", float("inf")), a)
+                    for a, e in snapped.items()
+                    if a not in _PRIMA
+                    and e.get("borda_score", float("inf")) != float("inf")
+                    and not e.get("skipped_too_slow")
+                )
+                if scored:
+                    rec = scored[0][1]
+        ranking = rankings[name]
+        rank = ranking.index(rec) + 1 if rec in ranking else len(ranking)
+        hybrid_ranks.append(rank)
+        hybrid_top1 += int(rank == 1)
+        hybrid_top3 += int(rank <= 3)
+        hybrid_top5 += int(rank <= 5)
+
+    n = len(demo_names)
+    print(
+        f"\n  Hybrid (grid + 1-bit probe @ k={k_hybrid}): "
+        f"top-1 {hybrid_top1}/{n} ({hybrid_top1 / n:.0%}) · "
+        f"top-3 {hybrid_top3}/{n} ({hybrid_top3 / n:.0%}) · "
+        f"top-5 {hybrid_top5}/{n} ({hybrid_top5 / n:.0%}) · "
+        f"mean rank {mean(hybrid_ranks):.2f}"
+    )
+
+    # Baseline comparison: grid recommender ranked on each test demo.
+    grid_ranks: list[int] = []
+    grid_top1 = grid_top3 = grid_top5 = 0
+    for name in demo_names:
+        demo = demo_by_name[name]
+        rec = E.recommend(
+            n_dim=demo.n_dim,
+            n_trials=demo.suggested_n_trials,
+            eval_time=None,
+            grid_path=GRID_PATH,
+        )
+        ranking = rankings[name]
+        rank = ranking.index(rec) + 1 if rec in ranking else len(ranking)
+        grid_ranks.append(rank)
+        grid_top1 += int(rank == 1)
+        grid_top3 += int(rank <= 3)
+        grid_top5 += int(rank <= 5)
+
+    n = len(demo_names)
+    print(
+        f"\n  Baseline (grid recommender): "
+        f"top-1 {grid_top1}/{n} ({grid_top1 / n:.0%}) · "
+        f"top-3 {grid_top3}/{n} ({grid_top3 / n:.0%}) · "
+        f"top-5 {grid_top5}/{n} ({grid_top5 / n:.0%}) · "
+        f"mean rank {mean(grid_ranks):.2f}"
+    )
+
+    # Random baseline (average over eligible algos).
+    rng = random.Random(0)
+    rand_top1 = rand_top3 = rand_top5 = 0.0
+    rand_rank_sum = 0.0
+    n_iters = 1000
+    for _ in range(n_iters):
+        for name in demo_names:
+            demo = demo_by_name[name]
+            eligible = E.eligible(
+                PURE_OPTIMIZERS.keys(),
+                n_dim=demo.n_dim,
+                n_trials=demo.suggested_n_trials,
+                eval_time=None,
+            )
+            if not eligible:
+                continue
+            pick = rng.choice(eligible)
+            ranking = rankings[name]
+            rank = ranking.index(pick) + 1 if pick in ranking else len(ranking)
+            rand_rank_sum += rank
+            rand_top1 += int(rank == 1)
+            rand_top3 += int(rank <= 3)
+            rand_top5 += int(rank <= 5)
+    total = n_iters * n
+    print(
+        f"  Baseline (random pick):      "
+        f"top-1 {rand_top1 / n_iters:.2f}/{n} ({rand_top1 / total:.0%}) · "
+        f"top-3 {rand_top3 / n_iters:.2f}/{n} ({rand_top3 / total:.0%}) · "
+        f"top-5 {rand_top5 / n_iters:.2f}/{n} ({rand_top5 / total:.0%}) · "
+        f"mean rank {rand_rank_sum / total:.2f}"
+    )
+
+
+# -----------------------------------------------------------------------------
 # Driver
 # -----------------------------------------------------------------------------
 
@@ -1040,6 +1293,7 @@ SECTIONS = {
     "transfer": transfer_table,
     "top_pick": per_demo_top_pick_table,
     "wind_farm": wind_farm_forensics,
+    "probe": probe_experiment,
 }
 
 
