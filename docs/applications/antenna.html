@@ -1,0 +1,408 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' 'unsafe-inline'; style-src 'self' 'unsafe-inline';">
+<title>📡 Evolved Antenna Optimizer — HumpDay</title>
+<style>
+  :root { --bg:#1a1a22; --panel:#2d2d3a; --accent:#ffcc00; --text:#e8e8ea; --muted:#9a9aac; }
+  body { margin:0; background:var(--bg); color:var(--text); font-family:-apple-system,'Segoe UI','Helvetica Neue',Helvetica,Arial,sans-serif; }
+  .site-nav { background:#34495e; padding:12px 24px; font-family:'Times New Roman',Times,serif; box-shadow:0 2px 4px rgba(0,0,0,0.1); }
+  .site-nav-inner { max-width:1100px; margin:0 auto; display:flex; justify-content:space-between; align-items:center; }
+  .site-nav a { color:#ecf0f1; text-decoration:none; margin:0 12px; }
+  .site-nav a:hover { color:white; text-decoration:underline; }
+  .site-nav-brand { font-weight:700; font-size:1.25em; }
+  .container { max-width:1100px; margin:0 auto; padding:32px 24px 64px; }
+  h1 { font-size:2.2em; margin:0.2em 0; }
+  h2 { font-size:1.4em; margin-top:1.4em; color:var(--accent); }
+  p { line-height:1.55; max-width:70ch; }
+  .intro { color:var(--muted); }
+  .stage { display:grid; grid-template-columns:1fr 320px; gap:24px; align-items:start; margin-top:24px; }
+  @media (max-width:800px){ .stage { grid-template-columns:1fr; } }
+  canvas { background:#0e0e14; border:3px solid var(--accent); border-radius:6px; display:block; width:100%; height:auto; }
+  .panel { background:var(--panel); padding:18px; border-radius:6px; border:1px solid #404054; }
+  .panel h3 { margin:0 0 12px; font-size:1.05em; text-transform:uppercase; letter-spacing:0.06em; color:var(--accent); }
+  label { display:block; margin:10px 0 6px; font-size:0.9em; color:var(--muted); }
+  select, input, button { width:100%; box-sizing:border-box; padding:8px 10px; border-radius:4px; border:1px solid #404054; background:#1a1a22; color:var(--text); font-size:0.95em; }
+  button { background:var(--accent); color:#1a1a22; font-weight:700; cursor:pointer; margin-top:6px; transition:opacity 0.15s; }
+  button:hover { opacity:0.88; }
+  button.secondary { background:#404054; color:var(--text); font-weight:400; }
+  button:disabled { opacity:0.5; cursor:not-allowed; }
+  .stats { margin-top:16px; padding-top:14px; border-top:1px solid #404054; font-size:0.92em; line-height:1.6; }
+  .stats .score { font-size:2.6em; color:var(--accent); font-weight:700; }
+  .stat-row { display:flex; justify-content:space-between; }
+  .stat-row span:first-child { white-space:nowrap; flex-shrink:0; }
+  .stat-row span:last-child { color:var(--text); font-family:'SF Mono',Menlo,monospace; text-align:right; word-break:break-word; }
+  .leaderboard { margin-top:24px; }
+  .leaderboard table { width:100%; border-collapse:collapse; background:var(--panel); border-radius:6px; overflow:hidden; }
+  .leaderboard th, .leaderboard td { padding:10px 14px; text-align:left; border-bottom:1px solid #404054; }
+  .leaderboard th { background:#1a1a22; color:var(--muted); text-transform:uppercase; font-size:0.78em; letter-spacing:0.08em; }
+  .leaderboard td:nth-child(2){ text-align:center; font-size:1.3em; font-weight:700; color:var(--accent); }
+  .leaderboard td:nth-child(3),.leaderboard td:nth-child(4){ font-family:'SF Mono',Menlo,monospace; color:var(--muted); }
+  .leaderboard tr.human-raphson td:first-child { color:#ff9944; font-weight:700; }
+  .left-stack { display:flex; flex-direction:column; gap:16px; min-width:0; }
+  .hr-panel { padding:14px 16px; }
+  .hr-panel h3 { margin:0 0 6px; }
+  .hr-presets { display:grid; grid-template-columns:repeat(4,1fr); gap:8px; margin-bottom:10px; }
+  .hr-presets button { background:#1a1a22; color:var(--text); font-weight:500; margin:0; font-size:0.84em; padding:8px 4px; }
+  .hr-presets button:hover { background:#383850; opacity:1; }
+  .hr-panel > button { background:#ff9944; color:#1a1a22; margin-top:0; }
+  .skill-callout { margin-top:36px; background:rgba(126,217,87,0.07); border:1px solid rgba(126,217,87,0.35); border-radius:8px; padding:18px 22px; }
+  .skill-callout h3 { margin:0 0 6px; color:#7ed957; font-size:1.05em; text-transform:none; letter-spacing:0; }
+  .skill-callout p { margin:0 0 10px; color:var(--text); max-width:none; }
+  .skill-callout pre { background:#1a1a22; border:1px solid #404054; border-radius:4px; padding:10px 14px; margin:0; font-size:0.84em; color:#7ed957; white-space:pre-wrap; word-break:break-all; font-family:'SF Mono',Menlo,monospace; }
+  .skill-actions { margin-top:10px; display:flex; align-items:center; gap:14px; }
+  .skill-actions button { width:auto; background:#404054; color:var(--text); border:1px solid #404054; padding:6px 12px; font-size:0.85em; cursor:pointer; border-radius:4px; margin:0; font-weight:500; }
+  .skill-actions a { color:#7ed957; font-size:0.85em; text-decoration:none; }
+</style>
+</head>
+<body>
+    <nav class="site-nav" data-site-nav="v1">
+        <div class="site-nav-inner">
+            <a href="../index.html" class="site-nav-brand"><svg class="site-nav-camel" data-site-logo="camel-v3" viewBox="0 0 100 50" width="44" height="22" xmlns="http://www.w3.org/2000/svg" aria-hidden="true"><rect x="20.5" y="30" width="1.8" height="11" fill="white" fill-opacity="0.55"/><rect x="60.5" y="30" width="1.8" height="11" fill="white" fill-opacity="0.55"/><path fill="white" fill-opacity="0.92" d="M 14 30 C 10 30 8 28 8 24 C 7 22 7 19 9 18 C 11 16 13 14 16 13 C 20 8 26 6 31 9 C 34 11 35 13 35 16 C 37 18 40 18 43 17 C 47 13 53 7 59 9 C 63 11 65 13 65 16 C 66 18 68 18 70 17 C 73 13 76 9 80 7 C 84 5 89 6 90 9 L 92 9 L 93 12 L 91 13 L 87 13 L 87 15 C 82 16 79 18 76 21 C 73 25 71 28 68 30 L 66 30 L 66 42 L 64 42 L 64 30 L 26 30 L 26 42 L 24 42 L 24 30 L 14 30 Z"/><circle cx="88" cy="10" r="0.9" fill="#34495e"/></svg>HumpDay</a>
+            <div class="site-nav-links">
+                <a href="../index.html">Home</a>
+                <a href="../contest.html">Contest</a>
+                <a href="../applications/index.html">Demonstrations</a>
+                <a href="../algorithms.html">Algorithms</a>
+                <a href="../sota-status.html">SOTA status</a>
+                <a href="../recommendations.html">Recommendations</a>
+                <a href="https://github.com/microprediction/humpday" target="_blank" rel="noopener">GitHub</a>
+            </div>
+        </div>
+    </nav>
+
+<div class="container">
+  <h1>📡 Evolved Antenna Optimizer</h1>
+  <p class="intro">
+    Spreading antenna elements out evenly seems like the obvious design.
+    But — echoing NASA's famously bizarre <em>evolved antenna</em> — when
+    you let an optimiser place the <strong>7 elements</strong> of an endfire
+    array to maximise forward <strong>gain</strong>, it converges on
+    <strong>irregular, non-intuitive layouts</strong> that beat the tidy
+    uniform one by a couple of decibels of forward gain. The optimiser
+    doesn't care what looks neat — only what radiates.
+  </p>
+
+  <div class="stage">
+    <div class="left-stack">
+      <canvas id="canvas" width="800" height="450"></canvas>
+      <div class="panel hr-panel">
+        <h3>🧠 Human Raphson</h3>
+        <p style="color:var(--muted); margin:0 0 10px; font-size:0.86em;">
+          Try a layout by hand and read its gain — can a tidy design win?
+        </p>
+        <div class="hr-presets">
+          <button onclick="manualLayout('uniform')">Uniform</button>
+          <button onclick="manualLayout('compressed')">Compressed</button>
+          <button onclick="manualLayout('tapered')">Tapered</button>
+          <button onclick="manualLayout('random')">Random</button>
+        </div>
+        <button onclick="scoreManual()">▶ Measure this layout (Human Raphson)</button>
+      </div>
+    </div>
+
+    <div class="panel">
+      <h3>Algorithm</h3>
+      <label for="algorithm">Pick a HumpDay optimizer:</label>
+      <select id="algorithm">
+        <optgroup label="Population-based">
+          <option value="CMAEvolutionStrategy" selected>CMA-Evolution Strategy</option>
+          <option value="DifferentialEvolution">Differential Evolution</option>
+          <option value="ParticleSwarm">Particle Swarm</option>
+          <option value="GeneticAlgorithm">Genetic Algorithm</option>
+          <option value="EvolutionStrategy">Evolution Strategy</option>
+          <option value="HarmonySearch">Harmony Search</option>
+        </optgroup>
+        <optgroup label="Trust-region / interpolation">
+          <option value="PRIMA_BOBYQA">PRIMA_BOBYQA</option>
+          <option value="PRIMA_NEWUOA">PRIMA_NEWUOA</option>
+        </optgroup>
+        <optgroup label="Local / classical">
+          <option value="NelderMead">Nelder-Mead</option>
+          <option value="Powell">Powell</option>
+          <option value="LBFGSB">L-BFGS-B (simplified)</option>
+        </optgroup>
+        <optgroup label="Other">
+          <option value="SimulatedAnnealing">Simulated Annealing</option>
+          <option value="BayesianOpt">Bayesian Optimization</option>
+          <option value="FireflyAlgorithm">Firefly Algorithm</option>
+          <option value="AntColonyOpt">Ant Colony</option>
+          <option value="RandomSearch">Random Search</option>
+          <option value="Rechenberg">Rechenberg (1+1)-ES</option>
+        </optgroup>
+      </select>
+
+      <label for="budget">Evaluation budget:</label>
+      <select id="budget">
+        <option value="50">50 designs</option>
+        <option value="100">100 designs</option>
+        <option value="200" selected>200 designs</option>
+        <option value="500">500 designs</option>
+      </select>
+      <p style="margin:8px 0 0; font-size:0.78em; color:var(--muted);">
+        7-D continuous problem (one position per element). The gain
+        landscape is multimodal — many different irregular layouts score
+        well, so different optimisers land on different "evolved" antennas.
+      </p>
+
+      <button id="run-btn" onclick="runOptimization()">▶ Evolve the antenna</button>
+      <button class="secondary" onclick="replayBest()">🔁 Show best design</button>
+      <button class="secondary" onclick="resetEverything()">⟲ Reset leaderboard</button>
+
+      <div class="stats">
+        <div class="stat-row"><span>Gain</span><span class="score" id="score-now">—</span></div>
+        <div class="stat-row"><span>Detail</span><span id="detail-now">—</span></div>
+        <div class="stat-row"><span>Designs tried</span><span id="evals">0</span></div>
+        <div class="stat-row"><span>Best so far</span><span id="best-score">—</span></div>
+        <div class="stat-row"><span>Side-lobe</span><span id="param-sl">—</span></div>
+        <div class="stat-row"><span>Front / back</span><span id="param-fb">—</span></div>
+      </div>
+    </div>
+  </div>
+
+  <div class="leaderboard">
+    <h2>Leaderboard (this session)</h2>
+    <p style="color:var(--muted);">
+      Each row is the best antenna a given optimiser evolved — gain in dBi
+      over an isotropic radiator. The uniform "textbook" layout manages
+      about <strong id="uni-dbi">8.0</strong> dBi; the optimisers beat it.
+    </p>
+    <table>
+      <thead>
+        <tr><th>Algorithm</th><th>Gain (dBi)</th><th>Designs</th><th>Element positions (λ)</th></tr>
+      </thead>
+      <tbody id="leaderboard-body">
+        <tr><td colspan="4" style="color:var(--muted); text-align:center;">— no runs yet —</td></tr>
+      </tbody>
+    </table>
+  </div>
+
+  <h2>What's happening</h2>
+  <p>
+    Seven elements sit along a boom; each is fed with endfire phasing so
+    they all add up straight ahead. Their <em>positions</em> then shape the
+    radiation pattern — the polar plot on the right. Pack them too close and
+    the beam is broad; spread them too far and grating side-lobes appear.
+    The optimiser tunes the seven positions to maximise <strong>directivity</strong>
+    (a tight forward beam with little energy wasted to the sides and back).
+  </p>
+  <p>
+    A uniform layout is the natural human guess, and it's fine — but it's
+    not optimal. The optimisers find <strong>uneven spacings</strong> that
+    concentrate more energy into the forward beam, and because the
+    landscape is multimodal, <em>different</em> optimisers settle on
+    <em>different</em> odd-looking arrays that all work. That's the whole
+    spirit of the evolved antenna: the search has no aesthetic, so it finds
+    designs an engineer's eye would reject — that happen to perform better.
+  </p>
+  <p>
+    The faint grey lobe is the uniform array's pattern; the bright lobe is
+    the current design. Watch the bright lobe narrow and the side-lobes
+    shrink as the search improves.
+  </p>
+
+  <hr style="border:0; border-top:1px solid #404054; margin:32px 0 16px;" />
+  <p style="font-size:0.78em; color:var(--muted);">
+    A reduced-order array-factor model — point sources with endfire phasing —
+    not a full method-of-moments electromagnetic solve. Enough to capture
+    the geometry-shapes-the-beam optimisation that makes evolved antennas
+    look so strange.
+  </p>
+
+  <div class="skill-callout">
+    <h3>🌱 Save the Planet</h3>
+    <p>If your hyper-parameter searches are heating the Earth, drop this in Cursor or Claude:</p>
+    <pre id="skill-snippet">Read https://raw.githubusercontent.com/microprediction/humpday/main/SKILL.md
+and create a project skill from it.</pre>
+    <div class="skill-actions">
+      <button type="button" onclick="copySkillSnippet(this)">📋 Copy</button>
+      <a href="https://github.com/microprediction/humpday/blob/main/SKILL.md" target="_blank" rel="noopener">View SKILL.md →</a>
+    </div>
+  </div>
+
+  <script>
+    function copySkillSnippet(btn){const t=document.getElementById('skill-snippet').textContent;navigator.clipboard.writeText(t).then(()=>{const o=btn.textContent;btn.textContent='✓ Copied';setTimeout(()=>{btn.textContent=o;},1500);}).catch(()=>{btn.textContent='✗ Copy failed';});}
+  </script>
+</div>
+
+<script src="../js/modules/base-optimizer.js"></script>
+<script src="../js/modules/linalg.js"></script>
+<script src="../js/modules/prima-algorithms.js"></script>
+<script src="../js/modules/scipy-algorithms.js"></script>
+<script src="../js/modules/evolutionary-algorithms.js"></script>
+<script src="../js/modules/search-algorithms.js"></script>
+
+<script>
+// ============================================================================
+// Evolved antenna — endfire array of N point sources. Optimise positions to
+// maximise forward directivity. Reduced-order array-factor model.
+// ============================================================================
+const N=7, SPAN=4.0;
+function gain(theta, xs){ let re=0,im=0; const c=Math.cos(theta)-1;
+  for(let i=0;i<xs.length;i++){ const ph=2*Math.PI*xs[i]*c; re+=Math.cos(ph); im+=Math.sin(ph); } return re*re+im*im; }
+function avgG(xs){ let a=0,M=240; for(let i=0;i<M;i++){const th=(i+0.5)/M*Math.PI; a+=gain(th,xs)*Math.sin(th);} return a*(Math.PI/M)/2; }
+function directivity(xs){ return gain(0,xs)/Math.max(avgG(xs),1e-9); }
+function gainDbi(xs){ return 10*Math.log10(directivity(xs)); }
+function metrics(xs){
+  const G0=gain(0,xs); let peakSide=0;
+  const M=720; let prev=G0,cur=gain(Math.PI/M,xs);
+  for(let i=2;i<=M;i++){ const th=i/M*Math.PI; const nxt=gain(th,xs);
+    if(cur>prev&&cur>=nxt&&th>0.3){ if(cur>peakSide)peakSide=cur; } prev=cur; cur=nxt; }
+  return { dbi:gainDbi(xs), sidelobe: peakSide>0?10*Math.log10(peakSide/G0):-40, ftb:10*Math.log10(G0/Math.max(gain(Math.PI,xs),1e-9)) };
+}
+function decode(u){ return u.map(v=>SPAN*v); }
+function uniform(){ const xs=[]; for(let i=0;i<N;i++)xs.push(SPAN*i/(N-1)); return xs; }
+const UNIFORM_XS=uniform(), UNIFORM_DBI=gainDbi(UNIFORM_XS);
+
+const searchHistory=[];
+function objective(u){ const xs=decode(u); const d=gainDbi(xs); searchHistory.push({dbi:d, xs:xs.slice(), m:metrics(xs)}); return -d; }
+
+// ============================================================================
+// Rendering — antenna on the left, polar radiation pattern on the right.
+// ============================================================================
+const canvas=document.getElementById('canvas'),ctx=canvas.getContext('2d');
+const W=canvas.width,H=canvas.height;
+// antenna region
+const AX0=40, AX1=370, AY=H/2;
+function px(x){ return AX0 + (x/SPAN)*(AX1-AX0); }
+// polar region
+const POL_CX=590, POL_CY=H/2, POL_R=180, DB_FLOOR=-20;
+function drawAntenna(xs){
+  // boom
+  ctx.strokeStyle='#5a5a6a'; ctx.lineWidth=4; ctx.beginPath(); ctx.moveTo(AX0-10,AY); ctx.lineTo(AX1+10,AY); ctx.stroke();
+  // elements (vertical dipoles)
+  for(let i=0;i<xs.length;i++){ const X=px(xs[i]);
+    ctx.strokeStyle='#ffcc00'; ctx.lineWidth=3; ctx.beginPath(); ctx.moveTo(X,AY-34); ctx.lineTo(X,AY+34); ctx.stroke();
+    ctx.fillStyle='#ffcc00'; ctx.beginPath(); ctx.arc(X,AY,3.5,0,Math.PI*2); ctx.fill();
+  }
+  // beam direction arrow (forward = +x, toward the pattern)
+  ctx.strokeStyle='#7ed957'; ctx.lineWidth=2; ctx.beginPath(); ctx.moveTo(AX1+24,AY); ctx.lineTo(AX1+54,AY); ctx.stroke();
+  ctx.beginPath(); ctx.moveTo(AX1+54,AY); ctx.lineTo(AX1+47,AY-5); ctx.lineTo(AX1+47,AY+5); ctx.closePath(); ctx.fillStyle='#7ed957'; ctx.fill();
+  ctx.fillStyle='#9a9aac'; ctx.font='11px -apple-system,Helvetica,Arial,sans-serif'; ctx.textAlign='left'; ctx.fillText('beam',AX1+22,AY-10);
+}
+function patternPath(xs,color,fill){
+  const G0=gain(0,xs);
+  ctx.beginPath();
+  const STEPS=180;
+  for(let i=0;i<=STEPS;i++){
+    const phi=i/STEPS*2*Math.PI;                 // screen angle, 0 = right (forward)
+    const g=gain(phi,xs)/G0;                      // 0..1 linear, normalised to forward
+    const db=10*Math.log10(Math.max(g,1e-6));
+    const rr=POL_R*Math.max(0,(db-DB_FLOOR)/(0-DB_FLOOR));
+    const X=POL_CX+Math.cos(phi)*rr, Y=POL_CY+Math.sin(phi)*rr;
+    if(i===0)ctx.moveTo(X,Y); else ctx.lineTo(X,Y);
+  }
+  ctx.closePath();
+  if(fill){ ctx.fillStyle=fill; ctx.fill(); }
+  ctx.strokeStyle=color; ctx.lineWidth=2; ctx.stroke();
+}
+function drawPolarGrid(){
+  ctx.strokeStyle='#2a2a36'; ctx.lineWidth=1;
+  for(const f of [0.33,0.66,1]){ ctx.beginPath(); ctx.arc(POL_CX,POL_CY,POL_R*f,0,Math.PI*2); ctx.stroke(); }
+  for(let a=0;a<360;a+=30){ const r=a*Math.PI/180; ctx.beginPath(); ctx.moveTo(POL_CX,POL_CY); ctx.lineTo(POL_CX+Math.cos(r)*POL_R,POL_CY+Math.sin(r)*POL_R); ctx.stroke(); }
+  ctx.fillStyle='#6a6a7a'; ctx.font='10px -apple-system,Helvetica,Arial,sans-serif'; ctx.textAlign='left'; ctx.fillText('forward →',POL_CX+POL_R-50,POL_CY-6);
+}
+function drawScene(xs,hud){
+  ctx.clearRect(0,0,W,H); ctx.fillStyle='#0e0e14'; ctx.fillRect(0,0,W,H);
+  drawPolarGrid();
+  patternPath(UNIFORM_XS,'rgba(150,150,170,0.5)',null);   // faint uniform baseline
+  if(xs){ patternPath(xs,'#ffcc00','rgba(255,204,0,0.18)'); drawAntenna(xs); }
+  else drawAntenna(UNIFORM_XS);
+  if(hud){ ctx.font='bold 14px -apple-system,Helvetica,Arial,sans-serif'; ctx.textAlign='left'; ctx.textBaseline='alphabetic';
+    const pad=10,bw=Math.ceil(ctx.measureText(hud).width)+2*pad; ctx.fillStyle='rgba(0,0,0,0.6)'; ctx.fillRect(14,14,bw,24); ctx.fillStyle='#ffcc00'; ctx.fillText(hud,14+pad,31); }
+  ctx.fillStyle='#6a6a7a'; ctx.font='11px -apple-system,Helvetica,Arial,sans-serif'; ctx.textAlign='left';
+  ctx.fillText('grey = uniform layout',14,H-14);
+}
+function drawIdle(){ drawScene(null,'Press "Evolve the antenna" to start'); }
+
+// ============================================================================
+// Animation / runner.
+// ============================================================================
+let animationToken=0;
+function delay(ms){ return new Promise(r=>setTimeout(r,ms)); }
+async function montage(){
+  const my=++animationToken; const total=searchHistory.length; if(!total)return -1;
+  let best=-99,bi=-1;
+  for(let i=0;i<total;i++){ if(my!==animationToken)return bi;
+    const e=searchHistory[i]; const isNew=e.dbi>best; if(isNew){best=e.dbi;bi=i;}
+    document.getElementById('evals').textContent=i+1;
+    document.getElementById('score-now').textContent=e.dbi.toFixed(2)+' dBi';
+    document.getElementById('detail-now').textContent=`best ${best.toFixed(2)} dBi`;
+    updateParams(e.m);
+    if(isNew){ addLeaderboardEntry(document.getElementById('algorithm').value,e,i+1,{inPlace:liveIdx>=0});
+      document.getElementById('best-score').textContent=`${e.dbi.toFixed(2)} dBi (${document.getElementById('algorithm').value})`; }
+    drawScene(e.xs, `Design ${i+1}/${total} · ${e.dbi.toFixed(2)} dBi · best ${best.toFixed(2)}${isNew?' ★':''}`);
+    await delay(28);
+  }
+  return bi;
+}
+let lastBest=null;
+function getOptimizerClass(n){return globalThis[n];}
+async function runOptimization(){
+  const algoName=document.getElementById('algorithm').value; const budget=parseInt(document.getElementById('budget').value,10);
+  const cls=getOptimizerClass(algoName); if(!cls){alert(`Optimizer '${algoName}' not found.`);return;}
+  const runBtn=document.getElementById('run-btn'); runBtn.disabled=true; runBtn.textContent=`Evolving ${algoName}…`;
+  animationToken++; searchHistory.length=0; await delay(20);
+  try{
+    const opt=new cls(objective,budget,N); opt.optimize();
+    const bi=await montage(); const best=searchHistory[bi]; lastBest=best;
+    document.getElementById('best-score').textContent=`${best.dbi.toFixed(2)} dBi (${algoName})`;
+    updateParams(best.m);
+    addLeaderboardEntry(algoName,best,opt.evaluations,{inPlace:liveIdx>=0}); liveIdx=-1;
+    drawScene(best.xs, `Best: ${best.dbi.toFixed(2)} dBi (${algoName}) — uniform is ${UNIFORM_DBI.toFixed(2)}`);
+  }catch(e){ console.error(e); alert(`${algoName} threw an error: ${e.message}`); }
+  finally{ runBtn.disabled=false; runBtn.textContent='▶ Evolve the antenna'; }
+}
+function updateParams(m){
+  document.getElementById('param-sl').textContent=`${m.sidelobe.toFixed(1)} dB`;
+  document.getElementById('param-fb').textContent=`${m.ftb.toFixed(1)} dB`;
+}
+function replayBest(){ if(!lastBest)return; animationToken++; drawScene(lastBest.xs,`Best: ${lastBest.dbi.toFixed(2)} dBi`); }
+
+const leaderboard=[]; let liveIdx=-1;
+function addLeaderboardEntry(name,e,evals,{inPlace=false}={}){
+  const row={name,dbi:e.dbi,xs:e.xs,evals};
+  if(inPlace&&liveIdx>=0)leaderboard[liveIdx]=row; else {leaderboard.push(row);liveIdx=leaderboard.length-1;}
+  const tracked=leaderboard[liveIdx]; leaderboard.sort((a,b)=>b.dbi-a.dbi||a.evals-b.evals); liveIdx=leaderboard.indexOf(tracked);
+  renderLeaderboard();
+}
+function renderLeaderboard(){
+  const body=document.getElementById('leaderboard-body');
+  if(!leaderboard.length){body.innerHTML='<tr><td colspan="4" style="color:var(--muted); text-align:center;">— no runs yet —</td></tr>';return;}
+  body.innerHTML=leaderboard.map(r=>{const cls=r.name==='Human Raphson'?' class="human-raphson"':'';
+    const pos=r.xs.map(x=>x.toFixed(2)).join(', ');
+    return `<tr${cls}><td>${r.name}</td><td>${r.dbi.toFixed(2)}</td><td>${r.evals}</td><td>${pos}</td></tr>`;
+  }).join('');
+}
+
+// ---- Human Raphson presets ----
+const PRESETS={
+  uniform: ()=>uniform(),
+  compressed: ()=>{const xs=[];for(let i=0;i<N;i++)xs.push(0.42*i);return xs;},
+  tapered: ()=>{const xs=[0];for(let i=1;i<N;i++)xs.push(xs[i-1]+0.3+0.12*i);return xs.map(x=>Math.min(SPAN,x));},
+  random: ()=>{const xs=[];for(let i=0;i<N;i++)xs.push(SPAN*Math.random());return xs;},
+};
+let manualXs=uniform();
+function manualLayout(k){ animationToken++; manualXs=PRESETS[k](); drawScene(manualXs,`Human Raphson: ${k} (${gainDbi(manualXs).toFixed(2)} dBi)`); updateParams(metrics(manualXs)); }
+function scoreManual(){
+  animationToken++; const d=gainDbi(manualXs); const m=metrics(manualXs); const e={dbi:d,xs:manualXs.slice(),m};
+  document.getElementById('score-now').textContent=d.toFixed(2)+' dBi';
+  document.getElementById('detail-now').textContent='Human Raphson';
+  document.getElementById('best-score').textContent=`${d.toFixed(2)} dBi (Human Raphson)`;
+  updateParams(m); lastBest=e;
+  addLeaderboardEntry('Human Raphson',e,1);
+  drawScene(manualXs,`🧠 Human Raphson: ${d.toFixed(2)} dBi (uniform ${UNIFORM_DBI.toFixed(2)})`);
+}
+function resetEverything(){ leaderboard.length=0; liveIdx=-1; lastBest=null; animationToken++;
+  document.getElementById('evals').textContent='0';
+  ['score-now','detail-now','best-score','param-sl','param-fb'].forEach(id=>document.getElementById(id).textContent='—');
+  renderLeaderboard(); drawIdle();
+}
+
+document.getElementById('uni-dbi').textContent=UNIFORM_DBI.toFixed(1);
+drawIdle();
+</script>
+</body>
+</html>
