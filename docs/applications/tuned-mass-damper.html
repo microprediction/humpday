@@ -1,0 +1,812 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' 'unsafe-inline'; style-src 'self' 'unsafe-inline';">
+<title>🏢 Tuned Mass Damper Optimizer — HumpDay</title>
+<style>
+  :root {
+    --bg: #1a1a22;
+    --panel: #2d2d3a;
+    --accent: #ffcc00;
+    --text: #e8e8ea;
+    --muted: #9a9aac;
+  }
+  body { margin: 0; background: var(--bg); color: var(--text);
+    font-family: -apple-system, 'Segoe UI', 'Helvetica Neue', Helvetica, Arial, sans-serif; }
+  .site-nav { background: #34495e; padding: 12px 24px;
+    font-family: 'Times New Roman', Times, serif;
+    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1); }
+  .site-nav-inner { max-width: 1100px; margin: 0 auto;
+    display: flex; justify-content: space-between; align-items: center; }
+  .site-nav a { color: #ecf0f1; text-decoration: none; margin: 0 12px; }
+  .site-nav a:hover { color: white; text-decoration: underline; }
+  .site-nav-brand { font-weight: 700; font-size: 1.25em; }
+
+  .container { max-width: 1100px; margin: 0 auto; padding: 32px 24px 64px; }
+  h1 { font-size: 2.2em; margin: 0.2em 0; }
+  h2 { font-size: 1.4em; margin-top: 1.4em; color: var(--accent); }
+  p { line-height: 1.55; max-width: 70ch; }
+  .intro { color: var(--muted); }
+
+  .stage { display: grid; grid-template-columns: 1fr 320px; gap: 24px;
+    align-items: start; margin-top: 24px; }
+  @media (max-width: 800px) { .stage { grid-template-columns: 1fr; } }
+  canvas { background: linear-gradient(180deg, #11131c 0%, #1b2030 70%, #2a3147 100%);
+    border: 3px solid var(--accent); border-radius: 6px; display: block;
+    width: 100%; height: auto; }
+
+  .panel { background: var(--panel); padding: 18px; border-radius: 6px; border: 1px solid #404054; }
+  .panel h3 { margin: 0 0 12px; font-size: 1.05em; text-transform: uppercase;
+    letter-spacing: 0.06em; color: var(--accent); }
+  label { display: block; margin: 10px 0 6px; font-size: 0.9em; color: var(--muted); }
+  select, input, button { width: 100%; box-sizing: border-box; padding: 8px 10px;
+    border-radius: 4px; border: 1px solid #404054; background: #1a1a22; color: var(--text); font-size: 0.95em; }
+  button { background: var(--accent); color: #1a1a22; font-weight: 700; cursor: pointer; margin-top: 6px; transition: opacity 0.15s; }
+  button:hover { opacity: 0.88; }
+  button.secondary { background: #404054; color: var(--text); font-weight: 400; }
+  button:disabled { opacity: 0.5; cursor: not-allowed; }
+  .stats { margin-top: 16px; padding-top: 14px; border-top: 1px solid #404054; font-size: 0.92em; line-height: 1.6; }
+  .stats .score { font-size: 2.6em; color: var(--accent); font-weight: 700; }
+  .stat-row { display: flex; justify-content: space-between; }
+  .stat-row span:first-child { white-space: nowrap; flex-shrink: 0; }
+  .stat-row span:last-child { color: var(--text); font-family: 'SF Mono', Menlo, monospace; text-align: right; word-break: break-word; }
+
+  .leaderboard { margin-top: 24px; }
+  .leaderboard table { width: 100%; border-collapse: collapse; background: var(--panel); border-radius: 6px; overflow: hidden; }
+  .leaderboard th, .leaderboard td { padding: 10px 14px; text-align: left; border-bottom: 1px solid #404054; }
+  .leaderboard th { background: #1a1a22; color: var(--muted); text-transform: uppercase; font-size: 0.78em; letter-spacing: 0.08em; }
+  .leaderboard td:nth-child(2) { text-align: center; font-size: 1.3em; font-weight: 700; color: var(--accent); }
+  .leaderboard td:nth-child(3), .leaderboard td:nth-child(4) { font-family: 'SF Mono', Menlo, monospace; color: var(--muted); }
+  .leaderboard tr.human-raphson td:first-child { color: #ff9944; font-weight: 700; }
+
+  /* HR panel — sits under the canvas in the left column. Four sliders:
+     mass / tuning / damping are continuous, FLOOR is an integer (step 1)
+     — the mixed-integer dimension that makes this a genuine DFO problem. */
+  .left-stack { display: flex; flex-direction: column; gap: 16px; min-width: 0; }
+  .hr-panel { padding: 14px 16px; }
+  .hr-panel h3 { margin: 0 0 6px; }
+  .hr-sliders { display: grid; grid-template-columns: repeat(2, 1fr); gap: 6px 18px; margin-bottom: 10px; }
+  .hr-sliders label { margin: 0; display: flex; justify-content: space-between; align-items: baseline; font-size: 0.84em; }
+  .hr-sliders label output { color: var(--accent); font-family: 'SF Mono', Menlo, monospace; font-size: 0.92em; }
+  .hr-sliders input[type=range] { width: 100%; margin: 0 0 6px; padding: 0; background: transparent; }
+  .hr-sliders input[type=range]::-webkit-slider-runnable-track { background: #1a1a22; height: 6px; border-radius: 3px; }
+  .hr-sliders input[type=range]::-webkit-slider-thumb { -webkit-appearance: none; appearance: none; background: var(--accent); width: 18px; height: 18px; border-radius: 50%; margin-top: -6px; cursor: pointer; }
+  .hr-panel button { background: #ff9944; color: #1a1a22; margin-top: 0; }
+
+  .skill-callout { margin-top: 36px; background: rgba(126, 217, 87, 0.07); border: 1px solid rgba(126, 217, 87, 0.35); border-radius: 8px; padding: 18px 22px; }
+  .skill-callout h3 { margin: 0 0 6px; color: #7ed957; font-size: 1.05em; text-transform: none; letter-spacing: 0; }
+  .skill-callout p { margin: 0 0 10px; color: var(--text); max-width: none; }
+  .skill-callout pre { background: #1a1a22; border: 1px solid #404054; border-radius: 4px; padding: 10px 14px; margin: 0; font-size: 0.84em; color: #7ed957; white-space: pre-wrap; word-break: break-all; font-family: 'SF Mono', Menlo, monospace; }
+  .skill-actions { margin-top: 10px; display: flex; align-items: center; gap: 14px; }
+  .skill-actions button { width: auto; background: #404054; color: var(--text); border: 1px solid #404054; padding: 6px 12px; font-size: 0.85em; cursor: pointer; border-radius: 4px; margin: 0; font-weight: 500; }
+  .skill-actions button:hover { background: #4a4a60; }
+  .skill-actions a { color: #7ed957; font-size: 0.85em; text-decoration: none; }
+  .skill-actions a:hover { text-decoration: underline; }
+
+</style>
+</head>
+<body>
+    <nav class="site-nav" data-site-nav="v1">
+        <div class="site-nav-inner">
+            <a href="../index.html" class="site-nav-brand"><svg class="site-nav-camel" data-site-logo="camel-v3" viewBox="0 0 100 50" width="44" height="22" xmlns="http://www.w3.org/2000/svg" aria-hidden="true"><rect x="20.5" y="30" width="1.8" height="11" fill="white" fill-opacity="0.55"/><rect x="60.5" y="30" width="1.8" height="11" fill="white" fill-opacity="0.55"/><path fill="white" fill-opacity="0.92" d="M 14 30 C 10 30 8 28 8 24 C 7 22 7 19 9 18 C 11 16 13 14 16 13 C 20 8 26 6 31 9 C 34 11 35 13 35 16 C 37 18 40 18 43 17 C 47 13 53 7 59 9 C 63 11 65 13 65 16 C 66 18 68 18 70 17 C 73 13 76 9 80 7 C 84 5 89 6 90 9 L 92 9 L 93 12 L 91 13 L 87 13 L 87 15 C 82 16 79 18 76 21 C 73 25 71 28 68 30 L 66 30 L 66 42 L 64 42 L 64 30 L 26 30 L 26 42 L 24 42 L 24 30 L 14 30 Z"/><circle cx="88" cy="10" r="0.9" fill="#34495e"/></svg>HumpDay</a>
+            <div class="site-nav-links">
+                <a href="../index.html">Home</a>
+                <a href="../contest.html">Contest</a>
+                <a href="../applications/index.html">Demonstrations</a>
+                <a href="../algorithms.html">Algorithms</a>
+                <a href="../sota-status.html">SOTA status</a>
+                <a href="../recommendations.html">Recommendations</a>
+                <a href="https://github.com/microprediction/humpday" target="_blank" rel="noopener">GitHub</a>
+            </div>
+        </div>
+    </nav>
+
+<div class="container">
+  <h1>🏢 Tuned Mass Damper Optimizer</h1>
+  <p class="intro">
+    A <strong id="floor-count">…</strong>-storey tower is shaken by an earthquake. A
+    <strong>tuned mass damper</strong> — a heavy block on a spring near the
+    top — can soak up the sway, but only if it's tuned right. HumpDay's
+    optimisers choose the damper's <strong>mass, spring tuning, damping,</strong>
+    and <strong>which floor</strong> it sits on, to cut the building's peak sway.
+    That last choice is an <em>integer</em>, so the objective is non-smooth
+    — exactly where derivative-free methods earn their keep.
+  </p>
+
+  <div class="stage">
+    <div class="left-stack">
+      <canvas id="canvas" width="800" height="450"></canvas>
+
+      <div class="panel hr-panel">
+        <h3>🧠 Human Raphson</h3>
+        <p style="color: var(--muted); margin: 0 0 12px; font-size: 0.86em;">
+          Tune the damper by hand, shake the building, and see how much
+          sway you knock out — then race the optimisers.
+        </p>
+        <div class="hr-sliders">
+          <label for="manual-mass">Mass <output id="manual-mass-out">2.0%</output></label>
+          <label for="manual-tuning">Tuning <output id="manual-tuning-out">0.95</output></label>
+          <input type="range" id="manual-mass" min="0.3" max="4" step="0.1" value="2">
+          <input type="range" id="manual-tuning" min="0.4" max="1.6" step="0.01" value="0.95">
+
+          <label for="manual-damping">Damping <output id="manual-damping-out">8%</output></label>
+          <label for="manual-floor">Floor <output id="manual-floor-out">6</output></label>
+          <input type="range" id="manual-damping" min="0" max="40" step="0.5" value="8">
+          <input type="range" id="manual-floor" min="1" max="6" step="1" value="6">
+        </div>
+        <button id="manual-btn" onclick="manualShake()">▶ Shake it (Human Raphson)</button>
+      </div>
+    </div>
+
+    <div class="panel">
+      <h3>Algorithm</h3>
+      <label for="algorithm">Pick a HumpDay optimizer:</label>
+      <select id="algorithm">
+        <optgroup label="Trust-region / interpolation">
+          <option value="PRIMA_BOBYQA">PRIMA_BOBYQA</option>
+          <option value="PRIMA_NEWUOA">PRIMA_NEWUOA</option>
+        </optgroup>
+        <optgroup label="Local / classical">
+          <option value="NelderMead">Nelder-Mead</option>
+          <option value="Powell">Powell</option>
+          <option value="LBFGSB">L-BFGS-B (simplified)</option>
+        </optgroup>
+        <optgroup label="Population-based">
+          <option value="DifferentialEvolution" selected>Differential Evolution</option>
+          <option value="ParticleSwarm">Particle Swarm</option>
+          <option value="CMAEvolutionStrategy">CMA-Evolution Strategy</option>
+          <option value="GeneticAlgorithm">Genetic Algorithm</option>
+          <option value="EvolutionStrategy">Evolution Strategy</option>
+          <option value="HarmonySearch">Harmony Search</option>
+        </optgroup>
+        <optgroup label="Other">
+          <option value="SimulatedAnnealing">Simulated Annealing</option>
+          <option value="BayesianOpt">Bayesian Optimization</option>
+          <option value="FireflyAlgorithm">Firefly Algorithm</option>
+          <option value="AntColonyOpt">Ant Colony</option>
+          <option value="RandomSearch">Random Search</option>
+          <option value="Rechenberg">Rechenberg (1+1)-ES</option>
+        </optgroup>
+      </select>
+
+      <label for="budget">Evaluation budget:</label>
+      <select id="budget">
+        <option value="20">20 designs</option>
+        <option value="40" selected>40 designs</option>
+        <option value="80">80 designs</option>
+        <option value="150">150 designs</option>
+        <option value="300">300 designs</option>
+      </select>
+      <p style="margin: 8px 0 0; font-size: 0.78em; color: var(--muted);">
+        Each design re-runs the full earthquake. n=4, with one integer
+        dimension (the floor). Most methods converge within a few dozen
+        designs; raise the budget to give the search more room.
+      </p>
+
+      <button id="run-btn" onclick="runOptimization()">▶ Find the best damper</button>
+      <button class="secondary" onclick="replayBest()">🔁 Replay best damper</button>
+      <button class="secondary" onclick="resetEverything()">⟲ Reset leaderboard</button>
+
+      <div class="stats">
+        <div class="stat-row"><span>Sway reduction</span><span class="score" id="score-now">0</span></div>
+        <div class="stat-row"><span>Detail</span><span id="detail-now">—</span></div>
+        <div class="stat-row"><span>Designs tried</span><span id="evals">0</span></div>
+        <div class="stat-row"><span>Best so far</span><span id="best-score">—</span></div>
+        <div class="stat-row"><span>Mass / Tuning</span><span id="param-mt">—</span></div>
+        <div class="stat-row"><span>Damping / Floor</span><span id="param-df">—</span></div>
+      </div>
+    </div>
+  </div>
+
+  <div class="leaderboard">
+    <h2>Leaderboard (this session)</h2>
+    <p style="color: var(--muted);">
+      Each row is the best damper a given algorithm found — score is the
+      percentage cut in peak roof sway versus the bare building under the
+      same earthquake.
+    </p>
+    <table>
+      <thead>
+        <tr><th>Algorithm</th><th>Sway cut</th><th>Designs used</th><th>Best params (mass% / tune / damp% / floor)</th></tr>
+      </thead>
+      <tbody id="leaderboard-body">
+        <tr><td colspan="4" style="color: var(--muted); text-align: center;">— no runs yet —</td></tr>
+      </tbody>
+    </table>
+  </div>
+
+  <h2>What's happening</h2>
+  <p>
+    The tower is a <strong id="floor-count-2">…</strong>-degree-of-freedom shear model:
+    <span id="floor-count-3">…</span> stacked floor masses joined by elastic
+    columns, with light structural damping. The ground shakes with a
+    synthetic accelerogram whose frequency content overlaps the tower's
+    first mode, so the bare building resonates and sways hard. A tuned
+    mass damper adds one more mass on a spring; when its frequency is
+    tuned near the building's, it sloshes out of phase and bleeds energy
+    out of the structure.
+  </p>
+  <p>
+    The optimiser sets four numbers: the damper <em>mass</em> (as a % of
+    building mass), its <em>tuning</em> (damper frequency ÷ building
+    frequency), its own <em>damping</em>, and the integer <em>floor</em> it
+    attaches to. The score is the percentage reduction in peak roof
+    displacement. Most random dampers manage only a small cut — the four
+    choices all have to line up — while a well-matched design (decent
+    mass, tuning near the building's own frequency, modest damping, an
+    upper floor) can take 50–60% off the sway.
+  </p>
+  <p>
+    The fourth variable is an integer: the damper sits on a whole floor,
+    so that dimension of the objective is a staircase, not a slope —
+    there's no gradient to follow. Derivative-free methods don't mind;
+    they treat the rounded floor like any other coordinate. The floor
+    matters, too — drop the damper to a low storey and even a perfect
+    tuning barely helps, because there's little motion down there to
+    push against. Run a few optimisers and compare on the leaderboard,
+    and note the faint grey outline: the bare building's worst sway, so
+    you can see how much the damper buys.
+  </p>
+
+  <hr style="border: 0; border-top: 1px solid #404054; margin: 32px 0 16px;" />
+  <p style="font-size: 0.78em; color: var(--muted);">
+    A reduced-order model, not a finite-element analysis: a lumped-mass
+    shear building integrated with Newmark-β under one synthetic ground
+    motion. Real damper design averages many records and a detailed
+    structural model — but the optimisation problem has the same shape.
+  </p>
+
+  <div class="skill-callout">
+    <h3>🌱 Save the Planet</h3>
+    <p>If your hyper-parameter searches are heating the Earth, drop this in Cursor or Claude:</p>
+    <pre id="skill-snippet">Read https://raw.githubusercontent.com/microprediction/humpday/main/SKILL.md
+and create a project skill from it.</pre>
+    <div class="skill-actions">
+      <button type="button" onclick="copySkillSnippet(this)">📋 Copy</button>
+      <a href="https://github.com/microprediction/humpday/blob/main/SKILL.md" target="_blank" rel="noopener">View SKILL.md →</a>
+    </div>
+  </div>
+
+  <script>
+    function copySkillSnippet(btn) {
+      const text = document.getElementById('skill-snippet').textContent;
+      navigator.clipboard.writeText(text).then(() => {
+        const orig = btn.textContent;
+        btn.textContent = '✓ Copied';
+        setTimeout(() => { btn.textContent = orig; }, 1500);
+      }).catch(() => {
+        btn.textContent = '✗ Copy failed';
+      });
+    }
+  </script>
+</div>
+
+<script src="../js/modules/base-optimizer.js"></script>
+<script src="../js/modules/linalg.js"></script>
+<script src="../js/modules/prima-algorithms.js"></script>
+<script src="../js/modules/scipy-algorithms.js"></script>
+<script src="../js/modules/evolutionary-algorithms.js"></script>
+<script src="../js/modules/search-algorithms.js"></script>
+
+<script>
+// ============================================================================
+// Tuned mass damper on a multi-storey shear building under earthquake.
+//
+// The structure is an N-DOF lumped-mass shear model. A tuned mass damper
+// (TMD) adds one more DOF: a mass on a spring+dashpot attached to one
+// floor. Everything is linear, so each evaluation is one Newmark-β
+// integration of M ẍ + C ẋ + K x = -M·1·a_g(t). The optimiser picks the
+// TMD mass, tuning, damping, and (integer) attachment floor; the score is
+// the % reduction in peak roof displacement vs. the bare building.
+// ============================================================================
+
+const canvas = document.getElementById('canvas');
+const ctx = canvas.getContext('2d');
+const W = canvas.width, H = canvas.height;
+
+// ---- Structural model --------------------------------------------------
+const N = 6;                 // storeys
+const FLOOR_M = 1.0;         // mass per floor (consistent units)
+const STORY_K = 700;         // lateral stiffness per storey
+const STRUCT_ZETA = 0.015;   // 1.5% structural damping (Rayleigh) — lightly
+                             // damped so the bare tower resonates sharply
+                             // and the damper tuning genuinely matters.
+
+// Small linear-algebra helpers on plain 2-D arrays.
+function zeros2(n) { return Array.from({ length: n }, () => new Array(n).fill(0)); }
+function matvec(A, x) {
+  const n = A.length, y = new Array(n).fill(0);
+  for (let i = 0; i < n; i++) { let s = 0; for (let j = 0; j < n; j++) s += A[i][j] * x[j]; y[i] = s; }
+  return y;
+}
+function rowSums(A) { return A.map((row) => row.reduce((a, b) => a + b, 0)); }
+
+// Structural matrices (N×N). Shear building: storey i couples floor i-1,i.
+function structuralM() {
+  const M = zeros2(N);
+  for (let i = 0; i < N; i++) M[i][i] = FLOOR_M;
+  return M;
+}
+function structuralK() {
+  const K = zeros2(N);
+  for (let i = 0; i < N; i++) {
+    K[i][i] += STORY_K;                       // spring below floor i
+    if (i + 1 < N) {                          // spring above floor i
+      K[i][i] += STORY_K;
+      K[i][i + 1] -= STORY_K;
+      K[i + 1][i] -= STORY_K;
+    }
+  }
+  return K;
+}
+
+// First two natural frequencies (rad/s) via eigh of M^-1 K (M = m·I).
+const MSTRUCT = structuralM();
+const KSTRUCT = structuralK();
+const { omega1, omega2 } = (() => {
+  const A = KSTRUCT.map((row) => row.map((v) => v / FLOOR_M));
+  const { eigvals } = Linalg.eigh(A);
+  const w = eigvals.map((e) => Math.sqrt(Math.max(e, 0))).sort((a, b) => a - b);
+  return { omega1: w[0], omega2: w[1] };
+})();
+
+// Rayleigh damping C = a0 M + a1 K giving STRUCT_ZETA at the first two modes.
+const RAYLEIGH_A1 = 2 * STRUCT_ZETA / (omega1 + omega2);
+const RAYLEIGH_A0 = 2 * STRUCT_ZETA * omega1 * omega2 / (omega1 + omega2);
+function structuralC() {
+  const C = zeros2(N);
+  for (let i = 0; i < N; i++)
+    for (let j = 0; j < N; j++)
+      C[i][j] = RAYLEIGH_A0 * MSTRUCT[i][j] + RAYLEIGH_A1 * KSTRUCT[i][j];
+  return C;
+}
+const CSTRUCT = structuralC();
+
+// ---- Synthetic ground motion (deterministic) ---------------------------
+// Kanai–Tajimi filtered white noise with a Jennings intensity envelope.
+// Seeded so every evaluation sees the SAME earthquake — the objective is
+// deterministic. Predominant frequency sits near the building's first
+// mode so the bare structure resonates.
+const GM = (() => {
+  let seed = 20260604;
+  const rng = () => { seed = (seed * 1103515245 + 12345) & 0x7fffffff; return seed / 0x7fffffff * 2 - 1; };
+  const DT = 0.02, L = 1600;
+  const wg = omega1, zg = 0.40;                           // narrowband, centred
+  let xf = 0, vf = 0;                                     // on the first mode
+  const ag = new Array(L);
+  for (let i = 0; i < L; i++) {
+    const t = i * DT;
+    const white = rng();
+    const af = white - 2 * zg * wg * vf - wg * wg * xf;   // KT filter
+    vf += af * DT; xf += vf * DT;
+    let env;                                              // Jennings envelope
+    const tRise = 2.5, tDecay = 14;
+    if (t < tRise) env = (t / tRise) * (t / tRise);
+    else if (t < tDecay) env = 1;
+    else env = Math.exp(-0.18 * (t - tDecay));
+    ag[i] = env * (2 * zg * wg * vf + wg * wg * xf);
+  }
+  const pga = Math.max(...ag.map(Math.abs));
+  for (let i = 0; i < L; i++) ag[i] *= 0.6 / pga;          // normalise PGA
+  return { ag, DT, L };
+})();
+
+// ---- Newmark-β integration of an n-DOF linear system -------------------
+// Average-acceleration (β=1/4, γ=1/2): unconditionally stable. Effective
+// stiffness is factored once (constant dt, linear system) and reused.
+const FRAME_STRIDE = 22;     // record ~64 frames for animation
+function newmark(M, C, K, roofIdx, record) {
+  const n = M.length, { ag, DT, L } = GM;
+  const beta = 0.25, gamma = 0.5;
+  const a0 = 1 / (beta * DT * DT), a1 = gamma / (beta * DT);
+  const a2 = 1 / (beta * DT), a3 = 1 / (2 * beta) - 1;
+  const a4 = gamma / beta - 1, a5 = DT * (gamma / (2 * beta) - 1);
+
+  const Keff = zeros2(n);
+  for (let i = 0; i < n; i++)
+    for (let j = 0; j < n; j++)
+      Keff[i][j] = K[i][j] + a1 * C[i][j] + a0 * M[i][j];
+  const Lc = Linalg.cholesky(Keff);
+  const Mr = rowSums(M);                                   // M·1 (influence load)
+
+  let u = new Array(n).fill(0), v = new Array(n).fill(0), acc = new Array(n).fill(0);
+  for (let i = 0; i < n; i++) acc[i] = -ag[0];             // rest start, a = -1·ag0
+
+  let peakRoof = 0;
+  const env = new Array(n).fill(0);
+  const frames = record ? [] : null;
+
+  for (let s = 1; s < L; s++) {
+    const t1 = u.map((ui, i) => a0 * ui + a2 * v[i] + a3 * acc[i]);
+    const t2 = u.map((ui, i) => a1 * ui + a4 * v[i] + a5 * acc[i]);
+    const Mt1 = matvec(M, t1), Ct2 = matvec(C, t2);
+    const peff = new Array(n);
+    for (let i = 0; i < n; i++) peff[i] = -Mr[i] * ag[s] + Mt1[i] + Ct2[i];
+
+    const uNew = Linalg.solveSPDFromCholesky(Lc, peff);
+    const accNew = new Array(n), vNew = new Array(n);
+    for (let i = 0; i < n; i++) {
+      accNew[i] = a0 * (uNew[i] - u[i]) - a2 * v[i] - a3 * acc[i];
+      vNew[i] = v[i] + DT * ((1 - gamma) * acc[i] + gamma * accNew[i]);
+    }
+    u = uNew; v = vNew; acc = accNew;
+
+    const r = Math.abs(u[roofIdx]);
+    if (r > peakRoof) peakRoof = r;
+    for (let i = 0; i < n; i++) if (Math.abs(u[i]) > env[i]) env[i] = Math.abs(u[i]);
+    if (record && s % FRAME_STRIDE === 0) frames.push(u.slice());
+  }
+  return { peakRoof, env, frames };
+}
+
+// ---- Bare-building baseline (computed once) ----------------------------
+const BARE = newmark(MSTRUCT, CSTRUCT, KSTRUCT, N - 1, false);
+const D0 = BARE.peakRoof;                  // uncontrolled peak roof sway
+const DISP_SCALE = 150 / D0;               // px per unit; bare peak ≈ 150 px
+const BARE_ENV = BARE.env.slice();
+
+// ---- Decode: u in [0,1]^4 → damper design ------------------------------
+// Ranges MUST match the Human-Raphson sliders.
+//   mass   : 0.3% .. 4%   of total building mass
+//   tuning : 0.40 .. 1.60 (damper freq / building first-mode freq)
+//   damp   : 0%   .. 40%  damper damping ratio
+//   floor  : 1 .. N       integer attachment floor
+function decode(u) {
+  return {
+    mu: 0.003 + 0.037 * u[0],
+    tuning: 0.4 + 1.2 * u[1],
+    zeta: 0.40 * u[2],
+    floor: 1 + Math.round(u[3] * (N - 1)),
+  };
+}
+
+// ---- Evaluate one damper design ----------------------------------------
+function runDamper(d, record = false) {
+  const n = N + 1;                                         // structure + TMD
+  const mt = d.mu * (N * FLOOR_M);                         // damper mass
+  const wt = d.tuning * omega1;                            // damper frequency
+  const kt = mt * wt * wt;
+  const ct = 2 * d.zeta * mt * wt;
+  const p = d.floor - 1;                                   // 0-indexed floor
+
+  const M = zeros2(n), K = zeros2(n), C = zeros2(n);
+  for (let i = 0; i < N; i++) {
+    M[i][i] = MSTRUCT[i][i];
+    for (let j = 0; j < N; j++) { K[i][j] = KSTRUCT[i][j]; C[i][j] = CSTRUCT[i][j]; }
+  }
+  M[N][N] = mt;
+  K[p][p] += kt; K[p][N] -= kt; K[N][p] -= kt; K[N][N] += kt;
+  C[p][p] += ct; C[p][N] -= ct; C[N][p] -= ct; C[N][N] += ct;
+
+  const res = newmark(M, C, K, N - 1, record);
+  const reduction = (D0 - res.peakRoof) / D0 * 100;        // % cut in roof sway
+  return { reduction, peakRoof: res.peakRoof, env: res.env, frames: res.frames, design: d };
+}
+
+// ============================================================================
+// HumpDay objective.
+// ============================================================================
+const searchHistory = [];
+
+function objective(u) {
+  const d = decode(u);
+  const r = runDamper(d);
+  searchHistory.push({ score: r.reduction, design: d, peakRoof: r.peakRoof, env: r.env });
+  return -r.reduction;                                     // maximise reduction
+}
+
+// ============================================================================
+// Rendering — the swaying tower. Floor i is drawn shifted horizontally by
+// its displacement; the TMD rides on its attachment floor. The faint grey
+// outline is the bare building's worst-case sway envelope.
+// ============================================================================
+const BASE_Y = 410, ROOF_Y = 70;
+const FLOOR_H = (BASE_Y - ROOF_Y) / N;
+const CX = W * 0.42;                  // building centre-line x (canvas)
+const FLOOR_HALF_W = 60;
+
+function floorY(i) { return BASE_Y - (i + 1) * FLOOR_H; }   // i = 0..N-1
+
+function drawScene(state, hudText) {
+  ctx.clearRect(0, 0, W, H);
+
+  // Ground.
+  ctx.fillStyle = '#2a3147';
+  ctx.fillRect(0, BASE_Y, W, H - BASE_Y);
+  ctx.fillStyle = '#3a4257';
+  ctx.fillRect(0, BASE_Y, W, 3);
+
+  const disps = state ? state.u : new Array(N + 1).fill(0);
+  const floorX = (i) => CX + (disps[i] || 0) * DISP_SCALE;
+
+  // Bare-building worst-sway envelope (faint outline, both sides).
+  ctx.strokeStyle = 'rgba(170,180,200,0.22)';
+  ctx.lineWidth = 1.5;
+  for (const sgn of [1, -1]) {
+    ctx.beginPath();
+    ctx.moveTo(CX, BASE_Y);
+    for (let i = 0; i < N; i++) ctx.lineTo(CX + sgn * BARE_ENV[i] * DISP_SCALE, floorY(i));
+    ctx.stroke();
+  }
+
+  // Columns (left and right edge lines connecting floors).
+  ctx.strokeStyle = '#8aa0c8';
+  ctx.lineWidth = 2.5;
+  for (const side of [-FLOOR_HALF_W, FLOOR_HALF_W]) {
+    ctx.beginPath();
+    ctx.moveTo(CX + side, BASE_Y);
+    for (let i = 0; i < N; i++) ctx.lineTo(floorX(i) + side, floorY(i));
+    ctx.stroke();
+  }
+
+  // Floor slabs.
+  for (let i = 0; i < N; i++) {
+    const x = floorX(i), y = floorY(i);
+    ctx.fillStyle = '#c9d4e8';
+    ctx.fillRect(x - FLOOR_HALF_W, y - 6, FLOOR_HALF_W * 2, 9);
+    ctx.fillStyle = 'rgba(0,0,0,0.18)';
+    ctx.fillRect(x - FLOOR_HALF_W, y + 1, FLOOR_HALF_W * 2, 2);
+  }
+
+  // TMD on its attachment floor.
+  if (state && state.floor) {
+    const fi = state.floor - 1;
+    const fx = floorX(fi), fy = floorY(fi);
+    const tx = CX + (disps[N] || 0) * DISP_SCALE;          // TMD has its own DOF
+    const ty = fy - FLOOR_H * 0.42;
+    // Spring (zigzag) from floor to TMD.
+    ctx.strokeStyle = '#ffcc00';
+    ctx.lineWidth = 1.5;
+    ctx.beginPath();
+    ctx.moveTo(fx, fy - 4);
+    const segs = 6;
+    for (let s = 1; s < segs; s++) {
+      const f = s / segs;
+      const zz = (s % 2 === 0 ? 6 : -6);
+      ctx.lineTo(fx + (tx - fx) * f + zz, (fy - 4) + (ty - (fy - 4)) * f);
+    }
+    ctx.lineTo(tx, ty);
+    ctx.stroke();
+    // Damper mass.
+    ctx.fillStyle = '#ff9944';
+    ctx.fillRect(tx - 16, ty - 12, 32, 22);
+    ctx.strokeStyle = '#7a4a18';
+    ctx.lineWidth = 1.5;
+    ctx.strokeRect(tx - 16, ty - 12, 32, 22);
+  }
+
+  // HUD.
+  if (hudText) {
+    ctx.font = 'bold 15px -apple-system, Helvetica, Arial, sans-serif';
+    const padX = 12;
+    const metrics = ctx.measureText(hudText);
+    const boxW = Math.ceil(metrics.width) + 2 * padX;
+    ctx.fillStyle = 'rgba(0,0,0,0.6)';
+    ctx.fillRect(18, 14, boxW, 28);
+    ctx.fillStyle = '#ffcc00';
+    ctx.fillText(hudText, 18 + padX, 33);
+  }
+}
+
+function drawIdleScene() {
+  drawScene({ u: new Array(N + 1).fill(0), floor: N },
+    'Press "Find the best damper" to start');
+}
+
+// ============================================================================
+// Animations. Each evaluated design is re-simulated with recorded frames so
+// the building actually sways; montage runs at ~2× the replay speed.
+// ============================================================================
+const REPLAY_MS_PER_FRAME = 26;
+const MONTAGE_MS_PER_FRAME = 13;
+let animationToken = 0;
+
+function animateShake(frames, floor, hudText, msPerFrame = REPLAY_MS_PER_FRAME) {
+  const myToken = animationToken;
+  return new Promise((resolve) => {
+    if (!frames || frames.length === 0) return resolve();
+    let i = 0;
+    function tick() {
+      if (myToken !== animationToken) return resolve();
+      if (i >= frames.length) return resolve();
+      drawScene({ u: frames[i], floor }, hudText);
+      i += 1;
+      setTimeout(tick, msPerFrame);
+    }
+    tick();
+  });
+}
+
+async function animateSearchMontage() {
+  const myToken = ++animationToken;
+  const total = searchHistory.length;
+  if (total === 0) return -1;
+
+  let bestSoFar = -Infinity, bestIdx = -1;
+  for (let i = 0; i < total; i++) {
+    if (myToken !== animationToken) return bestIdx;
+    const entry = searchHistory[i];
+    const isNew = entry.score > bestSoFar;
+    if (isNew) { bestSoFar = entry.score; bestIdx = i; }
+
+    const re = runDamper(entry.design, /*record=*/true);
+    document.getElementById('evals').textContent = i + 1;
+    document.getElementById('score-now').textContent = entry.score.toFixed(1) + '%';
+    document.getElementById('detail-now').textContent =
+      `peak ${entry.peakRoof.toFixed(3)} vs ${D0.toFixed(3)}`;
+    updateBestParams(entry.design);
+
+    if (isNew) {
+      addLeaderboardEntry(document.getElementById('algorithm').value, entry, i + 1,
+        { inPlace: liveLeaderboardIdx >= 0 });
+      document.getElementById('best-score').textContent =
+        `${entry.score.toFixed(1)}% (${document.getElementById('algorithm').value})`;
+    }
+
+    await animateShake(
+      re.frames, entry.design.floor,
+      `Design ${i + 1}/${total}  ·  Best: ${bestSoFar.toFixed(1)}%${isNew ? '  ★ NEW!' : ''}`,
+      MONTAGE_MS_PER_FRAME,
+    );
+  }
+  return bestIdx;
+}
+
+// ============================================================================
+// Runner.
+// ============================================================================
+let lastBest = null;
+
+function getOptimizerClass(name) { return globalThis[name]; }
+
+async function runOptimization() {
+  const algoName = document.getElementById('algorithm').value;
+  const budget = parseInt(document.getElementById('budget').value, 10);
+  const cls = getOptimizerClass(algoName);
+  if (!cls) { alert(`Optimizer '${algoName}' not found.`); return; }
+
+  const runBtn = document.getElementById('run-btn');
+  runBtn.disabled = true;
+  runBtn.textContent = `Tuning ${algoName}...`;
+
+  animationToken++;
+  searchHistory.length = 0;
+  await new Promise((r) => setTimeout(r, 30));
+
+  try {
+    const opt = new cls(objective, budget, 4);
+    opt.optimize();
+
+    const bestIdx = await animateSearchMontage();
+    const bestEntry = searchHistory[bestIdx];
+    const replay = runDamper(bestEntry.design, /*record=*/true);
+    lastBest = { frames: replay.frames, design: bestEntry.design, score: bestEntry.score };
+
+    await animateShake(replay.frames, bestEntry.design.floor,
+      `Best damper: ${bestEntry.score.toFixed(1)}% sway cut (${algoName})`);
+
+    document.getElementById('best-score').textContent = `${bestEntry.score.toFixed(1)}% (${algoName})`;
+    updateBestParams(bestEntry.design);
+    addLeaderboardEntry(algoName, bestEntry, opt.evaluations, { inPlace: liveLeaderboardIdx >= 0 });
+    liveLeaderboardIdx = -1;
+  } catch (e) {
+    console.error(e);
+    alert(`${algoName} threw an error: ${e.message}`);
+  } finally {
+    runBtn.disabled = false;
+    runBtn.textContent = '▶ Find the best damper';
+  }
+}
+
+function updateBestParams(d) {
+  document.getElementById('param-mt').textContent =
+    `${(d.mu * 100).toFixed(1)}% / ${d.tuning.toFixed(2)}`;
+  document.getElementById('param-df').textContent =
+    `${(d.zeta * 100).toFixed(1)}% / floor ${d.floor}`;
+}
+
+function replayBest() {
+  if (!lastBest) return;
+  animationToken++;
+  animateShake(lastBest.frames, lastBest.design.floor,
+    `Best damper: ${lastBest.score.toFixed(1)}% sway cut`);
+}
+
+const leaderboard = [];
+let liveLeaderboardIdx = -1;
+
+function addLeaderboardEntry(algoName, entry, evals, { inPlace = false } = {}) {
+  const row = { name: algoName, score: entry.score, evals, design: entry.design };
+  if (inPlace && liveLeaderboardIdx >= 0) leaderboard[liveLeaderboardIdx] = row;
+  else { leaderboard.push(row); liveLeaderboardIdx = leaderboard.length - 1; }
+  const tracked = leaderboard[liveLeaderboardIdx];
+  leaderboard.sort((a, b) => b.score - a.score || a.evals - b.evals);
+  liveLeaderboardIdx = leaderboard.indexOf(tracked);
+  renderLeaderboard();
+}
+function renderLeaderboard() {
+  const body = document.getElementById('leaderboard-body');
+  if (leaderboard.length === 0) {
+    body.innerHTML = '<tr><td colspan="4" style="color: var(--muted); text-align: center;">— no runs yet —</td></tr>';
+    return;
+  }
+  body.innerHTML = leaderboard.map((row) => {
+    const d = row.design;
+    const cls = row.name === 'Human Raphson' ? ' class="human-raphson"' : '';
+    return `<tr${cls}>
+      <td>${row.name}</td>
+      <td>${row.score.toFixed(1)}%</td>
+      <td>${row.evals}</td>
+      <td>${(d.mu * 100).toFixed(1)} / ${d.tuning.toFixed(2)} / ${(d.zeta * 100).toFixed(1)} / ${d.floor}</td>
+    </tr>`;
+  }).join('');
+}
+
+// ============================================================================
+// Human Raphson — manual damper via sliders. Counts as one evaluation.
+// ============================================================================
+const sliderOutputs = {
+  'manual-mass': (v) => `${parseFloat(v).toFixed(1)}%`,
+  'manual-tuning': (v) => parseFloat(v).toFixed(2),
+  'manual-damping': (v) => `${parseFloat(v).toFixed(0)}%`,
+  'manual-floor': (v) => `${parseInt(v, 10)}`,
+};
+for (const id of Object.keys(sliderOutputs)) {
+  const slider = document.getElementById(id);
+  const output = document.getElementById(`${id}-out`);
+  const update = () => { output.textContent = sliderOutputs[id](slider.value); };
+  slider.addEventListener('input', update);
+  update();
+}
+
+async function manualShake() {
+  const d = {
+    mu: parseFloat(document.getElementById('manual-mass').value) / 100,
+    tuning: parseFloat(document.getElementById('manual-tuning').value),
+    zeta: parseFloat(document.getElementById('manual-damping').value) / 100,
+    floor: parseInt(document.getElementById('manual-floor').value, 10),
+  };
+  const btn = document.getElementById('manual-btn');
+  btn.disabled = true;
+  btn.textContent = 'Shaking...';
+  animationToken++;
+  await new Promise((r) => setTimeout(r, 30));
+
+  try {
+    const re = runDamper(d, /*record=*/true);
+    document.getElementById('score-now').textContent = re.reduction.toFixed(1) + '%';
+    document.getElementById('detail-now').textContent =
+      `peak ${re.peakRoof.toFixed(3)} vs ${D0.toFixed(3)}`;
+    updateBestParams(d);
+    await animateShake(re.frames, d.floor, `🧠 Human Raphson: ${re.reduction.toFixed(1)}% sway cut`);
+    addLeaderboardEntry('Human Raphson', { score: re.reduction, design: d }, 1);
+    document.getElementById('best-score').textContent = `${re.reduction.toFixed(1)}% (Human Raphson)`;
+  } finally {
+    btn.disabled = false;
+    btn.textContent = '▶ Shake it (Human Raphson)';
+  }
+}
+
+function resetEverything() {
+  leaderboard.length = 0;
+  liveLeaderboardIdx = -1;
+  lastBest = null;
+  animationToken++;
+  document.getElementById('evals').textContent = '0';
+  document.getElementById('score-now').textContent = '0';
+  ['detail-now', 'best-score', 'param-mt', 'param-df'].forEach((id) =>
+    document.getElementById(id).textContent = '—');
+  renderLeaderboard();
+  drawIdleScene();
+}
+
+// ---- Prose placeholders. -----------------------------------------------
+['floor-count', 'floor-count-2', 'floor-count-3'].forEach((id) =>
+  document.getElementById(id).textContent = N);
+
+drawIdleScene();
+</script>
+</body>
+</html>
