@@ -1,0 +1,392 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' 'unsafe-inline'; style-src 'self' 'unsafe-inline';">
+<title>🦠 Ebola Outbreak Control Optimizer — HumpDay</title>
+<style>
+  :root { --bg:#1a1a22; --panel:#2d2d3a; --accent:#ffcc00; --text:#e8e8ea; --muted:#9a9aac; }
+  body { margin:0; background:var(--bg); color:var(--text); font-family:-apple-system,'Segoe UI','Helvetica Neue',Helvetica,Arial,sans-serif; }
+  .site-nav { background:#34495e; padding:12px 24px; font-family:'Times New Roman',Times,serif; box-shadow:0 2px 4px rgba(0,0,0,0.1); }
+  .site-nav-inner { max-width:1100px; margin:0 auto; display:flex; justify-content:space-between; align-items:center; }
+  .site-nav a { color:#ecf0f1; text-decoration:none; margin:0 12px; }
+  .site-nav a:hover { color:white; text-decoration:underline; }
+  .site-nav-brand { font-weight:700; font-size:1.25em; }
+  .container { max-width:1100px; margin:0 auto; padding:32px 24px 64px; }
+  h1 { font-size:2.2em; margin:0.2em 0; }
+  h2 { font-size:1.4em; margin-top:1.4em; color:var(--accent); }
+  p { line-height:1.55; max-width:70ch; }
+  .intro { color:var(--muted); }
+  .stage { display:grid; grid-template-columns:1fr 320px; gap:24px; align-items:start; margin-top:24px; }
+  @media (max-width:800px){ .stage { grid-template-columns:1fr; } }
+  canvas { background:#0e0e14; border:3px solid var(--accent); border-radius:6px; display:block; width:100%; height:auto; }
+  .panel { background:var(--panel); padding:18px; border-radius:6px; border:1px solid #404054; }
+  .panel h3 { margin:0 0 12px; font-size:1.05em; text-transform:uppercase; letter-spacing:0.06em; color:var(--accent); }
+  label { display:block; margin:10px 0 6px; font-size:0.9em; color:var(--muted); }
+  select, input, button { width:100%; box-sizing:border-box; padding:8px 10px; border-radius:4px; border:1px solid #404054; background:#1a1a22; color:var(--text); font-size:0.95em; }
+  button { background:var(--accent); color:#1a1a22; font-weight:700; cursor:pointer; margin-top:6px; transition:opacity 0.15s; }
+  button:hover { opacity:0.88; }
+  button.secondary { background:#404054; color:var(--text); font-weight:400; }
+  button:disabled { opacity:0.5; cursor:not-allowed; }
+  .stats { margin-top:16px; padding-top:14px; border-top:1px solid #404054; font-size:0.92em; line-height:1.6; }
+  .stats .score { font-size:2.6em; color:var(--accent); font-weight:700; }
+  .stat-row { display:flex; justify-content:space-between; }
+  .stat-row span:first-child { white-space:nowrap; flex-shrink:0; }
+  .stat-row span:last-child { color:var(--text); font-family:'SF Mono',Menlo,monospace; text-align:right; word-break:break-word; }
+  .leaderboard { margin-top:24px; }
+  .leaderboard table { width:100%; border-collapse:collapse; background:var(--panel); border-radius:6px; overflow:hidden; }
+  .leaderboard th, .leaderboard td { padding:10px 14px; text-align:left; border-bottom:1px solid #404054; }
+  .leaderboard th { background:#1a1a22; color:var(--muted); text-transform:uppercase; font-size:0.78em; letter-spacing:0.08em; }
+  .leaderboard td:nth-child(2){ text-align:center; font-size:1.3em; font-weight:700; color:var(--accent); }
+  .leaderboard td:nth-child(3),.leaderboard td:nth-child(4){ font-family:'SF Mono',Menlo,monospace; color:var(--muted); }
+  .leaderboard tr.human-raphson td:first-child { color:#ff9944; font-weight:700; }
+  .left-stack { display:flex; flex-direction:column; gap:16px; min-width:0; }
+  .hr-panel { padding:14px 16px; }
+  .hr-panel h3 { margin:0 0 6px; }
+  .hr-sliders { display:grid; grid-template-columns:repeat(4,1fr); gap:4px 12px; margin-bottom:10px; }
+  .hr-sliders label { margin:0; display:block; font-size:0.74em; text-align:center; color:var(--muted); }
+  .hr-sliders label output { display:block; color:var(--accent); font-family:'SF Mono',Menlo,monospace; font-size:0.82em; }
+  .hr-sliders input[type=range] { width:100%; margin:2px 0 6px; padding:0; background:transparent; }
+  .hr-sliders input[type=range]::-webkit-slider-runnable-track { background:#1a1a22; height:5px; border-radius:3px; }
+  .hr-sliders input[type=range]::-webkit-slider-thumb { -webkit-appearance:none; appearance:none; background:var(--accent); width:14px; height:14px; border-radius:50%; margin-top:-4.5px; cursor:pointer; }
+  .hr-panel > button { background:#ff9944; color:#1a1a22; margin-top:0; }
+  .skill-callout { margin-top:36px; background:rgba(126,217,87,0.07); border:1px solid rgba(126,217,87,0.35); border-radius:8px; padding:18px 22px; }
+  .skill-callout h3 { margin:0 0 6px; color:#7ed957; font-size:1.05em; text-transform:none; letter-spacing:0; }
+  .skill-callout p { margin:0 0 10px; color:var(--text); max-width:none; }
+  .skill-callout pre { background:#1a1a22; border:1px solid #404054; border-radius:4px; padding:10px 14px; margin:0; font-size:0.84em; color:#7ed957; white-space:pre-wrap; word-break:break-all; font-family:'SF Mono',Menlo,monospace; }
+  .skill-actions { margin-top:10px; display:flex; align-items:center; gap:14px; }
+  .skill-actions button { width:auto; background:#404054; color:var(--text); border:1px solid #404054; padding:6px 12px; font-size:0.85em; cursor:pointer; border-radius:4px; margin:0; font-weight:500; }
+  .skill-actions a { color:#7ed957; font-size:0.85em; text-decoration:none; }
+</style>
+</head>
+<body>
+    <nav class="site-nav" data-site-nav="v1">
+        <div class="site-nav-inner">
+            <a href="../index.html" class="site-nav-brand"><svg class="site-nav-camel" data-site-logo="camel-v3" viewBox="0 0 100 50" width="44" height="22" xmlns="http://www.w3.org/2000/svg" aria-hidden="true"><rect x="20.5" y="30" width="1.8" height="11" fill="white" fill-opacity="0.55"/><rect x="60.5" y="30" width="1.8" height="11" fill="white" fill-opacity="0.55"/><path fill="white" fill-opacity="0.92" d="M 14 30 C 10 30 8 28 8 24 C 7 22 7 19 9 18 C 11 16 13 14 16 13 C 20 8 26 6 31 9 C 34 11 35 13 35 16 C 37 18 40 18 43 17 C 47 13 53 7 59 9 C 63 11 65 13 65 16 C 66 18 68 18 70 17 C 73 13 76 9 80 7 C 84 5 89 6 90 9 L 92 9 L 93 12 L 91 13 L 87 13 L 87 15 C 82 16 79 18 76 21 C 73 25 71 28 68 30 L 66 30 L 66 42 L 64 42 L 64 30 L 26 30 L 26 42 L 24 42 L 24 30 L 14 30 Z"/><circle cx="88" cy="10" r="0.9" fill="#34495e"/></svg>HumpDay</a>
+            <div class="site-nav-links">
+                <a href="../index.html">Home</a>
+                <a href="../contest.html">Contest</a>
+                <a href="../applications/index.html">Demonstrations</a>
+                <a href="../algorithms.html">Algorithms</a>
+                <a href="../sota-status.html">SOTA status</a>
+                <a href="../recommendations.html">Recommendations</a>
+                <a href="https://github.com/microprediction/humpday" target="_blank" rel="noopener">GitHub</a>
+            </div>
+        </div>
+    </nav>
+
+<div class="container">
+  <h1>🦠 Ebola Outbreak Control Optimizer</h1>
+  <p class="intro">
+    An Ebola outbreak spreads through a population (an SEIR model). You can
+    deploy <strong>control effort</strong> — case isolation, contact tracing,
+    safe burials, ring vaccination — which cuts transmission but is costly to
+    sustain. The optimiser sets how hard to push in each of <strong>8 time
+    windows</strong> to minimise total harm = <strong>deaths + control cost</strong>.
+    The lesson it learns is the epidemiologist's: <em>don't blanket-lock
+    everything, and don't act late — hit it hard during the early growth
+    phase, then ease off.</em>
+  </p>
+
+  <div class="stage">
+    <div class="left-stack">
+      <canvas id="canvas" width="800" height="450"></canvas>
+      <div class="panel hr-panel">
+        <h3>🧠 Human Raphson</h3>
+        <p style="color:var(--muted); margin:0 0 8px; font-size:0.86em;">
+          Set the control intensity for each window and see the outbreak respond.
+        </p>
+        <div class="hr-sliders" id="hr-sliders"></div>
+        <button onclick="scoreManual()">▶ Run this policy (Human Raphson)</button>
+      </div>
+    </div>
+
+    <div class="panel">
+      <h3>Algorithm</h3>
+      <label for="algorithm">Pick a HumpDay optimizer:</label>
+      <select id="algorithm">
+        <optgroup label="Population-based">
+          <option value="CMAEvolutionStrategy" selected>CMA-Evolution Strategy</option>
+          <option value="DifferentialEvolution">Differential Evolution</option>
+          <option value="ParticleSwarm">Particle Swarm</option>
+          <option value="GeneticAlgorithm">Genetic Algorithm</option>
+          <option value="EvolutionStrategy">Evolution Strategy</option>
+          <option value="HarmonySearch">Harmony Search</option>
+        </optgroup>
+        <optgroup label="Trust-region / interpolation">
+          <option value="PRIMA_BOBYQA">PRIMA_BOBYQA</option>
+          <option value="PRIMA_NEWUOA">PRIMA_NEWUOA</option>
+        </optgroup>
+        <optgroup label="Local / classical">
+          <option value="NelderMead">Nelder-Mead</option>
+          <option value="Powell">Powell</option>
+          <option value="LBFGSB">L-BFGS-B (simplified)</option>
+        </optgroup>
+        <optgroup label="Other">
+          <option value="SimulatedAnnealing">Simulated Annealing</option>
+          <option value="BayesianOpt">Bayesian Optimization</option>
+          <option value="FireflyAlgorithm">Firefly Algorithm</option>
+          <option value="AntColonyOpt">Ant Colony</option>
+          <option value="RandomSearch">Random Search</option>
+          <option value="Rechenberg">Rechenberg (1+1)-ES</option>
+        </optgroup>
+      </select>
+
+      <label for="budget">Evaluation budget:</label>
+      <select id="budget">
+        <option value="100">100 policies</option>
+        <option value="200">200 policies</option>
+        <option value="300" selected>300 policies</option>
+        <option value="600">600 policies</option>
+      </select>
+      <p style="margin:8px 0 0; font-size:0.78em; color:var(--muted);">
+        8-D problem (control intensity per window). Score is the % of total
+        harm avoided versus letting the outbreak run unchecked.
+      </p>
+
+      <button id="run-btn" onclick="runOptimization()">▶ Optimize the response</button>
+      <button class="secondary" onclick="replayBest()">🔁 Show best response</button>
+      <button class="secondary" onclick="resetEverything()">⟲ Reset leaderboard</button>
+
+      <div class="stats">
+        <div class="stat-row"><span>Harm avoided</span><span class="score" id="score-now">—</span></div>
+        <div class="stat-row"><span>Deaths</span><span id="deaths-now">—</span></div>
+        <div class="stat-row"><span>Peak infectious</span><span id="peak-now">—</span></div>
+        <div class="stat-row"><span>Control effort</span><span id="effort-now">—</span></div>
+        <div class="stat-row"><span>Designs tried</span><span id="evals">0</span></div>
+        <div class="stat-row"><span>Best so far</span><span id="best-score">—</span></div>
+      </div>
+    </div>
+  </div>
+
+  <div class="leaderboard">
+    <h2>Leaderboard (this session)</h2>
+    <p style="color:var(--muted);">
+      Each row is the best response a given optimiser found — % of harm
+      (deaths + control cost) avoided versus no intervention. Compare the
+      control profiles: the good ones spike early, then back off.
+    </p>
+    <table>
+      <thead>
+        <tr><th>Algorithm</th><th>Harm avoided</th><th>Policies</th><th>Control per window</th></tr>
+      </thead>
+      <tbody id="leaderboard-body">
+        <tr><td colspan="4" style="color:var(--muted); text-align:center;">— no runs yet —</td></tr>
+      </tbody>
+    </table>
+  </div>
+
+  <h2>What's happening</h2>
+  <p>
+    The outbreak follows an <strong>SEIR</strong> model: Susceptible →
+    Exposed (incubating) → Infectious → Removed (recovered or, for Ebola,
+    often died). Left unchecked it burns through the population, infecting a
+    large fraction and — at a 60% case-fatality — killing many. Control
+    effort in a window cuts transmission there, but every unit of effort
+    costs (economic disruption, resources), so blanketing all eight windows
+    at full strength is hugely expensive for little extra benefit.
+  </p>
+  <p>
+    The optimiser tunes the eight intensities to minimise total harm. The
+    response it finds is sharp and non-obvious: <strong>almost nothing in
+    the first window</strong> (there's little to suppress yet), then
+    <strong>maximum effort through the growth phase</strong> to break the
+    exponential, then <strong>stand down</strong> once it's contained. Act
+    too late and the curve has already exploded; hold control forever and
+    you pay for suppression you no longer need. The red area is the
+    infectious curve; the faint red line is the unchecked outbreak; the blue
+    backdrop is how hard control is applied over time.
+  </p>
+
+  <hr style="border:0; border-top:1px solid #404054; margin:32px 0 16px;" />
+  <p style="font-size:0.78em; color:var(--muted);">
+    A compartmental toy model (R₀ ≈ 2.2, ~9-day incubation, ~10-day
+    infectious period, 60% CFR), not a calibrated forecast of any real
+    outbreak — but the control-timing trade-off it captures is real.
+  </p>
+
+  <div class="skill-callout">
+    <h3>🌱 Save the Planet</h3>
+    <p>If your hyper-parameter searches are heating the Earth, drop this in Cursor or Claude:</p>
+    <pre id="skill-snippet">Read https://raw.githubusercontent.com/microprediction/humpday/main/SKILL.md
+and create a project skill from it.</pre>
+    <div class="skill-actions">
+      <button type="button" onclick="copySkillSnippet(this)">📋 Copy</button>
+      <a href="https://github.com/microprediction/humpday/blob/main/SKILL.md" target="_blank" rel="noopener">View SKILL.md →</a>
+    </div>
+  </div>
+
+  <script>
+    function copySkillSnippet(btn){const t=document.getElementById('skill-snippet').textContent;navigator.clipboard.writeText(t).then(()=>{const o=btn.textContent;btn.textContent='✓ Copied';setTimeout(()=>{btn.textContent=o;},1500);}).catch(()=>{btn.textContent='✗ Copy failed';});}
+  </script>
+</div>
+
+<script src="../js/modules/base-optimizer.js"></script>
+<script src="../js/modules/linalg.js"></script>
+<script src="../js/modules/prima-algorithms.js"></script>
+<script src="../js/modules/scipy-algorithms.js"></script>
+<script src="../js/modules/evolutionary-algorithms.js"></script>
+<script src="../js/modules/search-algorithms.js"></script>
+
+<script>
+// ============================================================================
+// SEIR Ebola model with windowed control. Optimise control intensity per
+// window to minimise harm = deaths + control cost.
+// ============================================================================
+const T=180, DT=1, SIGMA=1/9, GAMMA=1/10, R0=2.2, BETA0=R0*GAMMA, CFR=0.6;
+const K=8, WIN=T/K, DEATH_W=1.0, ECON_W=0.18;
+function run(u, record){
+  let S=1-2e-4, E=1e-4, I=1e-4, R=0, peakI=I, econ=0;
+  const traj=record?[]:null;
+  for(let day=0;day<T;day++){
+    const k=Math.min(K-1,Math.floor(day/WIN)); const ctrl=Math.max(0,Math.min(1,u[k]));
+    const beta=BETA0*(1-0.92*ctrl);
+    const nE=beta*S*I, nI=SIGMA*E, nR=GAMMA*I;
+    S-=nE*DT; E+=(nE-nI)*DT; I+=(nI-nR)*DT; R+=nR*DT;
+    if(I>peakI)peakI=I; econ+=ctrl*DT;
+    if(record)traj.push({S,E,I,R,ctrl});
+  }
+  return { deathFrac:CFR*R, econFrac:econ/T, peakI, traj };
+}
+function harm(o){ return DEATH_W*o.deathFrac + ECON_W*o.econFrac; }
+const NOACT=run(new Array(K).fill(0), true);
+const J_NOACT=harm(NOACT);
+function decode(u){ return u.slice(0,K).map(v=>Math.max(0,Math.min(1,v))); }
+function policyScore(u){ return 100*(1 - harm(run(u))/J_NOACT); }
+const searchHistory=[];
+function objective(uu){ const u=decode(uu); const o=run(u); searchHistory.push({score:100*(1-harm(o)/J_NOACT), u, o}); return -(100*(1-harm(o)/J_NOACT)); }
+
+// ============================================================================
+// Rendering — infectious curve over time + control backdrop.
+// ============================================================================
+const canvas=document.getElementById('canvas'),ctx=canvas.getContext('2d');
+const W=canvas.width,H=canvas.height;
+const PX0=66, PX1=770, PY0=58, PY1=384;        // plot rect
+const YMAX=0.12;                                // y axis: fraction infectious
+function tx(day){ return PX0 + day/T*(PX1-PX0); }
+function ty(frac){ return PY1 - Math.min(1,frac/YMAX)*(PY1-PY0); }
+function drawAxes(){
+  ctx.strokeStyle='#2a2a36'; ctx.lineWidth=1;
+  for(let f=0;f<=0.12;f+=0.03){ const y=ty(f); ctx.beginPath(); ctx.moveTo(PX0,y); ctx.lineTo(PX1,y); ctx.stroke();
+    ctx.fillStyle='#6a6a7a'; ctx.font='10px monospace'; ctx.textAlign='right'; ctx.fillText((f*100).toFixed(0)+'%',PX0-6,y+3); }
+  ctx.fillStyle='#6a6a7a'; ctx.font='10px -apple-system,Helvetica,Arial,sans-serif'; ctx.textAlign='center';
+  for(let d=0;d<=T;d+=30){ ctx.fillText('d'+d,tx(d),PY1+16); }
+  ctx.textAlign='left'; ctx.fillStyle='#9a9aac'; ctx.font='11px -apple-system,Helvetica,Arial,sans-serif';
+  ctx.fillText('infectious population over time',PX0,PY0-10);
+}
+function drawControl(u){
+  for(let k=0;k<K;k++){ const x0=tx(k*WIN),x1=tx((k+1)*WIN); const h=(PY1-PY0)*Math.max(0,Math.min(1,u[k]));
+    ctx.fillStyle='rgba(90,160,224,0.22)'; ctx.fillRect(x0,PY1-h,x1-x0,h);
+    ctx.strokeStyle='rgba(90,160,224,0.4)'; ctx.lineWidth=1; ctx.strokeRect(x0,PY1-h,x1-x0,h); }
+}
+function curve(traj,key,color,fill){
+  ctx.beginPath(); ctx.moveTo(tx(0),ty(0));
+  for(let d=0;d<traj.length;d++) ctx.lineTo(tx(d),ty(traj[d][key]));
+  ctx.lineTo(tx(traj.length-1),ty(0));
+  if(fill){ ctx.fillStyle=fill; ctx.fill(); }
+  ctx.beginPath(); for(let d=0;d<traj.length;d++){ const X=tx(d),Y=ty(traj[d][key]); if(d===0)ctx.moveTo(X,Y); else ctx.lineTo(X,Y); }
+  ctx.strokeStyle=color; ctx.lineWidth=2; ctx.stroke();
+}
+function drawScene(o,u,hud){
+  ctx.clearRect(0,0,W,H); ctx.fillStyle='#0e0e14'; ctx.fillRect(0,0,W,H);
+  if(u)drawControl(u);
+  drawAxes();
+  // unchecked (no-action) infectious, faint dashed
+  ctx.setLineDash([5,4]);
+  ctx.beginPath(); for(let d=0;d<NOACT.traj.length;d++){const X=tx(d),Y=ty(NOACT.traj[d].I); if(d===0)ctx.moveTo(X,Y);else ctx.lineTo(X,Y);} ctx.strokeStyle='rgba(224,90,90,0.45)'; ctx.lineWidth=1.5; ctx.stroke(); ctx.setLineDash([]);
+  if(o&&o.traj) curve(o.traj,'I','#ff5a5a','rgba(255,90,90,0.22)');
+  // legend
+  ctx.font='11px -apple-system,Helvetica,Arial,sans-serif'; ctx.textAlign='left';
+  ctx.fillStyle='#ff5a5a'; ctx.fillText('■ infectious (controlled)',PX0,H-26);
+  ctx.fillStyle='rgba(224,90,90,0.7)'; ctx.fillText('— — unchecked',PX0+170,H-26);
+  ctx.fillStyle='#5aa0e0'; ctx.fillText('■ control effort',PX0+280,H-26);
+  if(hud){ ctx.font='bold 14px -apple-system,Helvetica,Arial,sans-serif'; const pad=10,bw=Math.ceil(ctx.measureText(hud).width)+2*pad;
+    ctx.fillStyle='rgba(0,0,0,0.6)'; ctx.fillRect(PX0,18,bw,24); ctx.fillStyle='#ffcc00'; ctx.fillText(hud,PX0+pad,35); }
+}
+function drawIdle(){ drawScene(NOACT, new Array(K).fill(0), 'Press "Optimize the response" to start'); }
+
+// ============================================================================
+// Runner.
+// ============================================================================
+let animationToken=0; const delay=ms=>new Promise(r=>setTimeout(r,ms));
+function setStats(o,score){
+  document.getElementById('score-now').textContent=score.toFixed(0)+'%';
+  document.getElementById('deaths-now').textContent=(o.deathFrac*100).toFixed(1)+'% of pop';
+  document.getElementById('peak-now').textContent=(o.peakI*100).toFixed(1)+'%';
+  document.getElementById('effort-now').textContent=(o.econFrac*100).toFixed(0)+'% avg';
+}
+async function montage(){
+  const my=++animationToken; const total=searchHistory.length; if(!total)return -1;
+  let best=-1e9,bi=-1;
+  for(let i=0;i<total;i++){ if(my!==animationToken)return bi;
+    const e=searchHistory[i]; const isNew=e.score>best; if(isNew){best=e.score;bi=i;}
+    document.getElementById('evals').textContent=i+1; setStats(e.o,e.score);
+    if(isNew){ addLeaderboardEntry(document.getElementById('algorithm').value,e,i+1,{inPlace:liveIdx>=0});
+      document.getElementById('best-score').textContent=`${e.score.toFixed(0)}% (${document.getElementById('algorithm').value})`; }
+    const re=run(e.u,true);
+    drawScene(re,e.u,`Policy ${i+1}/${total} · ${e.score.toFixed(0)}% avoided · best ${best.toFixed(0)}%${isNew?' ★':''}`);
+    await delay(24);
+  }
+  return bi;
+}
+let lastBest=null;
+function getOptimizerClass(n){return globalThis[n];}
+async function runOptimization(){
+  const algoName=document.getElementById('algorithm').value; const budget=parseInt(document.getElementById('budget').value,10);
+  const cls=getOptimizerClass(algoName); if(!cls){alert(`Optimizer '${algoName}' not found.`);return;}
+  const runBtn=document.getElementById('run-btn'); runBtn.disabled=true; runBtn.textContent=`Optimizing ${algoName}…`;
+  animationToken++; searchHistory.length=0; await delay(20);
+  try{
+    const opt=new cls(objective,budget,K); opt.optimize();
+    const bi=await montage(); const best=searchHistory[bi]; lastBest=best;
+    setStats(best.o,best.score);
+    document.getElementById('best-score').textContent=`${best.score.toFixed(0)}% (${algoName})`;
+    addLeaderboardEntry(algoName,best,opt.evaluations,{inPlace:liveIdx>=0}); liveIdx=-1;
+    const re=run(best.u,true); drawScene(re,best.u,`Best: ${best.score.toFixed(0)}% harm avoided (${algoName})`);
+  }catch(e){ console.error(e); alert(`${algoName} threw an error: ${e.message}`); }
+  finally{ runBtn.disabled=false; runBtn.textContent='▶ Optimize the response'; }
+}
+function replayBest(){ if(!lastBest)return; animationToken++; const re=run(lastBest.u,true); drawScene(re,lastBest.u,`Best: ${lastBest.score.toFixed(0)}% harm avoided`); }
+
+const leaderboard=[]; let liveIdx=-1;
+function addLeaderboardEntry(name,e,evals,{inPlace=false}={}){
+  const row={name,score:e.score,u:e.u,evals};
+  if(inPlace&&liveIdx>=0)leaderboard[liveIdx]=row; else {leaderboard.push(row);liveIdx=leaderboard.length-1;}
+  const tracked=leaderboard[liveIdx]; leaderboard.sort((a,b)=>b.score-a.score||a.evals-b.evals); liveIdx=leaderboard.indexOf(tracked);
+  renderLeaderboard();
+}
+function renderLeaderboard(){
+  const body=document.getElementById('leaderboard-body');
+  if(!leaderboard.length){body.innerHTML='<tr><td colspan="4" style="color:var(--muted); text-align:center;">— no runs yet —</td></tr>';return;}
+  body.innerHTML=leaderboard.map(r=>{const cls=r.name==='Human Raphson'?' class="human-raphson"':'';
+    return `<tr${cls}><td>${r.name}</td><td>${r.score.toFixed(0)}%</td><td>${r.evals}</td><td>${r.u.map(x=>x.toFixed(1)).join(' ')}</td></tr>`;
+  }).join('');
+}
+
+// ---- Human Raphson: 8 window sliders ----
+const sl=document.getElementById('hr-sliders');
+for(let k=0;k<K;k++){
+  const wrap=document.createElement('label'); wrap.innerHTML=`W${k+1}<output id="m-${k}-out">0.0</output>`;
+  const inp=document.createElement('input'); inp.type='range'; inp.id='m-'+k; inp.min=0; inp.max=1; inp.step=0.05; inp.value=0;
+  inp.addEventListener('input',()=>{document.getElementById('m-'+k+'-out').textContent=parseFloat(inp.value).toFixed(1);});
+  wrap.appendChild(inp); sl.appendChild(wrap);
+}
+function manualU(){ const u=[]; for(let k=0;k<K;k++)u.push(parseFloat(document.getElementById('m-'+k).value)); return u; }
+function scoreManual(){
+  animationToken++; const u=manualU(); const o=run(u); const score=100*(1-harm(o)/J_NOACT);
+  const e={score,u,o}; lastBest=e; setStats(o,score);
+  document.getElementById('best-score').textContent=`${score.toFixed(0)}% (Human Raphson)`;
+  addLeaderboardEntry('Human Raphson',e,1);
+  const re=run(u,true); drawScene(re,u,`🧠 Human Raphson: ${score.toFixed(0)}% harm avoided`);
+}
+function resetEverything(){ leaderboard.length=0; liveIdx=-1; lastBest=null; animationToken++;
+  document.getElementById('evals').textContent='0';
+  ['score-now','deaths-now','peak-now','effort-now','best-score'].forEach(id=>document.getElementById(id).textContent='—');
+  renderLeaderboard(); drawIdle();
+}
+
+drawIdle();
+</script>
+</body>
+</html>
