@@ -354,7 +354,7 @@ function drawIdle(){drawScene(defaultPlayers(null),null,'Press "Find the best st
 // ============================================================================
 let animationToken=0;
 function animatePoint(A,result,label){
-  const my=++animationToken;const log=result.log;
+  const my=animationToken;const log=result.log;
   const dp=defaultPlayers(A);
   const players={A:[{...dp.A[0]},{...dp.A[1]}],B:[{...dp.B[0]},{...dp.B[1]}]};
   const ready={A:[{...dp.A[0]},{...dp.A[1]}],B:[{...dp.B[0]},{...dp.B[1]}]};
@@ -390,6 +390,21 @@ function animatePoint(A,result,label){
   });
 }
 
+// Play a short series of exhibition points with a running score. The caller
+// must bump animationToken first; a new run/reset cancels the series.
+async function playSeries(strat,baseLabel,nPoints){
+  const my=animationToken;let you=0,opp=0;
+  for(let p=0;p<nPoints && my===animationToken;p++){
+    const r=simulatePoint(9000+p,strat,TEXTBOOK_B,p%2?'B':'A',true);
+    await animatePoint(strat,r,`${baseLabel}  ·  You ${you}–${opp} Opp`);
+    if(my!==animationToken)return;
+    if(r.winner==='A')you++;else opp++;
+    drawScene(defaultPlayers(strat),null,`${baseLabel}  ·  You ${you}–${opp} Opp`);
+    await new Promise(z=>setTimeout(z,520));
+  }
+  if(my===animationToken)drawScene(defaultPlayers(strat),null,`${baseLabel}  ·  Final: You ${you}–${opp} Opp`);
+}
+
 // ============================================================================
 // Runner.
 // ============================================================================
@@ -411,8 +426,7 @@ async function runOptimization(){
     document.getElementById('gap-now').textContent=(inS-outS).toFixed(1)+' pts';
     updateBestParams(best.A);
     addLeaderboardEntry(algoName,best.A,inS,outS,opt.evaluations);
-    const r=simulatePoint(7,best.A,TEXTBOOK_B,'A',true);
-    await animatePoint(best.A,r,`${algoName}: out ${outS.toFixed(0)}% / in ${inS.toFixed(0)}%`);
+    await playSeries(best.A,`${algoName}: out ${outS.toFixed(0)}% / in ${inS.toFixed(0)}%`,6);
   }catch(e){console.error(e);alert(`${algoName} threw an error: ${e.message}`);}
   finally{runBtn.disabled=false;runBtn.textContent='▶ Find the best strategy';}
 }
@@ -420,7 +434,7 @@ function updateBestParams(A){
   document.getElementById('param-a').textContent=`${A.netX.toFixed(1)} / ${A.baseDepth.toFixed(1)}`;
   document.getElementById('param-b').textContent=`${A.poach.toFixed(2)} / ${A.aimCross.toFixed(2)} / ${A.depthRisk.toFixed(2)} / ${A.lob.toFixed(2)}`;
 }
-function playBest(){if(!lastBest)return;animationToken++;replaySeed++;const r=simulatePoint(replaySeed+200,lastBest.A,TEXTBOOK_B, replaySeed%2?'A':'B',true);animatePoint(lastBest.A,r,`Best strategy — new point`);}
+function playBest(){if(!lastBest)return;animationToken++;playSeries(lastBest.A,'Best strategy',5);}
 
 const leaderboard=[];
 function addLeaderboardEntry(name,A,inS,outS,evals){leaderboard.push({name,A,inS,outS,evals});leaderboard.sort((x,y)=>y.outS-x.outS||y.inS-x.inS);renderLeaderboard();}
@@ -444,8 +458,7 @@ async function scoreManual(){
     document.getElementById('gap-now').textContent=(inS-outS).toFixed(1)+' pts';
     updateBestParams(A);lastBest={A};
     addLeaderboardEntry('Human Raphson',A,inS,outS,1);
-    const r=simulatePoint(7,A,TEXTBOOK_B,'A',true);
-    await animatePoint(A,r,`Human Raphson: out ${outS.toFixed(0)}%`);
+    await playSeries(A,`Human Raphson: out ${outS.toFixed(0)}%`,5);
   }finally{btn.disabled=false;btn.textContent='▶ Play the points (Human Raphson)';}
 }
 function resetEverything(){leaderboard.length=0;lastBest=null;animationToken++;
