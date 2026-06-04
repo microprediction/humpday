@@ -331,20 +331,23 @@ function drawCourt(){
   for(const sy of [NET-21,NET+21]){const a=toC(0,sy),b=toC(COURT_W,sy);ctx.strokeStyle='rgba(223,232,240,0.5)';ctx.lineWidth=1;ctx.beginPath();ctx.moveTo(a.X,a.Y);ctx.lineTo(b.X,b.Y);ctx.stroke();}
   const c1=toC(CENTER,NET-21),c2=toC(CENTER,NET+21);ctx.beginPath();ctx.moveTo(c1.X,c1.Y);ctx.lineTo(c2.X,c2.Y);ctx.stroke();
 }
-function drawPlayer(latX,courtY,color,label){const p=toC(latX,courtY);ctx.fillStyle=color;ctx.beginPath();ctx.arc(p.X,p.Y,8,0,Math.PI*2);ctx.fill();ctx.strokeStyle='#1a1a22';ctx.lineWidth=1.5;ctx.stroke();
-  if(label){ctx.fillStyle='#e8e8ea';ctx.font='10px -apple-system,Helvetica,Arial,sans-serif';ctx.textAlign='center';ctx.fillText(label,p.X,p.Y-12);}}
-function drawTeams(A){const a=positions(A||{netX:18,baseDepth:5},'A'),b=positions(TEXTBOOK_B,'B');
-  drawPlayer(a.net.x,a.net.y,'#ffcc00');drawPlayer(a.base.x,a.base.y,'#ffcc00');
-  drawPlayer(b.net.x,b.net.y,'#5aa0e0');drawPlayer(b.base.x,b.base.y,'#5aa0e0');}
+function drawPerson(latX,courtY,color){const p=toC(latX,courtY),X=p.X,Y=p.Y;
+  ctx.fillStyle='rgba(0,0,0,0.28)';ctx.beginPath();ctx.ellipse(X,Y+9,7,2.6,0,0,Math.PI*2);ctx.fill();          // shadow
+  ctx.fillStyle=color;ctx.strokeStyle='#1a1a22';ctx.lineWidth=1.2;                                             // torso
+  ctx.beginPath();ctx.moveTo(X-4,Y+8);ctx.lineTo(X-4,Y-1);ctx.arc(X,Y-1,4,Math.PI,0);ctx.lineTo(X+4,Y+8);ctx.closePath();ctx.fill();ctx.stroke();
+  ctx.beginPath();ctx.arc(X,Y-7,3.4,0,Math.PI*2);ctx.fill();ctx.stroke();                                      // head
+  ctx.strokeStyle=color;ctx.lineWidth=1.6;ctx.beginPath();ctx.moveTo(X+3,Y+1);ctx.lineTo(X+10,Y-4);ctx.stroke();// racket arm
+  ctx.beginPath();ctx.ellipse(X+11.5,Y-6,2.6,3.4,0.5,0,Math.PI*2);ctx.stroke();}                               // racket
+function defaultPlayers(A){const a=positions(A||{netX:18,baseDepth:5},'A'),b=positions(TEXTBOOK_B,'B');return {A:[{...a.net},{...a.base}],B:[{...b.net},{...b.base}]};}
+function drawTeamsAt(players){for(const pl of players.A)drawPerson(pl.x,pl.y,'#ffcc00');for(const pl of players.B)drawPerson(pl.x,pl.y,'#5aa0e0');}
 function drawBall(latX,courtY){const p=toC(latX,courtY);ctx.fillStyle='#eaff6a';ctx.beginPath();ctx.arc(p.X,p.Y,5,0,Math.PI*2);ctx.fill();ctx.strokeStyle='#3a3a10';ctx.lineWidth=1;ctx.stroke();}
-function drawScene(A,ball,hud){
-  drawCourt();drawTeams(A);
+function drawScene(players,ball,hud){
+  drawCourt();drawTeamsAt(players||defaultPlayers(null));
   if(ball)drawBall(ball.x,ball.y);
-  // legend
   ctx.font='12px -apple-system,Helvetica,Arial,sans-serif';ctx.textAlign='left';
   ctx.fillStyle='#ffcc00';ctx.fillText('● Your team',14,H-26);ctx.fillStyle='#5aa0e0';ctx.fillText('● Textbook team',14,H-10);
   if(hud){ctx.font='bold 14px -apple-system,Helvetica,Arial,sans-serif';const pad=10,bw=Math.ceil(ctx.measureText(hud).width)+2*pad;ctx.fillStyle='rgba(0,0,0,0.6)';ctx.fillRect(12,10,bw,24);ctx.fillStyle='#ffcc00';ctx.fillText(hud,12+pad,27);}}
-function drawIdle(){drawScene(null,null,'Press "Find the best strategy" to start');}
+function drawIdle(){drawScene(defaultPlayers(null),null,'Press "Find the best strategy" to start');}
 
 // ============================================================================
 // Animation: replay one point's rally (ball travels each shot segment).
@@ -352,20 +355,34 @@ function drawIdle(){drawScene(null,null,'Press "Find the best strategy" to start
 let animationToken=0;
 function animatePoint(A,result,label){
   const my=++animationToken;const log=result.log;
+  const dp=defaultPlayers(A);
+  const players={A:[{...dp.A[0]},{...dp.A[1]}],B:[{...dp.B[0]},{...dp.B[1]}]};
+  const ready={A:[{...dp.A[0]},{...dp.A[1]}],B:[{...dp.B[0]},{...dp.B[1]}]};
   return new Promise((res)=>{
     if(!log||!log.length)return res();
     let i=0;
     function nextShot(){
       if(my!==animationToken)return res();
       if(i>=log.length){res();return;}
-      const shot=log[i];const from=shot.from,to=shot.target;const STEPS=14;let s=0;
+      const shot=log[i],from=shot.from,to=shot.target;
+      const hitSide=shot.by,recvSide=hitSide==='A'?'B':'A';
+      const hp=players[hitSide];const hi=dist(hp[0],from)<=dist(hp[1],from)?0:1;hp[hi]={x:from.x,y:from.y};   // hitter stands at the ball
+      const rp=players[recvSide];const ci=dist(rp[0],to)<=dist(rp[1],to)?0:1;const cs={x:rp[ci].x,y:rp[ci].y}; // chaser starts here
+      const last=(i===log.length-1);const k=shot.kind;
+      const verb=k==='out'?'put it out':k==='net'?'into the net':k==='winner'?'hit a winner!':'';
+      const tag=(last&&verb)?` — ${hitSide==='A'?'You':'Opponent'} ${verb}`:'';
+      const STEPS=16;let s=0;
       function step(){
         if(my!==animationToken)return res();
-        const f=s/STEPS;const bx=from.x+(to.x-from.x)*f,by=from.y+(to.y-from.y)*f;
-        const k=shot.kind;const verb=k==='out'?'put it out':k==='net'?'into the net':k==='winner'?'hit a winner!':'';
-        const tag=(i===log.length-1&&verb)?` — ${shot.by==='A'?'You':'Opponent'} ${verb}`:'';
-        drawScene(A,{x:bx,y:by},`${label}${tag}`);
-        s++;if(s<=STEPS)setTimeout(step,16);else{i++;setTimeout(nextShot,90);}
+        const f=s/STEPS, ef=f<0.5?2*f*f:1-Math.pow(-2*f+2,2)/2;                  // ease in/out
+        const bx=from.x+(to.x-from.x)*f, by=from.y+(to.y-from.y)*f;
+        rp[ci]={x:cs.x+(to.x-cs.x)*ef, y:cs.y+(to.y-cs.y)*ef};                    // chaser runs to the ball
+        for(const sd of ['A','B'])for(let j=0;j<2;j++){                          // others recover toward ready
+          if(sd===recvSide&&j===ci)continue; if(sd===hitSide&&j===hi)continue;
+          players[sd][j].x+=(ready[sd][j].x-players[sd][j].x)*0.10;
+          players[sd][j].y+=(ready[sd][j].y-players[sd][j].y)*0.10;}
+        drawScene(players,{x:bx,y:by},`${label}${tag}`);
+        s++;if(s<=STEPS)setTimeout(step,18);else{i++;setTimeout(nextShot,110);}
       }
       step();
     }
