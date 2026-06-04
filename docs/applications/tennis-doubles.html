@@ -1,0 +1,500 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' 'unsafe-inline'; style-src 'self' 'unsafe-inline';">
+<title>🎾 Tennis Doubles Strategy Optimizer — HumpDay</title>
+<style>
+  :root { --bg:#1a1a22; --panel:#2d2d3a; --accent:#ffcc00; --text:#e8e8ea; --muted:#9a9aac; }
+  body { margin:0; background:var(--bg); color:var(--text); font-family:-apple-system,'Segoe UI','Helvetica Neue',Helvetica,Arial,sans-serif; }
+  .site-nav { background:#34495e; padding:12px 24px; font-family:'Times New Roman',Times,serif; box-shadow:0 2px 4px rgba(0,0,0,0.1); }
+  .site-nav-inner { max-width:1100px; margin:0 auto; display:flex; justify-content:space-between; align-items:center; }
+  .site-nav a { color:#ecf0f1; text-decoration:none; margin:0 12px; }
+  .site-nav a:hover { color:white; text-decoration:underline; }
+  .site-nav-brand { font-weight:700; font-size:1.25em; }
+  .container { max-width:1100px; margin:0 auto; padding:32px 24px 64px; }
+  h1 { font-size:2.2em; margin:0.2em 0; }
+  h2 { font-size:1.4em; margin-top:1.4em; color:var(--accent); }
+  p { line-height:1.55; max-width:70ch; }
+  .intro { color:var(--muted); }
+  .stage { display:grid; grid-template-columns:1fr 320px; gap:24px; align-items:start; margin-top:24px; }
+  @media (max-width:800px){ .stage { grid-template-columns:1fr; } }
+  canvas { background:#14141b; border:3px solid var(--accent); border-radius:6px; display:block; width:100%; height:auto; }
+  .panel { background:var(--panel); padding:18px; border-radius:6px; border:1px solid #404054; }
+  .panel h3 { margin:0 0 12px; font-size:1.05em; text-transform:uppercase; letter-spacing:0.06em; color:var(--accent); }
+  label { display:block; margin:10px 0 6px; font-size:0.9em; color:var(--muted); }
+  select, input, button { width:100%; box-sizing:border-box; padding:8px 10px; border-radius:4px; border:1px solid #404054; background:#1a1a22; color:var(--text); font-size:0.95em; }
+  button { background:var(--accent); color:#1a1a22; font-weight:700; cursor:pointer; margin-top:6px; transition:opacity 0.15s; }
+  button:hover { opacity:0.88; }
+  button.secondary { background:#404054; color:var(--text); font-weight:400; }
+  button:disabled { opacity:0.5; cursor:not-allowed; }
+  .stats { margin-top:16px; padding-top:14px; border-top:1px solid #404054; font-size:0.92em; line-height:1.6; }
+  .stats .score { font-size:2.6em; color:var(--accent); font-weight:700; }
+  .stat-row { display:flex; justify-content:space-between; }
+  .stat-row span:first-child { white-space:nowrap; flex-shrink:0; }
+  .stat-row span:last-child { color:var(--text); font-family:'SF Mono',Menlo,monospace; text-align:right; word-break:break-word; }
+  .leaderboard { margin-top:24px; }
+  .leaderboard table { width:100%; border-collapse:collapse; background:var(--panel); border-radius:6px; overflow:hidden; }
+  .leaderboard th, .leaderboard td { padding:10px 14px; text-align:left; border-bottom:1px solid #404054; }
+  .leaderboard th { background:#1a1a22; color:var(--muted); text-transform:uppercase; font-size:0.78em; letter-spacing:0.08em; }
+  .leaderboard td:nth-child(2){ text-align:center; font-size:1.2em; font-weight:700; color:var(--accent); }
+  .leaderboard td:nth-child(3),.leaderboard td:nth-child(4),.leaderboard td:nth-child(5){ font-family:'SF Mono',Menlo,monospace; color:var(--muted); }
+  .leaderboard tr.human-raphson td:first-child { color:#ff9944; font-weight:700; }
+  .left-stack { display:flex; flex-direction:column; gap:16px; min-width:0; }
+  .hr-panel { padding:14px 16px; }
+  .hr-panel h3 { margin:0 0 6px; }
+  .hr-sliders { display:grid; grid-template-columns:repeat(2,1fr); gap:4px 18px; margin-bottom:10px; }
+  .hr-sliders label { margin:0; display:flex; justify-content:space-between; align-items:baseline; font-size:0.82em; }
+  .hr-sliders label output { color:var(--accent); font-family:'SF Mono',Menlo,monospace; font-size:0.9em; }
+  .hr-sliders input[type=range] { width:100%; margin:0 0 4px; padding:0; background:transparent; }
+  .hr-sliders input[type=range]::-webkit-slider-runnable-track { background:#1a1a22; height:5px; border-radius:3px; }
+  .hr-sliders input[type=range]::-webkit-slider-thumb { -webkit-appearance:none; appearance:none; background:var(--accent); width:16px; height:16px; border-radius:50%; margin-top:-5.5px; cursor:pointer; }
+  .hr-panel > button { background:#ff9944; color:#1a1a22; margin-top:0; }
+  .skill-callout { margin-top:36px; background:rgba(126,217,87,0.07); border:1px solid rgba(126,217,87,0.35); border-radius:8px; padding:18px 22px; }
+  .skill-callout h3 { margin:0 0 6px; color:#7ed957; font-size:1.05em; text-transform:none; letter-spacing:0; }
+  .skill-callout p { margin:0 0 10px; color:var(--text); max-width:none; }
+  .skill-callout pre { background:#1a1a22; border:1px solid #404054; border-radius:4px; padding:10px 14px; margin:0; font-size:0.84em; color:#7ed957; white-space:pre-wrap; word-break:break-all; font-family:'SF Mono',Menlo,monospace; }
+  .skill-actions { margin-top:10px; display:flex; align-items:center; gap:14px; }
+  .skill-actions button { width:auto; background:#404054; color:var(--text); border:1px solid #404054; padding:6px 12px; font-size:0.85em; cursor:pointer; border-radius:4px; margin:0; font-weight:500; }
+  .skill-actions a { color:#7ed957; font-size:0.85em; text-decoration:none; }
+</style>
+</head>
+<body>
+    <nav class="site-nav" data-site-nav="v1">
+        <div class="site-nav-inner">
+            <a href="../index.html" class="site-nav-brand"><svg class="site-nav-camel" data-site-logo="camel-v3" viewBox="0 0 100 50" width="44" height="22" xmlns="http://www.w3.org/2000/svg" aria-hidden="true"><rect x="20.5" y="30" width="1.8" height="11" fill="white" fill-opacity="0.55"/><rect x="60.5" y="30" width="1.8" height="11" fill="white" fill-opacity="0.55"/><path fill="white" fill-opacity="0.92" d="M 14 30 C 10 30 8 28 8 24 C 7 22 7 19 9 18 C 11 16 13 14 16 13 C 20 8 26 6 31 9 C 34 11 35 13 35 16 C 37 18 40 18 43 17 C 47 13 53 7 59 9 C 63 11 65 13 65 16 C 66 18 68 18 70 17 C 73 13 76 9 80 7 C 84 5 89 6 90 9 L 92 9 L 93 12 L 91 13 L 87 13 L 87 15 C 82 16 79 18 76 21 C 73 25 71 28 68 30 L 66 30 L 66 42 L 64 42 L 64 30 L 26 30 L 26 42 L 24 42 L 24 30 L 14 30 Z"/><circle cx="88" cy="10" r="0.9" fill="#34495e"/></svg>HumpDay</a>
+            <div class="site-nav-links">
+                <a href="../index.html">Home</a>
+                <a href="../contest.html">Contest</a>
+                <a href="../applications/index.html">Demonstrations</a>
+                <a href="../algorithms.html">Algorithms</a>
+                <a href="../sota-status.html">SOTA status</a>
+                <a href="../recommendations.html">Recommendations</a>
+                <a href="https://github.com/microprediction/humpday" target="_blank" rel="noopener">GitHub</a>
+            </div>
+        </div>
+    </nav>
+
+<div class="container">
+  <h1>🎾 Tennis Doubles Strategy Optimizer</h1>
+  <p class="intro">
+    Your doubles team (yellow) rallies against a fixed "textbook" team
+    (blue) in a stylised top-down simulation. HumpDay's optimisers tune
+    <strong>6 strategy dials</strong> — court positions, how aggressively
+    your net player <strong>poaches</strong>, where you aim, how much risk
+    you take, and how often you lob — to win the most points. Because each
+    point is a <em>noisy</em> rally, training on too few points
+    <strong>overfits</strong>, so we also score on <em>held-out</em> points.
+  </p>
+
+  <div class="stage">
+    <div class="left-stack">
+      <canvas id="canvas" width="800" height="450"></canvas>
+      <div class="panel hr-panel">
+        <h3>🧠 Human Raphson</h3>
+        <p style="color:var(--muted); margin:0 0 10px; font-size:0.86em;">
+          Set your team's strategy by hand, then play a batch of points.
+        </p>
+        <div class="hr-sliders">
+          <label for="m-net">Net player across <output id="m-net-out">18</output></label>
+          <label for="m-base">Partner depth <output id="m-base-out">5</output></label>
+          <input type="range" id="m-net" min="8" max="28" step="0.5" value="18">
+          <input type="range" id="m-base" min="1" max="11" step="0.5" value="5">
+          <label for="m-poach">Poach aggression <output id="m-poach-out">0.30</output></label>
+          <label for="m-cross">Cross-court aim <output id="m-cross-out">0.55</output></label>
+          <input type="range" id="m-poach" min="0" max="1" step="0.02" value="0.3">
+          <input type="range" id="m-cross" min="0" max="1" step="0.02" value="0.55">
+          <label for="m-risk">Depth / risk <output id="m-risk-out">0.50</output></label>
+          <label for="m-lob">Lob frequency <output id="m-lob-out">0.15</output></label>
+          <input type="range" id="m-risk" min="0" max="1" step="0.02" value="0.5">
+          <input type="range" id="m-lob" min="0" max="0.4" step="0.02" value="0.15">
+        </div>
+        <button onclick="scoreManual()">▶ Play the points (Human Raphson)</button>
+      </div>
+    </div>
+
+    <div class="panel">
+      <h3>Algorithm</h3>
+      <label for="algorithm">Pick a HumpDay optimizer:</label>
+      <select id="algorithm">
+        <optgroup label="Trust-region / interpolation">
+          <option value="PRIMA_BOBYQA">PRIMA_BOBYQA</option>
+          <option value="PRIMA_NEWUOA">PRIMA_NEWUOA</option>
+        </optgroup>
+        <optgroup label="Local / classical">
+          <option value="NelderMead">Nelder-Mead</option>
+          <option value="Powell">Powell</option>
+          <option value="LBFGSB">L-BFGS-B (simplified)</option>
+        </optgroup>
+        <optgroup label="Population-based">
+          <option value="DifferentialEvolution">Differential Evolution</option>
+          <option value="ParticleSwarm">Particle Swarm</option>
+          <option value="CMAEvolutionStrategy" selected>CMA-Evolution Strategy</option>
+          <option value="GeneticAlgorithm">Genetic Algorithm</option>
+          <option value="EvolutionStrategy">Evolution Strategy</option>
+          <option value="HarmonySearch">Harmony Search</option>
+        </optgroup>
+        <optgroup label="Other">
+          <option value="SimulatedAnnealing">Simulated Annealing</option>
+          <option value="BayesianOpt">Bayesian Optimization</option>
+          <option value="FireflyAlgorithm">Firefly Algorithm</option>
+          <option value="AntColonyOpt">Ant Colony</option>
+          <option value="RandomSearch">Random Search</option>
+          <option value="Rechenberg">Rechenberg (1+1)-ES</option>
+        </optgroup>
+      </select>
+
+      <label for="budget">Parameter trials (strategies):</label>
+      <select id="budget">
+        <option value="20">20</option>
+        <option value="40" selected>40</option>
+        <option value="80">80</option>
+        <option value="150">150</option>
+        <option value="500">500</option>
+        <option value="1000">1000</option>
+        <option value="5000">5000</option>
+      </select>
+
+      <label for="points">Points per strategy (training sample):</label>
+      <select id="points">
+        <option value="8">8 points</option>
+        <option value="16" selected>16 points</option>
+        <option value="40">40 points</option>
+        <option value="120">120 points</option>
+      </select>
+      <p style="margin:8px 0 0; font-size:0.78em; color:var(--muted);">
+        Each point is a noisy rally. Fewer training points = faster but
+        more overfitting; more points = a steadier estimate.
+      </p>
+
+      <label style="display:flex; align-items:center; gap:8px; margin-top:10px; cursor:pointer;">
+        <input type="checkbox" id="fast-mode" style="width:auto;"> ⚡ Fast mode (skip animation — for big budgets like 5000)
+      </label>
+
+      <button id="run-btn" onclick="runOptimization()">▶ Find the best strategy</button>
+      <button class="secondary" onclick="playBest()">▶ Watch best strategy (new point)</button>
+      <button class="secondary" onclick="resetEverything()">⟲ Reset leaderboard</button>
+
+      <div class="stats">
+        <div class="stat-row"><span>In-sample win %</span><span class="score" id="score-now">—</span></div>
+        <div class="stat-row"><span>Out-of-sample win %</span><span id="oos-now">—</span></div>
+        <div class="stat-row"><span>Overfit gap</span><span id="gap-now">—</span></div>
+        <div class="stat-row"><span>Strategies tried</span><span id="evals">0</span></div>
+        <div class="stat-row"><span>Net / Depth</span><span id="param-a">—</span></div>
+        <div class="stat-row"><span>Poach / Cross / Risk / Lob</span><span id="param-b">—</span></div>
+      </div>
+    </div>
+  </div>
+
+  <div class="leaderboard">
+    <h2>Leaderboard (this session)</h2>
+    <p style="color:var(--muted);">
+      Sorted by <strong>out-of-sample</strong> win rate — the honest number.
+      Train on few points and watch the in-sample number run ahead of it.
+    </p>
+    <table>
+      <thead>
+        <tr><th>Algorithm</th><th>Out %</th><th>In %</th><th>Tries</th><th>Strategy (net/depth · poach/cross/risk/lob)</th></tr>
+      </thead>
+      <tbody id="leaderboard-body">
+        <tr><td colspan="5" style="color:var(--muted); text-align:center;">— no runs yet —</td></tr>
+      </tbody>
+    </table>
+  </div>
+
+  <h2>What's happening</h2>
+  <p>
+    Each point is a rally on a top-down doubles court. The hitting player
+    aims at a target chosen by your strategy (cross-court vs down-the-line,
+    how deep, whether to lob) plus random error; the shot can land
+    <strong>out</strong> or in the <strong>net</strong>, otherwise the
+    receiving team tries to cover it from where its two players stand. The
+    doubles twist: a net player who <strong>poaches</strong> snuffs out
+    cross-court balls but is then vulnerable <strong>down the line</strong>
+    — so your best aim depends on how much the opponent poaches, and your
+    best poach depends on where they aim.
+  </p>
+  <p>
+    The optimiser tunes six dials and is scored on its win rate over a batch
+    of points against the fixed textbook team. Because the rallies are
+    <strong>noisy</strong>, a small batch is a small sample: with only
+    8–16 training points the search finds a strategy that looks great
+    in-sample but gives some of it back on <strong>held-out</strong> points.
+    The <strong>in-sample minus out-of-sample gap</strong> is overfitting;
+    raise "points per strategy" and it shrinks. Sensible doubles emerges —
+    poach enough to cover the opponent's favourite cross-court ball, keep
+    risk moderate so you don't spray it out, and aim into the gaps they leave.
+  </p>
+  <p>
+    Yellow is your team, blue the textbook team; after a run the court
+    replays one of the best strategy's points, ball bouncing shot to shot
+    until someone wins or errs.
+  </p>
+
+  <hr style="border:0; border-top:1px solid #404054; margin:32px 0 16px;" />
+  <p style="font-size:0.78em; color:var(--muted);">
+    A stylised model, not a tennis engine: shots are placed at a target
+    with Gaussian error; coverage is a radius around each player's ready
+    position; poaching widens the cross-court lane and opens the line.
+    Enough to make the strategy trade-offs real and the objective noisy.
+  </p>
+
+  <div class="skill-callout">
+    <h3>🌱 Save the Planet</h3>
+    <p>If your hyper-parameter searches are heating the Earth, drop this in Cursor or Claude:</p>
+    <pre id="skill-snippet">Read https://raw.githubusercontent.com/microprediction/humpday/main/SKILL.md
+and create a project skill from it.</pre>
+    <div class="skill-actions">
+      <button type="button" onclick="copySkillSnippet(this)">📋 Copy</button>
+      <a href="https://github.com/microprediction/humpday/blob/main/SKILL.md" target="_blank" rel="noopener">View SKILL.md →</a>
+    </div>
+  </div>
+
+  <script>
+    function copySkillSnippet(btn){const t=document.getElementById('skill-snippet').textContent;navigator.clipboard.writeText(t).then(()=>{const o=btn.textContent;btn.textContent='✓ Copied';setTimeout(()=>{btn.textContent=o;},1500);}).catch(()=>{btn.textContent='✗ Copy failed';});}
+  </script>
+</div>
+
+<script src="../js/modules/base-optimizer.js"></script>
+<script src="../js/modules/linalg.js"></script>
+<script src="../js/modules/prima-algorithms.js"></script>
+<script src="../js/modules/scipy-algorithms.js"></script>
+<script src="../js/modules/evolutionary-algorithms.js"></script>
+<script src="../js/modules/search-algorithms.js"></script>
+
+<script>
+// ============================================================================
+// Stylised doubles-tennis point simulator. Team A (yellow) optimises strategy
+// vs fixed-strategy textbook Team B (blue). Seeded → reproducible per point.
+// ============================================================================
+const COURT_W=36, COURT_L=78, NET=39, CENTER=18;
+const COVER=15.0, VOLLEY_REACH=9, SKILL_SD=2.6, MARGIN=0.5, MAX_SHOTS=24;
+function makeRng(seed){let s=(seed>>>0)||1;return ()=>{s=(s*1103515245+12345)&0x7fffffff;return s/0x7fffffff;};}
+function gauss(rng){return (rng()+rng()+rng()+rng()-2)*1.4142;}
+const TEXTBOOK_B={netX:18,baseDepth:5,poach:0.30,aimCross:0.65,depthRisk:0.50,lob:0.15};
+function positions(s,side){return side==='A'?{net:{x:s.netX,y:33},base:{x:CENTER,y:s.baseDepth}}:{net:{x:s.netX,y:45},base:{x:CENTER,y:COURT_L-s.baseDepth}};}
+function dist(a,b){return Math.hypot(a.x-b.x,a.y-b.y);}
+function simulatePoint(seed,A,B,server,record){
+  const rng=makeRng(seed*131+(server==='A'?7:99));
+  const posA=positions(A,'A'),posB=positions(B,'B');
+  let hitting=server;
+  let hitter=hitting==='A'?{x:CENTER,y:A.baseDepth}:{x:CENTER,y:COURT_L-B.baseDepth};
+  const log=record?[]:null;
+  for(let shot=0;shot<MAX_SHOTS;shot++){
+    const strat=hitting==='A'?A:B;const recvSide=hitting==='A'?'B':'A';const recvStrat=hitting==='A'?B:A;const recvPos=hitting==='A'?posB:posA;
+    const intoFar=hitting==='A';const baseY=intoFar?COURT_L:0;const midY=NET+(intoFar?1:-1)*6;
+    if(shot===0){ // serve: from deuce/ad corner, diagonally into the service box
+      const deuce=(seed%2===0),near=intoFar;
+      hitter={x:deuce?25:11,y:near?2:COURT_L-2};
+      const boxX=deuce?11:25;
+      const sx=boxX+gauss(rng)*2.0+(strat.depthRisk-0.5)*5*(deuce?-1:1);
+      const sy=(near?NET+5+rng()*13:NET-5-rng()*13)+gauss(rng)*1.5;
+      const target={x:sx,y:sy};
+      const boxXok=deuce?(sx>4&&sx<18):(sx>18&&sx<32);
+      const boxYok=near?(sy>NET+1&&sy<NET+21):(sy<NET-1&&sy>NET-21);
+      if(!boxXok||!boxYok||rng()<0.03){if(record)log.push({from:{...hitter},target,kind:'out',by:hitting,serve:true});return {winner:recvSide,log};}
+      if(record)log.push({from:{...hitter},target,kind:'rally',by:hitting,serve:true});
+      hitter={x:sx,y:sy};hitting=recvSide;continue;
+    }
+    const isLob=rng()<strat.lob;let tx,ty;
+    if(isLob){tx=recvPos.net.x+(rng()<0.5?1:-1)*(4+rng()*6);ty=baseY+(intoFar?-1:1)*(3+rng()*5);}
+    else{const cross=rng()<strat.aimCross;const hitterLeft=hitter.x<CENTER;const aimLeft=cross?!hitterLeft:hitterLeft;
+      tx=aimLeft?(4+rng()*12):(20+rng()*12);const depthFrac=0.45+0.5*strat.depthRisk;ty=midY+(baseY-midY)*depthFrac;}
+    tx+=gauss(rng)*SKILL_SD;ty+=gauss(rng)*SKILL_SD;const target={x:tx,y:ty};
+    const outGeom=tx<-MARGIN||tx>COURT_W+MARGIN||(intoFar?(ty>COURT_L+MARGIN||ty<NET):(ty<-MARGIN||ty>NET));
+    const outRisk=!isLob&&rng()<(0.012+0.16*strat.depthRisk*strat.depthRisk);
+    if(outGeom||outRisk){if(record)log.push({from:{...hitter},target,kind:'out',by:hitting});return {winner:recvSide,log};}
+    const netErr=rng()<(isLob?0.015:0.02+0.035*strat.depthRisk);
+    if(netErr){if(record)log.push({from:{...hitter},target,kind:'net',by:hitting});return {winner:recvSide,log};}
+    const netShot=Math.abs(hitter.y-NET)<10;
+    const timeFactor=(isLob?1.35:(1.25-0.45*strat.depthRisk))*(netShot?0.82:1.0);
+    // receiving NET player intercepts (volley/poach) balls passing near them; down-the-line slips past
+    const np=recvPos.net;let volleyed=false,contact=null;
+    if(!isLob){const denom=target.y-hitter.y;if(Math.abs(denom)>1e-6){const frac=(np.y-hitter.y)/denom;
+      if(frac>0.05&&frac<1){const bx=hitter.x+(target.x-hitter.x)*frac;const lat=Math.abs(bx-np.x);
+        if(lat<VOLLEY_REACH&&rng()<recvStrat.poach*(1-lat/VOLLEY_REACH)+0.05){volleyed=true;contact={x:bx,y:np.y};}}}}
+    if(volleyed){if(record)log.push({from:{...hitter},target:contact,kind:'rally',by:hitting,volley:true});hitter={x:contact.x,y:contact.y};hitting=recvSide;continue;}
+    const baseReach=COVER*timeFactor*(isLob?1.18:1.0);
+    const reached=dist(recvPos.base,target)<=baseReach;
+    if(record)log.push({from:{...hitter},target,kind:reached?'rally':'winner',by:hitting});
+    if(!reached)return {winner:hitting,log};
+    hitter={x:target.x,y:target.y};hitting=recvSide;
+  }
+  return {winner:makeRng(seed)()<0.5?'A':'B',log};
+}
+function scoreStrategy(A,seeds,B){B=B||TEXTBOOK_B;let w=0,n=0;
+  for(const seed of seeds){if(simulatePoint(seed,A,B,'A',false).winner==='A')w++;n++;if(simulatePoint(seed,A,B,'B',false).winner==='A')w++;n++;}
+  return 100*w/n;}
+const N_DIM=6;
+function decode(u){return {netX:8+20*u[0],baseDepth:1+10*u[1],poach:u[2],aimCross:u[3],depthRisk:u[4],lob:0.4*u[5]};}
+
+// seeds: training set from points-per-strategy; held-out test set fixed.
+const TEST_SEEDS=(()=>{const a=[];for(let i=5000;i<5060;i++)a.push(i);return a;})();
+let runSeeds=[0,1,2,3,4,5,6,7];
+function readRunConfig(){const k=parseInt(document.getElementById('points').value,10)/2;runSeeds=[];for(let i=0;i<k;i++)runSeeds.push(i);}
+const searchHistory=[];
+function objective(u){const A=decode(u);const score=scoreStrategy(A,runSeeds);searchHistory.push({score,A});return -score;}
+
+// ============================================================================
+// Rendering — top-down court (length along screen-x), 4 players, ball.
+// ============================================================================
+const canvas=document.getElementById('canvas'),ctx=canvas.getContext('2d');
+const W=canvas.width,H=canvas.height;
+const SCALE=Math.min((W-90)/COURT_L,(H-90)/COURT_W);
+const OX=(W-COURT_L*SCALE)/2, OY=(H-COURT_W*SCALE)/2;
+function toC(latX,courtY){return {X:OX+courtY*SCALE, Y:OY+latX*SCALE};}
+function drawCourt(){
+  ctx.clearRect(0,0,W,H);ctx.fillStyle='#14141b';ctx.fillRect(0,0,W,H);
+  const tl=toC(0,0),br=toC(COURT_W,COURT_L);
+  ctx.fillStyle='#2e5a8a';ctx.fillRect(tl.X,tl.Y,br.X-tl.X,br.Y-tl.Y);          // court
+  ctx.strokeStyle='#dfe8f0';ctx.lineWidth=2;ctx.strokeRect(tl.X,tl.Y,br.X-tl.X,br.Y-tl.Y);
+  // net
+  const n1=toC(0,NET),n2=toC(COURT_W,NET);ctx.strokeStyle='#f7f7fa';ctx.lineWidth=3;ctx.beginPath();ctx.moveTo(n1.X,n1.Y);ctx.lineTo(n2.X,n2.Y);ctx.stroke();
+  // service lines (21 ft from net both sides) + centre service line
+  for(const sy of [NET-21,NET+21]){const a=toC(0,sy),b=toC(COURT_W,sy);ctx.strokeStyle='rgba(223,232,240,0.5)';ctx.lineWidth=1;ctx.beginPath();ctx.moveTo(a.X,a.Y);ctx.lineTo(b.X,b.Y);ctx.stroke();}
+  const c1=toC(CENTER,NET-21),c2=toC(CENTER,NET+21);ctx.beginPath();ctx.moveTo(c1.X,c1.Y);ctx.lineTo(c2.X,c2.Y);ctx.stroke();
+}
+function drawPerson(latX,courtY,color){const p=toC(latX,courtY),X=p.X,Y=p.Y;
+  ctx.fillStyle='rgba(0,0,0,0.28)';ctx.beginPath();ctx.ellipse(X,Y+9,7,2.6,0,0,Math.PI*2);ctx.fill();          // shadow
+  ctx.fillStyle=color;ctx.strokeStyle='#1a1a22';ctx.lineWidth=1.2;                                             // torso
+  ctx.beginPath();ctx.moveTo(X-4,Y+8);ctx.lineTo(X-4,Y-1);ctx.arc(X,Y-1,4,Math.PI,0);ctx.lineTo(X+4,Y+8);ctx.closePath();ctx.fill();ctx.stroke();
+  ctx.beginPath();ctx.arc(X,Y-7,3.4,0,Math.PI*2);ctx.fill();ctx.stroke();                                      // head
+  ctx.strokeStyle=color;ctx.lineWidth=1.6;ctx.beginPath();ctx.moveTo(X+3,Y+1);ctx.lineTo(X+10,Y-4);ctx.stroke();// racket arm
+  ctx.beginPath();ctx.ellipse(X+11.5,Y-6,2.6,3.4,0.5,0,Math.PI*2);ctx.stroke();}                               // racket
+function defaultPlayers(A){const a=positions(A||{netX:18,baseDepth:5},'A'),b=positions(TEXTBOOK_B,'B');return {A:[{...a.net},{...a.base}],B:[{...b.net},{...b.base}]};}
+function drawTeamsAt(players){for(const pl of players.A)drawPerson(pl.x,pl.y,'#ffcc00');for(const pl of players.B)drawPerson(pl.x,pl.y,'#5aa0e0');}
+function drawBall(latX,courtY){const p=toC(latX,courtY);ctx.fillStyle='#eaff6a';ctx.beginPath();ctx.arc(p.X,p.Y,5,0,Math.PI*2);ctx.fill();ctx.strokeStyle='#3a3a10';ctx.lineWidth=1;ctx.stroke();}
+function drawScene(players,ball,hud){
+  drawCourt();drawTeamsAt(players||defaultPlayers(null));
+  if(ball)drawBall(ball.x,ball.y);
+  ctx.font='12px -apple-system,Helvetica,Arial,sans-serif';ctx.textAlign='left';
+  ctx.fillStyle='#ffcc00';ctx.fillText('● Your team',14,H-26);ctx.fillStyle='#5aa0e0';ctx.fillText('● Textbook team',14,H-10);
+  if(hud){ctx.font='bold 14px -apple-system,Helvetica,Arial,sans-serif';const pad=10,bw=Math.ceil(ctx.measureText(hud).width)+2*pad;ctx.fillStyle='rgba(0,0,0,0.6)';ctx.fillRect(12,10,bw,24);ctx.fillStyle='#ffcc00';ctx.fillText(hud,12+pad,27);}}
+function drawIdle(){drawScene(defaultPlayers(null),null,'Press "Find the best strategy" to start');}
+
+// ============================================================================
+// Animation: replay one point's rally (ball travels each shot segment).
+// ============================================================================
+let animationToken=0;
+function animatePoint(A,result,label){
+  const my=animationToken;const log=result.log;
+  const dp=defaultPlayers(A);
+  const players={A:[{...dp.A[0]},{...dp.A[1]}],B:[{...dp.B[0]},{...dp.B[1]}]};
+  const ready={A:[{...dp.A[0]},{...dp.A[1]}],B:[{...dp.B[0]},{...dp.B[1]}]};
+  return new Promise((res)=>{
+    if(!log||!log.length)return res();
+    let i=0;
+    function nextShot(){
+      if(my!==animationToken)return res();
+      if(i>=log.length){res();return;}
+      const shot=log[i],from=shot.from,to=shot.target;
+      const hitSide=shot.by,recvSide=hitSide==='A'?'B':'A';
+      const hp=players[hitSide];const hi=dist(hp[0],from)<=dist(hp[1],from)?0:1;hp[hi]={x:from.x,y:from.y};   // hitter stands at the ball
+      const rp=players[recvSide];const ci=dist(rp[0],to)<=dist(rp[1],to)?0:1;const cs={x:rp[ci].x,y:rp[ci].y}; // chaser starts here
+      const last=(i===log.length-1);const k=shot.kind;
+      const verb=k==='out'?'put it out':k==='net'?'into the net':k==='winner'?'hit a winner!':'';
+      const tag=(last&&verb)?` — ${hitSide==='A'?'You':'Opponent'} ${verb}`:'';
+      const STEPS=16;let s=0;
+      function step(){
+        if(my!==animationToken)return res();
+        const f=s/STEPS, ef=f<0.5?2*f*f:1-Math.pow(-2*f+2,2)/2;                  // ease in/out
+        const bx=from.x+(to.x-from.x)*f, by=from.y+(to.y-from.y)*f;
+        rp[ci]={x:cs.x+(to.x-cs.x)*ef, y:cs.y+(to.y-cs.y)*ef};                    // chaser runs to the ball
+        for(const sd of ['A','B'])for(let j=0;j<2;j++){                          // others recover toward ready
+          if(sd===recvSide&&j===ci)continue; if(sd===hitSide&&j===hi)continue;
+          players[sd][j].x+=(ready[sd][j].x-players[sd][j].x)*0.10;
+          players[sd][j].y+=(ready[sd][j].y-players[sd][j].y)*0.10;}
+        drawScene(players,{x:bx,y:by},`${label}${tag}`);
+        s++;if(s<=STEPS)setTimeout(step,18);else{i++;setTimeout(nextShot,110);}
+      }
+      step();
+    }
+    nextShot();
+  });
+}
+
+// Play a short series of exhibition points with a running score. The caller
+// must bump animationToken first; a new run/reset cancels the series.
+async function playSeries(strat,baseLabel,nPoints){
+  const my=animationToken;let you=0,opp=0;
+  for(let p=0;p<nPoints && my===animationToken;p++){
+    const r=simulatePoint(9000+p,strat,TEXTBOOK_B,p%2?'B':'A',true);
+    await animatePoint(strat,r,`${baseLabel}  ·  You ${you}–${opp} Opp`);
+    if(my!==animationToken)return;
+    if(r.winner==='A')you++;else opp++;
+    drawScene(defaultPlayers(strat),null,`${baseLabel}  ·  You ${you}–${opp} Opp`);
+    await new Promise(z=>setTimeout(z,520));
+  }
+  if(my===animationToken)drawScene(defaultPlayers(strat),null,`${baseLabel}  ·  Final: You ${you}–${opp} Opp`);
+}
+
+// ============================================================================
+// Runner.
+// ============================================================================
+let lastBest=null, replaySeed=0;
+function getOptimizerClass(n){return globalThis[n];}
+async function runOptimization(){
+  const algoName=document.getElementById('algorithm').value;const budget=parseInt(document.getElementById('budget').value,10);
+  const cls=getOptimizerClass(algoName);if(!cls){alert(`Optimizer '${algoName}' not found.`);return;}
+  const runBtn=document.getElementById('run-btn');runBtn.disabled=true;runBtn.textContent=`Searching ${algoName}…`;
+  animationToken++;searchHistory.length=0;readRunConfig();await new Promise(r=>setTimeout(r,20));
+  try{
+    const opt=new cls(objective,budget,N_DIM);opt.optimize();
+    let bi=0;for(let i=1;i<searchHistory.length;i++)if(searchHistory[i].score>searchHistory[bi].score)bi=i;
+    const best=searchHistory[bi];lastBest=best;
+    const inS=best.score,outS=scoreStrategy(best.A,TEST_SEEDS);
+    document.getElementById('evals').textContent=searchHistory.length;
+    document.getElementById('score-now').textContent=inS.toFixed(1)+'%';
+    document.getElementById('oos-now').textContent=outS.toFixed(1)+'%';
+    document.getElementById('gap-now').textContent=(inS-outS).toFixed(1)+' pts';
+    updateBestParams(best.A);
+    addLeaderboardEntry(algoName,best.A,inS,outS,opt.evaluations);
+    if(document.getElementById('fast-mode').checked){
+      drawScene(defaultPlayers(best.A),null,`${algoName}: out ${outS.toFixed(0)}% / in ${inS.toFixed(0)}% · ${searchHistory.length} evals (fast)`);
+    } else {
+      await playSeries(best.A,`${algoName}: out ${outS.toFixed(0)}% / in ${inS.toFixed(0)}%`,6);
+    }
+  }catch(e){console.error(e);alert(`${algoName} threw an error: ${e.message}`);}
+  finally{runBtn.disabled=false;runBtn.textContent='▶ Find the best strategy';}
+}
+function updateBestParams(A){
+  document.getElementById('param-a').textContent=`${A.netX.toFixed(1)} / ${A.baseDepth.toFixed(1)}`;
+  document.getElementById('param-b').textContent=`${A.poach.toFixed(2)} / ${A.aimCross.toFixed(2)} / ${A.depthRisk.toFixed(2)} / ${A.lob.toFixed(2)}`;
+}
+function playBest(){if(!lastBest)return;animationToken++;playSeries(lastBest.A,'Best strategy',5);}
+
+const leaderboard=[];
+function addLeaderboardEntry(name,A,inS,outS,evals){leaderboard.push({name,A,inS,outS,evals});leaderboard.sort((x,y)=>y.outS-x.outS||y.inS-x.inS);renderLeaderboard();}
+function renderLeaderboard(){const body=document.getElementById('leaderboard-body');
+  if(!leaderboard.length){body.innerHTML='<tr><td colspan="5" style="color:var(--muted); text-align:center;">— no runs yet —</td></tr>';return;}
+  body.innerHTML=leaderboard.map(r=>{const A=r.A,cls=r.name==='Human Raphson'?' class="human-raphson"':'';
+    const s=`${A.netX.toFixed(0)}/${A.baseDepth.toFixed(0)} · ${A.poach.toFixed(2)}/${A.aimCross.toFixed(2)}/${A.depthRisk.toFixed(2)}/${A.lob.toFixed(2)}`;
+    return `<tr${cls}><td>${r.name}</td><td>${r.outS.toFixed(1)}%</td><td>${r.inS.toFixed(1)}%</td><td>${r.evals}</td><td>${s}</td></tr>`;}).join('');}
+
+// ---- Human Raphson sliders ----
+const HR=['m-net','m-base','m-poach','m-cross','m-risk','m-lob'];
+for(const id of HR){const sl=document.getElementById(id),o=document.getElementById(id+'-out');const dec=(id==='m-net'||id==='m-base')?0:2;const upd=()=>{o.textContent=parseFloat(sl.value).toFixed(dec);};sl.addEventListener('input',upd);upd();}
+function manualStrategy(){const g=id=>parseFloat(document.getElementById(id).value);return {netX:g('m-net'),baseDepth:g('m-base'),poach:g('m-poach'),aimCross:g('m-cross'),depthRisk:g('m-risk'),lob:g('m-lob')};}
+async function scoreManual(){
+  const btn=document.querySelector('.hr-panel>button');btn.disabled=true;btn.textContent='Playing…';
+  animationToken++;readRunConfig();const A=manualStrategy();await new Promise(r=>setTimeout(r,20));
+  try{
+    const inS=scoreStrategy(A,runSeeds),outS=scoreStrategy(A,TEST_SEEDS);
+    document.getElementById('score-now').textContent=inS.toFixed(1)+'%';
+    document.getElementById('oos-now').textContent=outS.toFixed(1)+'%';
+    document.getElementById('gap-now').textContent=(inS-outS).toFixed(1)+' pts';
+    updateBestParams(A);lastBest={A};
+    addLeaderboardEntry('Human Raphson',A,inS,outS,1);
+    await playSeries(A,`Human Raphson: out ${outS.toFixed(0)}%`,5);
+  }finally{btn.disabled=false;btn.textContent='▶ Play the points (Human Raphson)';}
+}
+function resetEverything(){leaderboard.length=0;lastBest=null;animationToken++;
+  document.getElementById('evals').textContent='0';
+  ['score-now','oos-now','gap-now','param-a','param-b'].forEach(id=>document.getElementById(id).textContent='—');
+  renderLeaderboard();drawIdle();}
+
+drawIdle();
+</script>
+</body>
+</html>
