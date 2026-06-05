@@ -28,8 +28,10 @@ Each subfolder is self-contained:
 | [`circle_packing/`](circle_packing/)       | Packing geometry                  | Non-smooth "maximise the minimum"; sharp ridges where the binding gap switches; a known optimum. |
 | [`brachistochrone/`](brachistochrone/)     | Calculus of variations            | The fastest-slide curve (a cycloid, not the straight line); a counter-intuitive smooth optimum. |
 | [`tuned_mass_damper/`](tuned_mass_damper/) | Mixed-integer seismic             | Three continuous knobs plus one integer floor; dynamics (Newmark-β) in the objective; resonance tuning. |
+| [`tennis_doubles/`](tennis_doubles/)       | Game strategy                     | Tune doubles tactics vs a textbook team; noisy, in/out-of-sample overfitting; safe play wins. |
+| [`chess_piece_values/`](chess_piece_values/) | Game strategy (expensive)       | A perft-verified depth-2 engine; objective-design cautionary tale — it exploits the opponent, not the textbook values. |
 
-These last thirteen mirror, in pure Python, the interactive browser demos at
+These last fifteen mirror, in pure Python, the interactive browser demos at
 [`docs/applications/`](../docs/applications/). Several are deliberately a matched
 pair — `lens_design` (low-D, interpolation/local methods win) versus
 `genetic_art` (high-D, those same methods lose) — so the **No-Free-Lunch**
@@ -74,6 +76,8 @@ python -m example_applications.antenna_array.run
 python -m example_applications.circle_packing.run
 python -m example_applications.brachistochrone.run
 python -m example_applications.tuned_mass_damper.run
+python -m example_applications.tennis_doubles.run
+python -m example_applications.chess_piece_values.run
 ```
 
 No external dependencies beyond what HumpDay itself uses — these are
