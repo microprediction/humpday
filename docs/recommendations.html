@@ -123,6 +123,7 @@
                 <a href="index.html">Home</a>
                 <a href="contest.html">Contest</a>
                 <a href="applications/index.html">Demonstrations</a>
+                <a href="applications/no-free-lunch.html">No Free Lunch</a>
                 <a href="algorithms.html">Algorithms</a>
                 <a href="sota-status.html">SOTA status</a>
                 <a href="recommendations.html">Recommendations</a>
@@ -147,6 +148,18 @@
             requiring you to know which algorithms have heavy per-iter overhead
             (GP fits, eigendecompositions) and which don't.
         </div>
+
+        <p>
+            Why have a recommender at all, rather than a single default optimizer?
+            Because no optimizer wins everywhere &mdash; the best choice genuinely
+            depends on the problem's dimension, smoothness, noise and evaluation
+            budget. The
+            <a href="applications/no-free-lunch.html">No-Free-Lunch Scoreboard</a>
+            shows this empirically: it runs eight optimizers against eight problems
+            and the winner changes from column to column (the method that's best on
+            average is always near-worst on <em>something</em>). Everything below is
+            how HumpDay turns that fact into an automatic, problem-aware choice.
+        </p>
 
         <h2>How auto-selection works</h2>
         <p>
