@@ -24,8 +24,12 @@ Each subfolder is self-contained:
 | [`espresso_dialin/`](espresso_dialin/)     | Sample-efficient tuning           | Tiny noisy budget; interpolation / Bayesian methods win where population methods are still warming up. |
 | [`fm_sound_match/`](fm_sound_match/)       | Audio / spectral inverse          | Recover a synth patch from its spectrum; smooth here, but a famously octave-trapped problem if unbounded. |
 | [`boids_flocking/`](boids_flocking/)       | Emergent navigation               | A swarm threading a chicane; a broad, forgiving basin where even Random Search does well. |
+| [`antenna_array/`](antenna_array/)         | Antenna design                    | Optimiser beats intuition: an irregular element spacing beats the even array; a wiggly multimodal landscape. |
+| [`circle_packing/`](circle_packing/)       | Packing geometry                  | Non-smooth "maximise the minimum"; sharp ridges where the binding gap switches; a known optimum. |
+| [`brachistochrone/`](brachistochrone/)     | Calculus of variations            | The fastest-slide curve (a cycloid, not the straight line); a counter-intuitive smooth optimum. |
+| [`tuned_mass_damper/`](tuned_mass_damper/) | Mixed-integer seismic             | Three continuous knobs plus one integer floor; dynamics (Newmark-β) in the objective; resonance tuning. |
 
-These last nine mirror, in pure Python, the interactive browser demos at
+These last thirteen mirror, in pure Python, the interactive browser demos at
 [`docs/applications/`](../docs/applications/). Several are deliberately a matched
 pair — `lens_design` (low-D, interpolation/local methods win) versus
 `genetic_art` (high-D, those same methods lose) — so the **No-Free-Lunch**
@@ -66,6 +70,10 @@ python -m example_applications.ebola_response.run
 python -m example_applications.espresso_dialin.run
 python -m example_applications.fm_sound_match.run
 python -m example_applications.boids_flocking.run
+python -m example_applications.antenna_array.run
+python -m example_applications.circle_packing.run
+python -m example_applications.brachistochrone.run
+python -m example_applications.tuned_mass_damper.run
 ```
 
 No external dependencies beyond what HumpDay itself uses — these are
