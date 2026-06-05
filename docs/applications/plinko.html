@@ -1,0 +1,381 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' 'unsafe-inline'; style-src 'self' 'unsafe-inline';">
+<title>🎰 Plinko Targeting Optimizer — HumpDay</title>
+<style>
+  :root { --bg:#1a1a22; --panel:#2d2d3a; --accent:#ffcc00; --text:#e8e8ea; --muted:#9a9aac; }
+  body { margin:0; background:var(--bg); color:var(--text); font-family:-apple-system,'Segoe UI','Helvetica Neue',Helvetica,Arial,sans-serif; }
+  .site-nav { background:#34495e; padding:12px 24px; font-family:'Times New Roman',Times,serif; box-shadow:0 2px 4px rgba(0,0,0,0.1); }
+  .site-nav-inner { max-width:1100px; margin:0 auto; display:flex; justify-content:space-between; align-items:center; }
+  .site-nav a { color:#ecf0f1; text-decoration:none; margin:0 12px; }
+  .site-nav a:hover { color:white; text-decoration:underline; }
+  .site-nav-brand { font-weight:700; font-size:1.25em; }
+  .container { max-width:1100px; margin:0 auto; padding:32px 24px 64px; }
+  h1 { font-size:2.2em; margin:0.2em 0; }
+  h2 { font-size:1.4em; margin-top:1.4em; color:var(--accent); }
+  p { line-height:1.55; max-width:70ch; }
+  .intro { color:var(--muted); }
+  .stage { display:grid; grid-template-columns:1fr 320px; gap:24px; align-items:start; margin-top:24px; }
+  @media (max-width:800px){ .stage { grid-template-columns:1fr; } }
+  canvas { background:#0e0e14; border:3px solid var(--accent); border-radius:6px; display:block; width:100%; height:auto; }
+  .panel { background:var(--panel); padding:18px; border-radius:6px; border:1px solid #404054; }
+  .panel h3 { margin:0 0 12px; font-size:1.05em; text-transform:uppercase; letter-spacing:0.06em; color:var(--accent); }
+  label { display:block; margin:10px 0 6px; font-size:0.9em; color:var(--muted); }
+  select, input, button { width:100%; box-sizing:border-box; padding:8px 10px; border-radius:4px; border:1px solid #404054; background:#1a1a22; color:var(--text); font-size:0.95em; }
+  button { background:var(--accent); color:#1a1a22; font-weight:700; cursor:pointer; margin-top:6px; transition:opacity 0.15s; }
+  button:hover { opacity:0.88; }
+  button.secondary { background:#404054; color:var(--text); font-weight:400; }
+  button:disabled { opacity:0.5; cursor:not-allowed; }
+  .stats { margin-top:16px; padding-top:14px; border-top:1px solid #404054; font-size:0.92em; line-height:1.6; }
+  .stats .score { font-size:2.6em; color:var(--accent); font-weight:700; }
+  .stat-row { display:flex; justify-content:space-between; }
+  .stat-row span:first-child { white-space:nowrap; flex-shrink:0; }
+  .stat-row span:last-child { color:var(--text); font-family:'SF Mono',Menlo,monospace; text-align:right; word-break:break-word; }
+  .leaderboard { margin-top:24px; }
+  .leaderboard table { width:100%; border-collapse:collapse; background:var(--panel); border-radius:6px; overflow:hidden; }
+  .leaderboard th, .leaderboard td { padding:10px 14px; text-align:left; border-bottom:1px solid #404054; }
+  .leaderboard th { background:#1a1a22; color:var(--muted); text-transform:uppercase; font-size:0.78em; letter-spacing:0.08em; }
+  .leaderboard td:nth-child(2){ text-align:center; font-size:1.3em; font-weight:700; color:var(--accent); }
+  .leaderboard td:nth-child(3),.leaderboard td:nth-child(4){ font-family:'SF Mono',Menlo,monospace; color:var(--muted); }
+  .leaderboard tr.human-raphson td:first-child { color:#ff9944; font-weight:700; }
+  .left-stack { display:flex; flex-direction:column; gap:16px; min-width:0; }
+  .hr-panel { padding:14px 16px; }
+  .hr-panel h3 { margin:0 0 6px; }
+  .hr-sliders { display:grid; grid-template-columns:repeat(7,1fr); gap:4px 6px; margin-bottom:10px; }
+  .hr-sliders label { margin:0; display:block; font-size:0.7em; text-align:center; color:var(--muted); }
+  .hr-sliders input[type=range] { width:100%; margin:2px 0; padding:0; background:transparent; writing-mode:vertical-lr; direction:rtl; height:54px; }
+  .hr-sliders input[type=range]::-webkit-slider-runnable-track { background:#1a1a22; width:5px; border-radius:3px; }
+  .hr-sliders input[type=range]::-webkit-slider-thumb { -webkit-appearance:none; appearance:none; background:var(--accent); width:14px; height:14px; border-radius:50%; margin-left:-4.5px; cursor:pointer; }
+  .hr-panel > button { background:#ff9944; color:#1a1a22; margin-top:0; }
+  .skill-callout { margin-top:36px; background:rgba(126,217,87,0.07); border:1px solid rgba(126,217,87,0.35); border-radius:8px; padding:18px 22px; }
+  .skill-callout h3 { margin:0 0 6px; color:#7ed957; font-size:1.05em; text-transform:none; letter-spacing:0; }
+  .skill-callout p { margin:0 0 10px; color:var(--text); max-width:none; }
+  .skill-callout pre { background:#1a1a22; border:1px solid #404054; border-radius:4px; padding:10px 14px; margin:0; font-size:0.84em; color:#7ed957; white-space:pre-wrap; word-break:break-all; font-family:'SF Mono',Menlo,monospace; }
+  .skill-actions { margin-top:10px; display:flex; align-items:center; gap:14px; }
+  .skill-actions button { width:auto; background:#404054; color:var(--text); border:1px solid #404054; padding:6px 12px; font-size:0.85em; cursor:pointer; border-radius:4px; margin:0; font-weight:500; }
+  .skill-actions a { color:#7ed957; font-size:0.85em; text-decoration:none; }
+</style>
+</head>
+<body>
+    <nav class="site-nav" data-site-nav="v1">
+        <div class="site-nav-inner">
+            <a href="../index.html" class="site-nav-brand"><svg class="site-nav-camel" data-site-logo="camel-v3" viewBox="0 0 100 50" width="44" height="22" xmlns="http://www.w3.org/2000/svg" aria-hidden="true"><rect x="20.5" y="30" width="1.8" height="11" fill="white" fill-opacity="0.55"/><rect x="60.5" y="30" width="1.8" height="11" fill="white" fill-opacity="0.55"/><path fill="white" fill-opacity="0.92" d="M 14 30 C 10 30 8 28 8 24 C 7 22 7 19 9 18 C 11 16 13 14 16 13 C 20 8 26 6 31 9 C 34 11 35 13 35 16 C 37 18 40 18 43 17 C 47 13 53 7 59 9 C 63 11 65 13 65 16 C 66 18 68 18 70 17 C 73 13 76 9 80 7 C 84 5 89 6 90 9 L 92 9 L 93 12 L 91 13 L 87 13 L 87 15 C 82 16 79 18 76 21 C 73 25 71 28 68 30 L 66 30 L 66 42 L 64 42 L 64 30 L 26 30 L 26 42 L 24 42 L 24 30 L 14 30 Z"/><circle cx="88" cy="10" r="0.9" fill="#34495e"/></svg>HumpDay</a>
+            <div class="site-nav-links">
+                <a href="../index.html">Home</a>
+                <a href="../contest.html">Contest</a>
+                <a href="../applications/index.html">Demonstrations</a>
+                <a href="../algorithms.html">Algorithms</a>
+                <a href="../sota-status.html">SOTA status</a>
+                <a href="../recommendations.html">Recommendations</a>
+                <a href="https://github.com/microprediction/humpday" target="_blank" rel="noopener">GitHub</a>
+            </div>
+        </div>
+    </nav>
+
+<div class="container">
+  <h1>🎰 Plinko Targeting Optimizer</h1>
+  <p class="intro">
+    Balls cascade down a peg board, bouncing left or right at random — a
+    Galton board, so they'd normally pile up in the <em>middle</em>. Your job
+    is to make them land in an <strong>off-centre target bin</strong> instead,
+    by tuning the board's <strong>lean profile</strong> (which way each region
+    of pegs nudges the balls). The twist: the objective is <strong>inherently
+    noisy</strong> — every ball is a fresh coin-flip cascade — so the optimiser
+    is steering a random process, not a deterministic one.
+  </p>
+
+  <div class="stage">
+    <div class="left-stack">
+      <canvas id="canvas" width="800" height="450"></canvas>
+      <div class="panel hr-panel">
+        <h3>🧠 Human Raphson</h3>
+        <p style="color:var(--muted); margin:0 0 8px; font-size:0.86em;">
+          Lean each region of the board (left ⟷ right) and drop a batch of balls.
+        </p>
+        <div class="hr-sliders" id="hr-sliders"></div>
+        <button onclick="scoreManual()">▶ Drop the balls (Human Raphson)</button>
+      </div>
+    </div>
+
+    <div class="panel">
+      <h3>Algorithm</h3>
+      <label for="algorithm">Pick a HumpDay optimizer:</label>
+      <select id="algorithm">
+        <optgroup label="Population-based">
+          <option value="CMAEvolutionStrategy" selected>CMA-Evolution Strategy</option>
+          <option value="DifferentialEvolution">Differential Evolution</option>
+          <option value="ParticleSwarm">Particle Swarm</option>
+          <option value="GeneticAlgorithm">Genetic Algorithm</option>
+          <option value="EvolutionStrategy">Evolution Strategy</option>
+          <option value="HarmonySearch">Harmony Search</option>
+        </optgroup>
+        <optgroup label="Trust-region / interpolation">
+          <option value="PRIMA_BOBYQA">PRIMA_BOBYQA</option>
+          <option value="PRIMA_NEWUOA">PRIMA_NEWUOA</option>
+        </optgroup>
+        <optgroup label="Local / classical">
+          <option value="NelderMead">Nelder-Mead</option>
+          <option value="Powell">Powell</option>
+          <option value="LBFGSB">L-BFGS-B (simplified)</option>
+        </optgroup>
+        <optgroup label="Other">
+          <option value="SimulatedAnnealing">Simulated Annealing</option>
+          <option value="BayesianOpt">Bayesian Optimization</option>
+          <option value="FireflyAlgorithm">Firefly Algorithm</option>
+          <option value="AntColonyOpt">Ant Colony</option>
+          <option value="RandomSearch">Random Search</option>
+          <option value="Rechenberg">Rechenberg (1+1)-ES</option>
+        </optgroup>
+      </select>
+
+      <label for="budget">Evaluation budget:</label>
+      <select id="budget">
+        <option value="80">80 boards</option>
+        <option value="150" selected>150 boards</option>
+        <option value="300">300 boards</option>
+      </select>
+      <p style="margin:8px 0 0; font-size:0.78em; color:var(--muted);">
+        7-D problem (the lean profile). Each board drops 400 random balls;
+        the score (% landing in the target bin) is a noisy estimate.
+      </p>
+
+      <button id="run-btn" onclick="runOptimization()">▶ Optimize the board</button>
+      <button class="secondary" onclick="replayBest()">🔁 Replay best board</button>
+      <button class="secondary" onclick="resetEverything()">⟲ Reset leaderboard</button>
+
+      <div class="stats">
+        <div class="stat-row"><span>In target bin</span><span class="score" id="score-now">—</span></div>
+        <div class="stat-row"><span>Target bin</span><span id="target-now">—</span></div>
+        <div class="stat-row"><span>Boards tried</span><span id="evals">0</span></div>
+        <div class="stat-row"><span>Best so far</span><span id="best-score">—</span></div>
+        <div class="stat-row"><span>Lean profile</span><span id="param-a">—</span></div>
+      </div>
+    </div>
+  </div>
+
+  <div class="leaderboard">
+    <h2>Leaderboard (this session)</h2>
+    <p style="color:var(--muted);">
+      Each row is the best board a given optimiser found — % of balls landing
+      in the target bin. With no lean, only a few percent reach an off-centre
+      bin; a good funnel gets more than half of them there.
+    </p>
+    <table>
+      <thead>
+        <tr><th>Algorithm</th><th>In target</th><th>Boards</th><th>Lean profile (left→right)</th></tr>
+      </thead>
+      <tbody id="leaderboard-body">
+        <tr><td colspan="4" style="color:var(--muted); text-align:center;">— no runs yet —</td></tr>
+      </tbody>
+    </table>
+  </div>
+
+  <h2>What's happening</h2>
+  <p>
+    A ball enters at the top centre and bounces down 14 rows of pegs. At each
+    peg it goes left or right; with a flat board that's a fair coin, so balls
+    pile up in a bell curve around the middle — almost none reach an off-centre
+    bin. Each region of the board has a tunable <strong>lean</strong> that
+    biases the coin: lean a region right and balls there drift right. The seven
+    lean values form a smooth profile across the width.
+  </p>
+  <p>
+    The optimiser tunes the profile to <strong>funnel</strong> balls into the
+    target: push them across from the centre, then catch and concentrate them
+    over the target bin. Because every ball is random and only 400 are dropped
+    per board, the score is a <strong>noisy</strong> measurement — the
+    optimiser is steering a stochastic process, which is exactly the
+    expensive-and-noisy regime where derivative-free methods are used. Watch
+    the histogram's peak march from the centre over to the target as the search
+    improves.
+  </p>
+
+  <hr style="border:0; border-top:1px solid #404054; margin:32px 0 16px;" />
+  <p style="font-size:0.78em; color:var(--muted);">
+    A stylised Galton board — pegs bias a left/right coin flip rather than a
+    full collision sim — but the "steer a random cascade onto a target" problem,
+    and its noise, are real.
+  </p>
+
+  <div class="skill-callout">
+    <h3>🌱 Save the Planet</h3>
+    <p>If your hyper-parameter searches are heating the Earth, drop this in Cursor or Claude:</p>
+    <pre id="skill-snippet">Read https://raw.githubusercontent.com/microprediction/humpday/main/SKILL.md
+and create a project skill from it.</pre>
+    <div class="skill-actions">
+      <button type="button" onclick="copySkillSnippet(this)">📋 Copy</button>
+      <a href="https://github.com/microprediction/humpday/blob/main/SKILL.md" target="_blank" rel="noopener">View SKILL.md →</a>
+    </div>
+  </div>
+
+  <script>
+    function copySkillSnippet(btn){const t=document.getElementById('skill-snippet').textContent;navigator.clipboard.writeText(t).then(()=>{const o=btn.textContent;btn.textContent='✓ Copied';setTimeout(()=>{btn.textContent=o;},1500);}).catch(()=>{btn.textContent='✗ Copy failed';});}
+  </script>
+</div>
+
+<script src="../js/modules/base-optimizer.js"></script>
+<script src="../js/modules/linalg.js"></script>
+<script src="../js/modules/prima-algorithms.js"></script>
+<script src="../js/modules/scipy-algorithms.js"></script>
+<script src="../js/modules/evolutionary-algorithms.js"></script>
+<script src="../js/modules/search-algorithms.js"></script>
+
+<script>
+// ============================================================================
+// Plinko / Galton board targeting. Optimise a 7-point lean profile so random
+// balls funnel into an off-centre target bin. Noisy objective.
+// ============================================================================
+const B=15, R=14, TARGET=11, KC=7, NBALLS=400;
+function makeRng(seed){let s=(seed>>>0)||1;return ()=>{s=(s*1103515245+12345)&0x7fffffff;return s/0x7fffffff;};}
+function leanAt(col,ctrl){ const t=col/(B-1)*(KC-1); const i=Math.floor(t); const f=t-i; if(i>=KC-1)return ctrl[KC-1]; return ctrl[i]*(1-f)+ctrl[i+1]*f; }
+function dropBall(ctrl,rng,path){
+  let col=(B-1)/2; if(path)path.push(col);
+  for(let r=0;r<R;r++){ const p=0.5+0.45*Math.max(-1,Math.min(1,leanAt(col,ctrl))); col+=(rng()<p?0.5:-0.5); col=Math.max(0,Math.min(B-1,col)); if(path)path.push(col); }
+  return Math.round(col);
+}
+function binsOf(ctrl,seed){ const rng=makeRng(seed); const h=new Array(B).fill(0); for(let i=0;i<NBALLS;i++)h[dropBall(ctrl,rng)]++; return h; }
+function scoreOf(ctrl,seed){ const h=binsOf(ctrl,seed); return 100*h[TARGET]/NBALLS; }
+function decode(u){ return u.map(v=>2*v-1); }
+let evalSeed=7;
+const searchHistory=[];
+function objective(u){ const ctrl=decode(u); evalSeed=(evalSeed*1103515245+12345)&0x7fffffff; const s=scoreOf(ctrl,evalSeed); searchHistory.push({score:s, ctrl, seed:evalSeed}); return -s; }
+
+// ============================================================================
+// Rendering.
+// ============================================================================
+const canvas=document.getElementById('canvas'),ctx=canvas.getContext('2d');
+const W=canvas.width,H=canvas.height;
+const PX0=150, PX1=650, PY0=44, PY1=320, BINY0=340, BINY1=438;
+function colX(c){ return PX0 + c/(B-1)*(PX1-PX0); }
+function rowY(r){ return PY0 + r/R*(PY1-PY0); }
+function leanColor(l,a){ // l in [-1,1]: >0 push right (blue), <0 push left (red)
+  if(l>=0) return `rgba(90,160,224,${a})`; return `rgba(224,112,90,${a})`;
+}
+function drawBoard(ctrl,binCounts){
+  ctx.clearRect(0,0,W,H); ctx.fillStyle='#0e0e14'; ctx.fillRect(0,0,W,H);
+  // pegs, tinted by lean
+  for(let r=1;r<R;r++){ const off=(r%2)*0.5;
+    for(let c=0;c<B;c++){ const cc=c+off; if(cc>B-1)continue; const x=colX(cc),y=rowY(r);
+      const l=leanAt(cc,ctrl); ctx.fillStyle=leanColor(l,0.35+0.55*Math.min(1,Math.abs(l)));
+      ctx.beginPath(); ctx.arc(x,y,2.6,0,Math.PI*2); ctx.fill(); } }
+  // bins
+  const maxC=Math.max(1,...(binCounts||[1]));
+  for(let c=0;c<B;c++){ const x0=colX(c-0.42),x1=colX(c+0.42); const isT=(c===TARGET);
+    ctx.strokeStyle='#2a2a36'; ctx.lineWidth=1; ctx.beginPath(); ctx.moveTo(x0,BINY0); ctx.lineTo(x0,BINY1); ctx.stroke();
+    if(binCounts){ const h=(BINY1-BINY0-2)*binCounts[c]/maxC; ctx.fillStyle=isT?'#7ed957':'#ffcc00'; ctx.fillRect(x0+1,BINY1-h,x1-x0-2,h); }
+    if(isT){ ctx.strokeStyle='#7ed957'; ctx.lineWidth=2; ctx.strokeRect(x0,BINY0,x1-x0,BINY1-BINY0);
+      ctx.fillStyle='#7ed957'; ctx.font='10px -apple-system,Helvetica,Arial,sans-serif'; ctx.textAlign='center'; ctx.fillText('target',(x0+x1)/2,BINY1+12); } }
+}
+function drawScene(ctrl,binCounts,balls,hud){
+  drawBoard(ctrl,binCounts);
+  if(balls) for(const b of balls){ if(b.r<0)continue; const x=colX(b.col),y=rowY(Math.min(R,b.r)); ctx.fillStyle='#ffe06a'; ctx.beginPath(); ctx.arc(x,y,3.2,0,Math.PI*2); ctx.fill(); }
+  ctx.font='11px -apple-system,Helvetica,Arial,sans-serif'; ctx.textAlign='left';
+  ctx.fillStyle='#5aa0e0'; ctx.fillText('● lean right',PX0,H-8); ctx.fillStyle='#e0705a'; ctx.fillText('● lean left',PX0+90,H-8);
+  if(hud){ ctx.font='bold 14px -apple-system,Helvetica,Arial,sans-serif'; ctx.textAlign='left'; const pad=10,bw=Math.ceil(ctx.measureText(hud).width)+2*pad;
+    ctx.fillStyle='rgba(0,0,0,0.6)'; ctx.fillRect(PX0,12,bw,24); ctx.fillStyle='#ffcc00'; ctx.fillText(hud,PX0+pad,29); }
+}
+function drawIdle(){ drawScene(new Array(KC).fill(0), binsOf(new Array(KC).fill(0),1), null, 'Press "Optimize the board" to start'); }
+
+// ============================================================================
+// Animation — drop a wave of sample balls, accumulate the histogram.
+// ============================================================================
+let animationToken=0; const delay=ms=>new Promise(r=>setTimeout(r,ms));
+function dropWave(ctrl,seed,label){
+  const my=animationToken;
+  const NS=50; const rng=makeRng(seed); const paths=[];
+  for(let i=0;i<NS;i++){ const pth=[]; dropBall(ctrl,rng,pth); paths.push(pth); }
+  const full=binsOf(ctrl,seed);   // final histogram (all NBALLS)
+  const counts=new Array(B).fill(0);
+  return new Promise((res)=>{
+    let frame=0; const FR=R+NS+6;
+    (function step(){ if(my!==animationToken)return res();
+      const balls=[];
+      for(let i=0;i<NS;i++){ const r=frame-i; if(r<0||r>R)continue; const pth=paths[i]; balls.push({col:pth[Math.min(R,r)],r}); }
+      // accumulate landed
+      for(let i=0;i<NS;i++){ if(frame-i===R+1){ counts[paths[i][R+0]!==undefined?Math.round(paths[i][R]):0]++; } }
+      // blend toward full histogram so bars reflect the real 400-ball result
+      const disp=full.map((f,c)=> Math.round(f*Math.min(1,frame/(FR))));
+      drawScene(ctrl, disp, balls, label);
+      frame++; if(frame<=FR)setTimeout(step,30); else { drawScene(ctrl,full,null,label); res(); }
+    })();
+  });
+}
+async function montage(){
+  const my=++animationToken; const total=searchHistory.length; if(!total)return -1;
+  let best=-1,bi=-1;
+  for(let i=0;i<total;i++){ if(my!==animationToken)return bi;
+    const e=searchHistory[i]; const isNew=e.score>best; if(isNew){best=e.score;bi=i;}
+    document.getElementById('evals').textContent=i+1; document.getElementById('score-now').textContent=e.score.toFixed(1)+'%';
+    updateParams(e.ctrl);
+    if(isNew){ addLeaderboardEntry(document.getElementById('algorithm').value,e,i+1,{inPlace:liveIdx>=0});
+      document.getElementById('best-score').textContent=`${e.score.toFixed(1)}% (${document.getElementById('algorithm').value})`;
+      await dropWave(e.ctrl,e.seed,`Board ${i+1}/${total} · ${e.score.toFixed(1)}% in target · best ${best.toFixed(1)}% ★`);
+      if(my!==animationToken)return bi;
+    } else { await delay(4); }
+  }
+  return bi;
+}
+let lastBest=null;
+function getOptimizerClass(n){return globalThis[n];}
+async function runOptimization(){
+  const algoName=document.getElementById('algorithm').value; const budget=parseInt(document.getElementById('budget').value,10);
+  const cls=getOptimizerClass(algoName); if(!cls){alert(`Optimizer '${algoName}' not found.`);return;}
+  const runBtn=document.getElementById('run-btn'); runBtn.disabled=true; runBtn.textContent=`Optimizing ${algoName}…`;
+  animationToken++; searchHistory.length=0; await delay(20);
+  try{
+    const opt=new cls(objective,budget,KC); opt.optimize();
+    const bi=await montage(); const best=searchHistory[bi]; lastBest=best;
+    updateParams(best.ctrl);
+    document.getElementById('best-score').textContent=`${best.score.toFixed(1)}% (${algoName})`;
+    addLeaderboardEntry(algoName,best,opt.evaluations,{inPlace:liveIdx>=0}); liveIdx=-1;
+    await dropWave(best.ctrl,best.seed,`Best board: ${best.score.toFixed(1)}% in target (${algoName})`);
+  }catch(e){ console.error(e); alert(`${algoName} threw an error: ${e.message}`); }
+  finally{ runBtn.disabled=false; runBtn.textContent='▶ Optimize the board'; }
+}
+function updateParams(ctrl){ document.getElementById('param-a').textContent=ctrl.map(x=>x.toFixed(1)).join(' '); }
+function replayBest(){ if(!lastBest)return; animationToken++; dropWave(lastBest.ctrl,lastBest.seed,`Best board: ${lastBest.score.toFixed(1)}% in target`); }
+
+const leaderboard=[]; let liveIdx=-1;
+function addLeaderboardEntry(name,e,evals,{inPlace=false}={}){
+  const row={name,score:e.score,ctrl:e.ctrl,evals};
+  if(inPlace&&liveIdx>=0)leaderboard[liveIdx]=row; else {leaderboard.push(row);liveIdx=leaderboard.length-1;}
+  const tracked=leaderboard[liveIdx]; leaderboard.sort((a,b)=>b.score-a.score||a.evals-b.evals); liveIdx=leaderboard.indexOf(tracked);
+  renderLeaderboard();
+}
+function renderLeaderboard(){
+  const body=document.getElementById('leaderboard-body');
+  if(!leaderboard.length){body.innerHTML='<tr><td colspan="4" style="color:var(--muted); text-align:center;">— no runs yet —</td></tr>';return;}
+  body.innerHTML=leaderboard.map(r=>{const cls=r.name==='Human Raphson'?' class="human-raphson"':'';
+    return `<tr${cls}><td>${r.name}</td><td>${r.score.toFixed(1)}%</td><td>${r.evals}</td><td>${r.ctrl.map(x=>x.toFixed(1)).join(' ')}</td></tr>`;
+  }).join('');
+}
+
+// ---- Human Raphson: 7 vertical lean sliders ----
+const sl=document.getElementById('hr-sliders');
+for(let k=0;k<KC;k++){
+  const wrap=document.createElement('label'); wrap.innerHTML=`${k+1}`;
+  const inp=document.createElement('input'); inp.type='range'; inp.id='m-'+k; inp.min=-1; inp.max=1; inp.step=0.1; inp.value=0;
+  wrap.appendChild(inp); sl.appendChild(wrap);
+}
+function manualCtrl(){ const c=[]; for(let k=0;k<KC;k++)c.push(parseFloat(document.getElementById('m-'+k).value)); return c; }
+function scoreManual(){
+  animationToken++; const ctrl=manualCtrl(); evalSeed=(evalSeed*1103515245+12345)&0x7fffffff; const s=scoreOf(ctrl,evalSeed); const e={score:s,ctrl,seed:evalSeed}; lastBest=e;
+  document.getElementById('score-now').textContent=s.toFixed(1)+'%'; updateParams(ctrl);
+  document.getElementById('best-score').textContent=`${s.toFixed(1)}% (Human Raphson)`;
+  addLeaderboardEntry('Human Raphson',e,1);
+  dropWave(ctrl,e.seed,`🧠 Human Raphson: ${s.toFixed(1)}% in target`);
+}
+function resetEverything(){ leaderboard.length=0; liveIdx=-1; lastBest=null; animationToken++;
+  document.getElementById('evals').textContent='0';
+  ['score-now','best-score','param-a'].forEach(id=>document.getElementById(id).textContent='—');
+  renderLeaderboard(); drawIdle();
+}
+
+document.getElementById('target-now').textContent='#'+TARGET+' of 0–'+(B-1);
+drawIdle();
+</script>
+</body>
+</html>
