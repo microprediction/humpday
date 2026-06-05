@@ -20,8 +20,12 @@ Each subfolder is self-contained:
 | [`tetris_weights/`](tetris_weights/)       | Game-heuristic tuning             | Noisy objective; in-sample vs out-of-sample overfitting; a non-textbook optimum. |
 | [`plinko_funnel/`](plinko_funnel/)         | Stochastic process control        | Pure evaluation noise; steering a random cascade onto an off-centre target. |
 | [`walking_creature/`](walking_creature/)   | Evolved locomotion                | Emergent structure from a scalar reward (an alternating gait); a broad basin with interpolation traps. |
+| [`ebola_response/`](ebola_response/)       | Epidemic control                  | Multi-objective harm (deaths vs cost) folded into one scalar; the optimum is a *schedule*, not a setting. |
+| [`espresso_dialin/`](espresso_dialin/)     | Sample-efficient tuning           | Tiny noisy budget; interpolation / Bayesian methods win where population methods are still warming up. |
+| [`fm_sound_match/`](fm_sound_match/)       | Audio / spectral inverse          | Recover a synth patch from its spectrum; smooth here, but a famously octave-trapped problem if unbounded. |
+| [`boids_flocking/`](boids_flocking/)       | Emergent navigation               | A swarm threading a chicane; a broad, forgiving basin where even Random Search does well. |
 
-These last five mirror, in pure Python, the interactive browser demos at
+These last nine mirror, in pure Python, the interactive browser demos at
 [`docs/applications/`](../docs/applications/). Several are deliberately a matched
 pair — `lens_design` (low-D, interpolation/local methods win) versus
 `genetic_art` (high-D, those same methods lose) — so the **No-Free-Lunch**
@@ -58,6 +62,10 @@ python -m example_applications.genetic_art.run
 python -m example_applications.tetris_weights.run
 python -m example_applications.plinko_funnel.run
 python -m example_applications.walking_creature.run
+python -m example_applications.ebola_response.run
+python -m example_applications.espresso_dialin.run
+python -m example_applications.fm_sound_match.run
+python -m example_applications.boids_flocking.run
 ```
 
 No external dependencies beyond what HumpDay itself uses — these are
