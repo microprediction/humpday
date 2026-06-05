@@ -1,0 +1,398 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' 'unsafe-inline'; style-src 'self' 'unsafe-inline';">
+<title>🐦 Boids Flocking Optimizer — HumpDay</title>
+<style>
+  :root { --bg:#1a1a22; --panel:#2d2d3a; --accent:#ffcc00; --text:#e8e8ea; --muted:#9a9aac; }
+  body { margin:0; background:var(--bg); color:var(--text); font-family:-apple-system,'Segoe UI','Helvetica Neue',Helvetica,Arial,sans-serif; }
+  .site-nav { background:#34495e; padding:12px 24px; font-family:'Times New Roman',Times,serif; box-shadow:0 2px 4px rgba(0,0,0,0.1); }
+  .site-nav-inner { max-width:1100px; margin:0 auto; display:flex; justify-content:space-between; align-items:center; }
+  .site-nav a { color:#ecf0f1; text-decoration:none; margin:0 12px; }
+  .site-nav a:hover { color:white; text-decoration:underline; }
+  .site-nav-brand { font-weight:700; font-size:1.25em; }
+  .container { max-width:1100px; margin:0 auto; padding:32px 24px 64px; }
+  h1 { font-size:2.2em; margin:0.2em 0; }
+  h2 { font-size:1.4em; margin-top:1.4em; color:var(--accent); }
+  p { line-height:1.55; max-width:70ch; }
+  .intro { color:var(--muted); }
+  .stage { display:grid; grid-template-columns:1fr 320px; gap:24px; align-items:start; margin-top:24px; }
+  @media (max-width:800px){ .stage { grid-template-columns:1fr; } }
+  canvas { background:#0e0e14; border:3px solid var(--accent); border-radius:6px; display:block; width:100%; height:auto; }
+  .panel { background:var(--panel); padding:18px; border-radius:6px; border:1px solid #404054; }
+  .panel h3 { margin:0 0 12px; font-size:1.05em; text-transform:uppercase; letter-spacing:0.06em; color:var(--accent); }
+  label { display:block; margin:10px 0 6px; font-size:0.9em; color:var(--muted); }
+  select, input, button { width:100%; box-sizing:border-box; padding:8px 10px; border-radius:4px; border:1px solid #404054; background:#1a1a22; color:var(--text); font-size:0.95em; }
+  button { background:var(--accent); color:#1a1a22; font-weight:700; cursor:pointer; margin-top:6px; transition:opacity 0.15s; }
+  button:hover { opacity:0.88; }
+  button.secondary { background:#404054; color:var(--text); font-weight:400; }
+  button:disabled { opacity:0.5; cursor:not-allowed; }
+  .stats { margin-top:16px; padding-top:14px; border-top:1px solid #404054; font-size:0.92em; line-height:1.6; }
+  .stats .score { font-size:2.6em; color:var(--accent); font-weight:700; }
+  .stat-row { display:flex; justify-content:space-between; }
+  .stat-row span:first-child { white-space:nowrap; flex-shrink:0; }
+  .stat-row span:last-child { color:var(--text); font-family:'SF Mono',Menlo,monospace; text-align:right; word-break:break-word; }
+  .leaderboard { margin-top:24px; }
+  .leaderboard table { width:100%; border-collapse:collapse; background:var(--panel); border-radius:6px; overflow:hidden; }
+  .leaderboard th, .leaderboard td { padding:10px 14px; text-align:left; border-bottom:1px solid #404054; }
+  .leaderboard th { background:#1a1a22; color:var(--muted); text-transform:uppercase; font-size:0.78em; letter-spacing:0.08em; }
+  .leaderboard td:nth-child(2){ text-align:center; font-size:1.3em; font-weight:700; color:var(--accent); }
+  .leaderboard td:nth-child(3),.leaderboard td:nth-child(4){ font-family:'SF Mono',Menlo,monospace; color:var(--muted); }
+  .leaderboard tr.human-raphson td:first-child { color:#ff9944; font-weight:700; }
+  .left-stack { display:flex; flex-direction:column; gap:16px; min-width:0; }
+  .hr-panel { padding:14px 16px; }
+  .hr-panel h3 { margin:0 0 6px; }
+  .hr-sliders { display:grid; grid-template-columns:repeat(3,1fr); gap:4px 14px; margin-bottom:10px; }
+  .hr-sliders label { margin:0; display:block; font-size:0.76em; text-align:left; color:var(--muted); }
+  .hr-sliders label output { color:var(--accent); font-family:'SF Mono',Menlo,monospace; }
+  .hr-sliders input[type=range] { width:100%; margin:2px 0 6px; padding:0; background:transparent; }
+  .hr-sliders input[type=range]::-webkit-slider-runnable-track { background:#1a1a22; height:5px; border-radius:3px; }
+  .hr-sliders input[type=range]::-webkit-slider-thumb { -webkit-appearance:none; appearance:none; background:var(--accent); width:14px; height:14px; border-radius:50%; margin-top:-4.5px; cursor:pointer; }
+  .hr-panel > button { background:#ff9944; color:#1a1a22; margin-top:0; }
+  .skill-callout { margin-top:36px; background:rgba(126,217,87,0.07); border:1px solid rgba(126,217,87,0.35); border-radius:8px; padding:18px 22px; }
+  .skill-callout h3 { margin:0 0 6px; color:#7ed957; font-size:1.05em; text-transform:none; letter-spacing:0; }
+  .skill-callout p { margin:0 0 10px; color:var(--text); max-width:none; }
+  .skill-callout pre { background:#1a1a22; border:1px solid #404054; border-radius:4px; padding:10px 14px; margin:0; font-size:0.84em; color:#7ed957; white-space:pre-wrap; word-break:break-all; font-family:'SF Mono',Menlo,monospace; }
+  .skill-actions { margin-top:10px; display:flex; align-items:center; gap:14px; }
+  .skill-actions button { width:auto; background:#404054; color:var(--text); border:1px solid #404054; padding:6px 12px; font-size:0.85em; cursor:pointer; border-radius:4px; margin:0; font-weight:500; }
+  .skill-actions a { color:#7ed957; font-size:0.85em; text-decoration:none; }
+</style>
+</head>
+<body>
+    <nav class="site-nav" data-site-nav="v1">
+        <div class="site-nav-inner">
+            <a href="../index.html" class="site-nav-brand"><svg class="site-nav-camel" data-site-logo="camel-v3" viewBox="0 0 100 50" width="44" height="22" xmlns="http://www.w3.org/2000/svg" aria-hidden="true"><rect x="20.5" y="30" width="1.8" height="11" fill="white" fill-opacity="0.55"/><rect x="60.5" y="30" width="1.8" height="11" fill="white" fill-opacity="0.55"/><path fill="white" fill-opacity="0.92" d="M 14 30 C 10 30 8 28 8 24 C 7 22 7 19 9 18 C 11 16 13 14 16 13 C 20 8 26 6 31 9 C 34 11 35 13 35 16 C 37 18 40 18 43 17 C 47 13 53 7 59 9 C 63 11 65 13 65 16 C 66 18 68 18 70 17 C 73 13 76 9 80 7 C 84 5 89 6 90 9 L 92 9 L 93 12 L 91 13 L 87 13 L 87 15 C 82 16 79 18 76 21 C 73 25 71 28 68 30 L 66 30 L 66 42 L 64 42 L 64 30 L 26 30 L 26 42 L 24 42 L 24 30 L 14 30 Z"/><circle cx="88" cy="10" r="0.9" fill="#34495e"/></svg>HumpDay</a>
+            <div class="site-nav-links">
+                <a href="../index.html">Home</a>
+                <a href="../contest.html">Contest</a>
+                <a href="../applications/index.html">Demonstrations</a>
+                <a href="../algorithms.html">Algorithms</a>
+                <a href="../sota-status.html">SOTA status</a>
+                <a href="../recommendations.html">Recommendations</a>
+                <a href="https://github.com/microprediction/humpday" target="_blank" rel="noopener">GitHub</a>
+            </div>
+        </div>
+    </nav>
+
+<div class="container">
+  <h1>🐦 Boids Flocking Optimizer</h1>
+  <p class="intro">
+    A flock of 40 boids obeys five simple local rules — <strong>separation,
+    alignment, cohesion, goal-seeking</strong> and <strong>obstacle-avoidance</strong>.
+    From those tiny rules, complex group behaviour emerges. HumpDay's
+    optimisers tune the five <strong>rule weights</strong> so the most boids
+    thread an obstacle field and reach the goal. There's no leader and no
+    plan — just the right balance of urges, and the swarm finds its way.
+  </p>
+
+  <div class="stage">
+    <div class="left-stack">
+      <canvas id="canvas" width="800" height="450"></canvas>
+      <div class="panel hr-panel">
+        <h3>🧠 Human Raphson</h3>
+        <p style="color:var(--muted); margin:0 0 8px; font-size:0.86em;">
+          Set the five urges by hand and watch the flock — can you get them all there?
+        </p>
+        <div class="hr-sliders" id="hr-sliders"></div>
+        <button onclick="scoreManual()">▶ Release the flock (Human Raphson)</button>
+      </div>
+    </div>
+
+    <div class="panel">
+      <h3>Algorithm</h3>
+      <label for="algorithm">Pick a HumpDay optimizer:</label>
+      <select id="algorithm">
+        <optgroup label="Population-based">
+          <option value="CMAEvolutionStrategy" selected>CMA-Evolution Strategy</option>
+          <option value="DifferentialEvolution">Differential Evolution</option>
+          <option value="ParticleSwarm">Particle Swarm</option>
+          <option value="GeneticAlgorithm">Genetic Algorithm</option>
+          <option value="EvolutionStrategy">Evolution Strategy</option>
+          <option value="HarmonySearch">Harmony Search</option>
+        </optgroup>
+        <optgroup label="Trust-region / interpolation">
+          <option value="PRIMA_BOBYQA">PRIMA_BOBYQA</option>
+          <option value="PRIMA_NEWUOA">PRIMA_NEWUOA</option>
+        </optgroup>
+        <optgroup label="Local / classical">
+          <option value="NelderMead">Nelder-Mead</option>
+          <option value="Powell">Powell</option>
+          <option value="LBFGSB">L-BFGS-B (simplified)</option>
+        </optgroup>
+        <optgroup label="Other">
+          <option value="SimulatedAnnealing">Simulated Annealing</option>
+          <option value="BayesianOpt">Bayesian Optimization</option>
+          <option value="FireflyAlgorithm">Firefly Algorithm</option>
+          <option value="AntColonyOpt">Ant Colony</option>
+          <option value="RandomSearch">Random Search</option>
+          <option value="Rechenberg">Rechenberg (1+1)-ES</option>
+        </optgroup>
+      </select>
+
+      <label for="budget">Evaluation budget:</label>
+      <select id="budget">
+        <option value="60">60 designs</option>
+        <option value="120" selected>120 designs</option>
+        <option value="250">250 designs</option>
+      </select>
+      <p style="margin:8px 0 0; font-size:0.78em; color:var(--muted);">
+        5-D problem; each design runs the flock through the obstacle field
+        over a few seeds. Score is the % of boids that reach the goal.
+      </p>
+
+      <button id="run-btn" onclick="runOptimization()">▶ Evolve the flock</button>
+      <button class="secondary" onclick="replayBest()">🔁 Replay best flock</button>
+      <button class="secondary" onclick="resetEverything()">⟲ Reset leaderboard</button>
+
+      <div class="stats">
+        <div class="stat-row"><span>Reached goal</span><span class="score" id="score-now">—</span></div>
+        <div class="stat-row"><span>Crashed</span><span id="crash-now">—</span></div>
+        <div class="stat-row"><span>Designs tried</span><span id="evals">0</span></div>
+        <div class="stat-row"><span>Best so far</span><span id="best-score">—</span></div>
+        <div class="stat-row"><span>Sep / Align / Coh</span><span id="param-a">—</span></div>
+        <div class="stat-row"><span>Goal / Avoid</span><span id="param-b">—</span></div>
+      </div>
+    </div>
+  </div>
+
+  <div class="leaderboard">
+    <h2>Leaderboard (this session)</h2>
+    <p style="color:var(--muted);">
+      Each row is the best flock a given optimiser evolved — % of boids
+      reaching the goal. The winning recipes lean on strong obstacle
+      avoidance and enough cohesion to keep the swarm flowing.
+    </p>
+    <table>
+      <thead>
+        <tr><th>Algorithm</th><th>Reached</th><th>Designs</th><th>Weights (sep/align/coh/goal/avoid)</th></tr>
+      </thead>
+      <tbody id="leaderboard-body">
+        <tr><td colspan="4" style="color:var(--muted); text-align:center;">— no runs yet —</td></tr>
+      </tbody>
+    </table>
+  </div>
+
+  <h2>What's happening</h2>
+  <p>
+    Each boid looks only at its neighbours and feels five urges:
+    <strong>separation</strong> (don't crowd), <strong>alignment</strong>
+    (match headings), <strong>cohesion</strong> (stay with the group),
+    <strong>goal-seeking</strong> (drift toward the target) and
+    <strong>obstacle-avoidance</strong> (steer around the blockers). The
+    weights on those urges are the only things that change — and they
+    produce wildly different group behaviour: crank cohesion and the flock
+    clumps and smears into an obstacle; crank goal-seeking and they charge
+    straight into the blockers; too little of anything and they scatter.
+  </p>
+  <p>
+    The optimiser searches the five weights for the blend that threads the
+    most boids through. The result is an emergent-behaviour lesson: there's
+    no path planner, just a balance of local rules that happens to flow the
+    swarm around the obstacles to the goal. As the search improves, watch a
+    crashing, scattering flock turn into a smooth river of boids.
+  </p>
+
+  <hr style="border:0; border-top:1px solid #404054; margin:32px 0 16px;" />
+  <p style="font-size:0.78em; color:var(--muted);">
+    Reynolds-style boids with goal and obstacle terms — a toy model of
+    collective motion, not a calibrated flock, but the rule-weight trade-off
+    is the real thing.
+  </p>
+
+  <div class="skill-callout">
+    <h3>🌱 Save the Planet</h3>
+    <p>If your hyper-parameter searches are heating the Earth, drop this in Cursor or Claude:</p>
+    <pre id="skill-snippet">Read https://raw.githubusercontent.com/microprediction/humpday/main/SKILL.md
+and create a project skill from it.</pre>
+    <div class="skill-actions">
+      <button type="button" onclick="copySkillSnippet(this)">📋 Copy</button>
+      <a href="https://github.com/microprediction/humpday/blob/main/SKILL.md" target="_blank" rel="noopener">View SKILL.md →</a>
+    </div>
+  </div>
+
+  <script>
+    function copySkillSnippet(btn){const t=document.getElementById('skill-snippet').textContent;navigator.clipboard.writeText(t).then(()=>{const o=btn.textContent;btn.textContent='✓ Copied';setTimeout(()=>{btn.textContent=o;},1500);}).catch(()=>{btn.textContent='✗ Copy failed';});}
+  </script>
+</div>
+
+<script src="../js/modules/base-optimizer.js"></script>
+<script src="../js/modules/linalg.js"></script>
+<script src="../js/modules/prima-algorithms.js"></script>
+<script src="../js/modules/scipy-algorithms.js"></script>
+<script src="../js/modules/evolutionary-algorithms.js"></script>
+<script src="../js/modules/search-algorithms.js"></script>
+
+<script>
+// ============================================================================
+// Boids flocking through obstacles to a goal. Optimise 5 rule weights.
+// ============================================================================
+const WX=100, WY=60, T=320, NB=40, PERC=12, SEP_R=5, MAXV=1.0, GOAL={x:90,y:30}, GOAL_R=7;
+const OBST=[{x:40,y:22,r:7},{x:58,y:40,r:7}];
+function makeRng(seed){let s=(seed>>>0)||1;return ()=>{s=(s*1103515245+12345)&0x7fffffff;return s/0x7fffffff;};}
+function decode(u){ return { sep:3*u[0], align:2.2*u[1], coh:2.2*u[2], goal:2.5*u[3], obs:7*u[4] }; }
+function simulate(w, seed, record){
+  const rng=makeRng(seed+1); const b=[];
+  for(let i=0;i<NB;i++) b.push({ x:6+rng()*8, y:18+rng()*24, vx:(rng()-0.5)*0.2, vy:(rng()-0.5)*0.2, done:0 });
+  let reached=0, crashed=0; const frames=record?[]:null;
+  for(let step=0;step<T;step++){
+    for(let i=0;i<NB;i++){ const bi=b[i]; if(bi.done)continue;
+      let sx=0,sy=0,ax=0,ay=0,cx=0,cy=0,n=0;
+      for(let j=0;j<NB;j++){ if(j===i)continue; const bj=b[j]; if(bj.done)continue;
+        const dx=bi.x-bj.x, dy=bi.y-bj.y; const d2=dx*dx+dy*dy;
+        if(d2<PERC*PERC){ n++; ax+=bj.vx; ay+=bj.vy; cx+=bj.x; cy+=bj.y;
+          if(d2<SEP_R*SEP_R){ const d=Math.sqrt(d2)+1e-6; sx+=dx/d; sy+=dy/d; } } }
+      let fx=0,fy=0;
+      if(n>0){ fx+=w.sep*sx+w.align*(ax/n-bi.vx)+w.coh*((cx/n)-bi.x)*0.05;
+               fy+=w.sep*sy+w.align*(ay/n-bi.vy)+w.coh*((cy/n)-bi.y)*0.05; }
+      else { fx+=w.sep*sx; fy+=w.sep*sy; }
+      const gdx=GOAL.x-bi.x, gdy=GOAL.y-bi.y; const gd=Math.hypot(gdx,gdy)+1e-6;
+      fx+=w.goal*gdx/gd; fy+=w.goal*gdy/gd;
+      for(const o of OBST){ const dx=bi.x-o.x, dy=bi.y-o.y; const d=Math.hypot(dx,dy)+1e-6; const m=o.r+6;
+        if(d<m){ const f=w.obs*(m-d)/m; fx+=(dx/d)*f; fy+=(dy/d)*f; } }
+      bi.vx+=fx*0.1; bi.vy+=fy*0.1;
+      const sp=Math.hypot(bi.vx,bi.vy); if(sp>MAXV){ bi.vx*=MAXV/sp; bi.vy*=MAXV/sp; }
+      bi.x+=bi.vx; bi.y+=bi.vy;
+      if(bi.x<0||bi.x>WX||bi.y<0||bi.y>WY){ bi.x=Math.max(0,Math.min(WX,bi.x)); bi.y=Math.max(0,Math.min(WY,bi.y)); bi.vx*=-0.4; bi.vy*=-0.4; }
+      for(const o of OBST){ if(Math.hypot(bi.x-o.x,bi.y-o.y)<o.r){ bi.done=2; crashed++; break; } }
+      if(bi.done) continue;
+      if(Math.hypot(bi.x-GOAL.x,bi.y-GOAL.y)<GOAL_R){ bi.done=1; reached++; }
+    }
+    if(record && step%3===0) frames.push(b.map(p=>({x:p.x,y:p.y,vx:p.vx,vy:p.vy,done:p.done})));
+  }
+  return { reached, crashed, frames };
+}
+const SEEDS=[1,2,3,4];
+function scoreW(w){ let r=0; for(const s of SEEDS){ r+=simulate(w,s,false).reached; } return 100*r/(NB*SEEDS.length); }
+const searchHistory=[];
+function objective(u){ const w=decode(u); const s=scoreW(w); searchHistory.push({score:s, w}); return -s; }
+
+// ============================================================================
+// Rendering.
+// ============================================================================
+const canvas=document.getElementById('canvas'),ctx=canvas.getContext('2d');
+const W=canvas.width,H=canvas.height;
+const SCALE=Math.min((W-70)/WX,(H-40)/WY), OX=(W-WX*SCALE)/2, OY=(H-WY*SCALE)/2;
+function toC(x,y){ return { X:OX+x*SCALE, Y:OY+y*SCALE }; }
+function drawWorld(){
+  ctx.clearRect(0,0,W,H); ctx.fillStyle='#0e0e14'; ctx.fillRect(0,0,W,H);
+  const tl=toC(0,0),br=toC(WX,WY); ctx.strokeStyle='#2a2a36'; ctx.lineWidth=1; ctx.strokeRect(tl.X,tl.Y,br.X-tl.X,br.Y-tl.Y);
+  // goal
+  const g=toC(GOAL.x,GOAL.y); ctx.fillStyle='rgba(126,217,87,0.18)'; ctx.beginPath(); ctx.arc(g.X,g.Y,GOAL_R*SCALE,0,Math.PI*2); ctx.fill();
+  ctx.strokeStyle='#7ed957'; ctx.lineWidth=2; ctx.beginPath(); ctx.arc(g.X,g.Y,GOAL_R*SCALE,0,Math.PI*2); ctx.stroke();
+  ctx.fillStyle='#7ed957'; ctx.font='11px -apple-system,Helvetica,Arial,sans-serif'; ctx.textAlign='center'; ctx.fillText('goal',g.X,g.Y-GOAL_R*SCALE-5);
+  // obstacles
+  for(const o of OBST){ const c=toC(o.x,o.y); ctx.fillStyle='#3a3a48'; ctx.beginPath(); ctx.arc(c.X,c.Y,o.r*SCALE,0,Math.PI*2); ctx.fill(); ctx.strokeStyle='#5a5a6a'; ctx.lineWidth=1.5; ctx.stroke(); }
+}
+function drawBoid(p){
+  const c=toC(p.x,p.y); const a=Math.atan2(p.vy,p.vx); const s=4.5;
+  ctx.save(); ctx.translate(c.X,c.Y); ctx.rotate(a);
+  ctx.fillStyle = p.done===1?'#7ed957':p.done===2?'#d04040':'#ffcc00';
+  ctx.beginPath(); ctx.moveTo(s*1.5,0); ctx.lineTo(-s,s*0.7); ctx.lineTo(-s,-s*0.7); ctx.closePath(); ctx.fill();
+  ctx.restore();
+}
+function drawScene(boids,hud){
+  drawWorld();
+  if(boids) for(const p of boids) drawBoid(p);
+  if(hud){ ctx.font='bold 14px -apple-system,Helvetica,Arial,sans-serif'; ctx.textAlign='left'; ctx.textBaseline='alphabetic';
+    const pad=10,bw=Math.ceil(ctx.measureText(hud).width)+2*pad; const tl=toC(0,0);
+    ctx.fillStyle='rgba(0,0,0,0.6)'; ctx.fillRect(tl.X,tl.Y-30,bw,24); ctx.fillStyle='#ffcc00'; ctx.fillText(hud,tl.X+pad,tl.Y-13); }
+}
+function drawIdle(){
+  const r=simulate(decode([0.4,0.5,0.4,0.5,0.6]),1,true);
+  drawScene(r.frames[0], 'Press "Evolve the flock" to start');
+}
+
+// ============================================================================
+// Animation — play a flock run; montage animates the improving designs.
+// ============================================================================
+let animationToken=0; const delay=ms=>new Promise(r=>setTimeout(r,ms));
+function flyFlock(w,label){
+  const my=animationToken; const r=simulate(w,1,true); const fr=r.frames;
+  return new Promise((res)=>{ let i=0; (function step(){ if(my!==animationToken)return res(); if(i>=fr.length)return res();
+    drawScene(fr[i], label); i++; setTimeout(step,26); })(); });
+}
+async function montage(){
+  const my=++animationToken; const total=searchHistory.length; if(!total)return -1;
+  let best=-1,bi=-1;
+  for(let i=0;i<total;i++){ if(my!==animationToken)return bi;
+    const e=searchHistory[i]; const isNew=e.score>best; if(isNew){best=e.score;bi=i;}
+    document.getElementById('evals').textContent=i+1; document.getElementById('score-now').textContent=e.score.toFixed(0)+'%';
+    updateParams(e.w);
+    if(isNew){
+      addLeaderboardEntry(document.getElementById('algorithm').value,e,i+1,{inPlace:liveIdx>=0});
+      document.getElementById('best-score').textContent=`${e.score.toFixed(0)}% (${document.getElementById('algorithm').value})`;
+      const o=simulate(e.w,1,false); document.getElementById('crash-now').textContent=o.crashed+' boids';
+      await flyFlock(e.w, `Design ${i+1}/${total} · ${e.score.toFixed(0)}% reach · best ${best.toFixed(0)}% ★`);
+      if(my!==animationToken)return bi;
+    } else { await delay(4); }
+  }
+  return bi;
+}
+let lastBest=null;
+function getOptimizerClass(n){return globalThis[n];}
+async function runOptimization(){
+  const algoName=document.getElementById('algorithm').value; const budget=parseInt(document.getElementById('budget').value,10);
+  const cls=getOptimizerClass(algoName); if(!cls){alert(`Optimizer '${algoName}' not found.`);return;}
+  const runBtn=document.getElementById('run-btn'); runBtn.disabled=true; runBtn.textContent=`Evolving ${algoName}…`;
+  animationToken++; searchHistory.length=0; await delay(20);
+  try{
+    const opt=new cls(objective,budget,5); opt.optimize();
+    const bi=await montage(); const best=searchHistory[bi]; lastBest=best;
+    updateParams(best.w); const o=simulate(best.w,1,false);
+    document.getElementById('crash-now').textContent=o.crashed+' boids';
+    document.getElementById('best-score').textContent=`${best.score.toFixed(0)}% (${algoName})`;
+    addLeaderboardEntry(algoName,best,opt.evaluations,{inPlace:liveIdx>=0}); liveIdx=-1;
+    await flyFlock(best.w, `Best flock: ${best.score.toFixed(0)}% reached (${algoName})`);
+  }catch(e){ console.error(e); alert(`${algoName} threw an error: ${e.message}`); }
+  finally{ runBtn.disabled=false; runBtn.textContent='▶ Evolve the flock'; }
+}
+function updateParams(w){
+  document.getElementById('param-a').textContent=`${w.sep.toFixed(1)} / ${w.align.toFixed(1)} / ${w.coh.toFixed(1)}`;
+  document.getElementById('param-b').textContent=`${w.goal.toFixed(1)} / ${w.obs.toFixed(1)}`;
+}
+function replayBest(){ if(!lastBest)return; animationToken++; flyFlock(lastBest.w,`Best flock: ${lastBest.score.toFixed(0)}% reached`); }
+
+const leaderboard=[]; let liveIdx=-1;
+function addLeaderboardEntry(name,e,evals,{inPlace=false}={}){
+  const row={name,score:e.score,w:e.w,evals};
+  if(inPlace&&liveIdx>=0)leaderboard[liveIdx]=row; else {leaderboard.push(row);liveIdx=leaderboard.length-1;}
+  const tracked=leaderboard[liveIdx]; leaderboard.sort((a,b)=>b.score-a.score||a.evals-b.evals); liveIdx=leaderboard.indexOf(tracked);
+  renderLeaderboard();
+}
+function renderLeaderboard(){
+  const body=document.getElementById('leaderboard-body');
+  if(!leaderboard.length){body.innerHTML='<tr><td colspan="4" style="color:var(--muted); text-align:center;">— no runs yet —</td></tr>';return;}
+  body.innerHTML=leaderboard.map(r=>{const w=r.w,cls=r.name==='Human Raphson'?' class="human-raphson"':'';
+    return `<tr${cls}><td>${r.name}</td><td>${r.score.toFixed(0)}%</td><td>${r.evals}</td><td>${w.sep.toFixed(1)}/${w.align.toFixed(1)}/${w.coh.toFixed(1)}/${w.goal.toFixed(1)}/${w.obs.toFixed(1)}</td></tr>`;
+  }).join('');
+}
+
+// ---- Human Raphson sliders ----
+const HRDEF=[['sep','Separation',0,3,1.2],['align','Alignment',0,2.2,1.0],['coh','Cohesion',0,2.2,1.0],['goal','Goal-seek',0,2.5,0.6],['obs','Avoidance',0,7,5.0]];
+const sl=document.getElementById('hr-sliders');
+for(const [id,lab,mn,mx,dv] of HRDEF){
+  const wrap=document.createElement('label'); wrap.innerHTML=`${lab} <output id="m-${id}-out">${dv.toFixed(1)}</output>`;
+  const inp=document.createElement('input'); inp.type='range'; inp.id='m-'+id; inp.min=mn; inp.max=mx; inp.step=0.1; inp.value=dv;
+  inp.addEventListener('input',()=>{document.getElementById('m-'+id+'-out').textContent=parseFloat(inp.value).toFixed(1);});
+  wrap.appendChild(inp); sl.appendChild(wrap);
+}
+function manualW(){ const g=id=>parseFloat(document.getElementById('m-'+id).value); return {sep:g('sep'),align:g('align'),coh:g('coh'),goal:g('goal'),obs:g('obs')}; }
+async function scoreManual(){
+  animationToken++; const w=manualW(); const s=scoreW(w); const o=simulate(w,1,false); const e={score:s,w}; lastBest=e;
+  document.getElementById('score-now').textContent=s.toFixed(0)+'%'; document.getElementById('crash-now').textContent=o.crashed+' boids';
+  document.getElementById('best-score').textContent=`${s.toFixed(0)}% (Human Raphson)`; updateParams(w);
+  addLeaderboardEntry('Human Raphson',e,1);
+  await flyFlock(w, `🧠 Human Raphson: ${s.toFixed(0)}% reached`);
+}
+function resetEverything(){ leaderboard.length=0; liveIdx=-1; lastBest=null; animationToken++;
+  document.getElementById('evals').textContent='0';
+  ['score-now','crash-now','best-score','param-a','param-b'].forEach(id=>document.getElementById(id).textContent='—');
+  renderLeaderboard(); drawIdle();
+}
+
+drawIdle();
+</script>
+</body>
+</html>
