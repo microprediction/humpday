@@ -1,0 +1,416 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' 'unsafe-inline'; style-src 'self' 'unsafe-inline';">
+<title>🖼️ Genetic Art — HumpDay</title>
+<style>
+  :root { --bg:#1a1a22; --panel:#2d2d3a; --accent:#ffcc00; --text:#e8e8ea; --muted:#9a9aac; }
+  body { margin:0; background:var(--bg); color:var(--text); font-family:-apple-system,'Segoe UI','Helvetica Neue',Helvetica,Arial,sans-serif; }
+  .site-nav { background:#34495e; padding:12px 24px; font-family:'Times New Roman',Times,serif; box-shadow:0 2px 4px rgba(0,0,0,0.1); }
+  .site-nav-inner { max-width:1100px; margin:0 auto; display:flex; justify-content:space-between; align-items:center; }
+  .site-nav a { color:#ecf0f1; text-decoration:none; margin:0 12px; }
+  .site-nav a:hover { color:white; text-decoration:underline; }
+  .site-nav-brand { font-weight:700; font-size:1.25em; }
+  .container { max-width:1100px; margin:0 auto; padding:32px 24px 64px; }
+  h1 { font-size:2.2em; margin:0.2em 0; }
+  h2 { font-size:1.4em; margin-top:1.4em; color:var(--accent); }
+  p { line-height:1.55; max-width:70ch; }
+  .intro { color:var(--muted); }
+  .stage { display:grid; grid-template-columns:1fr 320px; gap:24px; align-items:start; margin-top:24px; }
+  @media (max-width:800px){ .stage { grid-template-columns:1fr; } }
+  canvas { background:#0e0e14; border:3px solid var(--accent); border-radius:6px; display:block; width:100%; height:auto; }
+  .panel { background:var(--panel); padding:18px; border-radius:6px; border:1px solid #404054; }
+  .panel h3 { margin:0 0 12px; font-size:1.05em; text-transform:uppercase; letter-spacing:0.06em; color:var(--accent); }
+  label { display:block; margin:10px 0 6px; font-size:0.9em; color:var(--muted); }
+  select, input, button { width:100%; box-sizing:border-box; padding:8px 10px; border-radius:4px; border:1px solid #404054; background:#1a1a22; color:var(--text); font-size:0.95em; }
+  button { background:var(--accent); color:#1a1a22; font-weight:700; cursor:pointer; margin-top:6px; transition:opacity 0.15s; }
+  button:hover { opacity:0.88; }
+  button.secondary { background:#404054; color:var(--text); font-weight:400; }
+  button:disabled { opacity:0.5; cursor:not-allowed; }
+  .stats { margin-top:16px; padding-top:14px; border-top:1px solid #404054; font-size:0.92em; line-height:1.6; }
+  .stats .score { font-size:2.6em; color:var(--accent); font-weight:700; }
+  .stat-row { display:flex; justify-content:space-between; }
+  .stat-row span:first-child { white-space:nowrap; flex-shrink:0; }
+  .stat-row span:last-child { color:var(--text); font-family:'SF Mono',Menlo,monospace; text-align:right; word-break:break-word; }
+  .leaderboard { margin-top:24px; }
+  .leaderboard table { width:100%; border-collapse:collapse; background:var(--panel); border-radius:6px; overflow:hidden; }
+  .leaderboard th, .leaderboard td { padding:10px 14px; text-align:left; border-bottom:1px solid #404054; }
+  .leaderboard th { background:#1a1a22; color:var(--muted); text-transform:uppercase; font-size:0.78em; letter-spacing:0.08em; }
+  .leaderboard td:nth-child(2){ text-align:center; font-size:1.3em; font-weight:700; color:var(--accent); }
+  .leaderboard td:nth-child(3),.leaderboard td:nth-child(4){ font-family:'SF Mono',Menlo,monospace; color:var(--muted); }
+  .leaderboard tr.human-raphson td:first-child { color:#ff9944; font-weight:700; }
+  .left-stack { display:flex; flex-direction:column; gap:16px; min-width:0; }
+  .hr-panel { padding:14px 16px; }
+  .hr-panel h3 { margin:0 0 6px; }
+  .thumbs { display:grid; grid-template-columns:repeat(3,1fr); gap:8px; margin:6px 0 10px; }
+  .thumb { border:2px solid #404054; border-radius:5px; padding:0; overflow:hidden; cursor:pointer; background:#0e0e14; aspect-ratio:1; }
+  .thumb.sel { border-color:var(--accent); }
+  .thumb canvas { width:100%; height:100%; border:none; border-radius:0; }
+  .hr-panel > button { background:#ff9944; color:#1a1a22; margin-top:0; }
+  .skill-callout { margin-top:36px; background:rgba(126,217,87,0.07); border:1px solid rgba(126,217,87,0.35); border-radius:8px; padding:18px 22px; }
+  .skill-callout h3 { margin:0 0 6px; color:#7ed957; font-size:1.05em; text-transform:none; letter-spacing:0; }
+  .skill-callout p { margin:0 0 10px; color:var(--text); max-width:none; }
+  .skill-callout pre { background:#1a1a22; border:1px solid #404054; border-radius:4px; padding:10px 14px; margin:0; font-size:0.84em; color:#7ed957; white-space:pre-wrap; word-break:break-all; font-family:'SF Mono',Menlo,monospace; }
+  .skill-actions { margin-top:10px; display:flex; align-items:center; gap:14px; }
+  .skill-actions button { width:auto; background:#404054; color:var(--text); border:1px solid #404054; padding:6px 12px; font-size:0.85em; cursor:pointer; border-radius:4px; margin:0; font-weight:500; }
+  .skill-actions a { color:#7ed957; font-size:0.85em; text-decoration:none; }
+</style>
+</head>
+<body>
+    <nav class="site-nav" data-site-nav="v1">
+        <div class="site-nav-inner">
+            <a href="../index.html" class="site-nav-brand"><svg class="site-nav-camel" data-site-logo="camel-v3" viewBox="0 0 100 50" width="44" height="22" xmlns="http://www.w3.org/2000/svg" aria-hidden="true"><rect x="20.5" y="30" width="1.8" height="11" fill="white" fill-opacity="0.55"/><rect x="60.5" y="30" width="1.8" height="11" fill="white" fill-opacity="0.55"/><path fill="white" fill-opacity="0.92" d="M 14 30 C 10 30 8 28 8 24 C 7 22 7 19 9 18 C 11 16 13 14 16 13 C 20 8 26 6 31 9 C 34 11 35 13 35 16 C 37 18 40 18 43 17 C 47 13 53 7 59 9 C 63 11 65 13 65 16 C 66 18 68 18 70 17 C 73 13 76 9 80 7 C 84 5 89 6 90 9 L 92 9 L 93 12 L 91 13 L 87 13 L 87 15 C 82 16 79 18 76 21 C 73 25 71 28 68 30 L 66 30 L 66 42 L 64 42 L 64 30 L 26 30 L 26 42 L 24 42 L 24 30 L 14 30 Z"/><circle cx="88" cy="10" r="0.9" fill="#34495e"/></svg>HumpDay</a>
+            <div class="site-nav-links">
+                <a href="../index.html">Home</a>
+                <a href="../contest.html">Contest</a>
+                <a href="../applications/index.html">Demonstrations</a>
+                <a href="../algorithms.html">Algorithms</a>
+                <a href="../sota-status.html">SOTA status</a>
+                <a href="../recommendations.html">Recommendations</a>
+                <a href="https://github.com/microprediction/humpday" target="_blank" rel="noopener">GitHub</a>
+            </div>
+        </div>
+    </nav>
+
+<div class="container">
+  <h1>🖼️ Genetic Art</h1>
+  <p class="intro">
+    Reproduce a picture using nothing but a handful of <strong>translucent
+    triangles</strong>. Each triangle has ten numbers — three corners, a colour,
+    and an opacity — so thirty triangles is a <strong>300-dimensional</strong>
+    search. The optimiser never sees the target as a picture; it only gets one
+    number back: <strong>how close the pixels are</strong>. Watch a pile of
+    random glass shards resolve into a recognisable scene.
+  </p>
+
+  <div class="stage">
+    <div class="left-stack">
+      <canvas id="canvas" width="800" height="450"></canvas>
+      <div class="panel hr-panel">
+        <h3>🧠 Human Raphson</h3>
+        <p style="color:var(--muted); margin:0 0 8px; font-size:0.86em;">
+          You can't place 300 numbers by hand — so just <em>splatter</em>: throw
+          a fresh batch of random triangles and see how far blind luck gets you.
+          (Spoiler: the optimiser does much better.)
+        </p>
+        <button onclick="scoreManual()">🎲 Splatter random triangles (Human Raphson)</button>
+      </div>
+    </div>
+
+    <div class="panel">
+      <h3>Subject</h3>
+      <div class="thumbs" id="thumbs"></div>
+
+      <h3 style="margin-top:14px;">Algorithm</h3>
+      <label for="algorithm">Pick a HumpDay optimizer:</label>
+      <select id="algorithm">
+        <optgroup label="Population-based">
+          <option value="DifferentialEvolution" selected>Differential Evolution</option>
+          <option value="ParticleSwarm">Particle Swarm</option>
+          <option value="GeneticAlgorithm">Genetic Algorithm</option>
+          <option value="EvolutionStrategy">Evolution Strategy</option>
+          <option value="HarmonySearch">Harmony Search</option>
+        </optgroup>
+        <optgroup label="Local / classical">
+          <option value="Powell">Powell (direction-set)</option>
+          <option value="NelderMead">Nelder-Mead</option>
+        </optgroup>
+        <optgroup label="Other">
+          <option value="SimulatedAnnealing">Simulated Annealing</option>
+          <option value="RandomSearch">Random Search</option>
+        </optgroup>
+      </select>
+
+      <label for="triangles">Triangles (detail):</label>
+      <select id="triangles">
+        <option value="20">20 triangles · n=200</option>
+        <option value="30" selected>30 triangles · n=300</option>
+        <option value="45">45 triangles · n=450</option>
+      </select>
+
+      <label for="budget">Evaluation budget:</label>
+      <select id="budget">
+        <option value="2000">2,000 paintings</option>
+        <option value="4000" selected>4,000 paintings</option>
+        <option value="8000">8,000 paintings</option>
+      </select>
+
+      <button id="run-btn" onclick="runOptimization()">▶ Paint with this optimizer</button>
+      <button class="secondary" onclick="replayBest()">🔁 Replay best painting</button>
+      <button class="secondary" onclick="resetEverything()">⟲ Reset leaderboard</button>
+
+      <div class="stats">
+        <div class="stat-row"><span>Similarity</span><span class="score" id="score-now">—</span></div>
+        <div class="stat-row"><span>Paintings tried</span><span id="evals">0</span></div>
+        <div class="stat-row"><span>Best so far</span><span id="best-score">—</span></div>
+        <div class="stat-row"><span>Dimensions</span><span id="param-a">—</span></div>
+      </div>
+    </div>
+  </div>
+
+  <div class="leaderboard">
+    <h2>Leaderboard (this session)</h2>
+    <p style="color:var(--muted);">
+      Each row is the most faithful painting a given optimiser produced —
+      similarity is <code>100 × (1 − pixel-RMS-error / 255)</code>. Blind random
+      splatter plateaus quickly; a real optimiser keeps climbing — though which
+      one climbs highest here is not the one you'd guess.
+    </p>
+    <table>
+      <thead>
+        <tr><th>Algorithm</th><th>Similarity</th><th>Paintings</th><th>Triangles</th></tr>
+      </thead>
+      <tbody id="leaderboard-body">
+        <tr><td colspan="4" style="color:var(--muted); text-align:center;">— no runs yet —</td></tr>
+      </tbody>
+    </table>
+  </div>
+
+  <h2>What's happening</h2>
+  <p>
+    The picture on the left is the <strong>target</strong>. On the right, the
+    optimiser is painting with translucent triangles, stacked back-to-front like
+    panes of coloured glass. A candidate painting is just a list of numbers —
+    ten per triangle — and its score is the pixel difference from the target,
+    measured on a small 48×48 grid. Lower error is better, so the optimiser is
+    minimising; we report it as a "similarity" percentage.
+  </p>
+  <p>
+    This is a genuinely <strong>high-dimensional, multimodal</strong> problem:
+    thirty triangles is three hundred knobs, and countless different arrangements
+    score about the same. The ranking is full of surprises. On a quick benchmark
+    (30 triangles, 4,000 paintings) the most faithful result came not from a
+    fashionable evolutionary method but from <strong>Powell</strong>, a 1960s
+    direction-set method — the triangle genes are loosely separable, so its
+    one-coordinate-at-a-time line searches pay off, and it's among the fastest
+    too. <strong>Differential Evolution</strong> and the other population methods
+    cluster just behind. Meanwhile <strong>Nelder-Mead</strong> — also a
+    classical method — collapses, because a single simplex flailing in 300
+    dimensions is hopeless. You cannot read the winner off the algorithm's name.
+  </p>
+  <p>
+    One method is missing from the menu on purpose: <strong>CMA-ES</strong>,
+    superb in low dimensions, maintains and factorises an <em>n × n</em>
+    covariance matrix — 300×300 here — every generation, which took it over
+    <strong>two minutes</strong> for a single run in testing versus a fraction of
+    a second for the others. It would simply freeze the page. That cost is the
+    whole point: the right optimiser depends on the problem's dimension, shape,
+    and budget — exactly the choice HumpDay is built to make for you.
+  </p>
+  <p style="color:var(--muted);">
+    It will never be photographic — that's the charm. With a few dozen triangles
+    you get a <em>low-poly impression</em>, the same idea behind the famous
+    "Mona Lisa in 50 polygons" experiment. More triangles and more budget sharpen
+    it, at the cost of a bigger search.
+  </p>
+
+  <div class="skill-callout">
+    <h3>🌱 Save the Planet</h3>
+    <p>If your hyper-parameter searches are heating the Earth, drop this in Cursor or Claude:</p>
+    <pre id="skill-snippet">Read https://raw.githubusercontent.com/microprediction/humpday/main/SKILL.md
+and create a project skill from it.</pre>
+    <div class="skill-actions">
+      <button type="button" onclick="copySkillSnippet(this)">📋 Copy</button>
+      <a href="https://github.com/microprediction/humpday/blob/main/SKILL.md" target="_blank" rel="noopener">View SKILL.md →</a>
+    </div>
+  </div>
+
+  <script>
+    function copySkillSnippet(btn){const t=document.getElementById('skill-snippet').textContent;navigator.clipboard.writeText(t).then(()=>{const o=btn.textContent;btn.textContent='✓ Copied';setTimeout(()=>{btn.textContent=o;},1500);}).catch(()=>{btn.textContent='✗ Copy failed';});}
+  </script>
+</div>
+
+<script src="../js/modules/base-optimizer.js"></script>
+<script src="../js/modules/linalg.js"></script>
+<script src="../js/modules/prima-algorithms.js"></script>
+<script src="../js/modules/scipy-algorithms.js"></script>
+<script src="../js/modules/evolutionary-algorithms.js"></script>
+<script src="../js/modules/search-algorithms.js"></script>
+
+<script>
+// ============================================================================
+// Genetic art. Approximate a target image with NT translucent triangles
+// (10 genes each). Objective = pixel RMS error to the target on a 48x48 grid.
+// Same software rasteriser is used for scoring; the on-screen painting is drawn
+// with the canvas for crispness (same genome, near-identical result).
+// ============================================================================
+const RES=48, NPX=RES*RES, GPT=10;
+function blank(){ return new Float32Array(NPX*3); }
+function fillTri(buf,x1,y1,x2,y2,x3,y3,r,g,b,a){
+  const minX=Math.max(0,Math.floor(Math.min(x1,x2,x3))), maxX=Math.min(RES-1,Math.ceil(Math.max(x1,x2,x3)));
+  const minY=Math.max(0,Math.floor(Math.min(y1,y2,y3))), maxY=Math.min(RES-1,Math.ceil(Math.max(y1,y2,y3)));
+  if(maxX<minX||maxY<minY)return;
+  const d=(y2-y3)*(x1-x3)+(x3-x2)*(y1-y3); if(Math.abs(d)<1e-9)return; const ia=1-a;
+  for(let py=minY;py<=maxY;py++){ const fy=py+0.5;
+    for(let px=minX;px<=maxX;px++){ const fx=px+0.5;
+      const l1=((y2-y3)*(fx-x3)+(x3-x2)*(fy-y3))/d, l2=((y3-y1)*(fx-x3)+(x1-x3)*(fy-y3))/d, l3=1-l1-l2;
+      if(l1<0||l2<0||l3<0)continue; const o=(py*RES+px)*3;
+      buf[o]=buf[o]*ia+r*a; buf[o+1]=buf[o+1]*ia+g*a; buf[o+2]=buf[o+2]*ia+b*a; } }
+}
+function render(u,NT){ const buf=blank();
+  for(let k=0;k<NT;k++){ const o=k*GPT; const X=v=>(v*1.3-0.15)*RES;
+    fillTri(buf,X(u[o]),X(u[o+1]),X(u[o+2]),X(u[o+3]),X(u[o+4]),X(u[o+5]),u[o+6]*255,u[o+7]*255,u[o+8]*255,0.30+u[o+9]*0.65); }
+  return buf;
+}
+function rmse(buf,t){ let s=0; for(let i=0;i<NPX*3;i++){ const d=buf[i]-t[i]; s+=d*d; } return Math.sqrt(s/(NPX*3)); }
+
+// ---- procedural targets (full-bleed scenes; fill a RES buffer) ----
+function px(b,x,y,r,g,bl){ if(x<0||x>=RES||y<0||y>=RES)return; const o=(y*RES+x)*3; b[o]=r;b[o+1]=g;b[o+2]=bl; }
+function disc(b,cx,cy,rad,r,g,bl){ for(let y=0;y<RES;y++)for(let x=0;x<RES;x++){ const dx=x-cx,dy=y-cy; if(dx*dx+dy*dy<=rad*rad)px(b,x,y,r,g,bl);} }
+function rect(b,x0,y0,x1,y1,r,g,bl){ for(let y=y0;y<y1;y++)for(let x=x0;x<x1;x++)px(b,x,y,r,g,bl); }
+function poly(b,pts,r,g,bl){ let minY=RES,maxY=0; for(const p of pts){minY=Math.min(minY,p[1]);maxY=Math.max(maxY,p[1]);}
+  for(let y=Math.max(0,Math.floor(minY));y<=Math.min(RES-1,Math.ceil(maxY));y++){ const xs=[];
+    for(let i=0;i<pts.length;i++){ const a=pts[i],c=pts[(i+1)%pts.length];
+      if((a[1]<=y&&c[1]>y)||(c[1]<=y&&a[1]>y))xs.push(a[0]+(y-a[1])/(c[1]-a[1])*(c[0]-a[0])); }
+    xs.sort((p,q)=>p-q); for(let k=0;k+1<xs.length;k+=2)for(let x=Math.ceil(xs[k]);x<xs[k+1];x++)px(b,x,y,r,g,bl); }
+}
+const TARGETS={
+  mountains(){ const b=blank();
+    for(let y=0;y<RES;y++){ const t=y/RES; let r,g,bl; if(t<0.55){ const u=t/0.55; r=70+120*u;g=110+120*u;bl=200-30*u; } else { r=40;g=46;bl=60; } rect(b,0,y,RES,y+1,r,g,bl); }
+    disc(b,36,13,5,255,240,200); poly(b,[[0,30],[12,16],[24,30]],90,80,120); poly(b,[[16,30],[30,12],[44,30]],70,62,96);
+    poly(b,[[18,21],[30,12],[24,21]],235,235,245); rect(b,0,30,RES,RES,30,46,40); poly(b,[[30,34],[40,22],[48,34]],50,70,58); return b; },
+  sail(){ const b=blank();
+    for(let y=0;y<RES;y++){ const t=y/RES; let r,g,bl; if(t<0.62){ const u=t/0.62; r=250-40*u;g=150+60*u;bl=70+30*u; } else { const u=(t-0.62)/0.38; r=20+20*u;g=70+50*u;bl=140+60*u; } rect(b,0,y,RES,y+1,r,g,bl); }
+    disc(b,15,15,7,255,230,120); poly(b,[[30,38],[30,12],[44,38]],30,30,46); poly(b,[[29,38],[20,38],[29,18]],210,210,225);
+    rect(b,28,30,31,38,40,26,18); poly(b,[[18,38],[46,38],[42,43],[22,43]],25,20,30); return b; },
+  camel(){ const b=blank();
+    for(let y=0;y<RES;y++){ const t=y/RES; let r,g,bl; if(t<0.6){ const u=t/0.6; r=250-30*u;g=170+30*u;bl=110+40*u; } else { const u=(t-0.6)/0.4; r=210-40*u;g=160-50*u;bl=90-30*u; } rect(b,0,y,RES,y+1,r,g,bl); }
+    disc(b,12,16,6,255,240,180); poly(b,[[0,30],[20,24],[48,30],[48,36],[0,36]],225,180,110); rect(b,0,34,RES,RES,180,140,86);
+    poly(b,[[14,32],[17,24],[21,28],[26,23],[31,28],[36,24],[39,30],[37,32],[36,32],[36,38],[34,38],[34,32],[20,32],[20,38],[18,38],[18,32]],50,38,40);
+    rect(b,12,28,15,33,50,38,40); return b; },
+};
+const TARGET_KEYS=['mountains','sail','camel'];
+const TARGET_LABEL={mountains:'Mountains',sail:'Sailboat',camel:'Desert camel'};
+
+// ---- state ----
+let targetKey='mountains';
+let targetBuf=TARGETS[targetKey]();
+function NTval(){ return parseInt(document.getElementById('triangles').value,10); }
+let improvements=[];   // {sim,u} recorded each time the optimiser beats its best
+function objective(u){
+  const NT=NTval(); const e=rmse(render(u,NT),targetBuf);
+  if(e<objective._best){ objective._best=e; improvements.push({sim:100*(1-e/255),u:Array.from(u)}); }
+  return e;
+}
+objective._best=Infinity;
+
+// ---- canvas / rendering ----
+const canvas=document.getElementById('canvas'),ctx=canvas.getContext('2d');
+const W=canvas.width,H=canvas.height; const SIDE=346, TX=36, RX=418, TY=44;
+const off=document.createElement('canvas'); off.width=RES; off.height=RES; const offx=off.getContext('2d');
+function drawTargetInto(ox,oy,side,buf){
+  const img=offx.createImageData(RES,RES);
+  for(let i=0;i<NPX;i++){ img.data[i*4]=buf[i*3]; img.data[i*4+1]=buf[i*3+1]; img.data[i*4+2]=buf[i*3+2]; img.data[i*4+3]=255; }
+  offx.putImageData(img,0,0); ctx.imageSmoothingEnabled=true; ctx.drawImage(off,0,0,RES,RES,ox,oy,side,side);
+}
+function drawGenomeInto(u,NT,ox,oy,side){
+  ctx.save(); ctx.beginPath(); ctx.rect(ox,oy,side,side); ctx.clip();
+  ctx.fillStyle='#000'; ctx.fillRect(ox,oy,side,side);
+  const X=v=>ox+(v*1.3-0.15)*side, Y=v=>oy+(v*1.3-0.15)*side;
+  for(let k=0;k<NT;k++){ const o=k*GPT; ctx.beginPath(); ctx.moveTo(X(u[o]),Y(u[o+1])); ctx.lineTo(X(u[o+2]),Y(u[o+3])); ctx.lineTo(X(u[o+4]),Y(u[o+5])); ctx.closePath();
+    const a=0.30+u[o+9]*0.65; ctx.fillStyle=`rgba(${u[o+6]*255|0},${u[o+7]*255|0},${u[o+8]*255|0},${a})`; ctx.fill(); }
+  ctx.restore();
+}
+function frame(){ ctx.clearRect(0,0,W,H); ctx.fillStyle='#0e0e14'; ctx.fillRect(0,0,W,H);
+  ctx.font='bold 13px -apple-system,Helvetica,Arial,sans-serif'; ctx.textAlign='center';
+  ctx.fillStyle='var(--muted)'; ctx.fillStyle='#9a9aac';
+  ctx.fillText('TARGET',TX+SIDE/2,TY-14); ctx.fillText('OPTIMIZER’S PAINTING',RX+SIDE/2,TY-14);
+  ctx.strokeStyle='#404054'; ctx.lineWidth=1; ctx.strokeRect(TX-1,TY-1,SIDE+2,SIDE+2); ctx.strokeRect(RX-1,TY-1,SIDE+2,SIDE+2);
+}
+function drawScene(u,NT,hud){
+  frame(); drawTargetInto(TX,TY,SIDE,targetBuf);
+  if(u) drawGenomeInto(u,NT,RX,TY,SIDE); else { ctx.fillStyle='#000'; ctx.fillRect(RX,TY,SIDE,SIDE); }
+  if(hud){ ctx.font='bold 14px -apple-system,Helvetica,Arial,sans-serif'; ctx.textAlign='left'; const pad=9,bw=Math.ceil(ctx.measureText(hud).width)+2*pad;
+    ctx.fillStyle='rgba(0,0,0,0.6)'; ctx.fillRect(TX,TY+SIDE+10,bw,24); ctx.fillStyle='#ffcc00'; ctx.fillText(hud,TX+pad,TY+SIDE+27); }
+}
+function drawIdle(){ drawScene(null,0,'Pick a subject, then press “Paint with this optimizer”'); }
+
+// ---- animation: replay improving paintings ----
+let animationToken=0; const delay=ms=>new Promise(r=>setTimeout(r,ms));
+async function montage(NT){
+  const my=++animationToken; const seq=improvements; if(!seq.length)return null;
+  const total=lastEvals;
+  for(let i=0;i<seq.length;i++){ if(my!==animationToken)return seq[seq.length-1];
+    const e=seq[i];
+    document.getElementById('score-now').textContent=e.sim.toFixed(1)+'%';
+    document.getElementById('best-score').textContent=`${e.sim.toFixed(1)}% (${document.getElementById('algorithm').value})`;
+    const ev=Math.round((i+1)/seq.length*total);
+    document.getElementById('evals').textContent=ev;
+    drawScene(e.u,NT,`Painting — ${e.sim.toFixed(1)}% similar  (improvement ${i+1}/${seq.length})`);
+    await delay(seq.length>60?16:42);
+  }
+  document.getElementById('evals').textContent=total;
+  return seq[seq.length-1];
+}
+let lastBest=null,lastEvals=0,lastNT=30;
+function getOptimizerClass(n){return globalThis[n];}
+async function runOptimization(){
+  const algoName=document.getElementById('algorithm').value, budget=parseInt(document.getElementById('budget').value,10), NT=NTval();
+  const cls=getOptimizerClass(algoName); if(!cls){alert(`Optimizer '${algoName}' not found.`);return;}
+  const runBtn=document.getElementById('run-btn'); runBtn.disabled=true; runBtn.textContent=`Painting with ${algoName}…`;
+  animationToken++; improvements=[]; objective._best=Infinity; lastNT=NT;
+  document.getElementById('param-a').textContent=`${NT*GPT} (${NT} triangles)`;
+  drawScene(null,0,`${algoName} is painting ${NT} triangles… (this can take a few seconds)`);
+  await delay(30);
+  try{
+    const opt=new cls(objective,budget,NT*GPT); opt.optimize();
+    lastEvals=opt.evaluations||budget;
+    const best=await montage(NT); lastBest=best?{...best,NT}:null;
+    if(best){ drawScene(best.u,NT,`Best painting: ${best.sim.toFixed(1)}% similar (${algoName})`);
+      document.getElementById('score-now').textContent=best.sim.toFixed(1)+'%';
+      document.getElementById('best-score').textContent=`${best.sim.toFixed(1)}% (${algoName})`;
+      addLeaderboardEntry(algoName,best.sim,lastEvals,NT); }
+  }catch(e){ console.error(e); alert(`${algoName} threw an error: ${e.message}`); }
+  finally{ runBtn.disabled=false; runBtn.textContent='▶ Paint with this optimizer'; }
+}
+function replayBest(){ if(!lastBest)return; animationToken++; drawScene(lastBest.u,lastBest.NT,`Best painting: ${lastBest.sim.toFixed(1)}% similar`); }
+function scoreManual(){
+  animationToken++; const NT=NTval(); let best=null;
+  for(let t=0;t<200;t++){ const u=Array.from({length:NT*GPT},()=>Math.random()); const e=rmse(render(u,NT),targetBuf); const sim=100*(1-e/255); if(!best||sim>best.sim)best={sim,u}; }
+  lastBest={...best,NT};
+  document.getElementById('score-now').textContent=best.sim.toFixed(1)+'%';
+  document.getElementById('best-score').textContent=`${best.sim.toFixed(1)}% (Human Raphson)`;
+  document.getElementById('param-a').textContent=`${NT*GPT} (${NT} triangles)`;
+  addLeaderboardEntry('Human Raphson',best.sim,200,NT);
+  drawScene(best.u,NT,`🧠 Human Raphson (best of 200 splatters): ${best.sim.toFixed(1)}% similar`);
+}
+
+// ---- leaderboard ----
+const leaderboard=[];
+function addLeaderboardEntry(name,sim,evals,NT){
+  leaderboard.push({name,sim,evals,NT}); leaderboard.sort((a,b)=>b.sim-a.sim||a.evals-b.evals); renderLeaderboard();
+}
+function renderLeaderboard(){
+  const body=document.getElementById('leaderboard-body');
+  if(!leaderboard.length){body.innerHTML='<tr><td colspan="4" style="color:var(--muted); text-align:center;">— no runs yet —</td></tr>';return;}
+  body.innerHTML=leaderboard.map(r=>{const cls=r.name==='Human Raphson'?' class="human-raphson"':'';
+    return `<tr${cls}><td>${r.name}</td><td>${r.sim.toFixed(1)}%</td><td>${r.evals}</td><td>${r.NT}</td></tr>`;}).join('');
+}
+function resetEverything(){ leaderboard.length=0; lastBest=null; improvements=[]; animationToken++;
+  document.getElementById('evals').textContent='0';
+  ['score-now','best-score','param-a'].forEach(id=>document.getElementById(id).textContent='—');
+  renderLeaderboard(); drawIdle();
+}
+
+// ---- subject thumbnails ----
+function buildThumbs(){
+  const wrap=document.getElementById('thumbs'); wrap.innerHTML='';
+  for(const key of TARGET_KEYS){
+    const div=document.createElement('div'); div.className='thumb'+(key===targetKey?' sel':''); div.title=TARGET_LABEL[key];
+    const c=document.createElement('canvas'); c.width=RES; c.height=RES; const cx=c.getContext('2d');
+    const buf=TARGETS[key](); const img=cx.createImageData(RES,RES);
+    for(let i=0;i<NPX;i++){ img.data[i*4]=buf[i*3]; img.data[i*4+1]=buf[i*3+1]; img.data[i*4+2]=buf[i*3+2]; img.data[i*4+3]=255; }
+    cx.putImageData(img,0,0); div.appendChild(c);
+    div.onclick=()=>{ targetKey=key; targetBuf=TARGETS[key](); buildThumbs(); resetEverything(); };
+    wrap.appendChild(div);
+  }
+}
+
+buildThumbs();
+document.getElementById('param-a').textContent=`${30*GPT} (30 triangles)`;
+drawIdle();
+</script>
+</body>
+</html>
