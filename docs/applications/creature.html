@@ -1,0 +1,374 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' 'unsafe-inline'; style-src 'self' 'unsafe-inline';">
+<title>🐛 Walking Creature — HumpDay</title>
+<style>
+  :root { --bg:#1a1a22; --panel:#2d2d3a; --accent:#ffcc00; --text:#e8e8ea; --muted:#9a9aac; }
+  body { margin:0; background:var(--bg); color:var(--text); font-family:-apple-system,'Segoe UI','Helvetica Neue',Helvetica,Arial,sans-serif; }
+  .site-nav { background:#34495e; padding:12px 24px; font-family:'Times New Roman',Times,serif; box-shadow:0 2px 4px rgba(0,0,0,0.1); }
+  .site-nav-inner { max-width:1100px; margin:0 auto; display:flex; justify-content:space-between; align-items:center; }
+  .site-nav a { color:#ecf0f1; text-decoration:none; margin:0 12px; }
+  .site-nav a:hover { color:white; text-decoration:underline; }
+  .site-nav-brand { font-weight:700; font-size:1.25em; }
+  .container { max-width:1100px; margin:0 auto; padding:32px 24px 64px; }
+  h1 { font-size:2.2em; margin:0.2em 0; }
+  h2 { font-size:1.4em; margin-top:1.4em; color:var(--accent); }
+  p { line-height:1.55; max-width:70ch; }
+  .intro { color:var(--muted); }
+  .stage { display:grid; grid-template-columns:1fr 320px; gap:24px; align-items:start; margin-top:24px; }
+  @media (max-width:800px){ .stage { grid-template-columns:1fr; } }
+  canvas { background:#0e0e14; border:3px solid var(--accent); border-radius:6px; display:block; width:100%; height:auto; }
+  .panel { background:var(--panel); padding:18px; border-radius:6px; border:1px solid #404054; }
+  .panel h3 { margin:0 0 12px; font-size:1.05em; text-transform:uppercase; letter-spacing:0.06em; color:var(--accent); }
+  label { display:block; margin:10px 0 6px; font-size:0.9em; color:var(--muted); }
+  select, input, button { width:100%; box-sizing:border-box; padding:8px 10px; border-radius:4px; border:1px solid #404054; background:#1a1a22; color:var(--text); font-size:0.95em; }
+  button { background:var(--accent); color:#1a1a22; font-weight:700; cursor:pointer; margin-top:6px; transition:opacity 0.15s; }
+  button:hover { opacity:0.88; }
+  button.secondary { background:#404054; color:var(--text); font-weight:400; }
+  button:disabled { opacity:0.5; cursor:not-allowed; }
+  .stats { margin-top:16px; padding-top:14px; border-top:1px solid #404054; font-size:0.92em; line-height:1.6; }
+  .stats .score { font-size:2.6em; color:var(--accent); font-weight:700; }
+  .stat-row { display:flex; justify-content:space-between; }
+  .stat-row span:first-child { white-space:nowrap; flex-shrink:0; }
+  .stat-row span:last-child { color:var(--text); font-family:'SF Mono',Menlo,monospace; text-align:right; word-break:break-word; }
+  .leaderboard { margin-top:24px; }
+  .leaderboard table { width:100%; border-collapse:collapse; background:var(--panel); border-radius:6px; overflow:hidden; }
+  .leaderboard th, .leaderboard td { padding:10px 14px; text-align:left; border-bottom:1px solid #404054; }
+  .leaderboard th { background:#1a1a22; color:var(--muted); text-transform:uppercase; font-size:0.78em; letter-spacing:0.08em; }
+  .leaderboard td:nth-child(2){ text-align:center; font-size:1.3em; font-weight:700; color:var(--accent); }
+  .leaderboard td:nth-child(3),.leaderboard td:nth-child(4){ font-family:'SF Mono',Menlo,monospace; color:var(--muted); }
+  .leaderboard tr.human-raphson td:first-child { color:#ff9944; font-weight:700; }
+  .left-stack { display:flex; flex-direction:column; gap:16px; min-width:0; }
+  .hr-panel { padding:14px 16px; }
+  .hr-panel h3 { margin:0 0 6px; }
+  .hr-sliders { display:grid; grid-template-columns:1fr 1fr; gap:2px 14px; margin-bottom:10px; }
+  .hr-sliders label { margin:6px 0 0; display:flex; justify-content:space-between; font-size:0.76em; }
+  .hr-sliders .val { color:var(--text); font-family:'SF Mono',Menlo,monospace; }
+  .hr-sliders input[type=range] { width:100%; margin:2px 0 0; padding:0; }
+  .hr-panel > button { background:#ff9944; color:#1a1a22; margin-top:6px; }
+  .skill-callout { margin-top:36px; background:rgba(126,217,87,0.07); border:1px solid rgba(126,217,87,0.35); border-radius:8px; padding:18px 22px; }
+  .skill-callout h3 { margin:0 0 6px; color:#7ed957; font-size:1.05em; text-transform:none; letter-spacing:0; }
+  .skill-callout p { margin:0 0 10px; color:var(--text); max-width:none; }
+  .skill-callout pre { background:#1a1a22; border:1px solid #404054; border-radius:4px; padding:10px 14px; margin:0; font-size:0.84em; color:#7ed957; white-space:pre-wrap; word-break:break-all; font-family:'SF Mono',Menlo,monospace; }
+  .skill-actions { margin-top:10px; display:flex; align-items:center; gap:14px; }
+  .skill-actions button { width:auto; background:#404054; color:var(--text); border:1px solid #404054; padding:6px 12px; font-size:0.85em; cursor:pointer; border-radius:4px; margin:0; font-weight:500; }
+  .skill-actions a { color:#7ed957; font-size:0.85em; text-decoration:none; }
+</style>
+</head>
+<body>
+    <nav class="site-nav" data-site-nav="v1">
+        <div class="site-nav-inner">
+            <a href="../index.html" class="site-nav-brand"><svg class="site-nav-camel" data-site-logo="camel-v3" viewBox="0 0 100 50" width="44" height="22" xmlns="http://www.w3.org/2000/svg" aria-hidden="true"><rect x="20.5" y="30" width="1.8" height="11" fill="white" fill-opacity="0.55"/><rect x="60.5" y="30" width="1.8" height="11" fill="white" fill-opacity="0.55"/><path fill="white" fill-opacity="0.92" d="M 14 30 C 10 30 8 28 8 24 C 7 22 7 19 9 18 C 11 16 13 14 16 13 C 20 8 26 6 31 9 C 34 11 35 13 35 16 C 37 18 40 18 43 17 C 47 13 53 7 59 9 C 63 11 65 13 65 16 C 66 18 68 18 70 17 C 73 13 76 9 80 7 C 84 5 89 6 90 9 L 92 9 L 93 12 L 91 13 L 87 13 L 87 15 C 82 16 79 18 76 21 C 73 25 71 28 68 30 L 66 30 L 66 42 L 64 42 L 64 30 L 26 30 L 26 42 L 24 42 L 24 30 L 14 30 Z"/><circle cx="88" cy="10" r="0.9" fill="#34495e"/></svg>HumpDay</a>
+            <div class="site-nav-links">
+                <a href="../index.html">Home</a>
+                <a href="../contest.html">Contest</a>
+                <a href="../applications/index.html">Demonstrations</a>
+                <a href="../algorithms.html">Algorithms</a>
+                <a href="../sota-status.html">SOTA status</a>
+                <a href="../recommendations.html">Recommendations</a>
+                <a href="https://github.com/microprediction/humpday" target="_blank" rel="noopener">GitHub</a>
+            </div>
+        </div>
+    </nav>
+
+<div class="container">
+  <h1>🐛 Walking Creature</h1>
+  <p class="intro">
+    A two-legged creature has no idea how to walk. Each leg just swings back and
+    forth on a sine wave; <strong>six numbers</strong> set the rhythm — how fast,
+    how big a stride, how the two legs are timed against each other, when each
+    foot lifts. Get them wrong and it flails on the spot or topples; get them
+    right and a <strong>gait emerges</strong>. Nobody tells the optimiser that
+    legs should alternate — it has to discover that.
+  </p>
+
+  <div class="stage">
+    <div class="left-stack">
+      <canvas id="canvas" width="800" height="450"></canvas>
+      <div class="panel hr-panel">
+        <h3>🧠 Human Raphson</h3>
+        <p style="color:var(--muted); margin:0 0 8px; font-size:0.86em;">
+          Choreograph the gait yourself and watch it try to walk.
+        </p>
+        <div class="hr-sliders" id="hr-sliders"></div>
+        <button onclick="walkManual()">▶ Walk with this gait (Human Raphson)</button>
+      </div>
+    </div>
+
+    <div class="panel">
+      <h3>Algorithm</h3>
+      <label for="algorithm">Pick a HumpDay optimizer:</label>
+      <select id="algorithm">
+        <optgroup label="Population-based">
+          <option value="DifferentialEvolution" selected>Differential Evolution</option>
+          <option value="CMAEvolutionStrategy">CMA-Evolution Strategy</option>
+          <option value="ParticleSwarm">Particle Swarm</option>
+          <option value="GeneticAlgorithm">Genetic Algorithm</option>
+          <option value="EvolutionStrategy">Evolution Strategy</option>
+        </optgroup>
+        <optgroup label="Trust-region / interpolation">
+          <option value="PRIMA_BOBYQA">PRIMA_BOBYQA</option>
+          <option value="PRIMA_NEWUOA">PRIMA_NEWUOA (can get stuck)</option>
+        </optgroup>
+        <optgroup label="Local / classical">
+          <option value="NelderMead">Nelder-Mead</option>
+          <option value="Powell">Powell</option>
+        </optgroup>
+        <optgroup label="Other">
+          <option value="SimulatedAnnealing">Simulated Annealing</option>
+          <option value="RandomSearch">Random Search</option>
+        </optgroup>
+      </select>
+
+      <label for="budget">Evaluation budget:</label>
+      <select id="budget">
+        <option value="100">100 gaits</option>
+        <option value="200" selected>200 gaits</option>
+        <option value="400">400 gaits</option>
+      </select>
+      <p style="margin:8px 0 0; font-size:0.78em; color:var(--muted);">
+        6-D gait. Each evaluation simulates an 8-second walk; the score is how
+        far the body travels (in body-lengths) before the run ends or it falls.
+      </p>
+
+      <button id="run-btn" onclick="runOptimization()">▶ Teach it to walk</button>
+      <button class="secondary" onclick="replayBest()">🔁 Replay best gait</button>
+      <button class="secondary" onclick="resetEverything()">⟲ Reset leaderboard</button>
+
+      <div class="stats">
+        <div class="stat-row"><span>Distance</span><span class="score" id="score-now">—</span></div>
+        <div class="stat-row"><span>Gaits tried</span><span id="evals">0</span></div>
+        <div class="stat-row"><span>Best so far</span><span id="best-score">—</span></div>
+        <div class="stat-row"><span>Leg timing</span><span id="param-a">—</span></div>
+      </div>
+    </div>
+  </div>
+
+  <div class="leaderboard">
+    <h2>Leaderboard (this session)</h2>
+    <p style="color:var(--muted);">
+      Distance walked, in body-lengths, by the best gait each optimiser found.
+      A flailing creature scores near zero (or negative, walking backwards); a
+      good gait covers tens of body-lengths.
+    </p>
+    <table>
+      <thead>
+        <tr><th>Algorithm</th><th>Distance</th><th>Gaits</th><th>Gait (freq / stride / phase)</th></tr>
+      </thead>
+      <tbody id="leaderboard-body">
+        <tr><td colspan="4" style="color:var(--muted); text-align:center;">— no runs yet —</td></tr>
+      </tbody>
+    </table>
+  </div>
+
+  <h2>What's happening</h2>
+  <p>
+    Each leg's foot follows a sine wave: it sweeps forward and back, and lifts
+    off the ground for part of every cycle. While a foot is planted it grips the
+    ground, so its backward sweep carries the body <em>forward</em> — like a
+    paddle. While both feet are in the air there's nothing holding the body up,
+    so it falls; fall far enough and it faceplants and the run is over. The six
+    numbers are the gait: stride frequency, stride length, the
+    <strong>phase offset</strong> between the two legs, when in the cycle each
+    foot lifts, the lift duty, and a forward lean.
+  </p>
+  <p>
+    The whole game is in the phase offset. If the legs move together, both feet
+    leave the ground at once and the creature hops and stumbles; if they move a
+    <strong>half-cycle apart</strong>, one foot is always planted and pushing
+    while the other swings forward — a walk. The optimiser is never told this.
+    It reliably rediscovers it: the best gaits come out with the two legs almost
+    exactly out of phase. The landscape is forgiving enough that even Random
+    Search shuffles forward a bit — but the structured optimisers find faster,
+    cleaner gaits, and one (PRIMA_NEWUOA) can get trapped near its starting
+    point and never learn to walk at all.
+  </p>
+
+  <hr style="border:0; border-top:1px solid #404054; margin:32px 0 16px;" />
+  <p style="font-size:0.78em; color:var(--muted);">
+    A stylised kinematic walker — straight, no-slip legs on flat ground, not a
+    full rigid-body sim — but the emergence of an alternating gait from a blind
+    search over six oscillator numbers is exactly the classic result.
+  </p>
+
+  <div class="skill-callout">
+    <h3>🌱 Save the Planet</h3>
+    <p>If your hyper-parameter searches are heating the Earth, drop this in Cursor or Claude:</p>
+    <pre id="skill-snippet">Read https://raw.githubusercontent.com/microprediction/humpday/main/SKILL.md
+and create a project skill from it.</pre>
+    <div class="skill-actions">
+      <button type="button" onclick="copySkillSnippet(this)">📋 Copy</button>
+      <a href="https://github.com/microprediction/humpday/blob/main/SKILL.md" target="_blank" rel="noopener">View SKILL.md →</a>
+    </div>
+  </div>
+
+  <script>
+    function copySkillSnippet(btn){const t=document.getElementById('skill-snippet').textContent;navigator.clipboard.writeText(t).then(()=>{const o=btn.textContent;btn.textContent='✓ Copied';setTimeout(()=>{btn.textContent=o;},1500);}).catch(()=>{btn.textContent='✗ Copy failed';});}
+  </script>
+</div>
+
+<script src="../js/modules/base-optimizer.js"></script>
+<script src="../js/modules/linalg.js"></script>
+<script src="../js/modules/prima-algorithms.js"></script>
+<script src="../js/modules/scipy-algorithms.js"></script>
+<script src="../js/modules/evolutionary-algorithms.js"></script>
+<script src="../js/modules/search-algorithms.js"></script>
+
+<script>
+// ============================================================================
+// Walking creature: 2 legs driven by oscillators; no-slip stance feet carry the
+// body forward, both-feet-airborne => fall. Optimise 6 gait numbers for range.
+// ============================================================================
+const T=8.0, DT=0.02, STEPS=Math.round(T/DT);
+const LEGLEN=1.0, MAXDROP=0.55, HIPDX=0.22;
+function decode(u){ return {
+  w:3+u[0]*9, A:0.15+u[1]*1.05, dphi:u[2]*2*Math.PI, zeta:u[3]*2*Math.PI, duty:0.2+u[4]*0.6, lean:(u[5]-0.5)*0.8 }; }
+function legPhase(g,i,t){ return g.w*t + (i?g.dphi:0); }
+function foot(g,i,t){ const p=legPhase(g,i,t); const lift=Math.sin(p+g.zeta); const thr=1-2*g.duty; const lifted=lift>thr;
+  const fx=g.A*Math.sin(p)+g.lean; const fy=-LEGLEN+(lifted?(lift-thr)/(1-thr+1e-9)*0.5:0); return {fx,fy,lifted}; }
+function footVx(g,i,t){ return g.A*g.w*Math.cos(legPhase(g,i,t)); }
+function simulate(u,record){
+  const g=decode(u); let x=0,y=LEGLEN,vy=0,fell=false; const frames=record?[]:null;
+  for(let s=0;s<STEPS;s++){ const t=s*DT; const f0=foot(g,0,t),f1=foot(g,1,t);
+    const stance=[]; if(!f0.lifted)stance.push(0); if(!f1.lifted)stance.push(1);
+    if(stance.length){ let v=0; for(const i of stance)v+=-footVx(g,i,t); v/=stance.length; x+=v*DT; y+=(LEGLEN-y)*Math.min(1,8*DT); vy=0; }
+    else { vy-=6.0*DT; y+=vy*DT; if(y<LEGLEN-MAXDROP)fell=true; }
+    if(record && s%3===0) frames.push({x,y,f0:{x:HIPDX+f0.fx,y:f0.fy,up:f0.lifted},f1:{x:-HIPDX+f1.fx,y:f1.fy,up:f1.lifted}});
+    if(fell)break; }
+  return { dist:x, fell, frames, g }; }
+function scoreRaw(u){ const r=simulate(u,false); let d=r.dist; if(r.fell)d=Math.min(d,d*0.3)-1.0; return d; }
+let improvements=[];
+function objective(u){ const s=scoreRaw(u); if(!objective._b||s>objective._b){ objective._b=s; improvements.push({dist:s,u:Array.from(u)}); } return -s; }
+
+// ---- rendering ----
+const canvas=document.getElementById('canvas'),ctx=canvas.getContext('2d');
+const CW=canvas.width,CH=canvas.height; const SC=58, GY=372, MIDX=240;
+function sx(wx,camX){ return (wx-camX)*SC + MIDX; }
+function sy(wy){ return GY - wy*SC; }
+function drawGround(camX){
+  ctx.clearRect(0,0,CW,CH);
+  const grd=ctx.createLinearGradient(0,0,0,GY); grd.addColorStop(0,'#10131c'); grd.addColorStop(1,'#171b26'); ctx.fillStyle=grd; ctx.fillRect(0,0,CW,GY);
+  ctx.fillStyle='#20252f'; ctx.fillRect(0,GY,CW,CH-GY);
+  ctx.strokeStyle='#3a4150'; ctx.lineWidth=2; ctx.beginPath(); ctx.moveTo(0,GY); ctx.lineTo(CW,GY); ctx.stroke();
+  // ground ticks every 1 unit + distance labels every 5
+  ctx.strokeStyle='#2c333f'; ctx.lineWidth=1; ctx.fillStyle='#5a6573'; ctx.font='10px SF Mono,Menlo,monospace'; ctx.textAlign='center';
+  const startU=Math.floor(camX-MIDX/SC)-1, endU=Math.ceil(camX+(CW-MIDX)/SC)+1;
+  for(let u=startU;u<=endU;u++){ const X=sx(u,camX); if(X<-20||X>CW+20)continue; const big=(u%5===0);
+    ctx.beginPath(); ctx.moveTo(X,GY); ctx.lineTo(X,GY+(big?12:6)); ctx.stroke();
+    if(big&&u!==0) ctx.fillText(u+'',X,GY+26); }
+  // start marker
+  const sX=sx(0,camX); if(sX>-20&&sX<CW+20){ ctx.strokeStyle='#7ed957'; ctx.setLineDash([4,4]); ctx.beginPath(); ctx.moveTo(sX,GY); ctx.lineTo(sX,80); ctx.stroke(); ctx.setLineDash([]); ctx.fillStyle='#7ed957'; ctx.fillText('start',sX,72); }
+}
+function drawLeg(hx,hy,fx,fy,up){
+  // fake knee at midpoint, bent forward, for a creature look
+  const mx=(hx+fx)/2 + (up?6:3), my=(hy+fy)/2 + 10;
+  ctx.strokeStyle=up?'#ff9944':'#cfd6e0'; ctx.lineWidth=5; ctx.lineCap='round';
+  ctx.beginPath(); ctx.moveTo(hx,hy); ctx.lineTo(mx,my); ctx.lineTo(fx,fy); ctx.stroke();
+  ctx.fillStyle=up?'#ff9944':'#9aa7b8'; ctx.beginPath(); ctx.arc(fx,fy,4,0,Math.PI*2); ctx.fill();
+}
+function drawCreature(fr,camX){
+  const bx=sx(fr.x,camX), by=sy(fr.y);
+  // back leg first (leg1), then body, then front leg (leg0)
+  drawLeg(sx(fr.x-HIPDX,camX),by, sx(fr.x+fr.f1.x,camX), sy(fr.y+fr.f1.y), fr.f1.up);
+  drawLeg(sx(fr.x+HIPDX,camX),by, sx(fr.x+fr.f0.x,camX), sy(fr.y+fr.f0.y), fr.f0.up);
+  // body
+  ctx.fillStyle='#ffcc00'; ctx.strokeStyle='#1a1a22'; ctx.lineWidth=2;
+  ctx.beginPath(); ctx.ellipse(bx,by-14,26,17,0,0,Math.PI*2); ctx.fill(); ctx.stroke();
+  // head
+  ctx.beginPath(); ctx.arc(bx+24,by-22,11,0,Math.PI*2); ctx.fill(); ctx.stroke();
+  ctx.fillStyle='#1a1a22'; ctx.beginPath(); ctx.arc(bx+28,by-24,2.4,0,Math.PI*2); ctx.fill();
+}
+function drawScene(fr,camX,hud){
+  drawGround(camX); if(fr)drawCreature(fr,camX);
+  if(hud){ ctx.font='bold 15px -apple-system,Helvetica,Arial,sans-serif'; ctx.textAlign='left'; const pad=10,bw=Math.ceil(ctx.measureText(hud).width)+2*pad;
+    ctx.fillStyle='rgba(0,0,0,0.55)'; ctx.fillRect(16,16,bw,26); ctx.fillStyle='#ffcc00'; ctx.fillText(hud,16+pad,34); }
+}
+function drawIdle(){ const fr=simulate(manualGait(),true).frames[0]; drawScene(fr,fr?fr.x:0,'Press “Teach it to walk”, or choreograph your own'); }
+
+// ---- animation ----
+let animationToken=0; const delay=ms=>new Promise(r=>setTimeout(r,ms));
+async function walkOut(u,label,fast){
+  const my=animationToken; const r=simulate(u,true); const frames=r.frames; if(!frames.length)return r;
+  for(let i=0;i<frames.length;i++){ if(my!==animationToken)return r;
+    const fr=frames[i]; drawScene(fr,fr.x,`${label} — ${fr.x.toFixed(1)} body-lengths${r.fell&&i===frames.length-1?' · fell!':''}`);
+    document.getElementById('score-now').textContent=fr.x.toFixed(1);
+    await delay(fast?10:24); }
+  const last=frames[frames.length-1]; if(my===animationToken) drawScene(last,last.x,`${label} — ${r.dist.toFixed(1)} body-lengths${r.fell?' · fell!':''}`);
+  return r;
+}
+async function montage(){
+  const my=animationToken; if(!improvements.length)return null;
+  // sample up to 4 milestones: first, ~1/3, ~2/3, best
+  const idx=[...new Set([0, Math.floor(improvements.length/3), Math.floor(2*improvements.length/3), improvements.length-1])];
+  for(let k=0;k<idx.length;k++){ if(my!==animationToken)return improvements[improvements.length-1];
+    const e=improvements[idx[k]]; const isBest=k===idx.length-1;
+    await walkOut(e.u, isBest?'Best gait':`Attempt ${idx[k]+1}`, !isBest);
+    if(my!==animationToken)return improvements[improvements.length-1];
+    await delay(isBest?200:120); }
+  return improvements[improvements.length-1];
+}
+let lastBest=null;
+function getOptimizerClass(n){return globalThis[n];}
+async function runOptimization(){
+  const algoName=document.getElementById('algorithm').value, budget=parseInt(document.getElementById('budget').value,10);
+  const cls=getOptimizerClass(algoName); if(!cls){alert(`Optimizer '${algoName}' not found.`);return;}
+  const runBtn=document.getElementById('run-btn'); runBtn.disabled=true; runBtn.textContent=`Searching with ${algoName}…`;
+  animationToken++; improvements=[]; objective._b=undefined; await delay(20);
+  try{
+    const opt=new cls(objective,budget,6); opt.optimize();
+    const best=improvements.length?improvements[improvements.length-1]:null;
+    if(!best){ alert('No gait found.'); return; }
+    lastBest={...best,algo:algoName};
+    document.getElementById('evals').textContent=opt.evaluations||budget;
+    document.getElementById('best-score').textContent=`${best.dist.toFixed(1)} (${algoName})`;
+    const g=decode(best.u); document.getElementById('param-a').textContent=`${g.w.toFixed(1)} / ${g.A.toFixed(2)} / ${(g.dphi/Math.PI).toFixed(2)}π`;
+    addLeaderboardEntry(algoName,best.dist,opt.evaluations||budget,g);
+    await montage();
+  }catch(e){ console.error(e); alert(`${algoName} threw an error: ${e.message}`); }
+  finally{ runBtn.disabled=false; runBtn.textContent='▶ Teach it to walk'; }
+}
+function replayBest(){ if(!lastBest)return; animationToken++; walkOut(lastBest.u,`Best gait (${lastBest.algo})`,false); }
+
+// ---- Human Raphson ----
+const HLAB=['Frequency','Stride','Leg phase','Lift timing','Lift duty','Lean'];
+const HR_DEF=[0.7,0.9,0.5,0.5,0.5,0.5];
+const sl=document.getElementById('hr-sliders');
+for(let i=0;i<6;i++){
+  const lab=document.createElement('label'); lab.innerHTML=`<span>${HLAB[i]}</span><span class="val" id="hv-${i}">${HR_DEF[i].toFixed(2)}</span>`;
+  const inp=document.createElement('input'); inp.type='range'; inp.id='m-'+i; inp.min=0; inp.max=1; inp.step=0.02; inp.value=HR_DEF[i];
+  inp.oninput=()=>{ document.getElementById('hv-'+i).textContent=parseFloat(inp.value).toFixed(2); };
+  const wrap=document.createElement('div'); wrap.appendChild(lab); wrap.appendChild(inp); sl.appendChild(wrap);
+}
+function manualGait(){ const u=[]; for(let i=0;i<6;i++)u.push(parseFloat(document.getElementById('m-'+i).value)); return u; }
+async function walkManual(){
+  animationToken++; const u=manualGait(); const d=scoreRaw(u); lastBest={u,dist:d,algo:'Human Raphson'};
+  const g=decode(u); document.getElementById('best-score').textContent=`${d.toFixed(1)} (Human Raphson)`;
+  document.getElementById('param-a').textContent=`${g.w.toFixed(1)} / ${g.A.toFixed(2)} / ${(g.dphi/Math.PI).toFixed(2)}π`;
+  addLeaderboardEntry('Human Raphson',d,1,g);
+  await walkOut(u,'🧠 Human Raphson',false);
+}
+
+// ---- leaderboard ----
+const leaderboard=[];
+function addLeaderboardEntry(name,dist,evals,g){
+  leaderboard.push({name,dist,evals,g}); leaderboard.sort((a,b)=>b.dist-a.dist); renderLeaderboard();
+}
+function renderLeaderboard(){
+  const body=document.getElementById('leaderboard-body');
+  if(!leaderboard.length){body.innerHTML='<tr><td colspan="4" style="color:var(--muted); text-align:center;">— no runs yet —</td></tr>';return;}
+  body.innerHTML=leaderboard.map(r=>{const cls=r.name==='Human Raphson'?' class="human-raphson"':'';
+    return `<tr${cls}><td>${r.name}</td><td>${r.dist.toFixed(1)}</td><td>${r.evals}</td><td>${r.g.w.toFixed(1)} / ${r.g.A.toFixed(2)} / ${(r.g.dphi/Math.PI).toFixed(2)}π</td></tr>`;}).join('');
+}
+function resetEverything(){ leaderboard.length=0; lastBest=null; improvements=[]; animationToken++;
+  document.getElementById('evals').textContent='0';
+  ['score-now','best-score','param-a'].forEach(id=>document.getElementById(id).textContent='—');
+  renderLeaderboard(); drawIdle();
+}
+
+drawIdle();
+</script>
+</body>
+</html>
