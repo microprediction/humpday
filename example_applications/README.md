@@ -30,8 +30,12 @@ Each subfolder is self-contained:
 | [`tuned_mass_damper/`](tuned_mass_damper/) | Mixed-integer seismic             | Three continuous knobs plus one integer floor; dynamics (Newmark-β) in the objective; resonance tuning. |
 | [`tennis_doubles/`](tennis_doubles/)       | Game strategy                     | Tune doubles tactics vs a textbook team; noisy, in/out-of-sample overfitting; safe play wins. |
 | [`chess_piece_values/`](chess_piece_values/) | Game strategy (expensive)       | A perft-verified depth-2 engine; objective-design cautionary tale — it exploits the opponent, not the textbook values. |
+| [`robot_arm/`](robot_arm/)                 | Inverse kinematics                | Hard collision constraints; disjoint elbow-up/down/wrap solution branches through narrow corridors. |
+| [`wind_farm/`](wind_farm/)                 | Energy layout                     | Wake-coupled, non-separable objective; spread turbines out of each other's wakes under a spacing limit. |
+| [`rocket_landing/`](rocket_landing/)       | Optimal control                   | Multimodal throttle schedule (gradual descent vs late suicide burn); a tight fuel budget and a crash cliff. |
+| [`battery_dispatch/`](battery_dispatch/)   | Energy arbitrage                  | Price arbitrage under state-of-charge limits and round-trip efficiency losses; over-trading destroys value. |
 
-These last fifteen mirror, in pure Python, the interactive browser demos at
+These last nineteen mirror, in pure Python, the interactive browser demos at
 [`docs/applications/`](../docs/applications/). Several are deliberately a matched
 pair — `lens_design` (low-D, interpolation/local methods win) versus
 `genetic_art` (high-D, those same methods lose) — so the **No-Free-Lunch**
@@ -78,6 +82,10 @@ python -m example_applications.brachistochrone.run
 python -m example_applications.tuned_mass_damper.run
 python -m example_applications.tennis_doubles.run
 python -m example_applications.chess_piece_values.run
+python -m example_applications.robot_arm.run
+python -m example_applications.wind_farm.run
+python -m example_applications.rocket_landing.run
+python -m example_applications.battery_dispatch.run
 ```
 
 No external dependencies beyond what HumpDay itself uses — these are
