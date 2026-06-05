@@ -24,10 +24,10 @@ from __future__ import annotations
 import random
 
 N_DIM = 4
-W = 7                 # board width (narrower than standard so weights matter)
-H = 16                # board height
+W = 7  # board width (narrower than standard so weights matter)
+H = 16  # board height
 MAX_PIECES = 160
-N_GAMES = 3           # train games per evaluation
+N_GAMES = 3  # train games per evaluation
 
 
 def _build_pieces():
