@@ -1,0 +1,382 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' 'unsafe-inline'; style-src 'self' 'unsafe-inline';">
+<title>🎹 FM Sound Match — HumpDay</title>
+<style>
+  :root { --bg:#1a1a22; --panel:#2d2d3a; --accent:#ffcc00; --text:#e8e8ea; --muted:#9a9aac; }
+  body { margin:0; background:var(--bg); color:var(--text); font-family:-apple-system,'Segoe UI','Helvetica Neue',Helvetica,Arial,sans-serif; }
+  .site-nav { background:#34495e; padding:12px 24px; font-family:'Times New Roman',Times,serif; box-shadow:0 2px 4px rgba(0,0,0,0.1); }
+  .site-nav-inner { max-width:1100px; margin:0 auto; display:flex; justify-content:space-between; align-items:center; }
+  .site-nav a { color:#ecf0f1; text-decoration:none; margin:0 12px; }
+  .site-nav a:hover { color:white; text-decoration:underline; }
+  .site-nav-brand { font-weight:700; font-size:1.25em; }
+  .container { max-width:1100px; margin:0 auto; padding:32px 24px 64px; }
+  h1 { font-size:2.2em; margin:0.2em 0; }
+  h2 { font-size:1.4em; margin-top:1.4em; color:var(--accent); }
+  p { line-height:1.55; max-width:70ch; }
+  .intro { color:var(--muted); }
+  .stage { display:grid; grid-template-columns:1fr 320px; gap:24px; align-items:start; margin-top:24px; }
+  @media (max-width:800px){ .stage { grid-template-columns:1fr; } }
+  canvas { background:#0e0e14; border:3px solid var(--accent); border-radius:6px; display:block; width:100%; height:auto; }
+  .panel { background:var(--panel); padding:18px; border-radius:6px; border:1px solid #404054; }
+  .panel h3 { margin:0 0 12px; font-size:1.05em; text-transform:uppercase; letter-spacing:0.06em; color:var(--accent); }
+  label { display:block; margin:10px 0 6px; font-size:0.9em; color:var(--muted); }
+  select, input, button { width:100%; box-sizing:border-box; padding:8px 10px; border-radius:4px; border:1px solid #404054; background:#1a1a22; color:var(--text); font-size:0.95em; }
+  button { background:var(--accent); color:#1a1a22; font-weight:700; cursor:pointer; margin-top:6px; transition:opacity 0.15s; }
+  button:hover { opacity:0.88; }
+  button.secondary { background:#404054; color:var(--text); font-weight:400; }
+  button:disabled { opacity:0.5; cursor:not-allowed; }
+  .play-row { display:flex; gap:8px; }
+  .play-row button { margin-top:0; }
+  .stats { margin-top:16px; padding-top:14px; border-top:1px solid #404054; font-size:0.92em; line-height:1.6; }
+  .stats .score { font-size:2.4em; color:var(--accent); font-weight:700; }
+  .stat-row { display:flex; justify-content:space-between; }
+  .stat-row span:first-child { white-space:nowrap; flex-shrink:0; }
+  .stat-row span:last-child { color:var(--text); font-family:'SF Mono',Menlo,monospace; text-align:right; word-break:break-word; }
+  .leaderboard { margin-top:24px; }
+  .leaderboard table { width:100%; border-collapse:collapse; background:var(--panel); border-radius:6px; overflow:hidden; }
+  .leaderboard th, .leaderboard td { padding:10px 14px; text-align:left; border-bottom:1px solid #404054; }
+  .leaderboard th { background:#1a1a22; color:var(--muted); text-transform:uppercase; font-size:0.78em; letter-spacing:0.08em; }
+  .leaderboard td:nth-child(2){ text-align:center; font-size:1.2em; font-weight:700; color:var(--accent); }
+  .leaderboard td:nth-child(3),.leaderboard td:nth-child(4){ font-family:'SF Mono',Menlo,monospace; color:var(--muted); }
+  .leaderboard tr.human-raphson td:first-child { color:#ff9944; font-weight:700; }
+  .left-stack { display:flex; flex-direction:column; gap:16px; min-width:0; }
+  .hr-panel { padding:14px 16px; }
+  .hr-panel h3 { margin:0 0 6px; }
+  .hr-sliders { display:grid; grid-template-columns:1fr 1fr; gap:2px 14px; margin-bottom:10px; }
+  .hr-sliders label { margin:6px 0 0; display:flex; justify-content:space-between; font-size:0.78em; }
+  .hr-sliders .val { color:var(--text); font-family:'SF Mono',Menlo,monospace; }
+  .hr-sliders input[type=range] { width:100%; margin:2px 0 0; padding:0; }
+  .hr-panel > button { background:#ff9944; color:#1a1a22; margin-top:6px; }
+  .targbtns { display:flex; gap:8px; margin-bottom:4px; }
+  .targbtns button { background:#404054; color:var(--text); font-weight:600; font-size:0.85em; padding:6px; }
+  .targbtns button.sel { background:var(--accent); color:#1a1a22; }
+  .skill-callout { margin-top:36px; background:rgba(126,217,87,0.07); border:1px solid rgba(126,217,87,0.35); border-radius:8px; padding:18px 22px; }
+  .skill-callout h3 { margin:0 0 6px; color:#7ed957; font-size:1.05em; text-transform:none; letter-spacing:0; }
+  .skill-callout p { margin:0 0 10px; color:var(--text); max-width:none; }
+  .skill-callout pre { background:#1a1a22; border:1px solid #404054; border-radius:4px; padding:10px 14px; margin:0; font-size:0.84em; color:#7ed957; white-space:pre-wrap; word-break:break-all; font-family:'SF Mono',Menlo,monospace; }
+  .skill-actions { margin-top:10px; display:flex; align-items:center; gap:14px; }
+  .skill-actions button { width:auto; background:#404054; color:var(--text); border:1px solid #404054; padding:6px 12px; font-size:0.85em; cursor:pointer; border-radius:4px; margin:0; font-weight:500; }
+  .skill-actions a { color:#7ed957; font-size:0.85em; text-decoration:none; }
+</style>
+</head>
+<body>
+    <nav class="site-nav" data-site-nav="v1">
+        <div class="site-nav-inner">
+            <a href="../index.html" class="site-nav-brand"><svg class="site-nav-camel" data-site-logo="camel-v3" viewBox="0 0 100 50" width="44" height="22" xmlns="http://www.w3.org/2000/svg" aria-hidden="true"><rect x="20.5" y="30" width="1.8" height="11" fill="white" fill-opacity="0.55"/><rect x="60.5" y="30" width="1.8" height="11" fill="white" fill-opacity="0.55"/><path fill="white" fill-opacity="0.92" d="M 14 30 C 10 30 8 28 8 24 C 7 22 7 19 9 18 C 11 16 13 14 16 13 C 20 8 26 6 31 9 C 34 11 35 13 35 16 C 37 18 40 18 43 17 C 47 13 53 7 59 9 C 63 11 65 13 65 16 C 66 18 68 18 70 17 C 73 13 76 9 80 7 C 84 5 89 6 90 9 L 92 9 L 93 12 L 91 13 L 87 13 L 87 15 C 82 16 79 18 76 21 C 73 25 71 28 68 30 L 66 30 L 66 42 L 64 42 L 64 30 L 26 30 L 26 42 L 24 42 L 24 30 L 14 30 Z"/><circle cx="88" cy="10" r="0.9" fill="#34495e"/></svg>HumpDay</a>
+            <div class="site-nav-links">
+                <a href="../index.html">Home</a>
+                <a href="../contest.html">Contest</a>
+                <a href="../applications/index.html">Demonstrations</a>
+                <a href="../algorithms.html">Algorithms</a>
+                <a href="../sota-status.html">SOTA status</a>
+                <a href="../recommendations.html">Recommendations</a>
+                <a href="https://github.com/microprediction/humpday" target="_blank" rel="noopener">GitHub</a>
+            </div>
+        </div>
+    </nav>
+
+<div class="container">
+  <h1>🎹 FM Sound Match</h1>
+  <p class="intro">
+    Here's a sound. Reproduce it. An FM synthesiser builds a tone by using
+    sine waves to wobble the frequency of another sine wave — <strong>four
+    knobs</strong> set how much of each harmonic flavour goes in. The optimiser
+    can't hear; all it gets is the difference between the two
+    <strong>spectra</strong>. Press play, then watch (and hear) it dial the
+    knobs until its sound matches the target. This is the one demo you listen to.
+  </p>
+
+  <div class="stage">
+    <div class="left-stack">
+      <canvas id="canvas" width="800" height="450"></canvas>
+      <div class="panel hr-panel">
+        <h3>🧠 Human Raphson</h3>
+        <p style="color:var(--muted); margin:0 0 8px; font-size:0.86em;">
+          Turn the four knobs by ear and eye, then play your sound against the
+          target. (Each knob is how strongly one harmonic modulates the tone.)
+        </p>
+        <div class="hr-sliders" id="hr-sliders"></div>
+        <button onclick="playManual()">▶ Play my sound &amp; score it (Human Raphson)</button>
+      </div>
+    </div>
+
+    <div class="panel">
+      <h3>Target sound</h3>
+      <div class="targbtns" id="targbtns"></div>
+      <div class="play-row">
+        <button class="secondary" onclick="playTarget()">🔊 Play target</button>
+        <button class="secondary" onclick="playBest()">🔊 Play best</button>
+      </div>
+
+      <h3 style="margin-top:14px;">Algorithm</h3>
+      <label for="algorithm">Pick a HumpDay optimizer:</label>
+      <select id="algorithm">
+        <optgroup label="Population-based">
+          <option value="CMAEvolutionStrategy" selected>CMA-Evolution Strategy</option>
+          <option value="ParticleSwarm">Particle Swarm</option>
+          <option value="DifferentialEvolution">Differential Evolution</option>
+          <option value="GeneticAlgorithm">Genetic Algorithm</option>
+        </optgroup>
+        <optgroup label="Trust-region / interpolation">
+          <option value="PRIMA_BOBYQA">PRIMA_BOBYQA</option>
+          <option value="PRIMA_NEWUOA">PRIMA_NEWUOA</option>
+        </optgroup>
+        <optgroup label="Local / classical">
+          <option value="NelderMead">Nelder-Mead</option>
+          <option value="Powell">Powell</option>
+        </optgroup>
+        <optgroup label="Other">
+          <option value="SimulatedAnnealing">Simulated Annealing</option>
+          <option value="RandomSearch">Random Search</option>
+        </optgroup>
+      </select>
+
+      <label for="budget">Evaluation budget:</label>
+      <select id="budget">
+        <option value="100">100 sounds</option>
+        <option value="200" selected>200 sounds</option>
+        <option value="400">400 sounds</option>
+      </select>
+
+      <button id="run-btn" onclick="runOptimization()">▶ Match the sound</button>
+      <button class="secondary" onclick="resetEverything()">⟲ Reset leaderboard</button>
+
+      <div class="stats">
+        <div class="stat-row"><span>Spectral error</span><span class="score" id="score-now">—</span></div>
+        <div class="stat-row"><span>Sounds tried</span><span id="evals">0</span></div>
+        <div class="stat-row"><span>Best so far</span><span id="best-score">—</span></div>
+        <div class="stat-row"><span>Knobs</span><span id="param-a">—</span></div>
+      </div>
+    </div>
+  </div>
+
+  <div class="leaderboard">
+    <h2>Leaderboard (this session)</h2>
+    <p style="color:var(--muted);">
+      Spectral error of the closest sound each optimiser found —
+      <strong>smaller is a better match</strong>. Blind random knob-twiddling
+      gets a rough likeness; the better optimisers nail it.
+    </p>
+    <table>
+      <thead>
+        <tr><th>Algorithm</th><th>Error</th><th>Sounds</th><th>Knobs</th></tr>
+      </thead>
+      <tbody id="leaderboard-body">
+        <tr><td colspan="4" style="color:var(--muted); text-align:center;">— no runs yet —</td></tr>
+      </tbody>
+    </table>
+  </div>
+
+  <h2>What's happening</h2>
+  <p>
+    The carrier sine sits at the note's pitch. Three modulator sines, locked to
+    the 1st, 2nd and 3rd harmonics, wobble its frequency; a fourth knob feeds the
+    output back into itself. Turning a knob up pours in more of that harmonic
+    flavour, brightening or hollowing the timbre. The optimiser only ever sees
+    the <strong>spectrum</strong> — the bar chart of how much energy sits at each
+    frequency — and its score is how far that chart is from the target's. Lower
+    is closer; the bars you see on the right slide to overlay the grey target as
+    the search homes in.
+  </p>
+  <p>
+    Matching a synth to a sound is a real and useful task — it's how you reverse-
+    engineer a patch you only have a recording of. Because the harmonic ratios
+    are fixed, the four knobs shape the spectrum <em>smoothly</em>, so this
+    version is tractable: <strong>CMA-ES, Particle Swarm and PRIMA_BOBYQA</strong>
+    reliably drive the error to near zero, while <strong>Nelder-Mead</strong>,
+    <strong>Powell</strong> and Random Search settle for a rough likeness. (Free
+    the frequency ratios too and it becomes one of the genuinely hard,
+    octave-trapped inverse problems that people throw global optimisers at — a
+    good reason this demo keeps them fixed.)
+  </p>
+
+  <hr style="border:0; border-top:1px solid #404054; margin:32px 0 16px;" />
+  <p style="font-size:0.78em; color:var(--muted);">
+    A small 4-operator FM voice rendered in the browser with the Web Audio API;
+    the score is an L2 distance between log-magnitude spectra. Turn your volume
+    up — but not too far.
+  </p>
+
+  <div class="skill-callout">
+    <h3>🌱 Save the Planet</h3>
+    <p>If your hyper-parameter searches are heating the Earth, drop this in Cursor or Claude:</p>
+    <pre id="skill-snippet">Read https://raw.githubusercontent.com/microprediction/humpday/main/SKILL.md
+and create a project skill from it.</pre>
+    <div class="skill-actions">
+      <button type="button" onclick="copySkillSnippet(this)">📋 Copy</button>
+      <a href="https://github.com/microprediction/humpday/blob/main/SKILL.md" target="_blank" rel="noopener">View SKILL.md →</a>
+    </div>
+  </div>
+
+  <script>
+    function copySkillSnippet(btn){const t=document.getElementById('skill-snippet').textContent;navigator.clipboard.writeText(t).then(()=>{const o=btn.textContent;btn.textContent='✓ Copied';setTimeout(()=>{btn.textContent=o;},1500);}).catch(()=>{btn.textContent='✗ Copy failed';});}
+  </script>
+</div>
+
+<script src="../js/modules/base-optimizer.js"></script>
+<script src="../js/modules/linalg.js"></script>
+<script src="../js/modules/prima-algorithms.js"></script>
+<script src="../js/modules/scipy-algorithms.js"></script>
+<script src="../js/modules/evolutionary-algorithms.js"></script>
+<script src="../js/modules/search-algorithms.js"></script>
+
+<script>
+// ============================================================================
+// FM sound matching. Carrier at the fundamental, 3 modulators locked to
+// harmonics 1/2/3, plus self-feedback. Four "brightness" knobs. Match a target
+// timbre by minimising log-magnitude spectral distance. Audible via Web Audio.
+// ============================================================================
+const SR=11025, N=2048, F0=220;
+function decode(u){ return { I1:u[0]*6, I2:u[1]*5, I3:u[2]*4, fb:u[3]*0.85 }; }
+function fmSample(state,p,wc){ // advance one sample at base radian inc wc; returns sample
+  const s=Math.sin(state.pc + p.I1*Math.sin(state.p1) + p.I2*Math.sin(state.p2) + p.I3*Math.sin(state.p3) + p.fb*state.last);
+  state.last=s; state.pc+=wc; state.p1+=wc; state.p2+=2*wc; state.p3+=3*wc; return s;
+}
+function renderSteady(p,n){ n=n||N; const out=new Float32Array(n); const wc=2*Math.PI*F0/SR; const st={pc:0,p1:0,p2:0,p3:0,last:0};
+  for(let i=0;i<n;i++)out[i]=fmSample(st,p,wc); return out; }
+function fft(re,im){ const n=re.length;
+  for(let i=1,j=0;i<n;i++){ let bit=n>>1; for(;j&bit;bit>>=1)j^=bit; j^=bit; if(i<j){[re[i],re[j]]=[re[j],re[i]];[im[i],im[j]]=[im[j],im[i]];} }
+  for(let len=2;len<=n;len<<=1){ const ang=-2*Math.PI/len,wr=Math.cos(ang),wi=Math.sin(ang);
+    for(let i=0;i<n;i+=len){ let cr=1,ci=0; for(let k=0;k<len/2;k++){ const ur=re[i+k],ui=im[i+k],vr=re[i+k+len/2]*cr-im[i+k+len/2]*ci,vi=re[i+k+len/2]*ci+im[i+k+len/2]*cr;
+      re[i+k]=ur+vr;im[i+k]=ui+vi;re[i+k+len/2]=ur-vr;im[i+k+len/2]=ui-vi; const ncr=cr*wr-ci*wi;ci=cr*wi+ci*wr;cr=ncr; } } } }
+function logSpectrum(wave){ const n=wave.length,re=new Float32Array(n),im=new Float32Array(n);
+  for(let i=0;i<n;i++){ const w=0.5-0.5*Math.cos(2*Math.PI*i/(n-1)); re[i]=wave[i]*w; } fft(re,im);
+  const half=n/2,mag=new Float32Array(half); for(let i=0;i<half;i++)mag[i]=Math.log(1+Math.hypot(re[i],im[i])); return mag; }
+function specDist(a,b){ let s=0; for(let i=1;i<a.length;i++){const d=a[i]-b[i];s+=d*d;} return Math.sqrt(s/a.length); }
+
+const TARGETS={
+  Warm:  [2/6, 1/5, 0.3/4, 0.10/0.85],
+  Bright:[3/6, 2.5/5, 2/4, 0.30/0.85],
+  Hollow:[1/6, 3/5, 0.5/4, 0.0],
+};
+const TARGET_KEYS=Object.keys(TARGETS);
+let targetKey='Warm';
+let targetSpec=logSpectrum(renderSteady(decode(TARGETS[targetKey])));
+let improvements=[];
+function objective(u){ const d=specDist(logSpectrum(renderSteady(decode(u))),targetSpec);
+  if(!objective._b||d<objective._b){objective._b=d; improvements.push({err:d,u:Array.from(u)});} return d; }
+
+// ---- Web Audio ----
+let actx=null;
+function ensureAudio(){ if(!actx){ try{ actx=new (window.AudioContext||window.webkitAudioContext)(); }catch(e){ actx=null; } } if(actx&&actx.state==='suspended')actx.resume(); return actx; }
+function playParams(p){ const ctx=ensureAudio(); if(!ctx)return; const sr=ctx.sampleRate, dur=1.1, n=Math.floor(sr*dur);
+  const buf=ctx.createBuffer(1,n,sr); const ch=buf.getChannelData(0); const wc=2*Math.PI*F0/sr; const st={pc:0,p1:0,p2:0,p3:0,last:0};
+  for(let i=0;i<n;i++){ const t=i/sr; let env=Math.min(1,t/0.012); env*=Math.exp(-2.0*t); ch[i]=0.32*env*fmSample(st,p,wc); }
+  const src=ctx.createBufferSource(); src.buffer=buf; const g=ctx.createGain(); g.gain.value=0.9; src.connect(g); g.connect(ctx.destination); src.start();
+}
+
+// ---- rendering ----
+const canvas=document.getElementById('canvas'),ctx2=canvas.getContext('2d');
+const CW=canvas.width,CH=canvas.height; const NB=64, PX0=50, PX1=CW-30, PYTOP=70, PYBOT=CH-70;
+function bins(spec){ const out=new Float32Array(NB); const per=Math.floor(spec.length/NB); for(let b=0;b<NB;b++){ let m=0; for(let k=0;k<per;k++)m=Math.max(m,spec[b*per+k]); out[b]=m; } return out; }
+let curU=[0,0,0,0];
+function drawScene(u,hud){
+  curU=u; ctx2.clearRect(0,0,CW,CH); ctx2.fillStyle='#0e0e14'; ctx2.fillRect(0,0,CW,CH);
+  const tB=bins(targetSpec), cB=bins(logSpectrum(renderSteady(decode(u))));
+  let maxV=0.5; for(let b=0;b<NB;b++){ maxV=Math.max(maxV,tB[b],cB[b]); }
+  const bw=(PX1-PX0)/NB;
+  // axes labels
+  ctx2.fillStyle='#5a6573'; ctx2.font='11px SF Mono,Menlo,monospace'; ctx2.textAlign='left'; ctx2.fillText('spectrum  (energy vs frequency →)',PX0,PYTOP-12);
+  ctx2.textAlign='right'; ctx2.fillStyle='#9aa7b8'; ctx2.fillText('target',PX1,PYTOP-12); ctx2.fillStyle='#ffcc00'; ctx2.fillText('  · candidate',PX1-46,PYTOP-12);
+  // baseline
+  ctx2.strokeStyle='#2c333f'; ctx2.beginPath(); ctx2.moveTo(PX0,PYBOT); ctx2.lineTo(PX1,PYBOT); ctx2.stroke();
+  for(let b=0;b<NB;b++){ const x=PX0+b*bw;
+    const th=(PYBOT-PYTOP)*tB[b]/maxV, chh=(PYBOT-PYTOP)*cB[b]/maxV;
+    // target as outline ghost
+    ctx2.fillStyle='rgba(154,167,184,0.22)'; ctx2.fillRect(x+1,PYBOT-th,bw-2,th);
+    ctx2.strokeStyle='rgba(154,167,184,0.55)'; ctx2.lineWidth=1; ctx2.strokeRect(x+1,PYBOT-th,bw-2,th);
+    // candidate filled
+    ctx2.fillStyle='rgba(255,204,0,0.78)'; ctx2.fillRect(x+2.5,PYBOT-chh,bw-5,chh);
+  }
+  if(hud){ ctx2.font='bold 15px -apple-system,Helvetica,Arial,sans-serif'; ctx2.textAlign='left'; const pad=10,bwid=Math.ceil(ctx2.measureText(hud).width)+2*pad;
+    ctx2.fillStyle='rgba(0,0,0,0.55)'; ctx2.fillRect(PX0,16,bwid,26); ctx2.fillStyle='#ffcc00'; ctx2.fillText(hud,PX0+pad,34); }
+}
+function drawIdle(){ drawScene(manualU(),'Pick a target, press “Match the sound”, or play your own'); }
+
+// ---- animation ----
+let animationToken=0; const delay=ms=>new Promise(r=>setTimeout(r,ms));
+async function montage(){
+  const my=animationToken; if(!improvements.length)return null;
+  for(let i=0;i<improvements.length;i++){ if(my!==animationToken)return improvements[improvements.length-1];
+    const e=improvements[i]; document.getElementById('score-now').textContent=e.err.toFixed(4);
+    drawScene(e.u,`Spectral error ${e.err.toFixed(4)}  (improvement ${i+1}/${improvements.length})`);
+    await delay(improvements.length>30?34:70); }
+  return improvements[improvements.length-1];
+}
+let lastBest=null;
+function getOptimizerClass(n){return globalThis[n];}
+async function runOptimization(){
+  const algoName=document.getElementById('algorithm').value, budget=parseInt(document.getElementById('budget').value,10);
+  const cls=getOptimizerClass(algoName); if(!cls){alert(`Optimizer '${algoName}' not found.`);return;}
+  ensureAudio();
+  const runBtn=document.getElementById('run-btn'); runBtn.disabled=true; runBtn.textContent=`Matching with ${algoName}…`;
+  animationToken++; improvements=[]; objective._b=undefined; await delay(20);
+  try{
+    const opt=new cls(objective,budget,4); opt.optimize();
+    const best=improvements.length?improvements[improvements.length-1]:null; if(!best){alert('No match found.');return;}
+    lastBest={...best,algo:algoName};
+    document.getElementById('evals').textContent=opt.evaluations||budget;
+    await montage();
+    document.getElementById('best-score').textContent=`${best.err.toFixed(4)} (${algoName})`;
+    const p=decode(best.u); document.getElementById('param-a').textContent=`${p.I1.toFixed(1)} ${p.I2.toFixed(1)} ${p.I3.toFixed(1)} ${p.fb.toFixed(2)}`;
+    addLeaderboardEntry(algoName,best.err,opt.evaluations||budget,p);
+    drawScene(best.u,`Best match: error ${best.err.toFixed(4)} (${algoName}) — playing…`);
+    playParams(decode(best.u));
+  }catch(e){ console.error(e); alert(`${algoName} threw an error: ${e.message}`); }
+  finally{ runBtn.disabled=false; runBtn.textContent='▶ Match the sound'; }
+}
+function playTarget(){ playParams(decode(TARGETS[targetKey])); }
+function playBest(){ if(lastBest)playParams(decode(lastBest.u)); else playParams(decode(manualU())); }
+
+// ---- Human Raphson ----
+const KLAB=['Harmonic 1','Harmonic 2','Harmonic 3','Feedback'];
+const HR_DEF=[0.35,0.25,0.15,0.1];
+const sl=document.getElementById('hr-sliders');
+for(let i=0;i<4;i++){
+  const lab=document.createElement('label'); lab.innerHTML=`<span>${KLAB[i]}</span><span class="val" id="hv-${i}">${HR_DEF[i].toFixed(2)}</span>`;
+  const inp=document.createElement('input'); inp.type='range'; inp.id='m-'+i; inp.min=0; inp.max=1; inp.step=0.01; inp.value=HR_DEF[i];
+  inp.oninput=()=>{ document.getElementById('hv-'+i).textContent=parseFloat(inp.value).toFixed(2); drawScene(manualU(),null); };
+  const wrap=document.createElement('div'); wrap.appendChild(lab); wrap.appendChild(inp); sl.appendChild(wrap);
+}
+function manualU(){ const u=[]; for(let i=0;i<4;i++)u.push(parseFloat(document.getElementById('m-'+i).value)); return u; }
+function playManual(){
+  animationToken++; ensureAudio(); const u=manualU(); const err=specDist(logSpectrum(renderSteady(decode(u))),targetSpec); lastBest={u,err,algo:'Human Raphson'};
+  const p=decode(u); document.getElementById('score-now').textContent=err.toFixed(4);
+  document.getElementById('best-score').textContent=`${err.toFixed(4)} (Human Raphson)`;
+  document.getElementById('param-a').textContent=`${p.I1.toFixed(1)} ${p.I2.toFixed(1)} ${p.I3.toFixed(1)} ${p.fb.toFixed(2)}`;
+  addLeaderboardEntry('Human Raphson',err,1,p);
+  drawScene(u,`🧠 Human Raphson: error ${err.toFixed(4)} — playing…`); playParams(p);
+}
+
+// ---- target buttons ----
+function buildTargets(){ const wrap=document.getElementById('targbtns'); wrap.innerHTML='';
+  for(const k of TARGET_KEYS){ const b=document.createElement('button'); b.textContent=k; if(k===targetKey)b.className='sel';
+    b.onclick=()=>{ targetKey=k; targetSpec=logSpectrum(renderSteady(decode(TARGETS[k]))); buildTargets(); resetEverything(); playTarget(); };
+    wrap.appendChild(b); } }
+
+// ---- leaderboard ----
+const leaderboard=[];
+function addLeaderboardEntry(name,err,evals,p){
+  leaderboard.push({name,err,evals,p}); leaderboard.sort((a,b)=>a.err-b.err); renderLeaderboard();
+}
+function renderLeaderboard(){
+  const body=document.getElementById('leaderboard-body');
+  if(!leaderboard.length){body.innerHTML='<tr><td colspan="4" style="color:var(--muted); text-align:center;">— no runs yet —</td></tr>';return;}
+  body.innerHTML=leaderboard.map(r=>{const cls=r.name==='Human Raphson'?' class="human-raphson"':'';
+    return `<tr${cls}><td>${r.name}</td><td>${r.err.toFixed(4)}</td><td>${r.evals}</td><td>${r.p.I1.toFixed(1)} ${r.p.I2.toFixed(1)} ${r.p.I3.toFixed(1)} ${r.p.fb.toFixed(2)}</td></tr>`;}).join('');
+}
+function resetEverything(){ leaderboard.length=0; lastBest=null; improvements=[]; animationToken++;
+  document.getElementById('evals').textContent='0';
+  ['score-now','best-score','param-a'].forEach(id=>document.getElementById(id).textContent='—');
+  renderLeaderboard(); drawIdle();
+}
+
+buildTargets();
+drawIdle();
+</script>
+</body>
+</html>
