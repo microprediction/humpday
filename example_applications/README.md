@@ -15,6 +15,17 @@ Each subfolder is self-contained:
 | [`cart_pole_policy/`](cart_pole_policy/)   | Reinforcement learning            | Direct policy search; tolerance to stochastic episode noise; medium-dimensional parameter spaces. |
 | [`algo_trading/`](algo_trading/)           | Quantitative finance              | Walk-forward optimisation; in-sample vs out-of-sample generalisation; the danger of overfitting sharp peaks. |
 | [`airfoil_shape/`](airfoil_shape/)         | Surrogate-based aerodynamics      | Severely limited evaluation budgets; landscapes where Bayesian methods dominate evolutionary ones. |
+| [`lens_design/`](lens_design/)             | Optical ray tracing               | Rugged, deceptive landscape; a sharp-focus "needle" random search can't find; interpolation/local methods win. |
+| [`genetic_art/`](genetic_art/)             | Generative image fit              | High dimensionality; population methods shine while local methods collapse — the reverse of `lens_design`. |
+| [`tetris_weights/`](tetris_weights/)       | Game-heuristic tuning             | Noisy objective; in-sample vs out-of-sample overfitting; a non-textbook optimum. |
+| [`plinko_funnel/`](plinko_funnel/)         | Stochastic process control        | Pure evaluation noise; steering a random cascade onto an off-centre target. |
+| [`walking_creature/`](walking_creature/)   | Evolved locomotion                | Emergent structure from a scalar reward (an alternating gait); a broad basin with interpolation traps. |
+
+These last five mirror, in pure Python, the interactive browser demos at
+[`docs/applications/`](../docs/applications/). Several are deliberately a matched
+pair — `lens_design` (low-D, interpolation/local methods win) versus
+`genetic_art` (high-D, those same methods lose) — so the **No-Free-Lunch**
+lesson is reproducible at the command line, not just asserted.
 
 ## The HumpDay convention
 
@@ -42,6 +53,11 @@ python -m example_applications.welded_beam.run
 python -m example_applications.cart_pole_policy.run
 python -m example_applications.algo_trading.run
 python -m example_applications.airfoil_shape.run
+python -m example_applications.lens_design.run
+python -m example_applications.genetic_art.run
+python -m example_applications.tetris_weights.run
+python -m example_applications.plinko_funnel.run
+python -m example_applications.walking_creature.run
 ```
 
 No external dependencies beyond what HumpDay itself uses — these are
