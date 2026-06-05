@@ -70,4 +70,9 @@ def evaluate_profile(u, n_boards=12, seed_offset=700_000):
     vals = [percent_in_target(ctrl, seed_offset + i * 101 + 1) for i in range(n_boards)]
     vals.sort()
     n = len(vals)
-    return {"mean": sum(vals) / n, "median": vals[n // 2], "min": vals[0], "max": vals[-1]}
+    return {
+        "mean": sum(vals) / n,
+        "median": vals[n // 2],
+        "min": vals[0],
+        "max": vals[-1],
+    }
