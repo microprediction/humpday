@@ -37,8 +37,14 @@ Each subfolder is self-contained:
 | [`reactor_profile/`](reactor_profile/)     | Reaction engineering              | Optimal control of an A→B→C reactor; the best temperature is a *profile*, not a constant. |
 | [`bridge_truss/`](bridge_truss/)           | Structural optimisation           | FEM-in-the-loop member sizing; lightest truss on the yield/buckling boundary; statically indeterminate. |
 | [`free_kick/`](free_kick/)                 | Sports ballistics                 | 3-D ball flight (Magnus curve) past a wall and a diving keeper; multimodal goal/save/block outcomes. |
+| [`bowling/`](bowling/)                     | Chain-reaction physics            | Faithful 105-pin collision sim; rough, sensitive landscape where small entry changes swing the count. |
+| [`trebuchet/`](trebuchet/)                 | Ballistics (reduced-order)        | Hit a target 60 m away; interior efficiency optimum in arm/sling ratios. *Simplified — demo uses Matter.js.* |
+| [`curling/`](curling/)                     | Slide-to-target (reduced-order)   | Stop the stone on the button; too little weight stops short, too much sails through. *Simplified.* |
+| [`mini_golf/`](mini_golf/)                 | Putt-to-hole (reduced-order)      | Read the slope and sink the putt. *Simplified — demo uses Matter.js.* |
+| [`pool/`](pool/)                           | Cut-shot aim (reduced-order)      | The ghost-ball cut angle is a narrow, precise optimum. *Simplified single-cut model.* |
+| [`slingshot/`](slingshot/)                 | Ballistics (reduced-order)        | Rake one block stack or loft onto the other — two basins. *Simplified — demo uses Matter.js.* |
 
-These last twenty-two mirror, in pure Python, the interactive browser demos at
+These last twenty-eight mirror, in pure Python, the interactive browser demos at
 [`docs/applications/`](../docs/applications/). Several are deliberately a matched
 pair — `lens_design` (low-D, interpolation/local methods win) versus
 `genetic_art` (high-D, those same methods lose) — so the **No-Free-Lunch**
@@ -92,6 +98,12 @@ python -m example_applications.battery_dispatch.run
 python -m example_applications.reactor_profile.run
 python -m example_applications.bridge_truss.run
 python -m example_applications.free_kick.run
+python -m example_applications.bowling.run
+python -m example_applications.trebuchet.run
+python -m example_applications.curling.run
+python -m example_applications.mini_golf.run
+python -m example_applications.pool.run
+python -m example_applications.slingshot.run
 ```
 
 No external dependencies beyond what HumpDay itself uses — these are
