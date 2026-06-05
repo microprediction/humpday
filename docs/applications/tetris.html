@@ -1,0 +1,403 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' 'unsafe-inline'; style-src 'self' 'unsafe-inline';">
+<title>🟦 Tetris Brain — HumpDay</title>
+<style>
+  :root { --bg:#1a1a22; --panel:#2d2d3a; --accent:#ffcc00; --text:#e8e8ea; --muted:#9a9aac; }
+  body { margin:0; background:var(--bg); color:var(--text); font-family:-apple-system,'Segoe UI','Helvetica Neue',Helvetica,Arial,sans-serif; }
+  .site-nav { background:#34495e; padding:12px 24px; font-family:'Times New Roman',Times,serif; box-shadow:0 2px 4px rgba(0,0,0,0.1); }
+  .site-nav-inner { max-width:1100px; margin:0 auto; display:flex; justify-content:space-between; align-items:center; }
+  .site-nav a { color:#ecf0f1; text-decoration:none; margin:0 12px; }
+  .site-nav a:hover { color:white; text-decoration:underline; }
+  .site-nav-brand { font-weight:700; font-size:1.25em; }
+  .container { max-width:1100px; margin:0 auto; padding:32px 24px 64px; }
+  h1 { font-size:2.2em; margin:0.2em 0; }
+  h2 { font-size:1.4em; margin-top:1.4em; color:var(--accent); }
+  p { line-height:1.55; max-width:70ch; }
+  .intro { color:var(--muted); }
+  .stage { display:grid; grid-template-columns:1fr 320px; gap:24px; align-items:start; margin-top:24px; }
+  @media (max-width:800px){ .stage { grid-template-columns:1fr; } }
+  canvas { background:#0e0e14; border:3px solid var(--accent); border-radius:6px; display:block; width:100%; height:auto; }
+  .panel { background:var(--panel); padding:18px; border-radius:6px; border:1px solid #404054; }
+  .panel h3 { margin:0 0 12px; font-size:1.05em; text-transform:uppercase; letter-spacing:0.06em; color:var(--accent); }
+  label { display:block; margin:10px 0 6px; font-size:0.9em; color:var(--muted); }
+  select, input, button { width:100%; box-sizing:border-box; padding:8px 10px; border-radius:4px; border:1px solid #404054; background:#1a1a22; color:var(--text); font-size:0.95em; }
+  button { background:var(--accent); color:#1a1a22; font-weight:700; cursor:pointer; margin-top:6px; transition:opacity 0.15s; }
+  button:hover { opacity:0.88; }
+  button.secondary { background:#404054; color:var(--text); font-weight:400; }
+  button:disabled { opacity:0.5; cursor:not-allowed; }
+  .stats { margin-top:16px; padding-top:14px; border-top:1px solid #404054; font-size:0.92em; line-height:1.6; }
+  .stats .score { font-size:2.6em; color:var(--accent); font-weight:700; }
+  .stat-row { display:flex; justify-content:space-between; }
+  .stat-row span:first-child { white-space:nowrap; flex-shrink:0; }
+  .stat-row span:last-child { color:var(--text); font-family:'SF Mono',Menlo,monospace; text-align:right; word-break:break-word; }
+  .leaderboard { margin-top:24px; }
+  .leaderboard table { width:100%; border-collapse:collapse; background:var(--panel); border-radius:6px; overflow:hidden; }
+  .leaderboard th, .leaderboard td { padding:10px 14px; text-align:left; border-bottom:1px solid #404054; }
+  .leaderboard th { background:#1a1a22; color:var(--muted); text-transform:uppercase; font-size:0.78em; letter-spacing:0.08em; }
+  .leaderboard td:nth-child(2){ text-align:center; font-size:1.3em; font-weight:700; color:var(--accent); }
+  .leaderboard td:nth-child(3),.leaderboard td:nth-child(4){ font-family:'SF Mono',Menlo,monospace; color:var(--muted); text-align:center; }
+  .leaderboard tr.human-raphson td:first-child { color:#ff9944; font-weight:700; }
+  .left-stack { display:flex; flex-direction:column; gap:16px; min-width:0; }
+  .hr-panel { padding:14px 16px; }
+  .hr-panel h3 { margin:0 0 6px; }
+  .hr-sliders { display:grid; grid-template-columns:1fr 1fr; gap:4px 14px; margin-bottom:10px; }
+  .hr-sliders label { margin:6px 0 0; display:flex; justify-content:space-between; font-size:0.78em; }
+  .hr-sliders .val { color:var(--text); font-family:'SF Mono',Menlo,monospace; }
+  .hr-sliders input[type=range] { width:100%; margin:2px 0 0; padding:0; }
+  .hr-panel > button { background:#ff9944; color:#1a1a22; margin-top:6px; }
+  .skill-callout { margin-top:36px; background:rgba(126,217,87,0.07); border:1px solid rgba(126,217,87,0.35); border-radius:8px; padding:18px 22px; }
+  .skill-callout h3 { margin:0 0 6px; color:#7ed957; font-size:1.05em; text-transform:none; letter-spacing:0; }
+  .skill-callout p { margin:0 0 10px; color:var(--text); max-width:none; }
+  .skill-callout pre { background:#1a1a22; border:1px solid #404054; border-radius:4px; padding:10px 14px; margin:0; font-size:0.84em; color:#7ed957; white-space:pre-wrap; word-break:break-all; font-family:'SF Mono',Menlo,monospace; }
+  .skill-actions { margin-top:10px; display:flex; align-items:center; gap:14px; }
+  .skill-actions button { width:auto; background:#404054; color:var(--text); border:1px solid #404054; padding:6px 12px; font-size:0.85em; cursor:pointer; border-radius:4px; margin:0; font-weight:500; }
+  .skill-actions a { color:#7ed957; font-size:0.85em; text-decoration:none; }
+</style>
+</head>
+<body>
+    <nav class="site-nav" data-site-nav="v1">
+        <div class="site-nav-inner">
+            <a href="../index.html" class="site-nav-brand"><svg class="site-nav-camel" data-site-logo="camel-v3" viewBox="0 0 100 50" width="44" height="22" xmlns="http://www.w3.org/2000/svg" aria-hidden="true"><rect x="20.5" y="30" width="1.8" height="11" fill="white" fill-opacity="0.55"/><rect x="60.5" y="30" width="1.8" height="11" fill="white" fill-opacity="0.55"/><path fill="white" fill-opacity="0.92" d="M 14 30 C 10 30 8 28 8 24 C 7 22 7 19 9 18 C 11 16 13 14 16 13 C 20 8 26 6 31 9 C 34 11 35 13 35 16 C 37 18 40 18 43 17 C 47 13 53 7 59 9 C 63 11 65 13 65 16 C 66 18 68 18 70 17 C 73 13 76 9 80 7 C 84 5 89 6 90 9 L 92 9 L 93 12 L 91 13 L 87 13 L 87 15 C 82 16 79 18 76 21 C 73 25 71 28 68 30 L 66 30 L 66 42 L 64 42 L 64 30 L 26 30 L 26 42 L 24 42 L 24 30 L 14 30 Z"/><circle cx="88" cy="10" r="0.9" fill="#34495e"/></svg>HumpDay</a>
+            <div class="site-nav-links">
+                <a href="../index.html">Home</a>
+                <a href="../contest.html">Contest</a>
+                <a href="../applications/index.html">Demonstrations</a>
+                <a href="../algorithms.html">Algorithms</a>
+                <a href="../sota-status.html">SOTA status</a>
+                <a href="../recommendations.html">Recommendations</a>
+                <a href="https://github.com/microprediction/humpday" target="_blank" rel="noopener">GitHub</a>
+            </div>
+        </div>
+    </nav>
+
+<div class="container">
+  <h1>🟦 Tetris Brain</h1>
+  <p class="intro">
+    A greedy bot looks at every way it could drop the current piece and scores
+    each landing with a weighted sum of <strong>four numbers</strong> about the
+    resulting board — its bumpiness, its holes, its height, its line clears —
+    then plays the best one. It can only play as well as those four weights let
+    it. Tune them to clear the most lines. The catch: the pieces come in a
+    <strong>random</strong> order, so every game is different and the score is
+    <strong>noisy</strong> — weights that ace three games may flop on the next.
+  </p>
+
+  <div class="stage">
+    <div class="left-stack">
+      <canvas id="canvas" width="800" height="450"></canvas>
+      <div class="panel hr-panel">
+        <h3>🧠 Human Raphson</h3>
+        <p style="color:var(--muted); margin:0 0 8px; font-size:0.86em;">
+          Set the bot's four weights yourself and watch it play. Negative means
+          "avoid this." Can you beat the optimiser?
+        </p>
+        <div class="hr-sliders" id="hr-sliders"></div>
+        <button onclick="playManual()">▶ Play with these weights (Human Raphson)</button>
+      </div>
+    </div>
+
+    <div class="panel">
+      <h3>Algorithm</h3>
+      <label for="algorithm">Pick a HumpDay optimizer:</label>
+      <select id="algorithm">
+        <optgroup label="Population-based">
+          <option value="CMAEvolutionStrategy" selected>CMA-Evolution Strategy</option>
+          <option value="DifferentialEvolution">Differential Evolution</option>
+          <option value="ParticleSwarm">Particle Swarm</option>
+          <option value="GeneticAlgorithm">Genetic Algorithm</option>
+          <option value="EvolutionStrategy">Evolution Strategy</option>
+        </optgroup>
+        <optgroup label="Trust-region / interpolation">
+          <option value="PRIMA_BOBYQA">PRIMA_BOBYQA</option>
+          <option value="PRIMA_NEWUOA">PRIMA_NEWUOA</option>
+        </optgroup>
+        <optgroup label="Local / classical">
+          <option value="NelderMead">Nelder-Mead</option>
+          <option value="Powell">Powell</option>
+        </optgroup>
+        <optgroup label="Other">
+          <option value="SimulatedAnnealing">Simulated Annealing</option>
+          <option value="BayesianOpt">Bayesian Optimization</option>
+          <option value="RandomSearch">Random Search</option>
+        </optgroup>
+      </select>
+
+      <label for="games">Games per evaluation (anti-noise):</label>
+      <select id="games">
+        <option value="1">1 game (very noisy)</option>
+        <option value="3" selected>3 games</option>
+        <option value="5">5 games (steadier)</option>
+      </select>
+
+      <label for="budget">Evaluation budget:</label>
+      <select id="budget">
+        <option value="80">80 weight-sets</option>
+        <option value="150" selected>150 weight-sets</option>
+        <option value="300">300 weight-sets</option>
+      </select>
+
+      <button id="run-btn" onclick="runOptimization()">▶ Optimize the weights</button>
+      <button class="secondary" onclick="replayBest()">🔁 Watch best brain play</button>
+      <button class="secondary" onclick="resetEverything()">⟲ Reset leaderboard</button>
+
+      <div class="stats">
+        <div class="stat-row"><span>Lines cleared</span><span class="score" id="score-now">—</span></div>
+        <div class="stat-row"><span>In-sample (train)</span><span id="insample">—</span></div>
+        <div class="stat-row"><span>Out-of-sample</span><span id="outsample">—</span></div>
+        <div class="stat-row"><span>Weight-sets tried</span><span id="evals">0</span></div>
+        <div class="stat-row"><span>Best weights</span><span id="param-a">—</span></div>
+      </div>
+    </div>
+  </div>
+
+  <div class="leaderboard">
+    <h2>Leaderboard (this session)</h2>
+    <p style="color:var(--muted);">
+      <strong>In-sample</strong> is the average lines on the seeds the optimiser
+      trained on; <strong>out-of-sample</strong> is the average on eight fresh,
+      unseen games. The gap between them is <em>overfitting</em> — weights tuned
+      to a few lucky games don't always travel.
+    </p>
+    <table>
+      <thead>
+        <tr><th>Algorithm</th><th>Out-of-sample</th><th>In-sample</th><th>Weights H / L / Ho / B</th></tr>
+      </thead>
+      <tbody id="leaderboard-body">
+        <tr><td colspan="4" style="color:var(--muted); text-align:center;">— no runs yet —</td></tr>
+      </tbody>
+    </table>
+  </div>
+
+  <h2>What's happening</h2>
+  <p>
+    The bot itself is fixed and dumb: for the current piece it tries every
+    rotation and column, simulates the drop, and rates the resulting board by
+    <code>w₁·height + w₂·lines + w₃·holes + w₄·bumpiness</code>. It greedily
+    plays the highest-rated landing. Everything rides on the four <em>w</em>'s,
+    and that 4-number vector is what the optimiser searches. A bad vector buries
+    itself in holes and tops out in seconds; a good one keeps the stack low and
+    flat and survives for hundreds of pieces.
+  </p>
+  <p>
+    Two things make this a real optimisation problem rather than a puzzle.
+    First, it's <strong>noisy</strong>: piece order is random, so the same
+    weights score differently each game — which is why you can choose to average
+    several games per evaluation, trading speed for a steadier signal, and why
+    the in-sample score flatters the weights relative to held-out games.
+    Second, the bot does <strong>not</strong> rediscover the "textbook" weights
+    (reward lines, punish holes); it often finds odd-looking vectors — sometimes
+    even <em>penalising</em> line-clears — that nonetheless play well, because
+    keeping the board survivable matters more than grabbing every line. More
+    than one set of weights is good.
+  </p>
+  <p style="color:var(--muted);">
+    Only four dimensions here — which flips the verdict from our
+    <a href="genetic-art.html" style="color:var(--accent);">Genetic Art</a> demo:
+    there CMA-ES was too slow to even list (a 300×300 covariance matrix); here,
+    in 4-D, that same machinery is cheap and CMA-ES is often the one to beat.
+    The best optimiser depends on the problem.
+  </p>
+
+  <hr style="border:0; border-top:1px solid #404054; margin:32px 0 16px;" />
+  <p style="font-size:0.78em; color:var(--muted);">
+    A stylised 7-wide, 16-tall board with a one-piece-lookahead bot — narrower
+    than a real Tetris well so that weight quality, not luck, decides how long
+    the bot survives. The greedy heuristic and the noise are real.
+  </p>
+
+  <div class="skill-callout">
+    <h3>🌱 Save the Planet</h3>
+    <p>If your hyper-parameter searches are heating the Earth, drop this in Cursor or Claude:</p>
+    <pre id="skill-snippet">Read https://raw.githubusercontent.com/microprediction/humpday/main/SKILL.md
+and create a project skill from it.</pre>
+    <div class="skill-actions">
+      <button type="button" onclick="copySkillSnippet(this)">📋 Copy</button>
+      <a href="https://github.com/microprediction/humpday/blob/main/SKILL.md" target="_blank" rel="noopener">View SKILL.md →</a>
+    </div>
+  </div>
+
+  <script>
+    function copySkillSnippet(btn){const t=document.getElementById('skill-snippet').textContent;navigator.clipboard.writeText(t).then(()=>{const o=btn.textContent;btn.textContent='✓ Copied';setTimeout(()=>{btn.textContent=o;},1500);}).catch(()=>{btn.textContent='✗ Copy failed';});}
+  </script>
+</div>
+
+<script src="../js/modules/base-optimizer.js"></script>
+<script src="../js/modules/linalg.js"></script>
+<script src="../js/modules/prima-algorithms.js"></script>
+<script src="../js/modules/scipy-algorithms.js"></script>
+<script src="../js/modules/evolutionary-algorithms.js"></script>
+<script src="../js/modules/search-algorithms.js"></script>
+
+<script>
+// ============================================================================
+// Tetris brain. Greedy one-piece-lookahead bot scores placements with 4 weights
+// (height, lines, holes, bumpiness); we optimise the weights to clear lines.
+// Stylised 7x16 board, 7-bag randomiser, noisy objective.
+// ============================================================================
+const W=7, H=16, MAXP=160;
+const TEST_SEEDS=[201,202,203,204,205,206,207,208];
+function makeRng(seed){let s=(seed>>>0)||1;return ()=>{s=(s*1103515245+12345)&0x7fffffff;return s/0x7fffffff;};}
+const PIECES=(()=>{ const base={
+    I:[[0,1],[1,1],[2,1],[3,1]], O:[[1,0],[2,0],[1,1],[2,1]], T:[[1,0],[0,1],[1,1],[2,1]],
+    S:[[1,0],[2,0],[0,1],[1,1]], Z:[[0,0],[1,0],[1,1],[2,1]], J:[[0,0],[0,1],[1,1],[2,1]], L:[[2,0],[0,1],[1,1],[2,1]] };
+  const norm=c=>{const mnx=Math.min(...c.map(p=>p[0])),mny=Math.min(...c.map(p=>p[1]));return c.map(p=>[p[0]-mnx,p[1]-mny]);};
+  const rot=c=>norm(c.map(([x,y])=>[-y,x])); const key=c=>c.map(p=>p.join(',')).sort().join(';');
+  const out=[]; for(const k of Object.keys(base)){ const st=[]; let c=norm(base[k]); const seen=new Set();
+    for(let r=0;r<4;r++){ const kk=key(c); if(!seen.has(kk)){seen.add(kk);st.push(c.map(p=>p.slice()));} c=rot(c);} out.push(st);} return out;
+})();
+function colHeights(g){ const h=new Array(W).fill(0); for(let c=0;c<W;c++)for(let r=0;r<H;r++){ if(g[r*W+c]){h[c]=H-r;break;} } return h; }
+function features(g){ const h=colHeights(g); let agg=0,holes=0,bump=0;
+  for(let c=0;c<W;c++){ agg+=h[c]; let fa=false; for(let r=0;r<H;r++){ if(g[r*W+c])fa=true; else if(fa)holes++; } if(c<W-1)bump+=Math.abs(h[c]-h[c+1]); }
+  return {agg,holes,bump}; }
+function place(g,st,x){ const maxx=Math.max(...st.map(c=>c[0])); if(x+maxx>=W||x<0)return null;
+  let dy=-1; for(let d=0;d<H;d++){ let ok=true; for(const [cx,cy] of st){ const gx=x+cx,gy=cy+d; if(gy>=H||(gy>=0&&g[gy*W+gx])){ok=false;break;} } if(ok)dy=d; else break; }
+  if(dy<0)return null; const ng=g.slice(); let top=false;
+  for(const [cx,cy] of st){ const gy=cy+dy; if(gy<0){top=true;continue;} ng[gy*W+(x+cx)]=1; } if(top)return null;
+  let lines=0; for(let r=H-1;r>=0;r--){ let full=true; for(let c=0;c<W;c++){ if(!ng[r*W+c]){full=false;break;} }
+    if(full){ lines++; for(let rr=r;rr>0;rr--)for(let c=0;c<W;c++)ng[rr*W+c]=ng[(rr-1)*W+c]; for(let c=0;c<W;c++)ng[c]=0; r++; } }
+  return {grid:ng,lines}; }
+function bestMove(g,p,w){ let best=null,bs=-Infinity; const states=PIECES[p];
+  for(let s=0;s<states.length;s++){ const st=states[s],maxx=Math.max(...st.map(c=>c[0]));
+    for(let x=0;x+maxx<W;x++){ const res=place(g,st,x); if(!res)continue; const f=features(res.grid);
+      const sc=w[0]*f.agg+w[1]*res.lines+w[2]*f.holes+w[3]*f.bump; if(sc>bs){bs=sc;best={grid:res.grid,lines:res.lines};} } }
+  return best; }
+function playGame(w,seed,record){ const rng=makeRng(seed); let g=new Array(W*H).fill(0),lines=0,pieces=0; const frames=record?[]:null; let bag=[];
+  const next=()=>{ if(!bag.length){ bag=[0,1,2,3,4,5,6]; for(let i=bag.length-1;i>0;i--){ const j=Math.floor(rng()*(i+1)); [bag[i],bag[j]]=[bag[j],bag[i]]; } } return bag.pop(); };
+  for(pieces=0;pieces<MAXP;pieces++){ const p=next(); const mv=bestMove(g,p,w); if(!mv)break; g=mv.grid; lines+=mv.lines; if(record)frames.push({grid:g.slice(),lines,cleared:mv.lines>0}); }
+  return {lines,pieces,frames,topped:pieces<MAXP}; }
+function decode(u){ return u.map(v=>2*v-1); }
+function scoreSeeds(w,seeds){ let s=0; for(const sd of seeds)s+=playGame(w,sd,false).lines; return s/seeds.length; }
+
+// objective: noisy (different random train seeds drawn each call)
+let trainSeedBase=1000;
+function makeTrainSeeds(nGames){ const s=[]; for(let i=0;i<nGames;i++){ trainSeedBase=(trainSeedBase*1103515245+12345)&0x7fffffff; s.push(trainSeedBase); } return s; }
+let improvements=[];
+function makeObjective(nGames){ let best=Infinity;
+  return u=>{ const w=decode(u); const l=scoreSeeds(w,makeTrainSeeds(nGames)); if(-l<best){best=-l; improvements.push({inSample:l,w:Array.from(w),u:Array.from(u)});} return -l; };
+}
+
+// ---- rendering ----
+const canvas=document.getElementById('canvas'),ctx=canvas.getContext('2d');
+const CW=canvas.width,CH=canvas.height; const CELL=26, BX=46, BY=28;
+const PANELX=BX+W*CELL+40;
+function drawCell(x,y,fill,border){ const px=BX+x*CELL,py=BY+y*CELL; ctx.fillStyle=fill; ctx.fillRect(px+1,py+1,CELL-2,CELL-2); if(border){ctx.strokeStyle=border;ctx.lineWidth=1;ctx.strokeRect(px+1.5,py+1.5,CELL-3,CELL-3);} }
+function cellColor(y){ const t=y/H; const r=Math.round(80+120*t),g=Math.round(180-40*t),b=Math.round(230-60*t); return `rgb(${r},${g},${b})`; }
+function drawBoard(grid,hud,flash){
+  ctx.clearRect(0,0,CW,CH); ctx.fillStyle='#0e0e14'; ctx.fillRect(0,0,CW,CH);
+  // well
+  ctx.fillStyle='#14141c'; ctx.fillRect(BX,BY,W*CELL,H*CELL);
+  ctx.strokeStyle='#33333f'; ctx.lineWidth=1;
+  for(let x=0;x<=W;x++){ ctx.beginPath(); ctx.moveTo(BX+x*CELL,BY); ctx.lineTo(BX+x*CELL,BY+H*CELL); ctx.stroke(); }
+  for(let y=0;y<=H;y++){ ctx.beginPath(); ctx.moveTo(BX,BY+y*CELL); ctx.lineTo(BX+W*CELL,BY+y*CELL); ctx.stroke(); }
+  if(grid) for(let y=0;y<H;y++)for(let x=0;x<W;x++){ if(grid[y*W+x]) drawCell(x,y, flash?'#ffffff':cellColor(y), 'rgba(255,255,255,0.18)'); }
+  ctx.strokeStyle='#ffcc00'; ctx.lineWidth=2; ctx.strokeRect(BX-1,BY-1,W*CELL+2,H*CELL+2);
+  if(hud){ ctx.fillStyle='#ffcc00'; ctx.font='bold 15px -apple-system,Helvetica,Arial,sans-serif'; ctx.textAlign='left'; ctx.fillText(hud,BX,BY-12); }
+}
+const WLABEL=['Height','Lines','Holes','Bumpiness'];
+function drawWeights(w,linesNow){
+  const x0=PANELX, y0=BY+6, bw=300, rowh=58;
+  ctx.textAlign='left'; ctx.fillStyle='#9a9aac'; ctx.font='bold 12px -apple-system,Helvetica,Arial,sans-serif';
+  ctx.fillText('BOT WEIGHTS',x0,y0);
+  for(let i=0;i<4;i++){ const yy=y0+22+i*rowh;
+    ctx.fillStyle='#e8e8ea'; ctx.font='13px -apple-system,Helvetica,Arial,sans-serif'; ctx.fillText(WLABEL[i],x0,yy);
+    ctx.fillStyle='#9a9aac'; ctx.font='12px SF Mono,Menlo,monospace'; ctx.textAlign='right'; ctx.fillText(w?w[i].toFixed(2):'—',x0+bw,yy); ctx.textAlign='left';
+    // bar centered at midpoint, [-1,1]
+    const bx=x0, by=yy+8, bwid=bw, mid=bx+bwid/2;
+    ctx.fillStyle='#23232e'; ctx.fillRect(bx,by,bwid,12);
+    ctx.strokeStyle='#33333f'; ctx.beginPath(); ctx.moveTo(mid,by); ctx.lineTo(mid,by+12); ctx.stroke();
+    if(w){ const v=Math.max(-1,Math.min(1,w[i])); const len=v/2*bwid; ctx.fillStyle=v>=0?'#7ed957':'#e0705a'; if(v>=0)ctx.fillRect(mid,by,len,12); else ctx.fillRect(mid+len,by,-len,12); }
+  }
+  const ly=y0+22+4*rowh+18;
+  ctx.fillStyle='#9a9aac'; ctx.font='bold 12px -apple-system,Helvetica,Arial,sans-serif'; ctx.fillText('LINES CLEARED',x0,ly);
+  ctx.fillStyle='#ffcc00'; ctx.font='bold 40px -apple-system,Helvetica,Arial,sans-serif'; ctx.fillText(linesNow==null?'—':String(linesNow),x0,ly+42);
+}
+function drawScene(grid,w,linesNow,hud,flash){ drawBoard(grid,hud,flash); drawWeights(w,linesNow); }
+function drawIdle(){ drawScene(new Array(W*H).fill(0), manualWeights(), null, 'Press “Optimize the weights” or play your own', false); }
+
+// ---- animation: replay a bot playing a game ----
+let animationToken=0; const delay=ms=>new Promise(r=>setTimeout(r,ms));
+async function playOut(w,seed,label){
+  const my=++animationToken; const g=playGame(w,seed,true); const frames=g.frames;
+  for(let i=0;i<frames.length;i++){ if(my!==animationToken)return g;
+    const fr=frames[i]; drawScene(fr.grid,w,fr.lines,`${label} — ${fr.lines} lines`,fr.cleared);
+    await delay(fr.cleared?70:34);
+  }
+  if(my===animationToken){ drawScene(g.frames.length?g.frames[g.frames.length-1].grid:new Array(W*H).fill(0),w,g.lines,
+    `${label} — ${g.lines} lines${g.topped?' (topped out)':''}`,false); }
+  return g;
+}
+
+let lastBest=null;
+function getOptimizerClass(n){return globalThis[n];}
+async function runOptimization(){
+  const algoName=document.getElementById('algorithm').value, budget=parseInt(document.getElementById('budget').value,10), nGames=parseInt(document.getElementById('games').value,10);
+  const cls=getOptimizerClass(algoName); if(!cls){alert(`Optimizer '${algoName}' not found.`);return;}
+  const runBtn=document.getElementById('run-btn'); runBtn.disabled=true; runBtn.textContent=`Optimizing ${algoName}…`;
+  animationToken++; improvements=[]; trainSeedBase=12345;
+  drawScene(new Array(W*H).fill(0), null, null, `${algoName} is trying weight-sets…`, false);
+  await delay(30);
+  try{
+    const objective=makeObjective(nGames);
+    const opt=new cls(objective,budget,4); opt.optimize();
+    const best=improvements.length?improvements[improvements.length-1]:null;
+    if(!best){ alert('No valid weights found.'); return; }
+    const outS=scoreSeeds(best.w,TEST_SEEDS);
+    lastBest={...best,outS,algo:algoName};
+    document.getElementById('evals').textContent=opt.evaluations||budget;
+    document.getElementById('insample').textContent=best.inSample.toFixed(1)+' lines';
+    document.getElementById('outsample').textContent=outS.toFixed(1)+' lines';
+    document.getElementById('param-a').textContent=best.w.map(x=>x.toFixed(2)).join(' / ');
+    addLeaderboardEntry(algoName,outS,best.inSample,best.w);
+    // play a held-out game with the best brain
+    const g=await playOut(best.w,TEST_SEEDS[0],`Best brain (${algoName})`);
+    document.getElementById('score-now').textContent=g.lines;
+  }catch(e){ console.error(e); alert(`${algoName} threw an error: ${e.message}`); }
+  finally{ runBtn.disabled=false; runBtn.textContent='▶ Optimize the weights'; }
+}
+function replayBest(){ if(!lastBest)return; playOut(lastBest.w,TEST_SEEDS[1],`Best brain (${lastBest.algo})`); }
+
+// ---- Human Raphson ----
+const HR_DEF=[-0.50,0.50,-0.40,-0.20];
+const sl=document.getElementById('hr-sliders');
+for(let i=0;i<4;i++){
+  const lab=document.createElement('label'); lab.innerHTML=`<span>${WLABEL[i]}</span><span class="val" id="hv-${i}">${HR_DEF[i].toFixed(2)}</span>`;
+  const inp=document.createElement('input'); inp.type='range'; inp.id='m-'+i; inp.min=-1; inp.max=1; inp.step=0.05; inp.value=HR_DEF[i];
+  inp.oninput=()=>{ document.getElementById('hv-'+i).textContent=parseFloat(inp.value).toFixed(2); };
+  const wrap=document.createElement('div'); wrap.appendChild(lab); wrap.appendChild(inp); sl.appendChild(wrap);
+}
+function manualWeights(){ const w=[]; for(let i=0;i<4;i++)w.push(parseFloat(document.getElementById('m-'+i).value)); return w; }
+async function playManual(){
+  animationToken++; const w=manualWeights();
+  const out=scoreSeeds(w,TEST_SEEDS); lastBest={w,inSample:out,outS:out,algo:'Human Raphson'};
+  document.getElementById('insample').textContent='—'; document.getElementById('outsample').textContent=out.toFixed(1)+' lines';
+  document.getElementById('param-a').textContent=w.map(x=>x.toFixed(2)).join(' / ');
+  addLeaderboardEntry('Human Raphson',out,null,w);
+  const g=await playOut(w,TEST_SEEDS[0],'🧠 Human Raphson');
+  document.getElementById('score-now').textContent=g.lines;
+}
+
+// ---- leaderboard ----
+const leaderboard=[];
+function addLeaderboardEntry(name,outS,inS,w){
+  leaderboard.push({name,outS,inS,w}); leaderboard.sort((a,b)=>b.outS-a.outS); renderLeaderboard();
+}
+function renderLeaderboard(){
+  const body=document.getElementById('leaderboard-body');
+  if(!leaderboard.length){body.innerHTML='<tr><td colspan="4" style="color:var(--muted); text-align:center;">— no runs yet —</td></tr>';return;}
+  body.innerHTML=leaderboard.map(r=>{const cls=r.name==='Human Raphson'?' class="human-raphson"':'';
+    return `<tr${cls}><td>${r.name}</td><td>${r.outS.toFixed(1)}</td><td>${r.inS==null?'—':r.inS.toFixed(1)}</td><td>${r.w.map(x=>x.toFixed(2)).join(' / ')}</td></tr>`;}).join('');
+}
+function resetEverything(){ leaderboard.length=0; lastBest=null; improvements=[]; animationToken++;
+  document.getElementById('evals').textContent='0';
+  ['score-now','insample','outsample','param-a'].forEach(id=>document.getElementById(id).textContent='—');
+  renderLeaderboard(); drawIdle();
+}
+
+drawIdle();
+</script>
+</body>
+</html>
