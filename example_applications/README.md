@@ -36,8 +36,9 @@ Each subfolder is self-contained:
 | [`battery_dispatch/`](battery_dispatch/)   | Energy arbitrage                  | Price arbitrage under state-of-charge limits and round-trip efficiency losses; over-trading destroys value. |
 | [`reactor_profile/`](reactor_profile/)     | Reaction engineering              | Optimal control of an A→B→C reactor; the best temperature is a *profile*, not a constant. |
 | [`bridge_truss/`](bridge_truss/)           | Structural optimisation           | FEM-in-the-loop member sizing; lightest truss on the yield/buckling boundary; statically indeterminate. |
+| [`free_kick/`](free_kick/)                 | Sports ballistics                 | 3-D ball flight (Magnus curve) past a wall and a diving keeper; multimodal goal/save/block outcomes. |
 
-These last twenty-one mirror, in pure Python, the interactive browser demos at
+These last twenty-two mirror, in pure Python, the interactive browser demos at
 [`docs/applications/`](../docs/applications/). Several are deliberately a matched
 pair — `lens_design` (low-D, interpolation/local methods win) versus
 `genetic_art` (high-D, those same methods lose) — so the **No-Free-Lunch**
@@ -90,6 +91,7 @@ python -m example_applications.rocket_landing.run
 python -m example_applications.battery_dispatch.run
 python -m example_applications.reactor_profile.run
 python -m example_applications.bridge_truss.run
+python -m example_applications.free_kick.run
 ```
 
 No external dependencies beyond what HumpDay itself uses — these are
