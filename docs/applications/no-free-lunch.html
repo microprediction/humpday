@@ -1,0 +1,282 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' 'unsafe-inline'; style-src 'self' 'unsafe-inline';">
+<title>🏁 No-Free-Lunch Scoreboard — HumpDay</title>
+<style>
+  :root { --bg:#1a1a22; --panel:#2d2d3a; --accent:#ffcc00; --text:#e8e8ea; --muted:#9a9aac; }
+  body { margin:0; background:var(--bg); color:var(--text); font-family:-apple-system,'Segoe UI','Helvetica Neue',Helvetica,Arial,sans-serif; }
+  .site-nav { background:#34495e; padding:12px 24px; font-family:'Times New Roman',Times,serif; box-shadow:0 2px 4px rgba(0,0,0,0.1); }
+  .site-nav-inner { max-width:1100px; margin:0 auto; display:flex; justify-content:space-between; align-items:center; }
+  .site-nav a { color:#ecf0f1; text-decoration:none; margin:0 12px; }
+  .site-nav a:hover { color:white; text-decoration:underline; }
+  .site-nav-brand { font-weight:700; font-size:1.25em; }
+  .container { max-width:1100px; margin:0 auto; padding:32px 24px 64px; }
+  h1 { font-size:2.2em; margin:0.2em 0; }
+  h2 { font-size:1.4em; margin-top:1.6em; color:var(--accent); }
+  p { line-height:1.55; max-width:74ch; color:var(--muted); }
+  p strong { color:var(--text); }
+  .controls { display:flex; gap:12px; align-items:center; flex-wrap:wrap; margin:22px 0 8px; }
+  button { padding:10px 18px; border-radius:5px; border:1px solid #404054; background:var(--accent); color:#1a1a22; font-weight:700; font-size:1em; cursor:pointer; transition:opacity 0.15s; }
+  button:hover { opacity:0.88; } button:disabled { opacity:0.5; cursor:not-allowed; }
+  button.secondary { background:#404054; color:var(--text); font-weight:500; }
+  select { padding:8px 10px; border-radius:4px; border:1px solid #404054; background:#1a1a22; color:var(--text); }
+  .board { overflow-x:auto; margin-top:14px; }
+  table.sb { border-collapse:collapse; width:100%; font-size:0.92em; }
+  table.sb th, table.sb td { padding:7px 6px; text-align:center; border:1px solid #23232e; }
+  table.sb thead th { background:#1a1a22; color:var(--muted); font-size:0.78em; text-transform:uppercase; letter-spacing:0.04em; position:sticky; top:0; }
+  table.sb thead th .niche { display:block; font-size:0.82em; text-transform:none; letter-spacing:0; color:#6a6a7a; font-weight:400; }
+  table.sb td.opt { text-align:left; white-space:nowrap; color:var(--text); font-weight:600; font-family:-apple-system,Helvetica,Arial,sans-serif; }
+  table.sb td.cell { font-family:'SF Mono',Menlo,monospace; font-weight:700; color:#10131a; width:62px; }
+  table.sb td.avg { font-family:'SF Mono',Menlo,monospace; font-weight:700; background:#1a1a22; color:var(--accent); }
+  table.sb tr.best td.opt { color:var(--accent); }
+  table.sb td.pending { color:#3a3a48; font-weight:400; }
+  .legend { display:flex; gap:14px; align-items:center; margin-top:10px; font-size:0.82em; color:var(--muted); flex-wrap:wrap; }
+  .swatch { display:inline-block; width:16px; height:16px; border-radius:3px; vertical-align:middle; margin-right:4px; }
+  .punch { margin-top:22px; background:rgba(255,204,0,0.07); border:1px solid rgba(255,204,0,0.35); border-radius:8px; padding:16px 20px; color:var(--text); display:none; }
+  .punch.show { display:block; }
+  .punch b { color:var(--accent); }
+  a.demolink { color:var(--accent); text-decoration:none; }
+  .skill-callout { margin-top:36px; background:rgba(126,217,87,0.07); border:1px solid rgba(126,217,87,0.35); border-radius:8px; padding:18px 22px; }
+  .skill-callout h3 { margin:0 0 6px; color:#7ed957; font-size:1.05em; }
+  .skill-callout p { margin:0 0 10px; color:var(--text); max-width:none; }
+  .skill-callout pre { background:#1a1a22; border:1px solid #404054; border-radius:4px; padding:10px 14px; margin:0; font-size:0.84em; color:#7ed957; white-space:pre-wrap; word-break:break-all; font-family:'SF Mono',Menlo,monospace; }
+  .skill-actions { margin-top:10px; display:flex; align-items:center; gap:14px; }
+  .skill-actions button { width:auto; background:#404054; color:var(--text); padding:6px 12px; font-size:0.85em; font-weight:500; }
+  .skill-actions a { color:#7ed957; font-size:0.85em; text-decoration:none; }
+</style>
+</head>
+<body>
+    <nav class="site-nav" data-site-nav="v1">
+        <div class="site-nav-inner">
+            <a href="../index.html" class="site-nav-brand"><svg class="site-nav-camel" data-site-logo="camel-v3" viewBox="0 0 100 50" width="44" height="22" xmlns="http://www.w3.org/2000/svg" aria-hidden="true"><rect x="20.5" y="30" width="1.8" height="11" fill="white" fill-opacity="0.55"/><rect x="60.5" y="30" width="1.8" height="11" fill="white" fill-opacity="0.55"/><path fill="white" fill-opacity="0.92" d="M 14 30 C 10 30 8 28 8 24 C 7 22 7 19 9 18 C 11 16 13 14 16 13 C 20 8 26 6 31 9 C 34 11 35 13 35 16 C 37 18 40 18 43 17 C 47 13 53 7 59 9 C 63 11 65 13 65 16 C 66 18 68 18 70 17 C 73 13 76 9 80 7 C 84 5 89 6 90 9 L 92 9 L 93 12 L 91 13 L 87 13 L 87 15 C 82 16 79 18 76 21 C 73 25 71 28 68 30 L 66 30 L 66 42 L 64 42 L 64 30 L 26 30 L 26 42 L 24 42 L 24 30 L 14 30 Z"/><circle cx="88" cy="10" r="0.9" fill="#34495e"/></svg>HumpDay</a>
+            <div class="site-nav-links">
+                <a href="../index.html">Home</a>
+                <a href="../contest.html">Contest</a>
+                <a href="../applications/index.html">Demonstrations</a>
+                <a href="../algorithms.html">Algorithms</a>
+                <a href="../sota-status.html">SOTA status</a>
+                <a href="../recommendations.html">Recommendations</a>
+                <a href="https://github.com/microprediction/humpday" target="_blank" rel="noopener">GitHub</a>
+            </div>
+        </div>
+    </nav>
+
+<div class="container">
+  <h1>🏁 No-Free-Lunch Scoreboard</h1>
+  <p>
+    Every demo on this site is one problem. Here they are <strong>all at once</strong>:
+    a live tournament where eight HumpDay optimizers each get the same small budget on
+    eight very different objectives — three textbook test functions and five drawn
+    straight from the demos. Each cell is a <strong>rank</strong> (1 = best on that
+    problem). Press the button and watch it fill in.
+  </p>
+  <p>
+    The point is what you <em>won't</em> see: a column of all-1s. There is no optimizer
+    that wins everywhere. The one that looks best on average is always near-worst on
+    something — that's the <strong>No Free Lunch</strong> theorem, made of measurements
+    rather than maths.
+  </p>
+
+  <div class="controls">
+    <button id="run-btn" onclick="runTournament()">▶ Run the tournament</button>
+    <label style="color:var(--muted);font-size:0.9em;">Budget/problem:
+      <select id="budget"><option value="60">60</option><option value="80" selected>80</option><option value="120">120</option></select>
+    </label>
+    <span id="status" style="color:var(--muted); font-size:0.9em;"></span>
+  </div>
+  <div class="legend">
+    <span><span class="swatch" style="background:#1a9850;"></span>rank 1 (best)</span>
+    <span><span class="swatch" style="background:#f7e08a;"></span>middle</span>
+    <span><span class="swatch" style="background:#d73027;"></span>rank 8 (worst)</span>
+    <span style="color:#6a6a7a;">— each column is ranked independently · noisy problems &amp; stochastic optimizers ⇒ reruns vary</span>
+  </div>
+
+  <div class="board">
+    <table class="sb" id="sb"></table>
+  </div>
+
+  <div class="punch" id="punch"></div>
+
+  <h2>What's happening</h2>
+  <p>
+    The three classic functions — <strong>Rosenbrock</strong> (a smooth banana-shaped
+    valley), <strong>Rastrigin</strong> and <strong>Ackley</strong> (egg-carton
+    landscapes riddled with local minima) — are the standard yardsticks. The other five
+    are the real thing: the rugged-needle focus of
+    <a class="demolink" href="lens.html">Lens Design</a>, the noisy
+    <a class="demolink" href="tetris.html">Tetris</a> and
+    <a class="demolink" href="plinko.html">Plinko</a> scores, the emergent gait of the
+    <a class="demolink" href="creature.html">Walking Creature</a>, and the
+    300-knob… well, 60-knob here —
+    <a class="demolink" href="genetic-art.html">Genetic Art</a> image fit. Same eight
+    optimizers, same budget, wildly different winners.
+  </p>
+  <p>
+    Watch the patterns rather than the exact numbers (which jitter from run to run):
+    interpolation methods like <strong>PRIMA_BOBYQA</strong> tend to dominate the small,
+    smooth, rugged problems and then fall to the bottom on the high-dimensional and
+    emergent ones; <strong>Powell</strong> swings from hero to last; population methods
+    like <strong>Differential Evolution</strong> earn their keep exactly where the others
+    drown — in high dimensions. This spread is the entire reason HumpDay exists: it
+    doesn't sell you one optimizer, it helps you pick the right one for the problem in
+    front of you.
+  </p>
+
+  <div class="skill-callout">
+    <h3>🌱 Save the Planet</h3>
+    <p>If your hyper-parameter searches are heating the Earth, drop this in Cursor or Claude:</p>
+    <pre id="skill-snippet">Read https://raw.githubusercontent.com/microprediction/humpday/main/SKILL.md
+and create a project skill from it.</pre>
+    <div class="skill-actions">
+      <button type="button" onclick="copySkillSnippet(this)">📋 Copy</button>
+      <a href="https://github.com/microprediction/humpday/blob/main/SKILL.md" target="_blank" rel="noopener">View SKILL.md →</a>
+    </div>
+  </div>
+  <script>function copySkillSnippet(btn){const t=document.getElementById('skill-snippet').textContent;navigator.clipboard.writeText(t).then(()=>{const o=btn.textContent;btn.textContent='✓ Copied';setTimeout(()=>{btn.textContent=o;},1500);}).catch(()=>{btn.textContent='✗ Copy failed';});}</script>
+</div>
+
+<script src="../js/modules/base-optimizer.js"></script>
+<script src="../js/modules/linalg.js"></script>
+<script src="../js/modules/prima-algorithms.js"></script>
+<script src="../js/modules/scipy-algorithms.js"></script>
+<script src="../js/modules/evolutionary-algorithms.js"></script>
+<script src="../js/modules/search-algorithms.js"></script>
+
+<script>
+// ============================================================================
+// Embedded benchmark objectives (compact ports of the demo problems + classics).
+// All take u in [0,1]^n and return a value to MINIMISE.
+// ============================================================================
+function mapv(u,lo,hi){ return u.map(v=>lo+(hi-lo)*v); }
+function rosen(u){ const x=mapv(u,-2,2); let s=0; for(let i=0;i<x.length-1;i++)s+=100*(x[i+1]-x[i]*x[i])**2+(1-x[i])**2; return s; }
+function rastrigin(u){ const x=mapv(u,-5.12,5.12); let s=10*x.length; for(const xi of x)s+=xi*xi-10*Math.cos(2*Math.PI*xi); return s; }
+function ackley(u){ const x=mapv(u,-5,5); const n=x.length; let a=0,b=0; for(const xi of x){a+=xi*xi;b+=Math.cos(2*Math.PI*xi);} return -20*Math.exp(-0.2*Math.sqrt(a/n))-Math.exp(b/n)+20+Math.E; }
+
+// ---- Lens (n=4): collimated beam, 4 spherical surfaces, RMS spot ----
+const L_SX=[3.0,4.2,6.0,7.2],L_GL=[1,0,1,0],L_NG=1.5,L_F=15,L_AP=1.6,L_NR=21;
+function lensRefract(dx,dy,nx,ny,r){let ci=-(dx*nx+dy*ny);if(ci<0){nx=-nx;ny=-ny;ci=-ci;}const s2=r*r*(1-ci*ci);if(s2>1)return null;const ct=Math.sqrt(1-s2);const rx=r*dx+(r*ci-ct)*nx,ry=r*dy+(r*ci-ct)*ny,m=Math.hypot(rx,ry);return[rx/m,ry/m];}
+function lensHit(px,py,dx,dy,Xv,c){if(Math.abs(c)<1e-6){if(Math.abs(dx)<1e-9)return null;const t=(Xv-px)/dx;if(t<=1e-7)return null;return{x:Xv,y:py+t*dy,nx:-1,ny:0};}const R=1/c,cx=Xv+R,ox=px-cx,oy=py,b=2*(ox*dx+oy*dy),cc=ox*ox+oy*oy-R*R,disc=b*b-4*cc;if(disc<0)return null;const sd=Math.sqrt(disc);let t=Infinity;for(const tc of[(-b-sd)/2,(-b+sd)/2]){if(tc>1e-7){const hx=px+tc*dx;if(Math.abs(hx-Xv)<Math.abs(R)+L_AP+2&&tc<t)t=tc;}}if(!isFinite(t))return null;const hx=px+t*dx,hy=py+t*dy;return{x:hx,y:hy,nx:(hx-cx)/R,ny:hy/R};}
+function lensObj(u){ const cv=u.map(v=>(2*v-1)*0.9); const ys=[]; let lost=0;
+  for(let j=0;j<L_NR;j++){ let px=0,py=-L_AP+2*L_AP*j/(L_NR-1),dx=1,dy=0,ok=true;
+    for(let i=0;i<4;i++){ const h=lensHit(px,py,dx,dy,L_SX[i],cv[i]); if(!h||Math.abs(h.y)>L_AP+0.4){ok=false;break;} const n1=(i===0?1:(L_GL[i-1]?L_NG:1)),n2=(L_GL[i]?L_NG:1); const r=lensRefract(dx,dy,h.nx,h.ny,n1/n2); if(!r){ok=false;break;} px=h.x;py=h.y;dx=r[0];dy=r[1]; }
+    if(!ok||dx<=1e-6){lost++;continue;} const t=(L_F-px)/dx; if(t<=0){lost++;continue;} ys.push(py+t*dy); }
+  if(ys.length<3)return 1e3; const m=ys.reduce((a,b)=>a+b,0)/ys.length; return Math.sqrt(ys.reduce((a,b)=>a+(b-m)*(b-m),0)/ys.length)+0.15*lost; }
+
+// ---- Tetris (n=4): greedy bot, 7x16 board, lines cleared (noisy) ----
+const T_W=7,T_H=16,T_MP=120;
+const T_PIECES=(()=>{const base={I:[[0,1],[1,1],[2,1],[3,1]],O:[[1,0],[2,0],[1,1],[2,1]],T:[[1,0],[0,1],[1,1],[2,1]],S:[[1,0],[2,0],[0,1],[1,1]],Z:[[0,0],[1,0],[1,1],[2,1]],J:[[0,0],[0,1],[1,1],[2,1]],L:[[2,0],[0,1],[1,1],[2,1]]};const nm=c=>{const mx=Math.min(...c.map(p=>p[0])),my=Math.min(...c.map(p=>p[1]));return c.map(p=>[p[0]-mx,p[1]-my]);};const rot=c=>nm(c.map(([x,y])=>[-y,x])),key=c=>c.map(p=>p.join(',')).sort().join(';');const out=[];for(const k in base){const st=[];let c=nm(base[k]);const seen=new Set();for(let r=0;r<4;r++){const kk=key(c);if(!seen.has(kk)){seen.add(kk);st.push(c.map(p=>p.slice()));}c=rot(c);}out.push(st);}return out;})();
+function T_feat(g){const h=new Array(T_W).fill(0);for(let c=0;c<T_W;c++)for(let r=0;r<T_H;r++){if(g[r*T_W+c]){h[c]=T_H-r;break;}}let agg=0,ho=0,bp=0;for(let c=0;c<T_W;c++){agg+=h[c];let fa=false;for(let r=0;r<T_H;r++){if(g[r*T_W+c])fa=true;else if(fa)ho++;}if(c<T_W-1)bp+=Math.abs(h[c]-h[c+1]);}return{agg,ho,bp};}
+function T_place(g,st,x){const mx=Math.max(...st.map(c=>c[0]));if(x+mx>=T_W||x<0)return null;let dy=-1;for(let d=0;d<T_H;d++){let ok=true;for(const[cx,cy]of st){const gx=x+cx,gy=cy+d;if(gy>=T_H||(gy>=0&&g[gy*T_W+gx])){ok=false;break;}}if(ok)dy=d;else break;}if(dy<0)return null;const ng=g.slice();let top=false;for(const[cx,cy]of st){const gy=cy+dy;if(gy<0){top=true;continue;}ng[gy*T_W+(x+cx)]=1;}if(top)return null;let li=0;for(let r=T_H-1;r>=0;r--){let f=true;for(let c=0;c<T_W;c++){if(!ng[r*T_W+c]){f=false;break;}}if(f){li++;for(let rr=r;rr>0;rr--)for(let c=0;c<T_W;c++)ng[rr*T_W+c]=ng[(rr-1)*T_W+c];for(let c=0;c<T_W;c++)ng[c]=0;r++;}}return{g:ng,li};}
+function T_rng(s){s=(s>>>0)||1;return()=>{s=(s*1103515245+12345)&0x7fffffff;return s/0x7fffffff;};}
+function tetrisObj(u){ const w=u.map(v=>2*v-1); const rng=T_rng(7); let g=new Array(T_W*T_H).fill(0),lines=0,bag=[];
+  const next=()=>{if(!bag.length){bag=[0,1,2,3,4,5,6];for(let i=6;i>0;i--){const j=Math.floor(rng()*(i+1));[bag[i],bag[j]]=[bag[j],bag[i]];}}return bag.pop();};
+  for(let p=0;p<T_MP;p++){const pc=next();let best=null,bs=-Infinity;for(let s=0;s<T_PIECES[pc].length;s++){const st=T_PIECES[pc][s],mx=Math.max(...st.map(c=>c[0]));for(let x=0;x+mx<T_W;x++){const res=T_place(g,st,x);if(!res)continue;const f=T_feat(res.g);const sc=w[0]*f.agg+w[1]*res.li+w[2]*f.ho+w[3]*f.bp;if(sc>bs){bs=sc;best=res;}}}if(!best)break;g=best.g;lines+=best.li;}
+  return -lines; }
+
+// ---- Plinko (n=7): funnel balls to off-centre bin (noisy) ----
+const P_B=15,P_R=14,P_T=11,P_KC=7,P_NB=400;
+function plinkoObj(u){ const ctrl=u.map(v=>2*v-1); let seed=(Math.floor(u[1]*1e6)|0)||1; const rng=()=>{seed=(seed*1103515245+12345)&0x7fffffff;return seed/0x7fffffff;};
+  const leanAt=col=>{const t=col/(P_B-1)*(P_KC-1),i=Math.floor(t),f=t-i;if(i>=P_KC-1)return ctrl[P_KC-1];return ctrl[i]*(1-f)+ctrl[i+1]*f;};
+  let hit=0; for(let b=0;b<P_NB;b++){ let col=(P_B-1)/2; for(let r=0;r<P_R;r++){const p=0.5+0.45*Math.max(-1,Math.min(1,leanAt(col)));col+=(rng()<p?0.5:-0.5);col=Math.max(0,Math.min(P_B-1,col));} if(Math.round(col)===P_T)hit++; }
+  return -100*hit/P_NB; }
+
+// ---- Creature (n=6): emergent gait, distance walked ----
+const C_T=8,C_DT=0.02,C_STEPS=400,C_LL=1,C_MD=0.55;
+function creatureObj(u){ const g={w:3+u[0]*9,A:0.15+u[1]*1.05,dphi:u[2]*2*Math.PI,zeta:u[3]*2*Math.PI,duty:0.2+u[4]*0.6,lean:(u[5]-0.5)*0.8};
+  let x=0,y=C_LL,vy=0,fell=false; const thr=1-2*g.duty;
+  for(let s=0;s<C_STEPS;s++){ const t=s*C_DT; const ph=[g.w*t,g.w*t+g.dphi]; const lifted=ph.map(p=>Math.sin(p+g.zeta)>thr); const stance=[]; if(!lifted[0])stance.push(0); if(!lifted[1])stance.push(1);
+    if(stance.length){ let v=0; for(const i of stance)v+=-(g.A*g.w*Math.cos(ph[i])); v/=stance.length; x+=v*C_DT; y+=(C_LL-y)*Math.min(1,8*C_DT); vy=0; }
+    else { vy-=6*C_DT; y+=vy*C_DT; if(y<C_LL-C_MD)fell=true; } if(fell)break; }
+  let d=x; if(fell)d=Math.min(d,d*0.3)-1; return -d; }
+
+// ---- Genetic Art (n=60): approximate an image with 6 translucent triangles ----
+const G_RES=40,G_NPX=G_RES*G_RES;
+function G_blank(){return new Float32Array(G_NPX*3);}
+function G_fillTri(b,x1,y1,x2,y2,x3,y3,r,g,bl,a){const mnX=Math.max(0,Math.floor(Math.min(x1,x2,x3))),mxX=Math.min(G_RES-1,Math.ceil(Math.max(x1,x2,x3))),mnY=Math.max(0,Math.floor(Math.min(y1,y2,y3))),mxY=Math.min(G_RES-1,Math.ceil(Math.max(y1,y2,y3)));if(mxX<mnX||mxY<mnY)return;const d=(y2-y3)*(x1-x3)+(x3-x2)*(y1-y3);if(Math.abs(d)<1e-9)return;const ia=1-a;for(let py=mnY;py<=mxY;py++){const fy=py+0.5;for(let px=mnX;px<=mxX;px++){const fx=px+0.5,l1=((y2-y3)*(fx-x3)+(x3-x2)*(fy-y3))/d,l2=((y3-y1)*(fx-x3)+(x1-x3)*(fy-y3))/d,l3=1-l1-l2;if(l1<0||l2<0||l3<0)continue;const o=(py*G_RES+px)*3;b[o]=b[o]*ia+r*a;b[o+1]=b[o+1]*ia+g*a;b[o+2]=b[o+2]*ia+bl*a;}}}
+function G_render(u){const b=G_blank();for(let k=0;k<6;k++){const o=k*10,X=v=>(v*1.3-0.15)*G_RES;G_fillTri(b,X(u[o]),X(u[o+1]),X(u[o+2]),X(u[o+3]),X(u[o+4]),X(u[o+5]),u[o+6]*255,u[o+7]*255,u[o+8]*255,0.3+u[o+9]*0.65);}return b;}
+const G_TARGET=(()=>{ const b=G_blank(); for(let y=0;y<G_RES;y++){ const t=y/G_RES; let r,g,bl; if(t<0.55){const v=t/0.55;r=70+120*v;g=110+120*v;bl=200-30*v;}else{r=40;g=46;bl=60;} for(let x=0;x<G_RES;x++){const o=(y*G_RES+x)*3;b[o]=r;b[o+1]=g;b[o+2]=bl;} }
+  // a bright triangle "mountain"
+  G_fillTri(b,6,30,20,10,34,30,235,235,245,1); for(let y=30;y<G_RES;y++)for(let x=0;x<G_RES;x++){const o=(y*G_RES+x)*3;b[o]=30;b[o+1]=46;b[o+2]=40;} return b; })();
+function genartObj(u){ const im=G_render(u); let s=0; for(let i=0;i<G_NPX*3;i++){const d=im[i]-G_TARGET[i];s+=d*d;} return Math.sqrt(s/(G_NPX*3)); }
+
+const PROBLEMS=[
+  {name:'Rosenbrock',n:4,niche:'smooth valley',f:rosen},
+  {name:'Rastrigin', n:4,niche:'multimodal',f:rastrigin},
+  {name:'Ackley',    n:4,niche:'flat + bumpy',f:ackley},
+  {name:'Lens',      n:4,niche:'rugged needle',f:lensObj},
+  {name:'Tetris',    n:4,niche:'noisy',f:tetrisObj},
+  {name:'Plinko',    n:7,niche:'noisy',f:plinkoObj},
+  {name:'Creature',  n:6,niche:'emergent',f:creatureObj},
+  {name:'GeneticArt',n:60,niche:'high-dim',f:genartObj},
+];
+const OPTS=[
+  ['CMAEvolutionStrategy','CMA-ES'],['DifferentialEvolution','Differential Evolution'],
+  ['ParticleSwarm','Particle Swarm'],['PRIMA_BOBYQA','PRIMA_BOBYQA'],
+  ['NelderMead','Nelder-Mead'],['Powell','Powell'],
+  ['SimulatedAnnealing','Simulated Annealing'],['RandomSearch','Random Search'],
+];
+
+// ---- colour ramp green->yellow->red over rank 1..K ----
+function rankColor(rank,K){ const t=(rank-1)/(K-1); // 0 best
+  const stops=[[26,152,80],[166,217,106],[247,224,138],[253,174,97],[215,48,39]];
+  const x=t*(stops.length-1), i=Math.min(stops.length-2,Math.floor(x)), f=x-i;
+  const c=stops[i].map((v,j)=>Math.round(v+(stops[i+1][j]-v)*f)); return `rgb(${c[0]},${c[1]},${c[2]})`; }
+
+const sb=document.getElementById('sb');
+function buildTable(order){
+  let html='<thead><tr><th style="text-align:left;">Optimizer</th>';
+  for(const p of PROBLEMS) html+=`<th>${p.name}<span class="niche">${p.niche}</span></th>`;
+  html+='<th>avg<span class="niche">rank</span></th></tr></thead><tbody>';
+  for(const [id,label] of order){ html+=`<tr id="row-${id}"><td class="opt">${label}</td>`;
+    for(const p of PROBLEMS) html+=`<td class="cell pending" id="c-${id}-${p.name}">·</td>`;
+    html+=`<td class="avg" id="a-${id}">—</td></tr>`; }
+  html+='</tbody>'; sb.innerHTML=html;
+}
+buildTable(OPTS);
+
+let running=false;
+const delay=ms=>new Promise(r=>setTimeout(r,ms));
+async function runTournament(){
+  if(running)return; running=true;
+  const btn=document.getElementById('run-btn'); btn.disabled=true; btn.textContent='Running…';
+  const budget=parseInt(document.getElementById('budget').value,10);
+  const status=document.getElementById('status'); document.getElementById('punch').classList.remove('show');
+  buildTable(OPTS);
+  const best={}; OPTS.forEach(([id])=>best[id]={});
+  for(const p of PROBLEMS){ status.textContent=`Optimizing “${p.name}”…`;
+    for(const [id] of OPTS){ const C=globalThis[id]; let b=Infinity;
+      if(C){ const f=u=>{const v=p.f(u); if(v<b)b=v; return v;}; try{ new C(f,budget,p.n).optimize(); }catch(e){ b=NaN; } }
+      best[id][p.name]=b; const cell=document.getElementById(`c-${id}-${p.name}`); cell.textContent='…'; cell.classList.remove('pending');
+      await delay(0);
+    }
+    // rank this column
+    const vals=OPTS.map(([id])=>({id,v:best[id][p.name]})).filter(x=>!isNaN(x.v)).sort((a,b)=>a.v-b.v);
+    vals.forEach((x,i)=>{ best[x.id][p.name+'_rank']=i+1; const cell=document.getElementById(`c-${x.id}-${p.name}`);
+      cell.textContent=i+1; cell.style.background=rankColor(i+1,vals.length); });
+    await delay(120);
+  }
+  // average ranks
+  const avg=OPTS.map(([id,label])=>{ let s=0,n=0; for(const p of PROBLEMS){ const r=best[id][p.name+'_rank']; if(r){s+=r;n++;} } return {id,label,avg:n?s/n:99}; });
+  avg.sort((a,b)=>a.avg-b.avg);
+  buildTable(avg.map(a=>[a.id,a.label]));
+  for(const p of PROBLEMS){ const vals=OPTS.map(([id])=>({id,v:best[id][p.name]})).filter(x=>!isNaN(x.v)).sort((a,b)=>a.v-b.v);
+    vals.forEach((x,i)=>{ const cell=document.getElementById(`c-${x.id}-${p.name}`); cell.textContent=i+1; cell.classList.remove('pending'); cell.style.background=rankColor(i+1,vals.length); }); }
+  for(const a of avg){ document.getElementById(`a-${a.id}`).textContent=a.avg.toFixed(2); }
+  document.getElementById(`row-${avg[0].id}`).classList.add('best');
+  // punchline: best-on-average's worst problem
+  const champ=avg[0]; let worstP=null,worstR=-1;
+  for(const p of PROBLEMS){ const r=best[champ.id][p.name+'_rank']; if(r>worstR){worstR=r;worstP=p.name;} }
+  const K=OPTS.length;
+  const punch=document.getElementById('punch'); punch.classList.add('show');
+  punch.innerHTML=`<b>${champ.label}</b> had the best average rank (${champ.avg.toFixed(2)}) this run — and still finished <b>#${worstR} of ${K}</b> on <b>${worstP}</b>. ` +
+    `Pick the optimizer that won here and it will lose somewhere else. That gap — not any single winner — is the whole point. ` +
+    `<span style="color:var(--muted);">Reruns shuffle the details; the absence of a free lunch is the constant.</span>`;
+  status.textContent='Done — rerun to see how much the ranks move.';
+  btn.disabled=false; btn.textContent='▶ Run the tournament'; running=false;
+}
+</script>
+</body>
+</html>
