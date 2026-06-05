@@ -22,13 +22,13 @@ from __future__ import annotations
 import math
 
 N_DIM = 4
-NG = 1.5                                   # glass refractive index
-SURF_X = (3.0, 4.2, 6.0, 7.2)              # vertex x of each surface
-GLASS = (True, False, True, False)         # entering glass after surface i?
-FOCAL = 15.0                               # focal plane x
-APERTURE = 1.6                             # half-aperture (max ray height)
+NG = 1.5  # glass refractive index
+SURF_X = (3.0, 4.2, 6.0, 7.2)  # vertex x of each surface
+GLASS = (True, False, True, False)  # entering glass after surface i?
+FOCAL = 15.0  # focal plane x
+APERTURE = 1.6  # half-aperture (max ray height)
 N_RAYS = 21
-CMAX = 0.9                                 # curvature magnitude bound (1/R)
+CMAX = 0.9  # curvature magnitude bound (1/R)
 
 
 def _scale(u):
@@ -53,7 +53,7 @@ def _refract(dx, dy, nx, ny, ratio):
 
 def _hit_surface(px, py, dx, dy, xv, c):
     """Intersect a ray with a spherical surface (vertex (xv,0), curvature c)."""
-    if abs(c) < 1e-6:                      # flat plane x = xv
+    if abs(c) < 1e-6:  # flat plane x = xv
         if abs(dx) < 1e-9:
             return None
         t = (xv - px) / dx
