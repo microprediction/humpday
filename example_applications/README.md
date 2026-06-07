@@ -20,8 +20,31 @@ Each subfolder is self-contained:
 | [`tetris_weights/`](tetris_weights/)       | Game-heuristic tuning             | Noisy objective; in-sample vs out-of-sample overfitting; a non-textbook optimum. |
 | [`plinko_funnel/`](plinko_funnel/)         | Stochastic process control        | Pure evaluation noise; steering a random cascade onto an off-centre target. |
 | [`walking_creature/`](walking_creature/)   | Evolved locomotion                | Emergent structure from a scalar reward (an alternating gait); a broad basin with interpolation traps. |
+| [`ebola_response/`](ebola_response/)       | Epidemic control                  | Multi-objective harm (deaths vs cost) folded into one scalar; the optimum is a *schedule*, not a setting. |
+| [`espresso_dialin/`](espresso_dialin/)     | Sample-efficient tuning           | Tiny noisy budget; interpolation / Bayesian methods win where population methods are still warming up. |
+| [`fm_sound_match/`](fm_sound_match/)       | Audio / spectral inverse          | Recover a synth patch from its spectrum; smooth here, but a famously octave-trapped problem if unbounded. |
+| [`boids_flocking/`](boids_flocking/)       | Emergent navigation               | A swarm threading a chicane; a broad, forgiving basin where even Random Search does well. |
+| [`antenna_array/`](antenna_array/)         | Antenna design                    | Optimiser beats intuition: an irregular element spacing beats the even array; a wiggly multimodal landscape. |
+| [`circle_packing/`](circle_packing/)       | Packing geometry                  | Non-smooth "maximise the minimum"; sharp ridges where the binding gap switches; a known optimum. |
+| [`brachistochrone/`](brachistochrone/)     | Calculus of variations            | The fastest-slide curve (a cycloid, not the straight line); a counter-intuitive smooth optimum. |
+| [`tuned_mass_damper/`](tuned_mass_damper/) | Mixed-integer seismic             | Three continuous knobs plus one integer floor; dynamics (Newmark-β) in the objective; resonance tuning. |
+| [`tennis_doubles/`](tennis_doubles/)       | Game strategy                     | Tune doubles tactics vs a textbook team; noisy, in/out-of-sample overfitting; safe play wins. |
+| [`chess_piece_values/`](chess_piece_values/) | Game strategy (expensive)       | A perft-verified depth-2 engine; objective-design cautionary tale — it exploits the opponent, not the textbook values. |
+| [`robot_arm/`](robot_arm/)                 | Inverse kinematics                | Hard collision constraints; disjoint elbow-up/down/wrap solution branches through narrow corridors. |
+| [`wind_farm/`](wind_farm/)                 | Energy layout                     | Wake-coupled, non-separable objective; spread turbines out of each other's wakes under a spacing limit. |
+| [`rocket_landing/`](rocket_landing/)       | Optimal control                   | Multimodal throttle schedule (gradual descent vs late suicide burn); a tight fuel budget and a crash cliff. |
+| [`battery_dispatch/`](battery_dispatch/)   | Energy arbitrage                  | Price arbitrage under state-of-charge limits and round-trip efficiency losses; over-trading destroys value. |
+| [`reactor_profile/`](reactor_profile/)     | Reaction engineering              | Optimal control of an A→B→C reactor; the best temperature is a *profile*, not a constant. |
+| [`bridge_truss/`](bridge_truss/)           | Structural optimisation           | FEM-in-the-loop member sizing; lightest truss on the yield/buckling boundary; statically indeterminate. |
+| [`free_kick/`](free_kick/)                 | Sports ballistics                 | 3-D ball flight (Magnus curve) past a wall and a diving keeper; multimodal goal/save/block outcomes. |
+| [`bowling/`](bowling/)                     | Chain-reaction physics            | Faithful 105-pin collision sim; rough, sensitive landscape where small entry changes swing the count. |
+| [`trebuchet/`](trebuchet/)                 | Ballistics (reduced-order)        | Hit a target 60 m away; interior efficiency optimum in arm/sling ratios. *Simplified — demo uses Matter.js.* |
+| [`curling/`](curling/)                     | Slide-to-target (reduced-order)   | Stop the stone on the button; too little weight stops short, too much sails through. *Simplified.* |
+| [`mini_golf/`](mini_golf/)                 | Putt-to-hole (reduced-order)      | Read the slope and sink the putt. *Simplified — demo uses Matter.js.* |
+| [`pool/`](pool/)                           | Cut-shot aim (reduced-order)      | The ghost-ball cut angle is a narrow, precise optimum. *Simplified single-cut model.* |
+| [`slingshot/`](slingshot/)                 | Ballistics (reduced-order)        | Rake one block stack or loft onto the other — two basins. *Simplified — demo uses Matter.js.* |
 
-These last five mirror, in pure Python, the interactive browser demos at
+These last twenty-eight mirror, in pure Python, the interactive browser demos at
 [`docs/applications/`](../docs/applications/). Several are deliberately a matched
 pair — `lens_design` (low-D, interpolation/local methods win) versus
 `genetic_art` (high-D, those same methods lose) — so the **No-Free-Lunch**
@@ -58,6 +81,29 @@ python -m example_applications.genetic_art.run
 python -m example_applications.tetris_weights.run
 python -m example_applications.plinko_funnel.run
 python -m example_applications.walking_creature.run
+python -m example_applications.ebola_response.run
+python -m example_applications.espresso_dialin.run
+python -m example_applications.fm_sound_match.run
+python -m example_applications.boids_flocking.run
+python -m example_applications.antenna_array.run
+python -m example_applications.circle_packing.run
+python -m example_applications.brachistochrone.run
+python -m example_applications.tuned_mass_damper.run
+python -m example_applications.tennis_doubles.run
+python -m example_applications.chess_piece_values.run
+python -m example_applications.robot_arm.run
+python -m example_applications.wind_farm.run
+python -m example_applications.rocket_landing.run
+python -m example_applications.battery_dispatch.run
+python -m example_applications.reactor_profile.run
+python -m example_applications.bridge_truss.run
+python -m example_applications.free_kick.run
+python -m example_applications.bowling.run
+python -m example_applications.trebuchet.run
+python -m example_applications.curling.run
+python -m example_applications.mini_golf.run
+python -m example_applications.pool.run
+python -m example_applications.slingshot.run
 ```
 
 No external dependencies beyond what HumpDay itself uses — these are
