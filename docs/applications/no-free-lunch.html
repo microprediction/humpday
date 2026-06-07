@@ -29,7 +29,8 @@
   table.sb thead th { background:#1a1a22; color:var(--muted); font-size:0.78em; text-transform:uppercase; letter-spacing:0.04em; position:sticky; top:0; }
   table.sb thead th .niche { display:block; font-size:0.82em; text-transform:none; letter-spacing:0; color:#6a6a7a; font-weight:400; }
   table.sb td.opt { text-align:left; white-space:nowrap; color:var(--text); font-weight:600; font-family:-apple-system,Helvetica,Arial,sans-serif; }
-  table.sb td.cell { font-family:'SF Mono',Menlo,monospace; font-weight:700; color:#10131a; width:62px; }
+  table.sb td.cell { font-family:'SF Mono',Menlo,monospace; font-weight:700; color:#10131a; width:44px; }
+  table.sb th, table.sb td { padding:7px 4px; }
   table.sb td.avg { font-family:'SF Mono',Menlo,monospace; font-weight:700; background:#1a1a22; color:var(--accent); }
   table.sb tr.best td.opt { color:var(--accent); }
   table.sb td.pending { color:#3a3a48; font-weight:400; }
@@ -69,8 +70,8 @@
   <h1>🏁 No-Free-Lunch Scoreboard</h1>
   <p>
     Every demo on this site is one problem. Here they are <strong>all at once</strong>:
-    a live tournament where eight HumpDay optimizers each get the same small budget on
-    eight very different objectives — three textbook test functions and five drawn
+    a live tournament where eleven HumpDay optimizers each get the same small budget on
+    fourteen very different objectives — three textbook test functions and eleven drawn
     straight from the demos. Each cell is a <strong>rank</strong> (1 = best on that
     problem). Press the button and watch it fill in.
   </p>
@@ -105,14 +106,19 @@
   <p>
     The three classic functions — <strong>Rosenbrock</strong> (a smooth banana-shaped
     valley), <strong>Rastrigin</strong> and <strong>Ackley</strong> (egg-carton
-    landscapes riddled with local minima) — are the standard yardsticks. The other five
-    are the real thing: the rugged-needle focus of
+    landscapes riddled with local minima) — are the standard yardsticks. The other eleven
+    are the real thing, lifted straight from the demos: the rugged-needle focus of
     <a class="demolink" href="lens.html">Lens Design</a>, the noisy
     <a class="demolink" href="tetris.html">Tetris</a> and
     <a class="demolink" href="plinko.html">Plinko</a> scores, the emergent gait of the
-    <a class="demolink" href="creature.html">Walking Creature</a>, and the
-    300-knob… well, 60-knob here —
-    <a class="demolink" href="genetic-art.html">Genetic Art</a> image fit. Same eight
+    <a class="demolink" href="creature.html">Walking Creature</a>, the 60-knob
+    <a class="demolink" href="genetic-art.html">Genetic Art</a> image fit, plus
+    <a class="demolink" href="antenna.html">Antenna</a> gain,
+    <a class="demolink" href="ebola.html">Ebola</a> control,
+    <a class="demolink" href="robot-arm.html">Robot Arm</a> reach,
+    <a class="demolink" href="brachistochrone.html">Brachistochrone</a> descent,
+    <a class="demolink" href="rocket-landing.html">Rocket</a> landing and
+    <a class="demolink" href="battery-dispatch.html">Battery</a> arbitrage. Same eleven
     optimizers, same budget, wildly different winners.
   </p>
   <p>
@@ -203,6 +209,37 @@ const G_TARGET=(()=>{ const b=G_blank(); for(let y=0;y<G_RES;y++){ const t=y/G_R
   G_fillTri(b,6,30,20,10,34,30,235,235,245,1); for(let y=30;y<G_RES;y++)for(let x=0;x<G_RES;x++){const o=(y*G_RES+x)*3;b[o]=30;b[o+1]=46;b[o+2]=40;} return b; })();
 function genartObj(u){ const im=G_render(u); let s=0; for(let i=0;i<G_NPX*3;i++){const d=im[i]-G_TARGET[i];s+=d*d;} return Math.sqrt(s/(G_NPX*3)); }
 
+// ---- Antenna (n=7): array-factor forward gain ----
+function antennaObj(u){ const xs=u.map(v=>4*v);
+  const gain=th=>{let re=0,im=0;const c=Math.cos(th)-1;for(const x of xs){const ph=2*Math.PI*x*c;re+=Math.cos(ph);im+=Math.sin(ph);}return re*re+im*im;};
+  let a=0,Mc=240;for(let i=0;i<Mc;i++){const th=(i+0.5)/Mc*Math.PI;a+=gain(th)*Math.sin(th);}
+  return -10*Math.log10(gain(0)/Math.max(a*(Math.PI/Mc)/2,1e-9)); }
+// ---- Ebola (n=8): SEIR control timing, % harm avoided ----
+function ebolaObj(u){ const T=180,SIG=1/9,GAM=1/10,B0=2.2/10,CFR=0.6,K=8,WIN=T/K,DW=1,EW=0.18;
+  const run=ctrl=>{let S=1-2e-4,Ee=1e-4,I=1e-4,R=0,econ=0;for(let d=0;d<T;d++){const k=Math.min(K-1,Math.floor(d/WIN));const c=Math.max(0,Math.min(1,ctrl[k]));const beta=B0*(1-0.92*c);const nE=beta*S*I,nI=SIG*Ee,nR=GAM*I;S-=nE;Ee+=nE-nI;I+=nI-nR;R+=nR;econ+=c;}return DW*CFR*R+EW*econ/T;};
+  const J0=run(new Array(K).fill(0));return -100*(1-run(u.slice(0,K))/J0); }
+// ---- Robot arm (n=6): reach minus collisions ----
+function robotObj(u){ const LL=[120,105,90,75,60,45],AM=Math.PI/2,HW=9,BX=400,BY=478,TX=700,TY=180,OB=[[450,360,55],[600,320,50],[540,190,38]];
+  const ang=u.map(v=>(v-0.5)*2*AM);const px=[BX],py=[BY];let acc=-Math.PI/2;
+  for(let i=0;i<6;i++){acc+=ang[i];px.push(px[i]+LL[i]*Math.cos(acc));py.push(py[i]+LL[i]*Math.sin(acc));}
+  const tipErr=Math.hypot(px[6]-TX,py[6]-TY);let coll=0,deep=0;
+  const scd=(a,b,o)=>{const dx=px[b]-px[a],dy=py[b]-py[a],l2=dx*dx+dy*dy;let t=l2<1e-9?0:((o[0]-px[a])*dx+(o[1]-py[a])*dy)/l2;t=Math.max(0,Math.min(1,t));return Math.hypot(px[a]+t*dx-o[0],py[a]+t*dy-o[1]);};
+  for(let i=0;i<6;i++)for(const o of OB){const d=scd(i,i+1,o);if(d<o[2]+HW){coll++;deep=Math.max(deep,o[2]+HW-d);}}
+  return -(Math.max(0,100-tipErr*0.25)-(coll*25+deep*0.4)); }
+// ---- Brachistochrone (n=8): descent time (energy model) ----
+function brachObj(u){ const SX=[60,135,210,285,360,435,510,585,660,740],SY=[60];
+  for(let i=0;i<8;i++)SY.push(60+370*u[i]);SY.push(380);const sp=y=>Math.sqrt(2*Math.max(0,y-60));let t=0;
+  for(let i=0;i<SX.length-1;i++){const L=Math.hypot(SX[i+1]-SX[i],SY[i+1]-SY[i]);t+=L/Math.max((sp(SY[i])+sp(SY[i+1]))/2,1e-6);}return t; }
+// ---- Rocket (n=12): soft-landing score ----
+function rocketObj(u){ const NS=12,G=10,TM=48,FB=0.25,T=10,DT=0.04,N=Math.round(T/DT),VL=80;
+  const sc=u.map(v=>Math.max(0,Math.min(1,v)));let h=200,v=-15,fuel=1,tv=null,tf=null,fh=h,fv=v;
+  for(let k=0;k<N;k++){const tt=k*DT;let thr=sc[Math.min(NS-1,Math.floor(tt/T*NS))];if(fuel<=0)thr=0;const acc=-G+TM*thr;const nh=h+v*DT+0.5*acc*DT*DT;const nv=v+acc*DT;fuel=Math.max(0,fuel-FB*thr*DT);if(nh<=0&&tv===null){const fr=h/(h-nh);tv=v+acc*DT*fr;tf=fuel;fh=0;fv=0;break;}h=nh;v=nv;fh=h;fv=v;}
+  return -(tv!==null?Math.max(0,100*(1-Math.abs(tv)/VL))+tf*10:50-(Math.abs(fv)+fh*0.5)*0.6); }
+// ---- Battery (n=24): price arbitrage revenue ----
+const B_PRICE=[30,25,22,20,22,35,55,75,90,100,90,75,55,40,38,45,80,150,240,220,160,100,60,40];
+function batteryObj(u){ const PM=25,LO=10,HI=90,EC=0.92,ED=0.92;let soc=50,rev=0;
+  for(let h=0;h<24;h++){let p=(u[h]-0.5)*2*PM;if(p<0){const mc=(HI-soc)/EC;if(-p>mc)p=-mc;}else if(p>0){const md=(soc-LO)*ED;if(p>md)p=md;}rev+=p*B_PRICE[h];if(p<0)soc+=-p*EC;else soc-=p/ED;}return -rev; }
+
 const PROBLEMS=[
   {name:'Rosenbrock',n:4,niche:'smooth valley',f:rosen},
   {name:'Rastrigin', n:4,niche:'multimodal',f:rastrigin},
@@ -212,11 +249,18 @@ const PROBLEMS=[
   {name:'Plinko',    n:7,niche:'noisy',f:plinkoObj},
   {name:'Creature',  n:6,niche:'emergent',f:creatureObj},
   {name:'GeneticArt',n:60,niche:'high-dim',f:genartObj},
+  {name:'Antenna',   n:7,niche:'multimodal',f:antennaObj},
+  {name:'Ebola',     n:8,niche:'control',f:ebolaObj},
+  {name:'RobotArm',  n:6,niche:'constrained',f:robotObj},
+  {name:'Brachisto', n:8,niche:'smooth',f:brachObj},
+  {name:'Rocket',    n:12,niche:'control',f:rocketObj},
+  {name:'Battery',   n:24,niche:'arbitrage',f:batteryObj},
 ];
 const OPTS=[
   ['CMAEvolutionStrategy','CMA-ES'],['DifferentialEvolution','Differential Evolution'],
-  ['ParticleSwarm','Particle Swarm'],['PRIMA_BOBYQA','PRIMA_BOBYQA'],
-  ['NelderMead','Nelder-Mead'],['Powell','Powell'],
+  ['ParticleSwarm','Particle Swarm'],['GeneticAlgorithm','Genetic Algorithm'],
+  ['EvolutionStrategy','Evolution Strategy'],['HarmonySearch','Harmony Search'],
+  ['PRIMA_BOBYQA','PRIMA_BOBYQA'],['NelderMead','Nelder-Mead'],['Powell','Powell'],
   ['SimulatedAnnealing','Simulated Annealing'],['RandomSearch','Random Search'],
 ];
 
