@@ -47,11 +47,15 @@ def main():
         opt = cls(problem.objective, n_trials=N_TRIALS, n_dim=problem.N_DIM)
         opt.optimize()
         dist, fell = problem.simulate(opt.best_x)
-        phase = opt.best_x[2] * 2.0  # u in [0,1] -> dphi in [0,2pi], report in units of pi
+        phase = (
+            opt.best_x[2] * 2.0
+        )  # u in [0,1] -> dphi in [0,2pi], report in units of pi
         rows.append((name, dist, fell, phase))
 
     for name, dist, fell, phase in sorted(rows, key=lambda r: -r[1]):
-        print(f"  {name:<22}  {dist:>9.1f}  {'yes' if fell else 'no':>5}  {phase:>7.2f}π")
+        print(
+            f"  {name:<22}  {dist:>9.1f}  {'yes' if fell else 'no':>5}  {phase:>7.2f}π"
+        )
 
     print()
     print("A flailing creature scores near zero; a good alternating gait covers")
