@@ -47,7 +47,9 @@ def main():
         rows.append((name, train, test))
 
     for name, train, test in sorted(rows, key=lambda r: -r[2]["mean"]):
-        print(f"  {name:<22}  {train:>8.1f}  {test['mean']:>11.1f}  {test['max']:>10.1f}")
+        print(
+            f"  {name:<22}  {train:>8.1f}  {test['mean']:>11.1f}  {test['max']:>10.1f}"
+        )
 
     print()
     print("With no lean only a few percent reach an off-centre bin; a good")
