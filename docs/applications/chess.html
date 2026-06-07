@@ -349,13 +349,13 @@ function trueBalance(st){const b=st.board;let s=0;for(let sq=0;sq<128;sq++){if(!
 // ---- Seeded random opening (so every game differs; reproducible per seed) --
 function makeRng(seed){let s=(seed>>>0)||1;return ()=>{s=(s*1103515245+12345)&0x7fffffff;return s/0x7fffffff;};}
 const START_FEN='rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1';
-function randomOpening(seed,nPlies){let st=parseFEN(START_FEN);const rnd=makeRng(seed+1);
- for(let i=0;i<nPlies;i++){const mv=genLegal(st);if(mv.length===0)break;st=makeMove(st,mv[Math.floor(rnd()*mv.length)]);}return st;}
+function randomOpening(seed,nPlies,record){let st=parseFEN(START_FEN);const rnd=makeRng(seed+1);const oh=record?[boardString(st)]:null;
+ for(let i=0;i<nPlies;i++){const mv=genLegal(st);if(mv.length===0)break;st=makeMove(st,mv[Math.floor(rnd()*mv.length)]);if(record)oh.push(boardString(st));}if(record)st._openHist=oh;return st;}
 
 const DEPTH=2, OPEN_PLIES=6, HARD_CAP=200, WIN_MARGIN=200;
 function repKey(st){return boardString(st)+st.side+st.rights.K+st.rights.Q+st.rights.k+st.rights.q+st.ep;}
 function playGame(startState,whiteP,blackP,record){
- let st=startState;const history=record?[boardString(st)]:null;let half=0;const seen={};seen[repKey(st)]=1;
+ let st=startState;const history=record?(startState._openHist?startState._openHist.slice():[boardString(st)]):null;let half=0;const seen={};seen[repKey(st)]=1;
  for(let ply=0;ply<HARD_CAP;ply++){
   const mv=genLegal(st);
   if(mv.length===0){const mated=inCheck(st,st.side);const res=!mated?0:(st.side==='w'?-1:1);return{result:res,reason:mated?'checkmate':'stalemate',plies:ply,history};}
@@ -442,7 +442,7 @@ async function runOptimization(){
   document.getElementById('gap-now').textContent=(inS-outS).toFixed(1)+' pts';
   updateBestParams(best.a);
   addLeaderboardEntry(algoName,best.a,inS,outS,opt.evaluations);
-  const op=randomOpening(0,OPEN_PLIES);const game=playGame(op,paramsFromArray(best.a),stdParams(),true);
+  const op=randomOpening(0,OPEN_PLIES,true);const game=playGame(op,paramsFromArray(best.a),stdParams(),true);
   await animateGame(game.history,best.a,`${algoName}: out ${outS.toFixed(0)}% / in ${inS.toFixed(0)}%`);
   drawScene(game.history[game.history.length-1],best.a,`Best (out ${outS.toFixed(0)}%) — ${outcome(game)}`);
  }catch(e){console.error(e);alert(`${algoName} threw an error: ${e.message}`);}
@@ -450,7 +450,7 @@ async function runOptimization(){
 function updateBestParams(a){
  document.getElementById('param-v').textContent=`${(a[0]/100).toFixed(1)} / ${(a[1]/100).toFixed(1)} / ${(a[2]/100).toFixed(1)} / ${(a[3]/100).toFixed(1)}`;
  document.getElementById('param-s').textContent=`${a[4].toFixed(2)} / ${a[5].toFixed(2)} / ${a[6].toFixed(2)} / ${a[7].toFixed(2)}`;}
-function playBest(){if(!lastBest)return;animationToken++;replaySeed++;const op=randomOpening(replaySeed,OPEN_PLIES);const game=playGame(op,paramsFromArray(lastBest.a),stdParams(),true);animateGame(game.history,lastBest.a,`Best values — new game`);}
+function playBest(){if(!lastBest)return;animationToken++;replaySeed++;const op=randomOpening(replaySeed,OPEN_PLIES,true);const game=playGame(op,paramsFromArray(lastBest.a),stdParams(),true);animateGame(game.history,lastBest.a,`Best values — new game`);}
 
 const leaderboard=[];
 function addLeaderboardEntry(name,a,inS,outS,evals){leaderboard.push({name,a,inS,outS,evals});leaderboard.sort((x,y)=>y.outS-x.outS||y.inS-x.inS);renderLeaderboard();}
@@ -475,7 +475,7 @@ async function scoreManual(){
   document.getElementById('gap-now').textContent=(inS-outS).toFixed(1)+' pts';
   updateBestParams(a);lastBest={a};
   addLeaderboardEntry('Human Raphson',a,inS,outS,1);
-  const op=randomOpening(0,OPEN_PLIES);const game=playGame(op,paramsFromArray(a),stdParams(),true);
+  const op=randomOpening(0,OPEN_PLIES,true);const game=playGame(op,paramsFromArray(a),stdParams(),true);
   await animateGame(game.history,a,`Human Raphson: out ${outS.toFixed(0)}%`);
   drawScene(game.history[game.history.length-1],a,`Human Raphson (out ${outS.toFixed(0)}%) — ${outcome(game)}`);
  }finally{btn.disabled=false;btn.textContent='▶ Play the suite (Human Raphson)';}}
