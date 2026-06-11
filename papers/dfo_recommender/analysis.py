@@ -21,6 +21,7 @@ from __future__ import annotations
 import argparse
 import json
 import random
+import signal
 import sys
 import time
 from collections import defaultdict
@@ -727,22 +728,38 @@ def run_demos(_grid: dict, n_seeds: int = 3) -> dict:
     """For every (demo, eligible algo, seed) tuple, run the optimizer and
     record best_value + wall-clock. Writes demo_results.json.
 
-    Incremental: if demo_results.json already has results for a demo name,
-    skip it. Delete the JSON to force a full rerun."""
-    from demos import DEMOS  # demos.py lives next to this script
+    Incremental: if demo_results.json already has results for a demo
+    name AND the cached n_dim matches the current demo, skip it.
+    Mismatched cached entries are invalidated. Delete the JSON to
+    force a full rerun."""
+    from example_demos import DEMOS  # next to this script via sys.path
 
     if DEMO_RESULTS_PATH.exists():
         results: dict[str, dict] = json.loads(DEMO_RESULTS_PATH.read_text())
+        # Drop cached entries whose (name → n_dim) no longer matches a
+        # current demo, so changed parameterisations don't silently
+        # contaminate the run.
+        current_dims = {d.name: d.n_dim for d in DEMOS}
+        stale = [
+            name
+            for name, data in results.items()
+            if name in current_dims and data.get("n_dim") != current_dims[name]
+        ]
+        for name in stale:
+            print(f"  Invalidating cached {name}: n_dim changed")
+            del results[name]
         print(f"  Loaded existing results: {list(results.keys())}")
     else:
         results = {}
     for demo in DEMOS:
         if demo.name in results:
-            print(f"\n=== {demo.name}  (cached — skipping) ===")
+            print(f"\n=== {demo.name}  (cached — skipping) ===", flush=True)
             continue
+        demo_t0 = time.perf_counter()
         print(
             f"\n=== {demo.name}  "
-            f"(n_dim={demo.n_dim}, n_trials={demo.suggested_n_trials}) ==="
+            f"(n_dim={demo.n_dim}, n_trials={demo.suggested_n_trials}) ===",
+            flush=True,
         )
         eligible = E.eligible(
             PURE_OPTIMIZERS.keys(),
@@ -762,6 +779,13 @@ def run_demos(_grid: dict, n_seeds: int = 3) -> dict:
             for seed in range(n_seeds):
                 _set_seed(seed)
                 t0 = time.perf_counter()
+                # Per-(algo, seed) timeout: some demos hang specific algos
+                # for hours. Cap at 120s — far above the typical 1-5s but
+                # short of "we'd never finish."
+                signal.signal(
+                    signal.SIGALRM, lambda *_: (_ for _ in ()).throw(TimeoutError())
+                )
+                signal.alarm(120)
                 try:
                     v, _ = pure_optimize(
                         demo.objective,
@@ -771,19 +795,31 @@ def run_demos(_grid: dict, n_seeds: int = 3) -> dict:
                     )
                     best_values.append(float(v))
                     walls.append(time.perf_counter() - t0)
+                except TimeoutError:
+                    print(f"    ! {algo} seed {seed}: timeout (>120s)", flush=True)
+                    best_values.append(float("inf"))
+                    walls.append(time.perf_counter() - t0)
                 except Exception as e:  # noqa: BLE001
                     print(f"    ! {algo} seed {seed}: {e}")
                     best_values.append(float("inf"))
                     walls.append(time.perf_counter() - t0)
+                finally:
+                    signal.alarm(0)
             results[demo.name]["runs"][algo] = {
                 "best_values": best_values,
                 "walls": walls,
             }
             valid = [v for v in best_values if v != float("inf")]
             med = median(valid) if valid else float("inf")
-            print(f"    {algo:24s}  median best = {med:>12.4g}")
-    DEMO_RESULTS_PATH.write_text(json.dumps(results, indent=2))
-    print(f"\nWrote {DEMO_RESULTS_PATH.relative_to(REPO_ROOT)}")
+            print(f"    {algo:24s}  median best = {med:>12.4g}", flush=True)
+        # Persist after each demo so a kill / Ctrl-C keeps partial progress.
+        DEMO_RESULTS_PATH.write_text(json.dumps(results, indent=2))
+        print(
+            f"  → {demo.name} done in {time.perf_counter() - demo_t0:.1f}s, "
+            f"checkpoint saved.",
+            flush=True,
+        )
+    print(f"\nWrote {DEMO_RESULTS_PATH.relative_to(REPO_ROOT)}", flush=True)
     return results
 
 
@@ -1079,7 +1115,7 @@ def probe_experiment(_grid: dict, k_values: tuple[int, ...] = (5, 10, 20, 40)) -
     """For each probe budget k, LOO-classify each demo by 1-NN in
     feature space, predict the winner, and report match rate. Frames
     the probe overhead k against the gain in OOD match-rate."""
-    from demos import DEMOS  # noqa: E402  — demos.py lives next to this script
+    from example_demos import DEMOS  # noqa: E402
     from probe import probe_landscape
 
     if not DEMO_RESULTS_PATH.exists():
