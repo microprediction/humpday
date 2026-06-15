@@ -8,7 +8,16 @@ from typing import List
 
 import numpy as np
 from scipy.stats import norm
-from thurstone.conventions import STD_L
+
+# Scale of the latent-logistic ("Thurstone") map between cube and simplex.
+# It cancels exactly in the cube<->simplex round-trip, so any positive value
+# yields a valid bijection -- but it sets how much of the simplex the cube can
+# reach: large values compress the image toward the centroid. At STD_L=1 this
+# is exactly softmax(probit(u)), the logistic-normal / additive-logistic map,
+# with the corners reachable. (The old value of 500 -- formerly the sole use of
+# the `thurstone` package dependency -- is a horse-racing convention that made
+# the map degenerate: the whole cube collapsed onto a tiny ball at the centroid.)
+STD_L = 1.0
 
 
 # Alternative implementation without winning package dependency
