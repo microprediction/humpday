@@ -38,7 +38,10 @@ auto-collected, verified against known optima where one exists.
 
 **Disguise harness:** `humpday/transforms/cube_disguise.py` wraps any objective in a seeded
 random cube→cube diffeomorphism, relocating the optimum per seed so algorithm development
-against these demos can't memorise optimum *locations*. Use many seeds per problem.
+against these demos can't memorise optimum *locations*. Wired into the benchmark via
+`papers/dfo_recommender/example_demos.py`: `disguised_demos()` expands the 52 problems into
+260 non-memorisable instances (5 seeds each by default); `disguise_demo(demo, seed)` for one.
+Run `python papers/dfo_recommender/example_demos.py` to see the relocation verification.
 
 ## Deferred / different home
 
