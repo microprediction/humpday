@@ -31,6 +31,10 @@ optima map back to interior cube points where optimizers sample densely.
 [**Explore it live →**](https://humpday.microprediction.org/simplex-cube-bijection.html)
 (drag to orbit, morph cube ⇆ simplex, watch the optimum's pre-image move).
 
+For fun, the same map applied to a football pitch — straight lines bend, the
+centre circle becomes an oval, the corners smear toward the boundary:
+[**⚽ the beautiful game on the simplex →**](https://humpday.microprediction.org/soccer-field-simplex.html).
+
 ## Install & Use
 
 ```bash
