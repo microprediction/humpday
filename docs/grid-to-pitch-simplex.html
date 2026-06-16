@@ -152,8 +152,8 @@ marks.push(lineS(105,13.84,88.5,13.84),lineS(88.5,13.84,88.5,54.16),lineS(88.5,5
 marks.push(lineS(105,24.84,99.5,24.84),lineS(99.5,24.84,99.5,43.16),lineS(99.5,43.16,105,43.16));
 marks.push(arcS(94,34,0.7,0,2*Math.PI,18)); marks.push(arcS(94,34,9.15,Math.PI-0.927,Math.PI+0.927,42));
 marks.push(arcS(0,0,1,0,Math.PI/2,16),arcS(L,0,1,Math.PI/2,Math.PI,16),arcS(L,Wm,1,Math.PI,1.5*Math.PI,16),arcS(0,Wm,1,1.5*Math.PI,2*Math.PI,16));
-// aspect-preserved layout, centred (same as the standalone soccer page)
-const MARGIN=0.06, scale=(1-2*MARGIN)/L, y0=0.5-0.5*scale*Wm; const m2u=(X,Y)=>[MARGIN+X*scale, y0+Y*scale];
+// fill (almost) the whole unit square in BOTH axes, so warped it covers the whole triangle
+const MARGIN=0.025; const m2u=(X,Y)=>[MARGIN+(1-2*MARGIN)*X/L, MARGIN+(1-2*MARGIN)*Y/Wm];
 
 const pitchObjs=[]; // {geom, uu, n, sq, sim, pos, lift}
 function addPitch(uPts, geom, lift){
@@ -171,7 +171,7 @@ grassGeom.setIndex(gI); grassGeom.setAttribute('color',new THREE.BufferAttribute
 addPitch(grassU,grassGeom,0.0);
 const grassMat=new THREE.MeshBasicMaterial({vertexColors:true,transparent:true,opacity:0.0,side:THREE.DoubleSide,depthWrite:false});
 scene.add(new THREE.Mesh(grassGeom,grassMat));
-const markMat=new THREE.LineBasicMaterial({color:0xffffff,transparent:true,opacity:0.0,fog:false,depthWrite:false});
+const markMat=new THREE.LineBasicMaterial({color:0xffffff,transparent:true,opacity:0.0,fog:false,depthWrite:false,depthTest:false});
 for(const poly of marks){const uPts=poly.map(([X,Y])=>m2u(X,Y));const geom=new THREE.BufferGeometry();addPitch(uPts,geom,0.006);scene.add(new THREE.Line(geom,markMat));}
 function pitchSimUpdate(){for(const d of pitchObjs){for(let i=0;i<d.n;i++){const p=phi(d.uu[i*2],d.uu[i*2+1],s,gamma);const sp=simplexPos(p).addScaledVector(normal,d.lift);d.sim[i*3]=sp.x;d.sim[i*3+1]=sp.y;d.sim[i*3+2]=sp.z;}}}
 
@@ -230,7 +230,7 @@ const clock=new THREE.Clock(); refresh(); simUpdate(); applyMorph(0); applyFade(
 function animate(){
   requestAnimationFrame(animate);
   const dt=clock.getDelta();
-  let m,w; if(auto){phase+=dt*0.08; const tau=phase-Math.floor(phase); [m,w]=timeline(tau);} else {m=manM;w=manW;}
+  let m,w; if(auto){phase+=dt*0.06; const tau=phase-Math.floor(phase); [m,w]=timeline(tau);} else {m=manM;w=manW;}
   applyMorph(ease(m)); applyFade(w); controls.update();
   renderer.render(scene,camera); labelRenderer.render(scene,camera);
 }
