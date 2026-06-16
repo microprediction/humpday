@@ -6,7 +6,7 @@
 <title>From coordinate grid to football pitch — on the simplex</title>
 <meta property="og:type" content="website" />
 <meta property="og:title" content="From coordinate grid to football pitch — on the simplex" />
-<meta property="og:description" content="The cube to simplex bijection's coordinate net rises from the cube, dissolves into a regulation football pitch, flattens back, and repeats — same map, two skins." />
+<meta property="og:description" content="The cube to simplex bijection's coordinate net rises from the cube and dissolves into a football pitch warped onto the simplex, then back — same map, two skins." />
 <meta property="og:image" content="https://humpday.microprediction.org/assets/grid-to-pitch-simplex.png" />
 <meta name="twitter:card" content="summary_large_image" />
 <style>
@@ -46,15 +46,15 @@
 <div class="panel">
   <h1>Cube → grid → pitch</h1>
   <p class="sub">The flat rainbow grid rises from the cube&nbsp;[0,1]² onto the
-  probability simplex, dissolves into a football pitch, flattens back to the
-  field, and repeats — one map <b>φ<sub>θ</sub></b>, two skins.</p>
+  probability simplex and dissolves into a football pitch warped onto the same
+  triangle, then back — one map <b>φ<sub>θ</sub></b>, two skins.</p>
   <div class="row">
-    <label>scale <span style="color:#6a8a82">s</span> <span class="val" id="sVal">2.30</span></label>
+    <label>scale <span style="color:#6a8a82">s</span> <span class="val" id="sVal">2.80</span></label>
     <input type="range" id="sRange" min="0" max="1" step="0.001" />
   </div>
   <div class="row">
-    <label>tail-warp <span style="color:#6a8a82">γ</span> <span class="val" id="gVal">1.50</span></label>
-    <input type="range" id="gRange" min="0.4" max="3.0" step="0.001" value="1.5" />
+    <label>tail-warp <span style="color:#6a8a82">γ</span> <span class="val" id="gVal">1.60</span></label>
+    <input type="range" id="gRange" min="0.4" max="3.0" step="0.001" value="1.6" />
   </div>
   <div class="toggle">
     <button id="autoBtn" class="active">auto</button>
@@ -103,7 +103,6 @@ const controls=new OrbitControls(camera,renderer.domElement);
 controls.enableDamping=true; controls.dampingFactor=0.08; controls.autoRotate=true; controls.autoRotateSpeed=0.45;
 controls.minDistance=2.0; controls.maxDistance=12;
 
-// frames: simplex triangle + flat square sheet, both normal to (1,1,1)
 const SC=1.75, centre=new THREE.Vector3(SC/3,SC/3,SC/3);
 const Sv=[new THREE.Vector3(SC,0,0).sub(centre),new THREE.Vector3(0,SC,0).sub(centre),new THREE.Vector3(0,0,SC).sub(centre)];
 const normal=new THREE.Vector3(1,1,1).normalize();
@@ -112,11 +111,9 @@ const e2=new THREE.Vector3().crossVectors(normal,e1).normalize();
 const W=2.0, squareCentre=normal.clone().multiplyScalar(-1.5);
 const squarePos=(u1,u2)=>squareCentre.clone().addScaledVector(e1,(u1-0.5)*W).addScaledVector(e2,(u2-0.5)*W);
 const simplexPos=(p)=>new THREE.Vector3().addScaledVector(Sv[0],p[0]).addScaledVector(Sv[1],p[1]).addScaledVector(Sv[2],p[2]);
-const Wp=1.5; const pitchFlatPos=(u1,u2)=>new THREE.Vector3().addScaledVector(e1,(u1-0.5)*Wp).addScaledVector(e2,(u2-0.5)*Wp);
 camera.position.copy(normal.clone().multiplyScalar(2.9).addScaledVector(e1,0.5)); camera.lookAt(0,0,0);
 
-let s=2.3, gamma=1.5;
-const pitchS=1.35;   // gentler scale for the pitch so its markings don't smear into the boundary
+let s=2.8, gamma=1.6;
 const ease=(t)=>t*t*(3-2*t);
 
 // ---------- rainbow grid net ----------
@@ -138,11 +135,10 @@ const gridPtMat=new THREE.PointsMaterial({size:0.03,vertexColors:true,transparen
 scene.add(new THREE.Points(gPgeom,gridPtMat));
 function corrColour(u1,u2,out,o){const h=(0.66*u1+0.34*u2)%1.0,sat=0.92,lig=0.42+0.20*u2;
   const a=sat*Math.min(lig,1-lig);const f=(n)=>{const k=(n+h*12)%12;return lig-a*Math.max(-1,Math.min(k-3,9-k,1));};out[o]=f(0);out[o+1]=f(8);out[o+2]=f(4);}
-// square positions + colours are fixed
 for(let k=0;k<NV;k++){const q=squarePos(gu[k*2],gu[k*2+1]);gridSq[k*3]=q.x;gridSq[k*3+1]=q.y;gridSq[k*3+2]=q.z;corrColour(gu[k*2],gu[k*2+1],gridCol,k*3);}
 function gridSimUpdate(){for(let k=0;k<NV;k++){const p=phi(gu[k*2],gu[k*2+1],s,gamma);const sp=simplexPos(p);gridSim[k*3]=sp.x;gridSim[k*3+1]=sp.y;gridSim[k*3+2]=sp.z;}}
 
-// ---------- football pitch ----------
+// ---------- football pitch (warps fully onto the simplex, like soccer-field-simplex) ----------
 const L=105, Wm=68;
 function lineS(x0,y0,x1,y1,n=44){const a=[];for(let i=0;i<=n;i++){const t=i/n;a.push([x0+(x1-x0)*t,y0+(y1-y0)*t]);}return a;}
 function arcS(cx,cy,r,a0,a1,n=72){const a=[];for(let i=0;i<=n;i++){const t=a0+(a1-a0)*i/n;a.push([cx+r*Math.cos(t),cy+r*Math.sin(t)]);}return a;}
@@ -156,30 +152,28 @@ marks.push(lineS(105,13.84,88.5,13.84),lineS(88.5,13.84,88.5,54.16),lineS(88.5,5
 marks.push(lineS(105,24.84,99.5,24.84),lineS(99.5,24.84,99.5,43.16),lineS(99.5,43.16,105,43.16));
 marks.push(arcS(94,34,0.7,0,2*Math.PI,18)); marks.push(arcS(94,34,9.15,Math.PI-0.927,Math.PI+0.927,42));
 marks.push(arcS(0,0,1,0,Math.PI/2,16),arcS(L,0,1,Math.PI/2,Math.PI,16),arcS(L,Wm,1,Math.PI,1.5*Math.PI,16),arcS(0,Wm,1,1.5*Math.PI,2*Math.PI,16));
-// Fill the whole unit square (both axes) so the pitch covers the simplex like
-// the grid does — the field reads as square rather than a tall thin rectangle.
-const MG=0.07; const m2u=(X,Y)=>[MG+(1-2*MG)*X/L, MG+(1-2*MG)*Y/Wm];
+// aspect-preserved layout, centred (same as the standalone soccer page)
+const MARGIN=0.06, scale=(1-2*MARGIN)/L, y0=0.5-0.5*scale*Wm; const m2u=(X,Y)=>[MARGIN+X*scale, y0+Y*scale];
 
 const pitchObjs=[]; // {geom, uu, n, sq, sim, pos, lift}
-function addPitch(uPts, geom, lift, colored){
+function addPitch(uPts, geom, lift){
   const n=uPts.length, uu=new Float32Array(n*2), sq=new Float32Array(n*3), sim=new Float32Array(n*3), pos=new Float32Array(n*3);
-  for(let i=0;i<n;i++){uu[i*2]=uPts[i][0];uu[i*2+1]=uPts[i][1];const q=pitchFlatPos(uPts[i][0],uPts[i][1]).addScaledVector(normal,lift);sq[i*3]=q.x;sq[i*3+1]=q.y;sq[i*3+2]=q.z;sim[i*3]=q.x;sim[i*3+1]=q.y;sim[i*3+2]=q.z;}
+  for(let i=0;i<n;i++){uu[i*2]=uPts[i][0];uu[i*2+1]=uPts[i][1];const q=squarePos(uPts[i][0],uPts[i][1]).addScaledVector(normal,lift);sq[i*3]=q.x;sq[i*3+1]=q.y;sq[i*3+2]=q.z;}
   geom.setAttribute('position',new THREE.BufferAttribute(pos,3));
-  if(colored){const col=new Float32Array(n*3);for(let i=0;i<n;i++){corrColour(uu[i*2],uu[i*2+1],col,i*3);col[i*3]*=1.25;col[i*3+1]*=1.25;col[i*3+2]*=1.25;}geom.setAttribute('color',new THREE.BufferAttribute(col,3));}
   pitchObjs.push({geom,uu,n,sq,sim,pos,lift});
 }
 const GX=54,GY=34,gN=(GX+1)*(GY+1);
 const grassGeom=new THREE.BufferGeometry(), grassU=[], grassCol=new Float32Array(gN*3);
 for(let j=0;j<=GY;j++)for(let i=0;i<=GX;i++){const X=L*i/GX,Y=Wm*j/GY;grassU.push(m2u(X,Y));
-  const st=Math.floor(X/(L/16))%2,c=st?[0.04,0.17,0.07]:[0.06,0.24,0.10];const k=(j*(GX+1)+i)*3;grassCol[k]=c[0];grassCol[k+1]=c[1];grassCol[k+2]=c[2];}
+  const st=Math.floor(X/(L/16))%2,c=st?[0.05,0.22,0.09]:[0.08,0.30,0.13];const k=(j*(GX+1)+i)*3;grassCol[k]=c[0];grassCol[k+1]=c[1];grassCol[k+2]=c[2];}
 const gI=[];for(let j=0;j<GY;j++)for(let i=0;i<GX;i++){const a=j*(GX+1)+i,b=a+1,cc=a+(GX+1),d=cc+1;gI.push(a,cc,b,b,cc,d);}
 grassGeom.setIndex(gI); grassGeom.setAttribute('color',new THREE.BufferAttribute(grassCol,3));
 addPitch(grassU,grassGeom,0.0);
 const grassMat=new THREE.MeshBasicMaterial({vertexColors:true,transparent:true,opacity:0.0,side:THREE.DoubleSide,depthWrite:false});
 scene.add(new THREE.Mesh(grassGeom,grassMat));
-const markMat=new THREE.LineBasicMaterial({vertexColors:true,transparent:true,opacity:0.0,fog:false,depthWrite:false,blending:THREE.AdditiveBlending});
-for(const poly of marks){const uPts=poly.map(([X,Y])=>m2u(X,Y));const geom=new THREE.BufferGeometry();addPitch(uPts,geom,0.006,true);scene.add(new THREE.Line(geom,markMat));}
-function pitchSimUpdate(){/* pitch is a flat field in the simplex plane; nothing to recompute */}
+const markMat=new THREE.LineBasicMaterial({color:0xffffff,transparent:true,opacity:0.0,fog:false,depthWrite:false});
+for(const poly of marks){const uPts=poly.map(([X,Y])=>m2u(X,Y));const geom=new THREE.BufferGeometry();addPitch(uPts,geom,0.006);scene.add(new THREE.Line(geom,markMat));}
+function pitchSimUpdate(){for(const d of pitchObjs){for(let i=0;i<d.n;i++){const p=phi(d.uu[i*2],d.uu[i*2+1],s,gamma);const sp=simplexPos(p).addScaledVector(normal,d.lift);d.sim[i*3]=sp.x;d.sim[i*3+1]=sp.y;d.sim[i*3+2]=sp.z;}}}
 
 // simplex outline + labels
 scene.add(new THREE.Line(new THREE.BufferGeometry().setFromPoints([...Sv,Sv[0]]),new THREE.LineBasicMaterial({color:0x6ee0ff,transparent:true,opacity:0.4})));
@@ -189,43 +183,42 @@ label('[0,1]² cube',squareCentre.clone().addScaledVector(e2,-W*0.6),'dim');
 
 // ---------- morph + crossfade ----------
 function simUpdate(){gridSimUpdate();pitchSimUpdate();}
-function applyMorphGrid(m){
+function applyMorph(m){
   for(let k=0;k<NV*3;k++)gridLive[k]=gridSq[k]+(gridSim[k]-gridSq[k])*m;
   for(let k=0;k<NV;k++){gPpos[k*3]=gridLive[k*3];gPpos[k*3+1]=gridLive[k*3+1];gPpos[k*3+2]=gridLive[k*3+2];}
   for(let e=0;e<GNE;e++){const a=gedges[e],o=e*3;gLpos[o]=gridLive[a*3];gLpos[o+1]=gridLive[a*3+1];gLpos[o+2]=gridLive[a*3+2];
     gLcol[o]=gridCol[a*3];gLcol[o+1]=gridCol[a*3+1];gLcol[o+2]=gridCol[a*3+2];}
   gLgeom.attributes.position.needsUpdate=true;gLgeom.attributes.color.needsUpdate=true;gPgeom.attributes.position.needsUpdate=true;gPgeom.attributes.color.needsUpdate=true;
   gLgeom.computeBoundingSphere();gPgeom.computeBoundingSphere();
-}
-function applyMorphPitch(m){
   for(const d of pitchObjs){for(let i=0;i<d.n*3;i++)d.pos[i]=d.sq[i]+(d.sim[i]-d.sq[i])*m;d.geom.attributes.position.needsUpdate=true;d.geom.computeBoundingSphere();}
 }
 function applyFade(w){gridLineMat.opacity=0.55*(1-w);gridPtMat.opacity=0.82*(1-w);grassMat.opacity=0.92*w;
-  // The pitch markings are the only spatial reference, so keep them on for the
-  // entire time the field is visible: snap to full opacity as soon as the grass
-  // has faded in, hold there, and only let them go at the very tail.
+  // keep the white markings on the whole time the field is visible
   const t=Math.min(1,Math.max(0,(w-0.03)/0.15)); markMat.opacity=t*t*(3-2*t);}
 
-// timeline: 0 cube-grid -> rise to simplex -> crossfade to pitch -> flatten to field -> crossfade back
+// Both skins are warped onto the SAME simplex. The morph m holds at the simplex
+// (m=1) for the entire pitch window, so the pitch is always the warped TRIANGULAR
+// field — never a square. The grid alone does the cube<->simplex flattening,
+// before and after, and the crossfades happen at the simplex.
 function timeline(tau){
-  const m=(1-Math.cos(2*Math.PI*tau))/2;            // cube(0) -> simplex(0.5) -> cube(1)
   const ss=(a,b,t)=>{t=Math.min(1,Math.max(0,(t-a)/(b-a)));return t*t*(3-2*t);};
-  const up=ss(0.40,0.50,tau), down=ss(0.90,1.00,tau), w=up*(1-down);  // crossfade at the simplex
-  return [m,m,w];                                   // both skins fully morph; pitch uses its own gentler scale
+  const m=ss(0.00,0.20,tau)*(1-ss(0.80,1.00,tau));   // cube -> simplex (hold) -> cube
+  const w=ss(0.23,0.34,tau)*(1-ss(0.66,0.77,tau));   // grid <-> pitch, both at the simplex
+  return [m,w];
 }
 
 // ---------- UI ----------
-let auto=true, manMg=0, manMp=0, manW=0, phase=0;
+let auto=true, manM=0.5, manW=0, phase=0;
 const sRange=document.getElementById('sRange'),gRange=document.getElementById('gRange'),sVal=document.getElementById('sVal'),gVal=document.getElementById('gVal');
 const sliderToS=(v)=>Math.exp(THREE.MathUtils.lerp(Math.log(0.02),Math.log(8),v)), sToSlider=(val)=>(Math.log(val)-Math.log(0.02))/(Math.log(8)-Math.log(0.02));
-sRange.value=sToSlider(2.3);
+sRange.value=sToSlider(2.8);
 const refresh=()=>{sVal.textContent=s.toFixed(2);gVal.textContent=gamma.toFixed(2);};
 sRange.addEventListener('input',()=>{s=sliderToS(+sRange.value);refresh();simUpdate();});
 gRange.addEventListener('input',()=>{gamma=+gRange.value;refresh();simUpdate();});
 function mode(mm){auto=(mm==='auto');
   for(const id of ['autoBtn','cubeBtn','gridBtn','pitchBtn'])document.getElementById(id).classList.remove('active');
   document.getElementById(mm==='auto'?'autoBtn':mm==='cube'?'cubeBtn':mm==='grid'?'gridBtn':'pitchBtn').classList.add('active');
-  if(mm==='cube'){manMg=0;manMp=0;manW=0;} if(mm==='grid'){manMg=1;manMp=0;manW=0;} if(mm==='pitch'){manMg=1;manMp=1;manW=1;}}
+  if(mm==='cube'){manM=0;manW=0;} if(mm==='grid'){manM=1;manW=0;} if(mm==='pitch'){manM=1;manW=1;}}
 document.getElementById('autoBtn').onclick=()=>mode('auto');
 document.getElementById('cubeBtn').onclick=()=>mode('cube');
 document.getElementById('gridBtn').onclick=()=>mode('grid');
@@ -233,12 +226,12 @@ document.getElementById('pitchBtn').onclick=()=>mode('pitch');
 addEventListener('resize',()=>{camera.aspect=innerWidth/innerHeight;camera.updateProjectionMatrix();renderer.setSize(innerWidth,innerHeight);labelRenderer.setSize(innerWidth,innerHeight);});
 
 // ---------- loop ----------
-const clock=new THREE.Clock(); refresh(); simUpdate(); applyMorphGrid(0); applyMorphPitch(0); applyFade(0);
+const clock=new THREE.Clock(); refresh(); simUpdate(); applyMorph(0); applyFade(0);
 function animate(){
   requestAnimationFrame(animate);
   const dt=clock.getDelta();
-  let mg,mp,w; if(auto){phase+=dt*0.08; const tau=phase-Math.floor(phase); [mg,mp,w]=timeline(tau);} else {mg=manMg;mp=manMp;w=manW;}
-  applyMorphGrid(ease(mg)); applyMorphPitch(ease(mp)); applyFade(w); controls.update();
+  let m,w; if(auto){phase+=dt*0.08; const tau=phase-Math.floor(phase); [m,w]=timeline(tau);} else {m=manM;w=manW;}
+  applyMorph(ease(m)); applyFade(w); controls.update();
   renderer.render(scene,camera); labelRenderer.render(scene,camera);
 }
 animate();
