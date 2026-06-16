@@ -381,6 +381,23 @@ constraint penalties, or multimodality — see § 7.
 - **`cost_weight="auto"` is the recommender's current `humpday.minimize`
   default.** Status: shipped in v0.21.0; tested in
   `tests/test_eligibility.py`.
+- **Reparametrization is part of the recommendation (simplex problems).**
+  Simplex-valued objectives are optimized on the cube via the
+  cube→simplex bijection (`humpday.transforms.cubetosimplex`), whose
+  scale is a free parameter. `bijection_hyperopt.py` amortizes a single
+  dimension-agnostic `theta = (scale, tail-warp)` over a *family* of
+  problems (synthetic log-ratio bowls and randomized non-convex
+  portfolios) and shows it transfers: the held-out, shipped
+  `portfolio_frontier` improves under the learned `theta` (best
+  −0.0304 → −0.0384 at a fixed 60-trial budget, closing most of the gap
+  to the ~−0.042 optimum), via an interpretable mechanism (optima pulled
+  toward the cube centroid, 1.24 → 0.97). The learned map is far more
+  corner-reaching and tail-warped than the `STD_L=1` default
+  (`theta* ≈ (s 4.15, gamma 2.58)`, i.e. `STD_L ≈ 0.24`). Open: the evidence is one real held-out
+  instance over a mostly-synthetic family; firming it up wants more real
+  simplex demos in the test set before changing any shipped default. A
+  natural extension folds the bijection scale into the recommender so it
+  predicts *(optimizer, lift)* jointly.
 - **Demo suite as a second training distribution.** The eight demos are
   already runnable from `analysis.py --section run_demos`; a future
   version of the grid could weight Borda 50/50 across benchmark and
