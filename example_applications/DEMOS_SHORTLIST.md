@@ -10,16 +10,19 @@ Status: ✅ built · 🚧 in progress · ⬜ todo · 🔬 deferred (scope risk /
 |---|------|--------|---------------------|---|----------------|--------|
 | 1 | `multi_exponential_fit` | spectroscopy / pharmacokinetics | **Ill-conditioned curving "sloppy" valley** — Jacobian cond. number → ∞ as two rates converge; many distinct fits look identical | 4 | ≈ noise floor at true params (± label-swap) | ✅ |
 | 2 | `speed_reducer` | mechanical design (Golinski gearbox) | **Nonconvex + 11 nonlinear constraints + mixed-integer** (pinion teeth); metaheuristics can't *guarantee* the optimum | 7 | yes — weight ≈ **2994.4712** | ✅ |
-| 3 | `gear_ratios` | power transmission | **Allocation on a (log-)simplex** — stage ratios must multiply to N; balanced split is optimal | 4 | yes — equal ratios `N^(1/n)` | ✅ |
+| 3 | `gear_ratios` | mechanical design (Sandgren gear train) | **Discreteness / plateaus** — objective is piecewise-constant on the integer tooth lattice; no gradient to follow | 4 | yes — `f≈2.7e-12` at teeth (19,16,43,49) | ✅ |
 | 4 | `transfer_window` | aerospace (interplanetary Δv) | **Disjoint feasible islands / multi-basin** with brutal intra-basin scale (porkchop plot) — basin-hopping/CMA territory, local search dies | 4–6 | best-known published (GTOPX) | ⬜ |
 | 5 | `cassini_minlp` | aerospace (flyby sequence) | **Mixed-integer + razor-thin deceptive tie** (local 3.6307 vs global 3.5007) | 6+4 | best-known 3.5007 | ⬜ |
 
 ## Deferred / different home
 
-- **`schwefel`, `step_function` (De Jong f3)** — classic *analytic* benchmarks (deceptive
-  far-optimum; flat plateaus). Real pathologies, but `example_applications` is explicitly
-  "not the classical analytic benchmarks" — these belong in a benchmark/objectives suite,
-  not here. Logged for that purpose. 🔬
+- **`step_function` (De Jong f3)** — the flat-plateau pathology is now covered by
+  `gear_ratios` as a *real application* (discrete integer gear train), which fits the
+  suite's "not the classical analytic benchmarks" ethos. The raw analytic step function
+  is superseded here; keep it for a pure-benchmark/objectives suite if ever wanted. 🔬
+- **`schwefel`** — classic *analytic* deceptive-optimum benchmark (global min far from the
+  next-best minima, no guiding slope). Real pathology, but analytic, so it belongs in a
+  benchmark/objectives suite rather than `example_applications`. Logged. 🔬
 
 ## Still-open gap
 
