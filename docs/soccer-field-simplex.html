@@ -58,12 +58,12 @@
   probability simplex by the bijection <b>φ<sub>θ</sub></b>. Straight lines bend,
   the centre circle warps, the corners smear toward the boundary.</p>
   <div class="row">
-    <label>scale <span style="color:#6a8a76">s</span> <span class="val" id="sVal">1.50</span></label>
+    <label>scale <span style="color:#6a8a76">s</span> <span class="val" id="sVal">2.80</span></label>
     <input type="range" id="sRange" min="0" max="1" step="0.001" />
   </div>
   <div class="row">
-    <label>tail-warp <span style="color:#6a8a76">γ</span> <span class="val" id="gVal">1.10</span></label>
-    <input type="range" id="gRange" min="0.4" max="3.0" step="0.001" value="1.1" />
+    <label>tail-warp <span style="color:#6a8a76">γ</span> <span class="val" id="gVal">1.60</span></label>
+    <input type="range" id="gRange" min="0.4" max="3.0" step="0.001" value="1.6" />
   </div>
   <div class="presets">
     <button id="pDefault">θ₀ (1, 1)</button>
@@ -116,7 +116,7 @@ function phi(u1,u2,s,g){
 
 // ---------- scene ----------
 const app=document.getElementById('app');
-const scene=new THREE.Scene(); scene.fog=new THREE.FogExp2(0x05090c,0.07);
+const scene=new THREE.Scene(); scene.fog=new THREE.FogExp2(0x05090c,0.035);
 const camera=new THREE.PerspectiveCamera(50,innerWidth/innerHeight,0.1,100);
 const renderer=new THREE.WebGLRenderer({antialias:true,alpha:true});
 renderer.setPixelRatio(Math.min(devicePixelRatio,2)); renderer.setSize(innerWidth,innerHeight);
@@ -188,7 +188,7 @@ const grassGeom=new THREE.BufferGeometry();
 const grassU=[]; const grassCol=new Float32Array(gN*3);
 for(let j=0;j<=GY;j++)for(let i=0;i<=GX;i++){
   const X=L*i/GX, Y=Wm*j/GY; grassU.push(m2u(X,Y));
-  const stripe=Math.floor(X/(L/16))%2; const c=stripe?[0.16,0.46,0.20]:[0.20,0.55,0.25];
+  const stripe=Math.floor(X/(L/16))%2; const c=stripe?[0.05,0.22,0.09]:[0.08,0.30,0.13];
   const k=(j*(GX+1)+i)*3; grassCol[k]=c[0]; grassCol[k+1]=c[1]; grassCol[k+2]=c[2];
 }
 const gidx=[];
@@ -202,7 +202,7 @@ scene.add(new THREE.Mesh(grassGeom, new THREE.MeshBasicMaterial({
   vertexColors:true, transparent:true, opacity:0.92, side:THREE.DoubleSide, depthWrite:true })));
 
 // markings (white lines, lifted just above the grass)
-const lineMat=new THREE.LineBasicMaterial({ color:0xffffff, transparent:true, opacity:0.92 });
+const lineMat=new THREE.LineBasicMaterial({ color:0xffffff, transparent:true, opacity:1.0, fog:false });
 for(const poly of marks){
   const uPts=poly.map(([X,Y])=>m2u(X,Y));
   const geom=new THREE.BufferGeometry();
@@ -225,7 +225,7 @@ label('p₀',Sv[0].clone().multiplyScalar(1.12)); label('p₁',Sv[1].clone().mul
   scene.add(new THREE.Points(g,new THREE.PointsMaterial({color:0x294031,size:0.045,transparent:true,opacity:0.6,depthWrite:false}))); }
 
 // ---------- state ----------
-let s=1.5, gamma=1.1, morph=1, autoMorph=true, manualMorph=1, morphPhase=Math.PI/2;
+let s=2.8, gamma=1.6, morph=1, autoMorph=true, manualMorph=1, morphPhase=Math.PI/2;
 const sliderToS=(v)=>Math.exp(THREE.MathUtils.lerp(Math.log(0.02),Math.log(8),v));
 const sToSlider=(val)=>(Math.log(val)-Math.log(0.02))/(Math.log(8)-Math.log(0.02));
 const ease=(t)=>t*t*(3-2*t);
@@ -259,7 +259,7 @@ function setNote(){
 const sRange=document.getElementById('sRange'),gRange=document.getElementById('gRange');
 const sVal=document.getElementById('sVal'),gVal=document.getElementById('gVal'),mRange=document.getElementById('mRange');
 const refresh=()=>{sVal.textContent=s.toFixed(2);gVal.textContent=gamma.toFixed(2);};
-sRange.value=sToSlider(1.5);
+sRange.value=sToSlider(2.8);
 sRange.addEventListener('input',()=>{s=sliderToS(+sRange.value);refresh();recomputeSim();setNote();});
 gRange.addEventListener('input',()=>{gamma=+gRange.value;refresh();recomputeSim();setNote();});
 function morphMode(mode){autoMorph=(mode==='auto');

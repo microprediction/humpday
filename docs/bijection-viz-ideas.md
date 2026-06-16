@@ -33,10 +33,34 @@ engine (orbit, morph, presets θ₀ / θ★ / degenerate `STD_L=500`). Social as
 ## A note for any of these — it's only an *interior* diffeomorphism
 φθ is a diffeomorphism between the **open** cube and the **open** simplex (both ≅
 ℝⁿ via probit then log-ratio). The *closed* square and triangle are homeomorphic
-(both are 2-balls) but **not** diffeomorphic as manifolds-with-corners — their
-corner combinatorics differ (a square has 4 vertices/2 edges each; a triangle has
-3). φθ resolves this by sending the boundary "to infinity": as you push toward a
-cube corner the image races to the simplex edge and the grid stretches without
-bound. So markings near the square's border (pitch corners, touchlines) will
-smear along the simplex boundary rather than land on tidy corners — a feature to
-lean into, not hide.
+(both are 2-balls) but **not** diffeomorphic as manifolds-with-corners. φθ
+resolves this by sending the boundary "to infinity": as you push toward a cube
+corner the image races to the simplex edge and the grid stretches without bound.
+So markings near the square's border (pitch corners, touchlines) smear along the
+simplex boundary rather than land on tidy corners — a feature to lean into.
+
+### Precise statement and reference
+Regard `X = [0,1]²` and the standard 2-simplex `Δ² = { t ∈ ℝ³₊ : Σ tᵢ = 1 }` as
+smooth **manifolds with corners**. *Claim:* there is no diffeomorphism (of
+manifolds with corners) `X → Δ²`.
+
+The citable invariant is **depth**. Every point `x` of an `n`-dimensional
+manifold with corners `M` has a well-defined depth `depthₘ(x) ∈ {0,…,n}`: in any
+chart to the model `ℝⁿ_k = [0,∞)ᵏ × ℝⁿ⁻ᵏ` sending `x` to the corner of the model,
+`k = depthₘ(x)`. The depth strata and `k`-corners `C_k(M)` are **intrinsic**
+(atlas-independent), hence preserved by diffeomorphisms.
+
+- **D. Joyce, "On manifolds with corners," §2** — definitions of depth, boundary
+  `∂M`, corners `C_k(M)`, and their invariance. arXiv:0910.3518
+  (https://arxiv.org/abs/0910.3518); *Advances in Geometric Analysis*, Adv. Lect.
+  Math. **21** (2012) 225–258.
+- **J. Margalef-Roig & E. Outerelo Domínguez, *Differential Topology*,**
+  North-Holland Math. Studies **173** (1992) — textbook proof that the *index*
+  (= depth) of a point is a differentiable invariant.
+
+*Proof.* A diffeomorphism `F : X → Δ²` preserves depth, so restricts to a
+bijection of depth-2 strata `S₂(X) → S₂(Δ²)`. But `|S₂([0,1]²)| = 4` (corners)
+and `|S₂(Δ²)| = 3` (vertices); `4 ≠ 3`. ∎
+
+(Honest caveat: no paper states "square ≇ triangle" as a headline result — it is
+the immediate corner-count corollary of the cited depth-invariance.)
