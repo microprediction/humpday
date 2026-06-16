@@ -154,7 +154,9 @@ marks.push(lineS(105,13.84,88.5,13.84),lineS(88.5,13.84,88.5,54.16),lineS(88.5,5
 marks.push(lineS(105,24.84,99.5,24.84),lineS(99.5,24.84,99.5,43.16),lineS(99.5,43.16,105,43.16));
 marks.push(arcS(94,34,0.7,0,2*Math.PI,18)); marks.push(arcS(94,34,9.15,Math.PI-0.927,Math.PI+0.927,42));
 marks.push(arcS(0,0,1,0,Math.PI/2,16),arcS(L,0,1,Math.PI/2,Math.PI,16),arcS(L,Wm,1,Math.PI,1.5*Math.PI,16),arcS(0,Wm,1,1.5*Math.PI,2*Math.PI,16));
-const MG=0.06, scl=(1-2*MG)/L, y0=0.5-0.5*scl*Wm; const m2u=(X,Y)=>[MG+X*scl,y0+Y*scl];
+// Fill the whole unit square (both axes) so the pitch covers the simplex like
+// the grid does — the field reads as square rather than a tall thin rectangle.
+const MG=0.045; const m2u=(X,Y)=>[MG+(1-2*MG)*X/L, MG+(1-2*MG)*Y/Wm];
 
 const pitchObjs=[]; // {geom, uu, n, sq, sim, pos, lift}
 function addPitch(uPts, geom, lift){
@@ -194,10 +196,10 @@ function applyMorph(m){
   for(const d of pitchObjs){for(let i=0;i<d.n*3;i++)d.pos[i]=d.sq[i]+(d.sim[i]-d.sq[i])*m;d.geom.attributes.position.needsUpdate=true;d.geom.computeBoundingSphere();}
 }
 function applyFade(w){gridLineMat.opacity=0.55*(1-w);gridPtMat.opacity=0.82*(1-w);grassMat.opacity=0.92*w;
-  // markings persist longer than the grass: thin white lines read worse at low
-  // opacity, so fade them on a concave curve so they stay crisp until the field
-  // has nearly gone (and appear promptly on the way in).
-  markMat.opacity=Math.pow(w,0.4);}
+  // The pitch markings are the only spatial reference, so keep them on for the
+  // entire time the field is visible: snap to full opacity as soon as the grass
+  // has faded in, hold there, and only let them go at the very tail.
+  const t=Math.min(1,Math.max(0,(w-0.03)/0.15)); markMat.opacity=t*t*(3-2*t);}
 
 // timeline: 0 cube-grid -> rise to simplex -> crossfade to pitch -> flatten to field -> crossfade back
 function timeline(tau){
