@@ -1,0 +1,243 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>From coordinate grid to football pitch — on the simplex</title>
+<meta property="og:type" content="website" />
+<meta property="og:title" content="From coordinate grid to football pitch — on the simplex" />
+<meta property="og:description" content="The cube to simplex bijection's coordinate net rises from the cube and dissolves into a football pitch warped onto the simplex, then back — same map, two skins." />
+<meta property="og:image" content="https://humpday.microprediction.org/assets/grid-to-pitch-simplex.png" />
+<meta name="twitter:card" content="summary_large_image" />
+<style>
+  :root { color-scheme: dark; }
+  * { box-sizing: border-box; }
+  html, body { margin: 0; height: 100%; overflow: hidden;
+    background: radial-gradient(120% 120% at 50% 0%, #0a1322 0%, #050a07 60%, #02050a 100%);
+    font-family: ui-sans-serif, -apple-system, "Segoe UI", Roboto, Helvetica, Arial, sans-serif; color: #dfe6f5; }
+  #app { position: fixed; inset: 0; }
+  canvas { display: block; }
+  .panel { position: absolute; top: 18px; left: 18px; width: 290px; max-width: calc(100vw - 36px);
+    padding: 15px 17px 13px; border-radius: 16px; background: rgba(12, 20, 22, 0.6);
+    backdrop-filter: blur(14px) saturate(140%); -webkit-backdrop-filter: blur(14px) saturate(140%);
+    border: 1px solid rgba(120, 200, 180, 0.18); box-shadow: 0 18px 50px rgba(0,0,0,0.55); user-select: none; }
+  .panel h1 { font-size: 14px; margin: 0 0 2px; font-weight: 650; }
+  .panel .sub { font-size: 11.5px; color: #9fc4bd; margin: 0 0 11px; line-height: 1.45; }
+  .row { margin: 10px 0; }
+  .row label { display: flex; justify-content: space-between; font-size: 12px; color: #c2e6df; margin-bottom: 5px; }
+  .row label .val { color: #8ef0d0; font-weight: 600; font-variant-numeric: tabular-nums; }
+  input[type=range] { -webkit-appearance: none; appearance: none; width: 100%; height: 4px; border-radius: 4px; background: #234240; outline: none; }
+  input[type=range]::-webkit-slider-thumb { -webkit-appearance: none; appearance: none; width: 15px; height: 15px; border-radius: 50%;
+    background: radial-gradient(circle at 35% 30%, #c6fff0, #3ad0b0 70%); box-shadow: 0 0 10px rgba(80,255,210,0.7); cursor: pointer; }
+  input[type=range]::-moz-range-thumb { width: 15px; height: 15px; border: none; border-radius: 50%;
+    background: radial-gradient(circle at 35% 30%, #c6fff0, #3ad0b0 70%); cursor: pointer; }
+  .toggle { display: flex; gap: 6px; margin-top: 6px; flex-wrap: wrap; }
+  .toggle button { font: inherit; font-size: 11px; padding: 6px 9px; border-radius: 9px; cursor: pointer;
+    color: #d7f3ec; background: rgba(70,180,160,0.13); border: 1px solid rgba(120,200,180,0.24); }
+  .toggle button.active { background: rgba(110,240,210,0.22); border-color: rgba(110,240,210,0.5); }
+  .hint { position: absolute; bottom: 14px; left: 50%; transform: translateX(-50%); font-size: 11px; color: #6a8a82; pointer-events: none; }
+  .vlabel { font-size: 12px; font-weight: 600; color: #dfe; text-shadow: 0 0 8px rgba(0,0,0,0.9);
+    padding: 1px 5px; border-radius: 6px; background: rgba(8,16,14,0.4); pointer-events: none; }
+  .vlabel.dim { color: #9fb6ae; font-weight: 500; }
+</style>
+</head>
+<body>
+<div id="app"></div>
+<div class="panel">
+  <h1>Cube → grid → pitch</h1>
+  <p class="sub">The flat rainbow grid rises from the cube&nbsp;[0,1]² onto the
+  probability simplex and dissolves into a football pitch warped onto the same
+  triangle, then back — one map <b>φ<sub>θ</sub></b>, two skins.</p>
+  <div class="row">
+    <label>scale <span style="color:#6a8a82">s</span> <span class="val" id="sVal">2.80</span></label>
+    <input type="range" id="sRange" min="0" max="1" step="0.001" />
+  </div>
+  <div class="row">
+    <label>tail-warp <span style="color:#6a8a82">γ</span> <span class="val" id="gVal">1.60</span></label>
+    <input type="range" id="gRange" min="0.4" max="3.0" step="0.001" value="1.6" />
+  </div>
+  <div class="toggle">
+    <button id="autoBtn" class="active">auto</button>
+    <button id="cubeBtn">flat cube</button>
+    <button id="gridBtn">grid</button>
+    <button id="pitchBtn">pitch</button>
+  </div>
+</div>
+<div class="hint">drag to orbit · scroll to zoom · the rainbow grid and the pitch are the same map, φθ, in two skins</div>
+
+<script type="importmap">
+{ "imports": {
+  "three": "https://unpkg.com/three@0.160.0/build/three.module.js",
+  "three/addons/": "https://unpkg.com/three@0.160.0/examples/jsm/"
+} }
+</script>
+<script type="module">
+import * as THREE from 'three';
+import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
+import { CSS2DRenderer, CSS2DObject } from 'three/addons/renderers/CSS2DRenderer.js';
+
+// ---------- bijection (matches humpday.transforms.cubetosimplex) ----------
+function probit(p){p=Math.min(1-1e-9,Math.max(1e-9,p));
+  const a=[-3.969683028665376e+01,2.209460984245205e+02,-2.759285104469687e+02,1.383577518672690e+02,-3.066479806614716e+01,2.506628277459239e+00];
+  const b=[-5.447609879822406e+01,1.615858368580409e+02,-1.556989798598866e+02,6.680131188771972e+01,-1.328068155288572e+01];
+  const c=[-7.784894002430293e-03,-3.223964580411365e-01,-2.400758277161838e+00,-2.549732539343734e+00,4.374664141464968e+00,2.938163982698783e+00];
+  const d=[7.784695709041462e-03,3.224671290700398e-01,2.445134137142996e+00,3.754408661907416e+00];
+  const plow=0.02425,phigh=1-plow;let q,r;
+  if(p<plow){q=Math.sqrt(-2*Math.log(p));return (((((c[0]*q+c[1])*q+c[2])*q+c[3])*q+c[4])*q+c[5])/((((d[0]*q+d[1])*q+d[2])*q+d[3])*q+1);}
+  if(p<=phigh){q=p-0.5;r=q*q;return (((((a[0]*r+a[1])*r+a[2])*r+a[3])*r+a[4])*r+a[5])*q/(((((b[0]*r+b[1])*r+b[2])*r+b[3])*r+b[4])*r+1);}
+  q=Math.sqrt(-2*Math.log(1-p));return -(((((c[0]*q+c[1])*q+c[2])*q+c[3])*q+c[4])*q+c[5])/((((d[0]*q+d[1])*q+d[2])*q+d[3])*q+1);}
+const warp=(z,g)=>Math.sign(z)*Math.pow(Math.abs(z),g);
+function phi(u1,u2,s,g){const l1=s*warp(probit(u1),g),l2=s*warp(probit(u2),g),m=Math.max(0,l1,l2);
+  const e0=Math.exp(-m),e1=Math.exp(l1-m),e2=Math.exp(l2-m),S=e0+e1+e2;return [e0/S,e1/S,e2/S];}
+
+// ---------- scene ----------
+const app=document.getElementById('app');
+const scene=new THREE.Scene(); scene.fog=new THREE.FogExp2(0x05090c,0.03);
+const camera=new THREE.PerspectiveCamera(50,innerWidth/innerHeight,0.1,100);
+const renderer=new THREE.WebGLRenderer({antialias:true,alpha:true});
+renderer.setPixelRatio(Math.min(devicePixelRatio,2)); renderer.setSize(innerWidth,innerHeight); app.appendChild(renderer.domElement);
+const labelRenderer=new CSS2DRenderer(); labelRenderer.setSize(innerWidth,innerHeight);
+labelRenderer.domElement.style.position='absolute'; labelRenderer.domElement.style.top='0'; labelRenderer.domElement.style.pointerEvents='none';
+app.appendChild(labelRenderer.domElement);
+const controls=new OrbitControls(camera,renderer.domElement);
+controls.enableDamping=true; controls.dampingFactor=0.08; controls.autoRotate=true; controls.autoRotateSpeed=0.45;
+controls.minDistance=2.0; controls.maxDistance=12;
+
+const SC=1.75, centre=new THREE.Vector3(SC/3,SC/3,SC/3);
+const Sv=[new THREE.Vector3(SC,0,0).sub(centre),new THREE.Vector3(0,SC,0).sub(centre),new THREE.Vector3(0,0,SC).sub(centre)];
+const normal=new THREE.Vector3(1,1,1).normalize();
+const e1=new THREE.Vector3(1,-1,0).normalize();
+const e2=new THREE.Vector3().crossVectors(normal,e1).normalize();
+const W=2.0, squareCentre=normal.clone().multiplyScalar(-1.5);
+const squarePos=(u1,u2)=>squareCentre.clone().addScaledVector(e1,(u1-0.5)*W).addScaledVector(e2,(u2-0.5)*W);
+const simplexPos=(p)=>new THREE.Vector3().addScaledVector(Sv[0],p[0]).addScaledVector(Sv[1],p[1]).addScaledVector(Sv[2],p[2]);
+camera.position.copy(normal.clone().multiplyScalar(2.9).addScaledVector(e1,0.5)); camera.lookAt(0,0,0);
+
+let s=2.8, gamma=1.6;
+const ease=(t)=>t*t*(3-2*t);
+
+// ---------- rainbow grid net ----------
+const R=30, NV=(R+1)*(R+1);
+const gu=new Float32Array(NV*2);
+for(let j=0,k=0;j<=R;j++)for(let i=0;i<=R;i++,k++){gu[k*2]=i/R;gu[k*2+1]=j/R;}
+const gidx=(i,j)=>j*(R+1)+i; const gedges=[];
+for(let j=0;j<=R;j++)for(let i=0;i<R;i++)gedges.push(gidx(i,j),gidx(i+1,j));
+for(let i=0;i<=R;i++)for(let j=0;j<R;j++)gedges.push(gidx(i,j),gidx(i,j+1));
+const GNE=gedges.length;
+const gridSq=new Float32Array(NV*3), gridSim=new Float32Array(NV*3), gridLive=new Float32Array(NV*3), gridCol=new Float32Array(NV*3);
+const gLgeom=new THREE.BufferGeometry(), gLpos=new Float32Array(GNE*3), gLcol=new Float32Array(GNE*3);
+gLgeom.setAttribute('position',new THREE.BufferAttribute(gLpos,3)); gLgeom.setAttribute('color',new THREE.BufferAttribute(gLcol,3));
+const gridLineMat=new THREE.LineBasicMaterial({vertexColors:true,transparent:true,opacity:0.55,blending:THREE.AdditiveBlending,depthWrite:false});
+scene.add(new THREE.LineSegments(gLgeom,gridLineMat));
+const gPgeom=new THREE.BufferGeometry(), gPpos=new Float32Array(NV*3);
+gPgeom.setAttribute('position',new THREE.BufferAttribute(gPpos,3)); gPgeom.setAttribute('color',new THREE.BufferAttribute(gridCol,3));
+const gridPtMat=new THREE.PointsMaterial({size:0.03,vertexColors:true,transparent:true,opacity:0.82,blending:THREE.AdditiveBlending,depthWrite:false});
+scene.add(new THREE.Points(gPgeom,gridPtMat));
+function corrColour(u1,u2,out,o){const h=(0.66*u1+0.34*u2)%1.0,sat=0.92,lig=0.42+0.20*u2;
+  const a=sat*Math.min(lig,1-lig);const f=(n)=>{const k=(n+h*12)%12;return lig-a*Math.max(-1,Math.min(k-3,9-k,1));};out[o]=f(0);out[o+1]=f(8);out[o+2]=f(4);}
+for(let k=0;k<NV;k++){const q=squarePos(gu[k*2],gu[k*2+1]);gridSq[k*3]=q.x;gridSq[k*3+1]=q.y;gridSq[k*3+2]=q.z;corrColour(gu[k*2],gu[k*2+1],gridCol,k*3);}
+function gridSimUpdate(){for(let k=0;k<NV;k++){const p=phi(gu[k*2],gu[k*2+1],s,gamma);const sp=simplexPos(p);gridSim[k*3]=sp.x;gridSim[k*3+1]=sp.y;gridSim[k*3+2]=sp.z;}}
+
+// ---------- football pitch (warps fully onto the simplex, like soccer-field-simplex) ----------
+const L=105, Wm=68;
+function lineS(x0,y0,x1,y1,n=44){const a=[];for(let i=0;i<=n;i++){const t=i/n;a.push([x0+(x1-x0)*t,y0+(y1-y0)*t]);}return a;}
+function arcS(cx,cy,r,a0,a1,n=72){const a=[];for(let i=0;i<=n;i++){const t=a0+(a1-a0)*i/n;a.push([cx+r*Math.cos(t),cy+r*Math.sin(t)]);}return a;}
+const marks=[];
+marks.push(lineS(0,0,L,0),lineS(L,0,L,Wm),lineS(L,Wm,0,Wm),lineS(0,Wm,0,0));
+marks.push(lineS(L/2,0,L/2,Wm)); marks.push(arcS(L/2,Wm/2,9.15,0,2*Math.PI,90)); marks.push(arcS(L/2,Wm/2,0.7,0,2*Math.PI,18));
+marks.push(lineS(0,13.84,16.5,13.84),lineS(16.5,13.84,16.5,54.16),lineS(16.5,54.16,0,54.16));
+marks.push(lineS(0,24.84,5.5,24.84),lineS(5.5,24.84,5.5,43.16),lineS(5.5,43.16,0,43.16));
+marks.push(arcS(11,34,0.7,0,2*Math.PI,18)); marks.push(arcS(11,34,9.15,-0.927,0.927,42));
+marks.push(lineS(105,13.84,88.5,13.84),lineS(88.5,13.84,88.5,54.16),lineS(88.5,54.16,105,54.16));
+marks.push(lineS(105,24.84,99.5,24.84),lineS(99.5,24.84,99.5,43.16),lineS(99.5,43.16,105,43.16));
+marks.push(arcS(94,34,0.7,0,2*Math.PI,18)); marks.push(arcS(94,34,9.15,Math.PI-0.927,Math.PI+0.927,42));
+marks.push(arcS(0,0,1,0,Math.PI/2,16),arcS(L,0,1,Math.PI/2,Math.PI,16),arcS(L,Wm,1,Math.PI,1.5*Math.PI,16),arcS(0,Wm,1,1.5*Math.PI,2*Math.PI,16));
+// fill (almost) the whole unit square in BOTH axes, so warped it covers the whole triangle
+const MARGIN=0.025; const m2u=(X,Y)=>[MARGIN+(1-2*MARGIN)*X/L, MARGIN+(1-2*MARGIN)*Y/Wm];
+
+const pitchObjs=[]; // {geom, uu, n, sq, sim, pos, lift}
+function addPitch(uPts, geom, lift){
+  const n=uPts.length, uu=new Float32Array(n*2), sq=new Float32Array(n*3), sim=new Float32Array(n*3), pos=new Float32Array(n*3);
+  for(let i=0;i<n;i++){uu[i*2]=uPts[i][0];uu[i*2+1]=uPts[i][1];const q=squarePos(uPts[i][0],uPts[i][1]).addScaledVector(normal,lift);sq[i*3]=q.x;sq[i*3+1]=q.y;sq[i*3+2]=q.z;}
+  geom.setAttribute('position',new THREE.BufferAttribute(pos,3));
+  pitchObjs.push({geom,uu,n,sq,sim,pos,lift});
+}
+const GX=54,GY=34,gN=(GX+1)*(GY+1);
+const grassGeom=new THREE.BufferGeometry(), grassU=[], grassCol=new Float32Array(gN*3);
+for(let j=0;j<=GY;j++)for(let i=0;i<=GX;i++){const X=L*i/GX,Y=Wm*j/GY;grassU.push(m2u(X,Y));
+  const st=Math.floor(X/(L/16))%2,c=st?[0.05,0.22,0.09]:[0.08,0.30,0.13];const k=(j*(GX+1)+i)*3;grassCol[k]=c[0];grassCol[k+1]=c[1];grassCol[k+2]=c[2];}
+const gI=[];for(let j=0;j<GY;j++)for(let i=0;i<GX;i++){const a=j*(GX+1)+i,b=a+1,cc=a+(GX+1),d=cc+1;gI.push(a,cc,b,b,cc,d);}
+grassGeom.setIndex(gI); grassGeom.setAttribute('color',new THREE.BufferAttribute(grassCol,3));
+addPitch(grassU,grassGeom,0.0);
+const grassMat=new THREE.MeshBasicMaterial({vertexColors:true,transparent:true,opacity:0.0,side:THREE.DoubleSide,depthWrite:false});
+const grassMesh=new THREE.Mesh(grassGeom,grassMat); grassMesh.renderOrder=1; scene.add(grassMesh);
+// Markings: depthTest off AND a high renderOrder so they are always painted last
+// — visible from BOTH sides of the field (top and underside) as it unrolls,
+// instead of being sorted behind the grass when a face turns away.
+const markMat=new THREE.LineBasicMaterial({color:0xffffff,transparent:true,opacity:0.0,fog:false,depthWrite:false,depthTest:false});
+for(const poly of marks){const uPts=poly.map(([X,Y])=>m2u(X,Y));const geom=new THREE.BufferGeometry();addPitch(uPts,geom,0.0);const line=new THREE.Line(geom,markMat);line.renderOrder=2;scene.add(line);}
+function pitchSimUpdate(){for(const d of pitchObjs){for(let i=0;i<d.n;i++){const p=phi(d.uu[i*2],d.uu[i*2+1],s,gamma);const sp=simplexPos(p).addScaledVector(normal,d.lift);d.sim[i*3]=sp.x;d.sim[i*3+1]=sp.y;d.sim[i*3+2]=sp.z;}}}
+
+// simplex outline + labels
+scene.add(new THREE.Line(new THREE.BufferGeometry().setFromPoints([...Sv,Sv[0]]),new THREE.LineBasicMaterial({color:0x6ee0ff,transparent:true,opacity:0.4})));
+function label(t,p,cls){const div=document.createElement('div');div.className='vlabel'+(cls?' '+cls:'');div.textContent=t;const o=new CSS2DObject(div);o.position.copy(p);scene.add(o);}
+label('p₀',Sv[0].clone().multiplyScalar(1.12)); label('p₁',Sv[1].clone().multiplyScalar(1.12)); label('p₂',Sv[2].clone().multiplyScalar(1.12));
+label('[0,1]² cube',squareCentre.clone().addScaledVector(e2,-W*0.6),'dim');
+
+// ---------- morph + crossfade ----------
+function simUpdate(){gridSimUpdate();pitchSimUpdate();}
+function applyMorph(m){
+  for(let k=0;k<NV*3;k++)gridLive[k]=gridSq[k]+(gridSim[k]-gridSq[k])*m;
+  for(let k=0;k<NV;k++){gPpos[k*3]=gridLive[k*3];gPpos[k*3+1]=gridLive[k*3+1];gPpos[k*3+2]=gridLive[k*3+2];}
+  for(let e=0;e<GNE;e++){const a=gedges[e],o=e*3;gLpos[o]=gridLive[a*3];gLpos[o+1]=gridLive[a*3+1];gLpos[o+2]=gridLive[a*3+2];
+    gLcol[o]=gridCol[a*3];gLcol[o+1]=gridCol[a*3+1];gLcol[o+2]=gridCol[a*3+2];}
+  gLgeom.attributes.position.needsUpdate=true;gLgeom.attributes.color.needsUpdate=true;gPgeom.attributes.position.needsUpdate=true;gPgeom.attributes.color.needsUpdate=true;
+  gLgeom.computeBoundingSphere();gPgeom.computeBoundingSphere();
+  for(const d of pitchObjs){for(let i=0;i<d.n*3;i++)d.pos[i]=d.sq[i]+(d.sim[i]-d.sq[i])*m;d.geom.attributes.position.needsUpdate=true;d.geom.computeBoundingSphere();}
+}
+function applyFade(w){gridLineMat.opacity=0.55*(1-w);gridPtMat.opacity=0.82*(1-w);grassMat.opacity=0.92*w;
+  // keep the white markings on the whole time the field is visible
+  const t=Math.min(1,Math.max(0,(w-0.03)/0.15)); markMat.opacity=t*t*(3-2*t);}
+
+// TWO full square -> triangle -> square cycles per loop. The FIRST cycle is shown
+// with the coordinate grid; the SECOND with the soccer field. Both skins undergo
+// the identical cube<->simplex transform. The grid/field crossfades happen at the
+// FLAT SQUARE (cube), where the two skins are registered flat squares.
+function timeline(tau){
+  const ss=(a,b,t)=>{t=Math.min(1,Math.max(0,(t-a)/(b-a)));return t*t*(3-2*t);};
+  const m=(1-Math.cos(4*Math.PI*tau))/2;             // square -> triangle -> square, twice
+  const w=ss(0.46,0.54,tau)*(1-ss(0.96,1.00,tau));   // grid (1st cycle) then soccer (2nd cycle)
+  return [m,w];
+}
+
+// ---------- UI ----------
+let auto=true, manM=0.5, manW=0, phase=0;
+const sRange=document.getElementById('sRange'),gRange=document.getElementById('gRange'),sVal=document.getElementById('sVal'),gVal=document.getElementById('gVal');
+const sliderToS=(v)=>Math.exp(THREE.MathUtils.lerp(Math.log(0.02),Math.log(8),v)), sToSlider=(val)=>(Math.log(val)-Math.log(0.02))/(Math.log(8)-Math.log(0.02));
+sRange.value=sToSlider(2.8);
+const refresh=()=>{sVal.textContent=s.toFixed(2);gVal.textContent=gamma.toFixed(2);};
+sRange.addEventListener('input',()=>{s=sliderToS(+sRange.value);refresh();simUpdate();});
+gRange.addEventListener('input',()=>{gamma=+gRange.value;refresh();simUpdate();});
+function mode(mm){auto=(mm==='auto');
+  for(const id of ['autoBtn','cubeBtn','gridBtn','pitchBtn'])document.getElementById(id).classList.remove('active');
+  document.getElementById(mm==='auto'?'autoBtn':mm==='cube'?'cubeBtn':mm==='grid'?'gridBtn':'pitchBtn').classList.add('active');
+  if(mm==='cube'){manM=0;manW=0;} if(mm==='grid'){manM=1;manW=0;} if(mm==='pitch'){manM=1;manW=1;}}
+document.getElementById('autoBtn').onclick=()=>mode('auto');
+document.getElementById('cubeBtn').onclick=()=>mode('cube');
+document.getElementById('gridBtn').onclick=()=>mode('grid');
+document.getElementById('pitchBtn').onclick=()=>mode('pitch');
+addEventListener('resize',()=>{camera.aspect=innerWidth/innerHeight;camera.updateProjectionMatrix();renderer.setSize(innerWidth,innerHeight);labelRenderer.setSize(innerWidth,innerHeight);});
+
+// ---------- loop ----------
+const clock=new THREE.Clock(); refresh(); simUpdate(); applyMorph(0); applyFade(0);
+function animate(){
+  requestAnimationFrame(animate);
+  const dt=clock.getDelta();
+  let m,w; if(auto){phase+=dt*0.045; const tau=phase-Math.floor(phase); [m,w]=timeline(tau);} else {m=manM;w=manW;}
+  applyMorph(ease(m)); applyFade(w); controls.update();
+  renderer.render(scene,camera); labelRenderer.render(scene,camera);
+}
+animate();
+</script>
+</body>
+</html>
