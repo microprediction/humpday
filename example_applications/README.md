@@ -43,12 +43,16 @@ Each subfolder is self-contained:
 | [`mini_golf/`](mini_golf/)                 | Putt-to-hole (reduced-order)      | Read the slope and sink the putt. *Simplified — demo uses Matter.js.* |
 | [`pool/`](pool/)                           | Cut-shot aim (reduced-order)      | The ghost-ball cut angle is a narrow, precise optimum. *Simplified single-cut model.* |
 | [`slingshot/`](slingshot/)                 | Ballistics (reduced-order)        | Rake one block stack or loft onto the other — two basins. *Simplified — demo uses Matter.js.* |
+| [`cocktail_blend/`](cocktail_blend/)       | Composition / inverse problem     | Proportions on the unit simplex (sum to 1) via the cube→simplex bijection; an over-determined flavour target with an interior optimum. |
 
-These last twenty-eight mirror, in pure Python, the interactive browser demos at
+Of these, twenty-eight (`boids_flocking` through `slingshot`) mirror, in pure
+Python, the interactive browser demos at
 [`docs/applications/`](../docs/applications/). Several are deliberately a matched
 pair — `lens_design` (low-D, interpolation/local methods win) versus
 `genetic_art` (high-D, those same methods lose) — so the **No-Free-Lunch**
-lesson is reproducible at the command line, not just asserted.
+lesson is reproducible at the command line, not just asserted. `cocktail_blend`
+has no browser counterpart: it is the simplex-geometry case study for the
+cube→simplex bijection.
 
 ## The HumpDay convention
 
@@ -104,6 +108,7 @@ python -m example_applications.curling.run
 python -m example_applications.mini_golf.run
 python -m example_applications.pool.run
 python -m example_applications.slingshot.run
+python -m example_applications.cocktail_blend.run
 ```
 
 No external dependencies beyond what HumpDay itself uses — these are

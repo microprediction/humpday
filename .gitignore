@@ -55,3 +55,4 @@ package-lock.json
 .claude/
 .DS_Store
 papers/dfo_recommender/bijection_hyperopt_results.json
+papers/dfo_recommender/bijection_hyperopt.log
