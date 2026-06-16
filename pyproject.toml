@@ -122,7 +122,7 @@ packages = ["humpday"]
 # belong on GitHub. None of this is needed to install or run HumpDay.
 exclude = [
     "docs/assets/*.gif",
-    "docs/assets/simplex-cube-bijection.png",
+    "docs/assets/*.png",
     "docs/assets/video",
 ]
 

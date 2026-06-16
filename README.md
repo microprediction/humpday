@@ -27,11 +27,15 @@ optimizer works unchanged.
 
 [![The cube-to-simplex bijection: a coordinate net flowing between the unit square and the probability simplex](docs/assets/simplex-cube-bijection.gif)](https://humpday.microprediction.org/simplex-cube-bijection.html)
 
- The map's scale is a tunable *preconditioner*: too small
+The map's scale is a tunable *preconditioner*: too small
 and the whole cube collapses onto the centroid; tuned (the `θ★` shown), off-centre
 optima map back to interior cube points where optimizers sample densely.
 [**Explore it live →**](https://humpday.microprediction.org/simplex-cube-bijection.html)
 (drag to orbit, morph cube ⇆ simplex, watch the optimum's pre-image move).
+
+For fun, the same map applied to a football pitch — straight lines bend, the
+centre circle becomes an oval, the corners smear toward the boundary:
+[**⚽ the beautiful game on the simplex →**](https://humpday.microprediction.org/soccer-field-simplex.html).
 
 ## Install & Use
 
