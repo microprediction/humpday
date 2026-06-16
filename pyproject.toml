@@ -116,6 +116,16 @@ humpday = "humpday.__main__:main"
 [tool.hatch.build.targets.wheel]
 packages = ["humpday"]
 
+[tool.hatch.build.targets.sdist]
+# Keep the source distribution lean: ship the package, tests and docs prose,
+# but exclude heavy media (README/social GIFs, hero stills, video) that only
+# belong on GitHub. None of this is needed to install or run HumpDay.
+exclude = [
+    "docs/assets/*.gif",
+    "docs/assets/simplex-cube-bijection.png",
+    "docs/assets/video",
+]
+
 [tool.hatch.metadata]
 allow-direct-references = true
 
