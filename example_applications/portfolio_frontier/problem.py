@@ -89,15 +89,23 @@ def _holding_cost(w):
     return KAPPA * sum(1.0 - math.exp(-w[i] / TAU) for i in range(len(ASSETS)))
 
 
+def simplex_objective(w):
+    """Cost of a portfolio given weights `w` already on the simplex
+    (long-only, summing to 1): negative mean-variance utility plus the
+    per-holding cost. Kept separate from the cube->simplex lift so the
+    geometry (the bijection) can be varied independently of the finance
+    — see papers/dfo_recommender/bijection_hyperopt.py."""
+    ret = _portfolio_return(w)
+    var = _portfolio_variance(w)
+    return -ret + 0.5 * GAMMA * var + _holding_cost(w)
+
+
 def objective(u):
     """HumpDay-style objective: `u ∈ [0,1]^7` -> negative utility + costs.
 
     Lifts the cube point onto the 8-asset simplex of long-only weights,
     then evaluates mean-variance utility plus the per-holding cost."""
-    w = cube_to_simplex(u)
-    ret = _portfolio_return(w)
-    var = _portfolio_variance(w)
-    return -ret + 0.5 * GAMMA * var + _holding_cost(w)
+    return simplex_objective(cube_to_simplex(u))
 
 
 def decode(u):
