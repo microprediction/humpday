@@ -44,6 +44,7 @@ Each subfolder is self-contained:
 | [`pool/`](pool/)                           | Cut-shot aim (reduced-order)      | The ghost-ball cut angle is a narrow, precise optimum. *Simplified single-cut model.* |
 | [`slingshot/`](slingshot/)                 | Ballistics (reduced-order)        | Rake one block stack or loft onto the other — two basins. *Simplified — demo uses Matter.js.* |
 | [`cocktail_blend/`](cocktail_blend/)       | Composition / inverse problem     | Proportions on the unit simplex (sum to 1) via the cube→simplex bijection; an over-determined flavour target with an interior optimum. |
+| [`portfolio_frontier/`](portfolio_frontier/) | Composition / finance (non-convex) | Long-only weights on the unit simplex via the same bijection; a cardinality cost makes it non-convex and bimodal — a corner trap vs a diversified basin that ranks optimisers. |
 
 Of these, twenty-eight (`boids_flocking` through `slingshot`) mirror, in pure
 Python, the interactive browser demos at
@@ -51,8 +52,9 @@ Python, the interactive browser demos at
 pair — `lens_design` (low-D, interpolation/local methods win) versus
 `genetic_art` (high-D, those same methods lose) — so the **No-Free-Lunch**
 lesson is reproducible at the command line, not just asserted. `cocktail_blend`
-has no browser counterpart: it is the simplex-geometry case study for the
-cube→simplex bijection.
+and `portfolio_frontier` have no browser counterpart: they are the
+simplex-geometry case studies for the cube→simplex bijection — the first smooth
+(it demonstrates the lift), the second non-convex (it ranks optimisers).
 
 ## The HumpDay convention
 
@@ -109,6 +111,7 @@ python -m example_applications.mini_golf.run
 python -m example_applications.pool.run
 python -m example_applications.slingshot.run
 python -m example_applications.cocktail_blend.run
+python -m example_applications.portfolio_frontier.run
 ```
 
 No external dependencies beyond what HumpDay itself uses — these are
