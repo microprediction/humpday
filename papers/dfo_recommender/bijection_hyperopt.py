@@ -68,7 +68,7 @@ RESULTS_PATH = HERE / "bijection_hyperopt_results.json"
 # to any simplex size. s is a global log-scale (centroid <-> corner reach);
 # gamma is a probit-tail warp. (s, gamma) = (1, 1) is the plain logistic-
 # normal map -- the de-dep'd default now living in thurstone_transform.py.
-THETA_BOX = {"s": (0.25, 4.0), "gamma": (0.5, 2.0)}
+THETA_BOX = {"s": (0.25, 8.0), "gamma": (0.5, 2.0)}
 THETA0 = (1.0, 1.0)
 # A deliberately corner-reaching lift, used only to locate approximate
 # optima for the interpretable centroid proxy (not for scoring).
