@@ -193,7 +193,11 @@ function applyMorph(m){
   gLgeom.computeBoundingSphere();gPgeom.computeBoundingSphere();
   for(const d of pitchObjs){for(let i=0;i<d.n*3;i++)d.pos[i]=d.sq[i]+(d.sim[i]-d.sq[i])*m;d.geom.attributes.position.needsUpdate=true;d.geom.computeBoundingSphere();}
 }
-function applyFade(w){gridLineMat.opacity=0.55*(1-w);gridPtMat.opacity=0.82*(1-w);grassMat.opacity=0.92*w;markMat.opacity=1.0*w;}
+function applyFade(w){gridLineMat.opacity=0.55*(1-w);gridPtMat.opacity=0.82*(1-w);grassMat.opacity=0.92*w;
+  // markings persist longer than the grass: thin white lines read worse at low
+  // opacity, so fade them on a concave curve so they stay crisp until the field
+  // has nearly gone (and appear promptly on the way in).
+  markMat.opacity=Math.pow(w,0.4);}
 
 // timeline: 0 cube-grid -> rise to simplex -> crossfade to pitch -> flatten to field -> crossfade back
 function timeline(tau){
