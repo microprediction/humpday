@@ -170,9 +170,12 @@ const gI=[];for(let j=0;j<GY;j++)for(let i=0;i<GX;i++){const a=j*(GX+1)+i,b=a+1,
 grassGeom.setIndex(gI); grassGeom.setAttribute('color',new THREE.BufferAttribute(grassCol,3));
 addPitch(grassU,grassGeom,0.0);
 const grassMat=new THREE.MeshBasicMaterial({vertexColors:true,transparent:true,opacity:0.0,side:THREE.DoubleSide,depthWrite:false});
-scene.add(new THREE.Mesh(grassGeom,grassMat));
+const grassMesh=new THREE.Mesh(grassGeom,grassMat); grassMesh.renderOrder=1; scene.add(grassMesh);
+// Markings: depthTest off AND a high renderOrder so they are always painted last
+// — visible from BOTH sides of the field (top and underside) as it unrolls,
+// instead of being sorted behind the grass when a face turns away.
 const markMat=new THREE.LineBasicMaterial({color:0xffffff,transparent:true,opacity:0.0,fog:false,depthWrite:false,depthTest:false});
-for(const poly of marks){const uPts=poly.map(([X,Y])=>m2u(X,Y));const geom=new THREE.BufferGeometry();addPitch(uPts,geom,0.006);scene.add(new THREE.Line(geom,markMat));}
+for(const poly of marks){const uPts=poly.map(([X,Y])=>m2u(X,Y));const geom=new THREE.BufferGeometry();addPitch(uPts,geom,0.0);const line=new THREE.Line(geom,markMat);line.renderOrder=2;scene.add(line);}
 function pitchSimUpdate(){for(const d of pitchObjs){for(let i=0;i<d.n;i++){const p=phi(d.uu[i*2],d.uu[i*2+1],s,gamma);const sp=simplexPos(p).addScaledVector(normal,d.lift);d.sim[i*3]=sp.x;d.sim[i*3+1]=sp.y;d.sim[i*3+2]=sp.z;}}}
 
 // simplex outline + labels
@@ -230,7 +233,7 @@ const clock=new THREE.Clock(); refresh(); simUpdate(); applyMorph(0); applyFade(
 function animate(){
   requestAnimationFrame(animate);
   const dt=clock.getDelta();
-  let m,w; if(auto){phase+=dt*0.06; const tau=phase-Math.floor(phase); [m,w]=timeline(tau);} else {m=manM;w=manW;}
+  let m,w; if(auto){phase+=dt*0.045; const tau=phase-Math.floor(phase); [m,w]=timeline(tau);} else {m=manM;w=manW;}
   applyMorph(ease(m)); applyFade(w); controls.update();
   renderer.render(scene,camera); labelRenderer.render(scene,camera);
 }
