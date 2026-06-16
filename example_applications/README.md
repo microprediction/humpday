@@ -49,6 +49,7 @@ Each subfolder is self-contained:
 | [`speed_reducer/`](speed_reducer/)         | Mechanical design (gearbox)       | Nonconvex, mixed-integer, 11 active nonlinear constraints; a *verifiable* known optimum (weight ≈ 2994.47). |
 | [`gear_ratios/`](gear_ratios/)             | Mechanical design (gear train)    | Discrete / staircase — the objective is piecewise-constant on the integer tooth lattice, so there is no gradient to follow. |
 | [`transfer_window/`](transfer_window/)     | Aerospace (interplanetary Δv)     | Disjoint feasible islands — a Lambert-solver porkchop with separate launch windows; local search sees only its own. |
+| [`cassini_minlp/`](cassini_minlp/)         | Aerospace (gravity-assist tour)   | Mixed-integer — Earth→4 flybys→Saturn with discrete flyby planets; near-tied sequences make methods disagree on the combinatorial choice. |
 
 Of these, twenty-eight (`boids_flocking` through `slingshot`) mirror, in pure
 Python, the interactive browser demos at
@@ -120,6 +121,7 @@ python -m example_applications.multi_exponential_fit.run
 python -m example_applications.speed_reducer.run
 python -m example_applications.gear_ratios.run
 python -m example_applications.transfer_window.run
+python -m example_applications.cassini_minlp.run
 ```
 
 No external dependencies beyond what HumpDay itself uses — these are

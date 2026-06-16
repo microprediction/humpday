@@ -12,7 +12,7 @@ Status: ✅ built · 🚧 in progress · ⬜ todo · 🔬 deferred (scope risk /
 | 2 | `speed_reducer` | mechanical design (Golinski gearbox) | **Nonconvex + 11 nonlinear constraints + mixed-integer** (pinion teeth); metaheuristics can't *guarantee* the optimum | 7 | yes — weight ≈ **2994.4712** | ✅ |
 | 3 | `gear_ratios` | mechanical design (Sandgren gear train) | **Discreteness / plateaus** — objective is piecewise-constant on the integer tooth lattice; no gradient to follow | 4 | yes — `f≈2.7e-12` at teeth (19,16,43,49) | ✅ |
 | 4 | `transfer_window` | aerospace (Earth→Mars Δv) | **Disjoint feasible islands / multi-basin** (porkchop) — local search sees only its own launch window | 2 | yes — Δv≈0.188 (= analytic Hohmann; validated) | ✅ |
-| 5 | `cassini_minlp` | aerospace (flyby sequence) | **Mixed-integer + razor-thin deceptive tie** (local 3.6307 vs global 3.5007) | 6+4 | best-known 3.5007 | ⬜ |
+| 5 | `cassini_minlp` | aerospace (flyby sequence) | **Mixed-integer + deceptive near-tied sequences** — methods disagree on the discrete flyby planets | 6+4 | reduced-order (structure, not GTOPX's exact 3.5007) | ✅ |
 
 ## Deferred / different home
 
