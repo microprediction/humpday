@@ -58,6 +58,12 @@ Each subfolder is self-contained:
 | [`kmeans_clustering/`](kmeans_clustering/) | Machine learning                  | The k-means objective as global optimisation — multimodal local minima (the reason for random restarts). |
 | [`enzyme_kinetics/`](enzyme_kinetics/)     | Biochemistry (curve fit)          | Michaelis–Menten fit; mildly ill-conditioned (Vmax/Km correlated) curved valley. |
 | [`darts_aim/`](darts_aim/)                 | Games (decision under noise)      | Where to aim under throw noise; deterministic but multimodal expected-score surface (the Tibshirani result). |
+| [`pid_tuning/`](pid_tuning/)               | Control engineering               | Tune PID gains; ill-conditioned valley bordered by an instability cliff (unstable gains → flat penalty plateau). |
+| [`economic_dispatch_valve/`](economic_dispatch_valve/) | Power systems          | Generator dispatch with valve-point loading — rectified-sine ripples make it multimodal and non-smooth; ref ≈ 8234. |
+| [`inventory_policy/`](inventory_policy/)   | Operations research               | Tune an (s,S) reorder policy under stochastic demand — a genuinely noisy objective (expected-cost bowl under sampling noise). |
+| [`kalman_tuning/`](kalman_tuning/)         | State estimation                  | Tune a Kalman filter's Q/R; ill-conditioned diagonal valley (performance depends on the q/r ratio), log-scaled. |
+| [`radiation_therapy/`](radiation_therapy/) | Medical physics                   | Beam-weight intensities on the unit simplex (via the bijection); competing tumor-coverage vs organ-sparing objectives. |
+| [`sensor_localization/`](sensor_localization/) | Robotics / signal processing  | Recover node positions from noisy ranges; multimodal with reflection/fold ambiguities (anchors don't fully pin it). |
 
 Of these, twenty-eight (`boids_flocking` through `slingshot`) mirror, in pure
 Python, the interactive browser demos at
@@ -138,6 +144,12 @@ python -m example_applications.facility_location.run
 python -m example_applications.kmeans_clustering.run
 python -m example_applications.enzyme_kinetics.run
 python -m example_applications.darts_aim.run
+python -m example_applications.pid_tuning.run
+python -m example_applications.economic_dispatch_valve.run
+python -m example_applications.inventory_policy.run
+python -m example_applications.kalman_tuning.run
+python -m example_applications.radiation_therapy.run
+python -m example_applications.sensor_localization.run
 ```
 
 No external dependencies beyond what HumpDay itself uses — these are

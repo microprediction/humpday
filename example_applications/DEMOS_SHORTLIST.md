@@ -29,6 +29,12 @@ auto-collected, verified against known optima where one exists.
 | `kmeans_clustering` | ML | multimodal (k-means local minima) | 6 | computed |
 | `enzyme_kinetics` | biochem | mildly ill-conditioned curved valley | 2 | ✅ noise floor |
 | `darts_aim` | games / decision-under-noise | deterministic multimodal expected-score | 2 | computed (Tibshirani) |
+| `pid_tuning` | control | ill-conditioned valley + instability cliff | 3 | computed |
+| `economic_dispatch_valve` | power systems | valve-point ripples (multimodal, non-smooth) + equality | 3 | ref ≈ 8234 |
+| `inventory_policy` | operations | stochastic / noisy objective (expected-cost bowl) | 2 | computed |
+| `kalman_tuning` | estimation | ill-conditioned diagonal (q/r) valley, log-scaled | 2 | computed |
+| `radiation_therapy` | medical physics | simplex allocation + competing dose objectives | 4 | computed |
+| `sensor_localization` | robotics / signal | multimodal flip/fold ambiguities | 8 | noise floor |
 
 **Disguise harness:** `humpday/transforms/cube_disguise.py` wraps any objective in a seeded
 random cube→cube diffeomorphism, relocating the optimum per seed so algorithm development
