@@ -45,6 +45,25 @@ Each subfolder is self-contained:
 | [`slingshot/`](slingshot/)                 | Ballistics (reduced-order)        | Rake one block stack or loft onto the other — two basins. *Simplified — demo uses Matter.js.* |
 | [`cocktail_blend/`](cocktail_blend/)       | Composition / inverse problem     | Proportions on the unit simplex (sum to 1) via the cube→simplex bijection; an over-determined flavour target with an interior optimum. |
 | [`portfolio_frontier/`](portfolio_frontier/) | Composition / finance (non-convex) | Long-only weights on the unit simplex via the same bijection; a cardinality cost makes it non-convex and bimodal — a corner trap vs a diversified basin that ranks optimisers. |
+| [`multi_exponential_fit/`](multi_exponential_fit/) | Spectroscopy / pharmacokinetics | Ill-conditioned "sloppy" valley — the Jacobian condition number diverges as two decay rates converge, so methods reach equal residuals at wildly different rates. |
+| [`speed_reducer/`](speed_reducer/)         | Mechanical design (gearbox)       | Nonconvex, mixed-integer, 11 active nonlinear constraints; a *verifiable* known optimum (weight ≈ 2994.47). |
+| [`gear_ratios/`](gear_ratios/)             | Mechanical design (gear train)    | Discrete / staircase — the objective is piecewise-constant on the integer tooth lattice, so there is no gradient to follow. |
+| [`transfer_window/`](transfer_window/)     | Aerospace (interplanetary Δv)     | Disjoint feasible islands — a Lambert-solver porkchop with separate launch windows; local search sees only its own. |
+| [`cassini_minlp/`](cassini_minlp/)         | Aerospace (gravity-assist tour)   | Mixed-integer — Earth→4 flybys→Saturn with discrete flyby planets; near-tied sequences make methods disagree on the combinatorial choice. |
+| [`pressure_vessel/`](pressure_vessel/)     | Mechanical design                 | Constrained mixed-integer with gauge-quantised thicknesses; verifiable known optimum ≈ 6059.7. |
+| [`tension_spring/`](tension_spring/)       | Mechanical design                 | Constrained coil-spring weight; tiny objective vs O(1) violations; verifiable optimum ≈ 0.01267. |
+| [`cantilever_beam/`](cantilever_beam/)     | Structural design                 | A single curved nonlinear constraint with the optimum *on* the boundary; verifiable optimum ≈ 1.340. |
+| [`lennard_jones_cluster/`](lennard_jones_cluster/) | Physics (atomic cluster)  | Extreme multimodality — local minima grow ~exponentially with N; known LJ₅ ground state ≈ −9.104. |
+| [`facility_location/`](facility_location/) | Operations (p-median)             | Non-smooth `min`-over-facilities cost; multimodal combinatorial assignment of facilities to clusters. |
+| [`kmeans_clustering/`](kmeans_clustering/) | Machine learning                  | The k-means objective as global optimisation — multimodal local minima (the reason for random restarts). |
+| [`enzyme_kinetics/`](enzyme_kinetics/)     | Biochemistry (curve fit)          | Michaelis–Menten fit; mildly ill-conditioned (Vmax/Km correlated) curved valley. |
+| [`darts_aim/`](darts_aim/)                 | Games (decision under noise)      | Where to aim under throw noise; deterministic but multimodal expected-score surface (the Tibshirani result). |
+| [`pid_tuning/`](pid_tuning/)               | Control engineering               | Tune PID gains; ill-conditioned valley bordered by an instability cliff (unstable gains → flat penalty plateau). |
+| [`economic_dispatch_valve/`](economic_dispatch_valve/) | Power systems          | Generator dispatch with valve-point loading — rectified-sine ripples make it multimodal and non-smooth; ref ≈ 8234. |
+| [`inventory_policy/`](inventory_policy/)   | Operations research               | Tune an (s,S) reorder policy under stochastic demand — a genuinely noisy objective (expected-cost bowl under sampling noise). |
+| [`kalman_tuning/`](kalman_tuning/)         | State estimation                  | Tune a Kalman filter's Q/R; ill-conditioned diagonal valley (performance depends on the q/r ratio), log-scaled. |
+| [`radiation_therapy/`](radiation_therapy/) | Medical physics                   | Beam-weight intensities on the unit simplex (via the bijection); competing tumor-coverage vs organ-sparing objectives. |
+| [`sensor_localization/`](sensor_localization/) | Robotics / signal processing  | Recover node positions from noisy ranges; multimodal with reflection/fold ambiguities (anchors don't fully pin it). |
 
 Of these, twenty-eight (`boids_flocking` through `slingshot`) mirror, in pure
 Python, the interactive browser demos at
@@ -112,6 +131,25 @@ python -m example_applications.pool.run
 python -m example_applications.slingshot.run
 python -m example_applications.cocktail_blend.run
 python -m example_applications.portfolio_frontier.run
+python -m example_applications.multi_exponential_fit.run
+python -m example_applications.speed_reducer.run
+python -m example_applications.gear_ratios.run
+python -m example_applications.transfer_window.run
+python -m example_applications.cassini_minlp.run
+python -m example_applications.pressure_vessel.run
+python -m example_applications.tension_spring.run
+python -m example_applications.cantilever_beam.run
+python -m example_applications.lennard_jones_cluster.run
+python -m example_applications.facility_location.run
+python -m example_applications.kmeans_clustering.run
+python -m example_applications.enzyme_kinetics.run
+python -m example_applications.darts_aim.run
+python -m example_applications.pid_tuning.run
+python -m example_applications.economic_dispatch_valve.run
+python -m example_applications.inventory_policy.run
+python -m example_applications.kalman_tuning.run
+python -m example_applications.radiation_therapy.run
+python -m example_applications.sensor_localization.run
 ```
 
 No external dependencies beyond what HumpDay itself uses — these are
