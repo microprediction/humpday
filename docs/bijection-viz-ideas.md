@@ -16,13 +16,14 @@ picture on the cube onto the simplex:
 - **A "swivel" / vector field.** Push a flow or rotating field through φθ to show
   the local distortion (Jacobian) — where the map stretches vs compresses.
 
-## FIFA theme — football markings on the simplex
-Lay a regulation **pitch** on the unit square (halfway line, centre circle,
-penalty boxes, arcs, spots) and push the markings through φθ onto the simplex.
-"The beautiful game, played on the probability simplex." A strong social hook,
-and it doubles as an intuition pump: straight lines become geodesic-ish curves,
-the centre circle warps, the corners smear toward the simplex boundary (see the
-note below on why corners can't map cleanly).
+## FIFA theme — football markings on the simplex ✅ built
+Built: [`soccer-field-simplex.html`](soccer-field-simplex.html). A regulation
+pitch (halfway line, centre circle, penalty boxes, arcs, spots, mowing stripes)
+on the unit square, pushed through φθ onto the simplex — straight lines bend, the
+centre circle becomes an oval, the corners smear toward the boundary. Same 3D
+engine (orbit, morph, presets θ₀ / θ★ / degenerate `STD_L=500`). Social assets:
+`assets/soccer-field-simplex.gif`, `assets/video/soccer-field-simplex.mp4`,
+`assets/soccer-field-simplex.png`.
 
 ## Already in the page
 - Preset story: `θ₀` default → learned `θ★` → degenerate `STD_L = 500` (the whole

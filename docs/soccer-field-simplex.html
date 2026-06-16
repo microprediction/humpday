@@ -1,0 +1,294 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>The beautiful game on the probability simplex</title>
+<meta property="og:type" content="website" />
+<meta property="og:title" content="The beautiful game on the probability simplex" />
+<meta property="og:description" content="A regulation football pitch pushed through the cube to simplex bijection — straight lines become curves, the centre circle warps, the corners smear to the boundary." />
+<meta property="og:image" content="https://humpday.microprediction.org/assets/soccer-field-simplex.png" />
+<meta name="twitter:card" content="summary_large_image" />
+<style>
+  :root { color-scheme: dark; }
+  * { box-sizing: border-box; }
+  html, body { margin: 0; height: 100%; overflow: hidden;
+    background: radial-gradient(120% 120% at 50% 0%, #0a1322 0%, #050a07 60%, #02050a 100%);
+    font-family: ui-sans-serif, -apple-system, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+    color: #dfe6f5; }
+  #app { position: fixed; inset: 0; }
+  canvas { display: block; }
+  .panel { position: absolute; top: 18px; left: 18px; width: 300px; max-width: calc(100vw - 36px);
+    padding: 16px 18px 14px; border-radius: 16px;
+    background: rgba(12, 22, 18, 0.6); backdrop-filter: blur(14px) saturate(140%);
+    -webkit-backdrop-filter: blur(14px) saturate(140%);
+    border: 1px solid rgba(120, 200, 150, 0.18);
+    box-shadow: 0 18px 50px rgba(0,0,0,0.55), inset 0 1px 0 rgba(255,255,255,0.05); user-select: none; }
+  .panel h1 { font-size: 14.5px; margin: 0 0 2px; font-weight: 650; }
+  .panel .sub { font-size: 11.5px; color: #9fc4ad; margin: 0 0 12px; line-height: 1.45; }
+  .row { margin: 11px 0; }
+  .row label { display: flex; justify-content: space-between; font-size: 12px; color: #c2e6cf; margin-bottom: 5px; }
+  .row label .val { color: #8ef0b8; font-weight: 600; font-variant-numeric: tabular-nums; }
+  input[type=range] { -webkit-appearance: none; appearance: none; width: 100%; height: 4px; border-radius: 4px; background: #234232; outline: none; }
+  input[type=range]::-webkit-slider-thumb { -webkit-appearance: none; appearance: none; width: 15px; height: 15px; border-radius: 50%;
+    background: radial-gradient(circle at 35% 30%, #c6ffd9, #3ad07a 70%); box-shadow: 0 0 10px rgba(80,255,160,0.7); cursor: pointer; }
+  input[type=range]::-moz-range-thumb { width: 15px; height: 15px; border: none; border-radius: 50%;
+    background: radial-gradient(circle at 35% 30%, #c6ffd9, #3ad07a 70%); box-shadow: 0 0 10px rgba(80,255,160,0.7); cursor: pointer; }
+  .presets { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 4px; }
+  .presets button { font: inherit; font-size: 11px; padding: 6px 9px; border-radius: 9px; cursor: pointer;
+    color: #d7f3e2; background: rgba(70,180,120,0.13); border: 1px solid rgba(120,200,150,0.24); }
+  .presets button:hover { background: rgba(90,200,140,0.26); }
+  .presets button.danger { color: #ffd0d6; background: rgba(220,80,110,0.14); border-color: rgba(230,110,140,0.3); }
+  .divider { height: 1px; background: linear-gradient(90deg, transparent, rgba(140,230,180,0.25), transparent); margin: 12px 0; }
+  .toggle { display: flex; gap: 6px; }
+  .toggle button { font: inherit; font-size: 11px; padding: 6px 9px; border-radius: 9px; cursor: pointer;
+    color: #d7f3e2; background: rgba(70,180,120,0.12); border: 1px solid rgba(120,200,150,0.22); }
+  .toggle button.active { background: rgba(110,240,170,0.22); border-color: rgba(110,240,170,0.5); }
+  .note { font-size: 10.5px; color: #7f9a88; margin-top: 11px; line-height: 1.45; }
+  .hint { position: absolute; bottom: 14px; left: 50%; transform: translateX(-50%); font-size: 11px; color: #6a8a76; pointer-events: none; }
+  .vlabel { font-size: 12px; font-weight: 600; color: #dfe; text-shadow: 0 0 8px rgba(0,0,0,0.9);
+    padding: 1px 5px; border-radius: 6px; background: rgba(8,16,12,0.4); pointer-events: none; white-space: nowrap; }
+</style>
+</head>
+<body>
+<div id="app"></div>
+<div class="panel">
+  <h1>⚽ The beautiful game on the simplex</h1>
+  <p class="sub">A regulation pitch on the unit square&nbsp;[0,1]², pushed onto the
+  probability simplex by the bijection <b>φ<sub>θ</sub></b>. Straight lines bend,
+  the centre circle warps, the corners smear toward the boundary.</p>
+  <div class="row">
+    <label>scale <span style="color:#6a8a76">s</span> <span class="val" id="sVal">1.50</span></label>
+    <input type="range" id="sRange" min="0" max="1" step="0.001" />
+  </div>
+  <div class="row">
+    <label>tail-warp <span style="color:#6a8a76">γ</span> <span class="val" id="gVal">1.10</span></label>
+    <input type="range" id="gRange" min="0.4" max="3.0" step="0.001" value="1.1" />
+  </div>
+  <div class="presets">
+    <button id="pDefault">θ₀ (1, 1)</button>
+    <button id="pLearned">θ★ (4.15, 2.58)</button>
+    <button id="pDegen" class="danger">STD_L = 500</button>
+  </div>
+  <div class="divider"></div>
+  <div class="row" style="margin:4px 0 8px;">
+    <label>flatten ⇆ simplex</label>
+    <div class="toggle" style="margin-bottom:8px;">
+      <button id="autoBtn" class="active">auto</button>
+      <button id="flatBtn">flat pitch</button>
+      <button id="simBtn">simplex</button>
+    </div>
+    <input type="range" id="mRange" min="0" max="1" step="0.001" value="1" />
+  </div>
+  <div class="note" id="note"></div>
+</div>
+<div class="hint">drag to orbit · scroll to zoom · the pitch flattens back to the square as you morph</div>
+
+<script type="importmap">
+{ "imports": {
+  "three": "https://unpkg.com/three@0.160.0/build/three.module.js",
+  "three/addons/": "https://unpkg.com/three@0.160.0/examples/jsm/"
+} }
+</script>
+<script type="module">
+import * as THREE from 'three';
+import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
+import { CSS2DRenderer, CSS2DObject } from 'three/addons/renderers/CSS2DRenderer.js';
+
+// ---------- bijection (matches humpday.transforms.cubetosimplex) ----------
+function probit(p) {
+  p = Math.min(1 - 1e-9, Math.max(1e-9, p));
+  const a=[-3.969683028665376e+01,2.209460984245205e+02,-2.759285104469687e+02,1.383577518672690e+02,-3.066479806614716e+01,2.506628277459239e+00];
+  const b=[-5.447609879822406e+01,1.615858368580409e+02,-1.556989798598866e+02,6.680131188771972e+01,-1.328068155288572e+01];
+  const c=[-7.784894002430293e-03,-3.223964580411365e-01,-2.400758277161838e+00,-2.549732539343734e+00,4.374664141464968e+00,2.938163982698783e+00];
+  const d=[7.784695709041462e-03,3.224671290700398e-01,2.445134137142996e+00,3.754408661907416e+00];
+  const plow=0.02425, phigh=1-plow; let q,r;
+  if(p<plow){q=Math.sqrt(-2*Math.log(p));return (((((c[0]*q+c[1])*q+c[2])*q+c[3])*q+c[4])*q+c[5])/((((d[0]*q+d[1])*q+d[2])*q+d[3])*q+1);}
+  if(p<=phigh){q=p-0.5;r=q*q;return (((((a[0]*r+a[1])*r+a[2])*r+a[3])*r+a[4])*r+a[5])*q/(((((b[0]*r+b[1])*r+b[2])*r+b[3])*r+b[4])*r+1);}
+  q=Math.sqrt(-2*Math.log(1-p));return -(((((c[0]*q+c[1])*q+c[2])*q+c[3])*q+c[4])*q+c[5])/((((d[0]*q+d[1])*q+d[2])*q+d[3])*q+1);
+}
+const warp = (z,g)=>Math.sign(z)*Math.pow(Math.abs(z),g);
+function phi(u1,u2,s,g){
+  const l1=s*warp(probit(u1),g), l2=s*warp(probit(u2),g), m=Math.max(0,l1,l2);
+  const e0=Math.exp(-m),e1=Math.exp(l1-m),e2=Math.exp(l2-m),S=e0+e1+e2;
+  return [e0/S,e1/S,e2/S];
+}
+
+// ---------- scene ----------
+const app=document.getElementById('app');
+const scene=new THREE.Scene(); scene.fog=new THREE.FogExp2(0x05090c,0.07);
+const camera=new THREE.PerspectiveCamera(50,innerWidth/innerHeight,0.1,100);
+const renderer=new THREE.WebGLRenderer({antialias:true,alpha:true});
+renderer.setPixelRatio(Math.min(devicePixelRatio,2)); renderer.setSize(innerWidth,innerHeight);
+app.appendChild(renderer.domElement);
+const labelRenderer=new CSS2DRenderer(); labelRenderer.setSize(innerWidth,innerHeight);
+labelRenderer.domElement.style.position='absolute'; labelRenderer.domElement.style.top='0';
+labelRenderer.domElement.style.pointerEvents='none'; app.appendChild(labelRenderer.domElement);
+const controls=new OrbitControls(camera,renderer.domElement);
+controls.enableDamping=true; controls.dampingFactor=0.08; controls.autoRotate=true; controls.autoRotateSpeed=0.45;
+controls.minDistance=2.0; controls.maxDistance=12;
+
+// frames: simplex triangle + square sheet, both normal to (1,1,1)
+const SC=1.75, centre=new THREE.Vector3(SC/3,SC/3,SC/3);
+const Sv=[new THREE.Vector3(SC,0,0).sub(centre),new THREE.Vector3(0,SC,0).sub(centre),new THREE.Vector3(0,0,SC).sub(centre)];
+const normal=new THREE.Vector3(1,1,1).normalize();
+const e1=new THREE.Vector3(1,-1,0).normalize();
+const e2=new THREE.Vector3().crossVectors(normal,e1).normalize();
+const W=2.0, squareCentre=normal.clone().multiplyScalar(-1.5);
+const squarePos=(u1,u2)=>squareCentre.clone().addScaledVector(e1,(u1-0.5)*W).addScaledVector(e2,(u2-0.5)*W);
+const simplexPos=(p)=>new THREE.Vector3().addScaledVector(Sv[0],p[0]).addScaledVector(Sv[1],p[1]).addScaledVector(Sv[2],p[2]);
+
+camera.position.copy(normal.clone().multiplyScalar(2.7).addScaledVector(e1,0.4).addScaledVector(e2,1.0));
+camera.lookAt(0,0,0);
+
+// ---------- pitch geometry (metres) ----------
+const L=105, Wm=68;
+function lineS(x0,y0,x1,y1,n=44){const a=[];for(let i=0;i<=n;i++){const t=i/n;a.push([x0+(x1-x0)*t,y0+(y1-y0)*t]);}return a;}
+function arcS(cx,cy,r,a0,a1,n=72){const a=[];for(let i=0;i<=n;i++){const t=a0+(a1-a0)*i/n;a.push([cx+r*Math.cos(t),cy+r*Math.sin(t)]);}return a;}
+const marks=[];
+marks.push(lineS(0,0,L,0),lineS(L,0,L,Wm),lineS(L,Wm,0,Wm),lineS(0,Wm,0,0));      // boundary
+marks.push(lineS(L/2,0,L/2,Wm));                                                   // halfway
+marks.push(arcS(L/2,Wm/2,9.15,0,2*Math.PI,90));                                    // centre circle
+marks.push(arcS(L/2,Wm/2,0.7,0,2*Math.PI,18));                                     // centre spot
+// left penalty + goal areas
+marks.push(lineS(0,13.84,16.5,13.84),lineS(16.5,13.84,16.5,54.16),lineS(16.5,54.16,0,54.16));
+marks.push(lineS(0,24.84,5.5,24.84),lineS(5.5,24.84,5.5,43.16),lineS(5.5,43.16,0,43.16));
+marks.push(arcS(11,34,0.7,0,2*Math.PI,18));                                        // pen spot L
+marks.push(arcS(11,34,9.15,-0.927,0.927,42));                                      // arc L
+// right penalty + goal areas
+marks.push(lineS(105,13.84,88.5,13.84),lineS(88.5,13.84,88.5,54.16),lineS(88.5,54.16,105,54.16));
+marks.push(lineS(105,24.84,99.5,24.84),lineS(99.5,24.84,99.5,43.16),lineS(99.5,43.16,105,43.16));
+marks.push(arcS(94,34,0.7,0,2*Math.PI,18));                                        // pen spot R
+marks.push(arcS(94,34,9.15,Math.PI-0.927,Math.PI+0.927,42));                       // arc R
+// corner arcs
+marks.push(arcS(0,0,1,0,Math.PI/2,16),arcS(L,0,1,Math.PI/2,Math.PI,16),
+           arcS(L,Wm,1,Math.PI,1.5*Math.PI,16),arcS(0,Wm,1,1.5*Math.PI,2*Math.PI,16));
+
+// metres -> unit-square u (aspect-preserved, centred)
+const MARGIN=0.06, scale=(1-2*MARGIN)/L, y0=0.5-0.5*scale*Wm;
+const m2u=(X,Y)=>[MARGIN+X*scale, y0+Y*scale];
+
+// ---------- deformables: cache square & simplex positions, lerp on morph ----------
+const deformables=[]; // {geom, n, uu, sq:Float32, sim:Float32, pos:Float32, lift}
+function addDeformable(uPts, geom, lift){
+  const n=uPts.length, sq=new Float32Array(n*3), sim=new Float32Array(n*3), pos=new Float32Array(n*3);
+  const uu=new Float32Array(n*2);
+  for(let i=0;i<n;i++){ uu[i*2]=uPts[i][0]; uu[i*2+1]=uPts[i][1];
+    const q=squarePos(uPts[i][0],uPts[i][1]).addScaledVector(normal,lift);
+    sq[i*3]=q.x; sq[i*3+1]=q.y; sq[i*3+2]=q.z; }
+  geom.setAttribute('position',new THREE.BufferAttribute(pos,3));
+  deformables.push({geom,n,uu,sq,sim,pos,lift});
+  return deformables[deformables.length-1];
+}
+
+// grass mesh (striped) — built over the metre grid
+const GX=54, GY=34;
+const gN=(GX+1)*(GY+1);
+const grassGeom=new THREE.BufferGeometry();
+const grassU=[]; const grassCol=new Float32Array(gN*3);
+for(let j=0;j<=GY;j++)for(let i=0;i<=GX;i++){
+  const X=L*i/GX, Y=Wm*j/GY; grassU.push(m2u(X,Y));
+  const stripe=Math.floor(X/(L/16))%2; const c=stripe?[0.16,0.46,0.20]:[0.20,0.55,0.25];
+  const k=(j*(GX+1)+i)*3; grassCol[k]=c[0]; grassCol[k+1]=c[1]; grassCol[k+2]=c[2];
+}
+const gidx=[];
+for(let j=0;j<GY;j++)for(let i=0;i<GX;i++){
+  const a=j*(GX+1)+i,b=a+1,c=a+(GX+1),d=c+1; gidx.push(a,c,b, b,c,d);
+}
+grassGeom.setIndex(gidx);
+grassGeom.setAttribute('color',new THREE.BufferAttribute(grassCol,3));
+const grass=addDeformable(grassU, grassGeom, 0.0);
+scene.add(new THREE.Mesh(grassGeom, new THREE.MeshBasicMaterial({
+  vertexColors:true, transparent:true, opacity:0.92, side:THREE.DoubleSide, depthWrite:true })));
+
+// markings (white lines, lifted just above the grass)
+const lineMat=new THREE.LineBasicMaterial({ color:0xffffff, transparent:true, opacity:0.92 });
+for(const poly of marks){
+  const uPts=poly.map(([X,Y])=>m2u(X,Y));
+  const geom=new THREE.BufferGeometry();
+  addDeformable(uPts, geom, 0.006);
+  scene.add(new THREE.Line(geom, lineMat));
+}
+
+// simplex outline + labels
+const triGeo=new THREE.BufferGeometry().setFromPoints([...Sv,Sv[0]]);
+scene.add(new THREE.Line(triGeo,new THREE.LineBasicMaterial({color:0x6ee0ff,transparent:true,opacity:0.45})));
+function label(t,p){const div=document.createElement('div');div.className='vlabel';div.textContent=t;
+  const o=new CSS2DObject(div);o.position.copy(p);scene.add(o);}
+label('p₀',Sv[0].clone().multiplyScalar(1.12)); label('p₁',Sv[1].clone().multiplyScalar(1.12)); label('p₂',Sv[2].clone().multiplyScalar(1.12));
+
+// starfield
+{ const N=500,pos=new Float32Array(N*3); let sd=987; const rnd=()=>{sd=(sd*1103515245+12345)&0x7fffffff;return sd/0x7fffffff;};
+  for(let i=0;i<N;i++){const r=9+rnd()*20,t=rnd()*6.283,ph=Math.acos(2*rnd()-1);
+    pos[i*3]=r*Math.sin(ph)*Math.cos(t);pos[i*3+1]=r*Math.sin(ph)*Math.sin(t);pos[i*3+2]=r*Math.cos(ph);}
+  const g=new THREE.BufferGeometry();g.setAttribute('position',new THREE.BufferAttribute(pos,3));
+  scene.add(new THREE.Points(g,new THREE.PointsMaterial({color:0x294031,size:0.045,transparent:true,opacity:0.6,depthWrite:false}))); }
+
+// ---------- state ----------
+let s=1.5, gamma=1.1, morph=1, autoMorph=true, manualMorph=1, morphPhase=Math.PI/2;
+const sliderToS=(v)=>Math.exp(THREE.MathUtils.lerp(Math.log(0.02),Math.log(8),v));
+const sToSlider=(val)=>(Math.log(val)-Math.log(0.02))/(Math.log(8)-Math.log(0.02));
+const ease=(t)=>t*t*(3-2*t);
+
+function recomputeSim(){
+  for(const d of deformables){
+    for(let i=0;i<d.n;i++){
+      const p=phi(d.uu[i*2],d.uu[i*2+1],s,gamma);
+      const sp=simplexPos(p).addScaledVector(normal,d.lift);
+      d.sim[i*3]=sp.x; d.sim[i*3+1]=sp.y; d.sim[i*3+2]=sp.z;
+    }
+  }
+}
+function applyMorph(){
+  const m=ease(morph);
+  for(const d of deformables){
+    for(let i=0;i<d.n*3;i++) d.pos[i]=d.sq[i]+(d.sim[i]-d.sq[i])*m;
+    d.geom.attributes.position.needsUpdate=true;
+    d.geom.computeBoundingSphere();
+  }
+}
+function setNote(){
+  let t;
+  if(s<0.06) t='Degenerate (old STD_L=500): the whole pitch collapses toward the centroid — unplayable.';
+  else if(s>3) t='Corner-reaching θ★: the pitch spreads to the simplex edges; touchlines race to the boundary.';
+  else t='Near the logistic-normal default. Straight lines bend; the centre circle becomes an oval; the corners smear.';
+  document.getElementById('note').textContent=t;
+}
+
+// ---------- UI ----------
+const sRange=document.getElementById('sRange'),gRange=document.getElementById('gRange');
+const sVal=document.getElementById('sVal'),gVal=document.getElementById('gVal'),mRange=document.getElementById('mRange');
+const refresh=()=>{sVal.textContent=s.toFixed(2);gVal.textContent=gamma.toFixed(2);};
+sRange.value=sToSlider(1.5);
+sRange.addEventListener('input',()=>{s=sliderToS(+sRange.value);refresh();recomputeSim();setNote();});
+gRange.addEventListener('input',()=>{gamma=+gRange.value;refresh();recomputeSim();setNote();});
+function morphMode(mode){autoMorph=(mode==='auto');
+  document.getElementById('autoBtn').classList.toggle('active',mode==='auto');
+  document.getElementById('flatBtn').classList.toggle('active',mode==='flat');
+  document.getElementById('simBtn').classList.toggle('active',mode==='sim');
+  if(mode==='flat'){morph=manualMorph=0;mRange.value=0;}
+  if(mode==='sim'){morph=manualMorph=1;mRange.value=1;}}
+document.getElementById('autoBtn').onclick=()=>morphMode('auto');
+document.getElementById('flatBtn').onclick=()=>morphMode('flat');
+document.getElementById('simBtn').onclick=()=>morphMode('sim');
+mRange.addEventListener('input',()=>{autoMorph=false;document.getElementById('autoBtn').classList.remove('active');morph=manualMorph=+mRange.value;});
+function preset(sv,gv){s=sv;gamma=gv;sRange.value=sToSlider(sv);gRange.value=gv;refresh();recomputeSim();setNote();}
+document.getElementById('pDefault').onclick=()=>preset(1,1);
+document.getElementById('pLearned').onclick=()=>preset(4.15,2.58);
+document.getElementById('pDegen').onclick=()=>preset(0.02,1);
+addEventListener('resize',()=>{camera.aspect=innerWidth/innerHeight;camera.updateProjectionMatrix();
+  renderer.setSize(innerWidth,innerHeight);labelRenderer.setSize(innerWidth,innerHeight);});
+
+// ---------- loop ----------
+const clock=new THREE.Clock(); refresh(); recomputeSim(); setNote();
+function animate(){
+  requestAnimationFrame(animate);
+  const dt=clock.getDelta();
+  if(autoMorph){morphPhase+=dt*0.5; morph=(1-Math.cos(morphPhase))/2;} else morph=manualMorph;
+  applyMorph(); controls.update();
+  renderer.render(scene,camera); labelRenderer.render(scene,camera);
+}
+animate();
+</script>
+</body>
+</html>
