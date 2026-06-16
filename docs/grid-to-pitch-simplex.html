@@ -196,14 +196,14 @@ function applyFade(w){gridLineMat.opacity=0.55*(1-w);gridPtMat.opacity=0.82*(1-w
   // keep the white markings on the whole time the field is visible
   const t=Math.min(1,Math.max(0,(w-0.03)/0.15)); markMat.opacity=t*t*(3-2*t);}
 
-// Both skins are warped onto the SAME simplex. The morph m holds at the simplex
-// (m=1) for the entire pitch window, so the pitch is always the warped TRIANGULAR
-// field — never a square. The grid alone does the cube<->simplex flattening,
-// before and after, and the crossfades happen at the simplex.
+// TWO full square -> triangle -> square cycles per loop. The FIRST cycle is shown
+// with the coordinate grid; the SECOND with the soccer field. Both skins undergo
+// the identical cube<->simplex transform. The grid/field crossfades happen at the
+// FLAT SQUARE (cube), where the two skins are registered flat squares.
 function timeline(tau){
   const ss=(a,b,t)=>{t=Math.min(1,Math.max(0,(t-a)/(b-a)));return t*t*(3-2*t);};
-  const m=ss(0.00,0.20,tau)*(1-ss(0.80,1.00,tau));   // cube -> simplex (hold) -> cube
-  const w=ss(0.23,0.34,tau)*(1-ss(0.66,0.77,tau));   // grid <-> pitch, both at the simplex
+  const m=(1-Math.cos(4*Math.PI*tau))/2;             // square -> triangle -> square, twice
+  const w=ss(0.46,0.54,tau)*(1-ss(0.96,1.00,tau));   // grid (1st cycle) then soccer (2nd cycle)
   return [m,w];
 }
 
