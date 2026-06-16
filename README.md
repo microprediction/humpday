@@ -20,12 +20,14 @@ that pit every HumpDay optimizer against a real physics or engineering problem.
 
 ## Optimizing on the simplex
 
-[![The cube-to-simplex bijection: a coordinate net flowing between the unit square and the probability simplex](docs/assets/simplex-cube-bijection.gif)](https://humpday.microprediction.org/simplex-cube-bijection.html)
-
 Mixtures, portfolios, and allocations live on the **probability simplex** (weights
 that sum to 1), not the cube. HumpDay optimizes them by lifting a plain `[0,1]ⁿ`
 objective through a smooth bijection **φθ** onto the simplex — so every box-domain
-optimizer works unchanged. The map's scale is a tunable *preconditioner*: too small
+optimizer works unchanged.
+
+[![The cube-to-simplex bijection: a coordinate net flowing between the unit square and the probability simplex](docs/assets/simplex-cube-bijection.gif)](https://humpday.microprediction.org/simplex-cube-bijection.html)
+
+The map's scale is a tunable *preconditioner*: too small
 and the whole cube collapses onto the centroid; tuned (the `θ★` shown), off-centre
 optima map back to interior cube points where optimizers sample densely.
 [**Explore it live →**](https://humpday.microprediction.org/simplex-cube-bijection.html)
