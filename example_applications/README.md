@@ -45,6 +45,10 @@ Each subfolder is self-contained:
 | [`slingshot/`](slingshot/)                 | Ballistics (reduced-order)        | Rake one block stack or loft onto the other — two basins. *Simplified — demo uses Matter.js.* |
 | [`cocktail_blend/`](cocktail_blend/)       | Composition / inverse problem     | Proportions on the unit simplex (sum to 1) via the cube→simplex bijection; an over-determined flavour target with an interior optimum. |
 | [`portfolio_frontier/`](portfolio_frontier/) | Composition / finance (non-convex) | Long-only weights on the unit simplex via the same bijection; a cardinality cost makes it non-convex and bimodal — a corner trap vs a diversified basin that ranks optimisers. |
+| [`multi_exponential_fit/`](multi_exponential_fit/) | Spectroscopy / pharmacokinetics | Ill-conditioned "sloppy" valley — the Jacobian condition number diverges as two decay rates converge, so methods reach equal residuals at wildly different rates. |
+| [`speed_reducer/`](speed_reducer/)         | Mechanical design (gearbox)       | Nonconvex, mixed-integer, 11 active nonlinear constraints; a *verifiable* known optimum (weight ≈ 2994.47). |
+| [`gear_ratios/`](gear_ratios/)             | Mechanical design (gear train)    | Discrete / staircase — the objective is piecewise-constant on the integer tooth lattice, so there is no gradient to follow. |
+| [`transfer_window/`](transfer_window/)     | Aerospace (interplanetary Δv)     | Disjoint feasible islands — a Lambert-solver porkchop with separate launch windows; local search sees only its own. |
 
 Of these, twenty-eight (`boids_flocking` through `slingshot`) mirror, in pure
 Python, the interactive browser demos at
@@ -112,6 +116,10 @@ python -m example_applications.pool.run
 python -m example_applications.slingshot.run
 python -m example_applications.cocktail_blend.run
 python -m example_applications.portfolio_frontier.run
+python -m example_applications.multi_exponential_fit.run
+python -m example_applications.speed_reducer.run
+python -m example_applications.gear_ratios.run
+python -m example_applications.transfer_window.run
 ```
 
 No external dependencies beyond what HumpDay itself uses — these are
