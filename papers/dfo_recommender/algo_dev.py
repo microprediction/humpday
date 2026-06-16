@@ -25,6 +25,7 @@ the loop and the memorisation-proof fitness are what matter.
 from __future__ import annotations
 
 import argparse
+import json
 import random
 import sys
 from pathlib import Path
@@ -253,16 +254,66 @@ def candidate_mean_rank(genome, base_demos, seeds, n_trials, panel=PANEL):
     return mean(ranks) if ranks else float(len(panel) + 1)
 
 
-def evolve(generations, lam, base_demos, seeds, n_trials, rng_seed=0):
-    """(1 + λ) evolution strategy over the genome. Returns (best_genome,
-    best_fitness, history)."""
+def _ck_payload(config, gen, parent, parent_fit, history, step, extra=None):
+    payload = {
+        "config": config or {},
+        "panel": PANEL,
+        "generation": gen,
+        "best_fitness": parent_fit,
+        "best_genome": parent,
+        "genome_decoded": _describe(parent),
+        "history": history,
+        "step": step,
+    }
+    if extra:
+        payload.update(extra)
+    return payload
+
+
+def _save_checkpoint(path, payload):
+    """Atomic-ish JSON write (write to .tmp then rename)."""
+    tmp = str(path) + ".tmp"
+    with open(tmp, "w") as fh:
+        json.dump(payload, fh, indent=2)
+    Path(tmp).replace(path)
+
+
+def evolve(
+    generations,
+    lam,
+    base_demos,
+    seeds,
+    n_trials,
+    rng_seed=0,
+    checkpoint=None,
+    resume=False,
+    config=None,
+):
+    """(1 + λ) evolution strategy over the genome.
+
+    When `checkpoint` is given, writes a JSON snapshot (best genome + decoded
+    knobs + per-generation regret history) after every generation, so a long run
+    on another machine is analysable and, with `resume=True`, restartable from
+    where it left off. Returns (best_genome, best_fitness, history)."""
     random.seed(rng_seed)
-    parent = list(DEFAULT_GENOME)  # warm start from a sane, competitive genome
-    parent_fit = candidate_fitness(parent, base_demos, seeds, n_trials)
-    history = [parent_fit]
     step = 0.25
-    print(f"  gen 0: parent fitness (norm. regret) = {parent_fit:.4f}", flush=True)
-    for gen in range(1, generations + 1):
+    start_gen = 0
+    if resume and checkpoint and Path(checkpoint).exists():
+        ck = json.loads(Path(checkpoint).read_text())
+        parent, parent_fit = ck["best_genome"], ck["best_fitness"]
+        history, step = ck["history"], ck.get("step", step)
+        start_gen = ck.get("generation", len(history) - 1)
+        print(f"  resumed at gen {start_gen}: regret = {parent_fit:.4f}", flush=True)
+    else:
+        parent = list(DEFAULT_GENOME)  # warm start from a sane, competitive genome
+        parent_fit = candidate_fitness(parent, base_demos, seeds, n_trials)
+        history = [parent_fit]
+        print(f"  gen 0: parent fitness (norm. regret) = {parent_fit:.4f}", flush=True)
+        if checkpoint:
+            _save_checkpoint(
+                checkpoint, _ck_payload(config, 0, parent, parent_fit, history, step)
+            )
+    for gen in range(start_gen + 1, generations + 1):
         best_child, best_child_fit = None, INF
         for _ in range(lam):
             child = [
@@ -281,6 +332,10 @@ def evolve(generations, lam, base_demos, seeds, n_trials, rng_seed=0):
             f"  gen {gen}: best regret = {parent_fit:.4f}  (best child {best_child_fit:.4f}, step {step:.2f})",
             flush=True,
         )
+        if checkpoint:
+            _save_checkpoint(
+                checkpoint, _ck_payload(config, gen, parent, parent_fit, history, step)
+            )
     return parent, parent_fit, history
 
 
@@ -298,6 +353,16 @@ def main() -> int:
     ap.add_argument(
         "--n-demos", type=int, default=8, help="how many base demos to score on"
     )
+    ap.add_argument(
+        "--out",
+        default=str(HERE / "algo_dev_run.json"),
+        help="checkpoint JSON path written each generation ('' to disable)",
+    )
+    ap.add_argument(
+        "--resume",
+        action="store_true",
+        help="resume from the --out checkpoint if present",
+    )
     ap.add_argument("--quick", action="store_true")
     args = ap.parse_args()
 
@@ -308,13 +373,46 @@ def main() -> int:
         generations, lam, trials, n_demos, seeds = 4, 3, 50, 5, (0, 1)
 
     base = DEMOS[:n_demos]
+    checkpoint = args.out or None
+    config = {
+        "generations": generations,
+        "lam": lam,
+        "seeds": list(seeds),
+        "trials": trials,
+        "n_demos": n_demos,
+    }
     print(
         f"Evolving an optimizer: (1+{lam}) ES, {generations} generations,\n"
         f"fitness = normalised regret vs {PANEL}\n"
-        f"across {len(base)} demos x {len(seeds)} disguised seeds, {trials} trials each.\n"
+        f"across {len(base)} demos x {len(seeds)} disguised seeds, {trials} trials each."
     )
-    best_genome, best_fit, _ = evolve(generations, lam, base, seeds, trials)
+    if checkpoint:
+        print(f"checkpoint: {checkpoint}{' (resuming)' if args.resume else ''}")
+    print()
+    best_genome, best_fit, history = evolve(
+        generations,
+        lam,
+        base,
+        seeds,
+        trials,
+        checkpoint=checkpoint,
+        resume=args.resume,
+        config=config,
+    )
     rank = candidate_mean_rank(best_genome, base, seeds, trials)
+    if checkpoint:  # final snapshot carries the (expensive) mean-rank readout
+        _save_checkpoint(
+            checkpoint,
+            _ck_payload(
+                config,
+                generations,
+                best_genome,
+                best_fit,
+                history,
+                0.0,
+                extra={"mean_rank": rank, "done": True},
+            ),
+        )
     print("\n=== Evolved optimizer ===")
     print(f"  normalised regret vs panel: {best_fit:.4f}  (0 = best on every instance)")
     print(
