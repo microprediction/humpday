@@ -11,7 +11,7 @@ Status: ✅ built · 🚧 in progress · ⬜ todo · 🔬 deferred (scope risk /
 | 1 | `multi_exponential_fit` | spectroscopy / pharmacokinetics | **Ill-conditioned curving "sloppy" valley** — Jacobian cond. number → ∞ as two rates converge; many distinct fits look identical | 4 | ≈ noise floor at true params (± label-swap) | ✅ |
 | 2 | `speed_reducer` | mechanical design (Golinski gearbox) | **Nonconvex + 11 nonlinear constraints + mixed-integer** (pinion teeth); metaheuristics can't *guarantee* the optimum | 7 | yes — weight ≈ **2994.4712** | ✅ |
 | 3 | `gear_ratios` | mechanical design (Sandgren gear train) | **Discreteness / plateaus** — objective is piecewise-constant on the integer tooth lattice; no gradient to follow | 4 | yes — `f≈2.7e-12` at teeth (19,16,43,49) | ✅ |
-| 4 | `transfer_window` | aerospace (interplanetary Δv) | **Disjoint feasible islands / multi-basin** with brutal intra-basin scale (porkchop plot) — basin-hopping/CMA territory, local search dies | 4–6 | best-known published (GTOPX) | ⬜ |
+| 4 | `transfer_window` | aerospace (Earth→Mars Δv) | **Disjoint feasible islands / multi-basin** (porkchop) — local search sees only its own launch window | 2 | yes — Δv≈0.188 (= analytic Hohmann; validated) | ✅ |
 | 5 | `cassini_minlp` | aerospace (flyby sequence) | **Mixed-integer + razor-thin deceptive tie** (local 3.6307 vs global 3.5007) | 6+4 | best-known 3.5007 | ⬜ |
 
 ## Deferred / different home
