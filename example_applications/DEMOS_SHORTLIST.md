@@ -14,6 +14,26 @@ Status: ✅ built · 🚧 in progress · ⬜ todo · 🔬 deferred (scope risk /
 | 4 | `transfer_window` | aerospace (Earth→Mars Δv) | **Disjoint feasible islands / multi-basin** (porkchop) — local search sees only its own launch window | 2 | yes — Δv≈0.188 (= analytic Hohmann; validated) | ✅ |
 | 5 | `cassini_minlp` | aerospace (flyby sequence) | **Mixed-integer + deceptive near-tied sequences** — methods disagree on the discrete flyby planets | 6+4 | reduced-order (structure, not GTOPX's exact 3.5007) | ✅ |
 
+## Wave 2 — broadening the benchmark (toward goal-based algorithm development)
+
+A second batch built to grow a large, diverse real-world suite. All ✅ built, pure-Python,
+auto-collected, verified against known optima where one exists.
+
+| Demo | Domain | Pathology | n | Known optimum? |
+|------|--------|-----------|---|----------------|
+| `pressure_vessel` | mechanical | constrained, gauge-quantised mixed-integer | 4 | ✅ ≈ 6059.7 |
+| `tension_spring` | mechanical | constrained; tiny objective vs O(1) violations | 3 | ✅ ≈ 0.01267 |
+| `cantilever_beam` | structural | single curved constraint, optimum on the boundary | 5 | ✅ ≈ 1.340 |
+| `lennard_jones_cluster` | physics | extreme multimodality (≈exp many minima) | 15 | ✅ LJ₅ ≈ −9.104 |
+| `facility_location` | operations | non-smooth `min`, multimodal assignment | 6 | computed |
+| `kmeans_clustering` | ML | multimodal (k-means local minima) | 6 | computed |
+| `enzyme_kinetics` | biochem | mildly ill-conditioned curved valley | 2 | ✅ noise floor |
+| `darts_aim` | games / decision-under-noise | deterministic multimodal expected-score | 2 | computed (Tibshirani) |
+
+**Disguise harness:** `humpday/transforms/cube_disguise.py` wraps any objective in a seeded
+random cube→cube diffeomorphism, relocating the optimum per seed so algorithm development
+against these demos can't memorise optimum *locations*. Use many seeds per problem.
+
 ## Deferred / different home
 
 - **`step_function` (De Jong f3)** — the flat-plateau pathology is now covered by

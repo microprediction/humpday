@@ -50,6 +50,14 @@ Each subfolder is self-contained:
 | [`gear_ratios/`](gear_ratios/)             | Mechanical design (gear train)    | Discrete / staircase — the objective is piecewise-constant on the integer tooth lattice, so there is no gradient to follow. |
 | [`transfer_window/`](transfer_window/)     | Aerospace (interplanetary Δv)     | Disjoint feasible islands — a Lambert-solver porkchop with separate launch windows; local search sees only its own. |
 | [`cassini_minlp/`](cassini_minlp/)         | Aerospace (gravity-assist tour)   | Mixed-integer — Earth→4 flybys→Saturn with discrete flyby planets; near-tied sequences make methods disagree on the combinatorial choice. |
+| [`pressure_vessel/`](pressure_vessel/)     | Mechanical design                 | Constrained mixed-integer with gauge-quantised thicknesses; verifiable known optimum ≈ 6059.7. |
+| [`tension_spring/`](tension_spring/)       | Mechanical design                 | Constrained coil-spring weight; tiny objective vs O(1) violations; verifiable optimum ≈ 0.01267. |
+| [`cantilever_beam/`](cantilever_beam/)     | Structural design                 | A single curved nonlinear constraint with the optimum *on* the boundary; verifiable optimum ≈ 1.340. |
+| [`lennard_jones_cluster/`](lennard_jones_cluster/) | Physics (atomic cluster)  | Extreme multimodality — local minima grow ~exponentially with N; known LJ₅ ground state ≈ −9.104. |
+| [`facility_location/`](facility_location/) | Operations (p-median)             | Non-smooth `min`-over-facilities cost; multimodal combinatorial assignment of facilities to clusters. |
+| [`kmeans_clustering/`](kmeans_clustering/) | Machine learning                  | The k-means objective as global optimisation — multimodal local minima (the reason for random restarts). |
+| [`enzyme_kinetics/`](enzyme_kinetics/)     | Biochemistry (curve fit)          | Michaelis–Menten fit; mildly ill-conditioned (Vmax/Km correlated) curved valley. |
+| [`darts_aim/`](darts_aim/)                 | Games (decision under noise)      | Where to aim under throw noise; deterministic but multimodal expected-score surface (the Tibshirani result). |
 
 Of these, twenty-eight (`boids_flocking` through `slingshot`) mirror, in pure
 Python, the interactive browser demos at
@@ -122,6 +130,14 @@ python -m example_applications.speed_reducer.run
 python -m example_applications.gear_ratios.run
 python -m example_applications.transfer_window.run
 python -m example_applications.cassini_minlp.run
+python -m example_applications.pressure_vessel.run
+python -m example_applications.tension_spring.run
+python -m example_applications.cantilever_beam.run
+python -m example_applications.lennard_jones_cluster.run
+python -m example_applications.facility_location.run
+python -m example_applications.kmeans_clustering.run
+python -m example_applications.enzyme_kinetics.run
+python -m example_applications.darts_aim.run
 ```
 
 No external dependencies beyond what HumpDay itself uses — these are
