@@ -1,0 +1,436 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>From the simplex to the cube — an immersive bijection</title>
+<style>
+  :root { color-scheme: dark; }
+  * { box-sizing: border-box; }
+  html, body { margin: 0; height: 100%; overflow: hidden;
+    background: radial-gradient(120% 120% at 50% 0%, #0b1020 0%, #05060c 60%, #020306 100%);
+    font-family: ui-sans-serif, -apple-system, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+    color: #dfe6f5; }
+  #app { position: fixed; inset: 0; }
+  canvas { display: block; }
+
+  .panel {
+    position: absolute; top: 18px; left: 18px; width: 318px; max-width: calc(100vw - 36px);
+    padding: 18px 18px 16px; border-radius: 16px;
+    background: rgba(14, 19, 34, 0.62); backdrop-filter: blur(14px) saturate(140%);
+    -webkit-backdrop-filter: blur(14px) saturate(140%);
+    border: 1px solid rgba(120, 160, 230, 0.18);
+    box-shadow: 0 18px 50px rgba(0,0,0,0.55), inset 0 1px 0 rgba(255,255,255,0.05);
+    user-select: none; }
+  .panel h1 { font-size: 15px; margin: 0 0 2px; font-weight: 650; letter-spacing: 0.2px; }
+  .panel .sub { font-size: 11.5px; color: #8fa0c4; margin: 0 0 14px; line-height: 1.45; }
+  .row { margin: 12px 0; }
+  .row label { display: flex; justify-content: space-between; align-items: baseline;
+    font-size: 12px; color: #b9c6e6; margin-bottom: 5px; }
+  .row label .val { font-variant-numeric: tabular-nums; color: #6ee0ff; font-weight: 600; }
+  input[type=range] { -webkit-appearance: none; appearance: none; width: 100%; height: 4px;
+    border-radius: 4px; background: #243154; outline: none; }
+  input[type=range]::-webkit-slider-thumb { -webkit-appearance: none; appearance: none;
+    width: 15px; height: 15px; border-radius: 50%;
+    background: radial-gradient(circle at 35% 30%, #aef3ff, #3aa0ff 70%);
+    box-shadow: 0 0 10px rgba(80,180,255,0.8); cursor: pointer; border: none; }
+  input[type=range]::-moz-range-thumb { width: 15px; height: 15px; border: none; border-radius: 50%;
+    background: radial-gradient(circle at 35% 30%, #aef3ff, #3aa0ff 70%);
+    box-shadow: 0 0 10px rgba(80,180,255,0.8); cursor: pointer; }
+  .presets { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 4px; }
+  .presets button, .toggle button {
+    font: inherit; font-size: 11px; padding: 6px 9px; border-radius: 9px; cursor: pointer;
+    color: #d7e2fb; background: rgba(90,130,210,0.13); border: 1px solid rgba(120,160,230,0.22);
+    transition: background .15s, border-color .15s, transform .05s; }
+  .presets button:hover, .toggle button:hover { background: rgba(110,150,235,0.26); }
+  .presets button:active, .toggle button:active { transform: translateY(1px); }
+  .presets button.danger { color: #ffd0d6; background: rgba(220,80,110,0.14); border-color: rgba(230,110,140,0.3); }
+  .presets button.gold { color: #fff0c2; background: rgba(230,190,90,0.15); border-color: rgba(240,205,120,0.32); }
+  .divider { height: 1px; background: linear-gradient(90deg, transparent, rgba(140,170,230,0.25), transparent); margin: 14px 0; }
+  .toggle { display: flex; gap: 6px; }
+  .toggle button.active { background: rgba(110,224,255,0.22); border-color: rgba(110,224,255,0.5); color: #d8f8ff; }
+  .readout { font-size: 11.5px; color: #9fb0d4; margin-top: 12px; line-height: 1.5; }
+  .readout b { color: #ffe08a; font-variant-numeric: tabular-nums; }
+  .note { font-size: 10.5px; color: #6f80a6; margin-top: 10px; line-height: 1.45; }
+  .hint { position: absolute; bottom: 14px; left: 50%; transform: translateX(-50%);
+    font-size: 11px; color: #6677a0; letter-spacing: 0.3px; pointer-events: none; text-align: center; }
+  .vlabel { font-size: 12px; font-weight: 600; color: #cfe; text-shadow: 0 0 8px rgba(0,0,0,0.9);
+    padding: 1px 5px; border-radius: 6px; background: rgba(10,16,30,0.35); pointer-events: none; white-space: nowrap; }
+  .vlabel.dim { color: #9fb0d4; font-weight: 500; }
+</style>
+</head>
+<body>
+<div id="app"></div>
+
+<div class="panel">
+  <h1>From the simplex to the cube</h1>
+  <p class="sub">A diffeomorphism <b>φ<sub>θ</sub></b> mapping the unit square&nbsp;[0,1]² onto the
+  probability simplex (a triangle). The flowing grid is the square's coordinate
+  net, drawn where it lands on the simplex.</p>
+
+  <div class="row">
+    <label>scale&nbsp; <span style="color:#6f80a6">s</span> <span class="val" id="sVal">1.00</span></label>
+    <input type="range" id="sRange" min="0" max="1" step="0.001" value="0.5" />
+  </div>
+  <div class="row">
+    <label>tail-warp&nbsp; <span style="color:#6f80a6">γ</span> <span class="val" id="gVal">1.00</span></label>
+    <input type="range" id="gRange" min="0.4" max="3.0" step="0.001" value="1.0" />
+  </div>
+
+  <div class="presets">
+    <button id="pDefault">θ₀ default (1, 1)</button>
+    <button id="pLearned" class="gold">learned θ★ (4.15, 2.58)</button>
+    <button id="pDegen" class="danger">old STD_L = 500</button>
+  </div>
+
+  <div class="divider"></div>
+
+  <div class="row" style="margin:6px 0 8px;">
+    <label>morph &nbsp;<span style="color:#6f80a6">cube ⇆ simplex</span></label>
+    <div class="toggle" style="margin-bottom:8px;">
+      <button id="autoBtn" class="active">auto</button>
+      <button id="cubeBtn">cube</button>
+      <button id="simBtn">simplex</button>
+    </div>
+    <input type="range" id="mRange" min="0" max="1" step="0.001" value="1" />
+  </div>
+
+  <div class="row" style="margin:10px 0 2px;">
+    <label>colour</label>
+    <div class="toggle">
+      <button id="cCorr" class="active">correspondence</button>
+      <button id="cObj">objective field</button>
+    </div>
+  </div>
+
+  <div class="readout" id="readout"></div>
+  <div class="note" id="note"></div>
+</div>
+
+<div class="hint">drag to orbit · scroll to zoom · the gold ★ is the optimum; watch its square pre-image slide toward the centre as s grows</div>
+
+<script type="importmap">
+{
+  "imports": {
+    "three": "https://unpkg.com/three@0.160.0/build/three.module.js",
+    "three/addons/": "https://unpkg.com/three@0.160.0/examples/jsm/"
+  }
+}
+</script>
+
+<script type="module">
+import * as THREE from 'three';
+import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
+import { CSS2DRenderer, CSS2DObject } from 'three/addons/renderers/CSS2DRenderer.js';
+
+// ---------- the bijection (must match humpday.transforms.cubetosimplex) ----------
+// s here is a multiplicative scale on the latent logits; it is 1/STD_L. gamma warps
+// the probit tails. (s, gamma) = (1, 1) is the plain logistic-normal map.
+function probit(p) {
+  p = Math.min(1 - 1e-9, Math.max(1e-9, p));
+  const a = [-3.969683028665376e+01, 2.209460984245205e+02, -2.759285104469687e+02,
+             1.383577518672690e+02, -3.066479806614716e+01, 2.506628277459239e+00];
+  const b = [-5.447609879822406e+01, 1.615858368580409e+02, -1.556989798598866e+02,
+             6.680131188771972e+01, -1.328068155288572e+01];
+  const c = [-7.784894002430293e-03, -3.223964580411365e-01, -2.400758277161838e+00,
+             -2.549732539343734e+00, 4.374664141464968e+00, 2.938163982698783e+00];
+  const d = [7.784695709041462e-03, 3.224671290700398e-01, 2.445134137142996e+00, 3.754408661907416e+00];
+  const plow = 0.02425, phigh = 1 - plow;
+  let q, r;
+  if (p < plow) { q = Math.sqrt(-2 * Math.log(p));
+    return (((((c[0]*q+c[1])*q+c[2])*q+c[3])*q+c[4])*q+c[5]) / ((((d[0]*q+d[1])*q+d[2])*q+d[3])*q+1); }
+  if (p <= phigh) { q = p - 0.5; r = q*q;
+    return (((((a[0]*r+a[1])*r+a[2])*r+a[3])*r+a[4])*r+a[5])*q / (((((b[0]*r+b[1])*r+b[2])*r+b[3])*r+b[4])*r+1); }
+  q = Math.sqrt(-2 * Math.log(1 - p));
+  return -(((((c[0]*q+c[1])*q+c[2])*q+c[3])*q+c[4])*q+c[5]) / ((((d[0]*q+d[1])*q+d[2])*q+d[3])*q+1);
+}
+function erf(x) { // Abramowitz & Stegun 7.1.26
+  const t = 1 / (1 + 0.3275911 * Math.abs(x));
+  const y = 1 - (((((1.061405429*t - 1.453152027)*t) + 1.421413741)*t - 0.284496736)*t + 0.254829592)*t*Math.exp(-x*x);
+  return x >= 0 ? y : -y;
+}
+const normcdf = (z) => 0.5 * (1 + erf(z / Math.SQRT2));
+const warp = (z, g) => Math.sign(z) * Math.pow(Math.abs(z), g);
+
+// cube (u1,u2) -> simplex (p0,p1,p2)
+function phi(u1, u2, s, g) {
+  const l1 = s * warp(probit(u1), g);
+  const l2 = s * warp(probit(u2), g);
+  const m = Math.max(0, l1, l2);
+  const e0 = Math.exp(0 - m), e1 = Math.exp(l1 - m), e2 = Math.exp(l2 - m);
+  const S = e0 + e1 + e2;
+  return [e0 / S, e1 / S, e2 / S];
+}
+// simplex (p0,p1,p2) -> cube (u1,u2)
+function phiInv(p0, p1, p2, s, g) {
+  p0 = Math.max(p0, 1e-12); p1 = Math.max(p1, 1e-12); p2 = Math.max(p2, 1e-12);
+  const z1 = warp(Math.log(p1 / p0) / s, 1 / g);
+  const z2 = warp(Math.log(p2 / p0) / s, 1 / g);
+  return [normcdf(z1), normcdf(z2)];
+}
+
+// ---------- scene ----------
+const app = document.getElementById('app');
+const scene = new THREE.Scene();
+scene.fog = new THREE.FogExp2(0x05060c, 0.085);
+const camera = new THREE.PerspectiveCamera(52, innerWidth / innerHeight, 0.1, 100);
+camera.position.set(2.4, 1.5, 3.9);
+const renderer = new THREE.WebGLRenderer({ antialias: true, alpha: true });
+renderer.setPixelRatio(Math.min(devicePixelRatio, 2));
+renderer.setSize(innerWidth, innerHeight);
+app.appendChild(renderer.domElement);
+
+const labelRenderer = new CSS2DRenderer();
+labelRenderer.setSize(innerWidth, innerHeight);
+labelRenderer.domElement.style.position = 'absolute';
+labelRenderer.domElement.style.top = '0';
+labelRenderer.domElement.style.pointerEvents = 'none';
+app.appendChild(labelRenderer.domElement);
+
+const controls = new OrbitControls(camera, renderer.domElement);
+controls.enableDamping = true; controls.dampingFactor = 0.08;
+controls.autoRotate = true; controls.autoRotateSpeed = 0.55;
+controls.minDistance = 2.2; controls.maxDistance = 12;
+
+// ---------- geometry frames ----------
+// Simplex: scaled standard simplex {x+y+z=1.6 on the positive octant}, centred.
+const SC = 1.7;
+const centre = new THREE.Vector3(SC/3, SC/3, SC/3);
+const Sv = [
+  new THREE.Vector3(SC, 0, 0).sub(centre),
+  new THREE.Vector3(0, SC, 0).sub(centre),
+  new THREE.Vector3(0, 0, SC).sub(centre),
+];
+// Square: a flat sheet parallel to the simplex plane, offset below along its normal.
+const normal = new THREE.Vector3(1, 1, 1).normalize();
+const e1 = new THREE.Vector3(1, -1, 0).normalize();
+const e2 = new THREE.Vector3().crossVectors(normal, e1).normalize();
+const W = 2.0;
+const squareCentre = normal.clone().multiplyScalar(-1.55);
+function squarePos(u1, u2) {
+  return squareCentre.clone()
+    .addScaledVector(e1, (u1 - 0.5) * W)
+    .addScaledVector(e2, (u2 - 0.5) * W);
+}
+function simplexPos(p) {
+  return new THREE.Vector3()
+    .addScaledVector(Sv[0], p[0])
+    .addScaledVector(Sv[1], p[1])
+    .addScaledVector(Sv[2], p[2]);
+}
+
+// ---------- grid topology ----------
+const R = 30;                       // cells per side
+const NV = (R + 1) * (R + 1);
+const gu = new Float32Array(NV * 2);     // (u1,u2) per vertex
+const vPos = new Array(NV);              // cached Vector3 (square / simplex)
+for (let j = 0, k = 0; j <= R; j++) for (let i = 0; i <= R; i++, k++) {
+  gu[k*2] = i / R; gu[k*2+1] = j / R; vPos[k] = new THREE.Vector3();
+}
+const idx = (i, j) => j * (R + 1) + i;
+
+// edges -> line segments
+const edges = [];
+for (let j = 0; j <= R; j++) for (let i = 0; i < R; i++) edges.push(idx(i,j), idx(i+1,j));
+for (let i = 0; i <= R; i++) for (let j = 0; j < R; j++) edges.push(idx(i,j), idx(i,j+1));
+const NE = edges.length;
+
+const lineGeo = new THREE.BufferGeometry();
+const linePos = new Float32Array(NE * 3);
+const lineCol = new Float32Array(NE * 3);
+lineGeo.setAttribute('position', new THREE.BufferAttribute(linePos, 3));
+lineGeo.setAttribute('color', new THREE.BufferAttribute(lineCol, 3));
+const lineMat = new THREE.LineBasicMaterial({ vertexColors: true, transparent: true,
+  opacity: 0.62, blending: THREE.AdditiveBlending, depthWrite: false });
+scene.add(new THREE.LineSegments(lineGeo, lineMat));
+
+const ptGeo = new THREE.BufferGeometry();
+const ptPos = new Float32Array(NV * 3);
+const ptCol = new Float32Array(NV * 3);
+ptGeo.setAttribute('position', new THREE.BufferAttribute(ptPos, 3));
+ptGeo.setAttribute('color', new THREE.BufferAttribute(ptCol, 3));
+const ptMat = new THREE.PointsMaterial({ size: 0.035, vertexColors: true, transparent: true,
+  opacity: 0.95, blending: THREE.AdditiveBlending, depthWrite: false, sizeAttenuation: true });
+scene.add(new THREE.Points(ptGeo, ptMat));
+
+// reference outlines (faint): square and simplex
+function outline(points, color, op) {
+  const g = new THREE.BufferGeometry().setFromPoints([...points, points[0]]);
+  return new THREE.Line(g, new THREE.LineBasicMaterial({ color, transparent: true, opacity: op,
+    blending: THREE.AdditiveBlending, depthWrite: false }));
+}
+const triOutline = outline(Sv, 0x6ee0ff, 0.5); scene.add(triOutline);
+const sqCorners = [squarePos(0,0), squarePos(1,0), squarePos(1,1), squarePos(0,1)];
+scene.add(outline(sqCorners, 0x5a7fff, 0.32));
+
+// optimum marker + its square-centre reference
+function ball(color, r) {
+  const m = new THREE.Mesh(new THREE.SphereGeometry(r, 20, 20),
+    new THREE.MeshBasicMaterial({ color }));
+  scene.add(m); return m;
+}
+const optBall = ball(0xffd45a, 0.052);
+const optGlow = ball(0xffd45a, 0.10); optGlow.material.transparent = true;
+optGlow.material.opacity = 0.18; optGlow.material.blending = THREE.AdditiveBlending;
+const ctrBall = ball(0x88a0d0, 0.03); ctrBall.material.transparent = true; ctrBall.material.opacity = 0.7;
+
+// vertex labels
+function label(text, pos, cls) {
+  const div = document.createElement('div'); div.className = 'vlabel' + (cls ? ' ' + cls : '');
+  div.textContent = text; const o = new CSS2DObject(div); o.position.copy(pos); scene.add(o); return o;
+}
+label('p₀', Sv[0].clone().multiplyScalar(1.12));
+label('p₁', Sv[1].clone().multiplyScalar(1.12));
+label('p₂', Sv[2].clone().multiplyScalar(1.12));
+label('[0,1]² cube', squareCentre.clone().addScaledVector(e2, -W*0.62), 'dim');
+
+// ambient starfield for depth
+{
+  const N = 700, pos = new Float32Array(N * 3);
+  let seed = 12345; const rnd = () => { seed = (seed*1103515245+12345) & 0x7fffffff; return seed/0x7fffffff; };
+  for (let i = 0; i < N; i++) {
+    const r = 9 + rnd()*22, t = rnd()*Math.PI*2, ph = Math.acos(2*rnd()-1);
+    pos[i*3] = r*Math.sin(ph)*Math.cos(t); pos[i*3+1] = r*Math.sin(ph)*Math.sin(t); pos[i*3+2] = r*Math.cos(ph);
+  }
+  const g = new THREE.BufferGeometry(); g.setAttribute('position', new THREE.BufferAttribute(pos, 3));
+  scene.add(new THREE.Points(g, new THREE.PointsMaterial({ color: 0x33406a, size: 0.05,
+    transparent: true, opacity: 0.6, depthWrite: false })));
+}
+
+// ---------- colour ramps ----------
+const tmpC = new THREE.Color();
+function corrColour(u1, u2, out, o) { // identity gradient: each square point keeps a hue
+  out[o] = 0.22 + 0.72*u1; out[o+1] = 0.30 + 0.60*u2; out[o+2] = 0.95 - 0.55*(u1+u2)/2;
+}
+function turbo(t, out, o) { // compact turbo-ish ramp, t in [0,1]
+  t = Math.min(1, Math.max(0, t));
+  const r = Math.min(1, Math.max(0, 1.10 - Math.abs(4*t - 3.0)));
+  const g = Math.min(1, Math.max(0, 1.10 - Math.abs(4*t - 2.0)));
+  const b = Math.min(1, Math.max(0, 1.10 - Math.abs(4*t - 1.0)));
+  out[o] = r; out[o+1] = g; out[o+2] = b;
+}
+
+// ---------- state ----------
+const TARGET = [0.15, 0.55, 0.30];     // target composition (the optimum on the simplex)
+let s = 1, gamma = 1, morph = 1, autoMorph = true, manualMorph = 1, colourMode = 'corr';
+let morphPhase = Math.PI / 2;
+
+function sliderToS(v) { return Math.exp(THREE.MathUtils.lerp(Math.log(0.02), Math.log(8), v)); }
+function sToSlider(val) { return (Math.log(val) - Math.log(0.02)) / (Math.log(8) - Math.log(0.02)); }
+
+const ease = (t) => t*t*(3 - 2*t);
+
+function rebuild() {
+  // recompute the two frame positions for each vertex, then blend by morph
+  const m = ease(morph);
+  let lo = Infinity, hi = -Infinity;
+  const objVal = new Float32Array(NV);
+  for (let k = 0; k < NV; k++) {
+    const u1 = gu[k*2], u2 = gu[k*2+1];
+    const p = phi(u1, u2, s, gamma);
+    const sp = simplexPos(p), qp = squarePos(u1, u2);
+    vPos[k].set(THREE.MathUtils.lerp(qp.x, sp.x, m),
+                THREE.MathUtils.lerp(qp.y, sp.y, m),
+                THREE.MathUtils.lerp(qp.z, sp.z, m));
+    const d = Math.hypot(p[0]-TARGET[0], p[1]-TARGET[1], p[2]-TARGET[2]);
+    objVal[k] = d; if (d < lo) lo = d; if (d > hi) hi = d;
+  }
+  // points + colours
+  for (let k = 0; k < NV; k++) {
+    ptPos[k*3] = vPos[k].x; ptPos[k*3+1] = vPos[k].y; ptPos[k*3+2] = vPos[k].z;
+    if (colourMode === 'corr') corrColour(gu[k*2], gu[k*2+1], ptCol, k*3);
+    else turbo(1 - (objVal[k]-lo)/(hi-lo+1e-9), ptCol, k*3);
+  }
+  // line segments inherit endpoint colour/position
+  for (let e = 0; e < NE; e++) {
+    const a = edges[e]; const o = e*3;
+    linePos[o] = vPos[a].x; linePos[o+1] = vPos[a].y; linePos[o+2] = vPos[a].z;
+    lineCol[o] = ptCol[a*3]; lineCol[o+1] = ptCol[a*3+1]; lineCol[o+2] = ptCol[a*3+2];
+  }
+  lineGeo.attributes.position.needsUpdate = true; lineGeo.attributes.color.needsUpdate = true;
+  ptGeo.attributes.position.needsUpdate = true; ptGeo.attributes.color.needsUpdate = true;
+
+  // optimum marker (pre-image of TARGET) and its morphed position
+  const [ou1, ou2] = phiInv(TARGET[0], TARGET[1], TARGET[2], s, gamma);
+  const op = simplexPos(TARGET), oq = squarePos(ou1, ou2);
+  optBall.position.set(THREE.MathUtils.lerp(oq.x, op.x, m),
+                       THREE.MathUtils.lerp(oq.y, op.y, m),
+                       THREE.MathUtils.lerp(oq.z, op.z, m));
+  optGlow.position.copy(optBall.position);
+  const cq = squarePos(0.5, 0.5), cp = simplexPos(phi(0.5, 0.5, s, gamma));
+  ctrBall.position.set(THREE.MathUtils.lerp(cq.x, cp.x, m),
+                       THREE.MathUtils.lerp(cq.y, cp.y, m),
+                       THREE.MathUtils.lerp(cq.z, cp.z, m));
+
+  // readout
+  const dCentre = Math.hypot(ou1 - 0.5, ou2 - 0.5);
+  document.getElementById('readout').innerHTML =
+    `optimum pre-image&nbsp; <b>(${ou1.toFixed(2)}, ${ou2.toFixed(2)})</b><br>` +
+    `‖u − ½‖ from cube centre &nbsp; <b>${dCentre.toFixed(3)}</b>`;
+  let note = '';
+  if (s < 0.05) note = 'Degenerate: the whole square collapses near the centroid — corners unreachable. This is the old STD_L = 500 bug.';
+  else if (s > 3) note = 'Corner-reaching: off-centre optima map back to interior cube points (small ‖u−½‖) — the regime the amortized hyper-opt learned.';
+  else note = 'Near the logistic-normal default. Raise s to pull the optimum’s pre-image toward the cube centre.';
+  document.getElementById('note').textContent = note;
+}
+
+// ---------- UI ----------
+const sRange = document.getElementById('sRange'), gRange = document.getElementById('gRange');
+const sVal = document.getElementById('sVal'), gVal = document.getElementById('gVal');
+const mRange = document.getElementById('mRange');
+function refreshSG() { sVal.textContent = s.toFixed(2); gVal.textContent = gamma.toFixed(2); }
+sRange.value = sToSlider(1);
+sRange.addEventListener('input', () => { s = sliderToS(+sRange.value); refreshSG(); rebuild(); });
+gRange.addEventListener('input', () => { gamma = +gRange.value; refreshSG(); rebuild(); });
+
+function setMorphMode(mode) {
+  autoMorph = (mode === 'auto');
+  document.getElementById('autoBtn').classList.toggle('active', mode === 'auto');
+  document.getElementById('cubeBtn').classList.toggle('active', mode === 'cube');
+  document.getElementById('simBtn').classList.toggle('active', mode === 'sim');
+  if (mode === 'cube') { morph = manualMorph = 0; mRange.value = 0; }
+  if (mode === 'sim') { morph = manualMorph = 1; mRange.value = 1; }
+}
+document.getElementById('autoBtn').onclick = () => setMorphMode('auto');
+document.getElementById('cubeBtn').onclick = () => setMorphMode('cube');
+document.getElementById('simBtn').onclick = () => setMorphMode('sim');
+mRange.addEventListener('input', () => { setMorphMode('manual-internal'); autoMorph = false;
+  document.getElementById('autoBtn').classList.remove('active');
+  morph = manualMorph = +mRange.value; });
+
+function preset(sv, gv) {
+  s = sv; gamma = gv; sRange.value = sToSlider(sv); gRange.value = gv; refreshSG(); rebuild();
+}
+document.getElementById('pDefault').onclick = () => preset(1, 1);
+document.getElementById('pLearned').onclick = () => preset(4.15, 2.58);
+document.getElementById('pDegen').onclick = () => preset(0.02, 1);  // STD_L = 500 -> s = 1/500
+
+document.getElementById('cCorr').onclick = () => { colourMode = 'corr';
+  document.getElementById('cCorr').classList.add('active'); document.getElementById('cObj').classList.remove('active'); rebuild(); };
+document.getElementById('cObj').onclick = () => { colourMode = 'obj';
+  document.getElementById('cObj').classList.add('active'); document.getElementById('cCorr').classList.remove('active'); rebuild(); };
+
+addEventListener('resize', () => {
+  camera.aspect = innerWidth / innerHeight; camera.updateProjectionMatrix();
+  renderer.setSize(innerWidth, innerHeight); labelRenderer.setSize(innerWidth, innerHeight);
+});
+
+// ---------- loop ----------
+const clock = new THREE.Clock();
+refreshSG(); rebuild();
+function animate() {
+  requestAnimationFrame(animate);
+  const dt = clock.getDelta();
+  if (autoMorph) { morphPhase += dt * 0.55; morph = (1 - Math.cos(morphPhase)) / 2; }
+  else { morph = manualMorph; }
+  rebuild();
+  const pulse = 1 + 0.12 * Math.sin(clock.elapsedTime * 2.4);
+  optGlow.scale.setScalar(pulse);
+  controls.update();
+  renderer.render(scene, camera);
+  labelRenderer.render(scene, camera);
+}
+animate();
+</script>
+</body>
+</html>
