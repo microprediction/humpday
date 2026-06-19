@@ -83,3 +83,42 @@ def decode(u):
         "atoms": atoms,
         "energy": _energy(atoms),
     }
+
+
+# --- Faithful high-dimensional variants -------------------------------------
+# Scaling knob: number of atoms (n_dim = 3 * atoms). The pair potential and the
+# distance floor are identical; the cubic box side is grown as (atoms/5)**(1/3)
+# so the *number density* is held constant. Without this the box would not hold
+# the extra atoms at LJ-equilibrium spacing and the problem would degenerate into
+# pure overlap-energy. With it, larger n is a faithful larger-cluster instance —
+# and the count of local minima still grows ~exponentially, so it stays the
+# textbook hard multimodal landscape.
+SCALABLE_DIMS = [30, 60, 90]
+
+
+def make_objective(n_dim):
+    """Return a HumpDay objective for an `n_dim // 3`-atom LJ cluster at the
+    same number density as the N=5 base."""
+    assert n_dim % 3 == 0, "LJ n_dim must be a multiple of 3"
+    n_atoms = n_dim // 3
+    box_high = BOX_LOW + (BOX_HIGH - BOX_LOW) * (n_atoms / N_ATOMS) ** (1.0 / 3.0)
+
+    def objective_scaled(u):
+        coords = [BOX_LOW + (box_high - BOX_LOW) * v for v in u]
+        atoms = [tuple(coords[3 * i : 3 * i + 3]) for i in range(n_atoms)]
+        total = 0.0
+        for i in range(n_atoms):
+            xi, yi, zi = atoms[i]
+            for j in range(i + 1, n_atoms):
+                xj, yj, zj = atoms[j]
+                dx = xi - xj
+                dy = yi - yj
+                dz = zi - zj
+                r = math.sqrt(dx * dx + dy * dy + dz * dz)
+                if r < MIN_DISTANCE:
+                    r = MIN_DISTANCE
+                inv6 = r**-6
+                total += 4.0 * (inv6 * inv6 - inv6)
+        return total
+
+    return objective_scaled

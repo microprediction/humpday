@@ -18,9 +18,62 @@ and `humpday._array_pure._Vec` (a `list` subclass) under the pure
 backend; both are iterable, indexable, and support arithmetic.
 """
 
+import queue
+import threading
 from typing import Callable
 
 from humpday import _array as _A
+
+
+# --- ask/tell support (additive; see notes/asktell-optimizer-interface.md) ----
+# The old API (optimize() owning the loop) is unchanged. The ask/tell interface
+# below lets a CALLER own the loop by driving this optimizer's own optimize() in a
+# worker thread, swapping self.objective for a lock-step queue handshake. Because
+# evaluate() is otherwise untouched, the driven trajectory is identical to a
+# monolithic run (proven in tests/test_asktell.py).
+_DONE = object()
+_ABORT = object()
+
+
+class _AbortAskTell(BaseException):
+    """Raised inside the worker to unwind a partially-driven optimize() on close()."""
+
+
+class _AskTellState:
+    """Lock-step handshake for driving optimize() incrementally. The worker emits a
+    GROUP of points — size 1 from evaluate(), size m from evaluate_batch() — and the
+    driver returns a list of that many values."""
+
+    def __init__(self):
+        self.req = queue.Queue()   # worker -> driver: ("X", [points]) or (_DONE, None)
+        self.resp = queue.Queue()  # driver -> worker: [values], or _ABORT
+        self.thread = None
+        self.done = False
+        self.error = None
+        self.result = None
+        self.mode = None           # 'scalar' | 'batch' (no mixing on one instance)
+        self.cur_points = None     # current group being served
+        self.cur_idx = 0           # scalar view: index within the group
+        self.cur_vals = None       # scalar view: values collected so far
+        self.awaiting = False      # scalar view: a point is out, value pending
+        self.awaiting_batch = False
+
+    def single_handshake(self, x_clipped):
+        # Installed as self.objective inside the worker (used by evaluate()): hand a
+        # one-point group to the driver and block for its value.
+        self.req.put(("X", [x_clipped]))
+        vals = self.resp.get()
+        if vals is _ABORT:
+            raise _AbortAskTell()
+        return vals[0]
+
+    def batch_handshake(self, points):
+        # Used by evaluate_batch(): hand the whole group to the driver at once.
+        self.req.put(("X", list(points)))
+        vals = self.resp.get()
+        if vals is _ABORT:
+            raise _AbortAskTell()
+        return list(vals)
 
 
 class BaseOptimizer:
@@ -35,6 +88,7 @@ class BaseOptimizer:
         self.best_x = _A.random_uniform(n_dim)
         self.track_path = False
         self.path = []
+        self._at = None  # ask/tell driver state (lazy; see suggest_next)
 
     def evaluate(self, x) -> float:
         """Evaluate objective with tracking. `x` may be a numpy array, a
@@ -57,6 +111,157 @@ class BaseOptimizer:
             self.best_x = x_clipped.copy()
 
         return value
+
+    def evaluate_batch(self, points):
+        """Evaluate several points as one group. In a direct optimize() run this is
+        exactly `[self.evaluate(p) for p in points]`. Under ask/tell it surfaces the
+        whole group through suggest_batch() so the caller can evaluate it in parallel.
+
+        Use this only in *synchronous* population methods — where the generation is
+        built from a fixed distribution/state and no point depends on another point's
+        value within the generation (e.g. CMA-ES). Do NOT use it in
+        immediate-selection methods (e.g. DE), which are serial by construction."""
+        if self._at is None:
+            return [self.evaluate(p) for p in points]
+        pts = [_A.clip(p, 0, 1) for p in points]
+        values = [float(v) for v in self._at.batch_handshake(pts)]
+        for p, v in zip(pts, values):
+            self.evaluations += 1
+            if v < self.best_value:
+                self.best_value = v
+                self.best_x = p.copy()
+        return values
+
+    # ------------------------------------------------------------------ #
+    # Ask/tell interface (additive). A CALLER owns the loop. Two views:  #
+    #   scalar:  while (x := opt.suggest_next()) is not None:            #
+    #                opt.receive_update(objective(x))                    #
+    #   batch:   while (xs := opt.suggest_batch()) is not None:          #
+    #                opt.tell_batch([objective(x) for x in xs])          #
+    # Both drive the optimizer's own (unchanged) optimize() in a worker  #
+    # thread, so the trajectory matches a monolithic run. Sequential     #
+    # algorithms emit groups of 1; synchronous population methods that   #
+    # call evaluate_batch() emit their whole generation. Use a FRESH     #
+    # instance per ask/tell run; don't mix views or a direct optimize(). #
+    # ------------------------------------------------------------------ #
+    def _asktell_start(self):
+        if self.evaluations > 0:
+            raise RuntimeError(
+                "ask/tell on an instance that has already evaluated; "
+                "construct a fresh optimizer."
+            )
+        at = self._at = _AskTellState()
+        self.objective = at.single_handshake  # route evaluate() through the handshake
+        at.thread = threading.Thread(target=self._asktell_run, daemon=True)
+        at.thread.start()
+        return at
+
+    def _next_group(self, at):
+        """Block for the worker's next group; returns the list of points or None."""
+        tag, group = at.req.get()
+        if tag is _DONE:
+            at.done = True
+            at.thread.join(timeout=5)
+            if at.error is not None:
+                raise at.error
+            return None
+        return list(group)
+
+    def suggest_next(self):
+        """Scalar view: next point to evaluate (clipped [0,1]^n) or None when done.
+        Works over synchronous population methods too — their generation is served
+        one point at a time, and the values are handed back once the group fills."""
+        at = self._at or self._asktell_start()
+        if at.mode == "batch":
+            raise RuntimeError("instance already driven via suggest_batch()")
+        at.mode = "scalar"
+        if at.done:
+            return None
+        if at.awaiting:
+            raise RuntimeError("suggest_next() called again before receive_update()")
+        if not at.cur_points:
+            group = self._next_group(at)
+            if group is None:
+                return None
+            at.cur_points = group
+            at.cur_idx = 0
+            at.cur_vals = [None] * len(group)
+        at.awaiting = True
+        return at.cur_points[at.cur_idx]
+
+    def receive_update(self, value):
+        """Scalar view: report the value for the most recent suggest_next() point."""
+        at = self._at
+        if at is None or not at.awaiting:
+            raise RuntimeError("receive_update() without a matching suggest_next()")
+        at.awaiting = False
+        at.cur_vals[at.cur_idx] = float(value)
+        at.cur_idx += 1
+        if at.cur_idx >= len(at.cur_points):
+            at.resp.put(at.cur_vals)   # whole group's values -> unblock the worker
+            at.cur_points = None
+
+    def suggest_batch(self):
+        """Batch view: the next group of points to evaluate together (size 1 for
+        sequential algorithms, the generation size for synchronous population
+        methods), or None when done. Pair with tell_batch()."""
+        at = self._at or self._asktell_start()
+        if at.mode == "scalar":
+            raise RuntimeError("instance already driven via suggest_next()")
+        at.mode = "batch"
+        if at.done:
+            return None
+        if at.awaiting_batch:
+            raise RuntimeError("suggest_batch() called again before tell_batch()")
+        group = self._next_group(at)
+        if group is None:
+            return None
+        at.cur_points = group
+        at.awaiting_batch = True
+        return list(group)
+
+    def tell_batch(self, values):
+        """Batch view: report values for the most recent suggest_batch() group."""
+        at = self._at
+        if at is None or not at.awaiting_batch:
+            raise RuntimeError("tell_batch() without a matching suggest_batch()")
+        values = [float(v) for v in values]
+        if len(values) != len(at.cur_points):
+            raise ValueError(
+                f"tell_batch expected {len(at.cur_points)} values, got {len(values)}"
+            )
+        at.awaiting_batch = False
+        at.resp.put(values)
+        at.cur_points = None
+
+    def is_done(self):
+        """True once the driven run has completed (or been closed)."""
+        return self._at is not None and self._at.done
+
+    def best(self):
+        """Current best (value, point)."""
+        return self.best_value, self.best_x
+
+    def close(self):
+        """Abandon a partially-driven ask/tell run, unwinding the worker cleanly."""
+        at = self._at
+        if at is not None and not at.done:
+            at.resp.put(_ABORT)  # unblock the worker so optimize() can unwind
+            at.thread.join(timeout=5)
+            at.done = True
+            at.awaiting = False
+            at.awaiting_batch = False
+
+    def _asktell_run(self):
+        at = self._at
+        try:
+            at.result = self.optimize()
+        except _AbortAskTell:
+            pass
+        except BaseException as e:  # noqa: BLE001 — re-raised via suggest_next()
+            at.error = e
+        finally:
+            at.req.put((_DONE, None))
 
     # ------------------------------------------------------------------ #
     # Shared L-BFGS-B (Byrd-Lu-Nocedal-Zhu 1995, simple-bounds form).    #

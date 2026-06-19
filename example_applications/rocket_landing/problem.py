@@ -75,3 +75,49 @@ def evaluate_schedule(u):
 def objective(u):
     """HumpDay objective: negative landing score (minimise)."""
     return -evaluate_schedule(u)[0]
+
+
+# --- Faithful high-dimensional variants -------------------------------------
+# Scaling knob: number of throttle segments. The descent physics (gravity,
+# thrust, fuel, sim timestep DT, total time SIM_T) are identical — only the
+# control is discretised more finely, so a higher-n schedule is a strictly
+# faithful, finer-grained version of the same landing problem.
+SCALABLE_DIMS = [24, 36, 48, 60]
+
+
+def make_objective(n_dim):
+    """Return a HumpDay objective with `n_dim` throttle segments. Same sim."""
+    n_segs = int(n_dim)
+
+    def objective_scaled(u):
+        schedule = [max(0.0, min(1.0, v)) for v in u]
+        h, v, fuel = H0, V0, 1.0
+        touch_v = touch_fuel = None
+        final_h, final_v = h, v
+        for k in range(N_STEPS):
+            t = k * DT
+            seg = min(n_segs - 1, int((t / SIM_T) * n_segs))
+            throttle = schedule[seg]
+            if fuel <= 0:
+                throttle = 0.0
+            acc = -GRAVITY + THRUST_MAX * throttle
+            new_h = h + v * DT + 0.5 * acc * DT * DT
+            new_v = v + acc * DT
+            fuel = max(0.0, fuel - FUEL_BURN * throttle * DT)
+            if new_h <= 0 and touch_v is None:
+                frac = h / (h - new_h)
+                touch_v = v + acc * DT * frac
+                touch_fuel = fuel
+                final_h, final_v = 0.0, 0.0
+                break
+            h, v = new_h, new_v
+            final_h, final_v = h, v
+        if touch_v is not None:
+            speed = abs(touch_v)
+            score = max(0.0, 100 * (1 - speed / V_LIMIT)) + touch_fuel * 10
+        else:
+            eff = abs(final_v) + final_h * 0.5
+            score = 50 - eff * 0.6
+        return -score
+
+    return objective_scaled

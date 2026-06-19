@@ -1,0 +1,265 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' 'unsafe-inline'; style-src 'self' 'unsafe-inline';">
+<title>🔌 EV Fleet Charging — HumpDay</title>
+<style>
+  :root { --bg:#1a1a22; --panel:#2d2d3a; --accent:#56c2ff; --text:#e8e8ea; --muted:#9a9aac; }
+  body { margin:0; background:var(--bg); color:var(--text);
+    font-family:-apple-system,'Segoe UI','Helvetica Neue',Helvetica,Arial,sans-serif; }
+  .site-nav { background:#34495e; padding:12px 24px; font-family:'Times New Roman',Times,serif; }
+  .site-nav-inner { max-width:1100px; margin:0 auto; display:flex; justify-content:space-between; align-items:center; }
+  .site-nav a { color:#ecf0f1; text-decoration:none; margin:0 12px; }
+  .site-nav a:hover { color:white; text-decoration:underline; }
+  .site-nav-brand { font-weight:700; font-size:1.25em; }
+  .container { max-width:1100px; margin:0 auto; padding:32px 24px 64px; }
+  h1 { font-size:2.2em; margin:0.2em 0; }
+  h2 { font-size:1.4em; margin-top:1.4em; color:var(--accent); }
+  p { line-height:1.55; max-width:70ch; }
+  .intro { color:var(--muted); }
+  .stage { display:grid; grid-template-columns:1fr 320px; gap:24px; align-items:start; margin-top:24px; }
+  @media (max-width:800px){ .stage { grid-template-columns:1fr; } }
+  canvas { background:#14141c; border:3px solid var(--accent); border-radius:6px; display:block; width:100%; height:auto; }
+  .panel { background:var(--panel); padding:18px; border-radius:6px; border:1px solid #404054; }
+  .panel h3 { margin:0 0 12px; font-size:1.05em; text-transform:uppercase; letter-spacing:0.06em; color:var(--accent); }
+  label { display:block; margin:10px 0 6px; font-size:0.9em; color:var(--muted); }
+  select,button { width:100%; box-sizing:border-box; padding:8px 10px; border-radius:4px; border:1px solid #404054; background:#1a1a22; color:var(--text); font-size:0.95em; }
+  button { background:var(--accent); color:#1a1a22; font-weight:700; cursor:pointer; margin-top:6px; }
+  button:hover { opacity:0.88; }
+  button.secondary { background:#404054; color:var(--text); font-weight:400; }
+  button:disabled { opacity:0.5; cursor:not-allowed; }
+  .stats { margin-top:16px; padding-top:14px; border-top:1px solid #404054; font-size:0.92em; line-height:1.6; }
+  .stats .score { font-size:2.2em; color:var(--accent); font-weight:700; }
+  .stat-row { display:flex; justify-content:space-between; gap:12px; }
+  .stat-row span:last-child { font-family:'SF Mono',Menlo,monospace; }
+  .leaderboard { margin-top:24px; }
+  .leaderboard table { width:100%; border-collapse:collapse; background:var(--panel); border-radius:6px; overflow:hidden; }
+  .leaderboard th,.leaderboard td { padding:10px 14px; text-align:left; border-bottom:1px solid #404054; }
+  .leaderboard th { background:#1a1a22; color:var(--muted); text-transform:uppercase; font-size:0.78em; }
+</style>
+</head>
+<body>
+  <nav class="site-nav" data-site-nav="v1">
+    <div class="site-nav-inner">
+      <a href="../index.html" class="site-nav-brand">HumpDay</a>
+      <div class="site-nav-links">
+        <a href="../index.html">Home</a>
+        <a href="../contest.html">Contest</a>
+        <a href="../applications/index.html">Demonstrations</a>
+        <a href="../algorithms.html">Algorithms</a>
+        <a href="../recommendations.html">Recommendations</a>
+        <a href="https://github.com/microprediction/humpday" target="_blank" rel="noopener">GitHub</a>
+      </div>
+    </div>
+  </nav>
+
+<div class="container">
+  <h1>🔌 EV Fleet Charging</h1>
+  <p class="intro">
+    A depot charges its electric fleet over 24 hours. Each hour we choose an aggregate
+    charging power, capped by the site's grid connection. Enough energy must arrive by
+    noon (the morning-shift vehicles) and a larger total by end of day, while the
+    electricity price swings from cheap overnight to an evening peak. The optimizer
+    front-loads cheap overnight energy to clear the noon deadline and tops up the rest
+    in the cheapest remaining hours. Score is total cost plus deadline penalties, to
+    minimise. 24-D continuous problem.
+  </p>
+
+  <div class="stage">
+    <canvas id="canvas" width="800" height="420"></canvas>
+    <div class="panel">
+      <h3>Algorithm</h3>
+      <label for="algorithm">HumpDay optimizer</label>
+      <select id="algorithm">
+        <option value="DifferentialEvolution" selected>Differential Evolution</option>
+        <option value="CMAEvolutionStrategy">CMA-ES</option>
+        <option value="ParticleSwarm">Particle Swarm</option>
+        <option value="NelderMead">Nelder-Mead</option>
+        <option value="Powell">Powell</option>
+        <option value="PRIMA_BOBYQA">PRIMA_BOBYQA</option>
+        <option value="PatternSearch">Pattern Search</option>
+        <option value="SimulatedAnnealing">Simulated Annealing</option>
+      </select>
+      <label for="budget">Evaluation budget</label>
+      <select id="budget">
+        <option value="500">500 schedules</option>
+        <option value="1000" selected>1000 schedules</option>
+        <option value="2000">2000 schedules</option>
+      </select>
+      <button id="run-btn" onclick="runOptimization()">▶ Find the cheapest schedule</button>
+      <button class="secondary" onclick="resetEverything()">⟲ Reset</button>
+      <div class="stats">
+        <div class="stat-row"><span>Cost+penalty</span><span class="score" id="score-now">—</span></div>
+        <div class="stat-row"><span>Energy by noon</span><span id="stat-noon">—</span></div>
+        <div class="stat-row"><span>Total energy</span><span id="stat-total">—</span></div>
+        <div class="stat-row"><span>Schedules tried</span><span id="evals">0</span></div>
+        <div class="stat-row"><span>Best so far</span><span id="best-score">—</span></div>
+      </div>
+    </div>
+  </div>
+
+  <div class="leaderboard">
+    <h2>Leaderboard (this session)</h2>
+    <table>
+      <thead><tr><th>Algorithm</th><th>Cost+pen</th><th>Schedules</th><th>Deadlines</th></tr></thead>
+      <tbody id="leaderboard-body"><tr><td colspan="4" style="color:var(--muted);text-align:center;">— no runs yet —</td></tr></tbody>
+    </table>
+  </div>
+
+  <h2>What's happening</h2>
+  <p>
+    Each hour the depot draws a charging power in [0, 10] (grid cap). The fleet needs
+    45 units of energy delivered by hour 12 and 110 units by hour 24. The objective is
+    the price-weighted energy cost plus a penalty of 50 per unit of unmet energy at
+    each deadline. The optimum charges hard in the cheap overnight hours to satisfy the
+    noon requirement, then fills the remaining need wherever the price is lowest,
+    backing off entirely during the evening peak. The JS objective on this page is a
+    line-for-line port of the Python <code>example_applications/ev_fleet_charging</code>
+    objective, so the two agree to floating-point tolerance.
+  </p>
+</div>
+
+<script src="../js/modules/base-optimizer.js"></script>
+<script src="../js/modules/linalg.js"></script>
+<script src="../js/modules/prima-algorithms.js"></script>
+<script src="../js/modules/scipy-algorithms.js"></script>
+<script src="../js/modules/evolutionary-algorithms.js"></script>
+<script src="../js/modules/search-algorithms.js"></script>
+
+<script>
+// ============================================================================
+// EV fleet charging — 24-D hourly charging schedule with deadlines + grid cap.
+// Port of example_applications/ev_fleet_charging/problem.py (kept identical).
+// ============================================================================
+const canvas = document.getElementById('canvas');
+const ctx = canvas.getContext('2d');
+const W = canvas.width, H = canvas.height;
+
+const HOURS = 24, N_DIM = HOURS;
+const CAP = 10.0, NEED_BY_NOON = 45.0, NEED_TOTAL = 110.0;
+const PRICE = [0.30,0.25,0.22,0.20,0.22,0.30,0.45,0.60,0.70,0.65,0.60,0.58,
+               0.55,0.55,0.60,0.70,0.85,1.00,0.95,0.80,0.65,0.50,0.40,0.35];
+
+function decode(u) {
+  const p = new Array(HOURS);
+  for (let h = 0; h < HOURS; h++) p[h] = CAP * Math.min(1, Math.max(0, u[h]));
+  return p;
+}
+function evaluateSchedule(u) {
+  const p = decode(u);
+  let cost = 0, noon = 0, total = 0;
+  const cum = new Array(HOURS);
+  for (let h = 0; h < HOURS; h++) {
+    cost += p[h] * PRICE[h];
+    total += p[h];
+    if (h < 12) noon += p[h];
+    cum[h] = total;
+  }
+  const penalty = 50 * Math.max(0, NEED_BY_NOON - noon) + 50 * Math.max(0, NEED_TOTAL - total);
+  return { p, cum, cost, noon, total, penalty, obj: cost + penalty };
+}
+const searchHistory = [];
+function objective(u) { const r = evaluateSchedule(u); searchHistory.push(r); return r.obj; }
+
+// ---- rendering: price line + charging bars + cumulative-energy line ----
+const PAD_L = 50, PAD_R = 48, PAD_T = 30, PAD_B = 24;
+const TOP_H = 150, BOT_H = 170, GAP = 16;
+const TOP_Y = PAD_T, BOT_Y = TOP_Y + TOP_H + GAP;
+const X0 = PAD_L, X1 = W - PAD_R;
+const hx = (h) => X0 + (h / HOURS) * (X1 - X0);
+
+function draw(res, hud) {
+  ctx.fillStyle = '#14141c'; ctx.fillRect(0, 0, W, H);
+  // price panel
+  panelBg(TOP_Y, TOP_H, 'Electricity price');
+  const pmax = Math.max(...PRICE) * 1.1;
+  const yP = (v) => TOP_Y + TOP_H - 6 - (v / pmax) * (TOP_H - 18);
+  ctx.strokeStyle = '#56c2ff'; ctx.lineWidth = 2; ctx.beginPath();
+  for (let h = 0; h < HOURS; h++) { const y = yP(PRICE[h]); ctx.lineTo(hx(h), y); ctx.lineTo(hx(h + 1), y); }
+  ctx.stroke();
+  // charging panel
+  panelBg(BOT_Y, BOT_H, 'Charging power (bars) + cumulative energy (line)');
+  const yPow = (v) => BOT_Y + BOT_H - 6 - (v / CAP) * (BOT_H - 20);
+  if (res) {
+    const bw = (X1 - X0) / HOURS;
+    for (let h = 0; h < HOURS; h++) {
+      ctx.fillStyle = 'rgba(86,194,255,0.8)';
+      const y = yPow(res.p[h]);
+      ctx.fillRect(hx(h) + 1, y, bw - 2, (BOT_Y + BOT_H - 6) - y);
+    }
+    // cumulative energy line scaled to NEED_TOTAL
+    const yCum = (v) => BOT_Y + BOT_H - 6 - (v / (NEED_TOTAL * 1.1)) * (BOT_H - 20);
+    ctx.strokeStyle = '#7ed957'; ctx.lineWidth = 2; ctx.beginPath();
+    for (let h = 0; h < HOURS; h++) { const x = hx(h + 0.5), y = yCum(res.cum[h]); h === 0 ? ctx.moveTo(x, y) : ctx.lineTo(x, y); }
+    ctx.stroke();
+    // deadline markers
+    ctx.setLineDash([4, 4]); ctx.strokeStyle = 'rgba(255,204,0,0.7)';
+    ctx.beginPath(); ctx.moveTo(hx(12), BOT_Y); ctx.lineTo(hx(12), BOT_Y + BOT_H); ctx.stroke();
+    ctx.beginPath(); ctx.moveTo(X0, yCum(NEED_BY_NOON)); ctx.lineTo(hx(12), yCum(NEED_BY_NOON)); ctx.stroke();
+    ctx.beginPath(); ctx.moveTo(X0, yCum(NEED_TOTAL)); ctx.lineTo(X1, yCum(NEED_TOTAL)); ctx.stroke();
+    ctx.setLineDash([]);
+  }
+  axis();
+  if (hud) { ctx.fillStyle = '#56c2ff'; ctx.font = 'bold 14px sans-serif'; ctx.textAlign = 'center'; ctx.fillText(hud, W / 2, 20); ctx.textAlign = 'start'; }
+}
+function panelBg(y, h, title) {
+  ctx.fillStyle = '#0d0d16'; ctx.fillRect(X0, y, X1 - X0, h);
+  ctx.strokeStyle = '#404054'; ctx.strokeRect(X0 + 0.5, y + 0.5, X1 - X0, h);
+  ctx.fillStyle = '#56c2ff'; ctx.font = 'bold 12px sans-serif'; ctx.textAlign = 'left'; ctx.fillText(title, X0 + 6, y + 14);
+}
+function axis() {
+  ctx.fillStyle = 'rgba(255,255,255,0.45)'; ctx.font = '10px sans-serif'; ctx.textAlign = 'center';
+  for (let h = 0; h <= 24; h += 4) ctx.fillText(`${h}h`, hx(h), BOT_Y + BOT_H + 14);
+}
+
+function setStats(r) {
+  document.getElementById('score-now').textContent = r.obj.toFixed(2);
+  document.getElementById('stat-noon').textContent = `${r.noon.toFixed(1)} / ${NEED_BY_NOON}`;
+  document.getElementById('stat-total').textContent = `${r.total.toFixed(1)} / ${NEED_TOTAL}`;
+}
+
+const leaderboard = [];
+function addLeaderboard(name, r, evals) {
+  const met = r.noon >= NEED_BY_NOON - 1e-6 && r.total >= NEED_TOTAL - 1e-6;
+  leaderboard.push({ name, obj: r.obj, evals, met });
+  leaderboard.sort((a, b) => a.obj - b.obj);
+  document.getElementById('leaderboard-body').innerHTML = leaderboard.map(row =>
+    `<tr><td>${row.name}</td><td>${row.obj.toFixed(2)}</td><td>${row.evals}</td><td>${row.met ? '✓ met' : '✗ missed'}</td></tr>`).join('');
+}
+
+let best = null;
+async function runOptimization() {
+  const name = document.getElementById('algorithm').value;
+  const budget = parseInt(document.getElementById('budget').value, 10);
+  const cls = globalThis[name];
+  if (!cls) { alert(`Optimizer ${name} not found`); return; }
+  const btn = document.getElementById('run-btn'); btn.disabled = true; btn.textContent = `Searching with ${name}...`;
+  searchHistory.length = 0;
+  await new Promise(r => setTimeout(r, 20));
+  try {
+    const opt = new cls(objective, budget, N_DIM);
+    opt.optimize();
+    let bestR = searchHistory[0];
+    for (const r of searchHistory) if (r.obj < bestR.obj) bestR = r;
+    best = bestR;
+    document.getElementById('evals').textContent = searchHistory.length;
+    setStats(bestR);
+    document.getElementById('best-score').textContent = bestR.obj.toFixed(2);
+    addLeaderboard(name, bestR, opt.evaluations);
+    draw(bestR, `Best cost+penalty ${bestR.obj.toFixed(2)} (${name})`);
+  } catch (e) { console.error(e); alert(`${name} error: ${e.message}`); }
+  finally { btn.disabled = false; btn.textContent = '▶ Find the cheapest schedule'; }
+}
+function resetEverything() {
+  leaderboard.length = 0; best = null; searchHistory.length = 0;
+  document.getElementById('leaderboard-body').innerHTML = '<tr><td colspan="4" style="color:var(--muted);text-align:center;">— no runs yet —</td></tr>';
+  ['score-now','stat-noon','stat-total','best-score'].forEach(id => document.getElementById(id).textContent = '—');
+  document.getElementById('evals').textContent = '0';
+  draw(null, 'Pick an optimizer and run');
+}
+draw(null, 'Pick an optimizer and run');
+</script>
+</body>
+</html>

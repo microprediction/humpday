@@ -1,0 +1,138 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' 'unsafe-inline'; style-src 'self' 'unsafe-inline';">
+<title>🛰️ Satellite Phasing — HumpDay</title>
+<style>
+  :root { --bg:#1a1a22; --panel:#2d2d3a; --accent:#5c6bc0; --text:#e8e8ea; --muted:#9a9aac; }
+  body { margin:0; background:var(--bg); color:var(--text); font-family:-apple-system,'Segoe UI',Helvetica,Arial,sans-serif; }
+  .site-nav { background:#34495e; padding:12px 24px; font-family:'Times New Roman',Times,serif; }
+  .site-nav-inner { max-width:1100px; margin:0 auto; display:flex; justify-content:space-between; align-items:center; }
+  .site-nav a { color:#ecf0f1; text-decoration:none; margin:0 12px; } .site-nav-brand { font-weight:700; font-size:1.25em; }
+  .container { max-width:1100px; margin:0 auto; padding:32px 24px 64px; }
+  h1 { font-size:2.2em; margin:0.2em 0; } h2 { font-size:1.4em; margin-top:1.4em; color:var(--accent); }
+  p { line-height:1.55; max-width:70ch; } .intro { color:var(--muted); }
+  .stage { display:grid; grid-template-columns:1fr 320px; gap:24px; align-items:start; margin-top:24px; }
+  @media (max-width:800px){ .stage { grid-template-columns:1fr; } }
+  canvas { background:#14141c; border:3px solid var(--accent); border-radius:6px; display:block; width:100%; height:auto; }
+  .panel { background:var(--panel); padding:18px; border-radius:6px; border:1px solid #404054; }
+  .panel h3 { margin:0 0 12px; font-size:1.05em; text-transform:uppercase; letter-spacing:0.06em; color:var(--accent); }
+  label { display:block; margin:10px 0 6px; font-size:0.9em; color:var(--muted); }
+  select,button { width:100%; box-sizing:border-box; padding:8px 10px; border-radius:4px; border:1px solid #404054; background:#1a1a22; color:var(--text); font-size:0.95em; }
+  button { background:var(--accent); color:#fff; font-weight:700; cursor:pointer; margin-top:6px; } button.secondary { background:#404054; color:var(--text); font-weight:400; }
+  .stats { margin-top:16px; padding-top:14px; border-top:1px solid #404054; font-size:0.92em; line-height:1.6; }
+  .stats .score { font-size:2.2em; color:var(--accent); font-weight:700; }
+  .stat-row { display:flex; justify-content:space-between; gap:12px; } .stat-row span:last-child { font-family:'SF Mono',Menlo,monospace; }
+  .leaderboard { margin-top:24px; } .leaderboard table { width:100%; border-collapse:collapse; background:var(--panel); border-radius:6px; overflow:hidden; }
+  .leaderboard th,.leaderboard td { padding:10px 14px; text-align:left; border-bottom:1px solid #404054; } .leaderboard th { background:#1a1a22; color:var(--muted); text-transform:uppercase; font-size:0.78em; }
+</style>
+</head>
+<body>
+  <nav class="site-nav"><div class="site-nav-inner">
+    <a href="../index.html" class="site-nav-brand">HumpDay</a>
+    <div><a href="../index.html">Home</a><a href="../applications/index.html">Demonstrations</a><a href="../algorithms.html">Algorithms</a><a href="https://github.com/microprediction/humpday" target="_blank" rel="noopener">GitHub</a></div>
+  </div></nav>
+<div class="container">
+  <h1>🛰️ Satellite Phasing</h1>
+  <p class="intro">
+    Six satellites orbit a ring and we choose each one's phase. Ground targets sit at
+    fixed longitudes with population weights, and a target's cost is the squared angular
+    distance to its nearest satellite. Bunching the satellites leaves wide gaps over the
+    unserved longitudes, so the optimum spreads them to cover the weighted targets,
+    leaning toward the busy ones. Score is the weighted coverage cost, to minimise. 6-D.
+  </p>
+  <div class="stage">
+    <canvas id="canvas" width="800" height="420"></canvas>
+    <div class="panel">
+      <h3>Algorithm</h3>
+      <label for="algorithm">HumpDay optimizer</label>
+      <select id="algorithm">
+        <option value="DifferentialEvolution" selected>Differential Evolution</option>
+        <option value="CMAEvolutionStrategy">CMA-ES</option>
+        <option value="NelderMead">Nelder-Mead</option>
+        <option value="PRIMA_BOBYQA">PRIMA_BOBYQA</option>
+        <option value="ParticleSwarm">Particle Swarm</option>
+        <option value="PatternSearch">Pattern Search</option>
+      </select>
+      <label for="budget">Evaluation budget</label>
+      <select id="budget"><option value="300">300</option><option value="800" selected>800</option><option value="2000">2000</option></select>
+      <button id="run-btn" onclick="runOptimization()">▶ Maximise coverage</button>
+      <button class="secondary" onclick="resetEverything()">⟲ Reset</button>
+      <div class="stats">
+        <div class="stat-row"><span>Coverage cost</span><span class="score" id="score-now">—</span></div>
+        <div class="stat-row"><span>Phasings tried</span><span id="evals">0</span></div>
+        <div class="stat-row"><span>Best so far</span><span id="best-score">—</span></div>
+      </div>
+    </div>
+  </div>
+  <div class="leaderboard"><h2>Leaderboard</h2>
+    <table><thead><tr><th>Algorithm</th><th>Cost</th><th>Evals</th></tr></thead>
+    <tbody id="leaderboard-body"><tr><td colspan="3" style="color:var(--muted);text-align:center;">— no runs yet —</td></tr></tbody></table></div>
+  <h2>What's happening</h2>
+  <p>The JS objective is a line-for-line port of
+  <code>example_applications/satellite_phasing</code> and agrees to floating-point
+  tolerance. Dots on the ring are satellites; the spokes are ground targets (longer =
+  higher population), each linked to its nearest satellite.</p>
+</div>
+<script src="../js/modules/base-optimizer.js"></script>
+<script src="../js/modules/linalg.js"></script>
+<script src="../js/modules/prima-algorithms.js"></script>
+<script src="../js/modules/scipy-algorithms.js"></script>
+<script src="../js/modules/evolutionary-algorithms.js"></script>
+<script src="../js/modules/search-algorithms.js"></script>
+<script>
+// Port of example_applications/satellite_phasing/problem.py (kept identical).
+const canvas=document.getElementById('canvas'), ctx=canvas.getContext('2d'), W=canvas.width, H=canvas.height;
+const N_SATS=6, N_DIM=6, TWO_PI=2*Math.PI;
+const TARGETS=[[0.3,3.0],[0.9,1.0],[1.6,2.5],[2.4,1.5],[3.0,2.0],[3.8,1.0],[4.5,2.5],[5.2,1.5],[5.9,1.0],[0.0,2.0]];
+function decode(u){return u.map(v=>TWO_PI*Math.min(1,Math.max(0,v)));}
+function angDist(a,b){const d=Math.abs(a-b)%TWO_PI;return Math.min(d,TWO_PI-d);}
+function evaluatePhasing(u){const ph=decode(u);let total=0;const links=[];
+  for(const [lon,w] of TARGETS){let best=1e9,bi=0;for(let i=0;i<ph.length;i++){const d=angDist(lon,ph[i]);if(d<best){best=d;bi=i;}}total+=w*best*best;links.push([lon,w,bi]);}
+  return {ph,links,obj:total};}
+const searchHistory=[];
+function objective(u){const r=evaluatePhasing(u); searchHistory.push(r); return r.obj;}
+const cx=W/2, cy=H/2+10, R=150;
+function pt(ang,r){return [cx+r*Math.cos(ang-Math.PI/2), cy+r*Math.sin(ang-Math.PI/2)];}
+function draw(res,hud){
+  ctx.fillStyle='#14141c'; ctx.fillRect(0,0,W,H);
+  ctx.strokeStyle='#404054'; ctx.lineWidth=2; ctx.beginPath(); ctx.arc(cx,cy,R,0,TWO_PI); ctx.stroke();
+  // targets as spokes
+  for(const [lon,w] of TARGETS){const [x,y]=pt(lon,R+10+w*12); const [x0,y0]=pt(lon,R);
+    ctx.strokeStyle='rgba(255,209,102,0.5)'; ctx.lineWidth=1; ctx.beginPath(); ctx.moveTo(x0,y0); ctx.lineTo(x,y); ctx.stroke();
+    ctx.fillStyle='#ffd166'; ctx.beginPath(); ctx.arc(x,y,3+w,0,TWO_PI); ctx.fill();}
+  if(res){
+    // link each target to nearest sat
+    for(const [lon,w,bi] of res.links){const [tx,ty]=pt(lon,R); const [sx,sy]=pt(res.ph[bi],R);
+      ctx.strokeStyle='rgba(92,107,192,0.4)'; ctx.lineWidth=1; ctx.beginPath(); ctx.moveTo(tx,ty); ctx.lineTo(sx,sy); ctx.stroke();}
+    for(const p of res.ph){const [x,y]=pt(p,R); ctx.fillStyle='#5c6bc0'; ctx.beginPath(); ctx.arc(x,y,7,0,TWO_PI); ctx.fill();
+      ctx.strokeStyle='#fff'; ctx.lineWidth=1.5; ctx.stroke();}
+  }
+  ctx.fillStyle='#5c6bc0'; ctx.font='bold 12px sans-serif'; ctx.textAlign='left'; ctx.fillText('satellites (ring) and weighted ground targets (spokes)',16,20);
+  if(hud){ctx.fillStyle='#5c6bc0'; ctx.font='bold 14px sans-serif'; ctx.textAlign='center'; ctx.fillText(hud,W/2,H-12); ctx.textAlign='start';}
+}
+const leaderboard=[];
+function addLeaderboard(n,r,e){leaderboard.push({n,o:r.obj,e}); leaderboard.sort((a,b)=>a.o-b.o);
+  document.getElementById('leaderboard-body').innerHTML=leaderboard.map(x=>`<tr><td>${x.n}</td><td>${x.o.toFixed(4)}</td><td>${x.e}</td></tr>`).join('');}
+async function runOptimization(){
+  const name=document.getElementById('algorithm').value, budget=parseInt(document.getElementById('budget').value,10), cls=globalThis[name];
+  if(!cls){alert(name+' not found');return;}
+  const btn=document.getElementById('run-btn'); btn.disabled=true; btn.textContent='Searching...'; searchHistory.length=0;
+  await new Promise(r=>setTimeout(r,20));
+  try{const opt=new cls(objective,budget,N_DIM); opt.optimize();
+    let b=searchHistory[0]; for(const r of searchHistory) if(r.obj<b.obj) b=r;
+    document.getElementById('evals').textContent=searchHistory.length;
+    document.getElementById('score-now').textContent=b.obj.toFixed(4);
+    document.getElementById('best-score').textContent=b.obj.toFixed(4); addLeaderboard(name,b,opt.evaluations);
+    draw(b,`Best cost ${b.obj.toFixed(4)} (${name})`);
+  }catch(e){console.error(e);alert(name+' error: '+e.message);} finally{btn.disabled=false; btn.textContent='▶ Maximise coverage';}
+}
+function resetEverything(){leaderboard.length=0; searchHistory.length=0;
+  document.getElementById('leaderboard-body').innerHTML='<tr><td colspan="3" style="color:var(--muted);text-align:center;">— no runs yet —</td></tr>';
+  ['score-now','best-score'].forEach(i=>document.getElementById(i).textContent='—'); document.getElementById('evals').textContent='0'; draw(null,'Pick an optimizer and run');}
+draw(null,'Pick an optimizer and run');
+</script>
+</body>
+</html>

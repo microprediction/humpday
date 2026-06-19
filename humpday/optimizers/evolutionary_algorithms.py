@@ -744,15 +744,23 @@ class CMAEvolutionStrategy(BaseOptimizer):
                     # will repair C before the next iteration.
                     L_C = _A.linalg.eye(n)
 
-                population = []
-                for _ in range(lambda_):
-                    if self.evaluations >= cmaes_budget:
-                        break
+                # Synchronous generation: every offspring is sampled from the SAME
+                # (mean, sigma, C), so the whole generation can be evaluated as one
+                # batch with no change in behaviour. Under ask/tell this surfaces the
+                # generation via suggest_batch() for parallel evaluation; in a direct
+                # optimize() run evaluate_batch() is exactly a per-point loop. We
+                # build all offspring first (same RNG order, same budget cutoff) then
+                # evaluate them together.
+                n_off = max(0, min(lambda_, cmaes_budget - self.evaluations))
+                xs, zs = [], []
+                for _ in range(n_off):
                     std_z = _A.random_normal(n)
                     z = _A.linalg.matvec(L_C, std_z)
                     x = _A.clip(mean + sigma * z, 0, 1)
-                    f = self.evaluate(x)
-                    population.append((x, z, f))
+                    xs.append(x)
+                    zs.append(z)
+                fs = self.evaluate_batch(xs) if xs else []
+                population = [(xs[i], zs[i], fs[i]) for i in range(len(xs))]
 
                 if not population:
                     break

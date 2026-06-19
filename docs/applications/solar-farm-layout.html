@@ -1,0 +1,131 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' 'unsafe-inline'; style-src 'self' 'unsafe-inline';">
+<title>☀️ Solar-Farm Layout — HumpDay</title>
+<style>
+  :root { --bg:#1a1a22; --panel:#2d2d3a; --accent:#ffa726; --text:#e8e8ea; --muted:#9a9aac; }
+  body { margin:0; background:var(--bg); color:var(--text); font-family:-apple-system,'Segoe UI',Helvetica,Arial,sans-serif; }
+  .site-nav { background:#34495e; padding:12px 24px; font-family:'Times New Roman',Times,serif; }
+  .site-nav-inner { max-width:1100px; margin:0 auto; display:flex; justify-content:space-between; align-items:center; }
+  .site-nav a { color:#ecf0f1; text-decoration:none; margin:0 12px; } .site-nav-brand { font-weight:700; font-size:1.25em; }
+  .container { max-width:1100px; margin:0 auto; padding:32px 24px 64px; }
+  h1 { font-size:2.2em; margin:0.2em 0; } h2 { font-size:1.4em; margin-top:1.4em; color:var(--accent); }
+  p { line-height:1.55; max-width:70ch; } .intro { color:var(--muted); }
+  .stage { display:grid; grid-template-columns:1fr 320px; gap:24px; align-items:start; margin-top:24px; }
+  @media (max-width:800px){ .stage { grid-template-columns:1fr; } }
+  canvas { background:#14141c; border:3px solid var(--accent); border-radius:6px; display:block; width:100%; height:auto; }
+  .panel { background:var(--panel); padding:18px; border-radius:6px; border:1px solid #404054; }
+  .panel h3 { margin:0 0 12px; font-size:1.05em; text-transform:uppercase; letter-spacing:0.06em; color:var(--accent); }
+  label { display:block; margin:10px 0 6px; font-size:0.9em; color:var(--muted); }
+  select,button { width:100%; box-sizing:border-box; padding:8px 10px; border-radius:4px; border:1px solid #404054; background:#1a1a22; color:var(--text); font-size:0.95em; }
+  button { background:var(--accent); color:#1a1a22; font-weight:700; cursor:pointer; margin-top:6px; } button.secondary { background:#404054; color:var(--text); font-weight:400; }
+  .stats { margin-top:16px; padding-top:14px; border-top:1px solid #404054; font-size:0.92em; line-height:1.6; }
+  .stats .score { font-size:2.2em; color:var(--accent); font-weight:700; }
+  .stat-row { display:flex; justify-content:space-between; gap:12px; } .stat-row span:last-child { font-family:'SF Mono',Menlo,monospace; }
+  .leaderboard { margin-top:24px; } .leaderboard table { width:100%; border-collapse:collapse; background:var(--panel); border-radius:6px; overflow:hidden; }
+  .leaderboard th,.leaderboard td { padding:10px 14px; text-align:left; border-bottom:1px solid #404054; } .leaderboard th { background:#1a1a22; color:var(--muted); text-transform:uppercase; font-size:0.78em; }
+</style>
+</head>
+<body>
+  <nav class="site-nav"><div class="site-nav-inner">
+    <a href="../index.html" class="site-nav-brand">HumpDay</a>
+    <div><a href="../index.html">Home</a><a href="../applications/index.html">Demonstrations</a><a href="../algorithms.html">Algorithms</a><a href="https://github.com/microprediction/humpday" target="_blank" rel="noopener">GitHub</a></div>
+  </div></nav>
+<div class="container">
+  <h1>☀️ Solar-Farm Layout</h1>
+  <p class="intro">
+    Eight rows of panels run across a field at fixed spacing, and we choose each row's
+    tilt. A row captures most energy near a sweet-spot tilt, but a steeper row casts a
+    longer shadow on the row behind it. So front rows trade off (tilt down to avoid
+    shading the next row, at a small capture loss) while the back row, shading no one,
+    wants the capture-optimal tilt. Score is negative net energy, to minimise. 8-D.
+  </p>
+  <div class="stage">
+    <canvas id="canvas" width="800" height="420"></canvas>
+    <div class="panel">
+      <h3>Algorithm</h3>
+      <label for="algorithm">HumpDay optimizer</label>
+      <select id="algorithm">
+        <option value="DifferentialEvolution" selected>Differential Evolution</option>
+        <option value="CMAEvolutionStrategy">CMA-ES</option>
+        <option value="NelderMead">Nelder-Mead</option>
+        <option value="PRIMA_BOBYQA">PRIMA_BOBYQA</option>
+        <option value="Powell">Powell</option>
+        <option value="PatternSearch">Pattern Search</option>
+      </select>
+      <label for="budget">Evaluation budget</label>
+      <select id="budget"><option value="300">300</option><option value="800" selected>800</option><option value="2000">2000</option></select>
+      <button id="run-btn" onclick="runOptimization()">▶ Maximise energy</button>
+      <button class="secondary" onclick="resetEverything()">⟲ Reset</button>
+      <div class="stats">
+        <div class="stat-row"><span>Net energy</span><span class="score" id="score-now">—</span></div>
+        <div class="stat-row"><span>Layouts tried</span><span id="evals">0</span></div>
+        <div class="stat-row"><span>Best so far</span><span id="best-score">—</span></div>
+      </div>
+    </div>
+  </div>
+  <div class="leaderboard"><h2>Leaderboard</h2>
+    <table><thead><tr><th>Algorithm</th><th>Energy</th><th>Evals</th></tr></thead>
+    <tbody id="leaderboard-body"><tr><td colspan="3" style="color:var(--muted);text-align:center;">— no runs yet —</td></tr></tbody></table></div>
+  <h2>What's happening</h2>
+  <p>The JS objective is a line-for-line port of
+  <code>example_applications/solar_farm_layout</code> and agrees to floating-point
+  tolerance. Each segment is a panel row tilted by its angle; orange rows capture well,
+  and a red bracket marks where a row over-tilts and shades the one behind it.</p>
+</div>
+<script src="../js/modules/base-optimizer.js"></script>
+<script src="../js/modules/linalg.js"></script>
+<script src="../js/modules/prima-algorithms.js"></script>
+<script src="../js/modules/scipy-algorithms.js"></script>
+<script src="../js/modules/evolutionary-algorithms.js"></script>
+<script src="../js/modules/search-algorithms.js"></script>
+<script>
+// Port of example_applications/solar_farm_layout/problem.py (kept identical).
+const canvas=document.getElementById('canvas'), ctx=canvas.getContext('2d'), W=canvas.width, H=canvas.height;
+const N_ROWS=8, N_DIM=8, TILT_OPT=0.6, SPACING=0.45, SHADE=1.5;
+function decode(u){return u.map(v=>1.2*Math.min(1,Math.max(0,v)));}
+function evaluateLayout(u){const tilt=decode(u);let energy=0;const shades=[];
+  for(let i=0;i<N_ROWS;i++){energy+=Math.cos(tilt[i]-TILT_OPT);let sh=0;
+    if(i<N_ROWS-1){const shadow=Math.sin(tilt[i]);sh=SHADE*Math.max(0,shadow-SPACING);energy-=sh;}shades.push(sh);}
+  return {tilt,shades,obj:-energy};}
+const searchHistory=[];
+function objective(u){const r=evaluateLayout(u); searchHistory.push(r); return r.obj;}
+const X0=40,X1=W-40,GY=H-70;
+function draw(res,hud){
+  ctx.fillStyle='#14141c'; ctx.fillRect(0,0,W,H);
+  ctx.strokeStyle='#404054'; ctx.beginPath(); ctx.moveTo(X0,GY); ctx.lineTo(X1,GY); ctx.stroke();
+  if(res){const sp=(X1-X0)/N_ROWS, plen=sp*0.7;
+    for(let i=0;i<N_ROWS;i++){const baseX=X0+i*sp+sp*0.2; const t=res.tilt[i];
+      const ex=baseX+plen*Math.cos(t), ey=GY-plen*Math.sin(t);
+      ctx.strokeStyle=res.shades[i]>0?'#ff6b6b':'#ffa726'; ctx.lineWidth=4; ctx.beginPath(); ctx.moveTo(baseX,GY); ctx.lineTo(ex,ey); ctx.stroke();
+      if(res.shades[i]>0){ctx.fillStyle='rgba(255,107,107,0.5)'; ctx.beginPath(); ctx.moveTo(ex,ey); ctx.lineTo(ex+30,GY); ctx.lineTo(baseX,GY); ctx.closePath(); ctx.fill();}
+      ctx.fillStyle='rgba(255,255,255,0.5)'; ctx.font='9px sans-serif'; ctx.textAlign='center'; ctx.fillText((t*57.3).toFixed(0)+'°',baseX+plen/2,GY+16);}}
+  ctx.fillStyle='#ffa726'; ctx.font='bold 12px sans-serif'; ctx.textAlign='left'; ctx.fillText('panel rows (side view); red = over-tilted and shading the next row',X0,24);
+  if(hud){ctx.fillStyle='#ffa726'; ctx.font='bold 14px sans-serif'; ctx.textAlign='center'; ctx.fillText(hud,W/2,44); ctx.textAlign='start';}
+}
+const leaderboard=[];
+function addLeaderboard(n,r,e){leaderboard.push({n,o:-r.obj,e}); leaderboard.sort((a,b)=>b.o-a.o);
+  document.getElementById('leaderboard-body').innerHTML=leaderboard.map(x=>`<tr><td>${x.n}</td><td>${x.o.toFixed(3)}</td><td>${x.e}</td></tr>`).join('');}
+async function runOptimization(){
+  const name=document.getElementById('algorithm').value, budget=parseInt(document.getElementById('budget').value,10), cls=globalThis[name];
+  if(!cls){alert(name+' not found');return;}
+  const btn=document.getElementById('run-btn'); btn.disabled=true; btn.textContent='Searching...'; searchHistory.length=0;
+  await new Promise(r=>setTimeout(r,20));
+  try{const opt=new cls(objective,budget,N_DIM); opt.optimize();
+    let b=searchHistory[0]; for(const r of searchHistory) if(r.obj<b.obj) b=r;
+    document.getElementById('evals').textContent=searchHistory.length;
+    document.getElementById('score-now').textContent=(-b.obj).toFixed(3);
+    document.getElementById('best-score').textContent=(-b.obj).toFixed(3); addLeaderboard(name,b,opt.evaluations);
+    draw(b,`Best energy ${(-b.obj).toFixed(3)} (${name})`);
+  }catch(e){console.error(e);alert(name+' error: '+e.message);} finally{btn.disabled=false; btn.textContent='▶ Maximise energy';}
+}
+function resetEverything(){leaderboard.length=0; searchHistory.length=0;
+  document.getElementById('leaderboard-body').innerHTML='<tr><td colspan="3" style="color:var(--muted);text-align:center;">— no runs yet —</td></tr>';
+  ['score-now','best-score'].forEach(i=>document.getElementById(i).textContent='—'); document.getElementById('evals').textContent='0'; draw(null,'Pick an optimizer and run');}
+draw(null,'Pick an optimizer and run');
+</script>
+</body>
+</html>

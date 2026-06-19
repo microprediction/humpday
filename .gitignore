@@ -15,6 +15,9 @@ venv/
 .venv/
 env/
 .env/
+.env
+.env.*
+!.env.example
 
 # IDE files
 .vscode/
@@ -56,3 +59,8 @@ package-lock.json
 .DS_Store
 papers/dfo_recommender/bijection_hyperopt_results.json
 papers/dfo_recommender/bijection_hyperopt.log
+
+# DFO experiment artifacts (reproducible; keep source, not outputs)
+papers/dfo_recommender/runs/
+papers/dfo_recommender/generated/
+papers/dfo_recommender/*.pdf
