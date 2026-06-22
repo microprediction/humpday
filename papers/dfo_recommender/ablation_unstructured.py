@@ -8,9 +8,18 @@ demos x seeds 0,1,2 x 120 trials, panel-normalised regret) so numbers are direct
 comparable to that leaderboard (centroid won at 0.0866).
 """
 from __future__ import annotations
-import argparse, json, os, tempfile
+
+import argparse
+import json
+import os
+import tempfile
+
 from simplex_blend import (
-    generate_live, compile_optimizer, score_optimizer, build_panel_cache, select_demos,
+    build_panel_cache,
+    compile_optimizer,
+    generate_live,
+    score_optimizer,
+    select_demos,
 )
 
 PROMPT = """You are an expert in derivative-free optimization. Write the BEST \

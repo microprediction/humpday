@@ -8,17 +8,23 @@ budgets, and where? Panel: NM, DE, CMA, ngCMA(pycma). Discovered:
 Held-out = demos used by none of the selection sets. Crash-safe per-instance.
 """
 from __future__ import annotations
-import argparse, importlib.util, json, os, random, sys, tempfile
+
+import argparse
+import importlib.util
+import json
+import os
+import random
+import sys
+import tempfile
 from pathlib import Path
 
 sys.path.insert(0, str(Path("../../").resolve()))
 sys.path.insert(0, ".")
-import numpy as np
-
 import algo_dev as ad  # noqa: E402
+import numpy as np
 from example_demos import DEMOS, disguise_demo  # noqa: E402
-from simplex_blend import select_demos, compile_optimizer  # noqa: E402
 from rankcorr import run_opt  # noqa: E402  (humpday names + ngCMA)
+from simplex_blend import compile_optimizer, select_demos  # noqa: E402
 
 INF = float("inf")
 

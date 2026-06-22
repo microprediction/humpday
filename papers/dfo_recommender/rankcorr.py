@@ -10,19 +10,29 @@ Panel: all humpday optimizers + ngCMA (production pycma via nevergrad).
 Crash-safe: atomic per-instance checkpoints to --out.
 """
 from __future__ import annotations
-import argparse, json, math, os, random, sys, tempfile
+
+import argparse
+import json
+import math
+import os
+import random
+import sys
+import tempfile
 from pathlib import Path
 
 sys.path.insert(0, str(Path("../../").resolve()))
 sys.path.insert(0, ".")
-import numpy as np
+import algo_dev as ad  # noqa: E402
 import nevergrad as ng
+import numpy as np
+from example_demos import DEMOS, disguise_demo  # noqa: E402
 from nevergrad.functions import ArtificialFunction
 from scipy.stats import kendalltau, spearmanr
 
-import algo_dev as ad  # noqa: E402
-from example_demos import DEMOS, disguise_demo  # noqa: E402
-from humpday.optimizers.alloptimizers import pure_optimize, PURE_OPTIMIZERS  # noqa: E402
+from humpday.optimizers.alloptimizers import (  # noqa: E402
+    PURE_OPTIMIZERS,
+    pure_optimize,
+)
 
 INF = float("inf")
 SYNTH = ["sphere", "ellipsoid", "cigar", "rastrigin", "rosenbrock"]

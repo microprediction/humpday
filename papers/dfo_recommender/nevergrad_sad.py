@@ -24,9 +24,15 @@ here ships in the humpday wheel.
     ../../.venv/bin/python nevergrad_sad.py --dims 20,40 --seeds 0,1,2 --out runs/nevergrad_sad.json
 """
 from __future__ import annotations
-import argparse, json, math, os, tempfile
-import numpy as np
+
+import argparse
+import json
+import math
+import os
+import tempfile
+
 import nevergrad as ng
+import numpy as np
 from nevergrad.functions import ArtificialFunction
 from schur_cma import cma_es
 
@@ -88,7 +94,7 @@ def evaluate_cell(name, n, budget, seed):
 def normalise(cell: dict) -> dict:
     vals = [v for v in cell.values() if math.isfinite(v)]
     if not vals:
-        return {k: 1.0 for k in cell}
+        return dict.fromkeys(cell, 1.0)
     lo, hi = min(vals), max(vals)
     span = (hi - lo) or 1.0
     return {k: (1.0 if not math.isfinite(v) else (v - lo) / span) for k, v in cell.items()}
@@ -158,7 +164,8 @@ def main() -> int:
     print("\n=== mean normalised regret (0 = best in cell; lower better) ===")
     print(f"{'optimizer':14s} {'all':>8s} {'n>=40':>8s}")
     for o in optimizers:
-        a = summary[o]; h = summary_hi[o]
+        a = summary[o]
+        h = summary_hi[o]
         print(f"{o:14s} {a:8.3f} {('--' if h is None else f'{h:8.3f}')}")
     return 0
 

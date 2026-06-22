@@ -8,7 +8,12 @@ restart after a crash/outage skips finished experiments and resumes the rest. Ru
     ../../.venv/bin/python weekend_runner.py --quick    # tiny smoke of the whole pipeline
 """
 from __future__ import annotations
-import argparse, json, subprocess, sys, time
+
+import argparse
+import json
+import subprocess
+import sys
+import time
 from pathlib import Path
 
 MANIFEST = Path("runs/weekend_manifest.json")

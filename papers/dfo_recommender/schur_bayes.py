@@ -37,7 +37,10 @@ for p in (str(REPO_ROOT), str(HERE)):
         sys.path.insert(0, p)
 
 from example_demos import DEMOS, disguise_demo  # noqa: E402
-from schur_cma import schur_damp, schur_damp_blocks  # reuse the damping dials  # noqa: E402
+from schur_cma import (  # reuse the damping dials  # noqa: E402
+    schur_damp,
+    schur_damp_blocks,
+)
 
 INF = float("inf")
 

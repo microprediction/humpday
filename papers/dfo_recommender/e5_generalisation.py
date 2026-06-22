@@ -7,7 +7,13 @@ evolved winner to the warm-start DEFAULT_GENOME on TEST — if evolution helps
 out-of-sample, the discovery process generalises rather than overfitting.
 """
 from __future__ import annotations
-import argparse, json, os, random, sys, tempfile
+
+import argparse
+import json
+import os
+import random
+import sys
+import tempfile
 from pathlib import Path
 from statistics import mean
 

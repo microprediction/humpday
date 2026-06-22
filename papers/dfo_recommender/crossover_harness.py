@@ -13,15 +13,24 @@ Compares pairs of complementary optimizers (a global explorer + a local refiner)
 against their parts. Crash-safe per-(pair,demo,seed) checkpoints.
 """
 from __future__ import annotations
-import argparse, json, os, random, sys, tempfile
+
+import argparse
+import json
+import os
+import random
+import sys
+import tempfile
 from pathlib import Path
 
 sys.path.insert(0, str(Path("../../").resolve()))
 sys.path.insert(0, ".")
 import numpy as np
-
 from example_demos import DEMOS, disguise_demo  # noqa: E402
-from humpday.optimizers.alloptimizers import pure_optimize, PURE_OPTIMIZERS  # noqa: E402
+
+from humpday.optimizers.alloptimizers import (  # noqa: E402
+    PURE_OPTIMIZERS,
+    pure_optimize,
+)
 
 INF = float("inf")
 

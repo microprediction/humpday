@@ -52,6 +52,7 @@ for p in (str(REPO_ROOT), str(HERE)):
 
 import algo_dev as ad  # noqa: E402
 from example_demos import DEMOS, disguise_demo  # noqa: E402
+
 from humpday.transforms.cubetosimplex import cube_to_simplex  # noqa: E402
 
 INF = float("inf")

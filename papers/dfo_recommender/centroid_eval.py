@@ -7,16 +7,24 @@ pycma — on demos it was NEVER selected on (held-out: the complement of the 16-
 regret, multi-seed. Lower rank = better; rank 1 = best optimizer on that instance.
 """
 from __future__ import annotations
-import argparse, importlib.util, json, math, os, random, sys, tempfile
+
+import argparse
+import importlib.util
+import json
+import math
+import os
+import random
+import sys
+import tempfile
 from pathlib import Path
 
 sys.path.insert(0, str(Path("../../").resolve()))
 sys.path.insert(0, ".")
 import algo_dev as ad
+import nevergrad as ng
+import numpy as np
 from example_demos import DEMOS, disguise_demo
 from simplex_blend import select_demos
-import numpy as np
-import nevergrad as ng
 
 INF = float("inf")
 
@@ -87,7 +95,7 @@ def main():
           f"{', '.join(d.name for d in held)}\n", flush=True)
 
     ranks = {o: [] for o in OPTS}
-    wins = {o: 0 for o in OPTS}
+    wins = dict.fromkeys(OPTS, 0)
     regret_centroid = []
     rows = []
     total = len(held) * len(seeds)

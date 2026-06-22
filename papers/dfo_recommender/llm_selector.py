@@ -16,7 +16,15 @@ EMPIRICAL real-world ranking, and compare it to the synthetic-benchmark predicto
     ../../.venv/bin/python llm_selector.py --problems 15 --rounds 3 --out runs/llm_selector.json
 """
 from __future__ import annotations
-import argparse, importlib, json, os, random, re, sys, tempfile
+
+import argparse
+import importlib
+import json
+import os
+import random
+import re
+import sys
+import tempfile
 from pathlib import Path
 from statistics import mean
 
@@ -106,10 +114,10 @@ def dry_ranking(cand_subset, seed):
 
 # --------------------------- Plackett-Luce (Hunter MM) ----------------------
 def plackett_luce(rankings, items, iters=400):
-    g = {i: 1.0 for i in items}
+    g = dict.fromkeys(items, 1.0)
     for _ in range(iters):
-        num = {i: 0.0 for i in items}
-        den = {i: 0.0 for i in items}
+        num = dict.fromkeys(items, 0.0)
+        den = dict.fromkeys(items, 0.0)
         for r in rankings:
             for p in range(len(r) - 1):
                 remaining = r[p:]
@@ -268,7 +276,7 @@ def main():
         print(f"    LLM common-sense : {e['tau_llm_vs_empirical']}")
         print(f"    synthetic bench. : {e['tau_synthetic_vs_empirical']}")
         print(f"    random           : {e['tau_random_vs_empirical']}")
-        print(f"  selection (mean empirical rank of chosen optimizer, lower=better):")
+        print("  selection (mean empirical rank of chosen optimizer, lower=better):")
         for k, v in e["selection_mean_emp_rank"].items():
             print(f"    {k:32s} {v}")
     return 0

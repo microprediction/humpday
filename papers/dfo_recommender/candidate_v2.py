@@ -16,5 +16,7 @@ from __future__ import annotations
 
 from algo_dev import (  # noqa: F401 — re-exported for backward compatibility
     _fit_separable_quadratic,
+)
+from algo_dev import (
     make_candidate as make_candidate_v2,
 )

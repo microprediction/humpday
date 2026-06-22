@@ -24,7 +24,6 @@ from typing import Callable
 
 from humpday import _array as _A
 
-
 # --- ask/tell support (additive; see notes/asktell-optimizer-interface.md) ----
 # The old API (optimize() owning the loop) is unchanged. The ask/tell interface
 # below lets a CALLER own the loop by driving this optimizer's own optimize() in a

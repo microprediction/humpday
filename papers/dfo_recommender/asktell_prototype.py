@@ -13,6 +13,7 @@ concurrency in the algorithm's logic). suggest_next/receive_update therefore
 *cannot* change the trajectory — which the equivalence gate below verifies.
 """
 from __future__ import annotations
+
 import queue
 import random
 import sys
@@ -21,11 +22,11 @@ from pathlib import Path
 
 sys.path.insert(0, str(Path("../../").resolve()))
 
-from humpday.optimizers.scipy_algorithms import NelderMead
 from humpday.optimizers.evolutionary_algorithms import (
-    DifferentialEvolution,
     CMAEvolutionStrategy,
+    DifferentialEvolution,
 )
+from humpday.optimizers.scipy_algorithms import NelderMead
 
 try:
     import numpy as np
