@@ -6,6 +6,7 @@ pycma — on demos it was NEVER selected on (held-out: the complement of the 16-
 'spread' set used in the simplex run). Reports mean rank + win-rate + normalised
 regret, multi-seed. Lower rank = better; rank 1 = best optimizer on that instance.
 """
+
 from __future__ import annotations
 
 import argparse
@@ -30,7 +31,9 @@ INF = float("inf")
 
 
 def load_centroid():
-    spec = importlib.util.spec_from_file_location("centroid_opt", "runs/simplex_warm_code/centroid.py")
+    spec = importlib.util.spec_from_file_location(
+        "centroid_opt", "runs/simplex_warm_code/centroid.py"
+    )
     m = importlib.util.module_from_spec(spec)
     spec.loader.exec_module(m)
     return m.optimize
@@ -39,7 +42,9 @@ def load_centroid():
 def run_ngcma(objective, n_trials, n_dim, seed):
     param = ng.p.Array(shape=(n_dim,), lower=0.0, upper=1.0)
     param.random_state.seed(seed)
-    opt = ng.optimizers.registry["CMA"](parametrization=param, budget=n_trials, num_workers=1)
+    opt = ng.optimizers.registry["CMA"](
+        parametrization=param, budget=n_trials, num_workers=1
+    )
     best = INF
     for _ in range(n_trials):
         c = opt.ask()
@@ -80,8 +85,13 @@ def main():
     seeds = [int(s) for s in args.seeds.split(",")]
 
     centroid = load_centroid()
-    OPTS = ["centroid", "NelderMead", "DifferentialEvolution",
-            "CMAEvolutionStrategy", "ngCMA(pycma)"]
+    OPTS = [
+        "centroid",
+        "NelderMead",
+        "DifferentialEvolution",
+        "CMAEvolutionStrategy",
+        "ngCMA(pycma)",
+    ]
     callbacks = {"centroid": centroid}
 
     # held-out = demos NOT in the 16-demo 'spread' set the simplex run used
@@ -91,8 +101,11 @@ def main():
     n = min(args.demos, len(pool))
     idx = sorted({round(k * (len(pool) - 1) / max(n - 1, 1)) for k in range(n)})
     held = [pool[i] for i in idx]
-    print(f"held-out demos ({len(held)}, dims {held[0].n_dim}-{held[-1].n_dim}): "
-          f"{', '.join(d.name for d in held)}\n", flush=True)
+    print(
+        f"held-out demos ({len(held)}, dims {held[0].n_dim}-{held[-1].n_dim}): "
+        f"{', '.join(d.name for d in held)}\n",
+        flush=True,
+    )
 
     ranks = {o: [] for o in OPTS}
     wins = dict.fromkeys(OPTS, 0)
@@ -105,7 +118,9 @@ def main():
             c += 1
             inst = disguise_demo(demo, s)
             seed = 9000 + s
-            vals = {o: run_one(o, callbacks.get(o), inst, args.trials, seed) for o in OPTS}
+            vals = {
+                o: run_one(o, callbacks.get(o), inst, args.trials, seed) for o in OPTS
+            }
             finite = [v for v in vals.values() if v < INF]
             mn, mx = (min(finite), max(finite)) if finite else (0.0, 1.0)
             # per-instance rank (1 = best); normalised regret for centroid
@@ -117,23 +132,55 @@ def main():
                 wins["centroid"] += 1
             reg = 0.0 if mx <= mn else (vals["centroid"] - mn) / (mx - mn)
             regret_centroid.append(reg)
-            rows.append({"demo": demo.name, "n": demo.n_dim, "seed": s,
-                         **{o: (None if vals[o] >= INF else round(vals[o], 5)) for o in OPTS}})
-            print(f"[{c}/{total}] {demo.name:24s} n={demo.n_dim:3d} s={s} "
-                  f"centroid_rank={ranks['centroid'][-1]} winner={order[0]}", flush=True)
+            rows.append(
+                {
+                    "demo": demo.name,
+                    "n": demo.n_dim,
+                    "seed": s,
+                    **{
+                        o: (None if vals[o] >= INF else round(vals[o], 5)) for o in OPTS
+                    },
+                }
+            )
+            print(
+                f"[{c}/{total}] {demo.name:24s} n={demo.n_dim:3d} s={s} "
+                f"centroid_rank={ranks['centroid'][-1]} winner={order[0]}",
+                flush=True,
+            )
             atomic_dump({"done": False, "opts": OPTS, "rows": rows}, args.out)
 
-    summary = {o: {"mean_rank": round(sum(ranks[o]) / len(ranks[o]), 3),
-                   "wins": wins.get(o, 0)} for o in OPTS}
-    summary["centroid"]["mean_regret_vs_field"] = round(sum(regret_centroid) / len(regret_centroid), 4)
-    atomic_dump({"done": True, "opts": OPTS, "n_instances": total,
-                 "summary": summary, "rows": rows}, args.out)
+    summary = {
+        o: {
+            "mean_rank": round(sum(ranks[o]) / len(ranks[o]), 3),
+            "wins": wins.get(o, 0),
+        }
+        for o in OPTS
+    }
+    summary["centroid"]["mean_regret_vs_field"] = round(
+        sum(regret_centroid) / len(regret_centroid), 4
+    )
+    atomic_dump(
+        {
+            "done": True,
+            "opts": OPTS,
+            "n_instances": total,
+            "summary": summary,
+            "rows": rows,
+        },
+        args.out,
+    )
 
     print("\n=== mean rank (1=best of 5) over held-out instances ===")
     for o in sorted(OPTS, key=lambda o: summary[o]["mean_rank"]):
-        w = f"  outright-best on {summary[o]['wins']}/{total}" if o == "centroid" else ""
+        w = (
+            f"  outright-best on {summary[o]['wins']}/{total}"
+            if o == "centroid"
+            else ""
+        )
         print(f"  {summary[o]['mean_rank']:.3f}  {o}{w}")
-    print(f"\ncentroid mean normalised regret vs field: {summary['centroid']['mean_regret_vs_field']}")
+    print(
+        f"\ncentroid mean normalised regret vs field: {summary['centroid']['mean_regret_vs_field']}"
+    )
     return 0
 
 

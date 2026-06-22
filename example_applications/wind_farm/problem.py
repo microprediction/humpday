@@ -141,8 +141,10 @@ def make_objective(n_dim):
 
     def objective_scaled(u):
         positions = [
-            (FIELD_X0 + u[2 * i] * (fx1 - FIELD_X0),
-             FIELD_Y0 + u[2 * i + 1] * (fy1 - FIELD_Y0))
+            (
+                FIELD_X0 + u[2 * i] * (fx1 - FIELD_X0),
+                FIELD_Y0 + u[2 * i + 1] * (fy1 - FIELD_Y0),
+            )
             for i in range(n_turbines)
         ]
         power_fraction = _expected_power(positions) / n_turbines

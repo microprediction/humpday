@@ -12,6 +12,7 @@ caller own the loop, so we can blend optimizers WITHOUT generating fused code:
 Compares pairs of complementary optimizers (a global explorer + a local refiner)
 against their parts. Crash-safe per-(pair,demo,seed) checkpoints.
 """
+
 from __future__ import annotations
 
 import argparse
@@ -131,7 +132,7 @@ def main():
     wins = {"single_best": 0, "portfolio": 0, "interleave": 0, "tie": 0}
     total = len(pairs) * len(demos) * len(seeds)
     c = 0
-    for (na, nb) in pairs:
+    for na, nb in pairs:
         for dm in demos:
             for s in seeds:
                 c += 1
@@ -148,27 +149,49 @@ def main():
                 if abs(cands[w] - cands["single_best"]) <= 1e-9 and w != "single_best":
                     pass
                 wins[w] += 1
-                rows.append({"pair": f"{na}+{nb}", "demo": dm.name, "n": nd, "seed": s,
-                             "a": va, "b": vb, "single_best": single_best,
-                             "portfolio": vp, "interleave": vi, "winner": w})
-                print(f"[{c}/{total}] {na[:4]}+{nb[:4]} {dm.name:20s} n={nd:3d} "
-                      f"single={single_best:.4g} portf={vp:.4g} inter={vi:.4g} -> {w}", flush=True)
+                rows.append(
+                    {
+                        "pair": f"{na}+{nb}",
+                        "demo": dm.name,
+                        "n": nd,
+                        "seed": s,
+                        "a": va,
+                        "b": vb,
+                        "single_best": single_best,
+                        "portfolio": vp,
+                        "interleave": vi,
+                        "winner": w,
+                    }
+                )
+                print(
+                    f"[{c}/{total}] {na[:4]}+{nb[:4]} {dm.name:20s} n={nd:3d} "
+                    f"single={single_best:.4g} portf={vp:.4g} inter={vi:.4g} -> {w}",
+                    flush=True,
+                )
                 atomic_dump({"done": False, "wins": wins, "rows": rows}, a.out)
 
     # how often does a blend beat the best single component?
     n_inst = len(rows)
-    blend_beats = sum(1 for r in rows
-                      if min(r["portfolio"], r["interleave"]) < r["single_best"] - 1e-9)
+    blend_beats = sum(
+        1
+        for r in rows
+        if min(r["portfolio"], r["interleave"]) < r["single_best"] - 1e-9
+    )
     interleave_beats = sum(1 for r in rows if r["interleave"] < r["single_best"] - 1e-9)
-    summary = {"instances": n_inst, "winner_counts": wins,
-               "blend_beats_best_single": blend_beats,
-               "interleave_beats_best_single": interleave_beats,
-               "blend_beat_rate": round(blend_beats / n_inst, 3) if n_inst else None}
+    summary = {
+        "instances": n_inst,
+        "winner_counts": wins,
+        "blend_beats_best_single": blend_beats,
+        "interleave_beats_best_single": interleave_beats,
+        "blend_beat_rate": round(blend_beats / n_inst, 3) if n_inst else None,
+    }
     atomic_dump({"done": True, "summary": summary, "rows": rows}, a.out)
     print("\n=== crossover summary ===")
     print(f"  instances: {n_inst}")
-    print(f"  a blend beats the best single component on {blend_beats}/{n_inst} "
-          f"({summary['blend_beat_rate']})")
+    print(
+        f"  a blend beats the best single component on {blend_beats}/{n_inst} "
+        f"({summary['blend_beat_rate']})"
+    )
     print(f"  interleave specifically beats best single on {interleave_beats}/{n_inst}")
     print(f"  winner counts: {wins}")
     return 0

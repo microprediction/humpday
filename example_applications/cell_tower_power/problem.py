@@ -12,12 +12,13 @@ energy.
 The HumpDay objective takes a 6-D point in [0,1]^6 (transmit powers, mapped to
 0..P_max) and returns the negative of (covered users minus an energy penalty).
 """
+
 from __future__ import annotations
 
 N_TOWERS = 6
 N_DIM = N_TOWERS
 TOWERS = tuple(2.0 + 16.0 * i / (N_TOWERS - 1) for i in range(N_TOWERS))  # positions
-USERS = tuple(0.5 * j for j in range(40))                                 # positions 0..19.5
+USERS = tuple(0.5 * j for j in range(40))  # positions 0..19.5
 P_MAX = 10.0
 NOISE = 0.05
 SINR_THRESHOLD = 1.0
@@ -39,7 +40,9 @@ def objective(u):
     for x in USERS:
         serv = min(range(N_TOWERS), key=lambda t: abs(TOWERS[t] - x))
         signal = power[serv] * _gain(x, TOWERS[serv])
-        interference = sum(power[t] * _gain(x, TOWERS[t]) for t in range(N_TOWERS) if t != serv)
+        interference = sum(
+            power[t] * _gain(x, TOWERS[t]) for t in range(N_TOWERS) if t != serv
+        )
         sinr = signal / (NOISE + interference)
         covered += 1.0 if sinr >= SINR_THRESHOLD else sinr / SINR_THRESHOLD
     return -(covered - ENERGY_PENALTY * sum(power))

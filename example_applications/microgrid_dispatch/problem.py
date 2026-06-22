@@ -11,6 +11,7 @@ The HumpDay objective takes a 24-D point in [0,1]^24 (twelve diesel levels, then
 battery powers) and returns fuel cost plus battery wear plus penalties for unmet load and
 state-of-charge violations.
 """
+
 from __future__ import annotations
 
 import math
@@ -40,7 +41,7 @@ def objective(u):
     soc = SOC_INIT
     cost = 0.0
     for t in range(T):
-        supply = SOLAR[t] + diesel[t] + batt[t]   # batt>0 discharges, <0 charges
+        supply = SOLAR[t] + diesel[t] + batt[t]  # batt>0 discharges, <0 charges
         shortfall = max(0.0, LOAD[t] - supply)
         cost += FUEL_COST * diesel[t] + WEAR_COST * abs(batt[t])
         cost += SHORTFALL_PENALTY * shortfall * shortfall

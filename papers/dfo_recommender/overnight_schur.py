@@ -61,20 +61,35 @@ def main() -> int:
 
     labels = [lab for lab, _ in VARIANTS]
     # nested accumulators: regret[budget][bucket][label] -> list
-    acc = {b: {bk: {lab: [] for lab in labels} for bk in ("all", "low", "high")} for b in budgets}
+    acc = {
+        b: {bk: {lab: [] for lab in labels} for bk in ("all", "low", "high")}
+        for b in budgets
+    }
     done_demos = []
 
-    print(f"Overnight Schur battery: {len(demos)} demos x {len(seeds)} seeds x "
-          f"{len(budgets)} budgets x {len(VARIANTS)} variants.\n"
-          f"checkpoint -> {ckpt}\n", flush=True)
+    print(
+        f"Overnight Schur battery: {len(demos)} demos x {len(seeds)} seeds x "
+        f"{len(budgets)} budgets x {len(VARIANTS)} variants.\n"
+        f"checkpoint -> {ckpt}\n",
+        flush=True,
+    )
 
     def snapshot(done):
-        out = {"done": done, "seeds": list(seeds), "budgets": budgets,
-               "variants": labels, "demos_completed": done_demos, "tables": {}}
+        out = {
+            "done": done,
+            "seeds": list(seeds),
+            "budgets": budgets,
+            "variants": labels,
+            "demos_completed": done_demos,
+            "tables": {},
+        }
         for b in budgets:
             out["tables"][str(b)] = {}
             for bk in ("all", "low", "high"):
-                tab = {lab: (mean(acc[b][bk][lab]) if acc[b][bk][lab] else None) for lab in labels}
+                tab = {
+                    lab: (mean(acc[b][bk][lab]) if acc[b][bk][lab] else None)
+                    for lab in labels
+                }
                 out["tables"][str(b)][bk] = tab
         tmp = Path(str(ckpt) + ".tmp")
         tmp.write_text(json.dumps(out, indent=2))
@@ -88,13 +103,19 @@ def main() -> int:
                 vals = {}
                 for lab, kw in VARIANTS:
                     try:
-                        vals[lab] = cma_es(inst.objective, b, inst.n_dim, seed=9000 + i * 13 + s, **kw)
+                        vals[lab] = cma_es(
+                            inst.objective, b, inst.n_dim, seed=9000 + i * 13 + s, **kw
+                        )
                     except Exception:  # noqa: BLE001
                         vals[lab] = INF
                 finite = [v for v in vals.values() if v < INF]
                 mn, mx = (min(finite), max(finite)) if finite else (0.0, 1.0)
                 for lab in labels:
-                    nr = 0.0 if mx <= mn or vals[lab] >= INF else (vals[lab] - mn) / (mx - mn)
+                    nr = (
+                        0.0
+                        if mx <= mn or vals[lab] >= INF
+                        else (vals[lab] - mn) / (mx - mn)
+                    )
                     acc[b]["all"][lab].append(nr)
                     acc[b][bucket][lab].append(nr)
         done_demos.append(demo.name)
@@ -105,8 +126,10 @@ def main() -> int:
     print("\n=== FINAL: mean normalised regret by budget x bucket ===")
     for b in budgets:
         for bk in ("all", "low", "high"):
-            tab = sorted(((lab, mean(acc[b][bk][lab])) for lab in labels if acc[b][bk][lab]),
-                         key=lambda t: t[1])
+            tab = sorted(
+                ((lab, mean(acc[b][bk][lab])) for lab in labels if acc[b][bk][lab]),
+                key=lambda t: t[1],
+            )
             print(f"\n--- budget={b}, {bk} ---")
             for lab, r in tab:
                 print(f"  {lab:18s} {r:.4f}")

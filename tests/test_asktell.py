@@ -4,6 +4,7 @@ incrementally must reproduce optimize()'s best value and evaluation count exactl
 
 See notes/asktell-optimizer-interface.md.
 """
+
 import random
 
 try:
@@ -71,8 +72,12 @@ if pytest is not None:
         n_dim, n_trials = 5, 60
         mono_v, mono_e = _run_monolithic(cls, seed, n_trials, n_dim)
         at_v, at_e = _run_asktell(cls, seed, n_trials, n_dim)
-        assert at_v == mono_v, f"{name}: best value differs (mono={mono_v}, ask/tell={at_v})"
-        assert at_e == mono_e, f"{name}: eval count differs (mono={mono_e}, ask/tell={at_e})"
+        assert at_v == mono_v, (
+            f"{name}: best value differs (mono={mono_v}, ask/tell={at_v})"
+        )
+        assert at_e == mono_e, (
+            f"{name}: eval count differs (mono={mono_e}, ask/tell={at_e})"
+        )
 
     @pytest.mark.parametrize("name", sorted(PURE_OPTIMIZERS))
     @pytest.mark.parametrize("seed", [0, 1, 2])
@@ -81,7 +86,9 @@ if pytest is not None:
         n_dim, n_trials = 5, 60
         mono_v, mono_e = _run_monolithic(cls, seed, n_trials, n_dim)
         at_v, at_e, _ = _run_asktell_batch(cls, seed, n_trials, n_dim)
-        assert at_v == mono_v, f"{name}: batch best differs (mono={mono_v}, batch={at_v})"
+        assert at_v == mono_v, (
+            f"{name}: batch best differs (mono={mono_v}, batch={at_v})"
+        )
         assert at_e == mono_e, f"{name}: batch eval count differs ({mono_e} vs {at_e})"
 
     def test_cma_emits_real_batches_de_does_not():
@@ -118,6 +125,7 @@ if pytest is not None:
 
 if __name__ == "__main__":
     import sys
+
     sys.path.insert(0, ".")
     ok = True
     for nm in sorted(PURE_OPTIMIZERS):

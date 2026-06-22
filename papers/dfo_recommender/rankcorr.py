@@ -9,6 +9,7 @@ problems.
 Panel: all humpday optimizers + ngCMA (production pycma via nevergrad).
 Crash-safe: atomic per-instance checkpoints to --out.
 """
+
 from __future__ import annotations
 
 import argparse
@@ -41,7 +42,9 @@ SYNTH = ["sphere", "ellipsoid", "cigar", "rastrigin", "rosenbrock"]
 def run_ngcma(objective, n_trials, n_dim, seed):
     param = ng.p.Array(shape=(n_dim,), lower=0.0, upper=1.0)
     param.random_state.seed(seed)
-    opt = ng.optimizers.registry["CMA"](parametrization=param, budget=n_trials, num_workers=1)
+    opt = ng.optimizers.registry["CMA"](
+        parametrization=param, budget=n_trials, num_workers=1
+    )
     best = INF
     for _ in range(n_trials):
         c = opt.ask()
@@ -85,7 +88,10 @@ def per_instance_ranks(vals_by_opt):
     """Return {opt: rank} (1=best) for one instance; INF handled (worst)."""
     opts = list(vals_by_opt)
     order = sorted(opts, key=lambda o: vals_by_opt[o])
-    return {o: 1 + sum(1 for x in opts if vals_by_opt[x] < vals_by_opt[o] - 1e-12) for o in opts}
+    return {
+        o: 1 + sum(1 for x in opts if vals_by_opt[x] < vals_by_opt[o] - 1e-12)
+        for o in opts
+    }
 
 
 def leaderboard(rank_lists):
@@ -127,7 +133,9 @@ def main():
     for d in synth_dims:
         for fn in funcs:
             for s in seeds:
-                instances.append(("synthetic", f"{fn}-{d}d", make_synth(fn, d, s), d, s))
+                instances.append(
+                    ("synthetic", f"{fn}-{d}d", make_synth(fn, d, s), d, s)
+                )
     for dm in real_demos:
         for s in seeds:
             inst = disguise_demo(dm, s)
@@ -153,10 +161,21 @@ def main():
                 continue
             vals = {o: run_opt(o, obj, n_dim, budget, 7000 + seed) for o in panel}
             ranks = per_instance_ranks(vals)
-            results.append({"budget": budget, "suite": suite, "label": label,
-                            "n_dim": n_dim, "seed": seed, "ranks": ranks})
-            print(f"[{c}/{total}] b={budget} {suite:9s} {label:22s} "
-                  f"best={min(r for r in ranks if ranks[r]==1)}", flush=True)
+            results.append(
+                {
+                    "budget": budget,
+                    "suite": suite,
+                    "label": label,
+                    "n_dim": n_dim,
+                    "seed": seed,
+                    "ranks": ranks,
+                }
+            )
+            print(
+                f"[{c}/{total}] b={budget} {suite:9s} {label:22s} "
+                f"best={min(r for r in ranks if ranks[r] == 1)}",
+                flush=True,
+            )
             atomic_dump({"done": False, "panel": panel, "results": results}, a.out)
 
     # synthesize leaderboards + correlation per budget
@@ -164,7 +183,11 @@ def main():
     for budget in budgets:
         lbs = {}
         for suite in ("synthetic", "real"):
-            rls = [r["ranks"] for r in results if r["budget"] == budget and r["suite"] == suite]
+            rls = [
+                r["ranks"]
+                for r in results
+                if r["budget"] == budget and r["suite"] == suite
+            ]
             if rls:
                 lbs[suite] = leaderboard(rls)
         if "synthetic" in lbs and "real" in lbs:
@@ -174,18 +197,27 @@ def main():
             kt = kendalltau(sv, rv)
             sp = spearmanr(sv, rv)
             summary[str(budget)] = {
-                "kendall_tau": round(float(kt.statistic), 4), "kendall_p": round(float(kt.pvalue), 4),
+                "kendall_tau": round(float(kt.statistic), 4),
+                "kendall_p": round(float(kt.pvalue), 4),
                 "spearman": round(float(sp.statistic), 4),
-                "synthetic_leaderboard": {o: round(lbs["synthetic"][o], 3) for o in opts},
+                "synthetic_leaderboard": {
+                    o: round(lbs["synthetic"][o], 3) for o in opts
+                },
                 "real_leaderboard": {o: round(lbs["real"][o], 3) for o in opts},
             }
-    atomic_dump({"done": True, "panel": panel, "summary": summary, "results": results}, a.out)
+    atomic_dump(
+        {"done": True, "panel": panel, "summary": summary, "results": results}, a.out
+    )
 
     print("\n=== rank correlation: synthetic vs real leaderboards ===")
     for b, s in summary.items():
-        print(f"  budget {b}: Kendall-tau={s['kendall_tau']} (p={s['kendall_p']}) "
-              f"Spearman={s['spearman']}")
-    print("\nLow tau => synthetic benchmarks do NOT predict real-world optimizer ranking.")
+        print(
+            f"  budget {b}: Kendall-tau={s['kendall_tau']} (p={s['kendall_p']}) "
+            f"Spearman={s['spearman']}"
+        )
+    print(
+        "\nLow tau => synthetic benchmarks do NOT predict real-world optimizer ranking."
+    )
     return 0
 
 

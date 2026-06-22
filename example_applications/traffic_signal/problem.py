@@ -12,15 +12,16 @@ street starves the side streets, and vice versa.
 The HumpDay objective takes an 8-D point in [0,1]^8 (split and offset per intersection)
 and returns total vehicle-delay (scaled).
 """
+
 from __future__ import annotations
 
 N_INT = 4
 N_DIM = N_INT * 2
 CYCLE = 90.0
-MAIN = (1000.0, 1100.0, 950.0, 1050.0)   # main-approach flow (veh/h)
-SIDE = (400.0, 350.0, 500.0, 300.0)      # side-approach flow
-SAT = 1800.0                             # saturation flow (veh/h of green)
-TRAVEL = (30.0, 35.0, 28.0)              # seconds between consecutive intersections
+MAIN = (1000.0, 1100.0, 950.0, 1050.0)  # main-approach flow (veh/h)
+SIDE = (400.0, 350.0, 500.0, 300.0)  # side-approach flow
+SAT = 1800.0  # saturation flow (veh/h of green)
+TRAVEL = (30.0, 35.0, 28.0)  # seconds between consecutive intersections
 
 
 def decode(u):

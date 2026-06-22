@@ -10,6 +10,7 @@ back row, shading no one, wants the capture-optimal tilt.
 The HumpDay objective takes an 8-D point in [0,1]^8 (row tilts, mapped to 0..1.2 rad) and
 returns the negative of total captured energy minus shading losses.
 """
+
 from __future__ import annotations
 
 import math
@@ -29,8 +30,8 @@ def objective(u):
     tilt = decode(u)
     energy = 0.0
     for i in range(N_ROWS):
-        energy += math.cos(tilt[i] - TILT_OPT)            # capture, peaks at TILT_OPT
-        if i < N_ROWS - 1:                                # shades the row behind it
+        energy += math.cos(tilt[i] - TILT_OPT)  # capture, peaks at TILT_OPT
+        if i < N_ROWS - 1:  # shades the row behind it
             shadow = math.sin(tilt[i])
             energy -= SHADE * max(0.0, shadow - SPACING)
     return -energy

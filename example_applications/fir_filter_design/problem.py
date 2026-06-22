@@ -10,14 +10,15 @@ free). It is a smooth least-squares filter-design problem.
 The HumpDay objective takes an 11-D point in [0,1]^11 (taps, mapped to [-0.5, 0.5]) and
 returns the summed passband and stopband response error.
 """
+
 from __future__ import annotations
 
 import math
 
 N_TAPS = 11
 N_DIM = N_TAPS
-WC = 0.25 * math.pi      # passband edge
-WS = 0.40 * math.pi      # stopband edge
+WC = 0.25 * math.pi  # passband edge
+WS = 0.40 * math.pi  # stopband edge
 NGRID = 40
 GRID = [math.pi * i / NGRID for i in range(NGRID + 1)]
 
@@ -36,5 +37,5 @@ def objective(u):
         if w <= WC:
             err += (mag - 1.0) ** 2
         elif w >= WS:
-            err += mag ** 2
+            err += mag**2
     return err

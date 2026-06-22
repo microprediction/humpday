@@ -12,6 +12,7 @@ chain into a compact hydrophobic core, the textbook extreme-multimodality benchm
 The HumpDay objective takes an 11-D point in [0,1]^11 (bend angles, mapped to
 [-pi, pi]) and returns the total energy.
 """
+
 from __future__ import annotations
 
 import math
@@ -51,7 +52,7 @@ def objective(u):
     pos = _positions(angles)
     energy = 0.0
     for a in angles:
-        energy += 0.25 * (1.0 - math.cos(a))   # backbone bending
+        energy += 0.25 * (1.0 - math.cos(a))  # backbone bending
     for i in range(N_BEADS):
         xi, yi = pos[i]
         for j in range(i + 2, N_BEADS):
@@ -59,6 +60,6 @@ def objective(u):
             r = math.hypot(xi - xj, yi - yj)
             if r < MIN_DISTANCE:
                 r = MIN_DISTANCE
-            inv6 = r ** -6
+            inv6 = r**-6
             energy += 4.0 * (inv6 * inv6 - _coeff(SEQ[i], SEQ[j]) * inv6)
     return energy

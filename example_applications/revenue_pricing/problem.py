@@ -11,12 +11,13 @@ consume scarce capacity most.
 The HumpDay objective takes an 8-D point in [0,1]^8 (prices, mapped to 0..p_max per
 segment) and returns negative revenue plus an over-capacity penalty.
 """
+
 from __future__ import annotations
 
 N_SEG = 8
 N_DIM = N_SEG
-A = (100.0, 90.0, 80.0, 70.0, 60.0, 50.0, 40.0, 30.0)   # demand intercepts
-B = (8.0, 7.0, 6.5, 6.0, 5.5, 5.0, 4.5, 4.0)            # price sensitivities
+A = (100.0, 90.0, 80.0, 70.0, 60.0, 50.0, 40.0, 30.0)  # demand intercepts
+B = (8.0, 7.0, 6.5, 6.0, 5.5, 5.0, 4.5, 4.0)  # price sensitivities
 P_MAX = 15.0
 CAPACITY = 220.0
 OVERAGE_PENALTY = 3.0

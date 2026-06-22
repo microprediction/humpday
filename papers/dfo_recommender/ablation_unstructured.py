@@ -7,6 +7,7 @@ adds value. Scores on the SAME suite/config as runs/simplex_warm.json (16 'sprea
 demos x seeds 0,1,2 x 120 trials, panel-normalised regret) so numbers are directly
 comparable to that leaderboard (centroid won at 0.0866).
 """
+
 from __future__ import annotations
 
 import argparse
@@ -58,8 +59,11 @@ def main():
     seeds = tuple(int(s) for s in args.seeds.split(","))
 
     base = select_demos(args.demos, "spread")  # SAME 16 as the simplex run
-    print(f"unstructured ablation: {args.attempts} Opus attempts vs simplex centroid (0.0866)\n"
-          f"{len(base)} demos x {len(seeds)} seeds x {args.trials} trials\n", flush=True)
+    print(
+        f"unstructured ablation: {args.attempts} Opus attempts vs simplex centroid (0.0866)\n"
+        f"{len(base)} demos x {len(seeds)} seeds x {args.trials} trials\n",
+        flush=True,
+    )
     print("  precomputing panel baselines (cached)...", flush=True)
     panel_cache = build_panel_cache(base, seeds, args.trials)
 
@@ -90,17 +94,31 @@ def main():
 
     results.sort(key=lambda r: r["regret"])
     best = results[0]["regret"] if results else None
-    atomic_dump({"done": True, "n_attempts": args.attempts, "demos": len(base),
-                 "seeds": list(seeds), "trials": args.trials,
-                 "best_unstructured": best, "simplex_centroid": 0.0866,
-                 "results": results}, args.out)
+    atomic_dump(
+        {
+            "done": True,
+            "n_attempts": args.attempts,
+            "demos": len(base),
+            "seeds": list(seeds),
+            "trials": args.trials,
+            "best_unstructured": best,
+            "simplex_centroid": 0.0866,
+            "results": results,
+        },
+        args.out,
+    )
     print("\n=== unstructured leaderboard (panel-normalised regret) ===")
     for r in results:
         print(f"  {r['regret']:.4f}  {r['label']}")
     if best is not None:
-        verdict = ("SIMPLEX WINS (blend structure adds value)" if best > 0.0866 + 0.01
-                   else "TIE/UNSTRUCTURED WINS (structure may be decoration)")
-        print(f"\nbest unstructured = {best:.4f}  vs  simplex centroid = 0.0866  ->  {verdict}")
+        verdict = (
+            "SIMPLEX WINS (blend structure adds value)"
+            if best > 0.0866 + 0.01
+            else "TIE/UNSTRUCTURED WINS (structure may be decoration)"
+        )
+        print(
+            f"\nbest unstructured = {best:.4f}  vs  simplex centroid = 0.0866  ->  {verdict}"
+        )
     return 0
 
 

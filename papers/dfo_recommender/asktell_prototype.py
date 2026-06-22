@@ -12,6 +12,7 @@ control flow are byte-identical to a monolithic run (lock-step handshake => no
 concurrency in the algorithm's logic). suggest_next/receive_update therefore
 *cannot* change the trajectory — which the equivalence gate below verifies.
 """
+
 from __future__ import annotations
 
 import queue
@@ -129,10 +130,14 @@ def run_asktell(Cls, seed, n_trials, n_dim):
 
 def main():
     n_dim, n_trials = 5, 60
-    cases = [("NelderMead", NelderMead),
-             ("DifferentialEvolution", DifferentialEvolution),
-             ("CMAEvolutionStrategy", CMAEvolutionStrategy)]
-    print(f"equivalence gate: ask/tell vs monolithic  (n_dim={n_dim}, n_trials={n_trials})\n")
+    cases = [
+        ("NelderMead", NelderMead),
+        ("DifferentialEvolution", DifferentialEvolution),
+        ("CMAEvolutionStrategy", CMAEvolutionStrategy),
+    ]
+    print(
+        f"equivalence gate: ask/tell vs monolithic  (n_dim={n_dim}, n_trials={n_trials})\n"
+    )
     all_ok = True
     for name, Cls in cases:
         for seed in (0, 1, 2):
@@ -141,11 +146,17 @@ def main():
             ok = (mv == av) and (mevals == aevals)
             all_ok = all_ok and ok
             flag = "OK " if ok else "MISMATCH"
-            print(f"  [{flag}] {name:24s} seed={seed}  "
-                  f"best: mono={mv:.10g} asktell={av:.10g}  "
-                  f"evals: mono={mevals} asktell={aevals} (steps={asteps})")
-    print("\nEQUIVALENCE GATE:", "PASS — inversion is behavior-preserving" if all_ok
-          else "FAIL — trajectories differ; do NOT fold into base.py")
+            print(
+                f"  [{flag}] {name:24s} seed={seed}  "
+                f"best: mono={mv:.10g} asktell={av:.10g}  "
+                f"evals: mono={mevals} asktell={aevals} (steps={asteps})"
+            )
+    print(
+        "\nEQUIVALENCE GATE:",
+        "PASS — inversion is behavior-preserving"
+        if all_ok
+        else "FAIL — trajectories differ; do NOT fold into base.py",
+    )
     return 0 if all_ok else 1
 
 

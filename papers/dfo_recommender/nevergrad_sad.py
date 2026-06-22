@@ -23,6 +23,7 @@ here ships in the humpday wheel.
     ../../.venv/bin/python nevergrad_sad.py --quick
     ../../.venv/bin/python nevergrad_sad.py --dims 20,40 --seeds 0,1,2 --out runs/nevergrad_sad.json
 """
+
 from __future__ import annotations
 
 import argparse
@@ -50,7 +51,11 @@ def make_objective(name: str, n: int, seed: int):
     its own seed so the optimum is relocated per (name, n, seed) — nothing here can
     be won by memorising a location."""
     af = ArtificialFunction(
-        name=name, block_dimension=n, rotation=True, num_blocks=1, useless_variables=0,
+        name=name,
+        block_dimension=n,
+        rotation=True,
+        num_blocks=1,
+        useless_variables=0,
     )
     # ArtificialFunction is itself stochastic-free here; seed the rotation via copy.
     rng = np.random.default_rng(seed)
@@ -68,7 +73,9 @@ def run_ng_optimizer(opt_name: str, f, n: int, budget: int, seed: int) -> float:
     """Run a built-in Nevergrad optimizer on f over [0,1]^n; return best loss seen."""
     param = ng.p.Array(shape=(n,), lower=0.0, upper=1.0)
     param.random_state.seed(seed)
-    opt = ng.optimizers.registry[opt_name](parametrization=param, budget=budget, num_workers=1)
+    opt = ng.optimizers.registry[opt_name](
+        parametrization=param, budget=budget, num_workers=1
+    )
     best = INF
     for _ in range(budget):
         cand = opt.ask()
@@ -97,7 +104,9 @@ def normalise(cell: dict) -> dict:
         return dict.fromkeys(cell, 1.0)
     lo, hi = min(vals), max(vals)
     span = (hi - lo) or 1.0
-    return {k: (1.0 if not math.isfinite(v) else (v - lo) / span) for k, v in cell.items()}
+    return {
+        k: (1.0 if not math.isfinite(v) else (v - lo) / span) for k, v in cell.items()
+    }
 
 
 def atomic_dump(obj, path):
@@ -138,28 +147,54 @@ def main() -> int:
                 i += 1
                 cell = evaluate_cell(name, n, budget, seed)
                 nc = normalise(cell)
-                raw.append({"func": name, "n": n, "budget": budget, "seed": seed, **cell})
-                normed.append({"func": name, "n": n, "budget": budget, "seed": seed, **nc})
+                raw.append(
+                    {"func": name, "n": n, "budget": budget, "seed": seed, **cell}
+                )
+                normed.append(
+                    {"func": name, "n": n, "budget": budget, "seed": seed, **nc}
+                )
                 for o in optimizers:
                     agg[o].append(nc[o])
                     if n >= 40:
                         agg_hi[o].append(nc[o])
-                print(f"[{i}/{total}] {name:10s} n={n:3d} b={budget:4d} s={seed} :: "
-                      + "  ".join(f"{o}={nc[o]:.3f}" for o in optimizers), flush=True)
-                atomic_dump({
-                    "done": False, "dims": dims, "seeds": seeds, "funcs": funcs,
-                    "budget_mult": args.budget_mult, "optimizers": optimizers,
-                    "raw": raw, "normed": normed,
-                }, args.out)
+                print(
+                    f"[{i}/{total}] {name:10s} n={n:3d} b={budget:4d} s={seed} :: "
+                    + "  ".join(f"{o}={nc[o]:.3f}" for o in optimizers),
+                    flush=True,
+                )
+                atomic_dump(
+                    {
+                        "done": False,
+                        "dims": dims,
+                        "seeds": seeds,
+                        "funcs": funcs,
+                        "budget_mult": args.budget_mult,
+                        "optimizers": optimizers,
+                        "raw": raw,
+                        "normed": normed,
+                    },
+                    args.out,
+                )
 
     summary = {o: (sum(agg[o]) / len(agg[o]) if agg[o] else None) for o in optimizers}
-    summary_hi = {o: (sum(agg_hi[o]) / len(agg_hi[o]) if agg_hi[o] else None) for o in optimizers}
-    atomic_dump({
-        "done": True, "dims": dims, "seeds": seeds, "funcs": funcs,
-        "budget_mult": args.budget_mult, "optimizers": optimizers,
-        "summary_all": summary, "summary_high_dim_n>=40": summary_hi,
-        "raw": raw, "normed": normed,
-    }, args.out)
+    summary_hi = {
+        o: (sum(agg_hi[o]) / len(agg_hi[o]) if agg_hi[o] else None) for o in optimizers
+    }
+    atomic_dump(
+        {
+            "done": True,
+            "dims": dims,
+            "seeds": seeds,
+            "funcs": funcs,
+            "budget_mult": args.budget_mult,
+            "optimizers": optimizers,
+            "summary_all": summary,
+            "summary_high_dim_n>=40": summary_hi,
+            "raw": raw,
+            "normed": normed,
+        },
+        args.out,
+    )
 
     print("\n=== mean normalised regret (0 = best in cell; lower better) ===")
     print(f"{'optimizer':14s} {'all':>8s} {'n>=40':>8s}")

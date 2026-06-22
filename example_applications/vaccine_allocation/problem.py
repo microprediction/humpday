@@ -10,15 +10,16 @@ the high-contact, high-population groups that drive transmission.
 The HumpDay objective takes an 8-D point in [0,1]^8, normalises it to a fixed dose
 budget, simulates the multi-group SIR, and returns the total number infected.
 """
+
 from __future__ import annotations
 
 N_GROUPS = 8
 N_DIM = N_GROUPS
 
-POP = (1.0, 0.9, 0.8, 0.7, 0.6, 0.5, 0.4, 0.3)        # relative group sizes
-CONTACT = (1.3, 1.1, 1.0, 0.9, 0.8, 0.7, 0.6, 0.5)    # contacts per unit time
-VAX_BUDGET = 2.5     # total doses, in population units
-GAMMA = 0.3          # recovery rate
+POP = (1.0, 0.9, 0.8, 0.7, 0.6, 0.5, 0.4, 0.3)  # relative group sizes
+CONTACT = (1.3, 1.1, 1.0, 0.9, 0.8, 0.7, 0.6, 0.5)  # contacts per unit time
+VAX_BUDGET = 2.5  # total doses, in population units
+GAMMA = 0.3  # recovery rate
 STEPS = 80
 DT = 1.0
 TOTAL_POP = sum(POP)

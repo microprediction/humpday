@@ -104,8 +104,18 @@ def _mut(g, step, p_gene=0.5):
     ]
 
 
-def evolve_v2(generations, mu, lam, base, seeds, trials, p_crossover=0.7, n_warm=1,
-              rng_seed=0, checkpoint_path=None):
+def evolve_v2(
+    generations,
+    mu,
+    lam,
+    base,
+    seeds,
+    trials,
+    p_crossover=0.7,
+    n_warm=1,
+    rng_seed=0,
+    checkpoint_path=None,
+):
     random.seed(rng_seed)
     pop = [list(DEFAULT_V2) for _ in range(min(n_warm, mu))]
     while len(pop) < mu:
@@ -124,20 +134,37 @@ def evolve_v2(generations, mu, lam, base, seeds, trials, p_crossover=0.7, n_warm
     step = 0.2
 
     def checkpoint(gen, done=False):
-        ad._write_checkpoint(checkpoint_path, {
-            "template": "v2_surrogate", "generation": gen,
-            "generations_planned": generations, "done": done, "mu": mu, "lam": lam,
-            "seeds": list(seeds), "n_trials": trials, "panel": ad.PANEL,
-            "demos": [d.name for d in base], "evals": len(cache),
-            "best_fitness": best_fit, "best_genome": best_genome,
-            "best_genome_decoded": {**ad._describe(best_genome[:ad.GENOME_LEN]),
-                                    "p_surrogate": round(best_genome[12], 3),
-                                    "r2_min_gene": round(best_genome[13], 3)},
-            "population_fitness": [round(f, 4) for f, _ in scored], "history": history,
-        })
+        ad._write_checkpoint(
+            checkpoint_path,
+            {
+                "template": "v2_surrogate",
+                "generation": gen,
+                "generations_planned": generations,
+                "done": done,
+                "mu": mu,
+                "lam": lam,
+                "seeds": list(seeds),
+                "n_trials": trials,
+                "panel": ad.PANEL,
+                "demos": [d.name for d in base],
+                "evals": len(cache),
+                "best_fitness": best_fit,
+                "best_genome": best_genome,
+                "best_genome_decoded": {
+                    **ad._describe(best_genome[: ad.GENOME_LEN]),
+                    "p_surrogate": round(best_genome[12], 3),
+                    "r2_min_gene": round(best_genome[13], 3),
+                },
+                "population_fitness": [round(f, 4) for f, _ in scored],
+                "history": history,
+            },
+        )
 
-    print(f"  gen 0: pop best regret = {best_fit:.4f}  "
-          f"(pop {[round(f, 3) for f, _ in scored]})", flush=True)
+    print(
+        f"  gen 0: pop best regret = {best_fit:.4f}  "
+        f"(pop {[round(f, 3) for f, _ in scored]})",
+        flush=True,
+    )
     checkpoint(0)
     for gen in range(1, generations + 1):
         parents = [g for _, g in scored]
@@ -149,15 +176,19 @@ def evolve_v2(generations, mu, lam, base, seeds, trials, p_crossover=0.7, n_warm
             else:
                 child = list(random.choice(parents))
             offspring.append(_mut(child, step))
-        scored = sorted(((fit_of(g), g) for g in parents + offspring),
-                        key=lambda t: t[0])[:mu]
+        scored = sorted(
+            ((fit_of(g), g) for g in parents + offspring), key=lambda t: t[0]
+        )[:mu]
         improved = scored[0][0] < best_fit - 1e-12
         best_fit, best_genome = scored[0]
         step = min(0.4, step * 1.15) if improved else max(0.05, step * 0.85)
         history.append(best_fit)
-        print(f"  gen {gen}: best regret = {best_fit:.4f}  "
-              f"(pop {[round(f, 3) for f, _ in scored]}, step {step:.2f}, "
-              f"evals {len(cache)})", flush=True)
+        print(
+            f"  gen {gen}: best regret = {best_fit:.4f}  "
+            f"(pop {[round(f, 3) for f, _ in scored]}, step {step:.2f}, "
+            f"evals {len(cache)})",
+            flush=True,
+        )
         checkpoint(gen, done=(gen == generations))
     return best_genome, best_fit, history
 
@@ -183,16 +214,26 @@ def main() -> int:
         gens, mu, lam, trials, n_demos, seeds = 3, 5, 4, 40, 4, (0, 1)
     ckpt = Path(args.out) if args.out else None
     base = DEMOS[:n_demos]
-    print(f"Evolving SURROGATE template: ({mu}+{lam}) GA, {gens} gens, "
-          f"fitness = regret vs {ad.PANEL}\n"
-          f"across {len(base)} demos x {len(seeds)} seeds, {trials} trials each.\n"
-          + (f"checkpointing to {ckpt}\n" if ckpt else ""))
-    bg, bf, _ = evolve_v2(gens, mu, lam, base, seeds, trials,
-                          p_crossover=args.crossover, n_warm=args.n_warm,
-                          checkpoint_path=ckpt)
+    print(
+        f"Evolving SURROGATE template: ({mu}+{lam}) GA, {gens} gens, "
+        f"fitness = regret vs {ad.PANEL}\n"
+        f"across {len(base)} demos x {len(seeds)} seeds, {trials} trials each.\n"
+        + (f"checkpointing to {ckpt}\n" if ckpt else "")
+    )
+    bg, bf, _ = evolve_v2(
+        gens,
+        mu,
+        lam,
+        base,
+        seeds,
+        trials,
+        p_crossover=args.crossover,
+        n_warm=args.n_warm,
+        checkpoint_path=ckpt,
+    )
     print("\n=== Evolved surrogate optimizer ===")
     print(f"  normalised regret vs panel: {bf:.4f}")
-    print(f"  base knobs: {ad._describe(bg[:ad.GENOME_LEN])}")
+    print(f"  base knobs: {ad._describe(bg[: ad.GENOME_LEN])}")
     print(f"  p_surrogate: {bg[12]:.3f}   r2_min_gene: {bg[13]:.3f}")
     return 0
 

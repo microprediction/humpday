@@ -11,15 +11,16 @@ low-flow branches.
 The HumpDay objective takes an 8-D point in [0,1]^8 (diameters, mapped to 0.1..1.0 m)
 and returns material cost plus pumping cost.
 """
+
 from __future__ import annotations
 
 N_PIPES = 8
 N_DIM = N_PIPES
-FLOW = (0.9, 0.6, 0.5, 0.35, 0.3, 0.2, 0.15, 0.1)   # m^3/s carried by each pipe
-LENGTH = (500, 400, 350, 300, 250, 200, 180, 150)   # m
+FLOW = (0.9, 0.6, 0.5, 0.35, 0.3, 0.2, 0.15, 0.1)  # m^3/s carried by each pipe
+LENGTH = (500, 400, 350, 300, 250, 200, 180, 150)  # m
 D_MIN, D_MAX = 0.10, 1.00
-MATERIAL_COST = 800.0   # per (m of length * m^2 of cross-section)
-PUMP_COST = 2.0         # per unit of head loss
+MATERIAL_COST = 800.0  # per (m of length * m^2 of cross-section)
+PUMP_COST = 2.0  # per unit of head loss
 
 
 def decode(u):

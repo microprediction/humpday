@@ -12,16 +12,41 @@ The HumpDay objective takes a 24-D point in [0,1]^24 (hourly charging power, map
 0..cap) and returns price-weighted energy cost plus penalties for missing the noon and
 end-of-day energy requirements.
 """
+
 from __future__ import annotations
 
 HOURS = 24
 N_DIM = HOURS
 
-PRICE = (0.30, 0.25, 0.22, 0.20, 0.22, 0.30, 0.45, 0.60, 0.70, 0.65, 0.60, 0.58,
-         0.55, 0.55, 0.60, 0.70, 0.85, 1.00, 0.95, 0.80, 0.65, 0.50, 0.40, 0.35)
-CAP = 10.0              # grid connection limit (per hour)
-NEED_BY_NOON = 45.0     # energy required by hour 12
-NEED_TOTAL = 110.0      # energy required by end of day
+PRICE = (
+    0.30,
+    0.25,
+    0.22,
+    0.20,
+    0.22,
+    0.30,
+    0.45,
+    0.60,
+    0.70,
+    0.65,
+    0.60,
+    0.58,
+    0.55,
+    0.55,
+    0.60,
+    0.70,
+    0.85,
+    1.00,
+    0.95,
+    0.80,
+    0.65,
+    0.50,
+    0.40,
+    0.35,
+)
+CAP = 10.0  # grid connection limit (per hour)
+NEED_BY_NOON = 45.0  # energy required by hour 12
+NEED_TOTAL = 110.0  # energy required by end of day
 
 
 def decode(u):

@@ -11,6 +11,7 @@ still covering demand and respecting the bounds.
 The HumpDay objective takes a 12-D point in [0,1]^12 (monthly releases, mapped to
 0..R_max) and returns negative hydropower plus demand-shortfall and storage penalties.
 """
+
 from __future__ import annotations
 
 T = 12

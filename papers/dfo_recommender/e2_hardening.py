@@ -7,6 +7,7 @@ budgets, and where? Panel: NM, DE, CMA, ngCMA(pycma). Discovered:
   - unstructured : the best free-form Opus optimizer (runs/ablation_unstructured_code/)
 Held-out = demos used by none of the selection sets. Crash-safe per-instance.
 """
+
 from __future__ import annotations
 
 import argparse
@@ -30,7 +31,9 @@ INF = float("inf")
 
 
 def load_centroid():
-    spec = importlib.util.spec_from_file_location("centroid_opt", "runs/simplex_warm_code/centroid.py")
+    spec = importlib.util.spec_from_file_location(
+        "centroid_opt", "runs/simplex_warm_code/centroid.py"
+    )
     m = importlib.util.module_from_spec(spec)
     spec.loader.exec_module(m)
     return m.optimize
@@ -93,7 +96,10 @@ def main():
     n = min(a.demos, len(pool))
     idx = sorted({round(k * (len(pool) - 1) / max(n - 1, 1)) for k in range(n)})
     held = [pool[i] for i in idx]
-    print(f"held-out demos ({len(held)}, dims {held[0].n_dim}-{held[-1].n_dim})\n", flush=True)
+    print(
+        f"held-out demos ({len(held)}, dims {held[0].n_dim}-{held[-1].n_dim})\n",
+        flush=True,
+    )
 
     rows = []
     done = set()
@@ -119,12 +125,27 @@ def main():
                     vals[o] = run_opt(o, obj, nd, budget, 9000 + s)
                 for o, opt in discovered.items():
                     vals[o] = run_discovered(opt, obj, nd, budget, 9000 + s)
-                ranks = {o: 1 + sum(1 for x in field if vals[x] < vals[o] - 1e-12) for o in field}
-                rows.append({"budget": budget, "demo": dm.name, "n": nd, "seed": s,
-                             "vals": {o: (None if vals[o] >= INF else vals[o]) for o in field},
-                             "ranks": ranks})
-                print(f"[{c}/{total}] b={budget} {dm.name:22s} n={nd:3d} s={s} "
-                      f"centroid_rank={ranks.get('centroid')}", flush=True)
+                ranks = {
+                    o: 1 + sum(1 for x in field if vals[x] < vals[o] - 1e-12)
+                    for o in field
+                }
+                rows.append(
+                    {
+                        "budget": budget,
+                        "demo": dm.name,
+                        "n": nd,
+                        "seed": s,
+                        "vals": {
+                            o: (None if vals[o] >= INF else vals[o]) for o in field
+                        },
+                        "ranks": ranks,
+                    }
+                )
+                print(
+                    f"[{c}/{total}] b={budget} {dm.name:22s} n={nd:3d} s={s} "
+                    f"centroid_rank={ranks.get('centroid')}",
+                    flush=True,
+                )
                 atomic_dump({"done": False, "field": field, "rows": rows}, a.out)
 
     # mean rank + win-rate per budget
@@ -133,10 +154,13 @@ def main():
         br = [r for r in rows if r["budget"] == budget]
         if not br:
             continue
-        summary[str(budget)] = {o: {
-            "mean_rank": round(sum(r["ranks"][o] for r in br) / len(br), 3),
-            "wins": sum(1 for r in br if r["ranks"][o] == 1),
-        } for o in field}
+        summary[str(budget)] = {
+            o: {
+                "mean_rank": round(sum(r["ranks"][o] for r in br) / len(br), 3),
+                "wins": sum(1 for r in br if r["ranks"][o] == 1),
+            }
+            for o in field
+        }
     atomic_dump({"done": True, "field": field, "summary": summary, "rows": rows}, a.out)
 
     print("\n=== mean rank by budget (1=best of field) ===")
@@ -145,8 +169,10 @@ def main():
         if not sb:
             continue
         ordered = sorted(field, key=lambda o: sb[o]["mean_rank"])
-        print(f"  budget {budget}: " + "  ".join(
-            f"{o}={sb[o]['mean_rank']}" for o in ordered))
+        print(
+            f"  budget {budget}: "
+            + "  ".join(f"{o}={sb[o]['mean_rank']}" for o in ordered)
+        )
     return 0
 
 

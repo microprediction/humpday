@@ -41,7 +41,9 @@ def main() -> int:
     ap = argparse.ArgumentParser(description=__doc__)
     ap.add_argument("--seeds", default="0,1,2")
     ap.add_argument("--trials", type=int, default=150)
-    ap.add_argument("--thresh", type=float, default=0.5, help="seriation cluster distance cut")
+    ap.add_argument(
+        "--thresh", type=float, default=0.5, help="seriation cluster distance cut"
+    )
     args = ap.parse_args()
     seeds = tuple(int(s) for s in args.seeds.split(","))
 
@@ -60,10 +62,18 @@ def main() -> int:
             ("seriated γ=.00", dict(gamma=0.0, seriate=True, dist_thresh=args.thresh)),
         ]
         if demo.name in BLOCK_DEMOS:
-            v.insert(2, ("block γ=0.50", dict(gamma=0.5, block_size=BLOCK_DEMOS[demo.name])))
+            v.insert(
+                2, ("block γ=0.50", dict(gamma=0.5, block_size=BLOCK_DEMOS[demo.name]))
+            )
         return v
 
-    all_labels = ["full γ=1.00", "blind γ=0.00", "block γ=0.50", "seriated γ=.50", "seriated γ=.00"]
+    all_labels = [
+        "full γ=1.00",
+        "blind γ=0.00",
+        "block γ=0.50",
+        "seriated γ=.50",
+        "seriated γ=.00",
+    ]
     regret = {lab: [] for lab in all_labels}
     per_demo = {}
     for i, demo in enumerate(demos):
@@ -74,17 +84,29 @@ def main() -> int:
             vals = {}
             for lab, kw in vlist:
                 try:
-                    vals[lab] = cma_es(inst.objective, args.trials, inst.n_dim, seed=4000 + i * 7 + s, **kw)
+                    vals[lab] = cma_es(
+                        inst.objective,
+                        args.trials,
+                        inst.n_dim,
+                        seed=4000 + i * 7 + s,
+                        **kw,
+                    )
                 except Exception as e:  # noqa: BLE001
                     print(f"   ! {lab} on {inst.name}: {e}")
                     vals[lab] = INF
             finite = [v for v in vals.values() if v < INF]
             mn, mx = (min(finite), max(finite)) if finite else (0.0, 1.0)
             for lab in vals:
-                nr = 0.0 if mx <= mn or vals[lab] >= INF else (vals[lab] - mn) / (mx - mn)
+                nr = (
+                    0.0
+                    if mx <= mn or vals[lab] >= INF
+                    else (vals[lab] - mn) / (mx - mn)
+                )
                 regret[lab].append(nr)
                 dvals[lab].append(nr)
-        per_demo[f"{demo.name}({demo.n_dim})"] = {lab: mean(dvals[lab]) for lab in dvals}
+        per_demo[f"{demo.name}({demo.n_dim})"] = {
+            lab: mean(dvals[lab]) for lab in dvals
+        }
 
     labs = [l for l in all_labels if regret[l]]
     print("=== per-demo normalised regret (lower=better; * = best in row) ===")
@@ -92,14 +114,18 @@ def main() -> int:
     for name, row in per_demo.items():
         best = min(row.values())
         cells = "".join(
-            (("*" if lab in row and abs(row[lab] - best) < 1e-9 else " ")
-             + (f"{row[lab]:.3f}" if lab in row else "  -  ")).rjust(15)
+            (
+                ("*" if lab in row and abs(row[lab] - best) < 1e-9 else " ")
+                + (f"{row[lab]:.3f}" if lab in row else "  -  ")
+            ).rjust(15)
             for lab in labs
         )
         print("  " + name.ljust(22) + cells)
 
     print("\n=== overall (mean normalised regret, high-dim) ===")
-    for lab, r in sorted(((lab, mean(regret[lab])) for lab in labs), key=lambda t: t[1]):
+    for lab, r in sorted(
+        ((lab, mean(regret[lab])) for lab in labs), key=lambda t: t[1]
+    ):
         print(f"  {lab:15s} {r:.4f}  {'#' * int(r * 40)}")
     print(
         "\nWin condition: seriated beats full AND blind (discovered structure helps "

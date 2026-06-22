@@ -15,6 +15,7 @@ EMPIRICAL real-world ranking, and compare it to the synthetic-benchmark predicto
     ../../.venv/bin/python llm_selector.py --dry-run          # no API; smoke
     ../../.venv/bin/python llm_selector.py --problems 15 --rounds 3 --out runs/llm_selector.json
 """
+
 from __future__ import annotations
 
 import argparse
@@ -61,9 +62,12 @@ def demo_description(name):
 # --------------------------- LLM elicitation -------------------------------
 def ask_llm(prompt, model):
     import anthropic
+
     client = anthropic.Anthropic()
     r = client.messages.create(
-        model=model, max_tokens=1800, thinking={"type": "adaptive"},
+        model=model,
+        max_tokens=1800,
+        thinking={"type": "adaptive"},
         messages=[{"role": "user", "content": prompt}],
     )
     return "".join(b.text for b in r.content if b.type == "text")
@@ -170,7 +174,9 @@ def empirical_orders(budget, cands):
     for demo, rlists in by_demo.items():
         mr = {c: mean(rl[c] for rl in rlists) for c in cands if c in rlists[0]}
         per[demo] = sorted(mr, key=mr.get)
-    syn = [r["ranks"] for r in res if r["budget"] == budget and r["suite"] == "synthetic"]
+    syn = [
+        r["ranks"] for r in res if r["budget"] == budget and r["suite"] == "synthetic"
+    ]
     synth = None
     if syn:
         mr = {c: mean(rl[c] for rl in syn) for c in cands if c in syn[0]}
@@ -196,8 +202,11 @@ def main():
     # budget so every elicited problem gets an empirical comparison.
     pool = DEMOS
     if os.path.exists("runs/rankcorr.json"):
-        labs = {r["label"] for r in json.load(open("runs/rankcorr.json"))["results"]
-                if r["suite"] == "real" and r["budget"] == a.budget}
+        labs = {
+            r["label"]
+            for r in json.load(open("runs/rankcorr.json"))["results"]
+            if r["suite"] == "real" and r["budget"] == a.budget
+        }
         if labs:
             pool = [d for d in DEMOS if d.name in labs]
     ds = sorted(pool, key=lambda d: d.n_dim)
@@ -205,8 +214,11 @@ def main():
     idx = sorted({round(k * (len(ds) - 1) / max(n - 1, 1)) for k in range(n)})
     probs = [ds[i] for i in idx]
 
-    print(f"LLM-selector: {len(probs)} problems x {a.rounds} rounds "
-          f"({'DRY' if a.dry_run else a.model}), budget={a.budget}\n", flush=True)
+    print(
+        f"LLM-selector: {len(probs)} problems x {a.rounds} rounds "
+        f"({'DRY' if a.dry_run else a.model}), budget={a.budget}\n",
+        flush=True,
+    )
 
     llm_orders = {}
     raw = []
@@ -227,10 +239,21 @@ def main():
             raw.append({"demo": dm.name, "round": rd, "order": order})
         strengths = plackett_luce(rankings, cands)
         llm_orders[dm.name] = sorted(cands, key=lambda c: -strengths[c])
-        print(f"[{pi+1}/{len(probs)}] {dm.name:24s} n={dm.n_dim:3d} "
-              f"LLM top3={llm_orders[dm.name][:3]}", flush=True)
-        atomic_dump({"done": False, "budget": a.budget, "candidates": cands,
-                     "llm_orders": llm_orders, "raw": raw}, a.out)
+        print(
+            f"[{pi + 1}/{len(probs)}] {dm.name:24s} n={dm.n_dim:3d} "
+            f"LLM top3={llm_orders[dm.name][:3]}",
+            flush=True,
+        )
+        atomic_dump(
+            {
+                "done": False,
+                "budget": a.budget,
+                "candidates": cands,
+                "llm_orders": llm_orders,
+                "raw": raw,
+            },
+            a.out,
+        )
 
     # ---- evaluation against empirical (E1) ----
     per_emp, synth = empirical_orders(a.budget, cands)
@@ -238,12 +261,20 @@ def main():
     if per_emp:
         common = [d for d in llm_orders if d in per_emp]
         tau_llm = mean(kendall_tau(llm_orders[d], per_emp[d]) for d in common)
-        tau_syn = mean(kendall_tau(synth, per_emp[d]) for d in common) if synth else None
-        tau_rand = mean(kendall_tau(random.Random(d.__hash__() & 255).sample(cands, len(cands)),
-                                    per_emp[d]) for d in common)
+        tau_syn = (
+            mean(kendall_tau(synth, per_emp[d]) for d in common) if synth else None
+        )
+        tau_rand = mean(
+            kendall_tau(
+                random.Random(d.__hash__() & 255).sample(cands, len(cands)), per_emp[d]
+            )
+            for d in common
+        )
+
         # selection test: empirical rank of each predictor's top-1 (lower=better)
         def emp_rank_of(demo, opt):
             return per_emp[demo].index(opt) + 1 if opt in per_emp[demo] else len(cands)
+
         sel_llm = mean(emp_rank_of(d, llm_orders[d][0]) for d in common)
         sel_syn = mean(emp_rank_of(d, synth[0]) for d in common) if synth else None
         # always-best-single = candidate with best average empirical rank across demos
@@ -254,7 +285,9 @@ def main():
         evaluation = {
             "n_problems_scored": len(common),
             "tau_llm_vs_empirical": round(tau_llm, 3),
-            "tau_synthetic_vs_empirical": (round(tau_syn, 3) if tau_syn is not None else None),
+            "tau_synthetic_vs_empirical": (
+                round(tau_syn, 3) if tau_syn is not None else None
+            ),
             "tau_random_vs_empirical": round(tau_rand, 3),
             "selection_mean_emp_rank": {
                 "LLM_top1": round(sel_llm, 3),
@@ -263,16 +296,29 @@ def main():
                 "oracle": round(sel_oracle, 3),
             },
         }
-    atomic_dump({"done": True, "budget": a.budget, "candidates": cands,
-                 "llm_orders": llm_orders, "evaluation": evaluation, "raw": raw}, a.out)
+    atomic_dump(
+        {
+            "done": True,
+            "budget": a.budget,
+            "candidates": cands,
+            "llm_orders": llm_orders,
+            "evaluation": evaluation,
+            "raw": raw,
+        },
+        a.out,
+    )
 
     print("\n=== evaluation ===")
     if evaluation is None:
-        print("  (runs/rankcorr.json not available yet — elicitation saved; "
-              "re-run evaluation once E1 has the matching budget.)")
+        print(
+            "  (runs/rankcorr.json not available yet — elicitation saved; "
+            "re-run evaluation once E1 has the matching budget.)"
+        )
     else:
         e = evaluation
-        print(f"  predictiveness (Kendall-tau vs empirical real ranking, {e['n_problems_scored']} problems):")
+        print(
+            f"  predictiveness (Kendall-tau vs empirical real ranking, {e['n_problems_scored']} problems):"
+        )
         print(f"    LLM common-sense : {e['tau_llm_vs_empirical']}")
         print(f"    synthetic bench. : {e['tau_synthetic_vs_empirical']}")
         print(f"    random           : {e['tau_random_vs_empirical']}")

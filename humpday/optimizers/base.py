@@ -44,17 +44,17 @@ class _AskTellState:
     driver returns a list of that many values."""
 
     def __init__(self):
-        self.req = queue.Queue()   # worker -> driver: ("X", [points]) or (_DONE, None)
+        self.req = queue.Queue()  # worker -> driver: ("X", [points]) or (_DONE, None)
         self.resp = queue.Queue()  # driver -> worker: [values], or _ABORT
         self.thread = None
         self.done = False
         self.error = None
         self.result = None
-        self.mode = None           # 'scalar' | 'batch' (no mixing on one instance)
-        self.cur_points = None     # current group being served
-        self.cur_idx = 0           # scalar view: index within the group
-        self.cur_vals = None       # scalar view: values collected so far
-        self.awaiting = False      # scalar view: a point is out, value pending
+        self.mode = None  # 'scalar' | 'batch' (no mixing on one instance)
+        self.cur_points = None  # current group being served
+        self.cur_idx = 0  # scalar view: index within the group
+        self.cur_vals = None  # scalar view: values collected so far
+        self.awaiting = False  # scalar view: a point is out, value pending
         self.awaiting_batch = False
 
     def single_handshake(self, x_clipped):
@@ -197,7 +197,7 @@ class BaseOptimizer:
         at.cur_vals[at.cur_idx] = float(value)
         at.cur_idx += 1
         if at.cur_idx >= len(at.cur_points):
-            at.resp.put(at.cur_vals)   # whole group's values -> unblock the worker
+            at.resp.put(at.cur_vals)  # whole group's values -> unblock the worker
             at.cur_points = None
 
     def suggest_batch(self):

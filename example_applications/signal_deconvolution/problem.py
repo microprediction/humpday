@@ -10,6 +10,7 @@ and near-convex, with a single well-defined optimum a good optimizer should reac
 The HumpDay objective takes a 12-D point in [0,1]^12 (samples, scaled to [0, 1.5]) and
 returns the squared reconstruction residual plus the smoothness penalty.
 """
+
 from __future__ import annotations
 
 import math
@@ -23,7 +24,7 @@ X_TRUE = (0.0, 0.0, 0.2, 0.8, 1.0, 0.6, 0.1, 0.0, 0.4, 0.9, 0.3, 0.0)
 # Gaussian blur matrix, rows normalised to sum to one.
 A = []
 for i in range(N):
-    row = [math.exp(-((i - j) ** 2) / (2 * SIGMA ** 2)) for j in range(N)]
+    row = [math.exp(-((i - j) ** 2) / (2 * SIGMA**2)) for j in range(N)]
     s = sum(row)
     A.append([v / s for v in row])
 

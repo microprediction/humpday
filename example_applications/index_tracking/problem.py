@@ -11,6 +11,7 @@ the simplex.
 The HumpDay objective takes an 8-D point in [0,1]^8, normalises it to portfolio weights,
 and returns the mean squared tracking error (scaled).
 """
+
 from __future__ import annotations
 
 import math

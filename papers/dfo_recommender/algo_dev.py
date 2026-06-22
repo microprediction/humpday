@@ -220,7 +220,9 @@ def make_candidate(genome):
                 m = min(len(arch_x), 4 * n_dim + 2)  # nearest ~(4n+2) to incumbent
                 idx = sorted(
                     range(len(arch_x)),
-                    key=lambda k: sum((arch_x[k][d] - bx[d]) ** 2 for d in range(n_dim)),
+                    key=lambda k: sum(
+                        (arch_x[k][d] - bx[d]) ** 2 for d in range(n_dim)
+                    ),
                 )[:m]
                 fit_res = _fit_separable_quadratic(
                     [arch_x[k] for k in idx], [arch_f[k] for k in idx], n_dim
@@ -296,8 +298,22 @@ def _candidate_best(candidate, demo, n_trials, run_seed):
 # begins in a good region and refines rather than hunting from nonsense.
 # order: pop,F0,CR0,ctb,p_local,sigma0,adapt_sigma,p_pattern,adapt_fcr,temp0,
 #        stagnate,restart_frac,p_surrogate,r2_min
-DEFAULT_GENOME = [0.35, 0.45, 0.75, 0.30, 0.30, 0.25, 0.60, 0.30, 0.60, 0.0,
-                  0.50, 0.40, 0.60, 0.30]
+DEFAULT_GENOME = [
+    0.35,
+    0.45,
+    0.75,
+    0.30,
+    0.30,
+    0.25,
+    0.60,
+    0.30,
+    0.60,
+    0.0,
+    0.50,
+    0.40,
+    0.60,
+    0.30,
+]
 
 
 def candidate_fitness(genome, base_demos, seeds, n_trials, panel=PANEL):
@@ -452,7 +468,9 @@ def _mutate(genome, step, p_gene=0.5):
     """Per-gene Gaussian mutation: each knob is perturbed with probability
     `p_gene`, so crossover structure is mostly preserved while still exploring."""
     return [
-        _clip01(genome[j] + random.gauss(0, step)) if random.random() < p_gene else genome[j]
+        _clip01(genome[j] + random.gauss(0, step))
+        if random.random() < p_gene
+        else genome[j]
         for j in range(GENOME_LEN)
     ]
 

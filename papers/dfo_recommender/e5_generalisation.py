@@ -6,6 +6,7 @@ EVOLVED_OPTIMIZER.md §7 gap (fitness was measured on the training demos). Compa
 evolved winner to the warm-start DEFAULT_GENOME on TEST — if evolution helps
 out-of-sample, the discovery process generalises rather than overfitting.
 """
+
 from __future__ import annotations
 
 import argparse
@@ -52,7 +53,10 @@ def evolve(train, seeds, trials, generations, mu, lam, n_warm):
             child = _mut(_xover(a, b), step) if random.random() < 0.7 else _mut(a, step)
             kids.append(child)
         scored = sorted(scored + [(fit(g), g) for g in kids], key=lambda t: t[0])[:mu]
-        print(f"    gen {gen+1}/{generations}: train_best={scored[0][0]:.4f}", flush=True)
+        print(
+            f"    gen {gen + 1}/{generations}: train_best={scored[0][0]:.4f}",
+            flush=True,
+        )
     return scored[0][1], scored[0][0]
 
 
@@ -89,7 +93,14 @@ def main():
     ap.add_argument("--out", default="runs/surrogate_generalisation.json")
     a = ap.parse_args()
     if a.quick:
-        a.train_demos, a.test_demos, a.generations, a.mu, a.lam, a.trials = 4, 4, 3, 5, 4, 40
+        a.train_demos, a.test_demos, a.generations, a.mu, a.lam, a.trials = (
+            4,
+            4,
+            3,
+            5,
+            4,
+            40,
+        )
 
     # dim-spread, then split into disjoint train/test by alternating
     ds = sorted(DEMOS, key=lambda d: d.n_dim)
@@ -99,27 +110,40 @@ def main():
     train = chosen[0::2][: a.train_demos]
     test = chosen[1::2][: a.test_demos]
     train_seeds, test_seeds = (0, 1), (2, 3, 4)
-    print(f"train: {len(train)} demos seeds {train_seeds} | test: {len(test)} demos "
-          f"seeds {test_seeds} (disjoint)\n", flush=True)
+    print(
+        f"train: {len(train)} demos seeds {train_seeds} | test: {len(test)} demos "
+        f"seeds {test_seeds} (disjoint)\n",
+        flush=True,
+    )
 
     random.seed(0)
     print("  evolving on TRAIN...", flush=True)
-    best, train_fit = evolve(train, train_seeds, a.trials, a.generations, a.mu, a.lam, a.n_warm)
+    best, train_fit = evolve(
+        train, train_seeds, a.trials, a.generations, a.mu, a.lam, a.n_warm
+    )
 
     print("  scoring on TEST (held-out demos + unseen seeds)...", flush=True)
     evolved_rank = test_mean_rank(best, test, test_seeds, a.trials)
     default_rank = test_mean_rank(list(ad.DEFAULT_GENOME), test, test_seeds, a.trials)
 
-    out = {"done": True, "train_demos": [d.name for d in train], "test_demos": [d.name for d in test],
-           "train_seeds": list(train_seeds), "test_seeds": list(test_seeds),
-           "best_genome": best, "train_fitness": train_fit,
-           "evolved_test_mean_rank": round(evolved_rank, 3),
-           "default_test_mean_rank": round(default_rank, 3),
-           "generalises": evolved_rank <= default_rank + 1e-9}
+    out = {
+        "done": True,
+        "train_demos": [d.name for d in train],
+        "test_demos": [d.name for d in test],
+        "train_seeds": list(train_seeds),
+        "test_seeds": list(test_seeds),
+        "best_genome": best,
+        "train_fitness": train_fit,
+        "evolved_test_mean_rank": round(evolved_rank, 3),
+        "default_test_mean_rank": round(default_rank, 3),
+        "generalises": evolved_rank <= default_rank + 1e-9,
+    }
     atomic_dump(out, a.out)
-    print(f"\n=== generalisation ===\n  evolved winner  TEST mean rank: {evolved_rank:.3f}"
-          f"\n  default genome  TEST mean rank: {default_rank:.3f}"
-          f"\n  -> {'GENERALISES (evolution helps out-of-sample)' if out['generalises'] else 'OVERFIT (no out-of-sample gain)'}")
+    print(
+        f"\n=== generalisation ===\n  evolved winner  TEST mean rank: {evolved_rank:.3f}"
+        f"\n  default genome  TEST mean rank: {default_rank:.3f}"
+        f"\n  -> {'GENERALISES (evolution helps out-of-sample)' if out['generalises'] else 'OVERFIT (no out-of-sample gain)'}"
+    )
     return 0
 
 

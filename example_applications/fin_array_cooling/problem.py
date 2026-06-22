@@ -11,6 +11,7 @@ than sizing them all the same.
 The HumpDay objective takes an 8-D point in [0,1]^8 (fin heights, mapped to 0..H_max) and
 returns the negative total heat dissipated.
 """
+
 from __future__ import annotations
 
 import math
@@ -18,8 +19,8 @@ import math
 N_FINS = 8
 N_DIM = N_FINS
 H_MAX = 40.0
-M = 0.05          # fin parameter (sets where efficiency rolls off)
-DRAG = 0.004      # airflow choking per unit total fin height
+M = 0.05  # fin parameter (sets where efficiency rolls off)
+DRAG = 0.004  # airflow choking per unit total fin height
 AIRFLOW = (1.0, 0.92, 0.85, 0.78, 0.72, 0.66, 0.60, 0.55)
 
 

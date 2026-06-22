@@ -46,11 +46,7 @@ INF = float("inf")
 
 
 def _rbf(X1, X2, ls):
-    d2 = (
-        np.sum(X1 * X1, 1)[:, None]
-        + np.sum(X2 * X2, 1)[None, :]
-        - 2.0 * X1 @ X2.T
-    )
+    d2 = np.sum(X1 * X1, 1)[:, None] + np.sum(X2 * X2, 1)[None, :] - 2.0 * X1 @ X2.T
     return np.exp(-0.5 * np.clip(d2, 0, None) / (ls * ls))
 
 
@@ -94,8 +90,13 @@ def bayes_opt(objective, n_trials, n_dim, gamma=1.0, seed=0, kappa=2.0):
     while evals < n_trials:
         # median-heuristic length scale on current data (robust across dims)
         if len(X) > 1:
-            dd = np.sqrt(np.clip(
-                np.sum(X * X, 1)[:, None] + np.sum(X * X, 1)[None, :] - 2 * X @ X.T, 0, None))
+            dd = np.sqrt(
+                np.clip(
+                    np.sum(X * X, 1)[:, None] + np.sum(X * X, 1)[None, :] - 2 * X @ X.T,
+                    0,
+                    None,
+                )
+            )
             ls = max(np.median(dd[dd > 0]) if np.any(dd > 0) else 0.3, 0.05)
         else:
             ls = 0.3
@@ -125,7 +126,9 @@ def main() -> int:
     variants = [(f"γ={g:.2f}", g) for g in gammas]
 
     DIM_CUT = 10
-    buckets = {b: {lab: [] for lab, _ in variants} for b in ("all", "low(<10)", "high(>=10)")}
+    buckets = {
+        b: {lab: [] for lab, _ in variants} for b in ("all", "low(<10)", "high(>=10)")
+    }
     unstable = {lab: 0 for lab, _ in variants}
     print(
         f"Schur-damped BayesOpt γ-sweep: {len(base)} demos x {len(seeds)} seeds, "
@@ -138,7 +141,13 @@ def main() -> int:
             vals = {}
             for lab, g in variants:
                 try:
-                    v, unst = bayes_opt(inst.objective, args.trials, inst.n_dim, gamma=g, seed=2000 + i * 7 + s)
+                    v, unst = bayes_opt(
+                        inst.objective,
+                        args.trials,
+                        inst.n_dim,
+                        gamma=g,
+                        seed=2000 + i * 7 + s,
+                    )
                     unstable[lab] += unst
                 except Exception as e:  # noqa: BLE001
                     print(f"    ! {lab} on {inst.name}: {e}")
@@ -147,7 +156,11 @@ def main() -> int:
             finite = [v for v in vals.values() if v < INF]
             mn, mx = (min(finite), max(finite)) if finite else (0.0, 1.0)
             for lab in vals:
-                nr = 0.0 if mx <= mn or vals[lab] >= INF else (vals[lab] - mn) / (mx - mn)
+                nr = (
+                    0.0
+                    if mx <= mn or vals[lab] >= INF
+                    else (vals[lab] - mn) / (mx - mn)
+                )
                 buckets["all"][lab].append(nr)
                 buckets[b][lab].append(nr)
 
@@ -155,12 +168,17 @@ def main() -> int:
     print(f"(high-dim: {n_high} demos, low-dim: {len(base) - n_high} demos)\n")
     for bname in ("all", "low(<10)", "high(>=10)"):
         reg = buckets[bname]
-        table = sorted(((lab, mean(reg[lab]) if reg[lab] else INF) for lab, _ in variants), key=lambda t: t[1])
+        table = sorted(
+            ((lab, mean(reg[lab]) if reg[lab] else INF) for lab, _ in variants),
+            key=lambda t: t[1],
+        )
         print(f"=== {bname}: BayesOpt γ-sweep (normalised regret; lower = better) ===")
         for lab, r in table:
             print(f"  {lab:10s} {r:.4f}  {'#' * int(r * 40)}")
         print()
-    print("=== numerical-instability events (Cholesky failures / non-finite posteriors) ===")
+    print(
+        "=== numerical-instability events (Cholesky failures / non-finite posteriors) ==="
+    )
     for lab, _ in variants:
         print(f"  {lab:10s} {unstable[lab]}")
     print(

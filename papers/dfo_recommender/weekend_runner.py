@@ -7,6 +7,7 @@ restart after a crash/outage skips finished experiments and resumes the rest. Ru
     ../../.venv/bin/python weekend_runner.py            # full weekend run
     ../../.venv/bin/python weekend_runner.py --quick    # tiny smoke of the whole pipeline
 """
+
 from __future__ import annotations
 
 import argparse
@@ -20,19 +21,69 @@ MANIFEST = Path("runs/weekend_manifest.json")
 
 # (id, script, full-run args, output json)
 EXPERIMENTS = [
-    ("E1_rankcorr", "rankcorr.py",
-     ["--seeds", "0,1,2", "--synth-dims", "5,20,40", "--real-demos", "30",
-      "--budgets", "60,120,240", "--out", "runs/rankcorr.json"], "runs/rankcorr.json"),
-    ("E3_crossover", "crossover_harness.py",
-     ["--demos", "24", "--seeds", "0,1,2", "--trials", "120", "--out", "runs/crossover.json"],
-     "runs/crossover.json"),
-    ("E2_hardening", "e2_hardening.py",
-     ["--demos", "20", "--seeds", "0,1,2,3,4", "--budgets", "60,120,240,480",
-      "--out", "runs/discovered_hardened.json"], "runs/discovered_hardened.json"),
+    (
+        "E1_rankcorr",
+        "rankcorr.py",
+        [
+            "--seeds",
+            "0,1,2",
+            "--synth-dims",
+            "5,20,40",
+            "--real-demos",
+            "30",
+            "--budgets",
+            "60,120,240",
+            "--out",
+            "runs/rankcorr.json",
+        ],
+        "runs/rankcorr.json",
+    ),
+    (
+        "E3_crossover",
+        "crossover_harness.py",
+        [
+            "--demos",
+            "24",
+            "--seeds",
+            "0,1,2",
+            "--trials",
+            "120",
+            "--out",
+            "runs/crossover.json",
+        ],
+        "runs/crossover.json",
+    ),
+    (
+        "E2_hardening",
+        "e2_hardening.py",
+        [
+            "--demos",
+            "20",
+            "--seeds",
+            "0,1,2,3,4",
+            "--budgets",
+            "60,120,240,480",
+            "--out",
+            "runs/discovered_hardened.json",
+        ],
+        "runs/discovered_hardened.json",
+    ),
     ("E4_schur_final", "overnight_schur2.py", [], "runs/schur_final.json"),
-    ("E5_generalisation", "e5_generalisation.py",
-     ["--train-demos", "18", "--test-demos", "18", "--generations", "25",
-      "--out", "runs/surrogate_generalisation.json"], "runs/surrogate_generalisation.json"),
+    (
+        "E5_generalisation",
+        "e5_generalisation.py",
+        [
+            "--train-demos",
+            "18",
+            "--test-demos",
+            "18",
+            "--generations",
+            "25",
+            "--out",
+            "runs/surrogate_generalisation.json",
+        ],
+        "runs/surrogate_generalisation.json",
+    ),
 ]
 
 
@@ -60,7 +111,10 @@ def main():
     only = set(a.only.split(",")) if a.only else None
 
     m = load_manifest()
-    print(f"weekend runner: {len(m['completed'])} already complete: {m['completed']}\n", flush=True)
+    print(
+        f"weekend runner: {len(m['completed'])} already complete: {m['completed']}\n",
+        flush=True,
+    )
     for eid, script, args, out in EXPERIMENTS:
         if only and eid not in only:
             continue
@@ -77,16 +131,20 @@ def main():
         print(f"== RUN {eid}: {script} {' '.join(run_args)} -> {log} ==", flush=True)
         t0 = time.time()
         with open(log, "w") as lf:
-            rc = subprocess.call([py, script, *run_args], stdout=lf, stderr=subprocess.STDOUT)
+            rc = subprocess.call(
+                [py, script, *run_args], stdout=lf, stderr=subprocess.STDOUT
+            )
         dt = time.time() - t0
         if rc == 0:
             m["completed"].append(eid)
             m["started"] = None
             save_manifest(m)
-            print(f"== DONE {eid} in {dt/60:.1f} min ==\n", flush=True)
+            print(f"== DONE {eid} in {dt / 60:.1f} min ==\n", flush=True)
         else:
-            print(f"== FAIL {eid} (rc={rc}) after {dt/60:.1f} min; see {log}. Continuing. ==\n",
-                  flush=True)
+            print(
+                f"== FAIL {eid} (rc={rc}) after {dt / 60:.1f} min; see {log}. Continuing. ==\n",
+                flush=True,
+            )
     print("weekend runner finished.", flush=True)
     return 0
 

@@ -11,6 +11,7 @@ running every well flat out.
 The HumpDay objective takes a 6-D point in [0,1]^6 (well rates, mapped to 0..Q_max) and
 returns pumping cost plus the over-limit concentration penalty.
 """
+
 from __future__ import annotations
 
 import math

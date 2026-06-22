@@ -100,12 +100,20 @@ def weights_to_spec(weights):
     For each slot, only vertices that own a mechanism for it compete; their
     global weights are renormalised within the slot. Returns
     {slot: [(vertex_name, pct), ...]} plus the raw inspiration weights."""
-    spec = {"inspiration": {VERTICES[i]["name"]: round(weights[i], 3) for i in range(N_VERTICES)}}
+    spec = {
+        "inspiration": {
+            VERTICES[i]["name"]: round(weights[i], 3) for i in range(N_VERTICES)
+        }
+    }
     for slot in SLOTS:
-        contenders = [(i, weights[i]) for i in range(N_VERTICES) if slot in VERTICES[i]["slots"]]
+        contenders = [
+            (i, weights[i]) for i in range(N_VERTICES) if slot in VERTICES[i]["slots"]
+        ]
         tot = sum(w for _, w in contenders) or 1.0
         spec[slot] = [
-            (VERTICES[i]["name"], round(w / tot, 3)) for i, w in contenders if w / tot > 0.01
+            (VERTICES[i]["name"], round(w / tot, 3))
+            for i, w in contenders
+            if w / tot > 0.01
         ]
     return spec
 
@@ -134,8 +142,9 @@ def build_prompt(spec):
     """Turn a blend spec into the structural-blend instruction for the LLM."""
     insp = spec["inspiration"]
     host = max(insp, key=insp.get)
-    grafts = sorted(((k, v) for k, v in insp.items() if k != host and v > 0.01),
-                    key=lambda t: -t[1])
+    grafts = sorted(
+        ((k, v) for k, v in insp.items() if k != host and v > 0.01), key=lambda t: -t[1]
+    )
     lines = [
         "Build a black-box numerical optimizer by BLENDING base algorithms — but "
         "blending is ASYMMETRIC, not a 50/50 average. The highest-weight method "
@@ -146,7 +155,11 @@ def build_prompt(spec):
         "",
         f"HOST architecture ({int(insp[host] * 100)}%): {host} — build the skeleton from this.",
         "GRAFT into it: "
-        + (", ".join(f"{int(v * 100)}% {k}" for k, v in grafts) if grafts else "(nothing — pure host)"),
+        + (
+            ", ".join(f"{int(v * 100)}% {k}" for k, v in grafts)
+            if grafts
+            else "(nothing — pure host)"
+        ),
         "",
         "Inspiration weights: "
         + ", ".join(f"{k} {int(v * 100)}%" for k, v in insp.items() if v > 0.01),
@@ -158,7 +171,9 @@ def build_prompt(spec):
         owners = spec[slot]
         if not owners:
             continue
-        parts = "; ".join(f"{name} ({int(pct * 100)}%): {idea[name]}" for name, pct in owners)
+        parts = "; ".join(
+            f"{name} ({int(pct * 100)}%): {idea[name]}" for name, pct in owners
+        )
         lines.append(f"  - {slot}: {parts}")
     lines += [
         "",
@@ -242,7 +257,9 @@ def compile_optimizer(code, eval_timeout_s=20):
         raise ImportError(f"import '{name}' not allowed in sandbox")
 
     safe_builtins = {
-        n: __builtins__[n] if isinstance(__builtins__, dict) else getattr(__builtins__, n)
+        n: __builtins__[n]
+        if isinstance(__builtins__, dict)
+        else getattr(__builtins__, n)
         for n in (
             "range len min max abs sum sorted float int list tuple enumerate "
             "zip map filter round pow divmod reversed bool any all next iter "
@@ -406,17 +423,31 @@ def simplex_points(mode, n_warm=8):
 
 def main() -> int:
     ap = argparse.ArgumentParser(description=__doc__)
-    ap.add_argument("--points", default="vertices", help="'vertices', 'warm', or an integer count")
-    ap.add_argument("--n-warm", type=int, default=8, help="warm-cluster size (mode 'warm')")
+    ap.add_argument(
+        "--points", default="vertices", help="'vertices', 'warm', or an integer count"
+    )
+    ap.add_argument(
+        "--n-warm", type=int, default=8, help="warm-cluster size (mode 'warm')"
+    )
     ap.add_argument("--demos", type=int, default=5)
-    ap.add_argument("--demo-mode", choices=("head", "spread"), default="head",
-                    help="'spread' samples across the dimension-sorted suite (incl. high-dim)")
+    ap.add_argument(
+        "--demo-mode",
+        choices=("head", "spread"),
+        default="head",
+        help="'spread' samples across the dimension-sorted suite (incl. high-dim)",
+    )
     ap.add_argument("--seeds", default="0")
     ap.add_argument("--trials", type=int, default=80)
     ap.add_argument("--model", default="claude-opus-4-8")
-    ap.add_argument("--dry-run", action="store_true", help="no API; use template generator")
-    ap.add_argument("--save-code", default="", help="dir to write each generated optimizer")
-    ap.add_argument("--out", default="", help="JSON path for crash-safe per-point checkpoints")
+    ap.add_argument(
+        "--dry-run", action="store_true", help="no API; use template generator"
+    )
+    ap.add_argument(
+        "--save-code", default="", help="dir to write each generated optimizer"
+    )
+    ap.add_argument(
+        "--out", default="", help="JSON path for crash-safe per-point checkpoints"
+    )
     args = ap.parse_args()
 
     ckpt = Path(args.out) if args.out else None
@@ -433,7 +464,9 @@ def main() -> int:
             "seeds": args.seeds,
             "trials": args.trials,
             "model": args.model,
-            "results": [{"label": l, "regret": r, "inspiration": ins} for l, r, ins in results],
+            "results": [
+                {"label": l, "regret": r, "inspiration": ins} for l, r, ins in results
+            ],
         }
         tmp = Path(str(ckpt) + ".tmp")
         tmp.write_text(json.dumps(payload, indent=2))
@@ -481,7 +514,9 @@ def main() -> int:
         results.sort(key=lambda t: t[1])
         print("\n=== Leaderboard (normalised regret vs panel; lower = better) ===")
         for label, regret, insp in results:
-            flavour = ", ".join(f"{k[:4]}{int(v * 100)}" for k, v in insp.items() if v > 0.05)
+            flavour = ", ".join(
+                f"{k[:4]}{int(v * 100)}" for k, v in insp.items() if v > 0.05
+            )
             print(f"  {regret:.4f}  {label:24s}  [{flavour}]")
         print(
             "\nThe numerical search over the simplex would now move toward the "

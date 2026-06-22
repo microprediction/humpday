@@ -40,11 +40,11 @@ INF = float("inf")
 
 # Known parameter-block sizes (one entity = contiguous coordinate group).
 BLOCK_DEMOS = {
-    "wind_farm": 2,             # 8 turbines x (x,y),  n=16  [high-dim]
-    "circle_packing": 2,        # 6 circles  x (x,y),  n=12  [high-dim]
-    "lennard_jones_cluster": 3, # 5 atoms    x (x,y,z),n=15  [high-dim]
-    "sensor_localization": 2,   # 4 nodes    x (x,y),  n=8
-    "kmeans_clustering": 2,     # 3 centroids x (x,y), n=6
+    "wind_farm": 2,  # 8 turbines x (x,y),  n=16  [high-dim]
+    "circle_packing": 2,  # 6 circles  x (x,y),  n=12  [high-dim]
+    "lennard_jones_cluster": 3,  # 5 atoms    x (x,y,z),n=15  [high-dim]
+    "sensor_localization": 2,  # 4 nodes    x (x,y),  n=8
+    "kmeans_clustering": 2,  # 3 centroids x (x,y), n=6
 }
 
 VARIANTS = [
@@ -81,8 +81,14 @@ def main() -> int:
                 kw2 = dict(kw)
                 bs = kw2.pop("block", False)
                 try:
-                    v = cma_es(inst.objective, args.trials, inst.n_dim, seed=3000 + i * 7 + s,
-                               block_size=(bsize if bs else None), **kw2)
+                    v = cma_es(
+                        inst.objective,
+                        args.trials,
+                        inst.n_dim,
+                        seed=3000 + i * 7 + s,
+                        block_size=(bsize if bs else None),
+                        **kw2,
+                    )
                 except Exception as e:  # noqa: BLE001
                     print(f"   ! {lab} on {inst.name}: {e}")
                     v = INF
@@ -90,7 +96,11 @@ def main() -> int:
             finite = [v for v in vals.values() if v < INF]
             mn, mx = (min(finite), max(finite)) if finite else (0.0, 1.0)
             for lab in vals:
-                nr = 0.0 if mx <= mn or vals[lab] >= INF else (vals[lab] - mn) / (mx - mn)
+                nr = (
+                    0.0
+                    if mx <= mn or vals[lab] >= INF
+                    else (vals[lab] - mn) / (mx - mn)
+                )
                 regret[lab].append(nr)
                 dvals[lab].append(nr)
         per_demo[demo.name] = {lab: mean(dvals[lab]) for lab in dvals}
@@ -100,11 +110,16 @@ def main() -> int:
     print("  " + "demo".ljust(24) + "".join(l.rjust(14) for l in labs))
     for name, row in per_demo.items():
         best = min(row.values())
-        cells = "".join((("*" if abs(row[l] - best) < 1e-9 else " ") + f"{row[l]:.3f}").rjust(14) for l in labs)
+        cells = "".join(
+            (("*" if abs(row[l] - best) < 1e-9 else " ") + f"{row[l]:.3f}").rjust(14)
+            for l in labs
+        )
         print("  " + name.ljust(24) + cells)
 
     print("\n=== overall (mean normalised regret across structured demos) ===")
-    for lab, r in sorted(((lab, mean(regret[lab])) for lab in labs), key=lambda t: t[1]):
+    for lab, r in sorted(
+        ((lab, mean(regret[lab])) for lab in labs), key=lambda t: t[1]
+    ):
         print(f"  {lab:14s} {r:.4f}  {'#' * int(r * 40)}")
     print(
         "\nWin condition: a `block` variant beats BOTH `full γ=1.00` and the best "

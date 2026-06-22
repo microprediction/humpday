@@ -11,6 +11,7 @@ tracking accuracy against churn.
 The HumpDay objective takes a 12-D point in [0,1]^12 (per-step hedge ratios) and returns
 squared replication error plus transaction cost.
 """
+
 from __future__ import annotations
 
 import math
@@ -19,11 +20,13 @@ STEPS = 12
 N_DIM = STEPS
 S0 = 100.0
 STRIKE = 100.0
-TXN = 0.01   # proportional transaction cost
+TXN = 0.01  # proportional transaction cost
 
 # Deterministic underlying path (drift plus a smooth oscillation).
-PATH = [S0 * math.exp(0.02 * t / STEPS + 0.15 * math.sin(3.0 * t / STEPS))
-        for t in range(STEPS + 1)]
+PATH = [
+    S0 * math.exp(0.02 * t / STEPS + 0.15 * math.sin(3.0 * t / STEPS))
+    for t in range(STEPS + 1)
+]
 
 
 def decode(u):
@@ -36,9 +39,9 @@ def objective(u):
     prev = 0.0
     for t in range(STEPS):
         dh = h[t] - prev
-        cash -= dh * PATH[t]             # rebalance the share holding
+        cash -= dh * PATH[t]  # rebalance the share holding
         cash -= TXN * abs(dh) * PATH[t]  # transaction cost
         prev = h[t]
-    cash += prev * PATH[STEPS]           # liquidate at expiry
+    cash += prev * PATH[STEPS]  # liquidate at expiry
     payoff = max(0.0, PATH[STEPS] - STRIKE)
     return (cash - payoff) ** 2

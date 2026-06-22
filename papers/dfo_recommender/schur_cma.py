@@ -123,8 +123,18 @@ def schur_damp_adaptive(C, lam, c=1.0):
     return Cg
 
 
-def cma_es(objective, n_trials, n_dim, gamma=1.0, reliability=False, seed=0,
-           block_size=None, seriate=False, dist_thresh=0.5, adaptive=False):
+def cma_es(
+    objective,
+    n_trials,
+    n_dim,
+    gamma=1.0,
+    reliability=False,
+    seed=0,
+    block_size=None,
+    seriate=False,
+    dist_thresh=0.5,
+    adaptive=False,
+):
     """Minimal CMA-ES on [0,1]^n with a Schur-damping dial. Returns best value."""
     rng = np.random.default_rng(seed)
     n = n_dim
@@ -195,7 +205,12 @@ def cma_es(objective, n_trials, n_dim, gamma=1.0, reliability=False, seed=0,
         D, B = np.linalg.eigh(Cd)
         invsqrtC = B @ np.diag(1.0 / np.sqrt(np.clip(D, 1e-30, None))) @ B.T
         ps = (1 - cs) * ps + math.sqrt(cs * (2 - cs) * mueff) * (invsqrtC @ yw)
-        hsig = 1.0 if np.linalg.norm(ps) / math.sqrt(1 - (1 - cs) ** (2 * gen)) < (1.4 + 2 / (n + 1)) * chiN else 0.0
+        hsig = (
+            1.0
+            if np.linalg.norm(ps) / math.sqrt(1 - (1 - cs) ** (2 * gen))
+            < (1.4 + 2 / (n + 1)) * chiN
+            else 0.0
+        )
         pc = (1 - cc) * pc + hsig * math.sqrt(cc * (2 - cc) * mueff) * yw
         artmp = np.array([(pop[i][1] - old_mean) / sigma for i in range(mu)])
         C = (
@@ -215,7 +230,9 @@ def main() -> int:
     ap.add_argument("--seeds", default="0,1")
     ap.add_argument("--trials", type=int, default=120)
     ap.add_argument("--gammas", default="0.0,0.25,0.5,0.75,1.0")
-    ap.add_argument("--skip", default="", help="comma-sep demo names to exclude (slow ones)")
+    ap.add_argument(
+        "--skip", default="", help="comma-sep demo names to exclude (slow ones)"
+    )
     args = ap.parse_args()
 
     skip = {s.strip() for s in args.skip.split(",") if s.strip()}
@@ -234,9 +251,11 @@ def main() -> int:
     # per-instance min-max normalised regret within the variant set, bucketed
     # by dimension (the undersampling regime where damping should matter).
     DIM_CUT = 10  # n_dim >= DIM_CUT is the "high-dim / undersampled" bucket
-    buckets = {"all": {label: [] for label, _ in variants},
-               "low(<10)": {label: [] for label, _ in variants},
-               "high(>=10)": {label: [] for label, _ in variants}}
+    buckets = {
+        "all": {label: [] for label, _ in variants},
+        "low(<10)": {label: [] for label, _ in variants},
+        "high(>=10)": {label: [] for label, _ in variants},
+    }
     for i, demo in enumerate(base):
         b = "high(>=10)" if demo.n_dim >= DIM_CUT else "low(<10)"
         for s in seeds:
@@ -244,7 +263,13 @@ def main() -> int:
             vals = {}
             for label, kw in variants:
                 try:
-                    vals[label] = cma_es(inst.objective, args.trials, inst.n_dim, seed=1000 + i * 7 + s, **kw)
+                    vals[label] = cma_es(
+                        inst.objective,
+                        args.trials,
+                        inst.n_dim,
+                        seed=1000 + i * 7 + s,
+                        **kw,
+                    )
                 except Exception as e:  # noqa: BLE001
                     print(f"    ! {label} on {inst.name}: {e}")
                     vals[label] = INF
@@ -257,11 +282,18 @@ def main() -> int:
                 buckets[b][label].append(nr)
 
     n_high = sum(1 for d in base if d.n_dim >= DIM_CUT)
-    print(f"(bucket sizes: high-dim n>={DIM_CUT}: {n_high} demos, low-dim: {len(base) - n_high} demos)\n")
+    print(
+        f"(bucket sizes: high-dim n>={DIM_CUT}: {n_high} demos, low-dim: {len(base) - n_high} demos)\n"
+    )
     for bname in ("all", "low(<10)", "high(>=10)"):
         reg = buckets[bname]
-        table = sorted(((label, mean(reg[label]) if reg[label] else INF) for label, _ in variants), key=lambda t: t[1])
-        print(f"=== {bname}: γ-sweep (within-instance normalised regret; lower = better) ===")
+        table = sorted(
+            ((label, mean(reg[label]) if reg[label] else INF) for label, _ in variants),
+            key=lambda t: t[1],
+        )
+        print(
+            f"=== {bname}: γ-sweep (within-instance normalised regret; lower = better) ==="
+        )
         for label, r in table:
             print(f"  {label:12s} {r:.4f}  {'#' * int(r * 40)}")
         print()
