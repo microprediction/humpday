@@ -16,7 +16,7 @@
   p { line-height:1.55; max-width:70ch; } .intro { color:var(--muted); }
   .stage { display:grid; grid-template-columns:1fr 320px; gap:24px; align-items:start; margin-top:24px; }
   @media (max-width:800px){ .stage { grid-template-columns:1fr; } }
-  canvas { background:#14141c; border:3px solid var(--accent); border-radius:6px; display:block; width:100%; height:auto; }
+  canvas { background:#0e0e15; border:3px solid var(--accent); border-radius:6px; display:block; width:100%; height:auto; }
   .panel { background:var(--panel); padding:18px; border-radius:6px; border:1px solid #404054; }
   .panel h3 { margin:0 0 12px; font-size:1.05em; text-transform:uppercase; letter-spacing:0.06em; color:var(--accent); }
   label { display:block; margin:10px 0 6px; font-size:0.9em; color:var(--muted); }
@@ -41,7 +41,8 @@
     area but its tip runs less effectively, and taller fins together choke the shared
     airflow so every fin cools a little less. Fins nearer the front see more airflow than
     those behind. The optimum makes the front fins taller and the rear ones shorter rather
-    than sizing them all alike. Score is negative heat dissipated, to minimise. 8-D.
+    than sizing them all alike. Watch the air stream through the array and bunch up where
+    the fins are tall. Score is heat dissipated, to maximise. 8-D.
   </p>
   <div class="stage">
     <canvas id="canvas" width="800" height="420"></canvas>
@@ -73,8 +74,10 @@
   <h2>What's happening</h2>
   <p>The JS objective is a line-for-line port of
   <code>example_applications/fin_array_cooling</code> and agrees to floating-point
-  tolerance. Bars are fin heights along the airflow (front at left); good designs taper
-  from tall at the front to short at the back.</p>
+  tolerance. The animation replays the optimizer's actual search: each frame is a design it
+  tried, the glowing bars are fin heights (front at left, where the air is fastest), and the
+  blue streaks are airflow — notice it slows and piles up behind tall fins, which is the
+  drag penalty the objective pays. The trace at top right is best-heat-so-far.</p>
 </div>
 <script src="../js/modules/base-optimizer.js"></script>
 <script src="../js/modules/linalg.js"></script>
@@ -83,8 +86,7 @@
 <script src="../js/modules/evolutionary-algorithms.js"></script>
 <script src="../js/modules/search-algorithms.js"></script>
 <script>
-// Port of example_applications/fin_array_cooling/problem.py (kept identical).
-const canvas=document.getElementById('canvas'), ctx=canvas.getContext('2d'), W=canvas.width, H=canvas.height;
+// ---- Port of example_applications/fin_array_cooling/problem.py (kept identical) ----
 const NF=8, N_DIM=8, HMAX=40.0, M=0.05, DRAG=0.004;
 const AIRFLOW=[1.0,0.92,0.85,0.78,0.72,0.66,0.60,0.55];
 function decode(u){return u.map(v=>HMAX*Math.min(1,Math.max(0,v)));}
@@ -93,40 +95,136 @@ function evaluateFins(u){const h=decode(u);const af=1.0/(1.0+DRAG*h.reduce((a,b)
   return {h,Q:af*q,obj:-(af*q)};}
 const searchHistory=[];
 function objective(u){const r=evaluateFins(u); searchHistory.push(r); return r.obj;}
-const X0=50,X1=W-20,GY=H-60;
-function draw(res,hud){
-  ctx.fillStyle='#14141c'; ctx.fillRect(0,0,W,H);
-  // airflow arrows
-  ctx.strokeStyle='rgba(86,194,255,0.35)'; ctx.lineWidth=2;
-  for(let y=80;y<GY;y+=40){ctx.beginPath();ctx.moveTo(X0-30,y);ctx.lineTo(X0-6,y);ctx.lineTo(X0-12,y-4);ctx.moveTo(X0-6,y);ctx.lineTo(X0-12,y+4);ctx.stroke();}
-  ctx.strokeStyle='#404054'; ctx.beginPath(); ctx.moveTo(X0,GY); ctx.lineTo(X1,GY); ctx.stroke();
-  if(res){const sp=(X1-X0)/NF;for(let i=0;i<NF;i++){const x=X0+i*sp+sp*0.2, w=sp*0.6; const h=(res.h[i]/HMAX)*(GY-70);
-    ctx.fillStyle='rgba(255,202,40,0.85)'; ctx.fillRect(x,GY-h,w,h);
-    ctx.fillStyle='rgba(255,255,255,0.6)'; ctx.font='9px sans-serif'; ctx.textAlign='center'; ctx.fillText(res.h[i].toFixed(0),x+w/2,GY-h-3);
-    ctx.fillStyle='rgba(255,255,255,0.4)'; ctx.fillText('air '+(AIRFLOW[i]).toFixed(2),x+w/2,GY+14);}}
-  ctx.fillStyle='#ffca28'; ctx.font='bold 12px sans-serif'; ctx.textAlign='left'; ctx.fillText('fin heights (front at left, more airflow)',X0,30);
-  if(hud){ctx.fillStyle='#ffca28'; ctx.font='bold 14px sans-serif'; ctx.textAlign='center'; ctx.fillText(hud,W/2,50); ctx.textAlign='start';}
+
+// --------------------------------- rendering ---------------------------------
+const canvas=document.getElementById('canvas'), ctx=canvas.getContext('2d'), W=canvas.width, H=canvas.height;
+const X0=70, X1=W-30, GY=H-46, TOP=70;          // fin field; base slab sits at GY
+const SP=(X1-X0)/NF;                              // per-fin slot width
+function finX(i){return X0+i*SP;}
+// per-fin heat contribution (for colour/glow); recomputed here so the port stays untouched
+function contributions(h){const c=[];for(let i=0;i<NF;i++){const mh=M*h[i];const eff=mh>1e-6?Math.tanh(mh)/mh:1.0;c.push(AIRFLOW[i]*h[i]*eff);}return c;}
+
+// airflow particles: drift left->right, deflect up over tall fins, slowed by total drag
+const NP=90, parts=[];
+for(let i=0;i<NP;i++) parts.push({x:Math.random()*(X1-X0)+X0, y:TOP+Math.random()*(GY-TOP-4), s:0.4+Math.random()*0.6});
+function finTopAt(x,h){const i=Math.floor((x-X0)/SP); if(i<0||i>=NF) return GY; return GY-(h[i]/HMAX)*(GY-TOP-6);}
+function stepParticles(h,afFactor){
+  const speed=1.6+5.0*afFactor;                   // choked air (low afFactor) moves slower
+  for(const p of parts){
+    p.x+=speed*p.s;
+    const ceil=finTopAt(p.x,h);                   // ride up and over the fin in front
+    if(p.y>ceil-3){ p.y+=(ceil-3-p.y)*0.25; }
+    else { p.y+=(0.6-Math.abs(((p.y-TOP)/(GY-TOP))-0.5))*0.3; } // gentle vertical drift
+    if(p.x>X1){ p.x=X0; p.y=TOP+Math.random()*(GY-TOP-4); }
+  }
 }
+function drawParticles(afFactor){
+  ctx.lineWidth=1.6;
+  for(const p of parts){
+    const a=0.18+0.5*afFactor;
+    ctx.strokeStyle='rgba(86,194,255,'+a.toFixed(3)+')';
+    ctx.beginPath(); ctx.moveTo(p.x,p.y); ctx.lineTo(p.x-(5+9*afFactor),p.y); ctx.stroke();
+  }
+}
+
+let trace=[];                                     // best-heat-so-far for the convergence trace
+function drawTrace(){
+  const bx=W-205,by=58,bw=180,bh=66;
+  ctx.fillStyle='rgba(20,20,30,0.8)'; ctx.fillRect(bx,by,bw,bh);
+  ctx.strokeStyle='#404054'; ctx.strokeRect(bx,by,bw,bh);
+  ctx.fillStyle='#9a9aac'; ctx.font='9px sans-serif'; ctx.textAlign='left';
+  ctx.fillText('best heat',bx+6,by+12);
+  if(trace.length>1){
+    const lo=Math.min(...trace),hi=Math.max(...trace),sp=(hi-lo)||1;
+    ctx.strokeStyle='#ffca28'; ctx.lineWidth=2; ctx.beginPath();
+    for(let i=0;i<trace.length;i++){const x=bx+6+(bw-12)*i/(trace.length-1), y=by+bh-8-(bh-22)*(trace[i]-lo)/sp; i?ctx.lineTo(x,y):ctx.moveTo(x,y);} ctx.stroke();
+  }
+}
+
+function drawScene(cur, best, tried, total, name){
+  ctx.fillStyle='#0e0e15'; ctx.fillRect(0,0,W,H);
+  const h=cur.h, afFactor=1.0/(1.0+DRAG*h.reduce((a,b)=>a+b,0)), contrib=contributions(h);
+  const cmax=Math.max(...contrib,1e-6);
+  // inlet arrows + label
+  ctx.strokeStyle='rgba(86,194,255,0.5)'; ctx.lineWidth=2;
+  for(let y=TOP+14;y<GY-6;y+=26){ctx.beginPath();ctx.moveTo(18,y);ctx.lineTo(46,y);ctx.lineTo(40,y-4);ctx.moveTo(46,y);ctx.lineTo(40,y+4);ctx.stroke();}
+  ctx.fillStyle='#56c2ff'; ctx.font='10px sans-serif'; ctx.textAlign='center'; ctx.save(); ctx.translate(14,(TOP+GY)/2); ctx.rotate(-Math.PI/2); ctx.fillText('airflow in',0,0); ctx.restore();
+  // airflow behind the fins
+  stepParticles(h,afFactor); drawParticles(afFactor);
+  // base slab (the metal the fins sit on)
+  const bg=ctx.createLinearGradient(0,GY,0,GY+18); bg.addColorStop(0,'#5a5a66'); bg.addColorStop(1,'#2a2a33');
+  ctx.fillStyle=bg; ctx.fillRect(X0-6,GY,X1-X0+12,18);
+  ctx.fillStyle='#c0392b'; ctx.font='bold 10px sans-serif'; ctx.textAlign='center'; ctx.fillText('🔥 hot base 🔥',(X0+X1)/2,GY+13);
+  // fins, coloured by heat contribution (orange base -> cool blue tip), glow by contribution
+  for(let i=0;i<NF;i++){
+    const x=finX(i)+SP*0.22, w=SP*0.56, fh=(h[i]/HMAX)*(GY-TOP-6), y=GY-fh;
+    const g=ctx.createLinearGradient(0,GY,0,y);
+    g.addColorStop(0,'#ff7043'); g.addColorStop(0.6,'#ffca28'); g.addColorStop(1,'#7ec8ff');
+    ctx.shadowColor='rgba(255,160,40,'+(0.15+0.6*contrib[i]/cmax).toFixed(3)+')'; ctx.shadowBlur=14;
+    ctx.fillStyle=g; ctx.fillRect(x,y,w,fh);
+    ctx.shadowBlur=0;
+    ctx.fillStyle='rgba(255,255,255,0.75)'; ctx.font='9px sans-serif'; ctx.textAlign='center';
+    ctx.fillText(h[i].toFixed(0),x+w/2,y-4);
+    ctx.fillStyle='rgba(150,200,255,0.5)'; ctx.fillText(AIRFLOW[i].toFixed(2),x+w/2,GY+30);
+  }
+  ctx.fillStyle='#ffca28'; ctx.font='bold 12px sans-serif'; ctx.textAlign='left'; ctx.fillText('fin heights (front at left, fastest air)',X0,30);
+  ctx.fillStyle='#9a9aac'; ctx.font='9px sans-serif'; ctx.fillText('airflow factor '+afFactor.toFixed(3),X0,46);
+  drawTrace();
+  // HUD
+  ctx.textAlign='center'; ctx.fillStyle='#ffca28'; ctx.font='bold 14px sans-serif';
+  const tag = total ? `${name}: trying ${tried}/${total}  ·  best heat ${best.Q.toFixed(3)}` : (cur.hud||'');
+  ctx.fillText(tag, W/2, 58); ctx.textAlign='start';
+}
+
+function drawIdle(msg){
+  const flat={h:new Array(NF).fill(HMAX*0.5), hud:msg};
+  drawScene(flat, {Q:0}, 0, 0, '');
+}
+
+// ------------------------------ run + animate --------------------------------
 const leaderboard=[];
 function addLeaderboard(n,r,e){leaderboard.push({n,o:r.Q,e}); leaderboard.sort((a,b)=>b.o-a.o);
   document.getElementById('leaderboard-body').innerHTML=leaderboard.map(x=>`<tr><td>${x.n}</td><td>${x.o.toFixed(3)}</td><td>${x.e}</td></tr>`).join('');}
+
+let raf=null, idleRaf=null;
+function stopLoops(){ if(raf) cancelAnimationFrame(raf); if(idleRaf) cancelAnimationFrame(idleRaf); raf=idleRaf=null; }
+
 async function runOptimization(){
   const name=document.getElementById('algorithm').value, budget=parseInt(document.getElementById('budget').value,10), cls=globalThis[name];
   if(!cls){alert(name+' not found');return;}
-  const btn=document.getElementById('run-btn'); btn.disabled=true; btn.textContent='Searching...'; searchHistory.length=0;
+  const btn=document.getElementById('run-btn'); btn.disabled=true; btn.textContent='Searching...';
+  stopLoops(); searchHistory.length=0; trace.length=0;
   await new Promise(r=>setTimeout(r,20));
-  try{const opt=new cls(objective,budget,N_DIM); opt.optimize();
-    let b=searchHistory[0]; for(const r of searchHistory) if(r.obj<b.obj) b=r;
-    document.getElementById('evals').textContent=searchHistory.length;
-    document.getElementById('score-now').textContent=b.Q.toFixed(3);
-    document.getElementById('best-score').textContent=b.Q.toFixed(3); addLeaderboard(name,b,opt.evaluations);
-    draw(b,`Best heat ${b.Q.toFixed(3)} (${name})`);
-  }catch(e){console.error(e);alert(name+' error: '+e.message);} finally{btn.disabled=false; btn.textContent='▶ Maximise cooling';}
+  let opt;
+  try{ opt=new cls(objective,budget,N_DIM); opt.optimize(); }
+  catch(e){console.error(e);alert(name+' error: '+e.message); btn.disabled=false; btn.textContent='▶ Maximise cooling'; return;}
+
+  const total=searchHistory.length, perFrame=Math.max(1,Math.floor(total/180));
+  let i=0, best=searchHistory[0];
+  function frame(){
+    for(let k=0;k<perFrame && i<total;k++){ if(searchHistory[i].obj<best.obj) best=searchHistory[i]; i++; }
+    if(i===0||trace[trace.length-1]!==best.Q) trace.push(best.Q); if(trace.length>180) trace.shift();
+    const cur=searchHistory[Math.min(i,total-1)];
+    drawScene(cur, best, Math.min(i,total), total, name);
+    document.getElementById('evals').textContent=Math.min(i,total);
+    document.getElementById('score-now').textContent=cur.Q.toFixed(3);
+    document.getElementById('best-score').textContent=best.Q.toFixed(3);
+    if(i<total){ raf=requestAnimationFrame(frame); }
+    else { addLeaderboard(name,best,opt.evaluations); document.getElementById('score-now').textContent=best.Q.toFixed(3);
+           btn.disabled=false; btn.textContent='▶ Maximise cooling'; idleLoop(best,name); }
+  }
+  frame();
 }
-function resetEverything(){leaderboard.length=0; searchHistory.length=0;
+// keep air flowing over the winning design so the scene stays alive
+function idleLoop(best,name){
+  function f(){ drawScene({h:best.h}, best, 0, 0, ''); idleRaf=requestAnimationFrame(f); }
+  f();
+}
+function resetEverything(){stopLoops(); leaderboard.length=0; searchHistory.length=0; trace.length=0;
   document.getElementById('leaderboard-body').innerHTML='<tr><td colspan="3" style="color:var(--muted);text-align:center;">— no runs yet —</td></tr>';
-  ['score-now','best-score'].forEach(i=>document.getElementById(i).textContent='—'); document.getElementById('evals').textContent='0'; draw(null,'Pick an optimizer and run');}
-draw(null,'Pick an optimizer and run');
+  ['score-now','best-score'].forEach(i=>document.getElementById(i).textContent='—'); document.getElementById('evals').textContent='0';
+  idleRaf=requestAnimationFrame(function f(){ drawIdle('Pick an optimizer and run'); idleRaf=requestAnimationFrame(f); }); }
+resetEverything();
 </script>
 </body>
 </html>
