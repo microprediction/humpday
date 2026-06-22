@@ -1,0 +1,135 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' 'unsafe-inline'; style-src 'self' 'unsafe-inline';">
+<title>📣 Ad Budget Allocation — HumpDay</title>
+<style>
+  :root { --bg:#1a1a22; --panel:#2d2d3a; --accent:#c77dff; --text:#e8e8ea; --muted:#9a9aac; }
+  body { margin:0; background:var(--bg); color:var(--text); font-family:-apple-system,'Segoe UI',Helvetica,Arial,sans-serif; }
+  .site-nav { background:#34495e; padding:12px 24px; font-family:'Times New Roman',Times,serif; }
+  .site-nav-inner { max-width:1100px; margin:0 auto; display:flex; justify-content:space-between; align-items:center; }
+  .site-nav a { color:#ecf0f1; text-decoration:none; margin:0 12px; } .site-nav-brand { font-weight:700; font-size:1.25em; }
+  .container { max-width:1100px; margin:0 auto; padding:32px 24px 64px; }
+  h1 { font-size:2.2em; margin:0.2em 0; } h2 { font-size:1.4em; margin-top:1.4em; color:var(--accent); }
+  p { line-height:1.55; max-width:70ch; } .intro { color:var(--muted); }
+  .stage { display:grid; grid-template-columns:1fr 320px; gap:24px; align-items:start; margin-top:24px; }
+  @media (max-width:800px){ .stage { grid-template-columns:1fr; } }
+  canvas { background:#14141c; border:3px solid var(--accent); border-radius:6px; display:block; width:100%; height:auto; }
+  .panel { background:var(--panel); padding:18px; border-radius:6px; border:1px solid #404054; }
+  .panel h3 { margin:0 0 12px; font-size:1.05em; text-transform:uppercase; letter-spacing:0.06em; color:var(--accent); }
+  label { display:block; margin:10px 0 6px; font-size:0.9em; color:var(--muted); }
+  select,button { width:100%; box-sizing:border-box; padding:8px 10px; border-radius:4px; border:1px solid #404054; background:#1a1a22; color:var(--text); font-size:0.95em; }
+  button { background:var(--accent); color:#1a1a22; font-weight:700; cursor:pointer; margin-top:6px; } button.secondary { background:#404054; color:var(--text); font-weight:400; }
+  .stats { margin-top:16px; padding-top:14px; border-top:1px solid #404054; font-size:0.92em; line-height:1.6; }
+  .stats .score { font-size:2.2em; color:var(--accent); font-weight:700; }
+  .stat-row { display:flex; justify-content:space-between; gap:12px; } .stat-row span:last-child { font-family:'SF Mono',Menlo,monospace; }
+  .leaderboard { margin-top:24px; } .leaderboard table { width:100%; border-collapse:collapse; background:var(--panel); border-radius:6px; overflow:hidden; }
+  .leaderboard th,.leaderboard td { padding:10px 14px; text-align:left; border-bottom:1px solid #404054; } .leaderboard th { background:#1a1a22; color:var(--muted); text-transform:uppercase; font-size:0.78em; }
+</style>
+</head>
+<body>
+  <nav class="site-nav"><div class="site-nav-inner">
+    <a href="../index.html" class="site-nav-brand">HumpDay</a>
+    <div><a href="../index.html">Home</a><a href="../applications/index.html">Demonstrations</a><a href="../algorithms.html">Algorithms</a><a href="https://github.com/microprediction/humpday" target="_blank" rel="noopener">GitHub</a></div>
+  </div></nav>
+<div class="container">
+  <h1>📣 Ad Budget Allocation</h1>
+  <p class="intro">
+    A fixed marketing budget is split across eight channels. Each channel turns spend
+    into customers with diminishing returns, conv = cap·(1 − e^(−eff·spend)): the first
+    dollars are productive, later ones saturate. The optimum equalises marginal returns
+    across channels (water-filling) under the budget. Score is negative total
+    conversions, to minimise. 8-D problem.
+  </p>
+  <div class="stage">
+    <canvas id="canvas" width="800" height="420"></canvas>
+    <div class="panel">
+      <h3>Algorithm</h3>
+      <label for="algorithm">HumpDay optimizer</label>
+      <select id="algorithm">
+        <option value="DifferentialEvolution" selected>Differential Evolution</option>
+        <option value="CMAEvolutionStrategy">CMA-ES</option>
+        <option value="NelderMead">Nelder-Mead</option>
+        <option value="Powell">Powell</option>
+        <option value="PRIMA_BOBYQA">PRIMA_BOBYQA</option>
+        <option value="ParticleSwarm">Particle Swarm</option>
+      </select>
+      <label for="budget">Evaluation budget</label>
+      <select id="budget"><option value="300">300</option><option value="800" selected>800</option><option value="2000">2000</option></select>
+      <button id="run-btn" onclick="runOptimization()">▶ Maximise conversions</button>
+      <button class="secondary" onclick="resetEverything()">⟲ Reset</button>
+      <div class="stats">
+        <div class="stat-row"><span>Conversions</span><span class="score" id="score-now">—</span></div>
+        <div class="stat-row"><span>Spend tried</span><span id="evals">0</span></div>
+        <div class="stat-row"><span>Best so far</span><span id="best-score">—</span></div>
+      </div>
+    </div>
+  </div>
+  <div class="leaderboard"><h2>Leaderboard</h2>
+    <table><thead><tr><th>Algorithm</th><th>Conversions</th><th>Evals</th></tr></thead>
+    <tbody id="leaderboard-body"><tr><td colspan="3" style="color:var(--muted);text-align:center;">— no runs yet —</td></tr></tbody></table></div>
+  <h2>What's happening</h2>
+  <p>The JS objective is a line-for-line port of
+  <code>example_applications/ad_budget_allocation</code> and agrees with it to
+  floating-point tolerance. The bars show spend per channel; the dotted caps show each
+  channel's maximum achievable conversions.</p>
+</div>
+<script src="../js/modules/base-optimizer.js"></script>
+<script src="../js/modules/linalg.js"></script>
+<script src="../js/modules/prima-algorithms.js"></script>
+<script src="../js/modules/scipy-algorithms.js"></script>
+<script src="../js/modules/evolutionary-algorithms.js"></script>
+<script src="../js/modules/search-algorithms.js"></script>
+<script>
+// Port of example_applications/ad_budget_allocation/problem.py (kept identical).
+const canvas=document.getElementById('canvas'), ctx=canvas.getContext('2d'), W=canvas.width, H=canvas.height;
+const N_CH=8, N_DIM=8, BUDGET=10.0;
+const CAP=[5.0,4.0,3.5,3.0,2.5,2.0,1.5,1.0], EFF=[0.3,0.5,0.4,0.8,0.6,1.0,0.7,1.2];
+function decode(u){let s=0; for(const v of u) s+=Math.max(0,v); s=s||1.0; return u.map(v=>BUDGET*Math.max(0,v)/s);}
+function evaluateAlloc(u){const sp=decode(u); const conv=sp.map((s,i)=>CAP[i]*(1-Math.exp(-EFF[i]*s))); const total=conv.reduce((a,b)=>a+b,0); return {sp,conv,total,obj:-total};}
+const searchHistory=[];
+function objective(u){const r=evaluateAlloc(u); searchHistory.push(r); return r.obj;}
+const X0=50,X1=W-20,Y0=30,PH=350;
+function draw(res,hud){
+  ctx.fillStyle='#14141c'; ctx.fillRect(0,0,W,H);
+  ctx.fillStyle='#0d0d16'; ctx.fillRect(X0,Y0,X1-X0,PH); ctx.strokeStyle='#404054'; ctx.strokeRect(X0+0.5,Y0+0.5,X1-X0,PH);
+  const bw=(X1-X0)/N_CH, capMax=Math.max(...CAP)*1.15;
+  const yc=v=>Y0+PH-20-(v/capMax)*(PH-40);
+  for(let i=0;i<N_CH;i++){
+    const x=X0+i*bw+6;
+    // cap marker
+    ctx.strokeStyle='rgba(255,255,255,0.3)'; ctx.setLineDash([3,3]); ctx.beginPath(); ctx.moveTo(x,yc(CAP[i])); ctx.lineTo(x+bw-12,yc(CAP[i])); ctx.stroke(); ctx.setLineDash([]);
+    if(res){
+      const cy=yc(res.conv[i]); ctx.fillStyle='rgba(199,125,255,0.85)'; ctx.fillRect(x,cy,bw-12,Y0+PH-20-cy);
+      ctx.fillStyle='rgba(255,255,255,0.6)'; ctx.font='9px sans-serif'; ctx.textAlign='center';
+      ctx.fillText('$'+res.sp[i].toFixed(1),x+(bw-12)/2,Y0+PH-6);
+    }
+    ctx.fillStyle='var'; ctx.fillStyle='rgba(255,255,255,0.4)'; ctx.font='9px sans-serif'; ctx.textAlign='center'; ctx.fillText('ch'+(i+1),x+(bw-12)/2,Y0+12);
+  }
+  if(hud){ctx.fillStyle='#c77dff'; ctx.font='bold 14px sans-serif'; ctx.textAlign='center'; ctx.fillText(hud,W/2,20); ctx.textAlign='start';}
+}
+const leaderboard=[];
+function addLeaderboard(n,r,e){leaderboard.push({n,t:r.total,e}); leaderboard.sort((a,b)=>b.t-a.t);
+  document.getElementById('leaderboard-body').innerHTML=leaderboard.map(x=>`<tr><td>${x.n}</td><td>${x.t.toFixed(3)}</td><td>${x.e}</td></tr>`).join('');}
+async function runOptimization(){
+  const name=document.getElementById('algorithm').value, budget=parseInt(document.getElementById('budget').value,10), cls=globalThis[name];
+  if(!cls){alert(name+' not found');return;}
+  const btn=document.getElementById('run-btn'); btn.disabled=true; btn.textContent='Searching...'; searchHistory.length=0;
+  await new Promise(r=>setTimeout(r,20));
+  try{const opt=new cls(objective,budget,N_DIM); opt.optimize();
+    let b=searchHistory[0]; for(const r of searchHistory) if(r.obj<b.obj) b=r;
+    document.getElementById('evals').textContent=searchHistory.length;
+    document.getElementById('score-now').textContent=b.total.toFixed(3);
+    document.getElementById('best-score').textContent=b.total.toFixed(3); addLeaderboard(name,b,opt.evaluations);
+    draw(b,`Best ${b.total.toFixed(3)} conversions (${name})`);
+  }catch(e){console.error(e);alert(name+' error: '+e.message);} finally{btn.disabled=false; btn.textContent='▶ Maximise conversions';}
+}
+function resetEverything(){leaderboard.length=0; searchHistory.length=0;
+  document.getElementById('leaderboard-body').innerHTML='<tr><td colspan="3" style="color:var(--muted);text-align:center;">— no runs yet —</td></tr>';
+  ['score-now','best-score'].forEach(i=>document.getElementById(i).textContent='—'); document.getElementById('evals').textContent='0'; draw(null,'Pick an optimizer and run');}
+draw(null,'Pick an optimizer and run');
+</script>
+</body>
+</html>

@@ -26,6 +26,7 @@ from __future__ import annotations
 
 import argparse
 import json
+import math
 import random
 import sys
 from pathlib import Path
@@ -42,7 +43,12 @@ from example_demos import DEMOS, disguise_demo  # noqa: E402
 from humpday.optimizers.alloptimizers import pure_optimize  # noqa: E402
 
 INF = float("inf")
-GENOME_LEN = 12
+GENOME_LEN = 14
+
+try:
+    import numpy as _np
+except Exception:  # noqa: BLE001 — surrogate jump is skipped without numpy
+    _np = None
 
 # Baseline panel the candidate is ranked against (kept small so a genome
 # evaluation — which reruns the whole panel per instance — stays affordable).
@@ -54,7 +60,13 @@ def _clip01(x):
 
 
 def _decode_genome(genome):
-    """Decode a [0,1]^12 genome into the behavioural knobs of the optimizer."""
+    """Decode a [0,1]^14 genome into the behavioural knobs of the optimizer.
+
+    Genes 0..11 are the base DE/ES hybrid; genes 12..13 control the separable
+    quadratic trust-region jump (folded in after an ablation showed it more than
+    halves regret on the disguised suite — see EVOLVED_OPTIMIZER.md). A shorter
+    genome is padded with 0.5, so legacy 12-gene genomes still decode (with a
+    moderate, R²-gated surrogate)."""
     g = [_clip01(v) for v in genome] + [0.5] * (GENOME_LEN - len(genome))
     return {
         "pop": 4 + int(g[0] * 26),  # 4..30
@@ -69,7 +81,31 @@ def _decode_genome(genome):
         "temp0": g[9] * 0.5,  # simulated-annealing acceptance temperature (0=greedy)
         "stagnate": 3 + int(g[10] * 12),  # generations of no gain before a restart
         "restart_frac": 0.2 + g[11] * 0.6,  # fraction reinitialised on restart
+        "p_surrogate": g[12],  # P(a generation fires a quadratic trust-region jump)
+        "r2_min": 0.5 + 0.49 * g[13],  # min model R² to trust the jump (gate)
     }
+
+
+def _fit_separable_quadratic(pts, vals, n_dim):
+    """Least-squares fit of f ≈ c + Σ bᵢxᵢ + Σ aᵢxᵢ² over `pts`. Returns
+    (a, b, r2) — coefficient vectors (length n_dim) and the fit's R² (model
+    quality, used to gate the jump) — or None if numpy is absent / too few pts."""
+    if _np is None or len(pts) < 2 * n_dim + 1:
+        return None
+    X = _np.asarray(pts, dtype=float)
+    y = _np.asarray(vals, dtype=float)
+    design = _np.concatenate([_np.ones((len(X), 1)), X, X * X], axis=1)
+    try:
+        coef, *_ = _np.linalg.lstsq(design, y, rcond=None)
+    except Exception:  # noqa: BLE001
+        return None
+    resid = y - design @ coef
+    ss_res = float(resid @ resid)
+    ss_tot = float(((y - y.mean()) ** 2).sum()) or 1e-30
+    r2 = 1.0 - ss_res / ss_tot
+    b = coef[1 : 1 + n_dim]
+    a = coef[1 + n_dim : 1 + 2 * n_dim]
+    return a, b, r2
 
 
 def make_candidate(genome):
@@ -81,17 +117,25 @@ def make_candidate(genome):
       - local moves around the incumbent: Gaussian or coordinate pattern search,
         with a per-member 1/5-success-rule step size;
       - simulated-annealing acceptance (greedy when temp0=0);
+      - a separable quadratic trust-region jump (`p_surrogate`, R²-gated by
+        `r2_min`): periodically fit a diagonal quadratic to the nearest ~(4n+2)
+        evaluated points and jump to its per-coordinate minimiser — a cheap O(n)
+        NEWUOA-like model step the pure DE/ES moves lack;
       - restart of the worst fraction on stagnation.
     Every move is budget-counted; the optimizer stops at exactly n_trials evals."""
     P = _decode_genome(genome)
 
     def optimize(objective, n_trials, n_dim, with_count=False):
         st = {"evals": 0, "best_f": INF, "best_x": None}
+        arch_x: list[list[float]] = []  # evaluated points, for the surrogate fit
+        arch_f: list[float] = []
 
         def ev(x):
             x = [_clip01(xi) for xi in x]
             f = objective(x)
             st["evals"] += 1
+            arch_x.append(x)
+            arch_f.append(f)
             if f < st["best_f"]:
                 st["best_f"], st["best_x"] = f, x[:]
             return f
@@ -104,6 +148,7 @@ def make_candidate(genome):
         spread = (max(fit) - min(fit)) or 1.0
         temp = P["temp0"] * spread
         gen = last_gain = 0
+        trust = 0.25  # adaptive trust radius for the surrogate jump
 
         while st["evals"] < n_trials:
             gen += 1
@@ -162,6 +207,42 @@ def make_candidate(genome):
                     sig[i] = min(0.5, max(1e-3, sig[i] * f))
                 gained = gained or better and ft <= st["best_f"] + 1e-12
 
+            # --- separable quadratic trust-region jump -----------------------
+            # Fit f ≈ c + Σ bᵢxᵢ + Σ aᵢxᵢ² to the nearest archived points and, if
+            # the model is trustworthy (R² ≥ r2_min), jump toward its per-coord
+            # vertex xᵢ* = −bᵢ/(2aᵢ) within an adaptive trust radius. O(n) per fit.
+            if (
+                random.random() < P["p_surrogate"]
+                and st["evals"] < n_trials
+                and len(arch_x) >= 2 * n_dim + 1
+            ):
+                bx = st["best_x"]
+                m = min(len(arch_x), 4 * n_dim + 2)  # nearest ~(4n+2) to incumbent
+                idx = sorted(
+                    range(len(arch_x)),
+                    key=lambda k: sum(
+                        (arch_x[k][d] - bx[d]) ** 2 for d in range(n_dim)
+                    ),
+                )[:m]
+                fit_res = _fit_separable_quadratic(
+                    [arch_x[k] for k in idx], [arch_f[k] for k in idx], n_dim
+                )
+                if fit_res is not None and fit_res[2] >= P["r2_min"]:
+                    a_co, b_co, _r2 = fit_res
+                    step = []
+                    for d in range(n_dim):
+                        if a_co[d] > 1e-9:  # convex in this coord -> vertex
+                            s = (-b_co[d] / (2.0 * a_co[d])) - bx[d]
+                        else:  # no curvature info -> nudge downhill a little
+                            s = -0.05 * (1 if b_co[d] > 0 else -1)
+                        step.append(max(-trust, min(trust, s)))
+                    cand = [_clip01(bx[d] + step[d]) for d in range(n_dim)]
+                    fc = ev(cand)
+                    if fc < st["best_f"] + 1e-15:
+                        trust = min(0.5, trust * 1.5)  # model good -> widen
+                    else:
+                        trust = max(1e-3, trust * 0.5)  # model bad -> shrink
+
             if P["adapt_fcr"] > 0 and sucF:  # SHADE memory (Lehmer mean of F)
                 lr = 0.1 * P["adapt_fcr"]
                 muF = (1 - lr) * muF + lr * (sum(x * x for x in sucF) / sum(sucF))
@@ -211,10 +292,28 @@ def _candidate_best(candidate, demo, n_trials, run_seed):
 
 
 # A sane warm-start genome: moderate population, DE-focused, greedy acceptance
-# (temp0=0), light local search + adaptation. Competitive out of the box, so the
-# ES begins in a good region and refines rather than hunting from nonsense.
-# order: pop,F0,CR0,ctb,p_local,sigma0,adapt_sigma,p_pattern,adapt_fcr,temp0,stagnate,restart_frac
-DEFAULT_GENOME = [0.35, 0.45, 0.75, 0.30, 0.30, 0.25, 0.60, 0.30, 0.60, 0.0, 0.50, 0.40]
+# (temp0=0), light local search + adaptation, and a moderate R²-gated surrogate
+# jump (the ablation in EVOLVED_OPTIMIZER.md found p_surrogate≈0.6 + a gate near
+# 0.65 optimal — always-firing was worse). Competitive out of the box, so the ES
+# begins in a good region and refines rather than hunting from nonsense.
+# order: pop,F0,CR0,ctb,p_local,sigma0,adapt_sigma,p_pattern,adapt_fcr,temp0,
+#        stagnate,restart_frac,p_surrogate,r2_min
+DEFAULT_GENOME = [
+    0.35,
+    0.45,
+    0.75,
+    0.30,
+    0.30,
+    0.25,
+    0.60,
+    0.30,
+    0.60,
+    0.0,
+    0.50,
+    0.40,
+    0.60,
+    0.30,
+]
 
 
 def candidate_fitness(genome, base_demos, seeds, n_trials, panel=PANEL):
@@ -252,6 +351,15 @@ def candidate_mean_rank(genome, base_demos, seeds, n_trials, panel=PANEL):
             others = [_panel_best(a, inst, n_trials, seed) for a in panel]
             ranks.append(1 + sum(1 for v in others if v < cand))
     return mean(ranks) if ranks else float(len(panel) + 1)
+
+
+def _write_checkpoint(path, payload):
+    """Atomically persist a JSON checkpoint so a multi-hour run is crash-safe."""
+    if path is None:
+        return
+    tmp = Path(str(path) + ".tmp")
+    tmp.write_text(json.dumps(payload, indent=2))
+    tmp.replace(path)
 
 
 def _ck_payload(config, gen, parent, parent_fit, history, step, extra=None):
@@ -339,6 +447,131 @@ def evolve(
     return parent, parent_fit, history
 
 
+def _crossover(a, b):
+    """Recombine two genomes gene-by-gene. Each of the 12 behavioural knobs is
+    inherited either wholesale from one parent (discrete recombination — lets a
+    child take, say, the SA-temperature of one parent and the restart policy of
+    another intact) or as an arithmetic blend (explores between the parents).
+    This is the operator the mutation-only ES lacked: it COMBINES ideas across
+    genomes rather than just jittering one."""
+    child = []
+    for j in range(GENOME_LEN):
+        if random.random() < 0.5:  # discrete: take one parent's knob intact
+            child.append(a[j] if random.random() < 0.5 else b[j])
+        else:  # arithmetic: blend somewhere between the two parents
+            w = random.random()
+            child.append(_clip01(w * a[j] + (1.0 - w) * b[j]))
+    return child
+
+
+def _mutate(genome, step, p_gene=0.5):
+    """Per-gene Gaussian mutation: each knob is perturbed with probability
+    `p_gene`, so crossover structure is mostly preserved while still exploring."""
+    return [
+        _clip01(genome[j] + random.gauss(0, step))
+        if random.random() < p_gene
+        else genome[j]
+        for j in range(GENOME_LEN)
+    ]
+
+
+def evolve_ga(
+    generations,
+    mu,
+    lam,
+    base_demos,
+    seeds,
+    n_trials,
+    rng_seed=0,
+    p_crossover=0.7,
+    n_warm=1,
+    checkpoint_path=None,
+):
+    """(μ + λ) genetic algorithm over the genome: a DIVERSE population evolved by
+    crossover + mutation with elitist survival. Unlike the mutation-only (1+λ)
+    ES, this can combine good knobs from different genomes and explores from
+    random inits, not just the warm start.
+
+    Population is seeded with `n_warm` copies of the sane DEFAULT_GENOME and the
+    rest random. Each generation makes λ offspring (crossover with prob
+    `p_crossover`, else clone a parent; then mutate), and the best μ of
+    parents+offspring survive. Fitness is cached (it's deterministic) so
+    surviving parents are never re-evaluated. Returns (best_genome, best_fit,
+    history)."""
+    random.seed(rng_seed)
+    pop = [list(DEFAULT_GENOME) for _ in range(min(n_warm, mu))]
+    while len(pop) < mu:
+        pop.append([random.random() for _ in range(GENOME_LEN)])
+
+    cache = {}
+
+    def fit_of(g):
+        key = tuple(round(x, 6) for x in g)
+        if key not in cache:
+            cache[key] = candidate_fitness(g, base_demos, seeds, n_trials)
+        return cache[key]
+
+    scored = sorted(((fit_of(g), g) for g in pop), key=lambda t: t[0])[:mu]
+    best_fit, best_genome = scored[0]
+    history = [best_fit]
+    step = 0.2
+    demo_names = [d.name for d in base_demos]
+
+    def checkpoint(gen, done=False):
+        _write_checkpoint(
+            checkpoint_path,
+            {
+                "mode": "ga",
+                "generation": gen,
+                "generations_planned": generations,
+                "done": done,
+                "mu": mu,
+                "lam": lam,
+                "p_crossover": p_crossover,
+                "seeds": list(seeds),
+                "n_trials": n_trials,
+                "panel": PANEL,
+                "demos": demo_names,
+                "evals": len(cache),
+                "best_fitness": best_fit,
+                "best_genome": best_genome,
+                "best_genome_decoded": _describe(best_genome),
+                "population_fitness": [round(f, 4) for f, _ in scored],
+                "history": history,
+            },
+        )
+
+    print(
+        f"  gen 0: pop best regret = {best_fit:.4f}  "
+        f"(pop {[round(f, 3) for f, _ in scored]})",
+        flush=True,
+    )
+    checkpoint(0)
+    for gen in range(1, generations + 1):
+        parents = [g for _, g in scored]
+        offspring = []
+        for _ in range(lam):
+            if random.random() < p_crossover and len(parents) >= 2:
+                pa, pb = random.sample(parents, 2)
+                child = _crossover(pa, pb)
+            else:
+                child = list(random.choice(parents))
+            offspring.append(_mutate(child, step))
+        pool = parents + offspring
+        scored = sorted(((fit_of(g), g) for g in pool), key=lambda t: t[0])[:mu]
+        improved = scored[0][0] < best_fit - 1e-12
+        best_fit, best_genome = scored[0]
+        step = min(0.4, step * 1.15) if improved else max(0.05, step * 0.85)
+        history.append(best_fit)
+        print(
+            f"  gen {gen}: best regret = {best_fit:.4f}  "
+            f"(pop {[round(f, 3) for f, _ in scored]}, step {step:.2f}, evals {len(cache)})",
+            flush=True,
+        )
+        checkpoint(gen, done=(gen == generations))
+    return best_genome, best_fit, history
+
+
 def _describe(genome):
     d = _decode_genome(genome)
     return {k: (round(v, 3) if isinstance(v, float) else v) for k, v in d.items()}
@@ -364,54 +597,104 @@ def main() -> int:
         help="resume from the --out checkpoint if present",
     )
     ap.add_argument("--quick", action="store_true")
+    ap.add_argument(
+        "--mode",
+        choices=("ga", "es"),
+        default="ga",
+        help="ga = (μ+λ) genetic algorithm with crossover+mutation (default); "
+        "es = legacy mutation-only (1+λ) evolution strategy",
+    )
+    ap.add_argument("--mu", type=int, default=8, help="GA population size")
+    ap.add_argument(
+        "--crossover", type=float, default=0.7, help="GA crossover probability"
+    )
+    ap.add_argument(
+        "--n-warm",
+        type=int,
+        default=1,
+        help="GA: copies of the warm-start genome in the initial pop (rest random)",
+    )
     args = ap.parse_args()
 
     generations, lam, trials = args.generations, args.lam, args.trials
     seeds = tuple(int(s) for s in args.seeds.split(","))
     n_demos = args.n_demos
+    mu = args.mu
     if args.quick:
         generations, lam, trials, n_demos, seeds = 4, 3, 50, 5, (0, 1)
+        mu = 5
 
+    ckpt = Path(args.out) if args.out else None
     base = DEMOS[:n_demos]
-    checkpoint = args.out or None
     config = {
         "generations": generations,
         "lam": lam,
         "seeds": list(seeds),
         "trials": trials,
         "n_demos": n_demos,
+        "mode": args.mode,
     }
-    print(
-        f"Evolving an optimizer: (1+{lam}) ES, {generations} generations,\n"
-        f"fitness = normalised regret vs {PANEL}\n"
-        f"across {len(base)} demos x {len(seeds)} disguised seeds, {trials} trials each."
-    )
-    if checkpoint:
-        print(f"checkpoint: {checkpoint}{' (resuming)' if args.resume else ''}")
-    print()
-    best_genome, best_fit, history = evolve(
-        generations,
-        lam,
-        base,
-        seeds,
-        trials,
-        checkpoint=checkpoint,
-        resume=args.resume,
-        config=config,
-    )
+    if args.mode == "ga":
+        print(
+            f"Evolving an optimizer: ({mu}+{lam}) GA (crossover p={args.crossover} + "
+            f"mutation), {generations} generations,\n"
+            f"fitness = normalised regret vs {PANEL}\n"
+            f"across {len(base)} demos x {len(seeds)} disguised seeds, {trials} trials each.\n"
+            f"init: {min(args.n_warm, mu)} warm-start + {max(0, mu - args.n_warm)} random genomes.\n"
+            + (f"checkpointing to {ckpt}\n" if ckpt else "")
+        )
+        best_genome, best_fit, history = evolve_ga(
+            generations,
+            mu,
+            lam,
+            base,
+            seeds,
+            trials,
+            p_crossover=args.crossover,
+            n_warm=args.n_warm,
+            checkpoint_path=ckpt,
+        )
+    else:
+        print(
+            f"Evolving an optimizer: (1+{lam}) ES, {generations} generations,\n"
+            f"fitness = normalised regret vs {PANEL}\n"
+            f"across {len(base)} demos x {len(seeds)} disguised seeds, {trials} trials each."
+        )
+        if ckpt:
+            print(f"checkpoint: {ckpt}{' (resuming)' if args.resume else ''}")
+        print()
+        best_genome, best_fit, history = evolve(
+            generations,
+            lam,
+            base,
+            seeds,
+            trials,
+            checkpoint=str(ckpt) if ckpt else None,
+            resume=args.resume,
+            config=config,
+        )
     rank = candidate_mean_rank(best_genome, base, seeds, trials)
-    if checkpoint:  # final snapshot carries the (expensive) mean-rank readout
-        _save_checkpoint(
-            checkpoint,
-            _ck_payload(
-                config,
-                generations,
-                best_genome,
-                best_fit,
-                history,
-                0.0,
-                extra={"mean_rank": rank, "done": True},
-            ),
+    if ckpt:
+        _write_checkpoint(
+            ckpt,
+            {
+                "mode": args.mode,
+                "generation": generations,
+                "generations_planned": generations,
+                "done": True,
+                "mu": mu if args.mode == "ga" else None,
+                "lam": lam,
+                "p_crossover": args.crossover if args.mode == "ga" else None,
+                "seeds": list(seeds),
+                "n_trials": trials,
+                "panel": PANEL,
+                "demos": [d.name for d in base],
+                "best_fitness": best_fit,
+                "best_genome": best_genome,
+                "best_genome_decoded": _describe(best_genome),
+                "mean_rank": rank,
+                "history": history,
+            },
         )
     print("\n=== Evolved optimizer ===")
     print(f"  normalised regret vs panel: {best_fit:.4f}  (0 = best on every instance)")

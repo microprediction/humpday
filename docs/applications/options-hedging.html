@@ -1,0 +1,142 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' 'unsafe-inline'; style-src 'self' 'unsafe-inline';">
+<title>📈 Option Delta-Hedging — HumpDay</title>
+<style>
+  :root { --bg:#1a1a22; --panel:#2d2d3a; --accent:#7ed957; --text:#e8e8ea; --muted:#9a9aac; }
+  body { margin:0; background:var(--bg); color:var(--text); font-family:-apple-system,'Segoe UI',Helvetica,Arial,sans-serif; }
+  .site-nav { background:#34495e; padding:12px 24px; font-family:'Times New Roman',Times,serif; }
+  .site-nav-inner { max-width:1100px; margin:0 auto; display:flex; justify-content:space-between; align-items:center; }
+  .site-nav a { color:#ecf0f1; text-decoration:none; margin:0 12px; } .site-nav-brand { font-weight:700; font-size:1.25em; }
+  .container { max-width:1100px; margin:0 auto; padding:32px 24px 64px; }
+  h1 { font-size:2.2em; margin:0.2em 0; } h2 { font-size:1.4em; margin-top:1.4em; color:var(--accent); }
+  p { line-height:1.55; max-width:70ch; } .intro { color:var(--muted); }
+  .stage { display:grid; grid-template-columns:1fr 320px; gap:24px; align-items:start; margin-top:24px; }
+  @media (max-width:800px){ .stage { grid-template-columns:1fr; } }
+  canvas { background:#14141c; border:3px solid var(--accent); border-radius:6px; display:block; width:100%; height:auto; }
+  .panel { background:var(--panel); padding:18px; border-radius:6px; border:1px solid #404054; }
+  .panel h3 { margin:0 0 12px; font-size:1.05em; text-transform:uppercase; letter-spacing:0.06em; color:var(--accent); }
+  label { display:block; margin:10px 0 6px; font-size:0.9em; color:var(--muted); }
+  select,button { width:100%; box-sizing:border-box; padding:8px 10px; border-radius:4px; border:1px solid #404054; background:#1a1a22; color:var(--text); font-size:0.95em; }
+  button { background:var(--accent); color:#1a1a22; font-weight:700; cursor:pointer; margin-top:6px; } button.secondary { background:#404054; color:var(--text); font-weight:400; }
+  .stats { margin-top:16px; padding-top:14px; border-top:1px solid #404054; font-size:0.92em; line-height:1.6; }
+  .stats .score { font-size:2.2em; color:var(--accent); font-weight:700; }
+  .stat-row { display:flex; justify-content:space-between; gap:12px; } .stat-row span:last-child { font-family:'SF Mono',Menlo,monospace; }
+  .leaderboard { margin-top:24px; } .leaderboard table { width:100%; border-collapse:collapse; background:var(--panel); border-radius:6px; overflow:hidden; }
+  .leaderboard th,.leaderboard td { padding:10px 14px; text-align:left; border-bottom:1px solid #404054; } .leaderboard th { background:#1a1a22; color:var(--muted); text-transform:uppercase; font-size:0.78em; }
+</style>
+</head>
+<body>
+  <nav class="site-nav"><div class="site-nav-inner">
+    <a href="../index.html" class="site-nav-brand">HumpDay</a>
+    <div><a href="../index.html">Home</a><a href="../applications/index.html">Demonstrations</a><a href="../algorithms.html">Algorithms</a><a href="https://github.com/microprediction/humpday" target="_blank" rel="noopener">GitHub</a></div>
+  </div></nav>
+<div class="container">
+  <h1>📈 Option Delta-Hedging</h1>
+  <p class="intro">
+    A trader sells a European call and hedges it over twelve steps by holding a fraction
+    of a share between rebalances. As the underlying moves along a path, the hedge
+    portfolio is marked to market; at expiry it should reproduce the option payoff. We
+    choose the hedge ratio at each step to minimise squared replication error plus a
+    transaction cost on every rebalance. The optimum tracks the option's delta along the
+    path. 12-D problem.
+  </p>
+  <div class="stage">
+    <canvas id="canvas" width="800" height="420"></canvas>
+    <div class="panel">
+      <h3>Algorithm</h3>
+      <label for="algorithm">HumpDay optimizer</label>
+      <select id="algorithm">
+        <option value="PRIMA_BOBYQA" selected>PRIMA_BOBYQA</option>
+        <option value="NelderMead">Nelder-Mead</option>
+        <option value="Powell">Powell</option>
+        <option value="CMAEvolutionStrategy">CMA-ES</option>
+        <option value="DifferentialEvolution">Differential Evolution</option>
+        <option value="LBFGSB">L-BFGS-B</option>
+      </select>
+      <label for="budget">Evaluation budget</label>
+      <select id="budget"><option value="300">300</option><option value="800" selected>800</option><option value="2000">2000</option></select>
+      <button id="run-btn" onclick="runOptimization()">▶ Minimise replication error</button>
+      <button class="secondary" onclick="resetEverything()">⟲ Reset</button>
+      <div class="stats">
+        <div class="stat-row"><span>Replication error</span><span class="score" id="score-now">—</span></div>
+        <div class="stat-row"><span>Hedges tried</span><span id="evals">0</span></div>
+        <div class="stat-row"><span>Best so far</span><span id="best-score">—</span></div>
+      </div>
+    </div>
+  </div>
+  <div class="leaderboard"><h2>Leaderboard</h2>
+    <table><thead><tr><th>Algorithm</th><th>Error</th><th>Evals</th></tr></thead>
+    <tbody id="leaderboard-body"><tr><td colspan="3" style="color:var(--muted);text-align:center;">— no runs yet —</td></tr></tbody></table></div>
+  <h2>What's happening</h2>
+  <p>The JS objective is a line-for-line port of
+  <code>example_applications/options_hedging</code> and agrees with it to floating-point
+  tolerance. The top panel shows the underlying path and strike; the bars show the
+  chosen hedge ratio at each step. This is a smooth, near-convex problem, so
+  trust-region methods do well.</p>
+</div>
+<script src="../js/modules/base-optimizer.js"></script>
+<script src="../js/modules/linalg.js"></script>
+<script src="../js/modules/prima-algorithms.js"></script>
+<script src="../js/modules/scipy-algorithms.js"></script>
+<script src="../js/modules/evolutionary-algorithms.js"></script>
+<script src="../js/modules/search-algorithms.js"></script>
+<script>
+// Port of example_applications/options_hedging/problem.py (kept identical).
+const canvas=document.getElementById('canvas'), ctx=canvas.getContext('2d'), W=canvas.width, H=canvas.height;
+const STEPS=12, N_DIM=12, S0=100.0, STRIKE=100.0, TXN=0.01;
+const PATH=Array.from({length:STEPS+1},(_,t)=>S0*Math.exp(0.02*t/STEPS+0.15*Math.sin(3.0*t/STEPS)));
+function decode(u){return u.map(v=>Math.min(1,Math.max(0,v)));}
+function evaluateHedge(u){
+  const h=decode(u); let cash=0, prev=0;
+  for(let t=0;t<STEPS;t++){const dh=h[t]-prev; cash-=dh*PATH[t]; cash-=TXN*Math.abs(dh)*PATH[t]; prev=h[t];}
+  cash+=prev*PATH[STEPS];
+  const payoff=Math.max(0,PATH[STEPS]-STRIKE);
+  return {h,obj:(cash-payoff)**2};
+}
+const searchHistory=[];
+function objective(u){const r=evaluateHedge(u); searchHistory.push(r); return r.obj;}
+const X0=50,X1=W-20, TOPY=30,TOPH=180, BOTY=240,BOTH=150;
+const sx=t=>X0+(t/STEPS)*(X1-X0);
+function draw(res,hud){
+  ctx.fillStyle='#14141c'; ctx.fillRect(0,0,W,H);
+  // path panel
+  ctx.fillStyle='#0d0d16'; ctx.fillRect(X0,TOPY,X1-X0,TOPH); ctx.strokeStyle='#404054'; ctx.strokeRect(X0+0.5,TOPY+0.5,X1-X0,TOPH);
+  const pmin=Math.min(...PATH)*0.99, pmax=Math.max(...PATH)*1.01, yP=v=>TOPY+TOPH-8-((v-pmin)/(pmax-pmin))*(TOPH-16);
+  ctx.strokeStyle='rgba(255,204,0,0.6)'; ctx.setLineDash([4,4]); ctx.beginPath(); ctx.moveTo(X0,yP(STRIKE)); ctx.lineTo(X1,yP(STRIKE)); ctx.stroke(); ctx.setLineDash([]);
+  ctx.strokeStyle='#56c2ff'; ctx.lineWidth=2; ctx.beginPath();
+  for(let t=0;t<=STEPS;t++){const x=sx(t),y=yP(PATH[t]); t===0?ctx.moveTo(x,y):ctx.lineTo(x,y);} ctx.stroke();
+  ctx.fillStyle='#56c2ff'; ctx.font='bold 12px sans-serif'; ctx.textAlign='left'; ctx.fillText('underlying + strike',X0+6,TOPY+14);
+  // hedge panel
+  ctx.fillStyle='#0d0d16'; ctx.fillRect(X0,BOTY,X1-X0,BOTH); ctx.strokeStyle='#404054'; ctx.strokeRect(X0+0.5,BOTY+0.5,X1-X0,BOTH);
+  ctx.fillStyle='#7ed957'; ctx.font='bold 12px sans-serif'; ctx.fillText('hedge ratio (0..1)',X0+6,BOTY+14);
+  if(res){const bw=(X1-X0)/STEPS;
+    for(let t=0;t<STEPS;t++){const hh=res.h[t]*(BOTH-24); ctx.fillStyle='rgba(126,217,87,0.85)'; ctx.fillRect(sx(t)+2,BOTY+BOTH-8-hh,bw-4,hh);}}
+  if(hud){ctx.fillStyle='#7ed957'; ctx.font='bold 14px sans-serif'; ctx.textAlign='center'; ctx.fillText(hud,W/2,20); ctx.textAlign='start';}
+}
+const leaderboard=[];
+function addLeaderboard(n,r,e){leaderboard.push({n,o:r.obj,e}); leaderboard.sort((a,b)=>a.o-b.o);
+  document.getElementById('leaderboard-body').innerHTML=leaderboard.map(x=>`<tr><td>${x.n}</td><td>${x.o.toFixed(4)}</td><td>${x.e}</td></tr>`).join('');}
+async function runOptimization(){
+  const name=document.getElementById('algorithm').value, budget=parseInt(document.getElementById('budget').value,10), cls=globalThis[name];
+  if(!cls){alert(name+' not found');return;}
+  const btn=document.getElementById('run-btn'); btn.disabled=true; btn.textContent='Searching...'; searchHistory.length=0;
+  await new Promise(r=>setTimeout(r,20));
+  try{const opt=new cls(objective,budget,N_DIM); opt.optimize();
+    let b=searchHistory[0]; for(const r of searchHistory) if(r.obj<b.obj) b=r;
+    document.getElementById('evals').textContent=searchHistory.length;
+    document.getElementById('score-now').textContent=b.obj.toFixed(4);
+    document.getElementById('best-score').textContent=b.obj.toFixed(4); addLeaderboard(name,b,opt.evaluations);
+    draw(b,`Best error ${b.obj.toFixed(4)} (${name})`);
+  }catch(e){console.error(e);alert(name+' error: '+e.message);} finally{btn.disabled=false; btn.textContent='▶ Minimise replication error';}
+}
+function resetEverything(){leaderboard.length=0; searchHistory.length=0;
+  document.getElementById('leaderboard-body').innerHTML='<tr><td colspan="3" style="color:var(--muted);text-align:center;">— no runs yet —</td></tr>';
+  ['score-now','best-score'].forEach(i=>document.getElementById(i).textContent='—'); document.getElementById('evals').textContent='0'; draw(null,'Pick an optimizer and run');}
+draw(null,'Pick an optimizer and run');
+</script>
+</body>
+</html>

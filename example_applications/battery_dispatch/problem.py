@@ -19,6 +19,8 @@ Mirrors the browser demo docs/applications/battery-dispatch.html.
 
 from __future__ import annotations
 
+import math
+
 HOURS = 24
 N_DIM = HOURS
 P_MAX = 25.0  # MW charge/discharge limit
@@ -92,3 +94,46 @@ def evaluate_schedule(u):
 def objective(u):
     """HumpDay objective: negative daily revenue (minimise)."""
     return -simulate(decode(u))[0]
+
+
+# --- Faithful high-dimensional variants -------------------------------------
+# Scaling knob: horizon length in hours = n_dim (must be a multiple of 24, i.e.
+# whole days). The battery dynamics, power/SOC limits and round-trip efficiency
+# are identical; the state-of-charge is carried across the full multi-day
+# horizon, and each day's price curve is the base 24h shape scaled by a smooth
+# +/-10% day-to-day factor (so successive days differ as real markets do rather
+# than being trivial repeats). It is the same arbitrage problem over a longer
+# horizon — strictly faithful, just higher-dimensional.
+SCALABLE_DIMS = [48, 72, 96]
+
+
+def make_objective(n_dim):
+    """Return a HumpDay objective over `n_dim` hours (n_dim // 24 days)."""
+    hours = int(n_dim)
+    days = hours // 24
+    price = []
+    for d in range(days):
+        mult = 1.0 + 0.10 * math.sin(2 * math.pi * d / max(days, 1))
+        price.extend(p * mult for p in PRICE)
+
+    def objective_scaled(u):
+        soc = SOC_INIT
+        revenue = 0.0
+        for h in range(hours):
+            p = (u[h] - 0.5) * 2 * P_MAX
+            if p < 0:  # charging
+                max_charge = (SOC_HI - soc) / ETA_C
+                if -p > max_charge:
+                    p = -max_charge
+            elif p > 0:  # discharging
+                max_discharge = (soc - SOC_LO) * ETA_D
+                if p > max_discharge:
+                    p = max_discharge
+            revenue += p * price[h]
+            if p < 0:
+                soc += -p * ETA_C
+            else:
+                soc -= p / ETA_D
+        return -revenue
+
+    return objective_scaled

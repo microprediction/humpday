@@ -121,3 +121,36 @@ def evaluate_layout(u):
 def objective(u):
     """HumpDay objective: negative layout score (minimise)."""
     return -evaluate_layout(u)[0]
+
+
+# --- Faithful high-dimensional variants -------------------------------------
+# Scaling knob: number of turbines (n_dim = 2 * turbines). The field is grown by
+# sqrt(turbines / N_TURBINES) so the *turbine density* — and hence the wake
+# coupling, spacing constraint, and rose physics — is identical to the 8-turbine
+# base. More turbines therefore make a faithful, larger instance of the same
+# interacting layout problem rather than an easier/harder one.
+SCALABLE_DIMS = [24, 40, 60, 100]
+
+
+def make_objective(n_dim):
+    """Return a HumpDay objective for `n_dim // 2` turbines at constant density."""
+    n_turbines = int(n_dim) // 2
+    scale = math.sqrt(n_turbines / N_TURBINES)
+    fx1 = FIELD_X0 + (FIELD_X1 - FIELD_X0) * scale
+    fy1 = FIELD_Y0 + (FIELD_Y1 - FIELD_Y0) * scale
+
+    def objective_scaled(u):
+        positions = [
+            (
+                FIELD_X0 + u[2 * i] * (fx1 - FIELD_X0),
+                FIELD_Y0 + u[2 * i + 1] * (fy1 - FIELD_Y0),
+            )
+            for i in range(n_turbines)
+        ]
+        power_fraction = _expected_power(positions) / n_turbines
+        penalty = _spacing_penalty(positions)
+        boundary = _boundary_bonus(positions)
+        score = 100 * power_fraction + BOUNDARY_BONUS_PTS * boundary - 40 * penalty
+        return -score
+
+    return objective_scaled

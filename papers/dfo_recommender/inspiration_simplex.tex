@@ -1,0 +1,111 @@
+\documentclass[11pt]{article}
+
+\usepackage[margin=1.1in]{geometry}
+\usepackage{amsmath}
+\usepackage{tikz}
+\usepackage{microtype}
+
+\title{The Inspiration Simplex}
+\author{Peter Cotton}
+\date{\today}
+
+% A note that promises nothing.
+
+\begin{document}
+\maketitle
+
+\begin{abstract}
+\noindent A note that promises nothing. We describe a small construction --- a
+simplex whose vertices are established algorithms and whose interior is every
+blend of them an LLM can express --- and then, because the construction is a
+recipe for combining inspirations, we apply it to itself.
+\end{abstract}
+
+\section{The idea (such as it is)}
+
+Put a few \emph{named, established algorithms} at the vertices of a simplex ---
+say Nelder--Mead, Differential Evolution, CMA-ES. A point inside the simplex is a
+set of barycentric coordinates: a \emph{recipe} that says ``60\% this, 30\% that,
+10\% the other.'' Hand those coordinates to a language model and ask it not to
+average parameters but to \textbf{write a new optimizer that blends the ideas} ---
+the search discipline of one, the population logic of another, the step control of
+a third. The vertices are pure inspirations; the interior is everything you can
+say by mixing them. (The working prototype is \texttt{simplex\_blend.py}; the
+host-and-graft asymmetric prompt is the only part that took real thought.)
+
+The one mildly interesting empirical question --- still open, still unpromised ---
+is whether the \textbf{interior is richer than the vertices}: does some blend beat
+every pure ancestor, or is the inside of the simplex just a soggy compromise? We
+have a regret surface (\texttt{runs/simplex\_overnight.json}) and no firm
+conclusion, which is exactly where an honest note should leave it.
+
+\section{The part that made me laugh}
+
+The method is a recipe for combining sources of inspiration. So the method should
+be applied to \emph{itself}. The idea of the Inspiration Simplex obviously needs
+to \textbf{evolve inside an Inspiration Simplex} --- one whose vertices are not
+optimizers but \textbf{established brainstorming techniques}. Candidate vertices:
+
+\begin{itemize}
+  \item \textbf{SCAMPER} --- Substitute / Combine / Adapt / Modify /
+    Put-to-other-use / Eliminate / Reverse. The workmanlike vertex.
+  \item \textbf{TRIZ} --- resolve the contradiction; consult the inventive
+    principles. The vertex that insists there is a \emph{right} answer hiding in a
+    table.
+  \item \textbf{Six Thinking Hats} --- rotate deliberately through optimism,
+    caution, data, feeling, process. The vertex that schedules its own moods.
+  \item \textbf{Synectics} --- make the strange familiar and the familiar strange;
+    reason by analogy. The vertex most likely to mention octopuses.
+  \item \textbf{Oblique Strategies} --- draw a card, obey it. (``Honour thy error
+    as a hidden intention.'') The random-restart vertex.
+  \item \textbf{Morphological analysis} (the Zwicky box) --- enumerate the
+    dimensions, take the cross-product, stare. Pleasingly, \emph{itself} a
+    combinatorial blending method, which makes putting it on the simplex either
+    elegant or cheating.
+\end{itemize}
+
+A barycentric point is then a brainstorming \emph{style}: ``40\% TRIZ-rigour, 30\%
+Oblique-provocation, 30\% Synectics-analogy,'' handed to a model that must run that
+blended style on the question \emph{``how should the Inspiration Simplex be
+improved?''}
+
+\begin{figure}[h]
+\centering
+\begin{tikzpicture}[scale=3.2]
+  \coordinate (A) at (90:1);
+  \coordinate (B) at (210:1);
+  \coordinate (C) at (330:1);
+  \draw[thick] (A) -- (B) -- (C) -- cycle;
+  \fill (A) circle (0.6pt) node[above] {TRIZ};
+  \fill (B) circle (0.6pt) node[below left] {Synectics};
+  \fill (C) circle (0.6pt) node[below right] {Oblique Strategies};
+  % an interior blend
+  \coordinate (P) at (barycentric cs:A=0.4,B=0.3,C=0.3);
+  \fill[gray] (P) circle (0.8pt) node[right] {\scriptsize a style};
+\end{tikzpicture}
+\caption{The illustrative $2$-simplex (three vertices fit on a page; the real one
+has as many vertices as you have techniques). The marked interior point is a
+blend; whether it beats the corners is the entire open question.}
+\end{figure}
+
+\section{The infinite regress, acknowledged and declined}
+
+Yes: the meta-simplex could itself be improved by a meta-meta-simplex whose
+vertices are \emph{methods for improving brainstorming methods}, and so on up the
+tower. We note the tower exists. We decline to climb it. One level of
+self-reference is whimsy; two is a research-group in-joke; three is a stack
+overflow.
+
+\section{What this note promises}
+
+Nothing. No benchmark, no win, no claim that mixing brainstorming techniques
+produces better ideas than picking a good one and getting on with it. It is
+plausible the best point in the brainstorming simplex is a vertex --- that you
+should just \emph{do TRIZ properly} --- and that the interior, here as with the
+optimizers, is mostly soggy compromise. That would also be a fine result.
+
+The note exists only so that, if the interior ever does turn out to be richer than
+the vertices --- for optimizers, for ideas, or for ideas about ideas --- we wrote
+the joke down first.
+
+\end{document}

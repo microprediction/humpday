@@ -158,7 +158,6 @@
                 <a href="../applications/index.html">Demonstrations</a>
                 <a href="../applications/no-free-lunch.html">No Free Lunch</a>
                 <a href="../algorithms.html">Algorithms</a>
-                <a href="../sota-status.html">SOTA status</a>
                 <a href="../recommendations.html">Recommendations</a>
                 <a href="https://github.com/microprediction/humpday" target="_blank" rel="noopener">GitHub</a>
             </div>
@@ -684,6 +683,351 @@
       </p>
       <div class="meta">
         <span>n=6 · distance walked</span>
+        <span class="play">Open →</span>
+      </div>
+    </a>
+
+    <a class="card live" href="ev-fleet-charging.html" style="text-decoration:none;">
+      <div class="emoji">🔌</div>
+      <span class="tag">Live</span>
+      <h3>EV Fleet Charging</h3>
+      <p class="desc">
+        Schedule a depot's overnight charging under a grid cap and a time-varying
+        price, with enough energy delivered by noon and by end of day. Front-load
+        cheap hours to clear the deadlines, back off the evening peak.
+      </p>
+      <div class="meta">
+        <span>n=24 · min cost + penalty</span>
+        <span class="play">Open →</span>
+      </div>
+    </a>
+
+    <a class="card live" href="ad-budget-allocation.html" style="text-decoration:none;">
+      <div class="emoji">📣</div>
+      <span class="tag">Live</span>
+      <h3>Ad Budget Allocation</h3>
+      <p class="desc">
+        Split a fixed budget across eight channels with saturating returns. Early
+        dollars convert, later ones do not, so the optimum equalises marginal
+        returns: a continuous water-filling problem.
+      </p>
+      <div class="meta">
+        <span>n=8 · max conversions</span>
+        <span class="play">Open →</span>
+      </div>
+    </a>
+
+    <a class="card live" href="options-hedging.html" style="text-decoration:none;">
+      <div class="emoji">📈</div>
+      <span class="tag">Live</span>
+      <h3>Option Delta-Hedging</h3>
+      <p class="desc">
+        Pick the per-step hedge ratios that let a portfolio replicate a call's
+        payoff along a price path, against a transaction cost on every rebalance.
+        A smooth, near-convex problem where trust-region methods shine.
+      </p>
+      <div class="meta">
+        <span>n=12 · min replication error</span>
+        <span class="play">Open →</span>
+      </div>
+    </a>
+
+    <a class="card live" href="revenue-pricing.html" style="text-decoration:none;">
+      <div class="emoji">💲</div>
+      <span class="tag">Live</span>
+      <h3>Revenue Pricing</h3>
+      <p class="desc">
+        Set prices for eight segments whose demand falls with price and shares one
+        limited capacity. Too low overruns capacity, too high collapses revenue:
+        capacity-constrained segment pricing.
+      </p>
+      <div class="meta">
+        <span>n=8 · max revenue</span>
+        <span class="play">Open →</span>
+      </div>
+    </a>
+
+    <a class="card live" href="district-cooling.html" style="text-decoration:none;">
+      <div class="emoji">❄️</div>
+      <span class="tag">Live</span>
+      <h3>District Cooling</h3>
+      <p class="desc">
+        Split a fixed cooling load across five chillers whose efficiency peaks at a
+        part-load sweet spot. The good split keeps running units near their
+        efficient point rather than maxing the biggest one.
+      </p>
+      <div class="meta">
+        <span>n=5 · min plant energy</span>
+        <span class="play">Open →</span>
+      </div>
+    </a>
+
+    <a class="card live" href="cell-tower-power.html" style="text-decoration:none;">
+      <div class="emoji">📡</div>
+      <span class="tag">Live</span>
+      <h3>Cell-Tower Power</h3>
+      <p class="desc">
+        Set transmit powers for six base stations serving users between them. More
+        power helps your own users but interferes with everyone else's, so coverage
+        is a non-separable tug of war and full power is not optimal.
+      </p>
+      <div class="meta">
+        <span>n=6 · max coverage</span>
+        <span class="play">Open →</span>
+      </div>
+    </a>
+
+    <a class="card live" href="vaccine-allocation.html" style="text-decoration:none;">
+      <div class="emoji">💉</div>
+      <span class="tag">Live</span>
+      <h3>Vaccine Allocation</h3>
+      <p class="desc">
+        Split a dose supply across eight groups in a mixing SIR model. Protecting
+        the high-contact groups that drive transmission changes how large the
+        outbreak gets, seeded in the two busiest groups.
+      </p>
+      <div class="meta">
+        <span>n=8 · min infections</span>
+        <span class="play">Open →</span>
+      </div>
+    </a>
+
+    <a class="card live" href="traffic-signal.html" style="text-decoration:none;">
+      <div class="emoji">🚦</div>
+      <span class="tag">Live</span>
+      <h3>Traffic-Signal Timing</h3>
+      <p class="desc">
+        Choose green splits and offsets for four signals on an arterial. Webster
+        delay sets the per-approach cost; coordinating offsets to travel time lets a
+        platoon ride a green wave. Starve the side streets and delay spikes.
+      </p>
+      <div class="meta">
+        <span>n=8 · min delay</span>
+        <span class="play">Open →</span>
+      </div>
+    </a>
+
+    <a class="card live" href="crop-irrigation.html" style="text-decoration:none;">
+      <div class="emoji">🌾</div>
+      <span class="tag">Live</span>
+      <h3>Crop Irrigation</h3>
+      <p class="desc">
+        Schedule twelve weeks of irrigation under a water budget below the season's
+        deficit. Soil moisture drives a water-stress yield model, so the good
+        schedule concentrates water on the sensitive flowering weeks.
+      </p>
+      <div class="meta">
+        <span>n=12 · max yield</span>
+        <span class="play">Open →</span>
+      </div>
+    </a>
+
+    <a class="card live" href="heat-exchanger-network.html" style="text-decoration:none;">
+      <div class="emoji">🔥</div>
+      <span class="tag">Live</span>
+      <h3>Heat-Exchanger Network</h3>
+      <p class="desc">
+        Size six exchangers that heat a stream in series toward a target. Area buys
+        effectiveness with diminishing returns, so the good design puts area where
+        the temperature driving force is largest.
+      </p>
+      <div class="meta">
+        <span>n=6 · min cost + penalty</span>
+        <span class="play">Open →</span>
+      </div>
+    </a>
+
+    <a class="card live" href="water-distribution.html" style="text-decoration:none;">
+      <div class="emoji">🚰</div>
+      <span class="tag">Live</span>
+      <h3>Water Pipe Sizing</h3>
+      <p class="desc">
+        Choose diameters for eight pipes carrying known demand from a pumped source.
+        Wider pipes lose less head (less pumping) but cost more material, so the
+        trunk pipes want to be widest. Hazen-Williams head loss.
+      </p>
+      <div class="meta">
+        <span>n=8 · min cost</span>
+        <span class="play">Open →</span>
+      </div>
+    </a>
+
+    <a class="card live" href="microgrid-dispatch.html" style="text-decoration:none;">
+      <div class="emoji">🔋</div>
+      <span class="tag">Live</span>
+      <h3>Microgrid Dispatch</h3>
+      <p class="desc">
+        Meet a remote microgrid's day from free midday solar, a diesel genset, and a
+        battery. Bank surplus solar and discharge it into the evening so the genset runs
+        as little as possible. Twelve diesel levels plus twelve battery powers.
+      </p>
+      <div class="meta">
+        <span>n=24 · min cost</span>
+        <span class="play">Open →</span>
+      </div>
+    </a>
+
+    <a class="card live" href="queue-staffing.html" style="text-decoration:none;">
+      <div class="emoji">☎️</div>
+      <span class="tag">Live</span>
+      <h3>Call-Centre Staffing</h3>
+      <p class="desc">
+        Staff six shifts of differing call volume. Caller wait blows up as a shift
+        nears full utilisation, so the good plan staffs busy shifts heavily and quiet
+        ones lightly, trading staffing cost against the SLA-wait penalty.
+      </p>
+      <div class="meta">
+        <span>n=6 · min cost</span>
+        <span class="play">Open →</span>
+      </div>
+    </a>
+
+    <a class="card live" href="protein-fold-toy.html" style="text-decoration:none;">
+      <div class="emoji">🧬</div>
+      <span class="tag">Live</span>
+      <h3>Toy Protein Folding</h3>
+      <p class="desc">
+        Fold a 13-residue chain in the plane by its bend angles. The energy rewards a
+        compact hydrophobic core, the textbook extreme-multimodality benchmark
+        (Stillinger's 2D AB model), a forest of local minima around the true fold.
+      </p>
+      <div class="meta">
+        <span>n=11 · min energy</span>
+        <span class="play">Open →</span>
+      </div>
+    </a>
+
+    <a class="card live" href="satellite-phasing.html" style="text-decoration:none;">
+      <div class="emoji">🛰️</div>
+      <span class="tag">Live</span>
+      <h3>Satellite Phasing</h3>
+      <p class="desc">
+        Phase six satellites around a ring to cover ground targets weighted by
+        population. Bunching leaves wide gaps, so the optimum spreads them toward the
+        busy longitudes. Squared nearest-satellite distance, summed over targets.
+      </p>
+      <div class="meta">
+        <span>n=6 · min coverage cost</span>
+        <span class="play">Open →</span>
+      </div>
+    </a>
+
+    <a class="card live" href="signal-deconvolution.html" style="text-decoration:none;">
+      <div class="emoji">📶</div>
+      <span class="tag">Live</span>
+      <h3>Signal Deconvolution</h3>
+      <p class="desc">
+        Recover a sharp twelve-sample signal from a Gaussian-blurred, noisy measurement,
+        regularised for smoothness. The classic regularised least-squares inverse
+        problem: smooth and near-convex, where trust-region methods dial straight in.
+      </p>
+      <div class="meta">
+        <span>n=12 · min residual</span>
+        <span class="play">Open →</span>
+      </div>
+    </a>
+
+    <a class="card live" href="groundwater-remediation.html" style="text-decoration:none;">
+      <div class="emoji">💧</div>
+      <span class="tag">Live</span>
+      <h3>Groundwater Remediation</h3>
+      <p class="desc">
+        Set six extraction-well pump rates to pull a contaminant plume below the limit at
+        the monitoring points, at minimum pumping cost. Pump just enough at the wells best
+        placed to capture the plume rather than running every well flat out.
+      </p>
+      <div class="meta">
+        <span>n=6 · min cost</span>
+        <span class="play">Open →</span>
+      </div>
+    </a>
+
+    <a class="card live" href="index-tracking.html" style="text-decoration:none;">
+      <div class="emoji">📊</div>
+      <span class="tag">Live</span>
+      <h3>Index Tracking</h3>
+      <p class="desc">
+        Track a benchmark return series with eight assets on the simplex. Perfect
+        replication is impossible, so the job is to minimise tracking error: a regression
+        on the simplex where the weights must stay non-negative and sum to one.
+      </p>
+      <div class="meta">
+        <span>n=8 · min tracking error</span>
+        <span class="play">Open →</span>
+      </div>
+    </a>
+
+    <a class="card live" href="solar-farm-layout.html" style="text-decoration:none;">
+      <div class="emoji">☀️</div>
+      <span class="tag">Live</span>
+      <h3>Solar-Farm Layout</h3>
+      <p class="desc">
+        Tilt eight panel rows to capture the most energy. A steeper row shades the one
+        behind it, so front rows trade capture for less shading while the back row wants
+        the capture-optimal tilt. A non-convex per-row trade-off.
+      </p>
+      <div class="meta">
+        <span>n=8 · max energy</span>
+        <span class="play">Open →</span>
+      </div>
+    </a>
+
+    <a class="card live" href="diet-problem.html" style="text-decoration:none;">
+      <div class="emoji">🥗</div>
+      <span class="tag">Live</span>
+      <h3>Least-Cost Diet</h3>
+      <p class="desc">
+        Stigler's classic problem: pick quantities of eight foods to meet five nutrient
+        requirements at minimum cost. Cheap foods rarely cover every nutrient alone, so
+        the optimum mixes a few complementary ones under penalty for shortfalls.
+      </p>
+      <div class="meta">
+        <span>n=8 · min cost</span>
+        <span class="play">Open →</span>
+      </div>
+    </a>
+
+    <a class="card live" href="fir-filter-design.html" style="text-decoration:none;">
+      <div class="emoji">〰️</div>
+      <span class="tag">Live</span>
+      <h3>FIR Filter Design</h3>
+      <p class="desc">
+        Choose eleven filter taps so the frequency response approximates an ideal
+        low-pass: gain near one in the passband, near zero in the stopband, free in
+        between. A smooth least-squares filter-design problem where trust-region wins.
+      </p>
+      <div class="meta">
+        <span>n=11 · min response error</span>
+        <span class="play">Open →</span>
+      </div>
+    </a>
+
+    <a class="card live" href="reservoir-release.html" style="text-decoration:none;">
+      <div class="emoji">🏞️</div>
+      <span class="tag">Live</span>
+      <h3>Reservoir Release</h3>
+      <p class="desc">
+        Schedule twelve months of reservoir releases for hydropower. Power per release
+        rises with head, so hold water to keep the reservoir full while still meeting
+        downstream demand and staying within the storage bounds.
+      </p>
+      <div class="meta">
+        <span>n=12 · max hydropower</span>
+        <span class="play">Open →</span>
+      </div>
+    </a>
+
+    <a class="card live" href="fin-array-cooling.html" style="text-decoration:none;">
+      <div class="emoji">🌡️</div>
+      <span class="tag">Live</span>
+      <h3>Heat-Sink Fin Array</h3>
+      <p class="desc">
+        Size eight cooling fins. Taller fins add area but run less efficiently and choke
+        the shared airflow, and front fins see more air than rear ones, so the optimum
+        tapers from tall at the front to short at the back rather than sizing them alike.
+      </p>
+      <div class="meta">
+        <span>n=8 · max cooling</span>
         <span class="play">Open →</span>
       </div>
     </a>

@@ -64,7 +64,40 @@ def _collect_example_demos() -> list[Demo]:
     return out
 
 
-DEMOS: list[Demo] = _collect_example_demos()
+def _collect_scaled_demos() -> list[Demo]:
+    """Faithful high-dimensional variants. A `problem.py` opts in by exposing
+    `SCALABLE_DIMS: list[int]` plus `make_objective(n_dim) -> objective`; we emit
+    one `Demo` per requested dimension (skipping the module's native N_DIM, which
+    `_collect_example_demos` already provides). These populate the n>=16 regime
+    where synthetic-vs-real benchmark divergence is studied."""
+    out: list[Demo] = []
+    for _, name, ispkg in pkgutil.iter_modules(example_applications.__path__):
+        if not ispkg or name in SKIP:
+            continue
+        try:
+            problem = importlib.import_module(f"example_applications.{name}.problem")
+        except Exception:  # noqa: BLE001
+            continue
+        dims = getattr(problem, "SCALABLE_DIMS", None)
+        make = getattr(problem, "make_objective", None)
+        if not dims or not callable(make):
+            continue
+        base = int(getattr(problem, "N_DIM", -1))
+        for n in dims:
+            if int(n) == base:
+                continue
+            out.append(
+                Demo(
+                    name=f"{name}_{int(n)}d",
+                    n_dim=int(n),
+                    suggested_n_trials=DEFAULT_N_TRIALS,
+                    objective=make(int(n)),
+                )
+            )
+    return out
+
+
+DEMOS: list[Demo] = _collect_example_demos() + _collect_scaled_demos()
 
 
 # --------------------------------------------------------------------------
