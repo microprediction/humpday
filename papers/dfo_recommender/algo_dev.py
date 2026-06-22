@@ -25,6 +25,7 @@ the loop and the memorisation-proof fitness are what matter.
 from __future__ import annotations
 
 import argparse
+import json
 import math
 import random
 import sys
@@ -340,48 +341,71 @@ def _write_checkpoint(path, payload):
     """Atomically persist a JSON checkpoint so a multi-hour run is crash-safe."""
     if path is None:
         return
-    import json
-
     tmp = Path(str(path) + ".tmp")
     tmp.write_text(json.dumps(payload, indent=2))
     tmp.replace(path)
 
 
+def _ck_payload(config, gen, parent, parent_fit, history, step, extra=None):
+    payload = {
+        "config": config or {},
+        "panel": PANEL,
+        "generation": gen,
+        "best_fitness": parent_fit,
+        "best_genome": parent,
+        "genome_decoded": _describe(parent),
+        "history": history,
+        "step": step,
+    }
+    if extra:
+        payload.update(extra)
+    return payload
+
+
+def _save_checkpoint(path, payload):
+    """Atomic-ish JSON write (write to .tmp then rename)."""
+    tmp = str(path) + ".tmp"
+    with open(tmp, "w") as fh:
+        json.dump(payload, fh, indent=2)
+    Path(tmp).replace(path)
+
+
 def evolve(
-    generations, lam, base_demos, seeds, n_trials, rng_seed=0, checkpoint_path=None
+    generations,
+    lam,
+    base_demos,
+    seeds,
+    n_trials,
+    rng_seed=0,
+    checkpoint=None,
+    resume=False,
+    config=None,
 ):
-    """(1 + λ) evolution strategy over the genome. Returns (best_genome,
-    best_fitness, history). If `checkpoint_path` is given, the best genome +
-    history are written there after every generation (atomic, crash-safe)."""
+    """(1 + λ) evolution strategy over the genome.
+
+    When `checkpoint` is given, writes a JSON snapshot (best genome + decoded
+    knobs + per-generation regret history) after every generation, so a long run
+    on another machine is analysable and, with `resume=True`, restartable from
+    where it left off. Returns (best_genome, best_fitness, history)."""
     random.seed(rng_seed)
-    parent = list(DEFAULT_GENOME)  # warm start from a sane, competitive genome
-    parent_fit = candidate_fitness(parent, base_demos, seeds, n_trials)
-    history = [parent_fit]
     step = 0.25
-    demo_names = [d.name for d in base_demos]
-
-    def checkpoint(gen, done=False):
-        _write_checkpoint(
-            checkpoint_path,
-            {
-                "generation": gen,
-                "generations_planned": generations,
-                "done": done,
-                "lam": lam,
-                "seeds": list(seeds),
-                "n_trials": n_trials,
-                "panel": PANEL,
-                "demos": demo_names,
-                "best_fitness": parent_fit,
-                "best_genome": parent,
-                "best_genome_decoded": _describe(parent),
-                "history": history,
-            },
-        )
-
-    print(f"  gen 0: parent fitness (norm. regret) = {parent_fit:.4f}", flush=True)
-    checkpoint(0)
-    for gen in range(1, generations + 1):
+    start_gen = 0
+    if resume and checkpoint and Path(checkpoint).exists():
+        ck = json.loads(Path(checkpoint).read_text())
+        parent, parent_fit = ck["best_genome"], ck["best_fitness"]
+        history, step = ck["history"], ck.get("step", step)
+        start_gen = ck.get("generation", len(history) - 1)
+        print(f"  resumed at gen {start_gen}: regret = {parent_fit:.4f}", flush=True)
+    else:
+        parent = list(DEFAULT_GENOME)  # warm start from a sane, competitive genome
+        parent_fit = candidate_fitness(parent, base_demos, seeds, n_trials)
+        history = [parent_fit]
+        print(f"  gen 0: parent fitness (norm. regret) = {parent_fit:.4f}", flush=True)
+        if checkpoint:
+            _save_checkpoint(
+                checkpoint, _ck_payload(config, 0, parent, parent_fit, history, step)
+            )
+    for gen in range(start_gen + 1, generations + 1):
         best_child, best_child_fit = None, INF
         for _ in range(lam):
             child = [
@@ -400,7 +424,10 @@ def evolve(
             f"  gen {gen}: best regret = {parent_fit:.4f}  (best child {best_child_fit:.4f}, step {step:.2f})",
             flush=True,
         )
-        checkpoint(gen, done=(gen == generations))
+        if checkpoint:
+            _save_checkpoint(
+                checkpoint, _ck_payload(config, gen, parent, parent_fit, history, step)
+            )
     return parent, parent_fit, history
 
 
@@ -541,6 +568,16 @@ def main() -> int:
     ap.add_argument(
         "--n-demos", type=int, default=8, help="how many base demos to score on"
     )
+    ap.add_argument(
+        "--out",
+        default=str(HERE / "algo_dev_run.json"),
+        help="checkpoint JSON path written each generation ('' to disable)",
+    )
+    ap.add_argument(
+        "--resume",
+        action="store_true",
+        help="resume from the --out checkpoint if present",
+    )
     ap.add_argument("--quick", action="store_true")
     ap.add_argument(
         "--mode",
@@ -559,11 +596,6 @@ def main() -> int:
         default=1,
         help="GA: copies of the warm-start genome in the initial pop (rest random)",
     )
-    ap.add_argument(
-        "--out",
-        default="",
-        help="JSON path for crash-safe per-generation checkpoints + final result",
-    )
     args = ap.parse_args()
 
     generations, lam, trials = args.generations, args.lam, args.trials
@@ -576,6 +608,14 @@ def main() -> int:
 
     ckpt = Path(args.out) if args.out else None
     base = DEMOS[:n_demos]
+    config = {
+        "generations": generations,
+        "lam": lam,
+        "seeds": list(seeds),
+        "trials": trials,
+        "n_demos": n_demos,
+        "mode": args.mode,
+    }
     if args.mode == "ga":
         print(
             f"Evolving an optimizer: ({mu}+{lam}) GA (crossover p={args.crossover} + "
@@ -600,11 +640,20 @@ def main() -> int:
         print(
             f"Evolving an optimizer: (1+{lam}) ES, {generations} generations,\n"
             f"fitness = normalised regret vs {PANEL}\n"
-            f"across {len(base)} demos x {len(seeds)} disguised seeds, {trials} trials each.\n"
-            + (f"checkpointing to {ckpt}\n" if ckpt else "")
+            f"across {len(base)} demos x {len(seeds)} disguised seeds, {trials} trials each."
         )
+        if ckpt:
+            print(f"checkpoint: {ckpt}{' (resuming)' if args.resume else ''}")
+        print()
         best_genome, best_fit, history = evolve(
-            generations, lam, base, seeds, trials, checkpoint_path=ckpt
+            generations,
+            lam,
+            base,
+            seeds,
+            trials,
+            checkpoint=str(ckpt) if ckpt else None,
+            resume=args.resume,
+            config=config,
         )
     rank = candidate_mean_rank(best_genome, base, seeds, trials)
     if ckpt:
