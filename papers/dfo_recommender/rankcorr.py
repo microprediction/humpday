@@ -17,6 +17,7 @@ import json
 import math
 import os
 import random
+import signal
 import sys
 import tempfile
 from pathlib import Path
@@ -38,6 +39,22 @@ from humpday.optimizers.alloptimizers import (  # noqa: E402
 INF = float("inf")
 SYNTH = ["sphere", "ellipsoid", "cigar", "rastrigin", "rosenbrock"]
 
+# Per-call watchdog: a runaway optimizer that ignores its eval budget would spin a
+# core forever and wedge the whole run (one wedged once for 3.5 days). SIGALRM (main
+# thread, subprocess) interrupts the offending pure-Python call so we score it INF
+# (worst) and move on. Set high enough that a genuinely slow-but-finite call (slow
+# optimizers on high-dim demos at the largest budget have been seen near ~2 min) is
+# never falsely killed, since a false INF would bias that optimizer's rank.
+PER_CALL_TIMEOUT = int(os.environ.get("RANKCORR_CALL_TIMEOUT", "600"))
+
+
+class _Timeout(Exception):
+    pass
+
+
+def _on_alarm(signum, frame):
+    raise _Timeout()
+
 
 def run_ngcma(objective, n_trials, n_dim, seed):
     param = ng.p.Array(shape=(n_dim,), lower=0.0, upper=1.0)
@@ -57,13 +74,25 @@ def run_ngcma(objective, n_trials, n_dim, seed):
 def run_opt(name, objective, n_dim, n_trials, seed):
     random.seed(seed)
     np.random.seed(seed)
+    old = signal.signal(signal.SIGALRM, _on_alarm)
+    signal.alarm(PER_CALL_TIMEOUT)
     try:
         if name == "ngCMA":
             return run_ngcma(objective, n_trials, n_dim, seed)
         bv, _ = pure_optimize(objective, name, n_trials, n_dim)
         return float(bv)
+    except _Timeout:
+        print(
+            f"    !! {name} exceeded {PER_CALL_TIMEOUT}s "
+            f"(n_dim={n_dim}, budget={n_trials}) -> INF",
+            flush=True,
+        )
+        return INF
     except Exception:  # noqa: BLE001
         return INF
+    finally:
+        signal.alarm(0)
+        signal.signal(signal.SIGALRM, old)
 
 
 def make_synth(name, n, seed):
