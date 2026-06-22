@@ -944,6 +944,7 @@ class FireflyAlgorithm(BaseOptimizer):
         intensities = [self.evaluate(f) for f in fireflies]
 
         while self.evaluations < firefly_budget:
+            evals_at_sweep_start = self.evaluations
             for i in range(n_fireflies):
                 for j in range(n_fireflies):
                     if self.evaluations >= firefly_budget:
@@ -968,6 +969,15 @@ class FireflyAlgorithm(BaseOptimizer):
             # Anneal α at the end of each outer (i, j) sweep, matching
             # mealpy FFA's `dyn_alpha = alpha_damp * alpha`.
             alpha *= alpha_damp
+
+            # Termination guard. evaluate() is reached only when some firefly is
+            # strictly brighter than another; if a whole sweep makes no call, all
+            # intensities are equal — the swarm has collapsed onto one point (a
+            # common end state, since fireflies attract and clip to shared cube
+            # corners) or the region is flat. No future sweep can differ, so the
+            # loop would spin forever without consuming budget. Stop and polish.
+            if self.evaluations == evals_at_sweep_start:
+                break
 
         # Polish stage: L-BFGS-B from the firefly best.
         self._lbfgs_polish()
