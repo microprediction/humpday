@@ -108,3 +108,19 @@ BayesOpt. Win condition: the γ\* variant dominates both endpoints across the ba
 3. Meta-CMA-ES vs GA on the same genome space — which finds lower regret per
    genome-eval budget?
 4. Re-score the GA winner on a held-out demo split — does it generalise?
+
+## Signed compositions: thinking outside the simplex (user idea, 2026-07-06)
+
+Extend barycentric recipes to signed/affine ones: weight -1 on algorithm A
+and +2 on B means run B (and A in shadow) but steer AWAY from where A's
+logic would sample — A becomes an anti-inspiration. Mechanically: the
+generated program runs A's proposal logic without spending budget on it and
+applies a repulsion penalty (or rejection radius) around A's suggestions.
+Relatives: tabu search (avoid visited regions), repulsive PSO, negative
+correlation in ensembles, DPP diversity. The coordinate space becomes a
+larger polytope containing the simplex; the simplex is the all-positive
+face. Slot semantics: a negatively-weighted vertex owns "avoidance" slots
+rather than contributing mechanisms. Open questions: normalisation (sum of
+absolute weights?), whether anti-inspiration helps only on multimodal
+objectives, and whether the E6-style validation shows any signed recipe
+beating the best unsigned one.

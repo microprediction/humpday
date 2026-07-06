@@ -475,6 +475,9 @@ class AlgorithmVisualizer {
             { value: 'PatternSearch', text: 'Pattern Search' },
             { value: 'HillClimbing', text: 'Hill Climbing' },
 
+            // Machine-designed
+            { value: 'Alloy', text: 'Alloy (machine-designed blend)' },
+
             // Metaheuristics
             { value: 'TabuSearch', text: 'Tabu Search' },
             { value: 'FireflyAlgorithm', text: 'Firefly Algorithm' },
@@ -696,6 +699,9 @@ class AlgorithmVisualizer {
             const minVisualizationSteps = 25;
 
             switch (algorithm) {
+                case 'Alloy':
+                    optimizer = new Alloy(objective, nTrials, 2);
+                    break;
                 case 'HarmonySearch':
                     optimizer = new HarmonySearch(objective, nTrials, 2);
                     break;

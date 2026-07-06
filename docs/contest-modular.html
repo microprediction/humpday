@@ -276,6 +276,7 @@
                 <a href="applications/no-free-lunch.html">No Free Lunch</a>
                 <a href="algorithms.html">Algorithms</a>
                 <a href="recommendations.html">Recommendations</a>
+                <a href="papers.html">Papers</a>
                 <a href="https://github.com/microprediction/humpday" target="_blank" rel="noopener">GitHub</a>
             </div>
         </div>
@@ -290,7 +291,7 @@
     <div class="controls">
         <div class="container">
             <button class="academic-button" onclick="runQuickTest()">Quick Test (5 algorithms)</button>
-            <button class="academic-button" onclick="runFullContest()">Full Contest (All 22 algorithms)</button>
+            <button class="academic-button" onclick="runFullContest()">Full Contest (All 23 algorithms)</button>
             <button class="academic-button" onclick="resetContest()">Reset</button>
         </div>
     </div>
@@ -333,6 +334,7 @@
     <script src="js/modules/scipy-algorithms.js"></script>
     <script src="js/modules/evolutionary-algorithms.js"></script>
     <script src="js/modules/search-algorithms.js"></script>
+    <script src="js/modules/alloy.js"></script>
     <script src="js/modules/index.js"></script>
     <script src="js/modules/optimizer-factory.js"></script>
 
@@ -387,7 +389,7 @@
         }
 
         function runFullContest() {
-            console.log('Running full contest with all 22 algorithms...');
+            console.log('Running full contest with all 23 algorithms...');
 
             // Verify all algorithms are available
             const verification = OptimizerFactory.verifyAll();
@@ -431,8 +433,8 @@
                     const available = OptimizerFactory.getAvailableAlgorithms();
                     console.log(`Loaded ${available.length} algorithms:`, available);
 
-                    if (available.length !== 22) {
-                        throw new Error(`Expected 22 algorithms, found ${available.length}`);
+                    if (available.length !== 23) {
+                        throw new Error(`Expected 23 algorithms, found ${available.length}`);
                     }
 
                     loadingDiv.innerHTML = `Successfully loaded all ${available.length} optimization algorithms`;

@@ -4,6 +4,7 @@ No external dependencies beyond numpy. Clean ports, not wrappers.
 """
 
 # Import from new modular structure
+from .alloy import Alloy
 from .evolutionary_algorithms import (
     AntColonyOpt,
     BayesianOpt,
@@ -32,6 +33,8 @@ from .search_algorithms import (
 # TabuSearch was removed in this commit — no canonical continuous-domain
 # reference exists for it, so it lived purely as a humpday-ism.
 PURE_OPTIMIZERS = {
+    # Discovered algorithms (see papers/dfo_recommender/inspiration_simplex.tex)
+    "Alloy": Alloy,
     # PRIMA algorithms
     "PRIMA_UOBYQA": PRIMA_UOBYQA,
     "PRIMA_NEWUOA": PRIMA_NEWUOA,

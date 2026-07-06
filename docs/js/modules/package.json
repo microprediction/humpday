@@ -1,0 +1,47 @@
+{
+  "name": "humpday",
+  "version": "0.21.0",
+  "description": "23 derivative-free optimizers in zero-dependency JavaScript: the browser/Node twin of the Python humpday package, held in agreement by parity tests. Includes Alloy, a machine-designed optimizer validated on held-out problems.",
+  "main": "./index.js",
+  "exports": {
+    ".": "./index.js",
+    "./package.json": "./package.json",
+    "./*.js": "./*.js",
+    "./*": "./*.js"
+  },
+  "files": [
+    "*.js",
+    "README.md",
+    "CHANGELOG.md",
+    "LICENSE"
+  ],
+  "sideEffects": true,
+  "engines": {
+    "node": ">=16"
+  },
+  "keywords": [
+    "optimization",
+    "derivative-free",
+    "black-box",
+    "nelder-mead",
+    "differential-evolution",
+    "cma-es",
+    "simulated-annealing",
+    "pattern-search",
+    "alloy",
+    "zero-dependency",
+    "browser",
+    "microprediction"
+  ],
+  "homepage": "https://humpday.microprediction.org",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/microprediction/humpday.git",
+    "directory": "docs/js/modules"
+  },
+  "bugs": {
+    "url": "https://github.com/microprediction/humpday/issues"
+  },
+  "author": "Peter Cotton",
+  "license": "MIT"
+}
