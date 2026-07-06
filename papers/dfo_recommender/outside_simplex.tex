@@ -131,8 +131,14 @@ On the fourteen-way race over twenty-nine problems never used in selection,
 the signed program sits in the same band as the generated pure Nelder--Mead
 control, ranking eighth of fourteen overall, competitive on problems of
 eight dimensions or fewer and collapsing above twenty-four, where its
-$\sqrt{n}$-scaled exclusion zones swallow the search space. Nothing in that
-profile requires the avoidance mechanism to explain it.
+$\sqrt{n}$-scaled exclusion zones swallow the search space.
+
+Racing the ablated twin on the same 580 held-out instances settles the
+attribution there too: it ranks better than the signed original at every
+budget, including the low-dimensional slice where the signed program had
+looked like a specialist (mean rank 5.8 against 6.4), and wins the paired
+comparison on ties-excluded instances 57\% to 43\%. The avoidance mechanism
+subtracted value everywhere it was measured.
 
 The trap generalises and is worth stating plainly. A single-draw
 leaderboard rewards whatever the label elicited, not what the label
