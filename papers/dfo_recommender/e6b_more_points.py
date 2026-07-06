@@ -25,8 +25,8 @@ from pathlib import Path
 
 sys.path.insert(0, str(Path("../../").resolve()))
 sys.path.insert(0, ".")
-from example_demos import DEMOS, disguise_demo  # noqa: E402
 from e2_hardening import INF, atomic_dump, run_discovered  # noqa: E402
+from example_demos import DEMOS, disguise_demo  # noqa: E402
 
 NEW_PROGRAMS = {
     "rand14": "runs/simplex_overnight_code/rand14.py",

@@ -15,8 +15,8 @@ from pathlib import Path
 
 sys.path.insert(0, str(Path("../../").resolve()))
 sys.path.insert(0, ".")
-from example_demos import DEMOS, disguise_demo  # noqa: E402
 from e2_hardening import INF, atomic_dump, run_discovered  # noqa: E402
+from example_demos import DEMOS, disguise_demo  # noqa: E402
 from simplex_blend import compile_optimizer  # noqa: E402
 
 SRC = "runs/e10_oos.json"

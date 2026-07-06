@@ -96,7 +96,7 @@ def build_signed_prompt(wmap):
         "magnitude of the negative weight. The shadow must be real, working "
         "code, not a comment.",
         "",
-        f"Signed recipe: " + ", ".join(
+        "Signed recipe: " + ", ".join(
             f"{k} {v:+.0%}" for k, v in wmap.items() if abs(v) > 0.01
         ),
         "",

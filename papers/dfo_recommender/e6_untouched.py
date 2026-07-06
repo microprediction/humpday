@@ -23,8 +23,6 @@ from pathlib import Path
 
 sys.path.insert(0, str(Path("../../").resolve()))
 sys.path.insert(0, ".")
-from example_demos import DEMOS, disguise_demo  # noqa: E402
-from rankcorr import run_opt  # noqa: E402
 from e2_hardening import (  # noqa: E402
     INF,
     atomic_dump,
@@ -33,6 +31,8 @@ from e2_hardening import (  # noqa: E402
     load_unstructured_best,
     run_discovered,
 )
+from example_demos import DEMOS, disguise_demo  # noqa: E402
+from rankcorr import run_opt  # noqa: E402
 
 # Verified untouched at 2026-07-04 (see docstring). 29 demos, dims 2-90.
 UNTOUCHED = [
