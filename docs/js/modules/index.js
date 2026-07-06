@@ -15,6 +15,7 @@ if (typeof module !== 'undefined' && module.exports) {
             BayesianOpt, CMAEvolutionStrategy, FireflyAlgorithm, AntColonyOpt,
             HarmonySearch, EvolutionStrategy } = require('./evolutionary-algorithms.js');
     const { Rechenberg, AdaptiveRandomSearch, CoordinateDescent, PatternSearch, HillClimbing, GridSearch } = require('./search-algorithms.js');
+    const { Alloy } = require('./alloy.js');
 
     // Export everything
     module.exports = {
@@ -53,6 +54,9 @@ if (typeof module !== 'undefined' && module.exports) {
         HillClimbing,
         GridSearch,
 
+        // Discovered algorithms
+        Alloy,
+
         // Algorithm registry for factory pattern
         algorithms: {
             'PRIMA_UOBYQA': PRIMA_UOBYQA,
@@ -77,7 +81,8 @@ if (typeof module !== 'undefined' && module.exports) {
             'CoordinateDescent': CoordinateDescent,
             'PatternSearch': PatternSearch,
             'HillClimbing': HillClimbing,
-            'GridSearch': GridSearch
+            'GridSearch': GridSearch,
+            'Alloy': Alloy
         }
     };
 } else {
@@ -114,7 +119,8 @@ if (typeof module !== 'undefined' && module.exports) {
         CoordinateDescent: window.CoordinateDescent,
         PatternSearch: window.PatternSearch,
         HillClimbing: window.HillClimbing,
-        GridSearch: window.GridSearch
+        GridSearch: window.GridSearch,
+        Alloy: window.Alloy
     };
 
     // Factory function for creating optimizers by name

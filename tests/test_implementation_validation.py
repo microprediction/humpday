@@ -148,15 +148,15 @@ class TestOptimizerImplementations:
     """Test optimizer implementations."""
 
     def test_all_optimizers_importable(self):
-        """Test that all 22 optimizers can be imported and instantiated."""
+        """Test that all 23 optimizers can be imported and instantiated."""
         from humpday.optimizers.alloptimizers import PURE_OPTIMIZERS
 
         # Simple test objective
         def test_obj(x):
             return np.sum(np.asarray(x) ** 2)
 
-        assert len(PURE_OPTIMIZERS) == 22, (
-            f"Expected 22 optimizers, got {len(PURE_OPTIMIZERS)}"
+        assert len(PURE_OPTIMIZERS) == 23, (
+            f"Expected 23 optimizers, got {len(PURE_OPTIMIZERS)}"
         )
 
         for name, optimizer_class in PURE_OPTIMIZERS.items():
