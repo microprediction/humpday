@@ -41,25 +41,59 @@ from example_demos import DEMOS  # noqa: E402
 from humpday.transforms.cubetosimplex import cube_to_simplex  # noqa: E402
 
 SUITE = [
-    "espresso_dialin", "facility_location", "gear_ratios", "kalman_tuning",
-    "pid_tuning", "tension_spring", "plinko_funnel", "cassini_minlp",
+    "espresso_dialin",
+    "facility_location",
+    "gear_ratios",
+    "kalman_tuning",
+    "pid_tuning",
+    "tension_spring",
+    "plinko_funnel",
+    "cassini_minlp",
 ]
 SEEDS = (0, 1)
 TRIALS = 100
 
 CANONICAL = [
-    ("canon:-1NM+2DE", {"NelderMead": -1.0, "DifferentialEvolution": 2.0,
-                        "CMAEvolutionStrategy": 0.0, "PatternSearch": 0.0,
-                        "SimulatedAnnealing": 0.0}),
-    ("canon:-1DE+2NM", {"NelderMead": 2.0, "DifferentialEvolution": -1.0,
-                        "CMAEvolutionStrategy": 0.0, "PatternSearch": 0.0,
-                        "SimulatedAnnealing": 0.0}),
-    ("canon:-0.5PS+1.5SA", {"NelderMead": 0.0, "DifferentialEvolution": 0.0,
-                            "CMAEvolutionStrategy": 0.0, "PatternSearch": -0.5,
-                            "SimulatedAnnealing": 1.5}),
-    ("canon:-0.5SA+centroidish", {"NelderMead": 0.375, "DifferentialEvolution": 0.375,
-                                  "CMAEvolutionStrategy": 0.375, "PatternSearch": 0.375,
-                                  "SimulatedAnnealing": -0.5}),
+    (
+        "canon:-1NM+2DE",
+        {
+            "NelderMead": -1.0,
+            "DifferentialEvolution": 2.0,
+            "CMAEvolutionStrategy": 0.0,
+            "PatternSearch": 0.0,
+            "SimulatedAnnealing": 0.0,
+        },
+    ),
+    (
+        "canon:-1DE+2NM",
+        {
+            "NelderMead": 2.0,
+            "DifferentialEvolution": -1.0,
+            "CMAEvolutionStrategy": 0.0,
+            "PatternSearch": 0.0,
+            "SimulatedAnnealing": 0.0,
+        },
+    ),
+    (
+        "canon:-0.5PS+1.5SA",
+        {
+            "NelderMead": 0.0,
+            "DifferentialEvolution": 0.0,
+            "CMAEvolutionStrategy": 0.0,
+            "PatternSearch": -0.5,
+            "SimulatedAnnealing": 1.5,
+        },
+    ),
+    (
+        "canon:-0.5SA+centroidish",
+        {
+            "NelderMead": 0.375,
+            "DifferentialEvolution": 0.375,
+            "CMAEvolutionStrategy": 0.375,
+            "PatternSearch": 0.375,
+            "SimulatedAnnealing": -0.5,
+        },
+    ),
 ]
 
 
@@ -96,24 +130,29 @@ def build_signed_prompt(wmap):
         "magnitude of the negative weight. The shadow must be real, working "
         "code, not a comment.",
         "",
-        "Signed recipe: " + ", ".join(
-            f"{k} {v:+.0%}" for k, v in wmap.items() if abs(v) > 0.01
-        ),
+        "Signed recipe: "
+        + ", ".join(f"{k} {v:+.0%}" for k, v in wmap.items() if abs(v) > 0.01),
         "",
         f"HOST architecture ({int(100 * pos[host] / pos_tot)}% of positive mass): "
         f"{host} — {idea[host]}",
     ]
     grafts = sorted(((k, v) for k, v in pos.items() if k != host), key=lambda t: -t[1])
     if grafts:
-        lines.append("GRAFT into it: " + ", ".join(
-            f"{int(100 * v / pos_tot)}% {k} ({idea[k]})" for k, v in grafts))
+        lines.append(
+            "GRAFT into it: "
+            + ", ".join(f"{int(100 * v / pos_tot)}% {k} ({idea[k]})" for k, v in grafts)
+        )
     for k, mag in sorted(neg.items(), key=lambda t: -t[1]):
         lines.append(
             f"ANTI-INSPIRATION (strength {int(100 * mag)}%): {k} — shadow its "
             f"logic ({idea[k]}) and avoid where it would sample."
         )
-    lines += ["", sb.CONTRACT, "",
-              "Return ONLY a ```python code block containing the optimize function."]
+    lines += [
+        "",
+        sb.CONTRACT,
+        "",
+        "Return ONLY a ```python code block containing the optimize function.",
+    ]
     return "\n".join(lines)
 
 
@@ -148,10 +187,19 @@ def main() -> int:
 
     def save(done):
         tmp = Path(args.out + ".tmp")
-        tmp.write_text(json.dumps({
-            "done": done, "suite": SUITE, "seeds": list(SEEDS), "trials": TRIALS,
-            "model": None if args.dry_run else args.model, "results": results,
-        }, indent=2))
+        tmp.write_text(
+            json.dumps(
+                {
+                    "done": done,
+                    "suite": SUITE,
+                    "seeds": list(SEEDS),
+                    "trials": TRIALS,
+                    "model": None if args.dry_run else args.model,
+                    "results": results,
+                },
+                indent=2,
+            )
+        )
         tmp.replace(Path(args.out))
 
     for label, wmap, signed in points:
@@ -160,10 +208,18 @@ def main() -> int:
         else:
             prompt = sb.build_prompt(sb.weights_to_spec([wmap[n] for n in names]))
         try:
-            code = sb._DRY_TEMPLATE if args.dry_run else sb.generate_live(prompt, args.model)
-            (code_dir / f"{label.replace(':', '_').replace('+', 'p')}.py").write_text(code)
+            code = (
+                sb._DRY_TEMPLATE
+                if args.dry_run
+                else sb.generate_live(prompt, args.model)
+            )
+            (code_dir / f"{label.replace(':', '_').replace('+', 'p')}.py").write_text(
+                code
+            )
             opt = sb.compile_optimizer(code)
-            regret = sb.score_optimizer(opt, base, SEEDS, TRIALS, panel_cache=panel_cache)
+            regret = sb.score_optimizer(
+                opt, base, SEEDS, TRIALS, panel_cache=panel_cache
+            )
         except Exception as e:  # noqa: BLE001
             print(f"  {label:24s} FAILED: {e}", flush=True)
             regret = 1.0
@@ -179,9 +235,11 @@ def main() -> int:
     sg = [r["regret"] for r in results if r["signed"]]
     ct = [r["regret"] for r in results if not r["signed"]]
     if sg and ct:
-        print(f"\n  best signed {min(sg):.4f} (mean {mean(sg):.4f}) vs "
-              f"best unsigned-ctrl {min(ct):.4f} (mean {mean(ct):.4f}); "
-              f"E7 rand best-of-20: 0.304/0.312, E11 12-pt best: 0.298")
+        print(
+            f"\n  best signed {min(sg):.4f} (mean {mean(sg):.4f}) vs "
+            f"best unsigned-ctrl {min(ct):.4f} (mean {mean(ct):.4f}); "
+            f"E7 rand best-of-20: 0.304/0.312, E11 12-pt best: 0.298"
+        )
     return 0
 
 

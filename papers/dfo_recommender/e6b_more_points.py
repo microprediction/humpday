@@ -72,11 +72,14 @@ def main():
         inst = disguise_demo(dm, br["seed"])
         vals = dict(br["vals"])
         for name, opt in progs.items():
-            v = run_discovered(opt, inst.objective, dm.n_dim, br["budget"], 9000 + br["seed"])
+            v = run_discovered(
+                opt, inst.objective, dm.n_dim, br["budget"], 9000 + br["seed"]
+            )
             vals[name] = None if v >= INF else v
         big = 1e18
         ranks = {
-            o: 1 + sum(
+            o: 1
+            + sum(
                 1
                 for x in field
                 if (vals.get(x) if vals.get(x) is not None else big)
@@ -84,10 +87,18 @@ def main():
             )
             for o in field
         }
-        rows.append({**{k: br[k] for k in ("budget", "demo", "n", "seed")},
-                     "vals": vals, "ranks": ranks})
+        rows.append(
+            {
+                **{k: br[k] for k in ("budget", "demo", "n", "seed")},
+                "vals": vals,
+                "ranks": ranks,
+            }
+        )
         if c % 10 == 0 or c == total:
-            print(f"[{c}/{total}] {br['demo']} b={br['budget']} s={br['seed']}", flush=True)
+            print(
+                f"[{c}/{total}] {br['demo']} b={br['budget']} s={br['seed']}",
+                flush=True,
+            )
             atomic_dump({"done": False, "field": field, "rows": rows}, OUT)
 
     summary = {}
@@ -107,7 +118,9 @@ def main():
     for b in budgets:
         sb = summary[str(b)]
         ordered = sorted(field, key=lambda o: sb[o]["mean_rank"])
-        print(f"  budget {b}: " + "  ".join(f"{o}={sb[o]['mean_rank']}" for o in ordered))
+        print(
+            f"  budget {b}: " + "  ".join(f"{o}={sb[o]['mean_rank']}" for o in ordered)
+        )
     return 0
 
 

@@ -74,7 +74,9 @@ def make_portfolio(weights, spec):
         simplex_f = [pop_f[i] for i in order[: n_dim + 1]]
         while len(simplex) < n_dim + 1 and calls < n_trials:
             b = simplex[0][:]
-            b[(len(simplex) - 1) % n_dim] = min(1.0, b[(len(simplex) - 1) % n_dim] + 0.1)
+            b[(len(simplex) - 1) % n_dim] = min(
+                1.0, b[(len(simplex) - 1) % n_dim] + 0.1
+            )
             simplex.append(b)
             simplex_f.append(feval(b))
 
@@ -168,14 +170,22 @@ def make_portfolio(weights, spec):
                 random.shuffle(idxs)
                 a, b, c = idxs[0], idxs[1 % len(idxs)], idxs[2 % len(idxs)]
                 if random.random() < 0.5:
-                    mut = [simplex[a][d] + F * (simplex[b][d] - simplex[c][d])
-                           for d in range(n_dim)]
+                    mut = [
+                        simplex[a][d] + F * (simplex[b][d] - simplex[c][d])
+                        for d in range(n_dim)
+                    ]
                 else:
-                    mut = [worst_x[d] + F * (best_x[d] - worst_x[d])
-                           + F * (simplex[b][d] - simplex[c][d]) for d in range(n_dim)]
+                    mut = [
+                        worst_x[d]
+                        + F * (best_x[d] - worst_x[d])
+                        + F * (simplex[b][d] - simplex[c][d])
+                        for d in range(n_dim)
+                    ]
                 jr = random.randrange(n_dim)
-                trial = [mut[d] if (random.random() < CR or d == jr) else worst_x[d]
-                         for d in range(n_dim)]
+                trial = [
+                    mut[d] if (random.random() < CR or d == jr) else worst_x[d]
+                    for d in range(n_dim)
+                ]
                 if calls >= n_trials:
                     break
                 ft = feval(trial)
@@ -184,8 +194,10 @@ def make_portfolio(weights, spec):
                     simplex_f[worst_i] = ft
                     improved = ft < worst_f
             elif r < p_nm + p_de + p_cma:
-                cand = [best_x[d] + sigma * random.gauss(0.0, math.sqrt(cov_diag[d]))
-                        for d in range(n_dim)]
+                cand = [
+                    best_x[d] + sigma * random.gauss(0.0, math.sqrt(cov_diag[d]))
+                    for d in range(n_dim)
+                ]
                 if calls >= n_trials:
                     break
                 fc = feval(cand)
@@ -194,7 +206,9 @@ def make_portfolio(weights, spec):
                         improved = True
                         for d in range(n_dim):
                             delta = cand[d] - best_x[d]
-                            cov_diag[d] = 0.8 * cov_diag[d] + 0.2 * (delta * delta + 1e-8)
+                            cov_diag[d] = 0.8 * cov_diag[d] + 0.2 * (
+                                delta * delta + 1e-8
+                            )
                     simplex[worst_i] = clip(cand)
                     simplex_f[worst_i] = fc
             else:
@@ -245,8 +259,10 @@ def make_portfolio(weights, spec):
                 for _ in range(n_dim):
                     if calls >= n_trials:
                         break
-                    p = [min(1.0, max(0.0, keep[d] + random.uniform(-0.3, 0.3)))
-                         for d in range(n_dim)]
+                    p = [
+                        min(1.0, max(0.0, keep[d] + random.uniform(-0.3, 0.3)))
+                        for d in range(n_dim)
+                    ]
                     simplex.append(p)
                     simplex_f.append(feval(p))
                 while len(simplex) < n_dim + 1 and calls < n_trials:
