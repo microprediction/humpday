@@ -4,7 +4,7 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' 'unsafe-inline' https://cdnjs.cloudflare.com https://cdn.jsdelivr.net; style-src 'self' 'unsafe-inline';">
-    <title>Evolution Strategy (μ+λ) - Implementation Details</title>
+    <title>Alloy - Implementation Details</title>
     <style>
         .site-nav {
             position: sticky;
@@ -147,10 +147,11 @@
         .link-button.paper { background: #e74c3c; }
         .link-button.python { background: #27ae60; }
         .link-button.javascript { background: #f39c12; }
+        .link-button.info { background: #9b59b6; }
 
         .algorithm-description {
-            background: #e8f6f3;
-            border-left: 4px solid #27ae60;
+            background: #fef9e7;
+            border-left: 4px solid #f39c12;
             padding: 20px;
             border-radius: 5px;
             margin: 20px 0;
@@ -207,7 +208,7 @@
             display: none;
             margin-top: 20px;
         }
-    </style>
+</style>
     <!-- Three.js for 3D visualization -->
     <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/controls/OrbitControls.js"></script>
@@ -218,6 +219,7 @@
     <script src="../js/modules/evolutionary-algorithms.js"></script>
     <script src="../js/modules/search-algorithms.js"></script>
     <script src="../js/modules/alloy.js"></script>
+
 </head>
 <body>
     <nav class="site-nav" data-site-nav="v1">
@@ -237,8 +239,8 @@
     </nav>
     <div class="container">
         <div class="header">
-            <h1>Evolution Strategy (μ+λ)</h1>
-            <p>Classical Evolutionary Optimization</p>
+            <h1>Alloy</h1>
+            <p>A machine-designed blend of five classical methods, validated on held-out problems</p>
         </div>
 
         <div class="content">
@@ -247,12 +249,28 @@
             </div>
 
             <div class="algorithm-description">
-                <strong>Evolution Strategy</strong> dates to Rechenberg and Schwefel's work in 1960s Berlin and is the conceptual ancestor of CMA-ES. The (μ+λ) variant maintains μ parents, generates λ Gaussian-perturbed offspring each generation, and selects the best μ individuals from the combined parent + offspring pool. HumpDay's <code>EvolutionStrategy</code> uses a fixed step size σ=0.2 (no covariance adaptation — that's CMA-ES's contribution).
+                <strong>Alloy</strong> was not written by a person. A language model was prompted to blend
+                <strong>Nelder-Mead, Differential Evolution, CMA-ES, pattern search and simulated annealing</strong>
+                in equal proportions, one mechanism per functional part, and Alloy is the generated program that
+                survived validation: on 29 problems never used in any selection step it had the best mean rank at
+                every budget from 60 to 480 evaluations, beating each of six competitors (including CMA-ES) on
+                64&ndash;77% of 580 instances. The full story, including what failed, is in the
+                <a href="../papers/alloy.pdf">Alloy paper</a>.
             </div>
 
+            <div class="coordinate-note">
+                <h3>Alloy at a glance</h3>
+                <ul>
+                    <li><strong>Initialization (from DE):</strong> a population of random points; the best members seed a Nelder-Mead simplex.</li>
+                    <li><strong>Move generation (four-way, 25% each):</strong> NM reflect/expand/contract, DE mutation + crossover, a Gaussian step with success-adapted diagonal covariance, or a Hooke-Jeeves coordinate probe.</li>
+                    <li><strong>Acceptance (from SA):</strong> every candidate passes an annealing gate <code>exp(-&Delta;f/T)</code> with geometric cooling.</li>
+                    <li><strong>Restart (from SA):</strong> stagnation triggers a reheat that rebuilds the simplex around the incumbent.</li>
+                    <li><strong>Niche:</strong> small budgets (roughly 60&ndash;480 evaluations) on noisy or irregular objectives.</li>
+                </ul>
+            </div>
             <div class="visualization-section">
                 <h3>Interactive 3D Visualization</h3>
-                <p>See Evolution Strategy in action on 3D optimization surfaces:</p>
+                <p>See Alloy in action on 3D optimization surfaces:</p>
                 <div id="algorithmDemo" style="width: 100%; height: 600px; border: 1px solid #ddd; border-radius: 4px; margin: 15px 0; position: relative; background: #fafafa;">
                     <div id="loadingMessage" style="position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%); text-align: center; color: #666; z-index: 10; background: rgba(255,255,255,0.9); padding: 20px; border-radius: 4px;">
                         <p>Loading 3D visualization...</p>
@@ -262,17 +280,20 @@
                 <div id="visualizationControls" style="background: #f8f9fa; padding: 15px; border: 1px solid #ddd; border-radius: 4px; margin-top: 10px;">
                     <!-- Controls will be inserted here by the visualizer -->
                 </div>
+                <p style="font-size: 0.9em; color: #666; margin-top: 10px;">
+                    <strong>Instructions:</strong> Choose a test function and algorithm, then click Start to watch the step-by-step optimization process.
+                </p>
             </div>
 
             <div class="auto-selection-metadata" style="background:#f8f9fa; border:1px solid #ddd; border-radius:8px; padding:14px 18px; margin:20px 0; font-size:0.95em;">
                 <strong>Auto-selection metadata.</strong>
                 Consulted by <a href="../recommendations.html"><code>humpday.minimize()</code></a> when picking a default algorithm.
                 <ul style="margin:8px 0 0 0;">
-                    <li><strong>Overhead tier 1:</strong> light (~100&micro;s/iter). Eligible when measured <code>eval_time &ge; 10 &micro;s</code>.</li>
-                    <li><strong>Dimensional cap:</strong> no cap &mdash; linear-in-dim or better.</li>
-                    <li><strong>Minimum trials:</strong> 10 &mdash; baseline minimum.</li>
+                    <li><strong>Overhead tier 1:</strong> light (~100&micro;s/iter), same class as Nelder-Mead. Eligible when measured <code>eval_time &ge; 10 &micro;s</code>.</li>
+                    <li><strong>Strongest cells:</strong> small budgets on the real-application suite, where it tops the Borda mean-rank grid.</li>
                 </ul>
             </div>
+
 
             <h2>Implementation Details</h2>
             <table class="implementation-table">
@@ -285,72 +306,76 @@
                 </thead>
                 <tbody>
                     <tr>
-                        <td class="category">Original Algorithm</td>
+                        <td class="category">Algorithm</td>
                         <td>
-                            <strong>Ingo Rechenberg &amp; Hans-Paul Schwefel</strong><br>
-                            Mutation-driven evolutionary search<br>
-                            (μ+λ) selection over combined parent+offspring pool<br>
-                            <em>Published: 1965 (Rechenberg), 1975 (Schwefel)</em>
+                            <strong>Machine-designed blend (2026)</strong><br>
+                            Generated by a language model from an equal-weights recipe over five classical
+                            methods; selected on disguised objectives and validated out of sample.<br>
+                            <em>Reference: Cotton (2026), "Alloy: a machine-designed derivative-free optimizer"</em>
                         </td>
                         <td>
-                            <a href="https://en.wikipedia.org/wiki/Evolution_strategy" target="_blank" class="link-button paper">Wikipedia</a>
-                        </td>
-                    </tr>
-                    <tr>
-                        <td class="category">Humpday Python</td>
-                        <td>
-                            <strong>Pure-Python Implementation</strong><br>
-                            μ=10 parents, λ=min(30, n_trials/3) offspring<br>
-                            Gaussian mutation with fixed step size σ=0.2, clipped to the unit cube<br>
-                            No required dependencies<br>
-                            <em>File: humpday/optimizers/evolutionary_algorithms.py</em>
-                        </td>
-                        <td>
-                            <a href="https://github.com/microprediction/humpday/blob/main/humpday/optimizers/evolutionary_algorithms.py#L946" target="_blank" class="link-button python">Python Code</a>
+                            <a href="../papers/alloy.pdf" class="link-button paper">Paper</a>
+                            <a href="../papers.html" class="link-button info">All Papers</a>
                         </td>
                     </tr>
                     <tr>
-                        <td class="category">Humpday JavaScript</td>
+                        <td class="category">Generated artifact</td>
                         <td>
-                            <strong>Browser Implementation</strong><br>
-                            Pure-JavaScript port of the (μ+λ)-ES for the in-browser demo<br>
-                            <em>Class: EvolutionStrategy</em>
+                            <strong>The verbatim program the model wrote</strong><br>
+                            The package class is a line-faithful port of this file, verified to produce
+                            byte-identical trajectories.<br>
+                            <em>File: <code>papers/dfo_recommender/runs/simplex_warm_code/centroid.py</code></em>
                         </td>
                         <td>
-                            <a href="https://github.com/microprediction/humpday/blob/main/docs/js/modules/evolutionary-algorithms.js" target="_blank" class="link-button javascript">JavaScript Code</a>
+                            <a href="https://github.com/microprediction/humpday/blob/main/papers/dfo_recommender/runs/simplex_warm_code/centroid.py" target="_blank" class="link-button info">Artifact</a>
                         </td>
                     </tr>
-                </tbody>
+                    <tr>
+                        <td class="category">HumpDay Python</td>
+                        <td>
+                            <strong>HumpDay <code>Alloy</code></strong><br>
+                            Pure Python; no required dependencies. Provenance and caveats in the module docstring.<br>
+                            <em>File: <code>humpday/optimizers/alloy.py</code></em>
+                        </td>
+                        <td>
+                            <a href="https://github.com/microprediction/humpday/blob/main/humpday/optimizers/alloy.py" target="_blank" class="link-button python">Source</a>
+                        </td>
+                    </tr>
+                    <tr>
+                        <td class="category">HumpDay JavaScript</td>
+                        <td>
+                            <strong>Browser <code>Alloy</code></strong><br>
+                            Mirrors the Python port; used in the contest and the visualizer above. Also on npm:
+                            <code>npm install humpday</code>.<br>
+                            <em>Class: <code>Alloy</code></em>
+                        </td>
+                        <td>
+                            <a href="https://github.com/microprediction/humpday/blob/main/docs/js/modules/alloy.js" target="_blank" class="link-button javascript">JS Port</a>
+                        </td>
+                    </tr>
+</tbody>
             </table>
 
             <div class="performance-notes">
-                <h3>Performance Characteristics</h3>
+                <h3>Performance characteristics</h3>
                 <ul>
-                    <li><strong>Best for:</strong> Continuous unconstrained objectives where rotation-invariance isn't critical and a fixed-σ baseline suffices.</li>
-                    <li><strong>Worst for:</strong> Ill-conditioned problems &mdash; without covariance adaptation, σ can't match the basin geometry the way CMA-ES does.</li>
-                    <li><strong>Per generation:</strong> up to λ evaluations; sort by fitness, keep μ best.</li>
-                    <li><strong>Relative to mealpy <code>OriginalES</code></strong> at <code>n_trials=200, n_dim=2</code>: HumpDay wins across sphere, Rosenbrock, and Ackley. See <a href="../sota-status.html">SOTA status</a> for the live numbers.</li>
+                    <li><strong>Best for:</strong> small evaluation budgets (60&ndash;480) on noisy, irregular, real-world objectives; the regime the recommendation grid covers.</li>
+                    <li><strong>Worst for:</strong> long budgets on smooth well-conditioned problems, where a tuned CMA-ES or trust-region method should win; nothing is claimed at 50,000 evaluations.</li>
+                    <li><strong>Evidence:</strong> best mean rank at every budget on 29 held-out problems (580 instances), pairwise wins of 64&ndash;77% against NM, DE, CMA-ES, Nevergrad CMA, a tuned template, and free-form generations (sign-test p &lt; 1e-10).</li>
+                    <li><strong>Caveat:</strong> Alloy is the validated draw from a noisy generation process; regenerations at the same recipe vary widely. See the paper for the full account.</li>
                 </ul>
             </div>
+
 
             <div class="more-section">
                 <button class="more-toggle" onclick="toggleMore()">More Resources</button>
                 <div id="moreContent" class="more-content">
-                    <h3>Educational Resources</h3>
+                    <h3>Related reading</h3>
                     <ul>
-                        <li><a href="https://en.wikipedia.org/wiki/Evolution_strategy" target="_blank">Evolution Strategy Wikipedia</a></li>
-                        <li><a href="https://en.wikipedia.org/wiki/CMA-ES" target="_blank">CMA-ES (a self-adaptive descendant)</a></li>
+                        <li><a href="../papers/alloy.pdf">The Alloy paper</a> (how it was made, what worked, what failed)</li>
+                        <li><a href="../papers/humpday-jss.pdf">The HumpDay software paper</a></li>
+                        <li><a href="nelder-mead.html">Nelder-Mead</a>, <a href="differential-evolution.html">Differential Evolution</a>, <a href="cma-evolution-strategy.html">CMA-ES</a>, <a href="pattern-search.html">Pattern Search</a>, <a href="simulated-annealing.html">Simulated Annealing</a> &mdash; the five ancestors</li>
                     </ul>
-
-                    <h4>Algorithm Overview</h4>
-                    <ol>
-                        <li><strong>Initialize</strong> μ parents uniformly at random in the unit cube.</li>
-                        <li><strong>Mutate:</strong> pick a parent at random, perturb by σ·𝒩(0,I), clip to the unit cube. Repeat λ times.</li>
-                        <li><strong>Select:</strong> sort the combined (parent + offspring) pool by fitness and keep the best μ.</li>
-                        <li><strong>Repeat</strong> until the evaluation budget is exhausted.</li>
-                    </ol>
-
-                    <p><strong>Notation:</strong> the "+" in (μ+λ) indicates elitism — parents compete against their own offspring. The alternative (μ,λ) variant discards parents each generation; HumpDay implements the elitist (μ+λ) form.</p>
                 </div>
             </div>
         </div>
@@ -372,31 +397,51 @@
 
         // Initialize 3D visualization when page loads
         document.addEventListener('DOMContentLoaded', function() {
-            const script = document.createElement('script');
-            script.src = '../js/algorithm-visualizer.js';
-            script.onload = function() {
-                function webglAvailable() {
-                    try {
-                        const canvas = document.createElement('canvas');
-                        return !!(window.WebGLRenderingContext && canvas.getContext('webgl'));
-                    } catch (e) {
-                        return false;
-                    }
-                }
-                if (webglAvailable()) {
-                    new AlgorithmVisualizer('algorithmDemo', {
-                        onReady: () => {
-                            const loadingMsg = document.getElementById('loadingMessage');
-                            if (loadingMsg) loadingMsg.style.display = 'none';
+            // Load optimizers first, then visualizer
+            const optimizersScript = document.createElement('script');
+            optimizersScript.src = '../js/modules/index.js';
+            optimizersScript.onload = function() {
+                // Load algorithm visualizer after optimizers are loaded
+                const script = document.createElement('script');
+                script.src = '../js/algorithm-visualizer.js';
+                script.onload = function() {
+                    // Check for WebGL support
+                    function webglAvailable() {
+                        try {
+                            const canvas = document.createElement('canvas');
+                            return !!(window.WebGLRenderingContext && canvas.getContext('webgl'));
+                        } catch (e) {
+                            return false;
                         }
-                    });
-                } else {
-                    document.getElementById('loadingMessage').innerHTML =
-                        '<h4>WebGL Not Supported</h4>' +
-                        '<p>Your browser does not support WebGL for 3D visualization.</p>';
-                }
+                    }
+
+                    if (webglAvailable()) {
+                        const visualizer = new AlgorithmVisualizer('algorithmDemo', {
+                            onReady: () => {
+                                // Clear loading message once visualization is ready
+                                const loadingMsg = document.getElementById('loadingMessage');
+                                if (loadingMsg) {
+                                    loadingMsg.style.display = 'none';
+                                }
+                            }
+                        });
+                    } else {
+                        document.getElementById('loadingMessage').innerHTML =
+                            '<h4>WebGL Not Supported</h4>' +
+                            '<p>Your browser does not support WebGL for 3D visualization.</p>' +
+                            '<p>Try a modern browser like Chrome, Firefox, or Safari.</p>';
+                    }
+                };
+                script.onerror = function() {
+                    document.getElementById('algorithmDemo').innerHTML =
+                        '<div style="position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%); text-align: center;">' +
+                        '<h4>Visualization Unavailable</h4>' +
+                        '<p>Could not load 3D visualization component.</p>' +
+                        '</div>';
+                };
+                document.head.appendChild(script);
             };
-            document.head.appendChild(script);
+            document.head.appendChild(optimizersScript);
         });
     </script>
 </body>

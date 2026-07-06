@@ -1,0 +1,159 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>HumpDay &mdash; Papers</title>
+    <style>
+        .site-nav {
+            position: sticky;
+            top: 0;
+            z-index: 1000;
+            background: #34495e;
+            color: white;
+            padding: 12px 24px;
+            font-family: 'Times New Roman', Times, serif;
+            box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+        }
+        .site-nav-inner {
+            max-width: 1100px;
+            margin: 0 auto;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            gap: 16px;
+            flex-wrap: wrap;
+        }
+        .site-nav-brand {
+            color: white;
+            text-decoration: none;
+            font-weight: 700;
+            font-size: 1.25em;
+        }
+        .site-nav-links { display: flex; gap: 24px; }
+        .site-nav-links a { color: #ecf0f1; text-decoration: none; font-size: 1em; }
+        .site-nav-links a:hover { color: white; text-decoration: underline; }
+
+        body {
+            font-family: 'Times New Roman', Times, serif;
+            margin: 0; padding: 0;
+            background: #f8f9fa;
+            color: #2c3e50;
+            line-height: 1.6;
+        }
+        .container {
+            max-width: 1100px;
+            margin: 30px auto;
+            background: white;
+            padding: 40px 50px;
+            border-radius: 8px;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.06);
+        }
+        h1 { margin: 0 0 8px; font-weight: 400; font-size: 2.2em; }
+        .lede { color: #555; margin: 0 0 32px; font-size: 1.05em; }
+        .paper { margin: 0 0 34px; }
+        .paper h2 {
+            margin: 0 0 6px;
+            font-weight: 600;
+            font-size: 1.3em;
+            color: #34495e;
+        }
+        .paper h2 a { color: #34495e; text-decoration: none; }
+        .paper h2 a:hover { text-decoration: underline; }
+        .paper .abstract { margin: 0 0 8px; color: #444; }
+        .paper .links a {
+            color: #2980b9;
+            text-decoration: none;
+            margin-right: 16px;
+        }
+        .paper .links a:hover { text-decoration: underline; }
+        .status { color: #888; font-size: 0.92em; font-style: italic; }
+    </style>
+</head>
+<body>
+    <nav class="site-nav" data-site-nav="v1">
+        <div class="site-nav-inner">
+            <a href="index.html" class="site-nav-brand"><svg class="site-nav-camel" data-site-logo="camel-v3" viewBox="0 0 100 50" width="44" height="22" xmlns="http://www.w3.org/2000/svg" aria-hidden="true"><rect x="20.5" y="30" width="1.8" height="11" fill="white" fill-opacity="0.55"/><rect x="60.5" y="30" width="1.8" height="11" fill="white" fill-opacity="0.55"/><path fill="white" fill-opacity="0.92" d="M 14 30 C 10 30 8 28 8 24 C 7 22 7 19 9 18 C 11 16 13 14 16 13 C 20 8 26 6 31 9 C 34 11 35 13 35 16 C 37 18 40 18 43 17 C 47 13 53 7 59 9 C 63 11 65 13 65 16 C 66 18 68 18 70 17 C 73 13 76 9 80 7 C 84 5 89 6 90 9 L 92 9 L 93 12 L 91 13 L 87 13 L 87 15 C 82 16 79 18 76 21 C 73 25 71 28 68 30 L 66 30 L 66 42 L 64 42 L 64 30 L 26 30 L 26 42 L 24 42 L 24 30 L 14 30 Z"/><circle cx="88" cy="10" r="0.9" fill="#34495e"/></svg>HumpDay</a>
+            <div class="site-nav-links">
+                <a href="index.html">Home</a>
+                <a href="contest.html">Contest</a>
+                <a href="applications/index.html">Demonstrations</a>
+                <a href="algorithms.html">Algorithms</a>
+                <a href="recommendations.html">Recommendations</a>
+                <a href="papers.html">Papers</a>
+                <a href="https://github.com/microprediction/humpday" target="_blank" rel="noopener">GitHub</a>
+            </div>
+        </div>
+    </nav>
+
+    <div class="container">
+        <h1>Papers</h1>
+        <p class="lede">Working papers built on the HumpDay benchmark suite. Sources,
+        run logs, and every generated program are in the
+        <a href="https://github.com/microprediction/humpday/tree/main/papers">papers/</a>
+        directory of the repository.</p>
+
+        <div class="paper">
+            <h2><a href="papers/humpday-jss.pdf">HumpDay: derivative-free optimizers in pure
+            Python and JavaScript, with a contamination-resistant real-world benchmark</a></h2>
+            <p class="abstract">The software paper: 23 optimizers behind one contract, in two
+            languages held together by parity tests; a recommender driven by rankings on 81
+            real-application objectives; and a disguise mechanism that makes the benchmark
+            meaningful even when the candidates are written by language models.</p>
+            <p class="links"><a href="papers/humpday-jss.pdf">PDF</a>
+            <span class="status">working paper, prepared for SSRN</span></p>
+        </div>
+
+        <div class="paper">
+            <h2><a href="papers/alloy.pdf">Alloy: a machine-designed derivative-free
+            optimizer, and a full account of the search that found it</a></h2>
+            <p class="abstract">Alloy was generated by a language model from a prompt
+            requiring an equal blend of Nelder&ndash;Mead, Differential Evolution,
+            CMA-ES, pattern search and simulated annealing, part by part. On
+            twenty-nine problems never used in any selection step it has the best mean
+            rank at every budget from 60 to 480 evaluations. The paper also reports
+            what failed: the continuous search over blends never beat evaluating the
+            obvious point, and a tuned generic template matched every selection score
+            yet collapsed out of sample. Alloy ships in the package.</p>
+            <p class="links"><a href="papers/alloy.pdf">PDF</a>
+            <a href="algorithms.html">the algorithm</a>
+            <span class="status">working paper</span></p>
+        </div>
+
+        <div class="paper">
+            <h2><a href="papers/outside_simplex.pdf">Thinking outside the simplex: signed
+            compositions of optimization algorithms</a></h2>
+            <p class="abstract">Recipes with negative weights: &minus;100% algorithm A,
+            +200% algorithm B means build B, shadow A's proposal logic at zero cost, and
+            steer away from where A would go. The best signed recipe beat every unsigned
+            draw at selection; an ablation then reversed the story, since disabling the
+            repulsion improved the same program. A record of the construction, the trap,
+            and the protocol that avoids it: no signed recipe counts until it beats its
+            own ablated twin.</p>
+            <p class="links"><a href="papers/outside_simplex.pdf">PDF</a>
+            <span class="status">working paper</span></p>
+        </div>
+
+        <div class="paper">
+            <h2><a href="papers/benchmark_validity.pdf">Do synthetic benchmarks rank
+            optimizers the way real problems do?</a></h2>
+            <p class="abstract">Rank correlation between optimizer leaderboards on
+            synthetic test functions and on disguised real-world objectives, across
+            evaluation budgets. Where the two disagree, recommendations tuned on
+            synthetic suites mislead.</p>
+            <p class="links"><a href="papers/benchmark_validity.pdf">PDF</a>
+            <span class="status">working paper</span></p>
+        </div>
+
+        <div class="paper">
+            <h2><a href="papers/evolved_optimizer.pdf">An evolved optimizer for the
+            disguised benchmark</a></h2>
+            <p class="abstract">A genetic search over a 14-gene parametric template of
+            DE/ES mechanisms, including a surrogate trust-region gene whose ablation
+            more than halves regret on the disguised suite.</p>
+            <p class="links"><a href="papers/evolved_optimizer.pdf">PDF</a>
+            <span class="status">working paper</span></p>
+        </div>
+    </div>
+</body>
+</html>
