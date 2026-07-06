@@ -27,7 +27,7 @@ def make_portfolio(weights, spec):
     """Return optimize(objective, n_trials, n_dim) implementing the slot
     semantics of `spec` (from simplex_blend.weights_to_spec) with fixed
     architecture."""
-    move_share = {name: pct for name, pct in spec["move_generation"]}
+    move_share = dict(spec["move_generation"])
     p_nm = move_share.get("NelderMead", 0.0)
     p_de = move_share.get("DifferentialEvolution", 0.0)
     p_cma = move_share.get("CMAEvolutionStrategy", 0.0)

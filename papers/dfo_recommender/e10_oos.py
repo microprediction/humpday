@@ -25,8 +25,8 @@ sys.path.insert(0, str(Path("../../").resolve()))
 sys.path.insert(0, ".")
 import algo_dev as ad  # noqa: E402
 import simplex_blend as sb  # noqa: E402
-from example_demos import DEMOS, disguise_demo  # noqa: E402
 from e2_hardening import INF, atomic_dump, run_discovered  # noqa: E402
+from example_demos import DEMOS, disguise_demo  # noqa: E402
 from portfolio_w import make_portfolio  # noqa: E402
 
 from humpday.transforms.cubetosimplex import cube_to_simplex  # noqa: E402

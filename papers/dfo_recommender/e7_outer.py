@@ -83,7 +83,7 @@ def make_simplex_eval(base, panel_cache, args, history):
             print(f"      eval failed ({e}); regret=1.0", flush=True)
             regret = 1.0
         history.append({"u": [round(x, 4) for x in u],
-                        "w": {k: v for k, v in spec["inspiration"].items()},
+                        "w": dict(spec["inspiration"]),
                         "regret": regret})
         print(f"    eval {len(history):2d}/{N_EVALS} regret={regret:.4f}", flush=True)
         return regret
