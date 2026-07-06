@@ -31,21 +31,25 @@ import simplex_blend as sb  # noqa: E402
 ROUND2_VERTICES = [
     {
         "name": "CentroidBlend",
-        "idea": ("the validated round-1 champion: DE-population init feeding a "
-                 "Nelder-Mead simplex; each step picks one of four move types "
-                 "(NM reflect/expand, DE mutation+crossover, adaptive Gaussian, "
-                 "coordinate probe); SA acceptance gate with reheat restarts. "
-                 "Held-out signature: best mean rank at every budget, most "
-                 "consistent across budgets"),
+        "idea": (
+            "the validated round-1 champion: DE-population init feeding a "
+            "Nelder-Mead simplex; each step picks one of four move types "
+            "(NM reflect/expand, DE mutation+crossover, adaptive Gaussian, "
+            "coordinate probe); SA acceptance gate with reheat restarts. "
+            "Held-out signature: best mean rank at every budget, most "
+            "consistent across budgets"
+        ),
         "slots": ["initialization", "move_generation", "acceptance", "restart"],
     },
     {
         "name": "Warm4Blend",
-        "idea": ("a validated pattern-search-dominant blend with CMA seasoning: "
-                 "aggressive coordinate-probe moves with shrinking steps, "
-                 "Gaussian jumps scaled by an adapted diagonal covariance. "
-                 "Held-out signature: the strongest optimizer at budgets "
-                 "under 240, fades at 480 (exploits fast, refines less)"),
+        "idea": (
+            "a validated pattern-search-dominant blend with CMA seasoning: "
+            "aggressive coordinate-probe moves with shrinking steps, "
+            "Gaussian jumps scaled by an adapted diagonal covariance. "
+            "Held-out signature: the strongest optimizer at budgets "
+            "under 240, fades at 480 (exploits fast, refines less)"
+        ),
         "slots": ["move_generation", "adaptation"],
     },
     {
@@ -68,8 +72,13 @@ ROUND2_VERTICES = [
 # Rotated selection suite: burned demos, disjoint from the E7/E8/E9/E11 suite
 # and from the E6 untouched pool.
 ROTATED_SUITE = [
-    "cantilever_beam", "darts_aim", "ebola_response", "genetic_art",
-    "lennard_jones_cluster", "pressure_vessel", "tennis_doubles",
+    "cantilever_beam",
+    "darts_aim",
+    "ebola_response",
+    "genetic_art",
+    "lennard_jones_cluster",
+    "pressure_vessel",
+    "tennis_doubles",
     "tuned_mass_damper",
 ]
 

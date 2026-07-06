@@ -31,8 +31,22 @@ from portfolio_w import make_portfolio  # noqa: E402
 
 from humpday.transforms.cubetosimplex import cube_to_simplex  # noqa: E402
 
-TEMPLATE_U = [0.5002, 0.3013, 0.7923, 0.9816, 0.7018, 0.5489, 0.8527,
-              0.4036, 0.8249, 0.3566, 0.9763, 0.2655, 0.9672, 0.7681]
+TEMPLATE_U = [
+    0.5002,
+    0.3013,
+    0.7923,
+    0.9816,
+    0.7018,
+    0.5489,
+    0.8527,
+    0.4036,
+    0.8249,
+    0.3566,
+    0.9763,
+    0.2655,
+    0.9672,
+    0.7681,
+]
 PORTFOLIO_U = [0.7171, 0.0, 0.2693, 0.8481]
 
 SRC = "runs/e6b_more_points.json"
@@ -69,19 +83,28 @@ def main():
         inst = disguise_demo(dm, br["seed"])
         vals = dict(br["vals"])
         for name, opt in progs.items():
-            v = run_discovered(opt, inst.objective, dm.n_dim, br["budget"], 9000 + br["seed"])
+            v = run_discovered(
+                opt, inst.objective, dm.n_dim, br["budget"], 9000 + br["seed"]
+            )
             vals[name] = None if v >= INF else v
         big = 1e18
         ranks = {
-            o: 1 + sum(
-                1 for x in field
+            o: 1
+            + sum(
+                1
+                for x in field
                 if (vals.get(x) if vals.get(x) is not None else big)
                 < (vals.get(o) if vals.get(o) is not None else big) - 1e-12
             )
             for o in field
         }
-        rows.append({**{k: br[k] for k in ("budget", "demo", "n", "seed")},
-                     "vals": vals, "ranks": ranks})
+        rows.append(
+            {
+                **{k: br[k] for k in ("budget", "demo", "n", "seed")},
+                "vals": vals,
+                "ranks": ranks,
+            }
+        )
         if c % 20 == 0 or c == total:
             print(f"[{c}/{total}]", flush=True)
             atomic_dump({"done": False, "field": field, "rows": rows}, OUT)
@@ -91,8 +114,10 @@ def main():
     for b in budgets:
         brs = [r for r in rows if r["budget"] == b]
         summary[str(b)] = {
-            o: {"mean_rank": round(sum(r["ranks"][o] for r in brs) / len(brs), 3),
-                "wins": sum(1 for r in brs if r["ranks"][o] == 1)}
+            o: {
+                "mean_rank": round(sum(r["ranks"][o] for r in brs) / len(brs), 3),
+                "wins": sum(1 for r in brs if r["ranks"][o] == 1),
+            }
             for o in field
         }
     atomic_dump({"done": True, "field": field, "summary": summary, "rows": rows}, OUT)
@@ -101,7 +126,10 @@ def main():
     for b in budgets:
         sb_ = summary[str(b)]
         ordered = sorted(field, key=lambda o: sb_[o]["mean_rank"])
-        print(f"  budget {b}: " + "  ".join(f"{o}={sb_[o]['mean_rank']}" for o in ordered[:6]))
+        print(
+            f"  budget {b}: "
+            + "  ".join(f"{o}={sb_[o]['mean_rank']}" for o in ordered[:6])
+        )
     return 0
 
 

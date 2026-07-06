@@ -216,7 +216,9 @@ class Alloy(BaseOptimizer):
                         improved = True
                         for d in range(n_dim):
                             delta = cand[d] - best_x[d]
-                            cov_diag[d] = 0.8 * cov_diag[d] + 0.2 * (delta * delta + 1e-8)
+                            cov_diag[d] = 0.8 * cov_diag[d] + 0.2 * (
+                                delta * delta + 1e-8
+                            )
                     simplex[worst_i] = clip(cand)
                     simplex_f[worst_i] = fc
 

@@ -51,8 +51,14 @@ import simplex_blend as sb  # noqa: E402
 from example_demos import DEMOS  # noqa: E402
 
 SUITE = [
-    "espresso_dialin", "facility_location", "gear_ratios", "kalman_tuning",
-    "pid_tuning", "tension_spring", "plinko_funnel", "cassini_minlp",
+    "espresso_dialin",
+    "facility_location",
+    "gear_ratios",
+    "kalman_tuning",
+    "pid_tuning",
+    "tension_spring",
+    "plinko_funnel",
+    "cassini_minlp",
 ]
 SEEDS = (0, 1)
 TRIALS = 100
@@ -175,17 +181,21 @@ def run_arm(arm, rep, base, panel_cache, args, trace):
     n_eval = 0
 
     def record(regret):
-        trace.append({
-            "eval": n_eval,
-            "regret": regret,
-            "best": min(t["regret"] for t in trace) if trace else regret,
-            "diversity": behavioral_diversity(pop),
-            "w_dispersion": w_dispersion(pop),
-        })
+        trace.append(
+            {
+                "eval": n_eval,
+                "regret": regret,
+                "best": min(t["regret"] for t in trace) if trace else regret,
+                "diversity": behavioral_diversity(pop),
+                "w_dispersion": w_dispersion(pop),
+            }
+        )
         trace[-1]["best"] = min(trace[-1]["best"], regret)
-        print(f"    eval {n_eval:2d}/{N_EVALS} regret={regret:.4f} "
-              f"best={trace[-1]['best']:.4f} div={trace[-1]['diversity']:.3f}",
-              flush=True)
+        print(
+            f"    eval {n_eval:2d}/{N_EVALS} regret={regret:.4f} "
+            f"best={trace[-1]['best']:.4f} div={trace[-1]['diversity']:.3f}",
+            flush=True,
+        )
 
     def spawn(code, w):
         nonlocal n_eval
@@ -257,7 +267,8 @@ def main() -> int:
     ap.add_argument("--dry-run", action="store_true")
     ap.add_argument("--out", default="runs/e8_stretch.json")
     ap.add_argument(
-        "--arms", default="",
+        "--arms",
+        default="",
         help="only run these arm:rep pairs, e.g. 'freeform_evolve:1,simplex_stretch:1'",
     )
     args = ap.parse_args()
@@ -282,11 +293,21 @@ def main() -> int:
 
     def save(final=False):
         tmp = Path(str(out) + ".tmp")
-        tmp.write_text(json.dumps({
-            "done": final, "suite": SUITE, "seeds": list(SEEDS), "trials": TRIALS,
-            "n_evals": N_EVALS, "pop": POP,
-            "model": None if args.dry_run else args.model, "runs": runs,
-        }, indent=2))
+        tmp.write_text(
+            json.dumps(
+                {
+                    "done": final,
+                    "suite": SUITE,
+                    "seeds": list(SEEDS),
+                    "trials": TRIALS,
+                    "n_evals": N_EVALS,
+                    "pop": POP,
+                    "model": None if args.dry_run else args.model,
+                    "runs": runs,
+                },
+                indent=2,
+            )
+        )
         tmp.replace(out)
 
     for rep in REPEATS:
@@ -300,11 +321,20 @@ def main() -> int:
             trace = []
             run_arm(arm, rep, base, panel_cache, args, trace)
             best = min((t["regret"] for t in trace), default=1.0)
-            late_div = mean(t["diversity"] for t in trace[len(trace) // 2:])
-            runs.append({"arm": arm, "repeat": rep, "trace": trace,
-                         "best": best, "late_diversity": round(late_div, 4)})
-            print(f"  {arm} rep{rep}: best={best:.4f} late_diversity={late_div:.3f}",
-                  flush=True)
+            late_div = mean(t["diversity"] for t in trace[len(trace) // 2 :])
+            runs.append(
+                {
+                    "arm": arm,
+                    "repeat": rep,
+                    "trace": trace,
+                    "best": best,
+                    "late_diversity": round(late_div, 4),
+                }
+            )
+            print(
+                f"  {arm} rep{rep}: best={best:.4f} late_diversity={late_div:.3f}",
+                flush=True,
+            )
             save()
 
     save(final=True)
@@ -312,8 +342,10 @@ def main() -> int:
     for arm in ("freeform_evolve", "simplex_evolve", "simplex_stretch"):
         rs = [r for r in runs if r["arm"] == arm]
         if rs:
-            print(f"  {arm:16s} mean_best={mean(r['best'] for r in rs):.4f}  "
-                  f"mean_late_diversity={mean(r['late_diversity'] for r in rs):.3f}")
+            print(
+                f"  {arm:16s} mean_best={mean(r['best'] for r in rs):.4f}  "
+                f"mean_late_diversity={mean(r['late_diversity'] for r in rs):.3f}"
+            )
     return 0
 
 

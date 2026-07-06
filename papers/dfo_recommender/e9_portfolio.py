@@ -41,8 +41,14 @@ from portfolio_w import make_portfolio  # noqa: E402
 from humpday.transforms.cubetosimplex import cube_to_simplex  # noqa: E402
 
 SUITE = [
-    "espresso_dialin", "facility_location", "gear_ratios", "kalman_tuning",
-    "pid_tuning", "tension_spring", "plinko_funnel", "cassini_minlp",
+    "espresso_dialin",
+    "facility_location",
+    "gear_ratios",
+    "kalman_tuning",
+    "pid_tuning",
+    "tension_spring",
+    "plinko_funnel",
+    "cassini_minlp",
 ]
 SEEDS = (0, 1)
 TRIALS = 100
@@ -74,10 +80,18 @@ def main() -> int:
 
     def save(final=False):
         tmp = Path(args.out + ".tmp")
-        tmp.write_text(json.dumps({
-            "done": final, "suite": SUITE, "seeds": list(SEEDS),
-            "trials": TRIALS, "runs": runs,
-        }, indent=2))
+        tmp.write_text(
+            json.dumps(
+                {
+                    "done": final,
+                    "suite": SUITE,
+                    "seeds": list(SEEDS),
+                    "trials": TRIALS,
+                    "runs": runs,
+                },
+                indent=2,
+            )
+        )
         tmp.replace(Path(args.out))
 
     def eval_w(u, history):
@@ -85,8 +99,9 @@ def main() -> int:
         spec = sb.weights_to_spec(w)
         opt = make_portfolio(w, spec)
         regret = sb.score_optimizer(opt, base, SEEDS, TRIALS, panel_cache=panel_cache)
-        history.append({"u": [round(x, 4) for x in u],
-                        "w": spec["inspiration"], "regret": regret})
+        history.append(
+            {"u": [round(x, 4) for x in u], "w": spec["inspiration"], "regret": regret}
+        )
         print(f"    eval {len(history):3d} regret={regret:.4f}", flush=True)
         return regret
 
@@ -119,18 +134,29 @@ def main() -> int:
     rng = random.Random(777)
     for _ in range(100):
         eval_w([rng.random() for _ in range(4)], history)
-    runs.append({"arm": "rand100_ceiling", "repeat": 0, "history": history,
-                 "best": min(h["regret"] for h in history)})
+    runs.append(
+        {
+            "arm": "rand100_ceiling",
+            "repeat": 0,
+            "history": history,
+            "best": min(h["regret"] for h in history),
+        }
+    )
     save(final=True)
 
     print("\n=== summary ===")
     for arm in ("rand20_portfolio", "dfo20_portfolio", "rand100_ceiling"):
         rs = [r for r in runs if r["arm"] == arm]
         if rs:
-            print(f"  {arm:18s} best={min(r['best'] for r in rs):.4f} "
-                  f"mean_best={mean(r['best'] for r in rs):.4f}")
-    print("  (compare: LLM centroid drew 0.087 on the warm suite; E7 arms "
-          "score on THIS suite — compare within E7/E9 only)", flush=True)
+            print(
+                f"  {arm:18s} best={min(r['best'] for r in rs):.4f} "
+                f"mean_best={mean(r['best'] for r in rs):.4f}"
+            )
+    print(
+        "  (compare: LLM centroid drew 0.087 on the warm suite; E7 arms "
+        "score on THIS suite — compare within E7/E9 only)",
+        flush=True,
+    )
     return 0
 
 

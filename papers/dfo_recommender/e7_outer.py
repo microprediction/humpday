@@ -48,8 +48,14 @@ from humpday.transforms.cubetosimplex import cube_to_simplex  # noqa: E402
 # Selection-era demos (in the 2026-06-16 spread-16 set), NOT in the E6
 # untouched pool. Verify by name at startup.
 SUITE = [
-    "espresso_dialin", "facility_location", "gear_ratios", "kalman_tuning",
-    "pid_tuning", "tension_spring", "plinko_funnel", "cassini_minlp",
+    "espresso_dialin",
+    "facility_location",
+    "gear_ratios",
+    "kalman_tuning",
+    "pid_tuning",
+    "tension_spring",
+    "plinko_funnel",
+    "cassini_minlp",
 ]
 SEEDS = (0, 1)
 TRIALS = 100
@@ -75,16 +81,24 @@ def make_simplex_eval(base, panel_cache, args, history):
         prompt = sb.build_prompt(spec)
         try:
             code = (
-                sb._DRY_TEMPLATE if args.dry_run else sb.generate_live(prompt, args.model)
+                sb._DRY_TEMPLATE
+                if args.dry_run
+                else sb.generate_live(prompt, args.model)
             )
             opt = sb.compile_optimizer(code)
-            regret = sb.score_optimizer(opt, base, SEEDS, TRIALS, panel_cache=panel_cache)
+            regret = sb.score_optimizer(
+                opt, base, SEEDS, TRIALS, panel_cache=panel_cache
+            )
         except Exception as e:  # noqa: BLE001
             print(f"      eval failed ({e}); regret=1.0", flush=True)
             regret = 1.0
-        history.append({"u": [round(x, 4) for x in u],
-                        "w": dict(spec["inspiration"]),
-                        "regret": regret})
+        history.append(
+            {
+                "u": [round(x, 4) for x in u],
+                "w": dict(spec["inspiration"]),
+                "regret": regret,
+            }
+        )
         print(f"    eval {len(history):2d}/{N_EVALS} regret={regret:.4f}", flush=True)
         return regret
 
@@ -98,7 +112,9 @@ def make_template_eval(base, panel_cache, history):
         g = [min(1.0, max(0.0, x)) for x in u]
         try:
             opt = ad.make_candidate(g)
-            regret = sb.score_optimizer(opt, base, SEEDS, TRIALS, panel_cache=panel_cache)
+            regret = sb.score_optimizer(
+                opt, base, SEEDS, TRIALS, panel_cache=panel_cache
+            )
         except Exception as e:  # noqa: BLE001
             print(f"      eval failed ({e}); regret=1.0", flush=True)
             regret = 1.0
@@ -148,19 +164,29 @@ def main() -> int:
     if out.exists():
         try:
             runs = json.load(open(out))["runs"]
-            done = {(r["arm"], r["repeat"]) for r in runs if len(r["history"]) >= N_EVALS}
+            done = {
+                (r["arm"], r["repeat"]) for r in runs if len(r["history"]) >= N_EVALS
+            }
         except Exception:  # noqa: BLE001
             pass
 
     def save(final=False):
         tmp = Path(str(out) + ".tmp")
-        tmp.write_text(json.dumps({
-            "done": final, "suite": SUITE, "seeds": list(SEEDS),
-            "trials": TRIALS, "n_evals": N_EVALS,
-            "model": None if args.dry_run else args.model,
-            "outer": "centroid (runs/simplex_warm_code/centroid.py)",
-            "runs": runs,
-        }, indent=2))
+        tmp.write_text(
+            json.dumps(
+                {
+                    "done": final,
+                    "suite": SUITE,
+                    "seeds": list(SEEDS),
+                    "trials": TRIALS,
+                    "n_evals": N_EVALS,
+                    "model": None if args.dry_run else args.model,
+                    "outer": "centroid (runs/simplex_warm_code/centroid.py)",
+                    "runs": runs,
+                },
+                indent=2,
+            )
+        )
         tmp.replace(out)
 
     arms = [
@@ -196,7 +222,9 @@ def main() -> int:
     for arm, _, _, _ in arms:
         bests = [r["best"] for r in runs if r["arm"] == arm]
         if bests:
-            print(f"  {arm:14s} mean_best={mean(bests):.4f}  ({', '.join(f'{b:.4f}' for b in bests)})")
+            print(
+                f"  {arm:14s} mean_best={mean(bests):.4f}  ({', '.join(f'{b:.4f}' for b in bests)})"
+            )
     return 0
 
 

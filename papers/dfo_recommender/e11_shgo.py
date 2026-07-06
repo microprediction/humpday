@@ -39,8 +39,14 @@ from example_demos import DEMOS, disguise_demo  # noqa: E402
 from humpday.transforms.cubetosimplex import cube_to_simplex  # noqa: E402
 
 SUITE = [
-    "espresso_dialin", "facility_location", "gear_ratios", "kalman_tuning",
-    "pid_tuning", "tension_spring", "plinko_funnel", "cassini_minlp",
+    "espresso_dialin",
+    "facility_location",
+    "gear_ratios",
+    "kalman_tuning",
+    "pid_tuning",
+    "tension_spring",
+    "plinko_funnel",
+    "cassini_minlp",
 ]
 SEEDS = (0, 1)
 TRIALS = 100
@@ -115,12 +121,17 @@ def farthest_point_clusters(items, k):
     while len(centers) < k:
         far = max(
             (i for i in range(len(items)) if i not in centers),
-            key=lambda i: min(dist(items[i]["vector"], items[c]["vector"]) for c in centers),
+            key=lambda i: min(
+                dist(items[i]["vector"], items[c]["vector"]) for c in centers
+            ),
         )
         centers.append(far)
     clusters = [[] for _ in centers]
     for i in range(len(items)):
-        j = min(range(len(centers)), key=lambda c: dist(items[i]["vector"], items[centers[c]]["vector"]))
+        j = min(
+            range(len(centers)),
+            key=lambda c: dist(items[i]["vector"], items[centers[c]]["vector"]),
+        )
         clusters[j].append(i)
     return clusters
 
@@ -167,27 +178,47 @@ def main() -> int:
     recipes.append(("centroid", list(cube_to_simplex([0.5] * (sb.N_VERTICES - 1)))))
     rng = random.Random(1100)
     for j in range(N_RANDOM):
-        recipes.append((f"rand{j}", list(cube_to_simplex([rng.random() for _ in range(sb.N_VERTICES - 1)]))))
+        recipes.append(
+            (
+                f"rand{j}",
+                list(cube_to_simplex([rng.random() for _ in range(sb.N_VERTICES - 1)])),
+            )
+        )
 
     items = []
     for label, w in recipes:
         prompt = sb.build_prompt(sb.weights_to_spec(w)) + PARAMS_ADDENDUM
         try:
-            code = sb._DRY_TEMPLATE if args.dry_run else sb.generate_live(prompt, args.model)
+            code = (
+                sb._DRY_TEMPLATE
+                if args.dry_run
+                else sb.generate_live(prompt, args.model)
+            )
             (code_dir / f"{label.replace(':', '_')}.py").write_text(code)
             opt, mod = compile_with_params(code)
         except Exception as e:  # noqa: BLE001
             print(f"  {label:16s} FAILED: {e}", flush=True)
-            state["phase1"].append({"label": label, "w": w, "regret": 1.0, "failed": True})
+            state["phase1"].append(
+                {"label": label, "w": w, "regret": 1.0, "failed": True}
+            )
             save()
             continue
         vec = score_vec(opt, base, panel_cache)
         regret = mean(vec)
         n_params = len(getattr(mod, "PARAMS", {}) or {})
-        items.append({"label": label, "w": w, "regret": regret, "vector": vec,
-                      "code": code, "n_params": n_params})
-        state["phase1"].append({"label": label, "w": w, "regret": regret,
-                                "n_params": n_params})
+        items.append(
+            {
+                "label": label,
+                "w": w,
+                "regret": regret,
+                "vector": vec,
+                "code": code,
+                "n_params": n_params,
+            }
+        )
+        state["phase1"].append(
+            {"label": label, "w": w, "regret": regret, "n_params": n_params}
+        )
         print(f"  {label:16s} regret={regret:.4f} params={n_params}", flush=True)
         save()
 
@@ -207,11 +238,20 @@ def main() -> int:
             continue
         params = dict(getattr(mod, "PARAMS", {}) or {})
         ranges = dict(getattr(mod, "PARAM_RANGES", {}) or {})
-        names = [n for n in params if n in ranges and isinstance(params[n], (int, float))]
-        floor = {"basin": ci, "members": [items[i]["label"] for i in members],
-                 "representative": it["label"], "start": it["regret"],
-                 "tuned": it["regret"], "best_params": None, "history": []}
+        names = [
+            n for n in params if n in ranges and isinstance(params[n], (int, float))
+        ]
+        floor = {
+            "basin": ci,
+            "members": [items[i]["label"] for i in members],
+            "representative": it["label"],
+            "start": it["regret"],
+            "tuned": it["regret"],
+            "best_params": None,
+            "history": [],
+        }
         if names:
+
             def objective(u):
                 for x, n in zip(u, names):
                     lo, hi = ranges[n]
@@ -222,8 +262,11 @@ def main() -> int:
                 vec = score_vec(opt, base, panel_cache)
                 r = mean(vec)
                 floor["history"].append({"u": [round(x, 3) for x in u], "regret": r})
-                print(f"    basin{ci} inner {len(floor['history']):2d}/{INNER_EVALS} "
-                      f"regret={r:.4f}", flush=True)
+                print(
+                    f"    basin{ci} inner {len(floor['history']):2d}/{INNER_EVALS} "
+                    f"regret={r:.4f}",
+                    flush=True,
+                )
                 return r
 
             random.seed(1100 + ci)
@@ -232,18 +275,27 @@ def main() -> int:
                 hbest = min(floor["history"], key=lambda h: h["regret"])
                 floor["tuned"] = min(it["regret"], hbest["regret"])
                 floor["best_params"] = hbest["u"]
-        print(f"  basin{ci} [{it['label']}] start={floor['start']:.4f} "
-              f"tuned floor={floor['tuned']:.4f}", flush=True)
+        print(
+            f"  basin{ci} [{it['label']}] start={floor['start']:.4f} "
+            f"tuned floor={floor['tuned']:.4f}",
+            flush=True,
+        )
         state["descents"].append(floor)
         save()
 
     # ---- Phase 4 ------------------------------------------------------------
     if state["descents"]:
         best = min(state["descents"], key=lambda f: f["tuned"])
-        state["result"] = {"basin": best["basin"], "representative": best["representative"],
-                           "floor": best["tuned"]}
-        print(f"\n=== E11 result: floor={best['tuned']:.4f} from "
-              f"{best['representative']} (E7 arm bests: 0.246-0.312) ===", flush=True)
+        state["result"] = {
+            "basin": best["basin"],
+            "representative": best["representative"],
+            "floor": best["tuned"],
+        }
+        print(
+            f"\n=== E11 result: floor={best['tuned']:.4f} from "
+            f"{best['representative']} (E7 arm bests: 0.246-0.312) ===",
+            flush=True,
+        )
     state["done"] = True
     save()
     return 0

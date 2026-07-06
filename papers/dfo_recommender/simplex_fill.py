@@ -72,8 +72,12 @@ def generate_scored(label, weights, args, panel_cache, base, seeds, save_dir):
             "inspiration": spec["inspiration"],
         }
     print(f"  {label} FAILED after {args.retries} attempts", flush=True)
-    return {"label": label, "regret": None, "attempts": args.retries,
-            "inspiration": spec["inspiration"]}
+    return {
+        "label": label,
+        "regret": None,
+        "attempts": args.retries,
+        "inspiration": spec["inspiration"],
+    }
 
 
 def main() -> int:
