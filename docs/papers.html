@@ -123,13 +123,13 @@
         <div class="paper">
             <h2><a href="papers/outside_simplex.pdf">Thinking outside the simplex: signed
             compositions of optimization algorithms</a></h2>
-            <p class="abstract">Recipes with negative weights: &minus;100% algorithm A,
-            +200% algorithm B means build B, shadow A's proposal logic at zero cost, and
-            steer away from where A would go. The best signed recipe beat every unsigned
-            draw at selection; an ablation then reversed the story, since disabling the
-            repulsion improved the same program. A record of the construction, the trap,
-            and the protocol that avoids it: no signed recipe counts until it beats its
-            own ablated twin.</p>
+            <p class="abstract">What should a negative weight mean? Six semantics tested
+            under a paired-ablation protocol: avoidance wins selection and is reversed by
+            its ablation; caricature (exaggerate the host away from the negated reference)
+            is the only semantics to survive selection, and on held-out problems it
+            repairs weak hosts (65% paired wins, p&nbsp;=&nbsp;1e-12) while vanishing or
+            reversing on strong ones. Two traps, two survivors, and a recurring byproduct:
+            the ablated twins keep topping the held-out field.</p>
             <p class="links"><a href="papers/outside_simplex.pdf">PDF</a>
             <span class="status">working paper</span></p>
         </div>

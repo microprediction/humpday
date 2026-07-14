@@ -6,8 +6,8 @@
 \usepackage{microtype}
 
 \title{Thinking Outside the Simplex\\[0.4em]
-\large Signed compositions of optimization algorithms,\\
-with negative weights as anti-inspirations}
+\large Signed compositions of optimization algorithms:\\
+six semantics, two traps, and two survivors}
 \author{Peter Cotton}
 \date{\today}
 
@@ -15,155 +15,198 @@ with negative weights as anti-inspirations}
 \maketitle
 
 \begin{abstract}
-\noindent A companion note~\cite{alloy2026} blends established optimizers by
-placing them at the vertices of a simplex: a recipe is a vector of
-non-negative mixing weights, realized as a working program by a language
-model. Here the weights are allowed to go negative. A recipe such as
-$-100\%$ algorithm A, $+200\%$ algorithm B means: build B, maintain a cheap
-shadow of A's proposal logic that spends no evaluations, and steer away from
-where A would go. On the selection suite the best signed recipe beat every
-unsigned draw (regret 0.179 against 0.326), and the generated program
-faithfully implements the avoidance semantics. Then an ablation assigns the
-credit: disabling the repulsion in that same program improves it, to 0.130
-on identical instances. The win belonged to the host architecture the
-recipe happened to elicit, and the signed term subtracted value. This note
-records the construction, the trap, and the protocol that avoids it: no
-signed recipe counts until it beats its own ablated twin.
+\noindent A companion note~\cite{alloy2026} blends optimizers by placing
+them at the vertices of a simplex and letting a language model realize each
+recipe as a program. Here the weights may go negative, and the question is
+what a negative weight should mean. Six semantics are tested under a paired
+protocol: every generated program gates its negative-weight machinery
+through one constant, so the same program with the machinery disabled is
+scored on identical instances. Avoidance semantics wins selection and is
+reversed by its ablation. Caricature semantics, exaggerate the host along
+the axes where it most differs from the negated reference, is the only one
+to beat its twin at selection, and a search of the extended space finds a
+program at regret 0.047 against its twin's 0.181. On problems never used in
+selection that comparison reverses, the twin winning 65\% of paired
+instances ($p = 10^{-11}$); yet on weaker hosts the machinery survives the
+same test (up to 65\% for the star, $p = 10^{-12}$). The pattern: negative
+weights repair weak hosts and spoil strong ones. The byproduct stands
+either way: the twins of the strongest recipes twice rank first at the
+largest budget among fourteen optimizers.
 \end{abstract}
 
-\section{The construction}
+\section{The construction, and six meanings of a minus sign}
 
 A simplex recipe over $K$ algorithms has weights $w_k \ge 0$ summing to 1.
-Drop the non-negativity and keep the sum: the recipes now range over an
-affine slice of which the simplex is the all-positive face.
+Drop the non-negativity and keep the sum: recipes now range over an affine
+slice of which the simplex is the all-positive face.
 
-The semantics of a negative weight is avoidance. The positive part of the
-recipe is realized exactly as before~\cite{alloy2026}: the heaviest vertex
-hosts the architecture and the rest graft their ideas in proportion.
+A negative weight needs a semantics, and six were tested. Avoidance: shadow
+the negated algorithm's proposal logic at zero evaluation cost and steer
+away from where it would go. Density: thin the host's proposals toward the
+signed mixture of proposal densities, by rejection, before evaluating.
+Caricature: exaggerate the host along the axes where it most differs from
+the negated reference, extrapolation in design space. Pitfalls: design the
+negated algorithm's characteristic failure modes out of the host. Baseline:
+treat the negated algorithm's shadow as the bar to beat, escalating when
+behind. Residual: strip from the negated algorithm everything the host
+already has and graft in what remains, amplified.
 
-Each negatively weighted vertex becomes an anti-inspiration. The generated
-program must maintain a shadow of that algorithm's proposal logic, computing
-where it would move next without spending any objective evaluations, and
-must penalise or resample candidates near the shadow's suggestion, with
-repulsion strength and radius scaling with the magnitude of the weight.
+Attribution is by paired ablation. Every generated program must gate all
+its negative-weight machinery through one module constant, so its twin, the
+same program with the constant zeroed, recovers the plain host and is
+scored on identical instances. The paired delta, signed minus twin, is the
+only statistic that counts; single-draw leaderboards reward whatever a
+label elicits from the generator, not what the label claims.
 
-Figure~\ref{fig:antiprompt} shows the actual prompt at the winning recipe.
-As with the unsigned construction, compliance is checkable by reading the
-output: the winning program contains a shadow Differential Evolution
-population evolved at zero evaluation cost, a repulsion radius proportional
-to the anti-strength, and penalty and push-away logic wired into every
-evaluation.
+\section{Avoidance, and the first trap}
 
-\begin{figure}[t]
-\scriptsize
-\begin{verbatim}
-Build a black-box numerical optimizer from a SIGNED recipe of base
-algorithms. Positive weights are inspirations to blend, exactly as in
-asymmetric blending: the highest-weight method is the HOST architecture
-and the others donate grafted ideas in proportion to their weight.
+Under avoidance semantics, the recipe $+200\%$ Nelder--Mead, $-100\%$
+Differential Evolution won a 22-recipe selection round at regret 0.179
+against 0.326 for the best unsigned control, and the generated program
+faithfully implements the semantics: a shadow DE population evolved at zero
+cost, a repulsion radius, penalty and push-away logic.
 
-NEGATIVE weights are ANTI-INSPIRATIONS. For each negatively-weighted
-method, maintain a cheap SHADOW of its proposal logic (spend NO objective
-evaluations on it; just compute where it WOULD move next from the current
-state) and steer AWAY from that suggestion: penalise or resample
-candidates that fall within a repulsion radius of the shadow's
-suggestion. Repulsion strength and radius scale with the magnitude of the
-negative weight. The shadow must be real, working code, not a comment.
+The ablation reverses it. Disabling the repulsion in that same program
+improves it to 0.130 on identical instances. The win belonged to the
+unusually good Nelder--Mead host the prompt elicited; the repulsion was a
+handicap, out of sample as well, where the ablated twin also ranks better
+at every budget.
 
-Signed recipe: NelderMead +200%, DifferentialEvolution -100%
+\section{The bake-off}
 
-HOST architecture (100% of positive mass): NelderMead - downhill simplex:
-reflect/expand/contract/shrink a set of n+1 points
-ANTI-INSPIRATION (strength 100%): DifferentialEvolution - shadow its
-logic (population + difference-vector mutation and crossover) and avoid
-where it would sample.
-
-[followed by the fixed interface contract of the unsigned construction]
-\end{verbatim}
-\caption{The prompt at the winning signed recipe, $+200\%$ Nelder--Mead,
-$-100\%$ Differential Evolution.}
-\label{fig:antiprompt}
-\end{figure}
-
-\section{Results}
-
-Twenty-two recipes were generated and scored on the eight-problem selection
-suite of the companion note, at 100 evaluations, two seeds, with
-panel-normalised regret: twelve random signed recipes, four hand-picked
-ones of the $-1$A$+2$B form, and six unsigned random controls.
-
-Table~\ref{tab:sel} shows the head of the leaderboard. The three best
-recipes are all signed, and the winner is the canonical form itself:
-Nelder--Mead hosting, Differential Evolution repelled, at 0.179, the best
-single generation observed on this suite by any method in the companion
-study. Taken at face value this is a victory for the extension. It should
-not be taken at face value.
+Table~\ref{tab:sem} gives the mean paired delta per semantics on the pairs
+predicted favourable, from two draws per recipe on a selection suite
+spanning 2 to 100 dimensions. Caricature is the only semantics that helps
+on average, and the only one with an artifact that decisively beats its
+twin (0.104 against 0.181). The mathematically prettiest semantics,
+rejection-thinned proposal densities, goes zero for five against its twins.
 
 \begin{table}[h]
 \centering
 \begin{tabular}{lcc}
 \toprule
-recipe & signed & regret \\
+semantics & mean paired delta & arms improving \\
 \midrule
-$+200\%$ NM, $-100\%$ DE & yes & 0.179 \\
-random signed 2 & yes & 0.262 \\
-random signed 6 & yes & 0.306 \\
-best unsigned control & no & 0.326 \\
-$+150\%$ SA, $-50\%$ PS & yes & 0.341 \\
+caricature & $-0.032$ & 4/8 \\
+repulsion  & $-0.009$ & 3/7 \\
+residual   & $+0.014$ & 2/8 \\
+pitfalls   & $+0.018$ & 2/7 \\
+density    & $+0.040$ & 0/5 \\
+baseline   & $+0.086$ & 0/4 \\
 \bottomrule
 \end{tabular}
-\caption{Selection leaderboard, best five of twenty-two generations. Five
-of the sixteen signed generations produced degenerate programs scoring 1.0;
-the anti-inspiration machinery is harder to write than a blend.}
-\label{tab:sel}
+\caption{Six semantics under the paired protocol; negative delta means the
+signed machinery helps on the selection suite.}
+\label{tab:sem}
 \end{table}
 
-The ablation is the decisive step, and it reverses the story. Setting the
-program's anti-strength to zero, which empties the repulsion radius and
-makes the shadow inert, and rescoring on the identical deterministic
-instances, improves the regret from 0.179 to 0.130. The repulsion was a
-handicap. The recipe won because its prompt elicited an unusually good
-Nelder--Mead-style host, and the signed term this note exists to test made
-that host worse.
+Out of sample the bake-off winner is even with its twin (53\% paired,
+$p = 0.17$): the selection-suite advantage neither transfers nor reverses.
+Both versions rank first and second of fourteen at the largest budget on
+the held-out problems, ahead of the champion blend of the companion note.
 
-The out-of-sample evidence reads consistently once the credit is assigned.
-On the fourteen-way race over twenty-nine problems never used in selection,
-the signed program sits in the same band as the generated pure Nelder--Mead
-control, ranking eighth of fourteen overall, competitive on problems of
-eight dimensions or fewer and collapsing above twenty-four, where its
-$\sqrt{n}$-scaled exclusion zones swallow the search space. Nothing in that
-profile requires the avoidance mechanism to explain it.
+\section{The map and the dial}
 
-The trap generalises and is worth stating plainly. A single-draw
-leaderboard rewards whatever the label elicited, not what the label
-claims. Hand-picked recipes here received cleaner prompts than the random
-signed recipes, five of sixteen of which produced degenerate programs, so
-the canonical form's win partly measured promptability. Only the paired
-ablation, the same program with the signature feature switched off on the
-same instances, assigns credit causally.
+Sweeping all twenty ordered pairs under caricature at unit magnitude, eight
+of nineteen scored pairs benefit; the largest paired gains are simulated
+annealing exaggerated away from pattern search ($-0.24$) and CMA-ES away
+from Differential Evolution ($-0.17$).
 
-\section{What follows}
+The ancestor rank-correlation matrix does not predict the map: across the
+nineteen pairs, paired delta and ancestor correlation are uncorrelated
+($+0.05$). Correlation harvesting is the mathematics of runtime
+subtraction; caricature is a generation-time act, and the map must be
+measured, not derived.
 
-What survives is the machinery, not yet any evidence it helps. Signed
-recipes are expressible, the model implements avoidance faithfully, and the
-extension is cheap to search. Whether any point outside the simplex beats
-its own projection back inside is now a well-posed question, and the first
-candidate answered it in the negative.
+The magnitude dial has an optimum at restraint. On the strongest pair, a
+mild caricature ($\lambda = 0.5$) gives the best paired deltas ($-0.02$,
+$-0.13$); at $\lambda = 2$ and beyond the exaggerations tip into parody and
+the deltas turn positive.
 
-The protocol for a second round follows from the trap. Every signed
-candidate is scored against its ablated twin on identical instances, and
-only the paired difference counts; selection runs on a dimension-spread
-suite; and the repulsion is prompted to scale per-coordinate rather than
-with $\sqrt{n}$. Variants worth pricing under that protocol include
-slot-specific avoidance (repel A's moves only where A is weak) and
-time-varying signs (repel early, embrace late).
+\section{The extended space, searched, and the second trap}
+
+Sampling the full signed slice (weights in roughly $[-1, 2]$, positive part
+blending hosts, each negative weight a caricature reference with its
+magnitude as exaggeration length) produced the best selection-stage
+artifact of the entire research program: regret 0.047, twin 0.181, paired
+delta $-0.134$, at the recipe of Figure~\ref{fig:cprompt}. On the selection
+suite the caricature machinery is unambiguously causal.
+
+\begin{figure}[t]
+\scriptsize
+\begin{verbatim}
+Build a black-box numerical optimizer from the SIGNED recipe: NelderMead
++59%, DifferentialEvolution -108%, CMAEvolutionStrategy -13%,
+PatternSearch +169%, SimulatedAnnealing -8%
+
+HOST (74% of positive mass): PatternSearch - Hooke-Jeeves coordinate moves
+with a step size that shrinks on failure. Build the architecture from this.
+GRAFT into it: 25% NelderMead (downhill simplex: reflect/expand/contract/
+shrink a set of n+1 points)
+
+Negative weights mean CARICATURE, extrapolation in design space: for each
+reference below, identify the axes on which the host most differs from it
+and EXAGGERATE the host along exactly those axes, with the size of each
+exaggeration proportional to the stated lam times ANTI_STRENGTH.
+  CARICATURE AWAY FROM DifferentialEvolution (lam = 1.08): population +
+    difference-vector mutation (rand/1, current-to-best/1) and crossover
+  CARICATURE AWAY FROM CMAEvolutionStrategy (lam = 0.13): sample from a
+    Gaussian whose covariance adapts to successful steps
+  CARICATURE AWAY FROM SimulatedAnnealing (lam = 0.08): accept uphill
+    moves with probability exp(-dF/T); cool T over time
+
+[followed by the mandatory ANTI_STRENGTH gate and the interface contract]
+\end{verbatim}
+\caption{The prompt at the best point found in the extended space.}
+\label{fig:cprompt}
+\end{figure}
+
+On twenty-nine problems never used in any selection step, the comparison
+reverses. The twin beats the signed original on 65\% of paired instances
+($p = 9\times10^{-12}$), ranks first of fourteen at the largest budget
+(4.5 against the signed version's 6.5), and the signed version also loses
+to the companion note's champion (41\%, $p = 3\times10^{-5}$).
+
+This is the second trap, and it is not the first one again. The paired
+ablation solved attribution: the caricature machinery really did cause the
+selection-suite gain. What it did not solve is generalization: the credited
+machinery was itself tuned, by selection, to the suite. Attribution and
+transfer are different walls, and a delta earned on the selection
+distribution is a claim about that distribution only.
+
+\section{What survives}
+
+Racing the sweep's other winners the same way completes the picture, and
+it is not a uniform failure. The CMA-ES-away-from-DE artifact beats its
+twin on 65\% of held-out paired instances ($p = 2\times10^{-12}$), and
+the annealing-away-from-pattern-search artifact on 59\%
+($p = 10^{-5}$): the caricature machinery survives out of sample on these
+hosts. The protocol still acquires its second stage, since two other
+winners did not survive it: paired ablations must be scored out of sample
+before a delta counts.
+
+The pattern across the four raced winners is consistent. Where the twin is
+already excellent, pattern-search hosts ranking first at the largest
+budget, the signed term vanishes or reverses; where the twin is weak, CMA
+and annealing hosts in the bottom half of the field, the signed term
+repairs it and survives. Negative weights, under the one semantics that
+works, are a treatment for weak hosts, not an enhancement for strong ones,
+and no signed artifact yet leads the held-out field absolutely.
+
+The byproduct stands either way, twice replicated: signed prompts elicit
+excellent conventional programs. The twins of the two strongest recipes,
+both budget-aware pattern-search hosts with Nelder--Mead grafts, rank
+first of fourteen at the largest budget on the held-out problems, ahead of
+every prior artifact. Exploring outside the simplex keeps producing better
+inhabitants of the inside.
 
 \vspace{1em}
-\noindent\emph{Reproducibility.} The harness is
-\texttt{papers/dfo\_recommender/e13\_signed.py} in the humpday
-repository~\cite{humpday}; runs are \texttt{runs/e13\_signed.json} and
-\texttt{runs/e13b\_oos.json}, with every generated program in
-\texttt{runs/e13\_code/}.
+\noindent\emph{Reproducibility.} Harnesses
+\texttt{e13\_signed.py}, \texttt{e15\_semantics.py},
+\texttt{e16\_caricature\_sweep.py} and \texttt{e17\_search.py} under
+\texttt{papers/dfo\_recommender/} in the humpday
+repository~\cite{humpday}; runs and every generated program are in the
+adjacent \texttt{runs/} directories.
 
 \begin{thebibliography}{9}
 
@@ -176,10 +219,6 @@ Working paper, \texttt{https://humpday.microprediction.org/papers.html},
 \bibitem{humpday} P.~Cotton.
 HumpDay: recommendations and comparisons of derivative-free optimizers.
 \texttt{https://humpday.microprediction.org}, 2026.
-
-\bibitem{glover1986} F.~Glover.
-Future paths for integer programming and links to artificial intelligence.
-\emph{Computers \& Operations Research}, 13(5):533--549, 1986.
 
 \end{thebibliography}
 
