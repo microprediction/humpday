@@ -231,9 +231,11 @@
   <p>
     The wire can be clipped on the way up (flat and fast) or on the way down
     (high and dropping) — in a 40,000-punt random sweep, hits occurred at
-    every loft from ~33° to 70°, but only ~1.2% of random punts hit at all.
-    The best punt we've measured scores ≈109.4: the longest strides the box
-    allows, in accelerating rhythm, full power, striking the wire on the rise.
+    every loft from ~32° to 70°, but only ~4% of random punts hit at all.
+    A hit deflects the ball off the wire (the bounce is cosmetic — the score
+    is settled at contact). The best punt we've measured scores ≈109.4: the
+    longest strides the box allows, in accelerating rhythm, full power,
+    striking the wire on the rise.
   </p>
 
   <hr style="border: 0; border-top: 1px solid #404054; margin: 32px 0 16px;" />
@@ -307,7 +309,7 @@ const QUALITY_FLOOR = 0.75;     // contact quality at worst rhythm
 
 const WIRE_X = 30.0;            // downfield from the keeper's start
 const WIRE_Z = 13.0;            // height above the turf
-const HIT_RADIUS = 0.25;        // wire + ball radius + a little slack
+const HIT_RADIUS = 0.7;         // matches the drawn wire + ball sizes below
 
 // ---- Canvas mapping ------------------------------------------------------
 // Keeper's start is world x=0. The goal line sits 13 m BEHIND the start so
@@ -343,6 +345,12 @@ function decode(u) {
 const STEP_DUR_S = 0.32;        // per running step (animation only)
 const PLANT_DUR_S = 0.22;       // plant + swing (animation only)
 
+// Visual exaggeration for the keeper (drawing only — physics unchanged).
+// At true scale he's 22 px tall and reads as a speck; user: "too small".
+const KSCALE = 1.8;
+const CARRY_Z = 2.4;            // ball held in the (scaled) hands, m
+const CARRY_FWD = 0.7;          // ball held out front, m
+
 function walkFrames(step1, step2, foul) {
   const frames = [];
   const segs = [
@@ -357,9 +365,14 @@ function walkFrames(step1, step2, foul) {
       const p = (i + 1) / n;
       const ease = p * p * (3 - 2 * p);              // smoothstep
       const kx = seg.from + (seg.to - seg.from) * ease;
+      // Ball carried in the hands; on the plant it drops onto the foot —
+      // a drop punt — meeting the physics release point (advance, 0.9 m)
+      // exactly, so the flight trail starts with no visual jump.
+      const bz = seg.plant ? CARRY_Z + (RELEASE_HEIGHT - CARRY_Z) * ease : CARRY_Z;
+      const bx = seg.plant ? kx + CARRY_FWD * (1 - ease) : kx + CARRY_FWD;
       frames.push({
         kx,
-        bx: kx + 0.35, bz: 1.05,                     // ball carried in the hands
+        bx, bz,
         phase: seg.plant ? 'plant' : 'walk',
         stepProgress: p,
       });
@@ -368,7 +381,7 @@ function walkFrames(step1, step2, foul) {
   if (foul) {
     const kx = step1 + step2 + PLANT_LUNGE;
     for (let i = 0; i < 45; i++) {
-      frames.push({ kx, bx: kx + 0.35, bz: 1.05, phase: 'foul', stepProgress: i / 45 });
+      frames.push({ kx, bx: kx + CARRY_FWD, bz: CARRY_Z, phase: 'foul', stepProgress: i / 45 });
     }
   }
   return frames;
@@ -432,7 +445,7 @@ function runPunt(params, recordFrames = false) {
     vx -= (1 + E) * vDotN * nx;
     vz -= (1 + E) * vDotN * nz;
     let age = 0;
-    for (let tt = 0; tt < 1.1 && z > 0; tt += DT) {
+    for (let tt = 0; tt < 3.0 && z > 0; tt += DT) {
       vx *= (1 - DRAG * DT); vz *= (1 - DRAG * DT);
       vz -= G * DT;
       x += vx * DT; z += vz * DT;
@@ -570,9 +583,11 @@ function drawWire(hitAge) {
 }
 
 function drawKeeper(kxM, phase, stepProgress) {
+  // All anatomy scaled by KSCALE (drawing only — physics unchanged).
+  const s = KSCALE;
   const x = cx(kxM);
-  const hM = KEEPER_HEIGHT_M;
-  const headR = 3.4;
+  const hM = KEEPER_HEIGHT_M * s;
+  const headR = 3.4 * s;
   const hipY = cy(hM * 0.5);
   const shoulderY = cy(hM * 0.82);
   const headY = cy(hM) + headR;
@@ -581,33 +596,34 @@ function drawKeeper(kxM, phase, stepProgress) {
   const swing = phase === 'walk' ? Math.sin(stepProgress * Math.PI) : 0;
   const kick = phase === 'plant' ? stepProgress : 0;
   ctx.strokeStyle = '#2b2b33';
-  ctx.lineWidth = 3.5;
+  ctx.lineWidth = 3.5 * s;
   ctx.beginPath();
   ctx.moveTo(x, hipY);
-  ctx.lineTo(x - 4 - swing * 4 + kick * 2, GROUND_Y);      // back/plant leg
+  ctx.lineTo(x - (4 + swing * 4 - kick * 2) * s, GROUND_Y);   // back/plant leg
   ctx.moveTo(x, hipY);
   // Front leg: walking swing, or the punt swing arcing up on the plant.
-  ctx.lineTo(x + 4 + swing * 5 + kick * 9, GROUND_Y - kick * 13);
+  ctx.lineTo(x + (4 + swing * 5 + kick * 9) * s, GROUND_Y - kick * 13 * s);
   ctx.stroke();
 
   // Torso (keeper yellow) leaning slightly forward on the move.
-  const lean = (phase === 'walk' || phase === 'plant') ? 2.5 : 0;
+  const lean = (phase === 'walk' || phase === 'plant') ? 2.5 * s : 0;
   ctx.strokeStyle = '#f3d233';
-  ctx.lineWidth = 6;
+  ctx.lineWidth = 6 * s;
   ctx.beginPath(); ctx.moveTo(x, hipY); ctx.lineTo(x + lean, shoulderY); ctx.stroke();
 
   // Arms — carrying the ball out front, or thrown up after a foul.
   ctx.strokeStyle = '#f3d233';
-  ctx.lineWidth = 3;
+  ctx.lineWidth = 3 * s;
   ctx.beginPath();
   if (phase === 'foul') {
-    ctx.moveTo(x + lean, shoulderY); ctx.lineTo(x - 6, shoulderY - 11);
-    ctx.moveTo(x + lean, shoulderY); ctx.lineTo(x + 8, shoulderY - 11);
+    ctx.moveTo(x + lean, shoulderY); ctx.lineTo(x - 6 * s, shoulderY - 11 * s);
+    ctx.moveTo(x + lean, shoulderY); ctx.lineTo(x + 8 * s, shoulderY - 11 * s);
   } else if (phase === 'flight') {
-    ctx.moveTo(x, shoulderY); ctx.lineTo(x + 9, shoulderY - 4);
-    ctx.moveTo(x, shoulderY); ctx.lineTo(x - 7, shoulderY + 5);
+    ctx.moveTo(x, shoulderY); ctx.lineTo(x + 9 * s, shoulderY - 4 * s);
+    ctx.moveTo(x, shoulderY); ctx.lineTo(x - 7 * s, shoulderY + 5 * s);
   } else {
-    ctx.moveTo(x + lean, shoulderY); ctx.lineTo(x + lean + 9, shoulderY + 5);
+    // Hands reach out front toward the carried ball.
+    ctx.moveTo(x + lean, shoulderY); ctx.lineTo(cx(kxM + CARRY_FWD) - 3, cy(CARRY_Z) + 2);
   }
   ctx.stroke();
 
@@ -615,13 +631,13 @@ function drawKeeper(kxM, phase, stepProgress) {
   ctx.fillStyle = '#c8a888';
   ctx.beginPath(); ctx.arc(x + lean, headY, headR, 0, Math.PI * 2); ctx.fill();
   ctx.fillStyle = 'rgba(0,0,0,0.3)';
-  ctx.beginPath(); ctx.ellipse(x, GROUND_Y + 3, 9, 2.5, 0, 0, Math.PI * 2); ctx.fill();
+  ctx.beginPath(); ctx.ellipse(x, GROUND_Y + 3, 9 * s, 2.5 * s, 0, 0, Math.PI * 2); ctx.fill();
 
   // Red card moment.
   if (phase === 'foul') {
     ctx.fillStyle = 'rgba(255, 70, 70, 0.9)';
     ctx.font = 'bold 15px -apple-system, Helvetica, Arial, sans-serif';
-    ctx.fillText('FOUL — outside the box!', x + 16, shoulderY - 14);
+    ctx.fillText('FOUL — outside the box!', x + 16 * s, shoulderY - 14 * s);
   }
 }
 
@@ -674,7 +690,7 @@ function drawScene(frame, hudText, trail) {
 }
 
 function drawIdleScene() {
-  drawScene({ kx: 0, bx: 0.35, bz: 1.05, phase: 'idle', stepProgress: 0 },
+  drawScene({ kx: 0, bx: CARRY_FWD, bz: CARRY_Z, phase: 'idle', stepProgress: 0 },
     'Press "Find the best punt" or take one yourself', null);
 }
 

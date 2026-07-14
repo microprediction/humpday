@@ -47,7 +47,7 @@ QUALITY_FLOOR = 0.75  # contact quality at worst rhythm
 # The overhanging wire (a spider-cam cable crossing the pitch).
 WIRE_X = 30.0  # downfield from the keeper's start
 WIRE_Z = 13.0  # height above the turf
-HIT_RADIUS = 0.25  # wire + ball radius + a little slack
+HIT_RADIUS = 0.7  # matches the drawn wire + ball sizes in the browser demo
 
 
 def decode(u):
