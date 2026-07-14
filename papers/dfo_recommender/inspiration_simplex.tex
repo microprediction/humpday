@@ -6,59 +6,64 @@
 \usepackage{tikz}
 \usepackage{microtype}
 
-\title{Alloy\\[0.4em]
-\large A machine-designed derivative-free optimizer,\\
-and a full account of the search that found it}
+\title{The Inspiration Simplex\\[0.4em]
+\large Using derivative-free optimization in concept space\\
+to create new derivative-free optimizers}
 \author{Peter Cotton}
-\date{\today}
+\date{Working paper, \today}
 
 \begin{document}
 \maketitle
 
 \begin{abstract}
-\noindent Alloy is a derivative-free optimizer for small evaluation budgets.
-It was not written by a person: a language model generated it from a prompt
-requiring an equal blend of Nelder--Mead, Differential Evolution, CMA-ES,
-pattern search and simulated annealing, part by part
-(Figure~\ref{fig:prompt} shows the prompt). On twenty-nine problems never
-used in any selection step, Alloy has the best mean rank at every budget
-from 60 to 480 evaluations and beats each of six competitors, including
-CMA-ES, on 64\% to 77\% of 580 instances (sign-test $p < 10^{-10}$). It
-ships in the humpday package. We describe the search construction that
-produced it and report its failures candidly: the continuous search never
-beat evaluating the obvious point, regenerations at the same recipe vary
-severalfold, and a tuned generic template matched every selection score yet
-collapsed out of sample. What survives is a recipe: one structured
-generation step, validation on untouched problems, then distillation and
-cheap tuning.
+\noindent Place $K$ established algorithms at the vertices of a simplex. A
+point is a vector of mixing weights, and a language model turns the point
+into a working program: the heaviest vertex supplies the architecture and
+the others graft their ideas into it, in the stated proportions
+(Figure~\ref{fig:prompt} shows the literal prompt). Scoring the program on
+a benchmark makes the simplex a continuous space of algorithm designs that
+ordinary derivative-free optimizers can search. The construction's first
+product is Alloy, generated at the equal-weights point: on twenty-nine
+problems never used in any selection step it has the best mean rank at
+every budget from 60 to 480 evaluations and beats six competitors including
+CMA-ES pairwise ($p < 10^{-10}$); it ships in the humpday package. Letting
+weights go negative extends the recipes beyond the simplex; of six
+semantics for a minus sign, tested under a paired-ablation protocol, one
+survives out of sample, with a rule attached: negative weights repair weak
+hosts and spoil strong ones. Failures are reported throughout: the
+continuous search never beat the obvious point, single generations vary
+severalfold, and in-sample scores mislead reliably. Further worked examples
+are planned.
 \end{abstract}
 
-\section{The algorithm}
+\section{Introduction}
 
-Alloy initialises with a Differential Evolution population and builds a
-Nelder--Mead simplex from the best members. At each step it picks one of
-four move generators with equal probability: a simplex
-reflect-expand-contract step, a DE mutation with crossover, a Gaussian
-perturbation with success-adapted diagonal covariance, or a Hooke--Jeeves
-coordinate probe with a shrinking step.
+Producing new methods by combining old ones is established stochastic
+practice. Genetic programming assembles programs by mutation and
+crossover~\cite{koza1992}, and evolutionary methods generate images and
+designs the same way~\cite{sims1991}.
 
-Every candidate passes through a simulated-annealing acceptance gate with
-geometric cooling. Stagnation triggers a reheat that rebuilds the simplex
-around the incumbent.
+Language models now serve as the variation operator in the same loop:
+FunSearch~\cite{funsearch2024}, AlphaEvolve~\cite{alphaevolve2025}, and
+related work~\cite{lehman2022,meyerson2023}. All of these search a discrete
+space of individual artifacts by sampling variations of them.
 
-Each ancestor is present as a mechanism, in the part of the algorithm it is
-known for, at the frequency a recipe prescribed. That is because Alloy was
-generated from a recipe, which the next section explains.
+A separate tradition makes algorithm design continuous by tuning the
+constants of a fixed template: algorithm selection~\cite{rice1976},
+hyper-heuristics~\cite{burke2013}, automated configuration. There the space
+is continuous but the architecture is frozen.
 
-Its niche is small budgets, roughly 60 to 480 evaluations, on noisy or
-irregular objectives. Nothing here claims it beats a tuned CMA-ES at fifty
-thousand evaluations.
+The inspiration simplex is a space that is continuous \emph{and}
+architecturally open: barycentric coordinates over $K$ named methods, with
+a language model mapping each coordinate to a working program. Performance
+on a benchmark then defines an objective that standard derivative-free
+machinery can search.
 
-\section{How it was made}
+\section{The construction}
 
-Place $K$ established methods at the vertices of a simplex. A candidate is
-a point $w = (w_1, \dots, w_K)$ with $w_k \ge 0$ and $\sum_k w_k = 1$: a
-recipe saying how much of each ancestor a new program should contain
+Fix $K$ established methods, the vertices. A candidate is a point
+$w = (w_1, \dots, w_K)$ with $w_k \ge 0$ and $\sum_k w_k = 1$: a recipe
+saying how much of each ancestor a new program should contain
 (Figure~\ref{fig:simplex}).
 
 \begin{figure}[h]
@@ -69,11 +74,9 @@ recipe saying how much of each ancestor a new program should contain
   \coordinate (PS) at (2.5, -0.45);
   \coordinate (SA) at (0, -2.0);
   \coordinate (CMA) at (0.55, 0.4);
-  % front edges of the 4-simplex
   \draw[thick] (NM) -- (DE) -- (SA) -- (PS) -- cycle;
   \draw[thick] (NM) -- (SA);
   \draw[thick] (DE) -- (PS);
-  % edges receding to the rear vertex
   \draw[thick, dashed, gray] (CMA) -- (NM);
   \draw[thick, dashed, gray] (CMA) -- (DE);
   \draw[thick, dashed, gray] (CMA) -- (PS);
@@ -83,7 +86,6 @@ recipe saying how much of each ancestor a new program should contain
   \fill (PS) circle (1.1pt) node[right] {Pattern Search};
   \fill (SA) circle (1.1pt) node[below] {Simulated Annealing};
   \fill[gray] (CMA) circle (1.0pt) node[above right, gray] {CMA-ES};
-  % the equal-weights centroid of all five vertices
   \coordinate (W) at (0.11, -0.1);
   \fill (W) circle (1.3pt);
   \node[below left] at (W) {\scriptsize centroid $\rightarrow$ Alloy};
@@ -128,9 +130,8 @@ prominently. Fine changes, 20\% versus 15\% of a graft, move only the
 percentages; at that scale the map is parametric.
 
 Figure~\ref{fig:prompt} shows the actual prompt at the equal-weights
-center: the point that produced Alloy. The prompt is a deterministic
-function of the coordinate; the model decides how to implement each
-mechanism and how to wire the parts together.
+center. The prompt is a deterministic function of the coordinate; the model
+decides how to implement each mechanism and how to wire the parts together.
 
 \begin{figure}[p]
 \scriptsize
@@ -184,30 +185,28 @@ Hard rules:
 
 Return ONLY a ```python code block containing the optimize function.
 \end{verbatim}
-\caption{The prompt that produced Alloy, at the equal-weights point
+\caption{The prompt at the equal-weights point
 $w = (0.2, 0.2, 0.2, 0.2, 0.2)$, lightly line-wrapped for the page. Moving
 $w$ changes the host, the graft proportions, and the per-slot shares, and
 nothing else.}
 \label{fig:prompt}
 \end{figure}
 
-Scoring the generated program on a benchmark assigns an objective value to
-$w$, and the simplex maps to the unit cube by a standard bijection, so any
-derivative-free optimizer can search it. Whether that search is worth
-running is answered, mostly in the negative, in
-Section~\ref{sec:negative}.
+The generated program is compiled, validated, and scored on a benchmark,
+and that score is the objective value at $w$. Generation is stochastic, so
+the objective is noisy, as simulation-based objectives usually are.
 
-This idea sits between two traditions. Evolutionary and language-model
-program search (genetic programming~\cite{koza1992}, evolutionary
-art~\cite{sims1991}, FunSearch~\cite{funsearch2024},
-AlphaEvolve~\cite{alphaevolve2025}, LLM variation
-operators~\cite{lehman2022,meyerson2023}) explores a discrete artifact
-space by sampling variations; algorithm configuration (algorithm
-selection~\cite{rice1976}, hyper-heuristics~\cite{burke2013}) tunes the
-constants of one frozen architecture. The simplex is continuous like the
-second and architecturally open like the first.
+Because the simplex maps to the unit cube by a standard bijection, any
+off-the-shelf derivative-free optimizer can search it; the outer loop sees
+only a box-constrained noisy objective.
 
-\section{Evidence}
+The geometry protects the search. Every point is a committee of mechanisms
+that individually work, so the worst case of a step is a mediocre blend of
+good algorithms, not an arbitrary program; and nearby points receive nearby
+specifications, which gives a derivative-free optimizer something to
+exploit.
+
+\section{First example: Alloy}
 
 Candidates are scored on disguised versions of real-world objectives
 (enzyme kinetics, wind-farm layout, battery dispatch, and others). A seeded
@@ -222,7 +221,7 @@ evaluations per run.
 \subsection{Selection}
 
 Table~\ref{tab:warm} scores the five pure recipes and the equal-weights
-centroid. Alloy, the centroid's program, wins at 0.087; the best pure
+centroid. The centroid's program, named Alloy, wins at 0.087; the best pure
 vertex, Nelder--Mead, scores 0.160.
 
 \begin{table}[h]
@@ -297,9 +296,14 @@ Alloy is the most consistent.}
 \label{tab:untouched}
 \end{table}
 
-The recipes genuinely differ out of sample. The nearly pure pattern-search
-blend fades at 480 evaluations while Alloy stays first, so the coordinate
-carries information, not just the generator.
+Alloy initialises with a DE population and builds a Nelder--Mead simplex
+from the best members. At each step it picks one of four move generators
+with equal probability (simplex reflect-expand-contract, DE mutation with
+crossover, a Gaussian perturbation with success-adapted covariance, a
+coordinate probe with shrinking step); every candidate passes a
+simulated-annealing acceptance gate, and stagnation triggers a reheat
+around the incumbent. It ships in the humpday package, in Python and
+JavaScript.
 
 A distilled twin performs identically. Rewriting Alloy's architecture as
 one ordinary program with the mixing proportions as parameters, then tuning
@@ -310,18 +314,6 @@ language model anywhere at run time.
 \section{What did not work}
 \label{sec:negative}
 
-These negative results are half the point of this note, and each changed
-what we believe.
-
-The continuous search never earned its keep. The winning recipe was the
-centroid, the one point anyone would evaluate first; twenty-five random
-interior points, a warm-neighbourhood sweep, and a guided derivative-free
-outer loop (best-of-twenty 0.270 versus 0.308 for random sampling) all
-found nothing better. A second round with unequal vertices confirmed the
-diagnosis: there the equal blend was mid-pack, and the best point was again
-a vertex, so the centroid's win reflects a symmetric vertex set, not a
-generally rich interior.
-
 Generation is a lottery. Five draws at the centroid recipe scored 0.087,
 0.249, 0.301, 0.320 and 1.000, and roughly one generation in seven fails to
 compile. Alloy is the validated draw, not the expected one; the procedure
@@ -331,67 +323,151 @@ The map has blind spots. The pure CMA-ES recipe never produced a working
 program: correct covariance adaptation is too much to write in budgeted
 pure Python, and its generations were degenerate.
 
+The continuous search never earned its keep on this vertex set. The winner
+was the centroid, the one point anyone would evaluate first; random sweeps
+and a guided derivative-free outer loop (best-of-twenty 0.270 against
+0.308 for random sampling) found nothing better. A second round with
+unequal vertices confirmed the diagnosis: there the equal blend was
+mid-pack, so the centroid's win reflects a symmetric vertex set, not a
+generally rich interior.
+
 In-sample scores mislead, reliably. A 14-gene parametric template tuned by
-evolutionary search posted the best selection score of anything we ran
-(0.244) and then collapsed to mean rank 7 of 13 on the held-out problems.
-Free-form one-shots sit at the bottom of every held-out table despite
-respectable selection scores. Only races on untouched problems told the
-truth.
+evolutionary search posted the best selection score of anything run (0.244)
+and then collapsed to mean rank 7 of 13 on the held-out problems. Free-form
+one-shots sit at the bottom of every held-out table despite respectable
+selection scores. Only races on untouched problems told the truth.
 
 Cheap parametric search matches expensive semantic search per evaluation.
 On identical coordinates, a hand-parameterized version of Alloy's
 architecture scored 0.272 in-sample where fresh language-model generations
-scored 0.308; per point, the model does not pay for itself. Its value was
-the architecture, found once.
+scored 0.308. The model's value was the architecture, found once; after
+distillation it is no longer needed.
 
-Thin automatic tuning earns nothing. With generated programs exposing
-eight or nine constants, fourteen inner evaluations never beat the model's
-own defaults; descents began to work only with fewer constants and more
-evaluations.
+\section{Seen from global optimization}
 
-\section{What survives}
-
-Seen from global optimization, the two-level structure is classical. The
-semantic move is the basin hop and the parametric tuning is the local
+The two-level structure is classical, split across two spaces. The semantic
+move is the basin hop and the parametric tuning is the local
 descent~\cite{wales1997}; done inside the loop it is memetic
-search~\cite{moscato1989}; the simplex is a continuous relaxation of
+search~\cite{moscato1989}; and the simplex is a continuous relaxation of
 architecture choice, as in differentiable architecture
-search~\cite{liu2019darts}; and the sample-cluster-descend workflow is
-SHGO's~\cite{endres2018}, with the basins living in the space of generated
-programs rather than in $w$.
+search~\cite{liu2019darts}, with a language model realizing the mixture
+instead of a weighted sum.
 
-The theory of those methods says to compare basin floors, not landing
-points, and it is right here too: single-draw comparisons understate the
-semantic layer, and the descents that worked were the ones given few
-dimensions and enough evaluations.
+The closest workflow is SHGO~\cite{endres2018}: sample the domain, identify
+the distinct basins, run one local minimization per basin. The basins live
+in the space of generated programs, not in $w$, since one coordinate yields
+different architectures across draws.
 
-The recipe that survives every experiment in this note: generate a small
-number of structured blends, validate the winner on problems the search
-never touched, distill it to a parametric family, and tune cheaply from
-then on. The language model is used a handful of times, early, and never
-again.
+The recipe that survives: generate a small number of structured blends,
+validate the winner on problems the search never touched, distill it to a
+parametric family, and tune cheaply from then on. The language model is
+used a handful of times, early, and never again.
 
-Anchoring also survives. Every simplex point is a committee of mechanisms
-that individually work, so even mediocre blends beat free-form generation
-out of sample; and in an evolutionary loop, coordinate anchoring kept the
-population about fifty percent more behaviorally diverse than free-form
-iteration.
+\section{Outside the simplex: negative weights}
+\label{sec:outside}
 
-Nothing in the construction is specific to optimizers: it needs named
-concepts the model knows, a decomposition of the artifact into parts, and a
-measurable score. Whether other domains reproduce the pattern found here,
-one excellent artifact and a mostly flat interior, is the open question.
+Drop the non-negativity constraint and keep the sum: recipes now range over
+an affine slice of which the simplex is the all-positive face. A negative
+weight needs a semantics, and six were tested. Avoidance: shadow the
+negated algorithm's proposals at zero cost and steer away. Density: thin
+the host's proposals toward the signed mixture of proposal densities.
+Caricature: exaggerate the host along the axes where it most differs from
+the negated reference. Pitfalls: design the negated algorithm's failure
+modes out of the host. Baseline: treat its shadow as the bar to beat.
+Residual: graft in, amplified, only what the negated algorithm has that the
+host lacks.
 
-The coordinates need not stay non-negative. A companion
-note~\cite{outside2026} lets weights go negative, read as anti-inspirations
-the program must steer away from; its best recipe won selection outright,
-and an ablation then traced the entire win back inside the simplex, a
-cautionary result recorded there in full.
+Attribution is by paired ablation. Every generated program gates its
+negative-weight machinery through one module constant, so its twin, the
+same program with the constant zeroed, recovers the plain host and is
+scored on identical instances. Single-draw leaderboards reward whatever a
+label elicits from the generator; only the paired delta counts.
+
+The protocol exists because avoidance sets the trap. Its best recipe won a
+selection round outright (0.179 against 0.326 for the best unsigned
+control), and disabling the repulsion in that same program improved it to
+0.130: the win belonged to the unusually good host the prompt elicited, and
+the signed term was a handicap.
+
+Under the protocol, caricature is the only semantics of the six that helps
+on average at selection (Table~\ref{tab:sem}), and the mathematically
+prettiest, rejection-thinned proposal densities, goes zero for five against
+its twins. Sweeping all twenty ordered pairs, eight of nineteen benefit
+from caricature, the map is uncorrelated with the ancestors' rank
+correlations ($+0.05$), and the magnitude dial optimises at restraint: mild
+exaggeration helps, twofold and beyond tips into parody.
+
+\begin{table}[h]
+\centering
+\begin{tabular}{lcc}
+\toprule
+semantics & mean paired delta & arms improving \\
+\midrule
+caricature & $-0.032$ & 4/8 \\
+repulsion  & $-0.009$ & 3/7 \\
+residual   & $+0.014$ & 2/8 \\
+pitfalls   & $+0.018$ & 2/7 \\
+density    & $+0.040$ & 0/5 \\
+baseline   & $+0.086$ & 0/4 \\
+\bottomrule
+\end{tabular}
+\caption{Six semantics for a negative weight under the paired protocol,
+selection suite spanning 2 to 100 dimensions; negative delta means the
+signed machinery helps.}
+\label{tab:sem}
+\end{table}
+
+Searching the extended slice (weights in roughly $[-1,2]$, each negative
+weight a caricature reference with its magnitude as exaggeration length),
+the guided outer loop reached 0.078 with two thirds of its evaluations
+improving on their twins, against 0.047, 0.198 and 0.374 for three random
+shards: one lucky draw aside, guidance pays. That lucky 0.047, paired delta
+$-0.134$ at selection, sets the second trap: on the held-out problems its
+twin beats it on 65\% of paired instances ($p = 9\times10^{-12}$). The
+paired ablation solves attribution, not transfer; a delta earned on the
+selection distribution is a claim about that distribution only, so the
+protocol acquires a second stage, and only deltas that survive out of
+sample count.
+
+Two do. The CMA-ES-away-from-DE artifact beats its twin on 65\% of held-out
+paired instances ($p = 2\times10^{-12}$), and annealing-away-from-pattern-%
+search on 59\% ($p = 10^{-5}$). The pattern across the raced winners is
+consistent: where the twin is already excellent the signed term vanishes or
+reverses; where the twin is weak the signed term repairs it. Negative
+weights, under the one semantics that works, are a treatment for weak
+hosts, not an enhancement for strong ones, and no signed artifact yet leads
+the held-out field absolutely.
+
+A byproduct, twice replicated: the twins of the strongest signed recipes,
+budget-aware pattern-search hosts with Nelder--Mead grafts, rank first of
+fourteen at the largest budget on the held-out problems, ahead of every
+prior artifact. Exploring outside the simplex keeps producing better
+inhabitants of the inside.
+
+\section{Generalization and further examples}
+
+Nothing here is specific to optimizers. The construction needs named
+concepts the model knows, a decomposition of the target artifact into
+parts, and a measurable score. Sorting algorithms, data structures, trading
+rules, prompt styles, and agent architectures all qualify, and further
+worked examples are planned for later versions of this paper.
+
+The construction also refines. Like SHGO one can subdivide, searching the
+sub-simplex spanned by the best recipes at finer resolution; unlike SHGO
+one can promote discovered programs to vertices, so each generation's
+validated winners become the next generation's ancestors while the geometry
+stays $K$-dimensional.
+
+The boundaries of the claims: budgets are small, the regime where blending
+plausibly helps most, and one generator model was used. The suite, while
+disguised, derives from public examples, so relatives of these objectives
+are likely in the generator's training data even though the optima's
+locations are not.
 
 \vspace{1em}
 \noindent\emph{Availability.} Alloy ships in the humpday
-package~\cite{humpday}, in Python and JavaScript. The search harness, the
-run logs behind every number in this note, and every generated program are
+package~\cite{humpday}, in Python and JavaScript. The search harnesses, the
+run logs behind every number in this paper, and every generated program are
 in the same repository.
 
 \begin{thebibliography}{9}
@@ -399,12 +475,6 @@ in the same repository.
 \bibitem{humpday} P.~Cotton.
 HumpDay: recommendations and comparisons of derivative-free optimizers.
 \texttt{https://humpday.microprediction.org}, 2026.
-
-\bibitem{outside2026} P.~Cotton.
-Thinking outside the simplex: signed compositions of optimization
-algorithms.
-Working paper, \texttt{https://humpday.microprediction.org/papers.html},
-2026.
 
 \bibitem{koza1992} J.~R. Koza.
 \emph{Genetic Programming: On the Programming of Computers by Means of
@@ -435,6 +505,11 @@ arXiv:2302.12170, 2023.
 The algorithm selection problem.
 \emph{Advances in Computers}, 15:65--118, 1976.
 
+\bibitem{burke2013} E.~K. Burke, M.~Gendreau, M.~Hyde, G.~Kendall, G.~Ochoa,
+E.~\"Ozcan, and R.~Qu.
+Hyper-heuristics: a survey of the state of the art.
+\emph{Journal of the Operational Research Society}, 64(12):1695--1724, 2013.
+
 \bibitem{neldermead1965} J.~A. Nelder and R.~Mead.
 A simplex method for function minimization.
 \emph{The Computer Journal}, 7(4):308--313, 1965.
@@ -455,11 +530,6 @@ Direct search solution of numerical and statistical problems.
 \bibitem{kirkpatrick1983} S.~Kirkpatrick, C.~D. Gelatt, and M.~P. Vecchi.
 Optimization by simulated annealing.
 \emph{Science}, 220(4598):671--680, 1983.
-
-\bibitem{burke2013} E.~K. Burke, M.~Gendreau, M.~Hyde, G.~Kendall, G.~Ochoa,
-E.~\"Ozcan, and R.~Qu.
-Hyper-heuristics: a survey of the state of the art.
-\emph{Journal of the Operational Research Society}, 64(12):1695--1724, 2013.
 
 \bibitem{wales1997} D.~J. Wales and J.~P.~K. Doye.
 Global optimization by basin-hopping and the lowest energy structures of
