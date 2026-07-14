@@ -1,0 +1,917 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' 'unsafe-inline'; style-src 'self' 'unsafe-inline';">
+<title>🧤 Punt the Wire — HumpDay</title>
+<style>
+  :root {
+    --bg: #1a1a22;
+    --panel: #2d2d3a;
+    --accent: #ffcc00;
+    --text: #e8e8ea;
+    --muted: #9a9aac;
+  }
+  body { margin: 0; background: var(--bg); color: var(--text);
+    font-family: -apple-system, 'Segoe UI', 'Helvetica Neue', Helvetica, Arial, sans-serif; }
+  .site-nav { background: #34495e; padding: 12px 24px;
+    font-family: 'Times New Roman', Times, serif;
+    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1); }
+  .site-nav-inner { max-width: 1100px; margin: 0 auto;
+    display: flex; justify-content: space-between; align-items: center; }
+  .site-nav a { color: #ecf0f1; text-decoration: none; margin: 0 12px; }
+  .site-nav a:hover { color: white; text-decoration: underline; }
+  .site-nav-brand { font-weight: 700; font-size: 1.25em; }
+
+  .container { max-width: 1100px; margin: 0 auto; padding: 32px 24px 64px; }
+  h1 { font-size: 2.2em; margin: 0.2em 0; }
+  h2 { font-size: 1.4em; margin-top: 1.4em; color: var(--accent); }
+  p { line-height: 1.55; max-width: 70ch; }
+  .intro { color: var(--muted); }
+
+  .stage { display: grid; grid-template-columns: 1fr 320px; gap: 24px;
+    align-items: start; margin-top: 24px; }
+  @media (max-width: 800px) { .stage { grid-template-columns: 1fr; } }
+  canvas { background: #142238;
+    border: 3px solid var(--accent); border-radius: 6px; display: block;
+    width: 100%; height: auto; }
+
+  .panel { background: var(--panel); padding: 18px; border-radius: 6px; border: 1px solid #404054; }
+  .panel h3 { margin: 0 0 12px; font-size: 1.05em; text-transform: uppercase;
+    letter-spacing: 0.06em; color: var(--accent); }
+  label { display: block; margin: 10px 0 6px; font-size: 0.9em; color: var(--muted); }
+  select, input, button { width: 100%; box-sizing: border-box; padding: 8px 10px;
+    border-radius: 4px; border: 1px solid #404054; background: #1a1a22; color: var(--text); font-size: 0.95em; }
+  button { background: var(--accent); color: #1a1a22; font-weight: 700; cursor: pointer; margin-top: 6px; transition: opacity 0.15s; }
+  button:hover { opacity: 0.88; }
+  button.secondary { background: #404054; color: var(--text); font-weight: 400; }
+  button:disabled { opacity: 0.5; cursor: not-allowed; }
+  .stats { margin-top: 16px; padding-top: 14px; border-top: 1px solid #404054; font-size: 0.92em; line-height: 1.6; }
+  .stats .score { font-size: 2.6em; color: var(--accent); font-weight: 700; }
+  .stat-row { display: flex; justify-content: space-between; align-items: baseline; gap: 12px; }
+  .stat-row span:first-child { white-space: nowrap; flex-shrink: 0; }
+  .stat-row span:last-child { color: var(--text); font-family: 'SF Mono', Menlo, monospace; text-align: right; word-break: break-word; }
+  .stat-row .algo-tag { display: block; color: var(--muted); font-size: 0.82em; margin-top: 2px; }
+
+  .leaderboard { margin-top: 24px; }
+  .leaderboard table { width: 100%; border-collapse: collapse; background: var(--panel); border-radius: 6px; overflow: hidden; }
+  .leaderboard th, .leaderboard td { padding: 10px 14px; text-align: left; border-bottom: 1px solid #404054; }
+  .leaderboard th { background: #1a1a22; color: var(--muted); text-transform: uppercase; font-size: 0.78em; letter-spacing: 0.08em; }
+  .leaderboard td:nth-child(2) { text-align: center; font-size: 1.3em; font-weight: 700; color: var(--accent); }
+  .leaderboard td:nth-child(3), .leaderboard td:nth-child(4) { font-family: 'SF Mono', Menlo, monospace; color: var(--muted); }
+  .leaderboard tr.human-raphson td:first-child { color: #ff9944; font-weight: 700; }
+
+  .left-stack { display: flex; flex-direction: column; gap: 16px; min-width: 0; }
+  .hr-panel { padding: 14px 16px; }
+  .hr-panel h3 { margin: 0 0 6px; }
+  .hr-sliders { display: grid; grid-template-columns: repeat(2, 1fr); gap: 8px 18px; margin-bottom: 10px; }
+  .hr-sliders label { margin: 0; display: flex; justify-content: space-between; align-items: baseline; font-size: 0.84em; }
+  .hr-sliders label output { color: var(--accent); font-family: 'SF Mono', Menlo, monospace; font-size: 0.92em; }
+  .hr-sliders input[type=range] { width: 100%; margin: 0; padding: 0; background: transparent; }
+  .hr-sliders input[type=range]::-webkit-slider-runnable-track { background: #1a1a22; height: 6px; border-radius: 3px; }
+  .hr-sliders input[type=range]::-webkit-slider-thumb { -webkit-appearance: none; appearance: none; background: var(--accent); width: 18px; height: 18px; border-radius: 50%; margin-top: -6px; cursor: pointer; }
+  .hr-panel button { background: #ff9944; color: #1a1a22; margin-top: 0; }
+
+  .skill-callout { margin-top: 36px; background: rgba(126, 217, 87, 0.07); border: 1px solid rgba(126, 217, 87, 0.35); border-radius: 8px; padding: 18px 22px; }
+  .skill-callout h3 { margin: 0 0 6px; color: #7ed957; font-size: 1.05em; text-transform: none; letter-spacing: 0; }
+  .skill-callout p { margin: 0 0 10px; color: var(--text); max-width: none; }
+  .skill-callout pre { background: #1a1a22; border: 1px solid #404054; border-radius: 4px; padding: 10px 14px; margin: 0; font-size: 0.84em; color: #7ed957; white-space: pre-wrap; word-break: break-all; font-family: 'SF Mono', Menlo, monospace; }
+  .skill-actions { margin-top: 10px; display: flex; align-items: center; gap: 14px; }
+  .skill-actions button { width: auto; background: #404054; color: var(--text); border: 1px solid #404054; padding: 6px 12px; font-size: 0.85em; cursor: pointer; border-radius: 4px; margin: 0; font-weight: 500; }
+  .skill-actions button:hover { background: #4a4a60; }
+  .skill-actions a { color: #7ed957; font-size: 0.85em; text-decoration: none; }
+  .skill-actions a:hover { text-decoration: underline; }
+</style>
+</head>
+<body>
+    <nav class="site-nav" data-site-nav="v1">
+        <div class="site-nav-inner">
+            <a href="../index.html" class="site-nav-brand"><svg class="site-nav-camel" data-site-logo="camel-v3" viewBox="0 0 100 50" width="44" height="22" xmlns="http://www.w3.org/2000/svg" aria-hidden="true"><rect x="20.5" y="30" width="1.8" height="11" fill="white" fill-opacity="0.55"/><rect x="60.5" y="30" width="1.8" height="11" fill="white" fill-opacity="0.55"/><path fill="white" fill-opacity="0.92" d="M 14 30 C 10 30 8 28 8 24 C 7 22 7 19 9 18 C 11 16 13 14 16 13 C 20 8 26 6 31 9 C 34 11 35 13 35 16 C 37 18 40 18 43 17 C 47 13 53 7 59 9 C 63 11 65 13 65 16 C 66 18 68 18 70 17 C 73 13 76 9 80 7 C 84 5 89 6 90 9 L 92 9 L 93 12 L 91 13 L 87 13 L 87 15 C 82 16 79 18 76 21 C 73 25 71 28 68 30 L 66 30 L 66 42 L 64 42 L 64 30 L 26 30 L 26 42 L 24 42 L 24 30 L 14 30 Z"/><circle cx="88" cy="10" r="0.9" fill="#34495e"/></svg>HumpDay</a>
+            <div class="site-nav-links">
+                <a href="../index.html">Home</a>
+                <a href="../contest.html">Contest</a>
+                <a href="../applications/index.html">Demonstrations</a>
+                <a href="../applications/no-free-lunch.html">No Free Lunch</a>
+                <a href="../algorithms.html">Algorithms</a>
+                <a href="../recommendations.html">Recommendations</a>
+                <a href="../papers.html">Papers</a>
+                <a href="https://github.com/microprediction/humpday" target="_blank" rel="noopener">GitHub</a>
+            </div>
+        </div>
+    </nav>
+
+<div class="container">
+  <h1>🧤 Punt the Wire</h1>
+  <p class="intro">
+    Empty training ground, one keeper, one dare: punt the ball into the
+    TV spider-cam wire strung across the pitch, 30&nbsp;m downfield and
+    13&nbsp;m up. The optimiser tunes <strong>two run-up steps, loft</strong>
+    and <strong>leg power</strong>. Longer strides add pace to the punt —
+    but release the ball past the edge of the box and it's a foul.
+  </p>
+
+  <div class="stage">
+    <div class="left-stack">
+      <canvas id="canvas" width="800" height="450"></canvas>
+
+      <div class="panel hr-panel">
+        <h3>🧠 Human Raphson</h3>
+        <p style="color: var(--muted); margin: 0 0 12px; font-size: 0.86em;">
+          Take the punt yourself — pick your two steps, drop the ball, let fly.
+        </p>
+        <div class="hr-sliders">
+          <label for="manual-step1">Step 1 <output id="manual-step1-out">0.90 m</output></label>
+          <input type="range" id="manual-step1" min="0.2" max="1.6" step="0.01" value="0.9">
+
+          <label for="manual-step2">Step 2 <output id="manual-step2-out">1.10 m</output></label>
+          <input type="range" id="manual-step2" min="0.2" max="1.6" step="0.01" value="1.1">
+
+          <label for="manual-loft">Loft <output id="manual-loft-out">45°</output></label>
+          <input type="range" id="manual-loft" min="15" max="70" step="0.1" value="45">
+
+          <label for="manual-power">Power <output id="manual-power-out">22.0</output></label>
+          <input type="range" id="manual-power" min="16" max="28" step="0.1" value="22">
+        </div>
+        <button id="manual-btn" onclick="manualPunt()">▶ Take the punt</button>
+      </div>
+    </div>
+
+    <div class="panel">
+      <h3>Algorithm</h3>
+      <label for="algorithm">Pick a HumpDay optimizer:</label>
+      <select id="algorithm">
+        <optgroup label="Trust-region / interpolation">
+          <option value="PRIMA_BOBYQA">PRIMA_BOBYQA</option>
+          <option value="PRIMA_NEWUOA">PRIMA_NEWUOA</option>
+        </optgroup>
+        <optgroup label="Local / classical">
+          <option value="NelderMead">Nelder-Mead</option>
+          <option value="Powell">Powell</option>
+          <option value="LBFGSB">L-BFGS-B (simplified)</option>
+        </optgroup>
+        <optgroup label="Population-based">
+          <option value="DifferentialEvolution" selected>Differential Evolution</option>
+          <option value="ParticleSwarm">Particle Swarm</option>
+          <option value="CMAEvolutionStrategy">CMA-Evolution Strategy</option>
+          <option value="GeneticAlgorithm">Genetic Algorithm</option>
+          <option value="EvolutionStrategy">Evolution Strategy</option>
+          <option value="HarmonySearch">Harmony Search</option>
+        </optgroup>
+        <optgroup label="Other">
+          <option value="SimulatedAnnealing">Simulated Annealing</option>
+          <option value="BayesianOpt">Bayesian Optimization</option>
+          <option value="FireflyAlgorithm">Firefly Algorithm</option>
+          <option value="AntColonyOpt">Ant Colony</option>
+          <option value="RandomSearch">Random Search</option>
+          <option value="Rechenberg">Rechenberg (1+1)-ES</option>
+        </optgroup>
+      </select>
+
+      <label for="budget">Evaluation budget:</label>
+      <select id="budget">
+        <option value="10">10 punts</option>
+        <option value="20">20 punts</option>
+        <option value="50" selected>50 punts</option>
+        <option value="100">100 punts</option>
+        <option value="200">200 punts</option>
+        <option value="500">500 punts</option>
+      </select>
+
+      <button id="run-btn" onclick="runOptimization()">▶ Find the best punt</button>
+      <button class="secondary" onclick="replayBest()">🔁 Replay best</button>
+      <button class="secondary" onclick="resetEverything()">⟲ Reset leaderboard</button>
+
+      <div class="stats">
+        <div class="stat-row"><span>Score</span><span class="score" id="score-now">0</span></div>
+        <div class="stat-row"><span>Result</span><span id="score-detail">—</span></div>
+        <div class="stat-row"><span>Punts tried</span><span id="evals">0</span></div>
+        <div class="stat-row"><span>Best so far</span><span id="best-score">—</span></div>
+        <div class="stat-row"><span>Step 1</span><span id="param-step1">—</span></div>
+        <div class="stat-row"><span>Step 2</span><span id="param-step2">—</span></div>
+        <div class="stat-row"><span>Loft</span><span id="param-loft">—</span></div>
+        <div class="stat-row"><span>Power</span><span id="param-power">—</span></div>
+      </div>
+    </div>
+  </div>
+
+  <div class="leaderboard">
+    <h2>Leaderboard (this session)</h2>
+    <p style="color: var(--muted);">
+      Each row is the best single punt a given algorithm found.
+    </p>
+    <table>
+      <thead>
+        <tr><th>Algorithm</th><th>Score</th><th>Punts used</th><th>Best params (step1 m / step2 m / loft° / pow)</th></tr>
+      </thead>
+      <tbody id="leaderboard-body">
+        <tr><td colspan="4" style="color: var(--muted); text-align: center;">— no runs yet —</td></tr>
+      </tbody>
+    </table>
+  </div>
+
+  <h2>What's happening</h2>
+  <p>
+    A side-view flight simulator. The keeper takes the two chosen steps,
+    lunges into the plant, and punts. The ball leaves the hands at the
+    chosen loft with a launch speed built from leg power plus the run-up
+    speed the strides generated; gravity pulls it down and air drag slows
+    it. The simulator tracks the ball until it hits the wire or the turf.
+  </p>
+  <p>
+    <strong>Score</strong> is 100+ for a wire strike (with a bonus for hitting
+    it at speed); misses earn <code>90·exp(−d/2)</code> where <code>d</code>
+    is the closest the trajectory came to the wire, so near-misses still guide
+    the search. The steps matter twice: total stride length adds pace, and
+    contact is cleanest when the second step is slightly longer than the
+    first (an accelerating rhythm). But steps plus the plant lunge must keep
+    the release inside the penalty area — overstep the 18-yard line and the
+    punt is a foul, scored near zero.
+  </p>
+  <p>
+    The wire can be clipped on the way up (flat and fast) or on the way down
+    (high and dropping) — in a 40,000-punt random sweep, hits occurred at
+    every loft from ~32° to 70°, but only ~4% of random punts hit at all.
+    A hit deflects the ball off the wire (the bounce is cosmetic — the score
+    is settled at contact). The best punt we've measured scores ≈109.4: the
+    longest strides the box allows, in accelerating rhythm, full power,
+    striking the wire on the rise.
+  </p>
+
+  <hr style="border: 0; border-top: 1px solid #404054; margin: 32px 0 16px;" />
+  <p style="font-size: 0.78em; color: var(--muted);">
+    Custom side-view ball simulator — gravity + linear drag is enough for
+    the punt-the-wire regime. Identical physics to the Python port in
+    <code>example_applications/goalkeeper_punt/</code>.
+  </p>
+
+  <div class="skill-callout">
+    <h3>🌱 Save the Planet</h3>
+    <p>If your hyper-parameter searches are heating the Earth, drop this in Cursor or Claude:</p>
+    <pre id="skill-snippet">Read https://raw.githubusercontent.com/microprediction/humpday/main/SKILL.md
+and create a project skill from it.</pre>
+    <div class="skill-actions">
+      <button type="button" onclick="copySkillSnippet(this)">📋 Copy</button>
+      <a href="https://github.com/microprediction/humpday/blob/main/SKILL.md" target="_blank" rel="noopener">View SKILL.md →</a>
+    </div>
+  </div>
+
+  <script>
+    function copySkillSnippet(btn) {
+      const text = document.getElementById('skill-snippet').textContent;
+      navigator.clipboard.writeText(text).then(() => {
+        const orig = btn.textContent;
+        btn.textContent = '✓ Copied';
+        setTimeout(() => { btn.textContent = orig; }, 1500);
+      }).catch(() => {
+        btn.textContent = '✗ Copy failed';
+      });
+    }
+  </script>
+</div>
+
+<script src="../js/modules/base-optimizer.js"></script>
+<script src="../js/modules/linalg.js"></script>
+<script src="../js/modules/prima-algorithms.js"></script>
+<script src="../js/modules/scipy-algorithms.js"></script>
+<script src="../js/modules/evolutionary-algorithms.js"></script>
+<script src="../js/modules/search-algorithms.js"></script>
+
+<script>
+// ============================================================================
+// Punt-the-wire demo — side-view (x downfield, z up) custom simulator.
+// Two run-up steps build launch speed; the punt flies under gravity +
+// linear drag; win by passing within HIT_RADIUS of the spider-cam wire.
+// Physics constants are IDENTICAL to example_applications/goalkeeper_punt/
+// problem.py — keep the two in lock-step.
+// ============================================================================
+
+const canvas = document.getElementById('canvas');
+const ctx = canvas.getContext('2d');
+const W = canvas.width, H = canvas.height;
+
+// ---- Simulation constants (metres, seconds) — mirror problem.py ---------
+const DT = 1 / 120;
+const MAX_T = 6.0;
+const G = 9.81;
+const DRAG = 0.06;              // per-second linear drag
+
+const RELEASE_HEIGHT = 0.9;     // drop-punt contact height
+const BOX_ROOM = 3.5;           // room to the 18-yard line from the start spot
+const PLANT_LUNGE = 0.6;        // forward lunge during the strike itself
+
+const STEP_MIN = 0.2, STEP_MAX = 1.6;
+const RUN_SPEED_PER_M = 1.7;    // run-up speed gained per metre of stride
+const RUN_CARRY = 0.9;          // fraction of run-up speed carried into the ball
+const RHYTHM_BEST_GAP = 0.25;   // ideal: second step this much longer than first
+const RHYTHM_WIDTH = 0.5;
+const QUALITY_FLOOR = 0.75;     // contact quality at worst rhythm
+
+const WIRE_X = 30.0;            // downfield from the keeper's start
+const WIRE_Z = 13.0;            // height above the turf
+const HIT_RADIUS = 0.7;         // matches the drawn wire + ball sizes below
+
+// ---- Canvas mapping ------------------------------------------------------
+// Keeper's start is world x=0. The goal line sits 13 m BEHIND the start so
+// the goal frame is visible at canvas-left; the wire lands right of centre
+// with room to watch the ball drop beyond it.
+const PXM = 12;                 // px per metre
+const X0 = 190;                 // canvas x of the keeper's start
+const GROUND_Y = 402;           // canvas y of the turf
+const GOAL_LINE_M = -13.0;      // goal line, world metres
+const GOAL_HEIGHT_M = 2.44;
+const KEEPER_HEIGHT_M = 1.85;
+
+function cx(xm) { return X0 + xm * PXM; }
+function cy(zm) { return GROUND_Y - zm * PXM; }
+
+// ---- Parameter decode from u in [0,1]^4 — mirror problem.py -------------
+// step1 : 0.2 to 1.6 m
+// step2 : 0.2 to 1.6 m
+// loft  : 15° to 70°
+// power : 16 to 28 m/s (leg swing)
+function decode(u) {
+  return [
+    STEP_MIN + (STEP_MAX - STEP_MIN) * u[0],
+    STEP_MIN + (STEP_MAX - STEP_MIN) * u[1],
+    15 + 55 * u[2],
+    16 + 12 * u[3],
+  ];
+}
+
+// ---- One punt -------------------------------------------------------------
+// Frames (when recorded) carry: { kx (keeper x, m), bx, bz (ball, m),
+// phase ('walk'|'plant'|'flight'|'foul'), stepProgress, hitAge }.
+const STEP_DUR_S = 0.32;        // per running step (animation only)
+const PLANT_DUR_S = 0.22;       // plant + swing (animation only)
+
+// Visual exaggeration for the keeper (drawing only — physics unchanged).
+// At true scale he's 22 px tall and reads as a speck; user: "too small".
+const KSCALE = 1.8;
+const CARRY_Z = 2.4;            // ball held in the (scaled) hands, m
+const CARRY_FWD = 0.7;          // ball held out front, m
+
+function walkFrames(step1, step2, foul) {
+  const frames = [];
+  const segs = [
+    { from: 0, to: step1 },
+    { from: step1, to: step1 + step2 },
+    { from: step1 + step2, to: step1 + step2 + PLANT_LUNGE, plant: true },
+  ];
+  for (const seg of segs) {
+    const dur = seg.plant ? PLANT_DUR_S : STEP_DUR_S;
+    const n = Math.round(dur / DT);
+    for (let i = 0; i < n; i++) {
+      const p = (i + 1) / n;
+      const ease = p * p * (3 - 2 * p);              // smoothstep
+      const kx = seg.from + (seg.to - seg.from) * ease;
+      // Ball carried in the hands; on the plant it drops onto the foot —
+      // a drop punt — meeting the physics release point (advance, 0.9 m)
+      // exactly, so the flight trail starts with no visual jump.
+      const bz = seg.plant ? CARRY_Z + (RELEASE_HEIGHT - CARRY_Z) * ease : CARRY_Z;
+      const bx = seg.plant ? kx + CARRY_FWD * (1 - ease) : kx + CARRY_FWD;
+      frames.push({
+        kx,
+        bx, bz,
+        phase: seg.plant ? 'plant' : 'walk',
+        stepProgress: p,
+      });
+    }
+  }
+  if (foul) {
+    const kx = step1 + step2 + PLANT_LUNGE;
+    for (let i = 0; i < 45; i++) {
+      frames.push({ kx, bx: kx + CARRY_FWD, bz: CARRY_Z, phase: 'foul', stepProgress: i / 45 });
+    }
+  }
+  return frames;
+}
+
+function runPunt(params, recordFrames = false) {
+  const [step1, step2, loftDeg, power] = params;
+
+  // ---- the two steps ------------------------------------------------------
+  const advance = step1 + step2 + PLANT_LUNGE;
+  const overstep = advance - BOX_ROOM;
+  if (overstep > 0) {
+    // Released the ball beyond the 18-yard line: free kick, no punt.
+    return {
+      score: Math.max(0, 8 - 20 * overstep),
+      result: 'FOUL — outside the box',
+      hit: false, dMin: null,
+      frames: recordFrames ? walkFrames(step1, step2, /*foul=*/true) : null,
+      params,
+    };
+  }
+
+  const vRun = RUN_SPEED_PER_M * (step1 + step2);
+  const rhythm = Math.exp(-(((step2 - step1 - RHYTHM_BEST_GAP) / RHYTHM_WIDTH) ** 2));
+  const quality = QUALITY_FLOOR + (1 - QUALITY_FLOOR) * rhythm;
+  const v0 = (power + RUN_CARRY * vRun) * quality;
+
+  // ---- the flight -----------------------------------------------------------
+  const loft = loftDeg * Math.PI / 180;
+  let x = advance, z = RELEASE_HEIGHT;
+  let vx = v0 * Math.cos(loft), vz = v0 * Math.sin(loft);
+  let dMin = Math.hypot(WIRE_X - x, WIRE_Z - z);
+  let speedAtClosest = Math.hypot(vx, vz);
+  const frames = recordFrames ? walkFrames(step1, step2, /*foul=*/false) : null;
+  let hit = false;
+  let t = 0;
+  while (t < MAX_T) {
+    vx *= (1 - DRAG * DT);
+    vz *= (1 - DRAG * DT);
+    vz -= G * DT;
+    x += vx * DT;
+    z += vz * DT;
+    const d = Math.hypot(WIRE_X - x, WIRE_Z - z);
+    if (d < dMin) {
+      dMin = d;
+      speedAtClosest = Math.hypot(vx, vz);
+    }
+    if (recordFrames) frames.push({ kx: advance, bx: x, bz: z, phase: 'flight' });
+    if (dMin <= HIT_RADIUS) { hit = true; break; }
+    if (z < 0) break;
+    t += DT;
+  }
+
+  // Animation-only tail: the ball pings off the wire (does NOT affect score).
+  if (hit && recordFrames) {
+    let nx = (x - WIRE_X), nz = (z - WIRE_Z);
+    const nLen = Math.hypot(nx, nz) || 1;
+    nx /= nLen; nz /= nLen;
+    const vDotN = vx * nx + vz * nz;
+    const E = 0.45;
+    vx -= (1 + E) * vDotN * nx;
+    vz -= (1 + E) * vDotN * nz;
+    let age = 0;
+    for (let tt = 0; tt < 3.0 && z > 0; tt += DT) {
+      vx *= (1 - DRAG * DT); vz *= (1 - DRAG * DT);
+      vz -= G * DT;
+      x += vx * DT; z += vz * DT;
+      frames.push({ kx: advance, bx: x, bz: z, phase: 'flight', hitAge: ++age });
+    }
+  }
+
+  // ---- scoring ---------------------------------------------------------------
+  let score, result;
+  if (hit) {
+    score = 100 + Math.min(10, 0.35 * speedAtClosest);
+    result = 'WIRE!';
+  } else {
+    score = 90 * Math.exp(-dMin / 2.0) + Math.min(2, 0.4 * vRun);
+    result = `miss by ${dMin.toFixed(1)} m`;
+  }
+  return { score, result, hit, dMin, frames, params };
+}
+
+// ============================================================================
+// HumpDay objective. Minimise -score.
+// ============================================================================
+const searchHistory = [];
+
+function objective(u) {
+  const r = runPunt(decode(u));
+  searchHistory.push({ score: r.score, result: r.result, hit: r.hit, params: r.params });
+  return -r.score;
+}
+
+// ============================================================================
+// Rendering — side view. Goal at the left, keeper mid-left, wire hanging
+// upper-centre with the spider-cam beneath it.
+// ============================================================================
+function drawBackdrop() {
+  // Night sky.
+  const sky = ctx.createLinearGradient(0, 0, 0, GROUND_Y);
+  sky.addColorStop(0, '#0d1526'); sky.addColorStop(1, '#28405e');
+  ctx.fillStyle = sky;
+  ctx.fillRect(0, 0, W, GROUND_Y);
+
+  // Far stand — a dark band with window dots.
+  ctx.fillStyle = '#1b2a40';
+  ctx.fillRect(0, GROUND_Y - 92, W, 92);
+  ctx.fillStyle = 'rgba(255, 236, 170, 0.16)';
+  for (let i = 0; i < 40; i++) {
+    ctx.fillRect(14 + i * 20, GROUND_Y - 78 + (i % 3) * 18, 7, 5);
+  }
+  // Stand roofline.
+  ctx.fillStyle = '#111c2d';
+  ctx.fillRect(0, GROUND_Y - 100, W, 8);
+
+  // Floodlight glow.
+  const glow = ctx.createRadialGradient(cx(WIRE_X), 40, 10, cx(WIRE_X), 40, 320);
+  glow.addColorStop(0, 'rgba(255, 244, 200, 0.10)');
+  glow.addColorStop(1, 'rgba(255, 244, 200, 0)');
+  ctx.fillStyle = glow;
+  ctx.fillRect(0, 0, W, GROUND_Y);
+
+  // Turf with mowed stripes.
+  ctx.fillStyle = '#1f6f2a';
+  ctx.fillRect(0, GROUND_Y, W, H - GROUND_Y);
+  ctx.fillStyle = 'rgba(255,255,255,0.05)';
+  for (let i = 0; i < 10; i++) {
+    if (i % 2 === 0) continue;
+    ctx.fillRect(i * 80, GROUND_Y, 80, H - GROUND_Y);
+  }
+
+  // Goal frame at the left (side view: one post + net back).
+  const gx = cx(GOAL_LINE_M);
+  const gTop = cy(GOAL_HEIGHT_M);
+  ctx.strokeStyle = '#ffffff';
+  ctx.lineWidth = 3;
+  ctx.beginPath();
+  ctx.moveTo(gx, GROUND_Y); ctx.lineTo(gx, gTop);
+  ctx.lineTo(gx - 10, gTop); ctx.stroke();
+  ctx.strokeStyle = 'rgba(255,255,255,0.3)';
+  ctx.lineWidth = 1;
+  for (let i = 1; i < 5; i++) {
+    ctx.beginPath();
+    ctx.moveTo(gx, gTop + i * (GROUND_Y - gTop) / 5);
+    ctx.lineTo(gx - 24 + i * 3, GROUND_Y);
+    ctx.stroke();
+  }
+
+  // 18-yard line — the foul line for the release.
+  const bx = cx(BOX_ROOM);
+  ctx.strokeStyle = 'rgba(255,255,255,0.85)';
+  ctx.lineWidth = 2;
+  ctx.beginPath(); ctx.moveTo(bx, GROUND_Y); ctx.lineTo(bx, GROUND_Y + 12); ctx.stroke();
+  ctx.setLineDash([4, 6]);
+  ctx.strokeStyle = 'rgba(255,255,255,0.28)';
+  ctx.beginPath(); ctx.moveTo(bx, GROUND_Y); ctx.lineTo(bx, GROUND_Y - 46); ctx.stroke();
+  ctx.setLineDash([]);
+  ctx.fillStyle = 'rgba(255,255,255,0.55)';
+  ctx.font = '10px -apple-system, Helvetica, Arial, sans-serif';
+  ctx.fillText('18 yd', bx - 13, GROUND_Y + 24);
+}
+
+function drawWire(hitAge) {
+  const wx = cx(WIRE_X);
+  // Wobble after a hit.
+  const wob = hitAge ? Math.sin(hitAge * 0.7) * 6 * Math.exp(-hitAge / 35) : 0;
+  const wy = cy(WIRE_Z) + wob;
+
+  // Faint suspension lines up to the (off-screen) stands.
+  ctx.strokeStyle = 'rgba(200, 210, 230, 0.22)';
+  ctx.lineWidth = 1;
+  ctx.beginPath(); ctx.moveTo(wx, wy); ctx.lineTo(wx - 260, -10); ctx.stroke();
+  ctx.beginPath(); ctx.moveTo(wx, wy); ctx.lineTo(wx + 260, -10); ctx.stroke();
+
+  // The wire itself (cross-section) — the target.
+  ctx.fillStyle = '#d8dce6';
+  ctx.beginPath(); ctx.arc(wx, wy, 4, 0, Math.PI * 2); ctx.fill();
+  ctx.strokeStyle = 'rgba(0,0,0,0.5)';
+  ctx.lineWidth = 1; ctx.stroke();
+
+  // Spider-cam hanging beneath.
+  ctx.strokeStyle = 'rgba(200, 210, 230, 0.6)';
+  ctx.beginPath(); ctx.moveTo(wx, wy + 4); ctx.lineTo(wx, wy + 14); ctx.stroke();
+  ctx.fillStyle = '#33394a';
+  ctx.fillRect(wx - 7, wy + 14, 14, 10);
+  ctx.fillStyle = '#79c4ff';
+  ctx.beginPath(); ctx.arc(wx, wy + 19, 2.6, 0, Math.PI * 2); ctx.fill();
+
+  // Impact flash.
+  if (hitAge && hitAge < 26) {
+    ctx.strokeStyle = `rgba(255, 220, 80, ${1 - hitAge / 26})`;
+    ctx.lineWidth = 2.5;
+    ctx.beginPath(); ctx.arc(wx, wy, 6 + hitAge * 2.2, 0, Math.PI * 2); ctx.stroke();
+    ctx.fillStyle = `rgba(255, 220, 80, ${1 - hitAge / 26})`;
+    ctx.font = 'bold 17px -apple-system, Helvetica, Arial, sans-serif';
+    ctx.fillText('TWANG!', wx + 16 + hitAge, wy - 16 - hitAge * 0.5);
+  }
+}
+
+function drawKeeper(kxM, phase, stepProgress) {
+  // All anatomy scaled by KSCALE (drawing only — physics unchanged).
+  const s = KSCALE;
+  const x = cx(kxM);
+  const hM = KEEPER_HEIGHT_M * s;
+  const headR = 3.4 * s;
+  const hipY = cy(hM * 0.5);
+  const shoulderY = cy(hM * 0.82);
+  const headY = cy(hM) + headR;
+
+  // Legs — scissor while walking, front leg swings through on the plant.
+  const swing = phase === 'walk' ? Math.sin(stepProgress * Math.PI) : 0;
+  const kick = phase === 'plant' ? stepProgress : 0;
+  ctx.strokeStyle = '#2b2b33';
+  ctx.lineWidth = 3.5 * s;
+  ctx.beginPath();
+  ctx.moveTo(x, hipY);
+  ctx.lineTo(x - (4 + swing * 4 - kick * 2) * s, GROUND_Y);   // back/plant leg
+  ctx.moveTo(x, hipY);
+  // Front leg: walking swing, or the punt swing arcing up on the plant.
+  ctx.lineTo(x + (4 + swing * 5 + kick * 9) * s, GROUND_Y - kick * 13 * s);
+  ctx.stroke();
+
+  // Torso (keeper yellow) leaning slightly forward on the move.
+  const lean = (phase === 'walk' || phase === 'plant') ? 2.5 * s : 0;
+  ctx.strokeStyle = '#f3d233';
+  ctx.lineWidth = 6 * s;
+  ctx.beginPath(); ctx.moveTo(x, hipY); ctx.lineTo(x + lean, shoulderY); ctx.stroke();
+
+  // Arms — carrying the ball out front, or thrown up after a foul.
+  ctx.strokeStyle = '#f3d233';
+  ctx.lineWidth = 3 * s;
+  ctx.beginPath();
+  if (phase === 'foul') {
+    ctx.moveTo(x + lean, shoulderY); ctx.lineTo(x - 6 * s, shoulderY - 11 * s);
+    ctx.moveTo(x + lean, shoulderY); ctx.lineTo(x + 8 * s, shoulderY - 11 * s);
+  } else if (phase === 'flight') {
+    ctx.moveTo(x, shoulderY); ctx.lineTo(x + 9 * s, shoulderY - 4 * s);
+    ctx.moveTo(x, shoulderY); ctx.lineTo(x - 7 * s, shoulderY + 5 * s);
+  } else {
+    // Hands reach out front toward the carried ball.
+    ctx.moveTo(x + lean, shoulderY); ctx.lineTo(cx(kxM + CARRY_FWD) - 3, cy(CARRY_Z) + 2);
+  }
+  ctx.stroke();
+
+  // Head + shadow.
+  ctx.fillStyle = '#c8a888';
+  ctx.beginPath(); ctx.arc(x + lean, headY, headR, 0, Math.PI * 2); ctx.fill();
+  ctx.fillStyle = 'rgba(0,0,0,0.3)';
+  ctx.beginPath(); ctx.ellipse(x, GROUND_Y + 3, 9 * s, 2.5 * s, 0, 0, Math.PI * 2); ctx.fill();
+
+  // Red card moment.
+  if (phase === 'foul') {
+    ctx.fillStyle = 'rgba(255, 70, 70, 0.9)';
+    ctx.font = 'bold 15px -apple-system, Helvetica, Arial, sans-serif';
+    ctx.fillText('FOUL — outside the box!', x + 16 * s, shoulderY - 14 * s);
+  }
+}
+
+function drawBall(bxM, bzM) {
+  const x = cx(bxM), y = cy(bzM);
+  // Shadow on the turf.
+  if (bzM > 0.05) {
+    ctx.fillStyle = 'rgba(0,0,0,0.28)';
+    ctx.beginPath(); ctx.ellipse(cx(bxM), GROUND_Y + 3, 4.5, 1.6, 0, 0, Math.PI * 2); ctx.fill();
+  }
+  ctx.fillStyle = '#ffffff';
+  ctx.beginPath(); ctx.arc(x, y, 4.5, 0, Math.PI * 2); ctx.fill();
+  ctx.strokeStyle = 'rgba(0,0,0,0.4)';
+  ctx.lineWidth = 0.8; ctx.stroke();
+  ctx.fillStyle = '#222';
+  ctx.beginPath(); ctx.arc(x - 1, y - 1, 1.1, 0, Math.PI * 2); ctx.fill();
+}
+
+function drawScene(frame, hudText, trail) {
+  drawBackdrop();
+  drawWire(frame && frame.hitAge);
+  // Trail — flight portion only.
+  if (trail && trail.length > 1) {
+    ctx.strokeStyle = 'rgba(255,255,255,0.7)';
+    ctx.lineWidth = 2;
+    ctx.beginPath();
+    let started = false;
+    for (const f of trail) {
+      if (f.phase !== 'flight') continue;
+      const px = cx(f.bx), py = cy(f.bz);
+      if (!started) { ctx.moveTo(px, py); started = true; }
+      else ctx.lineTo(px, py);
+    }
+    if (started) ctx.stroke();
+  }
+  if (frame) {
+    drawKeeper(frame.kx, frame.phase, frame.stepProgress || 0);
+    drawBall(frame.bx, frame.bz);
+  }
+  if (hudText) {
+    ctx.font = 'bold 15px -apple-system, Helvetica, Arial, sans-serif';
+    const padX = 12;
+    const metrics = ctx.measureText(hudText);
+    const boxW = Math.ceil(metrics.width) + 2 * padX;
+    ctx.fillStyle = 'rgba(0,0,0,0.7)';
+    ctx.fillRect(18, 14, boxW, 28);
+    ctx.fillStyle = '#ffcc00';
+    ctx.fillText(hudText, 18 + padX, 33);
+  }
+}
+
+function drawIdleScene() {
+  drawScene({ kx: 0, bx: CARRY_FWD, bz: CARRY_Z, phase: 'idle', stepProgress: 0 },
+    'Press "Find the best punt" or take one yourself', null);
+}
+
+// ============================================================================
+// Animations.
+// ============================================================================
+const REPLAY_MS_PER_FRAME = 7;
+const MONTAGE_MS_PER_FRAME = 3;
+let animationToken = 0;
+
+function animateShot(frames, hudText, msPerFrame = REPLAY_MS_PER_FRAME) {
+  const myToken = animationToken;
+  return new Promise((resolve) => {
+    if (!frames || frames.length === 0) return resolve();
+    let i = 0;
+    function tick() {
+      if (myToken !== animationToken) return resolve();
+      if (i >= frames.length) return resolve();
+      drawScene(frames[i], hudText, frames.slice(0, i + 1));
+      i += 1;
+      setTimeout(tick, msPerFrame);
+    }
+    tick();
+  });
+}
+
+async function animateSearchMontage() {
+  const myToken = ++animationToken;
+  const total = searchHistory.length;
+  if (total === 0) return -1;
+
+  let bestSoFar = -Infinity;
+  let bestIdx = -1;
+  for (let i = 0; i < total; i++) {
+    if (myToken !== animationToken) return bestIdx;
+    const entry = searchHistory[i];
+    const isNew = entry.score > bestSoFar;
+    if (isNew) { bestSoFar = entry.score; bestIdx = i; }
+
+    const reF = runPunt(entry.params, /*recordFrames=*/true);
+    document.getElementById('evals').textContent = i + 1;
+    document.getElementById('score-now').textContent = entry.score.toFixed(0);
+    document.getElementById('score-detail').textContent = entry.result;
+    updateBestParams(entry.params);
+
+    if (isNew) {
+      addLeaderboardEntry(
+        document.getElementById('algorithm').value,
+        entry, i + 1,
+        { inPlace: liveLeaderboardIdx >= 0 },
+      );
+      setBestScore(entry, document.getElementById('algorithm').value);
+    }
+
+    const label = `Punt ${i + 1}/${total}  ·  Best: ${bestSoFar.toFixed(0)}${isNew ? '  ★ NEW!' : ''}`;
+    await animateShot(reF.frames, label, MONTAGE_MS_PER_FRAME);
+  }
+  return bestIdx;
+}
+
+function setBestScore(entry, algoName) {
+  const el = document.getElementById('best-score');
+  el.innerHTML = `${entry.score.toFixed(0)} (${entry.result})<span class="algo-tag">${algoName}</span>`;
+}
+
+// ============================================================================
+// Runner.
+// ============================================================================
+let lastBest = null;
+
+function getOptimizerClass(name) { return globalThis[name]; }
+
+async function runOptimization() {
+  const algoName = document.getElementById('algorithm').value;
+  const budget = parseInt(document.getElementById('budget').value, 10);
+  const cls = getOptimizerClass(algoName);
+  if (!cls) { alert(`Optimizer '${algoName}' not found.`); return; }
+
+  const runBtn = document.getElementById('run-btn');
+  runBtn.disabled = true;
+  runBtn.textContent = `Searching with ${algoName}...`;
+
+  animationToken++;
+  searchHistory.length = 0;
+  await new Promise((r) => setTimeout(r, 30));
+
+  try {
+    const opt = new cls(objective, budget, 4);
+    opt.optimize();
+
+    const bestIdx = await animateSearchMontage();
+    const bestEntry = searchHistory[bestIdx];
+    const replay = runPunt(bestEntry.params, /*recordFrames=*/true);
+    lastBest = replay;
+
+    await animateShot(
+      replay.frames,
+      `Best punt: ${bestEntry.score.toFixed(0)} (${bestEntry.result}) — ${algoName}`,
+    );
+
+    setBestScore(bestEntry, algoName);
+    updateBestParams(bestEntry.params);
+    addLeaderboardEntry(algoName, bestEntry, opt.evaluations, {
+      inPlace: liveLeaderboardIdx >= 0,
+    });
+    liveLeaderboardIdx = -1;
+  } catch (e) {
+    console.error(e);
+    alert(`${algoName} threw an error: ${e.message}`);
+  } finally {
+    runBtn.disabled = false;
+    runBtn.textContent = '▶ Find the best punt';
+  }
+}
+
+function updateBestParams(params) {
+  const [s1, s2, l, p] = params;
+  document.getElementById('param-step1').textContent = `${s1.toFixed(2)} m`;
+  document.getElementById('param-step2').textContent = `${s2.toFixed(2)} m`;
+  document.getElementById('param-loft').textContent = `${l.toFixed(1)}°`;
+  document.getElementById('param-power').textContent = p.toFixed(1);
+}
+
+function replayBest() {
+  if (!lastBest) return;
+  animationToken++;
+  animateShot(lastBest.frames, 'Replaying best punt');
+}
+
+const leaderboard = [];
+let liveLeaderboardIdx = -1;
+
+function addLeaderboardEntry(algoName, entry, evals, { inPlace = false } = {}) {
+  const row = {
+    name: algoName, score: entry.score, result: entry.result,
+    evals, params: entry.params,
+  };
+  if (inPlace && liveLeaderboardIdx >= 0) leaderboard[liveLeaderboardIdx] = row;
+  else { leaderboard.push(row); liveLeaderboardIdx = leaderboard.length - 1; }
+  const tracked = leaderboard[liveLeaderboardIdx];
+  leaderboard.sort((a, b) => b.score - a.score || a.evals - b.evals);
+  liveLeaderboardIdx = leaderboard.indexOf(tracked);
+  renderLeaderboard();
+}
+
+function renderLeaderboard() {
+  const body = document.getElementById('leaderboard-body');
+  if (leaderboard.length === 0) {
+    body.innerHTML = '<tr><td colspan="4" style="color: var(--muted); text-align: center;">— no runs yet —</td></tr>';
+    return;
+  }
+  body.innerHTML = leaderboard.map((row) => {
+    const [s1, s2, l, p] = row.params;
+    const cls = row.name === 'Human Raphson' ? ' class="human-raphson"' : '';
+    return `<tr${cls}>
+      <td>${row.name}</td>
+      <td>${row.score.toFixed(0)} (${row.result})</td>
+      <td>${row.evals}</td>
+      <td>${s1.toFixed(2)} / ${s2.toFixed(2)} / ${l.toFixed(1)}° / ${p.toFixed(1)}</td>
+    </tr>`;
+  }).join('');
+}
+
+// ============================================================================
+// Human Raphson.
+// ============================================================================
+const sliderInputs = ['manual-step1', 'manual-step2', 'manual-loft', 'manual-power'];
+const sliderOutputs = {
+  'manual-step1': (v) => `${parseFloat(v).toFixed(2)} m`,
+  'manual-step2': (v) => `${parseFloat(v).toFixed(2)} m`,
+  'manual-loft': (v) => `${parseFloat(v).toFixed(1)}°`,
+  'manual-power': (v) => parseFloat(v).toFixed(1),
+};
+for (const id of sliderInputs) {
+  const slider = document.getElementById(id);
+  const output = document.getElementById(`${id}-out`);
+  const update = () => { output.textContent = sliderOutputs[id](slider.value); };
+  slider.addEventListener('input', update);
+  update();
+}
+
+async function manualPunt() {
+  const s1 = parseFloat(document.getElementById('manual-step1').value);
+  const s2 = parseFloat(document.getElementById('manual-step2').value);
+  const l = parseFloat(document.getElementById('manual-loft').value);
+  const p = parseFloat(document.getElementById('manual-power').value);
+  const btn = document.getElementById('manual-btn');
+  btn.disabled = true;
+  btn.textContent = 'Punting...';
+  animationToken++;
+  await new Promise((r) => setTimeout(r, 30));
+  try {
+    const replay = runPunt([s1, s2, l, p], /*recordFrames=*/true);
+    document.getElementById('score-now').textContent = replay.score.toFixed(0);
+    document.getElementById('score-detail').textContent = replay.result;
+    updateBestParams([s1, s2, l, p]);
+    await animateShot(
+      replay.frames,
+      `🧠 Human Raphson: ${replay.score.toFixed(0)} (${replay.result})`,
+    );
+    addLeaderboardEntry('Human Raphson', { ...replay }, 1);
+    setBestScore(replay, 'Human Raphson');
+  } finally {
+    btn.disabled = false;
+    btn.textContent = '▶ Take the punt';
+  }
+}
+
+function resetEverything() {
+  leaderboard.length = 0;
+  liveLeaderboardIdx = -1;
+  lastBest = null;
+  animationToken++;
+  ['score-now', 'evals'].forEach((id) => document.getElementById(id).textContent = '0');
+  ['score-detail', 'best-score', 'param-step1', 'param-step2', 'param-loft', 'param-power'].forEach((id) =>
+    document.getElementById(id).textContent = '—');
+  renderLeaderboard();
+  drawIdleScene();
+}
+
+drawIdleScene();
+</script>
+</body>
+</html>

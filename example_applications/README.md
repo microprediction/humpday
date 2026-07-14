@@ -37,6 +37,7 @@ Each subfolder is self-contained:
 | [`reactor_profile/`](reactor_profile/)     | Reaction engineering              | Optimal control of an A→B→C reactor; the best temperature is a *profile*, not a constant. |
 | [`bridge_truss/`](bridge_truss/)           | Structural optimisation           | FEM-in-the-loop member sizing; lightest truss on the yield/buckling boundary; statically indeterminate. |
 | [`free_kick/`](free_kick/)                 | Sports ballistics                 | 3-D ball flight (Magnus curve) past a wall and a diving keeper; multimodal goal/save/block outcomes. |
+| [`goalkeeper_punt/`](goalkeeper_punt/)     | Sports ballistics                 | Two run-up steps then punt the overhanging spider-cam wire; a foul-line boundary optimum, coupled stride rhythm, two hit manifolds (rising vs dropping). |
 | [`bowling/`](bowling/)                     | Chain-reaction physics            | Faithful 105-pin collision sim; rough, sensitive landscape where small entry changes swing the count. |
 | [`trebuchet/`](trebuchet/)                 | Ballistics (reduced-order)        | Hit a target 60 m away; interior efficiency optimum in arm/sling ratios. *Simplified — demo uses Matter.js.* |
 | [`curling/`](curling/)                     | Slide-to-target (reduced-order)   | Stop the stone on the button; too little weight stops short, too much sails through. *Simplified.* |
