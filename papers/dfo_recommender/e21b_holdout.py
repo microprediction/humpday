@@ -23,7 +23,7 @@ instances = [cs.make_instance(f, s) for f in cs.FAMILIES for s in SEEDS]
 print(f"{len(instances)} held-out instances; panel baselines...", flush=True)
 cache = cs.build_panel_cache(instances)
 
-field = {name: cls for name, cls in list(cs.PANEL.items()) + [("ARC", cs.ARC)]}
+field = dict(list(cs.PANEL.items()) + [("ARC", cs.ARC)])
 for path in sys.argv[1:]:
     p = Path(path)
     field[p.parent.name.replace("_code", "") + ":" + p.stem] = compile_policy(
