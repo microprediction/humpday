@@ -451,6 +451,46 @@ best mean ranks at the two smallest budgets and remain the strongest
 small-budget artifacts found. Exploring outside the simplex keeps producing
 strong inhabitants of the inside.
 
+\section{Second example: cache eviction}
+\label{sec:cache}
+
+The construction transfers to a new domain with two changed nouns. Vertices:
+LRU, LFU, FIFO, CLOCK and random eviction. Parts: on-hit bookkeeping, victim
+selection, on-insert bookkeeping, aging, and adaptation. Traces come from
+six seeded workload families whose parameters are randomized and whose keys
+are permuted per seed, the disguise analog, and the score is miss-rate
+regret normalised against the five-policy panel.
+
+This domain offers what the optimizer example could not: proof that the
+interior is rich. ARC~\cite{megiddo2003}, the celebrated hand-designed
+blend of recency and frequency, scores 0.19 where the panel spans 0.47 to
+0.65.
+
+Static blending cannot reach it. With fixed shares, every generated blend
+(centroid 0.63, random interior 0.51 to 0.67) scores worse than every
+generated pure vertex (0.43 to 0.52), the inverse of the optimizer example.
+The diagnosis: mixing victim rules by proportion corrupts each policy's
+invariants, and ARC's value is not a fixed mixture at all but the online
+reallocation between recency and frequency.
+
+One added instruction repairs it. Rendering the shares as a starting
+allocation the policy must adapt online, using feedback structures such as
+ghost lists, the generated pure-CLOCK point scores 0.24 at selection and
+0.25 on held-out instances no experiment had used, second only to ARC and
+ahead of every panel policy and every other artifact. Its code maintains a
+ghost list of evicted keys tagged frequent-or-not and shifts a weight
+between frequency and recency whenever a ghost is re-requested: the design
+of CAR~\cite{bansal2004}, ARC's successor by its own authors, rediscovered
+from a one-line semantic change. The adaptive centroid stays poor (0.57);
+in this domain adaptivity, not mixing, is the treasure.
+
+Two lessons transfer. Whether the interior is reachable depends on where
+the domain keeps its value: optimizers compose per-step mechanism choices,
+so fixed proportions work; eviction policies live on cross-step invariants
+and workload tracking, so the coordinate must become state. And the
+elicitation effect replicates: the model's generated pure FIFO (0.43) beats
+the textbook FIFO reference (0.65) by budget-aware implementation alone.
+
 \section{Generalization and further examples}
 
 Nothing here is specific to optimizers. The construction needs named
@@ -551,6 +591,14 @@ Caltech C3P Report 826, 1989.
 \bibitem{liu2019darts} H.~Liu, K.~Simonyan, and Y.~Yang.
 DARTS: differentiable architecture search.
 \emph{International Conference on Learning Representations}, 2019.
+
+\bibitem{megiddo2003} N.~Megiddo and D.~S. Modha.
+{ARC}: A self-tuning, low overhead replacement cache.
+\emph{USENIX FAST}, 2003.
+
+\bibitem{bansal2004} S.~Bansal and D.~S. Modha.
+{CAR}: {CLOCK} with adaptive replacement.
+\emph{USENIX FAST}, 2004.
 
 \bibitem{endres2018} S.~C. Endres, C.~Sandrock, and W.~W. Focke.
 A simplicial homology algorithm for Lipschitz optimisation.
