@@ -32,8 +32,12 @@ semantics for a minus sign, tested under a paired-ablation protocol, one
 survives out of sample, with a rule attached: negative weights repair weak
 hosts and spoil strong ones. Failures are reported throughout: the
 continuous search never beat the obvious point, single generations vary
-severalfold, and in-sample scores mislead reliably. Further worked examples
-are planned.
+severalfold, and in-sample scores mislead reliably. Two further worked
+examples test the construction's reach: cache-eviction policies, where
+static blends fail and adaptive shares rediscover the design of CAR, and
+distributional forecasting, whose champion dominates synthetic suites,
+loses on real data, and ships anyway, recast as a transform inside the
+forecaster it could not beat.
 \end{abstract}
 
 \section{Introduction}
@@ -315,8 +319,10 @@ language model anywhere at run time.
 \label{sec:negative}
 
 Generation is a lottery. Five draws at the centroid recipe scored 0.087,
-0.249, 0.301, 0.320 and 1.000, and roughly one generation in seven fails to
-compile. Alloy is the validated draw, not the expected one; the procedure
+0.249, 0.301, 0.320 and 1.000, and roughly one generation in seven failed
+to compile. Part of that failure rate was self-inflicted: an 8{,}000-token
+generation cap truncated the longest programs mid-line, and at 16{,}000
+tokens the compile failures largely vanish. Alloy is the validated draw, not the expected one; the procedure
 that works samples a few draws and keeps what validates.
 
 The map has blind spots. The pure CMA-ES recipe never produced a working
@@ -491,6 +497,57 @@ and workload tracking, so the coordinate must become state. And the
 elicitation effect replicates: the model's generated pure FIFO (0.43) beats
 the textbook FIFO reference (0.65) by budget-aware implementation alone.
 
+\section{Third example: distributional forecasting}
+\label{sec:forecast}
+
+The vertices become forecasting ideas: exponential smoothing,
+autoregression, GARCH, Student tails, and a regime watcher. The parts:
+conditional mean, conditional scale, distribution shape, adaptation, and
+regime handling. A candidate must report the log-density of the next
+observation before seeing it, then update.
+
+Series come from six seeded generator families behind an affine disguise;
+the panel holds five simple references, and the champion reference is
+\texttt{laplace} from the skaters package, a likelihood-weighted ensemble
+refined over months, which towers over the panel at regret 0.05.
+
+The two-example lesson makes a prediction, registered in the harness before
+any generation ran: forecasting keeps its value in cross-step invariants,
+so static shares should fail as they did for caches, and adaptive shares
+should carry. Confirmed: the static round's best is 0.30, the adaptive
+round's best 0.045, and the centroid is poor in both.
+
+The winning artifact is a flat composite with no conjugation and no
+population. Two mean models and two variance models are each mixed by
+softmax over decayed log-scores, the champion's own ensemble principle
+reinvented at width two; a Student-t density tracks its degrees of freedom
+from realized kurtosis; a break monitor inflates variance fivefold and
+resets state when standardized errors run hot.
+
+On synthetic ground it dominates: 0.036 against laplace's 0.049 on held-out
+seeds, nineteen of twenty on families that appeared in no selection round,
+and roughly eighty percent of paired instances across three fresh batches.
+
+On five hundred real FRED series, under the skaters package's own harness,
+it loses the log-likelihood race on 71\% of series. Three domains, three
+selection champions, and the same law each time: dominance on the
+selection distribution says little beyond it.
+
+The signal survives the defeat. A crude score-weighted mixture with laplace
+beats laplace on CRPS on 73\% of the same series; a cautious online
+regression nudging laplace's pre-projection mean wins 59\% of
+log-likelihood contests with worst series $-0.11$ nats; and the final
+form, the signal recast as a conjugation transform joining laplace's own
+candidate population, wins 61\% with worst series $-0.012$, every test of
+the host package passing. That form is merged: \texttt{markov\_drift}
+ships in skaters, the first artifact of this construction to enter a
+production package by improving a champion it could not beat.
+
+Both decisive integration choices came from human review, not from the
+construction: the caution of the coupling, and the placement of the
+regression before the lattice projection rather than after. The
+construction generates organs; the surgery remains a craft.
+
 \section{Generalization and further examples}
 
 Nothing here is specific to optimizers. The construction needs named
@@ -513,9 +570,10 @@ locations are not.
 
 \vspace{1em}
 \noindent\emph{Availability.} Alloy ships in the humpday
-package~\cite{humpday}, in Python and JavaScript. The search harnesses, the
-run logs behind every number in this paper, and every generated program are
-in the same repository.
+package~\cite{humpday}, in Python and JavaScript, and the forecasting
+artifact ships in the skaters package as the \texttt{markov\_drift}
+transform. The search harnesses, the run logs behind every number in this
+paper, and every generated program are in the humpday repository.
 
 \begin{thebibliography}{9}
 
