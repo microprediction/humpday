@@ -30,7 +30,7 @@ class Rechenberg(BaseOptimizer):
     as a module-level alias below for backwards compatibility.
     """
 
-    def optimize(self):
+    def _run(self):
         # Step bounds: 1e-12 floor lets the algorithm refine to machine
         # precision on smooth basins. Upper cap matches the unit cube.
         step_max = 1.0
@@ -38,7 +38,7 @@ class Rechenberg(BaseOptimizer):
         window_size = 10
 
         x = _A.random_uniform(self.n_dim)
-        f = self.evaluate(x)
+        f = yield x
         sigma = 0.1
         window: list[bool] = []
 
@@ -58,7 +58,7 @@ class Rechenberg(BaseOptimizer):
 
             if self.evaluations >= self.n_trials:
                 break
-            f_new = self.evaluate(x_new)
+            f_new = yield x_new
 
             accepted = f_new < f
             if accepted:
@@ -76,8 +76,6 @@ class Rechenberg(BaseOptimizer):
                     sigma = min(step_max, sigma * 1.5)
                 elif rate < 1 / 5:
                     sigma = max(step_min, sigma / 1.5)
-
-        return self.best_value, self.best_x
 
 
 # Backwards-compatibility alias — the class was renamed in this commit.
@@ -105,10 +103,10 @@ class CoordinateDescent(BaseOptimizer):
     a ~5.6e+07× gap vs scipy Powell with `direc=I` on the sphere.
     """
 
-    def optimize(self):
+    def _run(self):
         n = self.n_dim
         x = _A.random_uniform(n)
-        f = self.evaluate(x)
+        f = yield x
 
         step = 0.1
         # Restart trigger: when `step` collapses below this threshold
@@ -127,7 +125,7 @@ class CoordinateDescent(BaseOptimizer):
             if step <= restart_step_threshold:
                 if f > converged_threshold:
                     x = _A.random_uniform(n)
-                    f = self.evaluate(x)
+                    f = yield x
                     step = 0.1
                     continue
                 break  # already converged in a good basin
@@ -149,7 +147,7 @@ class CoordinateDescent(BaseOptimizer):
                         continue  # already at the bound in this direction
                     x_trial = x.copy()
                     x_trial[i] = xi_new
-                    f_trial = self.evaluate(x_trial)
+                    f_trial = yield x_trial
                     if f_trial >= f:
                         continue
 
@@ -164,7 +162,7 @@ class CoordinateDescent(BaseOptimizer):
                             break
                         x_trial2 = x.copy()
                         x_trial2[i] = xi_next
-                        f_trial2 = self.evaluate(x_trial2)
+                        f_trial2 = yield x_trial2
                         if f_trial2 >= f:
                             break
                         x = x_trial2
@@ -174,8 +172,6 @@ class CoordinateDescent(BaseOptimizer):
 
             if not improved_anywhere:
                 step *= 0.5
-
-        return self.best_value, self.best_x
 
 
 class PatternSearch(BaseOptimizer):
@@ -203,9 +199,9 @@ class PatternSearch(BaseOptimizer):
     a ~1.2e+10× gap on Ackley vs scipy DIRECT.
     """
 
-    def optimize(self):
+    def _run(self):
         base = _A.random_uniform(self.n_dim)
-        f_base = self.evaluate(base)
+        f_base = yield base
         step = 0.1
         # Restart trigger (see CoordinateDescent for the rationale): when
         # `step` collapses below this threshold and f hasn't reached the
@@ -217,21 +213,23 @@ class PatternSearch(BaseOptimizer):
             if step <= restart_step_threshold:
                 if f_base > converged_threshold:
                     base = _A.random_uniform(self.n_dim)
-                    f_base = self.evaluate(base)
+                    f_base = yield base
                     step = 0.1
                     continue
                 break  # already converged
 
             # 1. Exploratory move from base.
-            x, f = self._explore(base.copy(), f_base, step)
+            x, f = yield from self._explore_gen(base.copy(), f_base, step)
 
             if f < f_base:
                 if self.evaluations < self.n_trials:
                     # 2. Pattern move: extrapolate from base through x.
                     new_base = _A.clip(x + (x - base), 0, 1)
-                    f_new_base = self.evaluate(new_base)
+                    f_new_base = yield new_base
                     # 3. Exploratory move from the pattern point.
-                    x2, f2 = self._explore(new_base.copy(), f_new_base, step)
+                    x2, f2 = yield from self._explore_gen(
+                        new_base.copy(), f_new_base, step
+                    )
                     if f2 < f:
                         base, f_base = x2, f2
                     else:
@@ -242,9 +240,7 @@ class PatternSearch(BaseOptimizer):
                 # 4. No exploratory progress at this step: halve.
                 step *= 0.5
 
-        return self.best_value, self.best_x
-
-    def _explore(self, x, f, step):
+    def _explore_gen(self, x, f, step):
         """Single exploratory sweep — try ±step on each axis in order,
         keep improvements. First-improvement per coordinate (the +
         direction wins immediately if it helps; otherwise try −)."""
@@ -259,7 +255,7 @@ class PatternSearch(BaseOptimizer):
                     continue
                 x_trial = x.copy()
                 x_trial[i] = xi_new
-                f_trial = self.evaluate(x_trial)
+                f_trial = yield x_trial
                 if f_trial < f:
                     x = x_trial
                     f = f_trial
@@ -284,7 +280,7 @@ class GridSearch(BaseOptimizer):
     Practically useful for `n_dim <= 3`.
     """
 
-    def optimize(self):
+    def _run(self):
         n = self.n_dim
         n_per_axis = max(2, int(round(self.n_trials ** (1.0 / n))))
 
@@ -295,7 +291,7 @@ class GridSearch(BaseOptimizer):
         indices = [0] * n
         while self.evaluations < self.n_trials:
             x = _A.asarray([(idx + 0.5) / n_per_axis for idx in indices])
-            self.evaluate(x)
+            yield x
             # Increment indices like an odometer; stop once all wrap.
             d = n - 1
             while d >= 0:
@@ -306,5 +302,3 @@ class GridSearch(BaseOptimizer):
                 d -= 1
             if d < 0:
                 break  # full grid exhausted
-
-        return self.best_value, self.best_x
