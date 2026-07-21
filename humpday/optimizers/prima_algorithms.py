@@ -405,7 +405,7 @@ class PRIMA_UOBYQA(BaseOptimizer):
     coefficient matrix A is a list-of-rows for the SVD/pinv solve.
     """
 
-    def optimize(self):
+    def _run(self):
         n = self.n_dim
         npt = (n + 1) * (n + 2) // 2  # Full quadratic model points
 
@@ -416,11 +416,11 @@ class PRIMA_UOBYQA(BaseOptimizer):
 
         # Initial base point pulled into the interior of [0, 1]^n.
         xbase = _A.clip(0.5 * _A.ones(n), 0.1, 0.9)
-        _ = self.evaluate(xbase)
+        _ = yield xbase
 
-        XPT, FVAL = self._initialize_interpolation_points(xbase, rho, npt, n)
+        XPT, FVAL = yield from self._initialize_interpolation_points(xbase, rho, npt, n)
         if not FVAL:
-            return self.best_value, self.best_x
+            return
         nused = min(len(FVAL), npt)
         # argmin via stdlib — works on lists, ndarrays, _Vec.
         kopt = min(range(nused), key=FVAL.__getitem__)
@@ -485,7 +485,7 @@ class PRIMA_UOBYQA(BaseOptimizer):
                     xnew = _A.clip(xbase + XPT[kopt] + d_geom, 0, 1)
                     if self.evaluations >= self.n_trials:
                         break
-                    fnew = self.evaluate(xnew)
+                    fnew = yield xnew
                     XPT[t_geom] = xnew - xbase
                     FVAL[t_geom] = fnew
                     kopt = min(range(nused), key=FVAL.__getitem__)
@@ -509,7 +509,7 @@ class PRIMA_UOBYQA(BaseOptimizer):
             if self.evaluations >= self.n_trials:
                 break
 
-            fnew = self.evaluate(xnew)
+            fnew = yield xnew
 
             # Predicted reduction: -(g·d + 0.5 d·H·d).
             Hd = _A.linalg.matvec(H, d)
@@ -576,8 +576,6 @@ class PRIMA_UOBYQA(BaseOptimizer):
                 xbase = new_xbase
                 for i in range(nused):
                     XPT[i] = XPT[i] - actual_shift
-
-        return self.best_value, self.best_x
 
     def _polynomial_basis_row(self, x, n):
         """Return the polynomial basis row φ(x) = (1, x_1, ..., x_n,
@@ -858,7 +856,7 @@ class PRIMA_UOBYQA(BaseOptimizer):
         XPT.append(_A.zeros(n))
         if self.evaluations >= self.n_trials:
             return XPT, FVAL
-        FVAL.append(self.evaluate(xbase))
+        FVAL.append((yield xbase))
         if len(FVAL) >= npt:
             return XPT, FVAL
 
@@ -870,7 +868,7 @@ class PRIMA_UOBYQA(BaseOptimizer):
                 offset = _A.zeros(n)
                 offset[i] = sign * rho
                 XPT.append(offset)
-                FVAL.append(self.evaluate(_A.clip(xbase + offset, 0, 1)))
+                FVAL.append((yield _A.clip(xbase + offset, 0, 1)))
 
         # Cross-term diagonals at rho/sqrt(2) per coordinate.
         diag_step = rho / math.sqrt(2)
@@ -882,7 +880,7 @@ class PRIMA_UOBYQA(BaseOptimizer):
                 offset[i] = diag_step
                 offset[j] = diag_step
                 XPT.append(offset)
-                FVAL.append(self.evaluate(_A.clip(xbase + offset, 0, 1)))
+                FVAL.append((yield _A.clip(xbase + offset, 0, 1)))
 
         return XPT, FVAL
 
@@ -903,7 +901,7 @@ class PRIMA_NEWUOA(BaseOptimizer):
     A is a list-of-rows for the QR-based regression.
     """
 
-    def optimize(self):
+    def _run(self):
         n = self.n_dim
         npt = 2 * n + 1  # NEWUOA's signature interpolation count
 
@@ -922,11 +920,11 @@ class PRIMA_NEWUOA(BaseOptimizer):
             # ---------- one trust-region pass ----------
             rho = rhobeg
             xbase = _A.clip(xseed, 0, 1)
-            _ = self.evaluate(xbase)
+            _ = yield xbase
             if self.evaluations >= self.n_trials:
                 break
 
-            XPT, FVAL = self._initialize_newuoa_points(xbase, rho, npt, n)
+            XPT, FVAL = yield from self._initialize_newuoa_points(xbase, rho, npt, n)
             # Init can return < npt points if the budget exhausted mid-
             # layout (the per-evaluate budget guard). Without a full
             # interpolation set there's nothing useful to fit, so end
@@ -986,7 +984,7 @@ class PRIMA_NEWUOA(BaseOptimizer):
                 if self.evaluations >= self.n_trials:
                     break
 
-                fnew = self.evaluate(xnew)
+                fnew = yield xnew
 
                 predicted_reduction = self._predict_reduction(g, H, d)
                 actual_reduction = FVAL[kopt] - fnew
@@ -1030,8 +1028,6 @@ class PRIMA_NEWUOA(BaseOptimizer):
                     1,
                 )
 
-        return self.best_value, self.best_x
-
     def _initialize_newuoa_points(self, xbase, rho, npt, n):
         """Lay out the 2n+1 NEWUOA interpolation points. Returns
         (XPT_list, FVAL_list) — XPT is a list of length-n offset vectors.
@@ -1046,7 +1042,7 @@ class PRIMA_NEWUOA(BaseOptimizer):
         XPT.append(_A.zeros(n))
         if self.evaluations >= self.n_trials:
             return XPT, FVAL
-        FVAL.append(self.evaluate(xbase))
+        FVAL.append((yield xbase))
 
         # 2n coordinate directions (±rho along each axis).
         for i in range(n):
@@ -1056,14 +1052,14 @@ class PRIMA_NEWUOA(BaseOptimizer):
                 offset = _A.zeros(n)
                 offset[i] = sign * rho
                 XPT.append(offset)
-                FVAL.append(self.evaluate(_A.clip(xbase + offset, 0, 1)))
+                FVAL.append((yield _A.clip(xbase + offset, 0, 1)))
 
         # One extra point along the diagonal to bring count to 2n+1.
         if len(FVAL) < npt and self.evaluations < self.n_trials:
             diag_step = rho / math.sqrt(n)
             offset = _A.full(n, diag_step)
             XPT.append(offset)
-            FVAL.append(self.evaluate(_A.clip(xbase + offset, 0, 1)))
+            FVAL.append((yield _A.clip(xbase + offset, 0, 1)))
 
         return XPT, FVAL
 
@@ -1269,7 +1265,7 @@ class PRIMA_BOBYQA(BaseOptimizer):
     lists; XPT is a list of length-n offset vectors.
     """
 
-    def optimize(self):
+    def _run(self):
         n = self.n_dim
         npt = 2 * n + 1
 
@@ -1290,11 +1286,13 @@ class PRIMA_BOBYQA(BaseOptimizer):
             # ---------- one trust-region pass ----------
             rho = rhobeg
             xbase = _A.clip(xseed, 0.1, 0.9)
-            _ = self.evaluate(xbase)
+            _ = yield xbase
             if self.evaluations >= self.n_trials:
                 break
 
-            XPT, FVAL = self._initialize_bobyqa_points(xbase, rho, npt, n, xl, xu)
+            XPT, FVAL = yield from self._initialize_bobyqa_points(
+                xbase, rho, npt, n, xl, xu
+            )
             if not FVAL:
                 break
             kopt = min(range(len(FVAL)), key=FVAL.__getitem__)
@@ -1337,7 +1335,7 @@ class PRIMA_BOBYQA(BaseOptimizer):
                 if self.evaluations >= self.n_trials:
                     break
 
-                fnew = self.evaluate(xnew)
+                fnew = yield xnew
 
                 predicted_reduction = self._predict_reduction(g, H, d)
                 actual_reduction = FVAL[kopt] - fnew
@@ -1378,8 +1376,6 @@ class PRIMA_BOBYQA(BaseOptimizer):
                     0.9,
                 )
 
-        return self.best_value, self.best_x
-
     def _initialize_bobyqa_points(self, xbase, rho, npt, n, xl, xu):
         """Lay out the initial interpolation set, respecting [xl, xu] bounds.
         Returns (XPT_list, FVAL_list)."""
@@ -1389,7 +1385,7 @@ class PRIMA_BOBYQA(BaseOptimizer):
         XPT.append(_A.zeros(n))
         if self.evaluations >= self.n_trials:
             return XPT, FVAL
-        FVAL.append(self.evaluate(xbase))
+        FVAL.append((yield xbase))
 
         # Coordinate directions, clipped to bound-feasible step sizes.
         # Each evaluate() is budget-guarded so a restart triggered close
@@ -1403,7 +1399,7 @@ class PRIMA_BOBYQA(BaseOptimizer):
                 offset = _A.zeros(n)
                 offset[i] = step_pos
                 XPT.append(offset)
-                FVAL.append(self.evaluate(_A.clip(xbase + offset, 0, 1)))
+                FVAL.append((yield _A.clip(xbase + offset, 0, 1)))
 
             if len(FVAL) >= npt or self.evaluations >= self.n_trials:
                 return XPT, FVAL
@@ -1412,7 +1408,7 @@ class PRIMA_BOBYQA(BaseOptimizer):
                 offset = _A.zeros(n)
                 offset[i] = step_neg
                 XPT.append(offset)
-                FVAL.append(self.evaluate(_A.clip(xbase + offset, 0, 1)))
+                FVAL.append((yield _A.clip(xbase + offset, 0, 1)))
 
         # Optional diagonal-direction point, clipped to bounds.
         if len(FVAL) < npt and self.evaluations < self.n_trials:
@@ -1425,7 +1421,7 @@ class PRIMA_BOBYQA(BaseOptimizer):
                     diagonal_step[i] = float(xl[i]) - float(xbase[i])
             offset = _A.asarray(diagonal_step)
             XPT.append(offset)
-            FVAL.append(self.evaluate(_A.clip(xbase + offset, 0, 1)))
+            FVAL.append((yield _A.clip(xbase + offset, 0, 1)))
 
         return XPT, FVAL
 

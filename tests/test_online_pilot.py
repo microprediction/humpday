@@ -27,6 +27,11 @@ from humpday.optimizers.evolutionary_algorithms import (
     RandomSearch,
     SimulatedAnnealing,
 )
+from humpday.optimizers.prima_algorithms import (
+    PRIMA_BOBYQA,
+    PRIMA_NEWUOA,
+    PRIMA_UOBYQA,
+)
 from humpday.optimizers.scipy_algorithms import LBFGSB, NelderMead, Powell
 from humpday.optimizers.search_algorithms import (
     CoordinateDescent,
@@ -53,6 +58,9 @@ from .reference_impls_pre_online import (
     FrozenParticleSwarm,
     FrozenPatternSearch,
     FrozenPowell,
+    FrozenPRIMA_BOBYQA,
+    FrozenPRIMA_NEWUOA,
+    FrozenPRIMA_UOBYQA,
     FrozenRandomSearch,
     FrozenRechenberg,
     FrozenSimulatedAnnealing,
@@ -107,6 +115,10 @@ PAIRS = [
     (FrozenPowell, Powell),
     (FrozenLBFGSB, LBFGSB),
     (FrozenAlloy, Alloy),
+    # Batch 4
+    (FrozenPRIMA_UOBYQA, PRIMA_UOBYQA),
+    (FrozenPRIMA_NEWUOA, PRIMA_NEWUOA),
+    (FrozenPRIMA_BOBYQA, PRIMA_BOBYQA),
 ]
 
 
