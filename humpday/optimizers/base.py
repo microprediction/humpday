@@ -89,12 +89,10 @@ class BaseOptimizer:
         self.path = []
         self._at = None  # ask/tell driver state (lazy; see suggest_next)
 
-    def evaluate(self, x) -> float:
-        """Evaluate objective with tracking. `x` may be a numpy array, a
-        `_Vec`, or any sequence of floats — `_A.clip` normalises it."""
-        self.evaluations += 1
-        x_clipped = _A.clip(x, 0, 1)
-        value = self.objective(x_clipped)
+    def _bookkeep(self, x_clipped, value):
+        """Shared post-evaluation bookkeeping (path sampling, best tracking).
+        The counter increment happens BEFORE the objective call — see
+        evaluate() and the generator drivers, which replicate its order."""
 
         # Track path for visualization. Sample at ~20 evenly-spaced points
         # across the run by default; always record the first evaluation.
@@ -110,6 +108,43 @@ class BaseOptimizer:
             self.best_x = x_clipped.copy()
 
         return value
+
+    def evaluate(self, x) -> float:
+        """Evaluate objective with tracking. `x` may be a numpy array, a
+        `_Vec`, or any sequence of floats — `_A.clip` normalises it."""
+        self.evaluations += 1
+        x_clipped = _A.clip(x, 0, 1)
+        value = self.objective(x_clipped)
+        return self._bookkeep(x_clipped, value)
+
+    # ------------------------------------------------------------------ #
+    # Online (generator) protocol. A converted optimizer defines          #
+    #   def _run(self):  ...  value = yield point  ...                    #
+    # yielding candidate points and receiving their objective values.     #
+    # The driver owns clipping, counting, path and best tracking, in      #
+    # exactly evaluate()'s order, so trajectories match the loop-owning   #
+    # form statement for statement. optimize() below drives _run with     #
+    # self.objective; the ask/tell methods drive it with caller-supplied  #
+    # values and no worker thread.                                        #
+    # ------------------------------------------------------------------ #
+    def optimize(self):
+        run = getattr(type(self), "_run", None)
+        if run is None:
+            raise NotImplementedError(
+                f"{type(self).__name__} defines neither optimize() nor _run()"
+            )
+        gen = self._run()
+        try:
+            x = next(gen)
+            while True:
+                self.evaluations += 1
+                x_clipped = _A.clip(x, 0, 1)
+                value = self.objective(x_clipped)
+                self._bookkeep(x_clipped, value)
+                x = gen.send(value)
+        except StopIteration:
+            pass
+        return self.best_value, self.best_x
 
     def evaluate_batch(self, points):
         """Evaluate several points as one group. In a direct optimize() run this is
@@ -143,6 +178,43 @@ class BaseOptimizer:
     # call evaluate_batch() emit their whole generation. Use a FRESH     #
     # instance per ask/tell run; don't mix views or a direct optimize(). #
     # ------------------------------------------------------------------ #
+    class _GenDrive:
+        """Threadless ask/tell state for optimizers that define _run()."""
+
+        __slots__ = ("gen", "pending_raw", "pending", "awaiting", "done", "mode")
+
+        def __init__(self, gen):
+            self.gen = gen
+            self.pending_raw = None
+            self.pending = None
+            self.awaiting = False
+            self.done = False
+            self.mode = None
+
+    def _gen_start(self):
+        if self.evaluations > 0:
+            raise RuntimeError(
+                "ask/tell on an instance that has already evaluated; "
+                "construct a fresh optimizer."
+            )
+        gd = self._gd = BaseOptimizer._GenDrive(self._run())
+        try:
+            gd.pending_raw = next(gd.gen)
+            gd.pending = _A.clip(gd.pending_raw, 0, 1)
+        except StopIteration:
+            gd.done = True
+        return gd
+
+    def _gen_advance(self, gd, value):
+        self.evaluations += 1
+        self._bookkeep(gd.pending, float(value))
+        try:
+            gd.pending_raw = gd.gen.send(float(value))
+            gd.pending = _A.clip(gd.pending_raw, 0, 1)
+        except StopIteration:
+            gd.done = True
+            gd.pending = None
+
     def _asktell_start(self):
         if self.evaluations > 0:
             raise RuntimeError(
@@ -170,6 +242,19 @@ class BaseOptimizer:
         """Scalar view: next point to evaluate (clipped [0,1]^n) or None when done.
         Works over synchronous population methods too — their generation is served
         one point at a time, and the values are handed back once the group fills."""
+        if getattr(type(self), "_run", None) is not None:
+            gd = getattr(self, "_gd", None) or self._gen_start()
+            if gd.mode == "batch":
+                raise RuntimeError("instance already driven via suggest_batch()")
+            gd.mode = "scalar"
+            if gd.done:
+                return None
+            if gd.awaiting:
+                raise RuntimeError(
+                    "suggest_next() called again before receive_update()"
+                )
+            gd.awaiting = True
+            return gd.pending
         at = self._at or self._asktell_start()
         if at.mode == "batch":
             raise RuntimeError("instance already driven via suggest_batch()")
@@ -190,6 +275,13 @@ class BaseOptimizer:
 
     def receive_update(self, value):
         """Scalar view: report the value for the most recent suggest_next() point."""
+        gd = getattr(self, "_gd", None)
+        if gd is not None:
+            if not gd.awaiting:
+                raise RuntimeError("receive_update() without a matching suggest_next()")
+            gd.awaiting = False
+            self._gen_advance(gd, value)
+            return
         at = self._at
         if at is None or not at.awaiting:
             raise RuntimeError("receive_update() without a matching suggest_next()")
@@ -204,6 +296,17 @@ class BaseOptimizer:
         """Batch view: the next group of points to evaluate together (size 1 for
         sequential algorithms, the generation size for synchronous population
         methods), or None when done. Pair with tell_batch()."""
+        if getattr(type(self), "_run", None) is not None:
+            gd = getattr(self, "_gd", None) or self._gen_start()
+            if gd.mode == "scalar":
+                raise RuntimeError("instance already driven via suggest_next()")
+            gd.mode = "batch"
+            if gd.done:
+                return None
+            if gd.awaiting:
+                raise RuntimeError("suggest_batch() called again before tell_batch()")
+            gd.awaiting = True
+            return [gd.pending]
         at = self._at or self._asktell_start()
         if at.mode == "scalar":
             raise RuntimeError("instance already driven via suggest_next()")
@@ -221,6 +324,16 @@ class BaseOptimizer:
 
     def tell_batch(self, values):
         """Batch view: report values for the most recent suggest_batch() group."""
+        gd = getattr(self, "_gd", None)
+        if gd is not None:
+            if not gd.awaiting:
+                raise RuntimeError("tell_batch() without a matching suggest_batch()")
+            values = [float(v) for v in values]
+            if len(values) != 1:
+                raise ValueError(f"tell_batch expected 1 value, got {len(values)}")
+            gd.awaiting = False
+            self._gen_advance(gd, values[0])
+            return
         at = self._at
         if at is None or not at.awaiting_batch:
             raise RuntimeError("tell_batch() without a matching suggest_batch()")
@@ -235,6 +348,9 @@ class BaseOptimizer:
 
     def is_done(self):
         """True once the driven run has completed (or been closed)."""
+        gd = getattr(self, "_gd", None)
+        if gd is not None:
+            return gd.done
         return self._at is not None and self._at.done
 
     def best(self):
@@ -243,6 +359,13 @@ class BaseOptimizer:
 
     def close(self):
         """Abandon a partially-driven ask/tell run, unwinding the worker cleanly."""
+        gd = getattr(self, "_gd", None)
+        if gd is not None:
+            if not gd.done:
+                gd.gen.close()
+                gd.done = True
+                gd.awaiting = False
+            return
         at = self._at
         if at is not None and not at.done:
             at.resp.put(_ABORT)  # unblock the worker so optimize() can unwind
@@ -298,13 +421,25 @@ class BaseOptimizer:
     _LBFGS_EPS_MACH = 2.220446049250313e-16
     _LBFGS_MEMORY = 10  # scipy `maxcor` default
 
+    def _drive_gen(self, gen):
+        """Drive a point-yielding generator with self.evaluate (legacy path)."""
+        try:
+            x = next(gen)
+            while True:
+                x = gen.send(self.evaluate(x))
+        except StopIteration as st:
+            return st.value
+
     def _lbfgs_polish(self):
+        return self._drive_gen(self._lbfgs_polish_gen())
+
+    def _lbfgs_polish_gen(self):
         n = self.n_dim
         memory = min(self._LBFGS_MEMORY, max(1, n))
 
         x = self.best_x.copy()
         f = self.best_value
-        grad = self._fd_gradient_for_polish(x)
+        grad = yield from self._fd_gradient_polish_gen(x)
 
         s_list: list = []
         y_list: list = []
@@ -372,7 +507,7 @@ class BaseOptimizer:
                     0,
                     1,
                 )
-                cand_f = self.evaluate(candidate)
+                cand_f = yield candidate
                 if cand_f <= f + c1 * step * gd:
                     new_x = candidate
                     new_f = cand_f
@@ -390,7 +525,7 @@ class BaseOptimizer:
                 x, f = new_x, new_f
                 break
 
-            new_grad = self._fd_gradient_for_polish(new_x)
+            new_grad = yield from self._fd_gradient_polish_gen(new_x)
 
             # (7) L-BFGS memory update.
             s = _A.asarray([float(new_x[k]) - float(x[k]) for k in range(n)])
@@ -450,8 +585,11 @@ class BaseOptimizer:
         return m
 
     def _fd_gradient_for_polish(self, x):
-        """Central-difference gradient with budget guards (mirrors
-        LBFGSB._fd_gradient)."""
+        """Central-difference gradient with budget guards (legacy driver of
+        the generator twin below; mirrors LBFGSB._fd_gradient)."""
+        return self._drive_gen(self._fd_gradient_polish_gen(x))
+
+    def _fd_gradient_polish_gen(self, x):
         n = self.n_dim
         h = 1e-6
         grad = [0.0] * n
@@ -460,12 +598,12 @@ class BaseOptimizer:
                 break
             x_plus = x.copy()
             x_plus[i] = min(1.0, float(x[i]) + h)
-            f_plus = self.evaluate(x_plus)
+            f_plus = yield x_plus
             if self.evaluations >= self.n_trials:
                 break
             x_minus = x.copy()
             x_minus[i] = max(0.0, float(x[i]) - h)
-            f_minus = self.evaluate(x_minus)
+            f_minus = yield x_minus
             denom = float(x_plus[i]) - float(x_minus[i])
             if denom > 0:
                 grad[i] = (f_plus - f_minus) / denom
