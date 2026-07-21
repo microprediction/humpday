@@ -1,0 +1,46 @@
+name: Publish JS roster to npm
+
+# Publishes docs/js/modules (the JavaScript twin of the Python roster) to npm
+# when a GitHub Release is published, after re-checking Python<->JS parity.
+# Bump the version in docs/js/modules/package.json before tagging the release.
+#
+# Requires a repo secret NPM_TOKEN (an npm "Automation" access token — the
+# same token used by the skaters repo works; add it under Settings > Secrets).
+
+on:
+  release:
+    types: [published]
+  workflow_dispatch:
+
+jobs:
+  publish:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      id-token: write        # npm provenance
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up Python (parity reference)
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - name: Install the Python package with test deps
+        run: |
+          pip install -e ".[fast]"
+          pip install pytest
+
+      - name: Set up Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+          registry-url: "https://registry.npmjs.org"
+
+      - name: Parity gate (Python and JS must agree before shipping)
+        run: python -m pytest tests/test_js_parity.py -q
+
+      - name: Publish to npm
+        working-directory: docs/js/modules
+        run: npm publish --provenance --access public
+        env:
+          NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
