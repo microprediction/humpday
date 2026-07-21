@@ -21,7 +21,13 @@ class DifferentialEvolution(BaseOptimizer):
     Population stored as a Python list of 1-D vectors.
     """
 
-    def optimize(self):
+    def _run(self):
+        # Online (generator) form: yields candidate points, receives their
+        # values; the BaseOptimizer driver owns clipping and bookkeeping.
+        # Statement order matches the pre-conversion optimize() exactly,
+        # so seeded trajectories are identical (see
+        # tests/test_online_pilot.py against the frozen reference).
+        #
         # Match scipy.optimize.differential_evolution defaults: `best1bin`
         # mutation strategy (mutate around the population's best member,
         # not a random one), dither-mutation F drawn per-generation in
@@ -53,7 +59,9 @@ class DifferentialEvolution(BaseOptimizer):
         CR = 0.7  # scipy default recombination probability.
 
         population = [_A.random_uniform(self.n_dim) for _ in range(pop_size)]
-        fitness = [self.evaluate(ind) for ind in population]
+        fitness = []
+        for ind in population:
+            fitness.append((yield ind))
 
         while self.evaluations < de_budget:
             # Dither: pick F uniformly in [0.5, 1.0] per generation. This
@@ -95,7 +103,7 @@ class DifferentialEvolution(BaseOptimizer):
                         trial[j] = mutant[j]
 
                 # (1+1) selection.
-                trial_fitness = self.evaluate(trial)
+                trial_fitness = yield trial
                 if trial_fitness < fitness[i]:
                     population[i] = trial
                     fitness[i] = trial_fitness
@@ -107,9 +115,7 @@ class DifferentialEvolution(BaseOptimizer):
         # + FD gradient + Armijo line search the LBFGSB optimizer uses.
         # Closes the residual sphere gap that coord descent couldn't
         # reach.
-        self._lbfgs_polish()
-
-        return self.best_value, self.best_x
+        yield from self._lbfgs_polish_gen()
 
 
 class ParticleSwarm(BaseOptimizer):

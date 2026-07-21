@@ -26,7 +26,9 @@ class NelderMead(BaseOptimizer):
     `sorted(range(...), key=fsim.__getitem__)`.
     """
 
-    def optimize(self):
+    def _run(self):
+        # Online (generator) form; see DifferentialEvolution._run for the
+        # protocol. Statement order matches the pre-conversion optimize().
         n = self.n_dim
 
         # SciPy parameter values.
@@ -88,7 +90,7 @@ class NelderMead(BaseOptimizer):
             for k in range(n + 1):
                 if self.evaluations >= self.n_trials:
                     break
-                fsim[k] = self.evaluate(sim[k])
+                fsim[k] = yield sim[k]
             order = sorted(range(n + 1), key=fsim.__getitem__)
             sim = [sim[i] for i in order]
             fsim = [fsim[i] for i in order]
@@ -120,14 +122,14 @@ class NelderMead(BaseOptimizer):
                 xr = _A.clip((1 + rho) * xbar - rho * sim[-1], 0, 1)
                 if self.evaluations >= self.n_trials:
                     break
-                fxr = self.evaluate(xr)
+                fxr = yield xr
 
                 if fxr < fsim[0]:
                     # Expansion.
                     xe = _A.clip((1 + rho * chi) * xbar - rho * chi * sim[-1], 0, 1)
                     if self.evaluations >= self.n_trials:
                         break
-                    fxe = self.evaluate(xe)
+                    fxe = yield xe
                     if fxe < fxr:
                         sim[-1] = xe
                         fsim[-1] = fxe
@@ -148,7 +150,7 @@ class NelderMead(BaseOptimizer):
 
                     if self.evaluations >= self.n_trials:
                         break
-                    fxc = self.evaluate(xc)
+                    fxc = yield xc
 
                     if fxc < min(fxr, fsim[-1]):
                         sim[-1] = xc
@@ -158,7 +160,7 @@ class NelderMead(BaseOptimizer):
                         for j in range(1, n + 1):
                             sim[j] = _A.clip(sim[0] + sigma * (sim[j] - sim[0]), 0, 1)
                             if self.evaluations < self.n_trials:
-                                fsim[j] = self.evaluate(sim[j])
+                                fsim[j] = yield sim[j]
 
                 # Re-sort by fitness.
                 order = sorted(range(n + 1), key=fsim.__getitem__)
@@ -178,8 +180,6 @@ class NelderMead(BaseOptimizer):
                 seed_point = sim[0].copy()
             else:
                 seed_point = _A.random_uniform(n)
-
-        return self.best_value, self.best_x
 
 
 class Powell(BaseOptimizer):
