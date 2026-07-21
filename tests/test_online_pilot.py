@@ -12,12 +12,32 @@ import random
 
 import pytest
 
-from humpday.optimizers.evolutionary_algorithms import DifferentialEvolution
+from humpday.optimizers.evolutionary_algorithms import (
+    DifferentialEvolution,
+    EvolutionStrategy,
+    HarmonySearch,
+    HillClimbing,
+    RandomSearch,
+)
 from humpday.optimizers.scipy_algorithms import NelderMead
+from humpday.optimizers.search_algorithms import (
+    CoordinateDescent,
+    GridSearch,
+    PatternSearch,
+    Rechenberg,
+)
 
 from .reference_impls_pre_online import (
+    FrozenCoordinateDescent,
     FrozenDifferentialEvolution,
+    FrozenEvolutionStrategy,
+    FrozenGridSearch,
+    FrozenHarmonySearch,
+    FrozenHillClimbing,
     FrozenNelderMead,
+    FrozenPatternSearch,
+    FrozenRandomSearch,
+    FrozenRechenberg,
 )
 
 try:
@@ -48,6 +68,15 @@ CASES = [(0, 2, 60), (1, 2, 200), (2, 5, 120), (3, 5, 200)]
 PAIRS = [
     (FrozenDifferentialEvolution, DifferentialEvolution),
     (FrozenNelderMead, NelderMead),
+    # Batch 1
+    (FrozenRechenberg, Rechenberg),
+    (FrozenCoordinateDescent, CoordinateDescent),
+    (FrozenPatternSearch, PatternSearch),
+    (FrozenGridSearch, GridSearch),
+    (FrozenRandomSearch, RandomSearch),
+    (FrozenEvolutionStrategy, EvolutionStrategy),
+    (FrozenHillClimbing, HillClimbing),
+    (FrozenHarmonySearch, HarmonySearch),
 ]
 
 

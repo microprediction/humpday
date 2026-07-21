@@ -392,12 +392,10 @@ class RandomSearch(BaseOptimizer):
     Pure-Python via the `humpday._array` shim — no direct numpy use.
     """
 
-    def optimize(self):
+    def _run(self):
         while self.evaluations < self.n_trials:
             x = _A.random_uniform(self.n_dim)
-            self.evaluate(x)
-
-        return self.best_value, self.best_x
+            yield x
 
 
 class BayesianOpt(BaseOptimizer):
@@ -1105,7 +1103,7 @@ class EvolutionStrategy(BaseOptimizer):
     pre-port version), so this port is mostly substituting RNG calls.
     """
 
-    def optimize(self):
+    def _run(self):
         mu = 10  # Parents
         lambda_ = min(30, self.n_trials // 3)  # Offspring
         sigma = 0.2  # Mutation strength
@@ -1117,7 +1115,7 @@ class EvolutionStrategy(BaseOptimizer):
             if self.evaluations >= self.n_trials:
                 break
             individual = _A.random_uniform(self.n_dim)
-            f = self.evaluate(individual)
+            f = yield individual
             population.append(individual)
             fitness.append(f)
 
@@ -1135,7 +1133,7 @@ class EvolutionStrategy(BaseOptimizer):
 
                 child = _A.clip(parent + sigma * _A.random_normal(self.n_dim), 0, 1)
 
-                child_fitness = self.evaluate(child)
+                child_fitness = yield child
                 offspring.append(child)
                 offspring_fitness.append(child_fitness)
 
@@ -1150,8 +1148,6 @@ class EvolutionStrategy(BaseOptimizer):
                 ]
                 population = [all_individuals[i] for i in indices]
                 fitness = [all_fitness[i] for i in indices]
-
-        return self.best_value, self.best_x
 
 
 class HillClimbing(BaseOptimizer):
@@ -1172,10 +1168,10 @@ class HillClimbing(BaseOptimizer):
     behind the reference on the sphere benchmark.
     """
 
-    def optimize(self):
+    def _run(self):
         n = self.n_dim
         x = _A.random_uniform(n)
-        fx = self.evaluate(x)
+        fx = yield x
 
         sigma_init = 0.1
         sigma_final = 1e-3
@@ -1188,12 +1184,10 @@ class HillClimbing(BaseOptimizer):
         while self.evaluations < self.n_trials:
             z = _A.random_normal(n)
             x_new = _A.clip(x + sigma * z, 0, 1)
-            fx_new = self.evaluate(x_new)
+            fx_new = yield x_new
             if fx_new < fx:
                 x, fx = x_new, fx_new
             sigma *= decay
-
-        return self.best_value, self.best_x
 
 
 class HarmonySearch(BaseOptimizer):
@@ -1202,7 +1196,7 @@ class HarmonySearch(BaseOptimizer):
     Pure-Python via the `humpday._array` shim — no direct numpy use.
     """
 
-    def optimize(self):
+    def _run(self):
         HMS = min(20, max(5, self.n_dim * 2))  # Harmony Memory Size
         HMCR = 0.9  # Harmony Memory Considering Rate
         PAR = 0.3  # Pitch Adjusting Rate
@@ -1213,7 +1207,7 @@ class HarmonySearch(BaseOptimizer):
             if self.evaluations >= self.n_trials:
                 break
             harmony = _A.random_uniform(self.n_dim)
-            fitness = self.evaluate(harmony)
+            fitness = yield harmony
             harmony_memory.append({"harmony": harmony, "fitness": fitness})
 
         while self.evaluations < self.n_trials:
@@ -1237,7 +1231,7 @@ class HarmonySearch(BaseOptimizer):
                     # Random selection along this dimension.
                     new_harmony[j] = _A.random_scalar()
 
-            new_fitness = self.evaluate(new_harmony)
+            new_fitness = yield new_harmony
 
             # Update harmony memory (replace worst if new harmony is better).
             harmony_memory.sort(key=lambda x: x["fitness"])
@@ -1246,5 +1240,3 @@ class HarmonySearch(BaseOptimizer):
                     "harmony": new_harmony.copy(),
                     "fitness": new_fitness,
                 }
-
-        return self.best_value, self.best_x
