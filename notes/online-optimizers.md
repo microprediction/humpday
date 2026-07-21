@@ -65,10 +65,40 @@ inverting five codebases later is five times this work. Ports written
 against the online form — and its transition-level parity vectors — never
 know the loop-owning era existed.
 
-## Remaining roster
+## Roster status
 
-Converted: DifferentialEvolution, NelderMead (+ the shared L-BFGS polish
-used by SA/PSO/BayesianOpt/LBFGSB). To convert: the remaining 21, in
-roughly ascending order of control-flow nesting; PRIMA_* last (deepest
-nesting, Tier 2 acceptable as an interim). Alloy converts trivially (its
-loop already has propose/observe shape).
+Complete. All 23 optimizers are natively online (PRs #296-#300): every
+class defines _run(), ask/tell runs threadless across the roster, and no
+loop-owning optimizer code remains. PRIMA converted as Tier 1 after all —
+the three trust-region methods are in-repo pure Python, so their
+interpolation-set init helpers became sub-generators and the buffered
+facade was never needed (it remains part of the contract for ports
+wrapping foreign batch code).
+
+Batch yields, added in the third wave: a generator may
+`values = yield Batch([x1, ..., xm])` (the marker class in base.py) to
+surface a whole synchronous generation. The drivers evaluate the group in
+evaluate()'s exact per-point order; suggest_batch() serves it intact for
+parallel evaluation and suggest_next() serves it point by point. CMA-ES
+uses this for its generations.
+
+Every conversion carries its frozen pre-conversion twin in
+tests/reference_impls_pre_online.py and an exact trajectory-equivalence
+proof in tests/test_online_pilot.py (299 tests at completion).
+
+## What this unlocks
+
+Runtime composition. With every optimizer speaking ask/tell without
+threads, a meta-optimizer can interleave several optimizers on one
+evaluation stream — round-robin, bandit allocation over suggestions,
+mid-run switching between hosts — with no glue beyond the interface.
+This is a new, purely mechanical composition family alongside the
+inspiration simplex's semantic blends, and a natural baseline for that
+paper: does an LLM-blended artifact beat a scheduler juggling the same
+vertex algorithms at runtime?
+
+Ports. The generator protocol is language-neutral: Rust generators via
+explicit state machines or coroutines, Julia via Channels or closures, R
+via closure-based iterators, JS via native generators. Transition-level
+parity vectors (every value-in/point-out pair, not endpoint comparisons)
+become the cross-language contract once the portable RNG lands.
