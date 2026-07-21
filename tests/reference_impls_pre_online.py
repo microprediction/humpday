@@ -1195,3 +1195,1100 @@ class FrozenAntColonyOpt(BaseOptimizer):
             archive = archive[:k]
 
         return self.best_value, self.best_x
+
+
+def _bo_normal_cdf(x):
+    sign = 1.0 if x >= 0 else -1.0
+    return 0.5 * (1.0 + sign * math.sqrt(1.0 - math.exp(-2.0 * x * x / math.pi)))
+
+
+def _bo_normal_pdf(x):
+    return math.exp(-0.5 * x * x) / math.sqrt(2.0 * math.pi)
+
+
+# ---- Batch 3 frozen copies (complex) ----
+
+
+class FrozenBayesianOpt(BaseOptimizer):
+    """Bayesian Optimization with a Gaussian-Process surrogate and the
+    Expected-Improvement acquisition.
+
+    Pure-Python via the `humpday._array` shim — no direct numpy use.
+    The kernel matrix and predictive computations, originally written
+    in numpy with row-of-row broadcasting, are rewritten with explicit
+    nested loops here. Each row of `X_observed` is a `_Vec` / ndarray;
+    `X_observed` itself is a Python list of those rows. The numerical
+    fallback path uses a small diagonal jitter (instead of pinv, which
+    is not in the linalg shim) to keep the kernel positive-definite.
+    """
+
+    def __init__(self, objective, n_trials, n_dim):
+        super().__init__(objective, n_trials, n_dim)
+        self.X_observed = []  # list of 1-D vectors
+        self.y_observed = []  # list of floats
+        self.length_scale = 0.2
+        self.signal_variance = 1.0
+        self.noise_variance = 1e-6
+
+    def optimize(self):
+        n_initial = min(5, max(2, self.n_dim))
+
+        for _ in range(n_initial):
+            if self.evaluations >= self.n_trials:
+                break
+            x = _A.random_uniform(self.n_dim)
+            y = self.evaluate(x)
+            self.X_observed.append(x)
+            self.y_observed.append(float(y))
+
+        # Reserve budget for the L-BFGS-B polish stage. Reference:
+        # scikit-optimize's `gp_minimize` finishes with a
+        # `minimize(method='L-BFGS-B')` polish on the best observation;
+        # this is the same pattern.
+        #
+        # The polish takes 2·n_dim evals per gradient + a few per line
+        # search; 5-10 L-BFGS iterations on a smooth basin are enough to
+        # blow through the GP-EI noise floor (~1e-4) down to machine
+        # precision. Reserve 20·n_dim evals (≈ 10 polish iterations),
+        # capped at half the budget so very small budgets still get a
+        # real GP-EI phase.
+        polish_reserve = min(20 * self.n_dim, self.n_trials // 2)
+        loop_budget = max(self.evaluations, self.n_trials - polish_reserve)
+
+        # Bayesian optimization loop.
+        while self.evaluations < loop_budget:
+            try:
+                x_next = self._optimize_acquisition()
+                y_next = self.evaluate(x_next)
+            except Exception:
+                # Fallback: any failure in the GP machinery falls back
+                # to a random sample. Keeps the budget tight.
+                x_next = _A.random_uniform(self.n_dim)
+                y_next = self.evaluate(x_next)
+            self.X_observed.append(x_next)
+            self.y_observed.append(float(y_next))
+
+        # Polish: L-BFGS-B from the GP-EI best. Closes the residual ~5
+        # orders of magnitude on sphere by escaping the GP's RBF
+        # smoothing floor.
+        self._lbfgs_polish()
+
+        return self.best_value, self.best_x
+
+    # ---- GP machinery (no numpy, no broadcasting) ----
+
+    def _kernel_matrix(self, X1_rows, X2_rows):
+        """RBF kernel for every pair (X1_rows[i], X2_rows[j]).
+
+        Two implementation paths:
+
+        - Under the numpy backend, the kernel is built with numpy's
+          broadcasting and vectorised `exp`. This is essential for
+          BayesianOpt to keep CI fast — without it the test suite
+          balloons from ~40 s to several minutes because BayesianOpt is
+          invoked many times across the smoke-test sweeps.
+        - Under the pure backend, the kernel is built with explicit
+          nested loops. Correctness over speed; pure-backend BayesianOpt
+          is intentionally an outlier on performance.
+
+        The backend check happens once per call; numpy is only imported
+        on the path where it's known available (the shim's `BACKEND`
+        is set at import time).
+        """
+        scale_sq = self.length_scale * self.length_scale
+        sig = self.signal_variance
+
+        if _A.BACKEND == "numpy":
+            # numpy backend: classic broadcasting form.
+            import numpy as _np
+
+            X1 = _np.asarray([list(r) for r in X1_rows], dtype=float)
+            X2 = _np.asarray([list(r) for r in X2_rows], dtype=float)
+            n1_sq = (X1 * X1).sum(axis=1).reshape(-1, 1)
+            n2_sq = (X2 * X2).sum(axis=1).reshape(1, -1)
+            sqdist = n1_sq + n2_sq - 2.0 * X1 @ X2.T
+            return sig * _np.exp(-0.5 * sqdist / scale_sq)
+
+        # Pure-Python backend: explicit O(n1 n2 d) loops via the shim's
+        # matmul. Slow but no numpy required.
+        norms1 = [sum(float(v) * float(v) for v in row) for row in X1_rows]
+        norms2 = [sum(float(v) * float(v) for v in row) for row in X2_rows]
+        X1_2d = [list(r) for r in X1_rows]
+        X2_2d = [list(r) for r in X2_rows]
+        X2T = _A.linalg.transpose(X2_2d)
+        cross = _A.linalg.matmul(X1_2d, X2T)
+
+        n1, n2 = len(X1_rows), len(X2_rows)
+        out = []
+        for i in range(n1):
+            row = []
+            cross_i = cross[i]
+            n1_i = norms1[i]
+            for j in range(n2):
+                sq = n1_i + norms2[j] - 2.0 * float(cross_i[j])
+                row.append(sig * math.exp(-0.5 * sq / scale_sq))
+            out.append(row)
+        return out
+
+    def _gp_predict(self, x_query):
+        """Posterior mean and std for a single query point `x_query`."""
+        n_obs = len(self.X_observed)
+
+        # K = k(X, X) + noise * I
+        K = self._kernel_matrix(self.X_observed, self.X_observed)
+        for i in range(n_obs):
+            K[i][i] += self.noise_variance
+
+        # K_s = k(X, x_query) as a column vector of length n_obs.
+        K_s_col = [
+            self._kernel_matrix([x_obs], [x_query])[0][0] for x_obs in self.X_observed
+        ]
+
+        # K_ss = k(x_query, x_query) — a single scalar.
+        K_ss = self._kernel_matrix([x_query], [x_query])[0][0]
+
+        # Solve K alpha = y via cholesky, with a jitter retry if SPD fails.
+        jitter = 0.0
+        L = None
+        for attempt in range(4):
+            try:
+                L = _A.linalg.cholesky(K)
+                break
+            except Exception:
+                jitter = max(1e-8, jitter * 10) if jitter > 0 else 1e-8
+                for i in range(n_obs):
+                    K[i][i] += jitter
+        if L is None:
+            # Pathological kernel — fall back to a flat prior.
+            mu = sum(self.y_observed) / max(1, n_obs)
+            var = 0.0
+            for y in self.y_observed:
+                var += (y - mu) ** 2
+            var /= max(1, n_obs)
+            return mu, math.sqrt(max(var, 1e-8))
+
+        # alpha = K^-1 y, computed as L^-T (L^-1 y) via two triangular solves.
+        # Our shim only exposes a general `solve`; that's still correct, just
+        # not as fast.
+        alpha = _A.linalg.solve(L, self.y_observed)
+        Lt = _A.linalg.transpose(L)
+        alpha = _A.linalg.solve(Lt, alpha)
+
+        # Mean: mu = K_s . alpha.
+        mu = sum(float(K_s_col[i]) * float(alpha[i]) for i in range(n_obs))
+
+        # Variance: var = K_ss - K_s^T K^-1 K_s.
+        # With L L^T = K, K^-1 K_s = L^-T (L^-1 K_s).
+        v = _A.linalg.solve(L, K_s_col)
+        v_dot_v = sum(float(vi) * float(vi) for vi in v)
+        var = max(K_ss - v_dot_v, 1e-8)
+
+        return mu, math.sqrt(var)
+
+    # ---- Acquisition ----
+
+    def _expected_improvement(self, x):
+        mu, sigma = self._gp_predict(x)
+        f_best = min(self.y_observed)
+        improvement = f_best - mu - 0.01
+        if sigma <= 0:
+            return 0.0
+        Z = improvement / sigma
+        return improvement * _bo_normal_cdf(Z) + sigma * _bo_normal_pdf(Z)
+
+    def _optimize_acquisition(self):
+        """Optimize the acquisition function with random starts."""
+        best_x = None
+        best_ei = -float("inf")
+        for _ in range(min(10, max(5, 2 * self.n_dim))):
+            x = _A.random_uniform(self.n_dim)
+            ei = self._expected_improvement(x)
+            if ei > best_ei:
+                best_ei = ei
+                best_x = x
+        if best_x is None:
+            return _A.random_uniform(self.n_dim)
+        return _A.clip(best_x, 0, 1)
+
+
+class FrozenCMAEvolutionStrategy(BaseOptimizer):
+    """CMA-ES with evolution paths and step-size adaptation.
+
+    Pure-Python via the `humpday._array` shim — no direct numpy use.
+    Implementation follows Hansen's standard CMA-ES; the only deviation
+    is that `np.random.multivariate_normal(0, C)` is replaced by the
+    Cholesky-based sampling `z = cholesky(C) @ random_normal(n)`, which
+    is well-known to be equivalent (and is how numpy implements it
+    internally).
+    """
+
+    def optimize(self):
+        import math
+
+        n = self.n_dim
+
+        # Reserve budget for the L-BFGS-B polish at the end. CMA-ES
+        # converges to a basin geometrically but its stochastic
+        # proposals plateau in a noise floor governed by σ. The polish
+        # closes the residual.
+        #
+        # Sweep at n_trials=200, n_dim=2 (8 seeds, median):
+        #   polish_factor=0   sphere=5.7e-10  rb=0.147  ackley=9.2e-4
+        #   polish_factor=10  sphere=0        rb=0.21   ackley=5.3e-4
+        #   polish_factor=20  sphere=0        rb=0.067  ackley=6.7e-4
+        # 20·n is the sweet spot: enough polish iterations to refine
+        # past the σ noise floor while leaving CMA-ES enough generations
+        # to find the basin. Matches the pattern in DE/SA/PSO/Firefly.
+        polish_reserve = min(20 * n, self.n_trials // 2)
+        cmaes_budget = max(self.evaluations, self.n_trials - polish_reserve)
+
+        # IPOP-CMA-ES (Auger & Hansen 2005, "A Restart CMA Evolution
+        # Strategy with Increasing Population Size", CEC 2005). Vanilla
+        # CMA-ES converges to a single basin and has no mechanism to
+        # escape — on multimodal landscapes it routinely returns local
+        # optima. IPOP wraps the main CMA loop with: (a) standard
+        # termination checks (σ floor, condition number, TolFun stagnation)
+        # and (b) a restart that doubles λ and resets all state. Larger
+        # populations explore more aggressively, so successive restarts
+        # are progressively better at jumping basins.
+        IPOP_INCPOPSIZE = 2.0
+        IPOP_TOLFUN = 1e-12
+        IPOP_TOLX_FACTOR = 1e-12
+        IPOP_CONDITION_COV = 1e14
+        IPOP_TOLFUN_HISTORY = 10  # plus 30*n/lambda; bounded below
+
+        base_lambda = min(50, 4 + int(3 * math.log(n)))
+        restart_count = 0
+
+        # Carry the best across restarts via self.best_x / self.best_value
+        # (which BaseOptimizer.evaluate updates automatically). No need
+        # to thread it through manually.
+
+        # Outer IPOP loop: keep restarting (with growing λ) until budget
+        # is exhausted.
+        while self.evaluations < cmaes_budget:
+            # Hansen's recommended parameters at the current population size.
+            lambda_ = min(
+                cmaes_budget - self.evaluations,
+                int(base_lambda * (IPOP_INCPOPSIZE**restart_count)),
+            )
+            lambda_ = max(lambda_, 4)
+            mu = lambda_ // 2  # number of parents
+            if mu < 1:
+                break
+
+            # Recombination weights: w_i = log(mu + 0.5) - log(i), normalised.
+            weights = _A.asarray(
+                [math.log(mu + 0.5) - math.log(i + 1) for i in range(mu)]
+            )
+            weights = weights / _A.sum(weights)
+            mueff = 1.0 / _A.sum(weights**2)
+
+            # Adaptation constants.
+            cc = (4 + mueff / n) / (n + 4 + 2 * mueff / n)
+            cs = (mueff + 2) / (n + mueff + 5)
+            c1 = 2 / ((n + 1.3) ** 2 + mueff)
+            cmu = min(1 - c1, 2 * (mueff - 2 + 1 / mueff) / ((n + 2) ** 2 + mueff))
+            damps = 1 + 2 * max(0, math.sqrt((mueff - 1) / (n + 1)) - 1) + cs
+
+            # Fresh state per restart. Initial mean is a random interior
+            # point in [0.3, 0.7]^n — same distribution the
+            # reference-alignment harness draws from via `_draw_x0`. The
+            # previous fixed-centre `0.5 * ones(n)` was a deterministic
+            # starting point that disadvantaged Rosenbrock (optimum at
+            # 0.75 ones, so distance 0.25) vs the reference's average of
+            # ~0.05. Also `sigma=0.2` to match the reference cmaes
+            # library's chosen initial step size (HumpDay was 0.3).
+            mean = 0.3 + 0.4 * _A.random_uniform(n)
+            sigma = 0.2
+            C = _A.linalg.eye(n)
+            pc = _A.zeros(n)
+            ps = _A.zeros(n)
+            invsqrtC = _A.linalg.eye(n)
+
+            # TolFun window: history of best-of-generation values for the
+            # most recent K generations. Length grows with the restart's
+            # population size per IPOP convention.
+            tolfun_window = max(IPOP_TOLFUN_HISTORY, int(30 * n / lambda_))
+            fbest_history: list[float] = []
+
+            generation = 0
+            # Cap iterations by budget directly. The previous
+            # `min(100, n_trials // lambda_)` capped at 100 generations
+            # even when the user's n_trials budget allowed many more —
+            # at lambda_ ≈ 6 and budget 1000, only the first ~600 evals
+            # would be spent. Reference pycma has no such cap; the inner
+            # `evaluations < n_trials` guard is sufficient, this just
+            # protects against pathological infinite loops.
+            max_generations = self.n_trials
+            converged = False
+
+            while (
+                self.evaluations < cmaes_budget
+                and generation < max_generations
+                and not converged
+            ):
+                generation += 1
+
+                # Sample λ offspring from N(mean, sigma^2 * C). Use a
+                # Cholesky factor L of C so x = mean + sigma * (L @ N(0, I)),
+                # equivalent to numpy's `multivariate_normal(0, C)`.
+                try:
+                    L_C = _A.linalg.cholesky(C)
+                except Exception:
+                    # If C drifted non-SPD, fall back to identity sampling
+                    # for this generation; the eigh-based recovery below
+                    # will repair C before the next iteration.
+                    L_C = _A.linalg.eye(n)
+
+                # Synchronous generation: every offspring is sampled from the SAME
+                # (mean, sigma, C), so the whole generation can be evaluated as one
+                # batch with no change in behaviour. Under ask/tell this surfaces the
+                # generation via suggest_batch() for parallel evaluation; in a direct
+                # optimize() run evaluate_batch() is exactly a per-point loop. We
+                # build all offspring first (same RNG order, same budget cutoff) then
+                # evaluate them together.
+                n_off = max(0, min(lambda_, cmaes_budget - self.evaluations))
+                xs, zs = [], []
+                for _ in range(n_off):
+                    std_z = _A.random_normal(n)
+                    z = _A.linalg.matvec(L_C, std_z)
+                    x = _A.clip(mean + sigma * z, 0, 1)
+                    xs.append(x)
+                    zs.append(z)
+                fs = self.evaluate_batch(xs) if xs else []
+                population = [(xs[i], zs[i], fs[i]) for i in range(len(xs))]
+
+                if not population:
+                    break
+                # If the budget ran out mid-sampling and we have fewer
+                # than μ offspring, the partial generation can't do a
+                # meaningful recombination — stop the inner loop so the
+                # restart layer (or polish stage) gets the remaining
+                # budget rather than letting noise pollute the next
+                # iteration's mean/sigma.
+                if len(population) < mu:
+                    break
+
+                # Sort offspring by fitness ascending.
+                population.sort(key=lambda p: p[2])
+
+                # Recombination: new mean is the weighted average of the
+                # μ best offspring.
+                old_mean = mean.copy()
+                mean = _A.zeros(n)
+                for i in range(mu):
+                    mean = mean + weights[i] * population[i][0]
+
+                # Evolution paths.
+                y = (mean - old_mean) / sigma
+
+                ps = (1 - cs) * ps + math.sqrt(
+                    cs * (2 - cs) * mueff
+                ) * _A.linalg.matvec(invsqrtC, y)
+
+                hsig = (
+                    1
+                    if _A.norm(ps) / math.sqrt(1 - (1 - cs) ** (2 * generation))
+                    < 1.4 + 2 / (n + 1)
+                    else 0
+                )
+
+                pc = (1 - cc) * pc + hsig * math.sqrt(cc * (2 - cc) * mueff) * y
+
+                # Adapt covariance matrix C.
+                if len(population) >= mu:
+                    # Rank-μ update: sum of weighted outer products.
+                    weighted_diffs = _A.linalg.matrix_zeros(n, n)
+                    for i in range(mu):
+                        diff = (population[i][0] - old_mean) / sigma
+                        w_outer = _A.linalg.outer(diff, diff)
+                        for r in range(n):
+                            for c in range(n):
+                                weighted_diffs[r][c] += weights[i] * w_outer[r][c]
+
+                    pc_outer = _A.linalg.outer(pc, pc)
+                    new_C = _A.linalg.matrix_zeros(n, n)
+                    base = 1 - c1 - cmu
+                    for r in range(n):
+                        for c in range(n):
+                            new_C[r][c] = (
+                                base * C[r][c]
+                                + c1 * pc_outer[r][c]
+                                + cmu * weighted_diffs[r][c]
+                            )
+                    C = new_C
+
+                    # Ensure C stays positive definite — bump up by the
+                    # smallest eigenvalue if needed.
+                    try:
+                        eigvals, _ = _A.linalg.eigh(C)
+                        min_eig = min(eigvals)
+                        if min_eig < 1e-14:
+                            shift = 1e-14 - min_eig
+                            for k in range(n):
+                                C[k][k] += shift
+                    except Exception:
+                        pass
+
+                # Refresh invsqrtC for the next iteration via eigendecomp:
+                # C = B diag(D) B^T  =>  invsqrtC = B diag(1/sqrt(D)) B^T.
+                # Also use the eigenvalues for IPOP's ConditionCov check.
+                try:
+                    D, B = _A.linalg.eigh(C)
+                    D_inv_sqrt = [1.0 / math.sqrt(max(d, 1e-14)) for d in D]
+                    D_diag = _A.linalg.diag(D_inv_sqrt)
+                    Bt = _A.linalg.transpose(B)
+                    tmp = _A.linalg.matmul(B, D_diag)
+                    invsqrtC = _A.linalg.matmul(tmp, Bt)
+                    eig_max = max(D)
+                    eig_min = max(min(D), 1e-30)
+                    cond_C = eig_max / eig_min
+                except Exception:
+                    invsqrtC = _A.linalg.eye(n)
+                    eig_max = 1.0
+                    cond_C = 1.0
+
+                # Step-size update. Do NOT floor at 1e-6 — that artificial
+                # floor was preventing convergence on smooth basins
+                # (Rosenbrock was 4.28× off the cmaes reference because
+                # sigma got pinned at 1e-6 rather than shrinking further).
+                # And do NOT cap at 0.5: reference pycma has no upper
+                # bound on sigma; oversized proposals are handled by the
+                # `_A.clip(..., 0, 1)` already applied to each x sample.
+                sigma = sigma * math.exp(
+                    (cs / damps) * (_A.norm(ps) / math.sqrt(n) - 1)
+                )
+
+                # ---- IPOP termination checks ----
+                # Maintain a rolling window of best-of-generation values
+                # for the TolFun stagnation test.
+                fbest_history.append(population[0][2])
+                if len(fbest_history) > tolfun_window:
+                    fbest_history.pop(0)
+
+                # TolFun: the f-value range over the last `tolfun_window`
+                # generations has collapsed to noise.
+                if (
+                    len(fbest_history) >= tolfun_window
+                    and max(fbest_history) - min(fbest_history) < IPOP_TOLFUN
+                ):
+                    converged = True
+                    continue
+
+                # TolX: step-size combined with the largest principal
+                # direction has fallen below numerical resolution.
+                if sigma * math.sqrt(eig_max) < IPOP_TOLX_FACTOR:
+                    converged = True
+                    continue
+
+                # ConditionCov: the search distribution has elongated to
+                # the point where further updates are numerically unsafe.
+                if cond_C > IPOP_CONDITION_COV:
+                    converged = True
+                    continue
+
+            # Inner loop exited — either budget exhausted, partial
+            # generation, or an IPOP termination check fired. If we
+            # still have budget, restart with a larger population.
+            restart_count += 1
+            if not converged:
+                # Budget-driven exit, not convergence. No more restarts
+                # would help — fall through to the polish stage.
+                break
+
+        # Polish stage: L-BFGS-B from the best-found point across all
+        # restarts (shared on base; self.best_x carries the global best).
+        self._lbfgs_polish()
+
+        return self.best_value, self.best_x
+
+
+class FrozenPowell(BaseOptimizer):
+    """Powell's method - direct adaptation from SciPy source code.
+
+    Pure-Python via the `humpday._array` shim — no direct numpy use.
+    The direction set `direc` is stored as a list of rows; row accesses
+    are wrapped in `_A.asarray(...)` so they become `_Vec` (pure) or
+    ndarray (numpy) and support elementwise arithmetic on either path.
+    """
+
+    def optimize(self):
+        n = self.n_dim
+        x = 0.3 + 0.4 * _A.random_uniform(n)  # Interior start
+
+        # Initial direction set: identity matrix (coordinate directions).
+        direc = _A.linalg.eye(n)
+
+        # As with NelderMead, scipy's default ftol=1e-4 stops the
+        # iteration far before the budget is exhausted on smooth
+        # problems. Tightening to 1e-12 lets Powell use its budget.
+        ftol = 1e-12
+        maxiter = n * 20
+
+        fval = self.evaluate(x)
+        x1 = x.copy()
+        iteration = 0
+
+        while iteration < maxiter and self.evaluations < self.n_trials:
+            fx = fval
+            bigind = 0
+            delta = 0.0
+
+            # Line searches along each direction.
+            for i in range(n):
+                if self.evaluations >= self.n_trials:
+                    break
+
+                direc1 = _A.asarray(direc[i])
+                fx2 = fval
+                fval, x, direc1 = self._linesearch_powell(x, direc1, fval)
+
+                if (fx2 - fval) > delta:
+                    delta = fx2 - fval
+                    bigind = i
+
+            iteration += 1
+
+            # SciPy convergence check.
+            bnd = ftol * (abs(fx) + abs(fval)) + 1e-20
+            if 2.0 * (fx - fval) <= bnd:
+                break
+
+            if self.evaluations >= self.n_trials:
+                break
+
+            # Construct the extrapolated point.
+            direc1 = x - x1
+            x1 = x.copy()
+            x2 = _A.clip(x + direc1, 0, 1)
+
+            if self.evaluations >= self.n_trials:
+                break
+
+            fx2 = self.evaluate(x2)
+
+            if fx > fx2:
+                t = 2.0 * (fx + fx2 - 2.0 * fval)
+                temp = fx - fval - delta
+                t *= temp * temp
+                temp = fx - fx2
+                t -= delta * temp * temp
+
+                if t < 0.0:
+                    fval, x, direc1 = self._linesearch_powell(x, direc1, fval)
+                    # `np.any(arr)` for a float vector means "any non-zero entry".
+                    if any(v != 0 for v in direc1):
+                        direc[bigind] = list(direc[-1])
+                        direc[-1] = list(direc1)
+
+        return self.best_value, self.best_x
+
+    def _linesearch_powell(self, p, xi, fval):
+        """Bounded Brent-method line search along direction `xi` from
+        point `p`. Returns `(best_f, best_x, scaled_direction)`.
+
+        Ported from scipy.optimize._optimize.Brent.optimize and the
+        downhill-walk `bracket` routine that initialises it. Compared
+        to the previous bounded golden-section, Brent reaches superlinear
+        convergence on smooth landscapes by interleaving inverse
+        quadratic interpolation with golden-section fallbacks, and is
+        what gives scipy's Powell its sharpness on convex problems.
+
+        Adaptations:
+          - The bracket-grow step stops at the alpha bounds (so we stay
+            inside `[0, 1]^n`) instead of growing freely as scipy does.
+          - Every function evaluation is gated by the remaining budget.
+          - On budget exhaustion we return the best alpha seen so far,
+            which preserves the caller's invariant that the line search
+            never worsens `fval`.
+        """
+
+        def myfunc(alpha):
+            x_trial = _A.clip(p + alpha * xi, 0, 1)
+            return self.evaluate(x_trial)
+
+        # If direction is essentially zero, skip the search.
+        if not any(v != 0 for v in xi):
+            return fval, p, xi
+
+        # Clamp alpha so p + alpha * xi stays in [0, 1]^n.
+        # Each non-zero `xi[i]` gives two alpha values where the
+        # corresponding coordinate hits 0 or 1; the intersection of all
+        # such intervals is [alpha_min, alpha_max].
+        alpha_lo = float("-inf")
+        alpha_hi = float("inf")
+        for i in range(len(xi)):
+            xi_i = float(xi[i])
+            if abs(xi_i) <= 1e-12:
+                continue
+            b1 = -float(p[i]) / xi_i
+            b2 = (1.0 - float(p[i])) / xi_i
+            lo, hi = (b1, b2) if b1 < b2 else (b2, b1)
+            if lo > alpha_lo:
+                alpha_lo = lo
+            if hi < alpha_hi:
+                alpha_hi = hi
+
+        if alpha_hi <= alpha_lo:
+            return fval, p, xi
+        # Cap to a sensible range. The original bounded golden-section
+        # used [-1, 1] so the magnitude of `xi_new` stayed comparable to
+        # `xi`'s; keep that convention.
+        alpha_lo = max(alpha_lo, -1.0)
+        alpha_hi = min(alpha_hi, 1.0)
+        if alpha_hi <= alpha_lo:
+            return fval, p, xi
+
+        # Track the best alpha seen across bracket + Brent so that on
+        # budget exhaustion we still return progress.
+        best_alpha = 0.0
+        best_f = fval
+
+        def evaluate(alpha):
+            """Run `myfunc(alpha)` with budget check, updating best_*."""
+            nonlocal best_alpha, best_f
+            if self.evaluations >= self.n_trials:
+                return None
+            f = myfunc(alpha)
+            if f < best_f:
+                best_alpha = alpha
+                best_f = f
+            return f
+
+        # ---- Bracket the minimum (scipy.optimize.bracket adaptation) ----
+        # Start two points apart inside the bounded interval. Use a step
+        # one decimal of the interval width — tiny enough that a smooth
+        # function shows curvature, large enough not to look constant.
+        span = alpha_hi - alpha_lo
+        xa = 0.0 if alpha_lo < 0 < alpha_hi else alpha_lo
+        xb = xa + min(span * 0.1, 1e-1)
+        if xb >= alpha_hi:
+            xb = alpha_lo + 0.5 * (alpha_hi - alpha_lo)
+
+        fa = evaluate(xa)
+        if fa is None:
+            return self._linesearch_result(p, xi, fval, best_alpha, best_f)
+        fb = evaluate(xb)
+        if fb is None:
+            return self._linesearch_result(p, xi, fval, best_alpha, best_f)
+
+        if fa < fb:
+            xa, xb = xb, xa
+            fa, fb = fb, fa
+
+        # Step in the downhill direction (golden-ratio expansion).
+        gold = 1.618033988749895
+        xc = xb + gold * (xb - xa)
+        if xc > alpha_hi:
+            xc = alpha_hi
+        if xc < alpha_lo:
+            xc = alpha_lo
+
+        fc = evaluate(xc)
+        if fc is None:
+            return self._linesearch_result(p, xi, fval, best_alpha, best_f)
+
+        # Grow the bracket until f starts increasing on the far side
+        # or we hit a bound. Capped at a small constant to keep the
+        # cost predictable.
+        for _ in range(20):
+            if fc >= fb:
+                break
+            # We have a downhill triple — keep walking.
+            new_xc = xc + gold * (xc - xb)
+            if new_xc > alpha_hi or new_xc < alpha_lo:
+                new_xc = alpha_hi if (xc - xb) > 0 else alpha_lo
+                if new_xc == xc:
+                    break
+            xa, xb = xb, xc
+            fa, fb = fb, fc
+            xc = new_xc
+            fc = evaluate(xc)
+            if fc is None:
+                return self._linesearch_result(p, xi, fval, best_alpha, best_f)
+
+        # If we couldn't bracket (e.g. flat or boundary-attached), bail
+        # out gracefully with whatever the best evaluation was.
+        if not ((xa < xb < xc) or (xc < xb < xa)) or not (fb <= fa and fb <= fc):
+            return self._linesearch_result(p, xi, fval, best_alpha, best_f)
+
+        # ---- Brent's method inside the bracket --------------------------
+        if xa > xc:
+            a_, b_ = xc, xa
+        else:
+            a_, b_ = xa, xc
+
+        x = w = v = xb
+        fx = fw = fv = fb
+        deltax = 0.0
+        rat = 0.0
+        cg = 0.3819660  # 1 - 1/phi (scipy's _cg)
+        brent_tol = 1.48e-3
+        mintol = 1.0e-11
+
+        for _ in range(50):
+            tol1 = brent_tol * abs(x) + mintol
+            tol2 = 2.0 * tol1
+            xmid = 0.5 * (a_ + b_)
+            if abs(x - xmid) < (tol2 - 0.5 * (b_ - a_)):
+                break
+
+            if abs(deltax) <= tol1:
+                # Take a golden-section step.
+                deltax = (a_ - x) if x >= xmid else (b_ - x)
+                rat = cg * deltax
+            else:
+                # Try an inverse parabolic step.
+                tmp1 = (x - w) * (fx - fv)
+                tmp2 = (x - v) * (fx - fw)
+                p_ = (x - v) * tmp2 - (x - w) * tmp1
+                tmp2 = 2.0 * (tmp2 - tmp1)
+                if tmp2 > 0.0:
+                    p_ = -p_
+                tmp2 = abs(tmp2)
+                dx_temp = deltax
+                deltax = rat
+                if (
+                    (p_ > tmp2 * (a_ - x))
+                    and (p_ < tmp2 * (b_ - x))
+                    and (abs(p_) < abs(0.5 * tmp2 * dx_temp))
+                ):
+                    rat = p_ / tmp2
+                    u = x + rat
+                    if (u - a_) < tol2 or (b_ - u) < tol2:
+                        rat = tol1 if (xmid - x) >= 0 else -tol1
+                else:
+                    deltax = (a_ - x) if x >= xmid else (b_ - x)
+                    rat = cg * deltax
+
+            # Ensure the step is at least tol1.
+            if abs(rat) < tol1:
+                u = x + (tol1 if rat >= 0 else -tol1)
+            else:
+                u = x + rat
+
+            fu = evaluate(u)
+            if fu is None:
+                break
+
+            if fu > fx:
+                if u < x:
+                    a_ = u
+                else:
+                    b_ = u
+                if fu <= fw or w == x:
+                    v, fv = w, fw
+                    w, fw = u, fu
+                elif fu <= fv or v == x or v == w:
+                    v, fv = u, fu
+            else:
+                if u >= x:
+                    a_ = x
+                else:
+                    b_ = x
+                v, fv = w, fw
+                w, fw = x, fx
+                x, fx = u, fu
+
+        return self._linesearch_result(p, xi, fval, best_alpha, best_f)
+
+    def _linesearch_result(self, p, xi, fval, best_alpha, best_f):
+        """Translate the best (alpha, f) pair from the line search back
+        into the (f, x, direction) tuple Powell's outer loop expects."""
+        if best_f < fval:
+            x_new = _A.clip(p + best_alpha * xi, 0, 1)
+            xi_new = best_alpha * xi
+            return best_f, x_new, xi_new
+        else:
+            return fval, p, _A.zeros(len(xi))
+
+
+class FrozenLBFGSB(BaseOptimizer):
+    """L-BFGS-B with a finite-difference gradient (Byrd–Lu–Nocedal–Zhu).
+
+    Limited-memory BFGS with simple bound constraints — the
+    derivative-free workflow uses central-difference gradients (cost:
+    2·n_dim evals per iteration) since HumpDay's contract is to take
+    a black-box objective. The L-BFGS update itself is the standard
+    two-loop recursion of Nocedal (1980) with a 5-pair memory.
+
+    Pure-Python via the `humpday._array` shim — no direct numpy use.
+    Ports the existing JavaScript L-BFGS-B implementation in
+    `docs/js/modules/scipy-algorithms.js::LBFGSB` line-for-line.
+
+    Before this rewrite, humpday's `LBFGSB` was a finite-difference
+    gradient + Polyak-momentum baseline — not L-BFGS at all. The
+    snapshot at `benchmarks/reference_alignment.json` showed it ~6.6e+06×
+    worse than scipy's L-BFGS-B on the sphere; the rewrite closes
+    that gap to within a few orders of magnitude (the residual is
+    HumpDay's FD gradient cost — scipy uses analytical-or-FD with
+    cleaner step control).
+    """
+
+    def optimize(self):
+        # Seed best_x with a random starting point inside the unit cube,
+        # then run the proper L-BFGS-B port (shared with DE/SA polish on
+        # BaseOptimizer): two-loop recursion + bound-aware direction
+        # projection + projected-gradient pgtol + factr·eps_mach
+        # termination + feasibility-capped Armijo line search.
+        self.best_x = _A.random_uniform(self.n_dim)
+        self.best_value = self.evaluate(self.best_x)
+        self._lbfgs_polish()
+        return self.best_value, self.best_x
+
+
+class FrozenAlloy(BaseOptimizer):
+    """Equal blend of NM, DE, CMA-style, pattern search and SA mechanisms.
+
+    Strongest at small evaluation budgets (roughly 60-480) on noisy or
+    irregular objectives; see the module docstring for provenance and the
+    out-of-sample evidence.
+    """
+
+    def optimize(self):
+        n_dim = self.n_dim
+        n_trials = self.n_trials
+        if n_dim <= 0:
+            return (self.evaluate([]) if n_trials > 0 else float("inf"), [])
+
+        def clip(x):
+            return [0.0 if xi < 0.0 else (1.0 if xi > 1.0 else xi) for xi in x]
+
+        def feval(x):
+            return self.evaluate(clip(x))
+
+        def budget_left():
+            return self.evaluations < n_trials
+
+        # ---- init (DE graft): population ----
+        pop_size = max(n_dim + 1, min(8 + 2 * n_dim, max(5, n_trials // 6)))
+        pop, pop_f = [], []
+        for _ in range(pop_size):
+            if not budget_left():
+                break
+            x = [random.random() for _ in range(n_dim)]
+            pop.append(x)
+            pop_f.append(feval(x))
+        if not pop:
+            return (self.best_value, self.best_x)
+
+        # Build initial simplex (host: Nelder-Mead) from best population members
+        order = sorted(range(len(pop)), key=lambda i: pop_f[i])
+        simplex = [pop[i][:] for i in order[: n_dim + 1]]
+        simplex_f = [pop_f[i] for i in order[: n_dim + 1]]
+        while len(simplex) < n_dim + 1 and budget_left():
+            base = simplex[0][:]
+            j = (len(simplex) - 1) % n_dim
+            base[j] = min(1.0, base[j] + 0.1)
+            simplex.append(base)
+            simplex_f.append(feval(base))
+
+        # ---- adaptation state ----
+        step = 0.25
+        sigma = 0.2
+        cov_diag = [0.04] * n_dim
+        F = 0.6
+        CR = 0.9
+
+        # ---- SA temperature (acceptance + restart) ----
+        f_lo, f_hi = min(simplex_f), max(simplex_f)
+        T0 = max(1e-6, (f_hi - f_lo) + 1e-3)
+        T = T0
+
+        def order_simplex():
+            idx = sorted(range(len(simplex)), key=lambda i: simplex_f[i])
+            return [simplex[i][:] for i in idx], [simplex_f[i] for i in idx]
+
+        def centroid_of(pts, exclude):
+            c = [0.0] * n_dim
+            m = 0
+            for i, p in enumerate(pts):
+                if i == exclude:
+                    continue
+                for d in range(n_dim):
+                    c[d] += p[d]
+                m += 1
+            return [ci / m for ci in c]
+
+        def accept(f_new, f_old):
+            if f_new <= f_old:
+                return True
+            if T <= 1e-12:
+                return False
+            try:
+                return random.random() < math.exp(-(f_new - f_old) / T)
+            except OverflowError:
+                return False
+
+        stagnation = 0
+        while budget_left():
+            simplex, simplex_f = order_simplex()
+            worst_i = len(simplex) - 1
+            best_x = simplex[0]
+            worst_x = simplex[worst_i]
+            worst_f = simplex_f[worst_i]
+            cen = centroid_of(simplex, worst_i)
+
+            r = random.random()
+            improved = False
+
+            if r < 0.25:
+                # --- Nelder-Mead reflect / expand / contract / shrink ---
+                refl = [cen[d] + 1.0 * (cen[d] - worst_x[d]) for d in range(n_dim)]
+                if not budget_left():
+                    break
+                fr = feval(refl)
+                if fr < simplex_f[0]:
+                    exp = [cen[d] + 2.0 * (cen[d] - worst_x[d]) for d in range(n_dim)]
+                    if budget_left():
+                        fe = feval(exp)
+                        cand, cf = (exp, fe) if fe < fr else (refl, fr)
+                    else:
+                        cand, cf = refl, fr
+                elif fr < worst_f:
+                    cand, cf = refl, fr
+                else:
+                    con = [cen[d] + 0.5 * (worst_x[d] - cen[d]) for d in range(n_dim)]
+                    if budget_left():
+                        fc = feval(con)
+                        if fc < worst_f:
+                            cand, cf = con, fc
+                        else:
+                            for i in range(1, len(simplex)):
+                                if not budget_left():
+                                    break
+                                simplex[i] = [
+                                    best_x[d] + 0.5 * (simplex[i][d] - best_x[d])
+                                    for d in range(n_dim)
+                                ]
+                                simplex_f[i] = feval(simplex[i])
+                            cand, cf = None, None
+                    else:
+                        cand, cf = None, None
+                if cand is not None and accept(cf, worst_f):
+                    simplex[worst_i] = clip(cand)
+                    simplex_f[worst_i] = cf
+                    if cf < worst_f:
+                        improved = True
+
+            elif r < 0.50:
+                # --- Differential Evolution: rand/1 or current-to-best/1 ---
+                idxs = list(range(len(simplex)))
+                random.shuffle(idxs)
+                a, b, c = idxs[0], idxs[1 % len(idxs)], idxs[2 % len(idxs)]
+                target = worst_x
+                if random.random() < 0.5:
+                    mutant = [
+                        simplex[a][d] + F * (simplex[b][d] - simplex[c][d])
+                        for d in range(n_dim)
+                    ]
+                else:
+                    mutant = [
+                        target[d]
+                        + F * (best_x[d] - target[d])
+                        + F * (simplex[b][d] - simplex[c][d])
+                        for d in range(n_dim)
+                    ]
+                jr = random.randrange(n_dim)
+                trial = [
+                    mutant[d] if (random.random() < CR or d == jr) else target[d]
+                    for d in range(n_dim)
+                ]
+                if not budget_left():
+                    break
+                ft = feval(trial)
+                if accept(ft, worst_f):
+                    simplex[worst_i] = clip(trial)
+                    simplex_f[worst_i] = ft
+                    if ft < worst_f:
+                        improved = True
+
+            elif r < 0.75:
+                # --- CMA-style Gaussian sampling with adaptive diagonal cov ---
+                cand = [
+                    best_x[d] + sigma * random.gauss(0.0, math.sqrt(cov_diag[d]))
+                    for d in range(n_dim)
+                ]
+                if not budget_left():
+                    break
+                fc = feval(cand)
+                if accept(fc, worst_f):
+                    if fc < worst_f:
+                        improved = True
+                        for d in range(n_dim):
+                            delta = cand[d] - best_x[d]
+                            cov_diag[d] = 0.8 * cov_diag[d] + 0.2 * (
+                                delta * delta + 1e-8
+                            )
+                    simplex[worst_i] = clip(cand)
+                    simplex_f[worst_i] = fc
+
+            else:
+                # --- pattern search: Hooke-Jeeves coordinate probes ---
+                cur = best_x[:]
+                cur_f = simplex_f[0]
+                base_f = cur_f
+                for d in range(n_dim):
+                    if not budget_left():
+                        break
+                    trial = cur[:]
+                    trial[d] += step
+                    ft = feval(trial)
+                    if ft < cur_f:
+                        cur, cur_f = clip(trial), ft
+                    else:
+                        if not budget_left():
+                            break
+                        trial = cur[:]
+                        trial[d] -= step
+                        ft = feval(trial)
+                        if ft < cur_f:
+                            cur, cur_f = clip(trial), ft
+                if cur_f < base_f:
+                    improved = True
+                    if accept(cur_f, worst_f):
+                        simplex[worst_i] = cur
+                        simplex_f[worst_i] = cur_f
+                else:
+                    step *= 0.5
+                    if step < 1e-6:
+                        step = 0.25
+
+            # ---- adaptation of global scales ----
+            if improved:
+                stagnation = 0
+                sigma = min(0.5, sigma * 1.05)
+            else:
+                stagnation += 1
+                sigma = max(1e-3, sigma * 0.97)
+
+            # ---- SA cooling ----
+            T *= 0.995
+            if T < 1e-9:
+                T = 1e-9
+
+            # ---- SA-driven restart when stuck ----
+            if stagnation > max(12, 4 * n_dim) and budget_left():
+                stagnation = 0
+                T = max(T0 * 0.5, T * 5.0)
+                step = 0.25
+                sigma = 0.2
+                keep = list(self.best_x)
+                simplex = [keep[:]]
+                simplex_f = [self.best_value]
+                for _ in range(n_dim):
+                    if not budget_left():
+                        break
+                    p = [
+                        min(1.0, max(0.0, keep[d] + random.uniform(-0.3, 0.3)))
+                        for d in range(n_dim)
+                    ]
+                    simplex.append(p)
+                    simplex_f.append(feval(p))
+                while len(simplex) < n_dim + 1 and budget_left():
+                    p = [random.random() for _ in range(n_dim)]
+                    simplex.append(p)
+                    simplex_f.append(feval(p))
+
+        return (self.best_value, self.best_x)

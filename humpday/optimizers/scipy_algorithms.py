@@ -191,7 +191,7 @@ class Powell(BaseOptimizer):
     ndarray (numpy) and support elementwise arithmetic on either path.
     """
 
-    def optimize(self):
+    def _run(self):
         n = self.n_dim
         x = 0.3 + 0.4 * _A.random_uniform(n)  # Interior start
 
@@ -204,7 +204,7 @@ class Powell(BaseOptimizer):
         ftol = 1e-12
         maxiter = n * 20
 
-        fval = self.evaluate(x)
+        fval = yield x
         x1 = x.copy()
         iteration = 0
 
@@ -220,7 +220,9 @@ class Powell(BaseOptimizer):
 
                 direc1 = _A.asarray(direc[i])
                 fx2 = fval
-                fval, x, direc1 = self._linesearch_powell(x, direc1, fval)
+                fval, x, direc1 = yield from self._linesearch_powell_gen(
+                    x, direc1, fval
+                )
 
                 if (fx2 - fval) > delta:
                     delta = fx2 - fval
@@ -244,7 +246,7 @@ class Powell(BaseOptimizer):
             if self.evaluations >= self.n_trials:
                 break
 
-            fx2 = self.evaluate(x2)
+            fx2 = yield x2
 
             if fx > fx2:
                 t = 2.0 * (fx + fx2 - 2.0 * fval)
@@ -254,15 +256,28 @@ class Powell(BaseOptimizer):
                 t -= delta * temp * temp
 
                 if t < 0.0:
-                    fval, x, direc1 = self._linesearch_powell(x, direc1, fval)
+                    fval, x, direc1 = yield from self._linesearch_powell_gen(
+                        x, direc1, fval
+                    )
                     # `np.any(arr)` for a float vector means "any non-zero entry".
                     if any(v != 0 for v in direc1):
                         direc[bigind] = list(direc[-1])
                         direc[-1] = list(direc1)
 
-        return self.best_value, self.best_x
+    def _ls_eval_gen(self, p, xi, alpha, state):
+        """Budget-gated evaluation of `p + alpha * xi` for the Powell line
+        search — the generator twin of its old `evaluate(alpha)` closure.
+        `state = [best_alpha, best_f]` is updated in place; returns the
+        value, or None on budget exhaustion."""
+        if self.evaluations >= self.n_trials:
+            return None
+        f = yield _A.clip(p + alpha * xi, 0, 1)
+        if f < state[1]:
+            state[0] = alpha
+            state[1] = f
+        return f
 
-    def _linesearch_powell(self, p, xi, fval):
+    def _linesearch_powell_gen(self, p, xi, fval):
         """Bounded Brent-method line search along direction `xi` from
         point `p`. Returns `(best_f, best_x, scaled_direction)`.
 
@@ -281,10 +296,6 @@ class Powell(BaseOptimizer):
             which preserves the caller's invariant that the line search
             never worsens `fval`.
         """
-
-        def myfunc(alpha):
-            x_trial = _A.clip(p + alpha * xi, 0, 1)
-            return self.evaluate(x_trial)
 
         # If direction is essentially zero, skip the search.
         if not any(v != 0 for v in xi):
@@ -319,20 +330,9 @@ class Powell(BaseOptimizer):
             return fval, p, xi
 
         # Track the best alpha seen across bracket + Brent so that on
-        # budget exhaustion we still return progress.
-        best_alpha = 0.0
-        best_f = fval
-
-        def evaluate(alpha):
-            """Run `myfunc(alpha)` with budget check, updating best_*."""
-            nonlocal best_alpha, best_f
-            if self.evaluations >= self.n_trials:
-                return None
-            f = myfunc(alpha)
-            if f < best_f:
-                best_alpha = alpha
-                best_f = f
-            return f
+        # budget exhaustion we still return progress. state = [best_alpha,
+        # best_f], updated in place by _ls_eval_gen.
+        state = [0.0, fval]
 
         # ---- Bracket the minimum (scipy.optimize.bracket adaptation) ----
         # Start two points apart inside the bounded interval. Use a step
@@ -344,12 +344,12 @@ class Powell(BaseOptimizer):
         if xb >= alpha_hi:
             xb = alpha_lo + 0.5 * (alpha_hi - alpha_lo)
 
-        fa = evaluate(xa)
+        fa = yield from self._ls_eval_gen(p, xi, xa, state)
         if fa is None:
-            return self._linesearch_result(p, xi, fval, best_alpha, best_f)
-        fb = evaluate(xb)
+            return self._linesearch_result(p, xi, fval, state[0], state[1])
+        fb = yield from self._ls_eval_gen(p, xi, xb, state)
         if fb is None:
-            return self._linesearch_result(p, xi, fval, best_alpha, best_f)
+            return self._linesearch_result(p, xi, fval, state[0], state[1])
 
         if fa < fb:
             xa, xb = xb, xa
@@ -363,9 +363,9 @@ class Powell(BaseOptimizer):
         if xc < alpha_lo:
             xc = alpha_lo
 
-        fc = evaluate(xc)
+        fc = yield from self._ls_eval_gen(p, xi, xc, state)
         if fc is None:
-            return self._linesearch_result(p, xi, fval, best_alpha, best_f)
+            return self._linesearch_result(p, xi, fval, state[0], state[1])
 
         # Grow the bracket until f starts increasing on the far side
         # or we hit a bound. Capped at a small constant to keep the
@@ -382,14 +382,14 @@ class Powell(BaseOptimizer):
             xa, xb = xb, xc
             fa, fb = fb, fc
             xc = new_xc
-            fc = evaluate(xc)
+            fc = yield from self._ls_eval_gen(p, xi, xc, state)
             if fc is None:
-                return self._linesearch_result(p, xi, fval, best_alpha, best_f)
+                return self._linesearch_result(p, xi, fval, state[0], state[1])
 
         # If we couldn't bracket (e.g. flat or boundary-attached), bail
         # out gracefully with whatever the best evaluation was.
         if not ((xa < xb < xc) or (xc < xb < xa)) or not (fb <= fa and fb <= fc):
-            return self._linesearch_result(p, xi, fval, best_alpha, best_f)
+            return self._linesearch_result(p, xi, fval, state[0], state[1])
 
         # ---- Brent's method inside the bracket --------------------------
         if xa > xc:
@@ -446,7 +446,7 @@ class Powell(BaseOptimizer):
             else:
                 u = x + rat
 
-            fu = evaluate(u)
+            fu = yield from self._ls_eval_gen(p, xi, u, state)
             if fu is None:
                 break
 
@@ -469,7 +469,7 @@ class Powell(BaseOptimizer):
                 w, fw = x, fx
                 x, fx = u, fu
 
-        return self._linesearch_result(p, xi, fval, best_alpha, best_f)
+        return self._linesearch_result(p, xi, fval, state[0], state[1])
 
     def _linesearch_result(self, p, xi, fval, best_alpha, best_f):
         """Translate the best (alpha, f) pair from the line search back
@@ -504,13 +504,12 @@ class LBFGSB(BaseOptimizer):
     cleaner step control).
     """
 
-    def optimize(self):
+    def _run(self):
         # Seed best_x with a random starting point inside the unit cube,
         # then run the proper L-BFGS-B port (shared with DE/SA polish on
         # BaseOptimizer): two-loop recursion + bound-aware direction
         # projection + projected-gradient pgtol + factr·eps_mach
         # termination + feasibility-capped Armijo line search.
         self.best_x = _A.random_uniform(self.n_dim)
-        self.best_value = self.evaluate(self.best_x)
-        self._lbfgs_polish()
-        return self.best_value, self.best_x
+        self.best_value = yield self.best_x
+        yield from self._lbfgs_polish_gen()

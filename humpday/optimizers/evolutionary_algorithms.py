@@ -11,7 +11,7 @@ import random
 
 from humpday import _array as _A
 
-from .base import BaseOptimizer
+from .base import BaseOptimizer, Batch
 
 
 class DifferentialEvolution(BaseOptimizer):
@@ -417,14 +417,14 @@ class BayesianOpt(BaseOptimizer):
         self.signal_variance = 1.0
         self.noise_variance = 1e-6
 
-    def optimize(self):
+    def _run(self):
         n_initial = min(5, max(2, self.n_dim))
 
         for _ in range(n_initial):
             if self.evaluations >= self.n_trials:
                 break
             x = _A.random_uniform(self.n_dim)
-            y = self.evaluate(x)
+            y = yield x
             self.X_observed.append(x)
             self.y_observed.append(float(y))
 
@@ -446,21 +446,18 @@ class BayesianOpt(BaseOptimizer):
         while self.evaluations < loop_budget:
             try:
                 x_next = self._optimize_acquisition()
-                y_next = self.evaluate(x_next)
             except Exception:
                 # Fallback: any failure in the GP machinery falls back
                 # to a random sample. Keeps the budget tight.
                 x_next = _A.random_uniform(self.n_dim)
-                y_next = self.evaluate(x_next)
+            y_next = yield x_next
             self.X_observed.append(x_next)
             self.y_observed.append(float(y_next))
 
         # Polish: L-BFGS-B from the GP-EI best. Closes the residual ~5
         # orders of magnitude on sphere by escaping the GP's RBF
         # smoothing floor.
-        self._lbfgs_polish()
-
-        return self.best_value, self.best_x
+        yield from self._lbfgs_polish_gen()
 
     # ---- GP machinery (no numpy, no broadcasting) ----
 
@@ -627,7 +624,7 @@ class CMAEvolutionStrategy(BaseOptimizer):
     internally).
     """
 
-    def optimize(self):
+    def _run(self):
         import math
 
         n = self.n_dim
@@ -761,7 +758,7 @@ class CMAEvolutionStrategy(BaseOptimizer):
                     x = _A.clip(mean + sigma * z, 0, 1)
                     xs.append(x)
                     zs.append(z)
-                fs = self.evaluate_batch(xs) if xs else []
+                fs = (yield Batch(xs)) if xs else []
                 population = [(xs[i], zs[i], fs[i]) for i in range(len(xs))]
 
                 if not population:
@@ -904,9 +901,7 @@ class CMAEvolutionStrategy(BaseOptimizer):
 
         # Polish stage: L-BFGS-B from the best-found point across all
         # restarts (shared on base; self.best_x carries the global best).
-        self._lbfgs_polish()
-
-        return self.best_value, self.best_x
+        yield from self._lbfgs_polish_gen()
 
 
 class FireflyAlgorithm(BaseOptimizer):
