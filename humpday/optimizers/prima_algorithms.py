@@ -577,7 +577,6 @@ class PRIMA_UOBYQA(BaseOptimizer):
                 for i in range(nused):
                     XPT[i] = XPT[i] - actual_shift
 
-
     def _polynomial_basis_row(self, x, n):
         """Return the polynomial basis row φ(x) = (1, x_1, ..., x_n,
         ½x_1², x_1·x_2, ..., ½x_n²) of length (n+1)(n+2)/2.
@@ -1029,7 +1028,6 @@ class PRIMA_NEWUOA(BaseOptimizer):
                     1,
                 )
 
-
     def _initialize_newuoa_points(self, xbase, rho, npt, n):
         """Lay out the 2n+1 NEWUOA interpolation points. Returns
         (XPT_list, FVAL_list) — XPT is a list of length-n offset vectors.
@@ -1292,7 +1290,9 @@ class PRIMA_BOBYQA(BaseOptimizer):
             if self.evaluations >= self.n_trials:
                 break
 
-            XPT, FVAL = yield from self._initialize_bobyqa_points(xbase, rho, npt, n, xl, xu)
+            XPT, FVAL = yield from self._initialize_bobyqa_points(
+                xbase, rho, npt, n, xl, xu
+            )
             if not FVAL:
                 break
             kopt = min(range(len(FVAL)), key=FVAL.__getitem__)
@@ -1375,7 +1375,6 @@ class PRIMA_BOBYQA(BaseOptimizer):
                     0.1,
                     0.9,
                 )
-
 
     def _initialize_bobyqa_points(self, xbase, rho, npt, n, xl, xu):
         """Lay out the initial interpolation set, respecting [xl, xu] bounds.
