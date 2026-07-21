@@ -3,6 +3,8 @@
 [![CI](https://github.com/microprediction/humpday/workflows/CI/badge.svg)](https://github.com/microprediction/humpday/actions)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
 [![Python 3.9+](https://img.shields.io/badge/python-3.9+-blue.svg)](https://www.python.org/downloads/)
+[![PyPI](https://img.shields.io/pypi/v/humpday.svg)](https://pypi.org/project/humpday/)
+[![npm](https://img.shields.io/npm/v/humpday.svg)](https://www.npmjs.com/package/humpday)
 
 **[Documentation & Live Demos](https://humpday.microprediction.org)**
 
@@ -40,7 +42,8 @@ centre circle becomes an oval, the corners smear toward the boundary:
 ## Install & Use
 
 ```bash
-pip install humpday
+pip install humpday        # Python
+npm install humpday        # JavaScript (the same roster, parity-tested)
 ```
 
 Zero runtime dependencies. Every algorithm has a pure-Python implementation
