@@ -13,11 +13,16 @@ import random
 import pytest
 
 from humpday.optimizers.evolutionary_algorithms import (
+    AntColonyOpt,
     DifferentialEvolution,
     EvolutionStrategy,
+    FireflyAlgorithm,
+    GeneticAlgorithm,
     HarmonySearch,
     HillClimbing,
+    ParticleSwarm,
     RandomSearch,
+    SimulatedAnnealing,
 )
 from humpday.optimizers.scipy_algorithms import NelderMead
 from humpday.optimizers.search_algorithms import (
@@ -28,16 +33,21 @@ from humpday.optimizers.search_algorithms import (
 )
 
 from .reference_impls_pre_online import (
+    FrozenAntColonyOpt,
     FrozenCoordinateDescent,
     FrozenDifferentialEvolution,
     FrozenEvolutionStrategy,
+    FrozenFireflyAlgorithm,
+    FrozenGeneticAlgorithm,
     FrozenGridSearch,
     FrozenHarmonySearch,
     FrozenHillClimbing,
     FrozenNelderMead,
+    FrozenParticleSwarm,
     FrozenPatternSearch,
     FrozenRandomSearch,
     FrozenRechenberg,
+    FrozenSimulatedAnnealing,
 )
 
 try:
@@ -77,6 +87,12 @@ PAIRS = [
     (FrozenEvolutionStrategy, EvolutionStrategy),
     (FrozenHillClimbing, HillClimbing),
     (FrozenHarmonySearch, HarmonySearch),
+    # Batch 2
+    (FrozenParticleSwarm, ParticleSwarm),
+    (FrozenSimulatedAnnealing, SimulatedAnnealing),
+    (FrozenGeneticAlgorithm, GeneticAlgorithm),
+    (FrozenFireflyAlgorithm, FireflyAlgorithm),
+    (FrozenAntColonyOpt, AntColonyOpt),
 ]
 
 

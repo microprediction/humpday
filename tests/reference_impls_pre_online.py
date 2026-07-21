@@ -8,6 +8,7 @@ trajectories exactly (same RNG stream, same points, same values).
 Do not modernise this file: its value is that it does not change.
 """
 
+import math
 import random
 
 from humpday import _array as _A
@@ -737,5 +738,460 @@ class FrozenHarmonySearch(BaseOptimizer):
                     "harmony": new_harmony.copy(),
                     "fitness": new_fitness,
                 }
+
+        return self.best_value, self.best_x
+
+
+# ---- Batch 2 frozen copies (medium evolutionary) ----
+
+
+class FrozenParticleSwarm(BaseOptimizer):
+    """Particle Swarm Optimization.
+
+    Pure-Python via the `humpday._array` shim — no direct numpy use.
+    Swarm stored as Python lists of 1-D vectors (FireflyAlgorithm pattern).
+    """
+
+    def optimize(self):
+        # Reserve budget for the L-BFGS-B polish stage. Same rationale
+        # as DE/SA/BayesianOpt: PSO converges to the basin but doesn't
+        # refine well past the noise floor of its inertial dynamics.
+        # The polish closes the residual on smooth basins. Reserve
+        # 20·n_dim evals capped at half the budget.
+        polish_reserve = min(20 * self.n_dim, self.n_trials // 2)
+        pso_budget = max(self.evaluations, self.n_trials - polish_reserve)
+
+        swarm_size = min(40, max(15, self.n_dim * 3))
+
+        # Initialize swarm — list-of-vectors instead of 2-D arrays.
+        positions = [_A.random_uniform(self.n_dim) for _ in range(swarm_size)]
+        velocities = [
+            (_A.random_uniform(self.n_dim) - 0.5) * 0.2 for _ in range(swarm_size)
+        ]
+        personal_best_pos = [p.copy() for p in positions]
+        personal_best_fit = [self.evaluate(p) for p in positions]
+
+        max_iterations = max(1, pso_budget // swarm_size)
+
+        # SPSO-2011 style stagnation detection. A canonical PSO has no
+        # restart and is known to converge prematurely on multimodal
+        # surfaces — once the global best stops improving, particles
+        # collapse onto it and there is no mechanism to escape. Track the
+        # global-best value across iterations and, when it has stalled
+        # for `stagnation_window` iterations, reseed the worst half of
+        # the swarm with fresh uniform positions and small random
+        # velocities. The personal-best memory of the *kept* half is
+        # preserved so prior progress isn't wasted.
+        stagnation_window = max(10, max_iterations // 5)
+        stagnation_counter = 0
+        last_global_best = self.best_value
+        # Tolerate tiny floating-point noise as "no improvement".
+        improvement_atol = 1e-12
+
+        for iteration in range(max_iterations):
+            if self.evaluations >= pso_budget:
+                break
+
+            # Adaptive coefficients (anneal inertia / explore-exploit balance).
+            w = 0.9 - 0.5 * (iteration / max_iterations)  # Inertia weight
+            c1 = 2.5 - 1.0 * (iteration / max_iterations)  # Cognitive
+            c2 = 1.5 + 1.0 * (iteration / max_iterations)  # Social
+
+            for i in range(swarm_size):
+                if self.evaluations >= pso_budget:
+                    break
+
+                # Update velocity (elementwise: r1, r2 are length-n_dim
+                # uniform vectors; _Vec/ndarray both support these ops).
+                r1 = _A.random_uniform(self.n_dim)
+                r2 = _A.random_uniform(self.n_dim)
+                velocities[i] = (
+                    w * velocities[i]
+                    + c1 * r1 * (personal_best_pos[i] - positions[i])
+                    + c2 * r2 * (self.best_x - positions[i])
+                )
+
+                # Velocity clamping to [-vmax, +vmax].
+                vmax = 0.2 * (1 - 0.5 * iteration / max_iterations)
+                velocities[i] = _A.clip(velocities[i], -vmax, vmax)
+
+                # Update position with bounds clipping.
+                positions[i] = _A.clip(positions[i] + velocities[i], 0, 1)
+
+                fitness = self.evaluate(positions[i])
+
+                # Personal-best bookkeeping.
+                if fitness < personal_best_fit[i]:
+                    personal_best_fit[i] = fitness
+                    personal_best_pos[i] = positions[i].copy()
+
+            # Stagnation check — measured against self.best_value because
+            # that's the global best across all evals (including any
+            # better point hit during the inner sweep).
+            if last_global_best - self.best_value > improvement_atol:
+                stagnation_counter = 0
+                last_global_best = self.best_value
+            else:
+                stagnation_counter += 1
+
+            if stagnation_counter >= stagnation_window:
+                # Reseed the worst half. Rank particles by personal_best_fit
+                # (ascending) and replace the bottom half with fresh
+                # uniform draws + small random velocities. The top half
+                # keeps its memory, so the swarm continues from the same
+                # global best but with re-energized exploration.
+                ranked = sorted(range(swarm_size), key=personal_best_fit.__getitem__)
+                worst = ranked[swarm_size // 2 :]
+                for j in worst:
+                    positions[j] = _A.random_uniform(self.n_dim)
+                    velocities[j] = (_A.random_uniform(self.n_dim) - 0.5) * 0.2
+                    if self.evaluations >= pso_budget:
+                        break
+                    f_new = self.evaluate(positions[j])
+                    personal_best_pos[j] = positions[j].copy()
+                    personal_best_fit[j] = f_new
+                stagnation_counter = 0
+                last_global_best = self.best_value
+
+        # Polish stage: L-BFGS-B from the swarm best.
+        self._lbfgs_polish()
+
+        return self.best_value, self.best_x
+
+
+class FrozenSimulatedAnnealing(BaseOptimizer):
+    """Simulated Annealing with multi-restart + coordinate-descent polish.
+
+    Two-stage algorithm matching the spirit of scipy.optimize.dual_annealing:
+
+      1. Multi-restart Metropolis SA explores the parameter space
+         globally with a geometric cooling schedule.
+      2. A coordinate-descent polish from the best SA point refines
+         to high precision.
+
+    scipy's dual_annealing uses L-BFGS-B for stage 2; the closest
+    derivative-free equivalent is a coordinate descent with shrinking
+    step. Without the polish stage HumpDay's SA was 1e9-1e11× off scipy
+    on sphere and Rosenbrock; the global SA can't reach machine
+    precision because its proposals are noisy.
+    """
+
+    def optimize(self):
+        # Reserve ~30% of the budget for the polish phase.
+        # Allocate half the budget to the L-BFGS-B polish, matching the
+        # DE rationale (#197 + this PR). 50% sweet spot: SA rosenbrock
+        # 2.8e-5 → 2.8e-8 (1000× better), sphere stays at machine prec.
+        polish_budget = max(20, self.n_trials // 2)
+        sa_budget = self.n_trials - polish_budget
+
+        # --- Stage 1: multi-restart SA ---------------------------------
+        num_restarts = max(3, sa_budget // 30)
+        trials_per_restart = max(1, sa_budget // num_restarts)
+
+        for restart in range(num_restarts):
+            if self.evaluations >= sa_budget:
+                break
+
+            if restart == 0:
+                x = 0.5 + (_A.random_uniform(self.n_dim) - 0.5) * 0.4
+            else:
+                x = _A.random_uniform(self.n_dim)
+
+            fx = self.evaluate(x)
+
+            # Fixed initial temperature, geometric cooling. Reaches
+            # final_temp by the end of the restart's iteration count.
+            initial_temp = 1.0
+            final_temp = 1e-6
+            cooling = (final_temp / initial_temp) ** (1.0 / max(1, trials_per_restart))
+            temp = initial_temp
+
+            for _iteration in range(trials_per_restart):
+                if self.evaluations >= sa_budget:
+                    break
+
+                # Neighbour proposal: step scales with current temp.
+                step_size = 0.4 * temp
+                new_x = _A.clip(
+                    x + (_A.random_uniform(self.n_dim) - 0.5) * 2 * step_size,
+                    0,
+                    1,
+                )
+                new_fx = self.evaluate(new_x)
+
+                # Metropolis criterion.
+                delta = new_fx - fx
+                if delta < 0 or _A.random_scalar() < _A.exp(-delta / max(temp, 1e-12)):
+                    x, fx = new_x, new_fx
+
+                temp *= cooling
+
+        # --- Stage 2: L-BFGS polish from best SA point -----------------
+        # Matches scipy.dual_annealing exactly — scipy uses L-BFGS-B for
+        # its local-search refinement. Two-loop recursion with FD
+        # gradient (2·n_dim evals per iter) and Armijo line search; same
+        # algorithm the `LBFGSB` optimizer uses. Replaces the previous
+        # coordinate-descent polish, which couldn't handle curved
+        # valleys like Rosenbrock and stalled around 1e-9 on the sphere
+        # at small budgets. With LBFGS the polish reaches machine
+        # precision on smooth basins in ~10 iterations.
+        self._lbfgs_polish()
+
+        return self.best_value, self.best_x
+
+
+class FrozenGeneticAlgorithm(BaseOptimizer):
+    """Genetic Algorithm.
+
+    Pure-Python via the `humpday._array` shim — no direct numpy use.
+    Population stored as a Python list of 1-D vectors. Selection is
+    tournament-of-3; crossover is one-point; mutation is per-coordinate
+    Bernoulli with uniform noise.
+    """
+
+    def optimize(self):
+        pop_size = min(50, max(20, self.n_dim * 4))
+        mutation_rate = 0.1
+        crossover_rate = 0.8
+
+        # Initialize population.
+        population = [_A.random_uniform(self.n_dim) for _ in range(pop_size)]
+        fitness = [self.evaluate(ind) for ind in population]
+
+        generations = self.n_trials // pop_size
+
+        for _gen in range(generations):
+            if self.evaluations >= self.n_trials:
+                break
+
+            new_population = []
+            new_fitness = []
+
+            for _i in range(pop_size):
+                if self.evaluations >= self.n_trials:
+                    break
+
+                parent1 = self.tournament_selection(population, fitness)
+                parent2 = self.tournament_selection(population, fitness)
+
+                child = parent1.copy()
+
+                # One-point crossover.
+                if _A.random_scalar() < crossover_rate:
+                    cross_point = _A.random_int(self.n_dim)
+                    for j in range(cross_point, self.n_dim):
+                        child[j] = parent2[j]
+
+                # Per-coordinate mutation with uniform [-0.1, 0.1] noise.
+                # Rewritten from numpy boolean-indexing (`child[mask] += ...`)
+                # to an explicit loop for backend independence.
+                for j in range(self.n_dim):
+                    if _A.random_scalar() < mutation_rate:
+                        child[j] = max(
+                            0.0,
+                            min(1.0, child[j] + (_A.random_scalar() - 0.5) * 0.2),
+                        )
+
+                fitness_val = self.evaluate(child)
+                new_population.append(child)
+                new_fitness.append(fitness_val)
+
+            population = new_population
+            fitness = new_fitness
+
+        return self.best_value, self.best_x
+
+    def tournament_selection(self, population, fitness):
+        """Tournament-of-3: pick 3 distinct individuals, return a copy of
+        the one with the lowest fitness."""
+        tournament_size = 3
+        competitors = _A.random_choice(
+            len(population), k=tournament_size, replace=False
+        )
+        competitors = [int(c) for c in competitors]
+        best_idx = min(competitors, key=lambda c: fitness[c])
+        return population[best_idx].copy()
+
+
+class FrozenFireflyAlgorithm(BaseOptimizer):
+    """Firefly Algorithm.
+
+    Pure-Python via the `humpday._array` shim — no direct numpy use.
+    Population stored as a Python list of 1-D vectors (numpy.ndarray or
+    `_Vec` depending on the active backend); all pairwise operations are
+    elementwise.
+    """
+
+    def optimize(self):
+        # Reserve budget for the L-BFGS-B polish stage (same pattern as
+        # DE/SA/PSO/BayesianOpt). Firefly's stochastic dynamics converge
+        # to the basin but stall in a noise floor — polish drives the
+        # last few orders of magnitude.
+        polish_reserve = min(20 * self.n_dim, self.n_trials // 2)
+        firefly_budget = max(self.evaluations, self.n_trials - polish_reserve)
+
+        n_fireflies = min(15, max(2, firefly_budget // 5))
+        alpha0 = 0.2  # Initial randomness coefficient.
+        beta0 = 1.0  # Attractiveness at zero distance.
+        gamma = 1.0  # Light-absorption coefficient.
+        # Geometric damping of the randomness coefficient — matches
+        # mealpy's FFA `alpha_damp` (default 0.99). The original Yang
+        # 2009 paper anneals α to focus exploration early and
+        # exploitation late; without damping the algorithm keeps
+        # injecting large random jitter even after fireflies cluster
+        # around the optimum, which is the snapshot's Ackley failure
+        # mode (median 2.58, 3/8 seeds stuck in a wrong basin because
+        # the constant α=0.2 kept proposing big steps away).
+        alpha_damp = 0.99
+        alpha = alpha0
+
+        # Initialize fireflies — list-of-vectors, NOT a 2-D array.
+        fireflies = [_A.random_uniform(self.n_dim) for _ in range(n_fireflies)]
+        intensities = [self.evaluate(f) for f in fireflies]
+
+        while self.evaluations < firefly_budget:
+            evals_at_sweep_start = self.evaluations
+            for i in range(n_fireflies):
+                for j in range(n_fireflies):
+                    if self.evaluations >= firefly_budget:
+                        break
+
+                    if intensities[j] < intensities[i]:  # j is brighter
+                        r = _A.norm(fireflies[i] - fireflies[j])
+                        beta = beta0 * _A.exp(-gamma * r * r)
+
+                        # Move firefly i toward the brighter firefly j,
+                        # with a small random jitter.
+                        fireflies[i] = _A.clip(
+                            fireflies[i]
+                            + beta * (fireflies[j] - fireflies[i])
+                            + alpha * _A.random_normal(self.n_dim),
+                            0,
+                            1,
+                        )
+
+                        if self.evaluations < firefly_budget:
+                            intensities[i] = self.evaluate(fireflies[i])
+            # Anneal α at the end of each outer (i, j) sweep, matching
+            # mealpy FFA's `dyn_alpha = alpha_damp * alpha`.
+            alpha *= alpha_damp
+
+            # Termination guard. evaluate() is reached only when some firefly is
+            # strictly brighter than another; if a whole sweep makes no call, all
+            # intensities are equal — the swarm has collapsed onto one point (a
+            # common end state, since fireflies attract and clip to shared cube
+            # corners) or the region is flat. No future sweep can differ, so the
+            # loop would spin forever without consuming budget. Stop and polish.
+            if self.evaluations == evals_at_sweep_start:
+                break
+
+        # Polish stage: L-BFGS-B from the firefly best.
+        self._lbfgs_polish()
+
+        return self.best_value, self.best_x
+
+
+class FrozenAntColonyOpt(BaseOptimizer):
+    """ACOR — Ant Colony Optimization for continuous domains (Socha &
+    Dorigo, 2008).
+
+    Pure-Python via the `humpday._array` shim — no direct numpy use.
+
+    Maintains an *archive* of the `k` best solutions found so far,
+    sorted by fitness. Each generation samples `n_ants` new candidates
+    from a mixture of Gaussian kernels centred on the archive points;
+    the kernel weight w_i is a Gaussian on rank i (so better-ranked
+    archive entries are sampled-from more often), and the per-dimension
+    width sigma_d is `xi` times the mean absolute deviation of the
+    archive in that dimension. Better candidates replace the worst
+    archive entries.
+
+    Replaces humpday's previous discrete-bin "continuous via
+    discretization" ACO — a humpday-ism that capped precision at
+    ~1/n_nodes per dimension and was ~457× off the mealpy reference
+    on the sphere benchmark.
+
+    Reference: Socha, K. & Dorigo, M. (2008). "Ant colony optimization
+    for continuous domains." European Journal of Operational Research
+    185(3): 1155–1173. Matches the mealpy `swarm_based.ACOR.OriginalACOR`
+    adapter used by `tests/test_reference_alignment.py`.
+    """
+
+    def optimize(self):
+        n = self.n_dim
+        # Hansen-mealpy-style defaults.
+        k = min(50, max(10, self.n_trials // 10))  # archive size
+        n_ants = min(25, max(5, self.n_trials // 20))  # samples per gen
+        q = 0.5  # selection-pressure parameter (smaller → greedier)
+        xi = 1.0  # standard-deviation amplification
+
+        # Pre-compute rank weights: w_i ∝ Gaussian on rank i.
+        # w_i = (1 / (q k √(2π))) · exp(−(i)² / (2 q² k²)) for i = 0..k−1
+        weights = []
+        for i in range(k):
+            ex = math.exp(-(i**2) / (2.0 * q * q * k * k))
+            weights.append(ex / (q * k * math.sqrt(2.0 * math.pi)))
+        wsum = sum(weights)
+        weights = [w / wsum for w in weights]
+
+        # Initial archive: k uniform samples (or as many as budget allows).
+        archive = []  # list of (x, f), sorted ascending by f
+        for _ in range(k):
+            if self.evaluations >= self.n_trials:
+                break
+            x = _A.random_uniform(n)
+            archive.append((x, self.evaluate(x)))
+        if not archive:
+            return self.best_value, self.best_x
+        archive.sort(key=lambda t: t[1])
+
+        while self.evaluations < self.n_trials:
+            # Per-dimension standard deviation = xi · mean |x_l[d] − x_i[d]|
+            # for the chosen kernel i. Precompute the absolute-deviation
+            # matrix once per generation (used for every sample).
+            sigmas_by_kernel = []
+            for i in range(len(archive)):
+                xi_vec = archive[i][0]
+                sigma = [0.0] * n
+                for l in range(len(archive)):
+                    if l == i:
+                        continue
+                    xl_vec = archive[l][0]
+                    for d in range(n):
+                        sigma[d] += abs(float(xl_vec[d]) - float(xi_vec[d]))
+                denom = max(1, len(archive) - 1)
+                for d in range(n):
+                    sigma[d] = xi * sigma[d] / denom
+                sigmas_by_kernel.append(sigma)
+
+            new_solutions = []
+            for _ in range(n_ants):
+                if self.evaluations >= self.n_trials:
+                    break
+                # Roulette-pick a kernel (= an archive index) by weights.
+                r = _A.random_scalar()
+                cum = 0.0
+                kernel_idx = len(archive) - 1
+                for i, w in enumerate(weights[: len(archive)]):
+                    cum += w
+                    if r <= cum:
+                        kernel_idx = i
+                        break
+
+                center = archive[kernel_idx][0]
+                sigma = sigmas_by_kernel[kernel_idx]
+                x_new = _A.zeros(n)
+                for d in range(n):
+                    s = max(sigma[d], 1e-12)
+                    # Box-Muller via the shim's random_normal.
+                    z = float(_A.random_normal(1)[0])
+                    x_new[d] = max(0.0, min(1.0, float(center[d]) + s * z))
+                f_new = self.evaluate(x_new)
+                new_solutions.append((x_new, f_new))
+
+            # Merge: keep the k best across (archive ∪ new_solutions).
+            archive.extend(new_solutions)
+            archive.sort(key=lambda t: t[1])
+            archive = archive[:k]
 
         return self.best_value, self.best_x

@@ -125,7 +125,7 @@ class ParticleSwarm(BaseOptimizer):
     Swarm stored as Python lists of 1-D vectors (FireflyAlgorithm pattern).
     """
 
-    def optimize(self):
+    def _run(self):
         # Reserve budget for the L-BFGS-B polish stage. Same rationale
         # as DE/SA/BayesianOpt: PSO converges to the basin but doesn't
         # refine well past the noise floor of its inertial dynamics.
@@ -142,7 +142,9 @@ class ParticleSwarm(BaseOptimizer):
             (_A.random_uniform(self.n_dim) - 0.5) * 0.2 for _ in range(swarm_size)
         ]
         personal_best_pos = [p.copy() for p in positions]
-        personal_best_fit = [self.evaluate(p) for p in positions]
+        personal_best_fit = []
+        for p in positions:
+            personal_best_fit.append((yield p))
 
         max_iterations = max(1, pso_budget // swarm_size)
 
@@ -191,7 +193,7 @@ class ParticleSwarm(BaseOptimizer):
                 # Update position with bounds clipping.
                 positions[i] = _A.clip(positions[i] + velocities[i], 0, 1)
 
-                fitness = self.evaluate(positions[i])
+                fitness = yield positions[i]
 
                 # Personal-best bookkeeping.
                 if fitness < personal_best_fit[i]:
@@ -220,16 +222,14 @@ class ParticleSwarm(BaseOptimizer):
                     velocities[j] = (_A.random_uniform(self.n_dim) - 0.5) * 0.2
                     if self.evaluations >= pso_budget:
                         break
-                    f_new = self.evaluate(positions[j])
+                    f_new = yield positions[j]
                     personal_best_pos[j] = positions[j].copy()
                     personal_best_fit[j] = f_new
                 stagnation_counter = 0
                 last_global_best = self.best_value
 
         # Polish stage: L-BFGS-B from the swarm best.
-        self._lbfgs_polish()
-
-        return self.best_value, self.best_x
+        yield from self._lbfgs_polish_gen()
 
 
 class SimulatedAnnealing(BaseOptimizer):
@@ -249,7 +249,7 @@ class SimulatedAnnealing(BaseOptimizer):
     precision because its proposals are noisy.
     """
 
-    def optimize(self):
+    def _run(self):
         # Reserve ~30% of the budget for the polish phase.
         # Allocate half the budget to the L-BFGS-B polish, matching the
         # DE rationale (#197 + this PR). 50% sweet spot: SA rosenbrock
@@ -270,7 +270,7 @@ class SimulatedAnnealing(BaseOptimizer):
             else:
                 x = _A.random_uniform(self.n_dim)
 
-            fx = self.evaluate(x)
+            fx = yield x
 
             # Fixed initial temperature, geometric cooling. Reaches
             # final_temp by the end of the restart's iteration count.
@@ -290,7 +290,7 @@ class SimulatedAnnealing(BaseOptimizer):
                     0,
                     1,
                 )
-                new_fx = self.evaluate(new_x)
+                new_fx = yield new_x
 
                 # Metropolis criterion.
                 delta = new_fx - fx
@@ -308,9 +308,7 @@ class SimulatedAnnealing(BaseOptimizer):
         # valleys like Rosenbrock and stalled around 1e-9 on the sphere
         # at small budgets. With LBFGS the polish reaches machine
         # precision on smooth basins in ~10 iterations.
-        self._lbfgs_polish()
-
-        return self.best_value, self.best_x
+        yield from self._lbfgs_polish_gen()
 
 
 class GeneticAlgorithm(BaseOptimizer):
@@ -322,14 +320,16 @@ class GeneticAlgorithm(BaseOptimizer):
     Bernoulli with uniform noise.
     """
 
-    def optimize(self):
+    def _run(self):
         pop_size = min(50, max(20, self.n_dim * 4))
         mutation_rate = 0.1
         crossover_rate = 0.8
 
         # Initialize population.
         population = [_A.random_uniform(self.n_dim) for _ in range(pop_size)]
-        fitness = [self.evaluate(ind) for ind in population]
+        fitness = []
+        for ind in population:
+            fitness.append((yield ind))
 
         generations = self.n_trials // pop_size
 
@@ -365,14 +365,12 @@ class GeneticAlgorithm(BaseOptimizer):
                             min(1.0, child[j] + (_A.random_scalar() - 0.5) * 0.2),
                         )
 
-                fitness_val = self.evaluate(child)
+                fitness_val = yield child
                 new_population.append(child)
                 new_fitness.append(fitness_val)
 
             population = new_population
             fitness = new_fitness
-
-        return self.best_value, self.best_x
 
     def tournament_selection(self, population, fitness):
         """Tournament-of-3: pick 3 distinct individuals, return a copy of
@@ -920,7 +918,7 @@ class FireflyAlgorithm(BaseOptimizer):
     elementwise.
     """
 
-    def optimize(self):
+    def _run(self):
         # Reserve budget for the L-BFGS-B polish stage (same pattern as
         # DE/SA/PSO/BayesianOpt). Firefly's stochastic dynamics converge
         # to the basin but stall in a noise floor — polish drives the
@@ -945,7 +943,9 @@ class FireflyAlgorithm(BaseOptimizer):
 
         # Initialize fireflies — list-of-vectors, NOT a 2-D array.
         fireflies = [_A.random_uniform(self.n_dim) for _ in range(n_fireflies)]
-        intensities = [self.evaluate(f) for f in fireflies]
+        intensities = []
+        for fly in fireflies:
+            intensities.append((yield fly))
 
         while self.evaluations < firefly_budget:
             evals_at_sweep_start = self.evaluations
@@ -969,7 +969,7 @@ class FireflyAlgorithm(BaseOptimizer):
                         )
 
                         if self.evaluations < firefly_budget:
-                            intensities[i] = self.evaluate(fireflies[i])
+                            intensities[i] = yield fireflies[i]
             # Anneal α at the end of each outer (i, j) sweep, matching
             # mealpy FFA's `dyn_alpha = alpha_damp * alpha`.
             alpha *= alpha_damp
@@ -984,9 +984,7 @@ class FireflyAlgorithm(BaseOptimizer):
                 break
 
         # Polish stage: L-BFGS-B from the firefly best.
-        self._lbfgs_polish()
-
-        return self.best_value, self.best_x
+        yield from self._lbfgs_polish_gen()
 
 
 class AntColonyOpt(BaseOptimizer):
@@ -1015,7 +1013,7 @@ class AntColonyOpt(BaseOptimizer):
     adapter used by `tests/test_reference_alignment.py`.
     """
 
-    def optimize(self):
+    def _run(self):
         n = self.n_dim
         # Hansen-mealpy-style defaults.
         k = min(50, max(10, self.n_trials // 10))  # archive size
@@ -1038,9 +1036,9 @@ class AntColonyOpt(BaseOptimizer):
             if self.evaluations >= self.n_trials:
                 break
             x = _A.random_uniform(n)
-            archive.append((x, self.evaluate(x)))
+            archive.append((x, (yield x)))
         if not archive:
-            return self.best_value, self.best_x
+            return
         archive.sort(key=lambda t: t[1])
 
         while self.evaluations < self.n_trials:
@@ -1084,15 +1082,13 @@ class AntColonyOpt(BaseOptimizer):
                     # Box-Muller via the shim's random_normal.
                     z = float(_A.random_normal(1)[0])
                     x_new[d] = max(0.0, min(1.0, float(center[d]) + s * z))
-                f_new = self.evaluate(x_new)
+                f_new = yield x_new
                 new_solutions.append((x_new, f_new))
 
             # Merge: keep the k best across (archive ∪ new_solutions).
             archive.extend(new_solutions)
             archive.sort(key=lambda t: t[1])
             archive = archive[:k]
-
-        return self.best_value, self.best_x
 
 
 class EvolutionStrategy(BaseOptimizer):
