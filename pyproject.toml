@@ -4,7 +4,7 @@ build-backend = "hatchling.build"
 
 [project]
 name = "humpday"
-version = "0.21.0"
+version = "0.22.0"
 description = "Taking the pain out of choosing a Python global optimizer"
 readme = "README.md"
 license = "MIT"
