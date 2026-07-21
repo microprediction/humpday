@@ -12,8 +12,11 @@ import random
 
 import pytest
 
+from humpday.optimizers.alloy import Alloy
 from humpday.optimizers.evolutionary_algorithms import (
     AntColonyOpt,
+    BayesianOpt,
+    CMAEvolutionStrategy,
     DifferentialEvolution,
     EvolutionStrategy,
     FireflyAlgorithm,
@@ -24,7 +27,7 @@ from humpday.optimizers.evolutionary_algorithms import (
     RandomSearch,
     SimulatedAnnealing,
 )
-from humpday.optimizers.scipy_algorithms import NelderMead
+from humpday.optimizers.scipy_algorithms import LBFGSB, NelderMead, Powell
 from humpday.optimizers.search_algorithms import (
     CoordinateDescent,
     GridSearch,
@@ -33,7 +36,10 @@ from humpday.optimizers.search_algorithms import (
 )
 
 from .reference_impls_pre_online import (
+    FrozenAlloy,
     FrozenAntColonyOpt,
+    FrozenBayesianOpt,
+    FrozenCMAEvolutionStrategy,
     FrozenCoordinateDescent,
     FrozenDifferentialEvolution,
     FrozenEvolutionStrategy,
@@ -42,9 +48,11 @@ from .reference_impls_pre_online import (
     FrozenGridSearch,
     FrozenHarmonySearch,
     FrozenHillClimbing,
+    FrozenLBFGSB,
     FrozenNelderMead,
     FrozenParticleSwarm,
     FrozenPatternSearch,
+    FrozenPowell,
     FrozenRandomSearch,
     FrozenRechenberg,
     FrozenSimulatedAnnealing,
@@ -93,6 +101,12 @@ PAIRS = [
     (FrozenGeneticAlgorithm, GeneticAlgorithm),
     (FrozenFireflyAlgorithm, FireflyAlgorithm),
     (FrozenAntColonyOpt, AntColonyOpt),
+    # Batch 3
+    (FrozenBayesianOpt, BayesianOpt),
+    (FrozenCMAEvolutionStrategy, CMAEvolutionStrategy),
+    (FrozenPowell, Powell),
+    (FrozenLBFGSB, LBFGSB),
+    (FrozenAlloy, Alloy),
 ]
 
 

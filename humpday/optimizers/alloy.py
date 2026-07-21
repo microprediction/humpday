@@ -44,17 +44,16 @@ class Alloy(BaseOptimizer):
     out-of-sample evidence.
     """
 
-    def optimize(self):
+    def _run(self):
         n_dim = self.n_dim
         n_trials = self.n_trials
         if n_dim <= 0:
-            return (self.evaluate([]) if n_trials > 0 else float("inf"), [])
+            if n_trials > 0:
+                yield []
+            return
 
         def clip(x):
             return [0.0 if xi < 0.0 else (1.0 if xi > 1.0 else xi) for xi in x]
-
-        def feval(x):
-            return self.evaluate(clip(x))
 
         def budget_left():
             return self.evaluations < n_trials
@@ -67,9 +66,9 @@ class Alloy(BaseOptimizer):
                 break
             x = [random.random() for _ in range(n_dim)]
             pop.append(x)
-            pop_f.append(feval(x))
+            pop_f.append((yield clip(x)))
         if not pop:
-            return (self.best_value, self.best_x)
+            return
 
         # Build initial simplex (host: Nelder-Mead) from best population members
         order = sorted(range(len(pop)), key=lambda i: pop_f[i])
@@ -80,7 +79,7 @@ class Alloy(BaseOptimizer):
             j = (len(simplex) - 1) % n_dim
             base[j] = min(1.0, base[j] + 0.1)
             simplex.append(base)
-            simplex_f.append(feval(base))
+            simplex_f.append((yield clip(base)))
 
         # ---- adaptation state ----
         step = 0.25
@@ -136,11 +135,11 @@ class Alloy(BaseOptimizer):
                 refl = [cen[d] + 1.0 * (cen[d] - worst_x[d]) for d in range(n_dim)]
                 if not budget_left():
                     break
-                fr = feval(refl)
+                fr = yield clip(refl)
                 if fr < simplex_f[0]:
                     exp = [cen[d] + 2.0 * (cen[d] - worst_x[d]) for d in range(n_dim)]
                     if budget_left():
-                        fe = feval(exp)
+                        fe = yield clip(exp)
                         cand, cf = (exp, fe) if fe < fr else (refl, fr)
                     else:
                         cand, cf = refl, fr
@@ -149,7 +148,7 @@ class Alloy(BaseOptimizer):
                 else:
                     con = [cen[d] + 0.5 * (worst_x[d] - cen[d]) for d in range(n_dim)]
                     if budget_left():
-                        fc = feval(con)
+                        fc = yield clip(con)
                         if fc < worst_f:
                             cand, cf = con, fc
                         else:
@@ -160,7 +159,7 @@ class Alloy(BaseOptimizer):
                                     best_x[d] + 0.5 * (simplex[i][d] - best_x[d])
                                     for d in range(n_dim)
                                 ]
-                                simplex_f[i] = feval(simplex[i])
+                                simplex_f[i] = yield clip(simplex[i])
                             cand, cf = None, None
                     else:
                         cand, cf = None, None
@@ -195,7 +194,7 @@ class Alloy(BaseOptimizer):
                 ]
                 if not budget_left():
                     break
-                ft = feval(trial)
+                ft = yield clip(trial)
                 if accept(ft, worst_f):
                     simplex[worst_i] = clip(trial)
                     simplex_f[worst_i] = ft
@@ -210,7 +209,7 @@ class Alloy(BaseOptimizer):
                 ]
                 if not budget_left():
                     break
-                fc = feval(cand)
+                fc = yield clip(cand)
                 if accept(fc, worst_f):
                     if fc < worst_f:
                         improved = True
@@ -232,7 +231,7 @@ class Alloy(BaseOptimizer):
                         break
                     trial = cur[:]
                     trial[d] += step
-                    ft = feval(trial)
+                    ft = yield clip(trial)
                     if ft < cur_f:
                         cur, cur_f = clip(trial), ft
                     else:
@@ -240,7 +239,7 @@ class Alloy(BaseOptimizer):
                             break
                         trial = cur[:]
                         trial[d] -= step
-                        ft = feval(trial)
+                        ft = yield clip(trial)
                         if ft < cur_f:
                             cur, cur_f = clip(trial), ft
                 if cur_f < base_f:
@@ -283,10 +282,8 @@ class Alloy(BaseOptimizer):
                         for d in range(n_dim)
                     ]
                     simplex.append(p)
-                    simplex_f.append(feval(p))
+                    simplex_f.append((yield clip(p)))
                 while len(simplex) < n_dim + 1 and budget_left():
                     p = [random.random() for _ in range(n_dim)]
                     simplex.append(p)
-                    simplex_f.append(feval(p))
-
-        return (self.best_value, self.best_x)
+                    simplex_f.append((yield clip(p)))

@@ -38,6 +38,17 @@ class _AbortAskTell(BaseException):
     """Raised inside the worker to unwind a partially-driven optimize() on close()."""
 
 
+class Batch(list):
+    """Marker for a generator batch yield. A _run() generator may
+    `values = yield Batch([x1, ..., xm])` to surface a whole synchronous
+    generation (CMA-ES pattern); the driver evaluates the points in order —
+    each with evaluate()'s exact increment/clip/bookkeep sequence — and sends
+    back the list of values. Under ask/tell the group is served intact by
+    suggest_batch() (for parallel evaluation) or point-by-point by
+    suggest_next(). A plain list would be ambiguous (the pure backend's _Vec
+    is a list subclass), hence the explicit marker type."""
+
+
 class _AskTellState:
     """Lock-step handshake for driving optimize() incrementally. The worker emits a
     GROUP of points — size 1 from evaluate(), size m from evaluate_batch() — and the
@@ -135,13 +146,26 @@ class BaseOptimizer:
             )
         gen = self._run()
         try:
-            x = next(gen)
+            yielded = next(gen)
             while True:
-                self.evaluations += 1
-                x_clipped = _A.clip(x, 0, 1)
-                value = self.objective(x_clipped)
-                self._bookkeep(x_clipped, value)
-                x = gen.send(value)
+                if isinstance(yielded, Batch):
+                    # Synchronous generation: evaluate each point with the
+                    # same increment/clip/bookkeep order as evaluate(), so
+                    # the trajectory matches the evaluate_batch() form.
+                    vals = []
+                    for p in yielded:
+                        self.evaluations += 1
+                        p_clipped = _A.clip(p, 0, 1)
+                        v = self.objective(p_clipped)
+                        self._bookkeep(p_clipped, v)
+                        vals.append(v)
+                    yielded = gen.send(vals)
+                else:
+                    self.evaluations += 1
+                    x_clipped = _A.clip(yielded, 0, 1)
+                    value = self.objective(x_clipped)
+                    self._bookkeep(x_clipped, value)
+                    yielded = gen.send(value)
         except StopIteration:
             pass
         return self.best_value, self.best_x
@@ -179,14 +203,28 @@ class BaseOptimizer:
     # instance per ask/tell run; don't mix views or a direct optimize(). #
     # ------------------------------------------------------------------ #
     class _GenDrive:
-        """Threadless ask/tell state for optimizers that define _run()."""
+        """Threadless ask/tell state for optimizers that define _run().
+        `group` is the current pending group of clipped points — size 1 for a
+        scalar yield, size m for a Batch yield — mirroring the thread shim's
+        group semantics."""
 
-        __slots__ = ("gen", "pending_raw", "pending", "awaiting", "done", "mode")
+        __slots__ = (
+            "gen",
+            "group",
+            "was_batch",
+            "idx",
+            "vals",
+            "awaiting",
+            "done",
+            "mode",
+        )
 
         def __init__(self, gen):
             self.gen = gen
-            self.pending_raw = None
-            self.pending = None
+            self.group = None
+            self.was_batch = False
+            self.idx = 0
+            self.vals = []
             self.awaiting = False
             self.done = False
             self.mode = None
@@ -199,21 +237,39 @@ class BaseOptimizer:
             )
         gd = self._gd = BaseOptimizer._GenDrive(self._run())
         try:
-            gd.pending_raw = next(gd.gen)
-            gd.pending = _A.clip(gd.pending_raw, 0, 1)
+            self._gen_stage(gd, next(gd.gen))
         except StopIteration:
             gd.done = True
         return gd
 
-    def _gen_advance(self, gd, value):
+    def _gen_stage(self, gd, yielded):
+        """Install the generator's latest yield as the pending group."""
+        while True:
+            gd.was_batch = isinstance(yielded, Batch)
+            points = yielded if gd.was_batch else [yielded]
+            gd.group = [_A.clip(p, 0, 1) for p in points]
+            gd.idx = 0
+            gd.vals = []
+            if gd.group:
+                return
+            # Empty Batch: nothing to evaluate — answer with [] and move on.
+            yielded = gd.gen.send([])
+
+    def _gen_feed(self, gd, value):
+        """Bank one value for the group's next point; advance the generator
+        once the group is fully answered."""
         self.evaluations += 1
-        self._bookkeep(gd.pending, float(value))
+        self._bookkeep(gd.group[gd.idx], float(value))
+        gd.vals.append(float(value))
+        gd.idx += 1
+        if gd.idx < len(gd.group):
+            return
         try:
-            gd.pending_raw = gd.gen.send(float(value))
-            gd.pending = _A.clip(gd.pending_raw, 0, 1)
+            sent = gd.vals if gd.was_batch else gd.vals[0]
+            self._gen_stage(gd, gd.gen.send(sent))
         except StopIteration:
             gd.done = True
-            gd.pending = None
+            gd.group = None
 
     def _asktell_start(self):
         if self.evaluations > 0:
@@ -254,7 +310,7 @@ class BaseOptimizer:
                     "suggest_next() called again before receive_update()"
                 )
             gd.awaiting = True
-            return gd.pending
+            return gd.group[gd.idx]
         at = self._at or self._asktell_start()
         if at.mode == "batch":
             raise RuntimeError("instance already driven via suggest_batch()")
@@ -280,7 +336,7 @@ class BaseOptimizer:
             if not gd.awaiting:
                 raise RuntimeError("receive_update() without a matching suggest_next()")
             gd.awaiting = False
-            self._gen_advance(gd, value)
+            self._gen_feed(gd, value)
             return
         at = self._at
         if at is None or not at.awaiting:
@@ -306,7 +362,7 @@ class BaseOptimizer:
             if gd.awaiting:
                 raise RuntimeError("suggest_batch() called again before tell_batch()")
             gd.awaiting = True
-            return [gd.pending]
+            return list(gd.group)
         at = self._at or self._asktell_start()
         if at.mode == "scalar":
             raise RuntimeError("instance already driven via suggest_next()")
@@ -329,10 +385,13 @@ class BaseOptimizer:
             if not gd.awaiting:
                 raise RuntimeError("tell_batch() without a matching suggest_batch()")
             values = [float(v) for v in values]
-            if len(values) != 1:
-                raise ValueError(f"tell_batch expected 1 value, got {len(values)}")
+            if len(values) != len(gd.group):
+                raise ValueError(
+                    f"tell_batch expected {len(gd.group)} values, got {len(values)}"
+                )
             gd.awaiting = False
-            self._gen_advance(gd, values[0])
+            for v in values:
+                self._gen_feed(gd, v)
             return
         at = self._at
         if at is None or not at.awaiting_batch:
