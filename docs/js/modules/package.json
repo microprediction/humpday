@@ -1,6 +1,6 @@
 {
   "name": "humpday",
-  "version": "0.21.0",
+  "version": "0.22.0",
   "description": "23 derivative-free optimizers in zero-dependency JavaScript: the browser/Node twin of the Python humpday package, held in agreement by parity tests. Includes Alloy, a machine-designed optimizer validated on held-out problems.",
   "main": "./index.js",
   "exports": {
