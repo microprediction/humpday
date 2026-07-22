@@ -22,6 +22,18 @@ JS_EXACT = [
     "RandomSearch",
     "GridSearch",
     "Rechenberg",
+    # Batch 2
+    "CoordinateDescent",
+    "PatternSearch",
+    "HillClimbing",
+    "EvolutionStrategy",
+    "HarmonySearch",
+    # Batch 3
+    "SimulatedAnnealing",
+    "DifferentialEvolution",
+    "GeneticAlgorithm",
+    "ParticleSwarm",
+    "FireflyAlgorithm",
 ]
 
 

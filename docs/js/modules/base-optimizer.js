@@ -10,9 +10,12 @@
 // optimizer onto the cross-language PCG32 stream (prng.js), which is
 // what the transition-vector replay uses. Mirrors humpday._array's
 // use_portable_rng / use_legacy_rng.
-const _PCG32 = (typeof module !== 'undefined' && module.exports)
-    ? require('./prng.js').PCG32
-    : (typeof PCG32 !== 'undefined' ? PCG32 : null);
+const _prngmod = (typeof module !== 'undefined' && module.exports)
+    ? require('./prng.js')
+    : { PCG32: (typeof PCG32 !== 'undefined' ? PCG32 : null),
+        portableLog: (typeof portableLog !== 'undefined' ? portableLog : null),
+        portableExp: (typeof portableExp !== 'undefined' ? portableExp : null) };
+const _PCG32 = _prngmod.PCG32;
 
 let _portableRng = null;
 
@@ -53,6 +56,31 @@ const MathUtils = {
         return out;
     },
 
+    randInt(n) {
+        return _portableRng !== null
+            ? _portableRng.randbelow(n)
+            : Math.floor(Math.random() * n);
+    },
+
+    choice(seq) {
+        return seq[MathUtils.randInt(seq.length)];
+    },
+
+    // k distinct elements by partial front Fisher-Yates — twin of
+    // PCG32.sample in humpday/_prng.py (same draw sequence, so
+    // replace=False choices replay bit-for-bit).
+    sample(seq, k) {
+        const pool = seq.slice();
+        const n = pool.length;
+        for (let i = 0; i < k; i++) {
+            const j = i + MathUtils.randInt(n - i);
+            const tmp = pool[i];
+            pool[i] = pool[j];
+            pool[j] = tmp;
+        }
+        return pool.slice(0, k);
+    },
+
     norm(vec) {
         return Math.sqrt(vec.reduce((sum, x) => sum + x * x, 0));
     },
@@ -81,6 +109,12 @@ const MathUtils = {
         return arr.map(x => MathUtils.clip(x, min, max));
     }
 };
+
+// Deterministic transcendentals shared with the Python side (see
+// humpday/_prng.py): trajectory code must use these, never Math.pow /
+// Math.exp / Math.log, whose last-ulp behaviour is runtime-specific.
+MathUtils.portableLog = _prngmod.portableLog;
+MathUtils.portableExp = _prngmod.portableExp;
 
 // Base optimizer class
 class Optimizer {
@@ -198,8 +232,21 @@ class Optimizer {
     //   4. Feasibility-capped initial step so the line search doesn't
     //      waste iterations on clipped candidates.
     // Mirrors `BaseOptimizer._lbfgs_polish` in
-    // `humpday/optimizers/base.py`.
+    // `humpday/optimizers/base.py`. The generator form is the twin of
+    // `_lbfgs_polish_gen`; converted optimizers `yield*` it from their
+    // _run(), while legacy optimize()-style callers use _lbfgsPolish(),
+    // which drives the same generator (the twin of `_drive_gen`).
+    _driveGen(gen) {
+        let res = gen.next();
+        while (!res.done) res = gen.next(this.evaluate(res.value));
+        return res.value;
+    }
+
     _lbfgsPolish() {
+        return this._driveGen(this._lbfgsPolishGen());
+    }
+
+    *_lbfgsPolishGen() {
         const FACTR = 1e7;
         const PGTOL = 1e-5;
         const EPS_MACH = 2.220446049250313e-16;
@@ -208,7 +255,7 @@ class Optimizer {
 
         let x = this.bestX.slice();
         let f = this.bestValue;
-        let grad = this._fdGradientForPolish(x);
+        let grad = yield* this._fdGradientPolishGen(x);
 
         const sList = [];
         const yList = [];
@@ -262,7 +309,7 @@ class Optimizer {
                 for (let k = 0; k < n; k++) {
                     candidate[k] = Math.max(0, Math.min(1, x[k] + step * direction[k]));
                 }
-                const candF = this.evaluate(candidate);
+                const candF = yield candidate;
                 if (candF <= f + c1 * step * gd) {
                     newX = candidate;
                     newF = candF;
@@ -280,7 +327,7 @@ class Optimizer {
                 break;
             }
 
-            const newGrad = this._fdGradientForPolish(newX);
+            const newGrad = yield* this._fdGradientPolishGen(newX);
 
             // (7) Memory update.
             const s = new Array(n);
@@ -339,6 +386,10 @@ class Optimizer {
     }
 
     _fdGradientForPolish(x) {
+        return this._driveGen(this._fdGradientPolishGen(x));
+    }
+
+    *_fdGradientPolishGen(x) {
         const n = this.nDim;
         const h = 1e-6;
         const grad = new Array(n).fill(0);
@@ -346,11 +397,11 @@ class Optimizer {
             if (this.evaluations >= this.nTrials) break;
             const xPlus = x.slice();
             xPlus[i] = Math.min(1.0, x[i] + h);
-            const fPlus = this.evaluate(xPlus);
+            const fPlus = yield xPlus;
             if (this.evaluations >= this.nTrials) break;
             const xMinus = x.slice();
             xMinus[i] = Math.max(0.0, x[i] - h);
-            const fMinus = this.evaluate(xMinus);
+            const fMinus = yield xMinus;
             const denom = xPlus[i] - xMinus[i];
             if (denom > 0) grad[i] = (fPlus - fMinus) / denom;
         }
