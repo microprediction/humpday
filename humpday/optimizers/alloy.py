@@ -31,7 +31,8 @@ reheat and rebuild the simplex around the incumbent.
 """
 
 import math
-import random
+
+from humpday import _array as _A
 
 from .base import BaseOptimizer
 
@@ -64,7 +65,7 @@ class Alloy(BaseOptimizer):
         for _ in range(pop_size):
             if not budget_left():
                 break
-            x = [random.random() for _ in range(n_dim)]
+            x = [_A.rng_random() for _ in range(n_dim)]
             pop.append(x)
             pop_f.append((yield clip(x)))
         if not pop:
@@ -114,7 +115,7 @@ class Alloy(BaseOptimizer):
             if T <= 1e-12:
                 return False
             try:
-                return random.random() < math.exp(-(f_new - f_old) / T)
+                return _A.rng_random() < math.exp(-(f_new - f_old) / T)
             except OverflowError:
                 return False
 
@@ -127,7 +128,7 @@ class Alloy(BaseOptimizer):
             worst_f = simplex_f[worst_i]
             cen = centroid_of(simplex, worst_i)
 
-            r = random.random()
+            r = _A.rng_random()
             improved = False
 
             if r < 0.25:
@@ -172,10 +173,10 @@ class Alloy(BaseOptimizer):
             elif r < 0.50:
                 # --- Differential Evolution: rand/1 or current-to-best/1 ---
                 idxs = list(range(len(simplex)))
-                random.shuffle(idxs)
+                _A.rng_shuffle(idxs)
                 a, b, c = idxs[0], idxs[1 % len(idxs)], idxs[2 % len(idxs)]
                 target = worst_x
-                if random.random() < 0.5:
+                if _A.rng_random() < 0.5:
                     mutant = [
                         simplex[a][d] + F * (simplex[b][d] - simplex[c][d])
                         for d in range(n_dim)
@@ -187,9 +188,9 @@ class Alloy(BaseOptimizer):
                         + F * (simplex[b][d] - simplex[c][d])
                         for d in range(n_dim)
                     ]
-                jr = random.randrange(n_dim)
+                jr = _A.rng_randrange(n_dim)
                 trial = [
-                    mutant[d] if (random.random() < CR or d == jr) else target[d]
+                    mutant[d] if (_A.rng_random() < CR or d == jr) else target[d]
                     for d in range(n_dim)
                 ]
                 if not budget_left():
@@ -204,7 +205,7 @@ class Alloy(BaseOptimizer):
             elif r < 0.75:
                 # --- CMA-style Gaussian sampling with adaptive diagonal cov ---
                 cand = [
-                    best_x[d] + sigma * random.gauss(0.0, math.sqrt(cov_diag[d]))
+                    best_x[d] + sigma * (_A.rng_gauss() * math.sqrt(cov_diag[d]))
                     for d in range(n_dim)
                 ]
                 if not budget_left():
@@ -278,12 +279,12 @@ class Alloy(BaseOptimizer):
                     if not budget_left():
                         break
                     p = [
-                        min(1.0, max(0.0, keep[d] + random.uniform(-0.3, 0.3)))
+                        min(1.0, max(0.0, keep[d] + _A.rng_uniform(-0.3, 0.3)))
                         for d in range(n_dim)
                     ]
                     simplex.append(p)
                     simplex_f.append((yield clip(p)))
                 while len(simplex) < n_dim + 1 and budget_left():
-                    p = [random.random() for _ in range(n_dim)]
+                    p = [_A.rng_random() for _ in range(n_dim)]
                     simplex.append(p)
                     simplex_f.append((yield clip(p)))

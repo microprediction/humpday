@@ -17,7 +17,6 @@ Must match algorithmic behavior of reference, not use reference directly.
 """
 
 import math
-import random
 
 from humpday import _array as _A
 
@@ -1021,7 +1020,7 @@ class PRIMA_NEWUOA(BaseOptimizer):
             if self.evaluations < self.n_trials:
                 xseed = _A.clip(
                     [
-                        float(self.best_x[i]) + (random.random() - 0.5) * 2.0 * rhobeg
+                        float(self.best_x[i]) + (_A.rng_random() - 0.5) * 2.0 * rhobeg
                         for i in range(n)
                     ],
                     0,
@@ -1369,7 +1368,7 @@ class PRIMA_BOBYQA(BaseOptimizer):
             if self.evaluations < self.n_trials:
                 xseed = _A.clip(
                     [
-                        float(self.best_x[i]) + (random.random() - 0.5) * 2.0 * rhobeg
+                        float(self.best_x[i]) + (_A.rng_random() - 0.5) * 2.0 * rhobeg
                         for i in range(n)
                     ],
                     0.1,

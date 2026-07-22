@@ -1207,7 +1207,7 @@ class HarmonySearch(BaseOptimizer):
             for j in range(self.n_dim):
                 if _A.random_scalar() < HMCR:
                     # Pick from harmony memory.
-                    selected = random.choice(harmony_memory)
+                    selected = _A.rng_choice(harmony_memory)
                     value = selected["harmony"][j]
 
                     # Pitch adjustment.
