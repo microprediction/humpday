@@ -18,12 +18,11 @@ and LBFGSB diverging between macOS and Linux under numpy, while all 23
 matched under the pure backend's fixed-order arithmetic). Ports
 implement the pure-backend semantics.
 
-KNOWN CAVEAT (to be lifted by the summation-portability pass): CPython
-3.12+ computes builtin sum() on floats with Neumaier compensation, so
-these vectors — recorded on 3.13 — replay exactly only on 3.12+ until
-every trajectory-relevant float sum() becomes an explicit left fold
-(which is also what the ports will implement). CI pins the replay job
-to 3.13 meanwhile.
+Summation semantics: every trajectory-relevant float sum is an explicit
+left fold (_A.fold_sum / the pure backend's sum/dot/norm), never builtin
+sum() — CPython 3.12+ compensates float sums (Neumaier), which made
+results interpreter-version-dependent. CI replays these vectors on both
+3.11 and 3.13 to hold that line.
 
 Regenerate with:  HUMPDAY_FORCE_PURE_ARRAY=1 python parity/record_transition_vectors.py
 """

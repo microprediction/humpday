@@ -300,20 +300,20 @@ def _solve_trsbox(g, H, rho, x_current, xl, xu, n):
 
         # Projected residual r = -grad on the free subspace.
         r = [-grad[i] if active[i] is None else 0.0 for i in range(n)]
-        r_norm_sq = sum(ri * ri for ri in r)
+        r_norm_sq = _A.fold_sum(ri * ri for ri in r)
         if r_norm_sq < tol * tol:
             break  # nothing left to do in the current free subspace
 
         # CG inner loop in the current subspace.
         p = list(r)
-        d_norm_sq = sum(di * di for di in d)
+        d_norm_sq = _A.fold_sum(di * di for di in d)
         bound_added = False
 
         for _inner in range(inner_cap):
             # Compute Hp restricted to the free subspace.
             Hp_full = list(_A.linalg.matvec(H, _A.asarray(p)))
             Hp = [Hp_full[i] if active[i] is None else 0.0 for i in range(n)]
-            pHp = sum(p[i] * Hp[i] for i in range(n))
+            pHp = _A.fold_sum(p[i] * Hp[i] for i in range(n))
 
             # alpha_box: smallest positive step before a new bound is hit.
             alpha_box = float("inf")
@@ -336,10 +336,10 @@ def _solve_trsbox(g, H, rho, x_current, xl, xu, n):
                         new_side = "lo"
 
             # alpha_tr: step to the TR boundary ‖d + α p‖ = rho.
-            pp = sum(pi * pi for pi in p)
+            pp = _A.fold_sum(pi * pi for pi in p)
             if pp < tol * tol:
                 break
-            dp = sum(d[i] * p[i] for i in range(n))
+            dp = _A.fold_sum(d[i] * p[i] for i in range(n))
             disc = dp * dp - pp * (d_norm_sq - rho * rho)
             if disc < 0:
                 alpha_tr = 0.0  # already at/outside TR (numerical edge)
@@ -358,7 +358,7 @@ def _solve_trsbox(g, H, rho, x_current, xl, xu, n):
                 break
 
             d = [d[i] + alpha * p[i] for i in range(n)]
-            d_norm_sq = sum(di * di for di in d)
+            d_norm_sq = _A.fold_sum(di * di for di in d)
 
             # Termination at the TR boundary — Phase 3 omitted; we accept
             # the current d.
@@ -376,7 +376,7 @@ def _solve_trsbox(g, H, rho, x_current, xl, xu, n):
 
             # Otherwise alpha == alpha_cg — continue CG in this subspace.
             r_new = [r[i] - alpha * Hp[i] for i in range(n)]
-            r_new_norm_sq = sum(ri * ri for ri in r_new)
+            r_new_norm_sq = _A.fold_sum(ri * ri for ri in r_new)
             if r_new_norm_sq < tol * tol:
                 return _A.asarray(d)
 
@@ -1130,9 +1130,9 @@ class PRIMA_NEWUOA(BaseOptimizer):
                 diff = XPT[k] - XPT[kopt]
                 # Heuristic: this is "the ith coordinate direction" if diff[i]
                 # is the dominant nonzero component.
-                if abs(diff[i]) > 1e-6 and sum(abs(float(v)) for v in diff) < 2 * abs(
-                    float(diff[i])
-                ):
+                if abs(diff[i]) > 1e-6 and _A.fold_sum(
+                    abs(float(v)) for v in diff
+                ) < 2 * abs(float(diff[i])):
                     if float(diff[i]) > 0:
                         pos_val = FVAL[k]
                     else:
@@ -1460,7 +1460,7 @@ class PRIMA_BOBYQA(BaseOptimizer):
                 if k == kopt:
                     continue
                 diff = XPT[k] - XPT[kopt]
-                if abs(float(diff[i])) > 1e-6 and sum(
+                if abs(float(diff[i])) > 1e-6 and _A.fold_sum(
                     abs(float(v)) for v in diff
                 ) < 2 * abs(float(diff[i])):
                     if float(diff[i]) > 0:

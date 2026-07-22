@@ -525,7 +525,7 @@ class BaseOptimizer:
                 elif xk >= 1.0 and direction[k] > 0.0:
                     direction[k] = 0.0
 
-            gd = sum(float(grad[k]) * direction[k] for k in range(n))
+            gd = _A.fold_sum(float(grad[k]) * direction[k] for k in range(n))
             if gd > -1e-30:
                 # Direction isn't a descent (zero curvature, memory drift,
                 # or every component clipped). Reset memory and fall back
@@ -539,7 +539,7 @@ class BaseOptimizer:
                         direction[k] = 0.0
                     elif xk >= 1.0 and direction[k] > 0.0:
                         direction[k] = 0.0
-                gd = sum(float(grad[k]) * direction[k] for k in range(n))
+                gd = _A.fold_sum(float(grad[k]) * direction[k] for k in range(n))
                 if gd > -1e-30:
                     break  # truly stuck — projected gradient is zero
 
@@ -604,20 +604,28 @@ class BaseOptimizer:
         direction = [-float(g) for g in grad]
         alpha = [0.0] * len(s_list)
         for i in range(len(s_list) - 1, -1, -1):
-            sy = sum(float(s_list[i][k]) * float(y_list[i][k]) for k in range(n))
+            sy = _A.fold_sum(
+                float(s_list[i][k]) * float(y_list[i][k]) for k in range(n)
+            )
             if abs(sy) < 1e-30:
                 continue
             rho = 1.0 / sy
-            alpha[i] = rho * sum(float(s_list[i][k]) * direction[k] for k in range(n))
+            alpha[i] = rho * _A.fold_sum(
+                float(s_list[i][k]) * direction[k] for k in range(n)
+            )
             direction = [
                 direction[k] - alpha[i] * float(y_list[i][k]) for k in range(n)
             ]
         for i in range(len(s_list)):
-            sy = sum(float(s_list[i][k]) * float(y_list[i][k]) for k in range(n))
+            sy = _A.fold_sum(
+                float(s_list[i][k]) * float(y_list[i][k]) for k in range(n)
+            )
             if abs(sy) < 1e-30:
                 continue
             rho = 1.0 / sy
-            beta = rho * sum(float(y_list[i][k]) * direction[k] for k in range(n))
+            beta = rho * _A.fold_sum(
+                float(y_list[i][k]) * direction[k] for k in range(n)
+            )
             direction = [
                 direction[k] + (alpha[i] - beta) * float(s_list[i][k]) for k in range(n)
             ]

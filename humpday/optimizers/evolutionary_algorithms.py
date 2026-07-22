@@ -495,8 +495,8 @@ class BayesianOpt(BaseOptimizer):
 
         # Pure-Python backend: explicit O(n1 n2 d) loops via the shim's
         # matmul. Slow but no numpy required.
-        norms1 = [sum(float(v) * float(v) for v in row) for row in X1_rows]
-        norms2 = [sum(float(v) * float(v) for v in row) for row in X2_rows]
+        norms1 = [_A.fold_sum(float(v) * float(v) for v in row) for row in X1_rows]
+        norms2 = [_A.fold_sum(float(v) * float(v) for v in row) for row in X2_rows]
         X1_2d = [list(r) for r in X1_rows]
         X2_2d = [list(r) for r in X2_rows]
         X2T = _A.linalg.transpose(X2_2d)
@@ -544,7 +544,7 @@ class BayesianOpt(BaseOptimizer):
                     K[i][i] += jitter
         if L is None:
             # Pathological kernel — fall back to a flat prior.
-            mu = sum(self.y_observed) / max(1, n_obs)
+            mu = _A.fold_sum(self.y_observed) / max(1, n_obs)
             var = 0.0
             for y in self.y_observed:
                 var += (y - mu) ** 2
@@ -559,12 +559,12 @@ class BayesianOpt(BaseOptimizer):
         alpha = _A.linalg.solve(Lt, alpha)
 
         # Mean: mu = K_s . alpha.
-        mu = sum(float(K_s_col[i]) * float(alpha[i]) for i in range(n_obs))
+        mu = _A.fold_sum(float(K_s_col[i]) * float(alpha[i]) for i in range(n_obs))
 
         # Variance: var = K_ss - K_s^T K^-1 K_s.
         # With L L^T = K, K^-1 K_s = L^-T (L^-1 K_s).
         v = _A.linalg.solve(L, K_s_col)
-        v_dot_v = sum(float(vi) * float(vi) for vi in v)
+        v_dot_v = _A.fold_sum(float(vi) * float(vi) for vi in v)
         var = max(K_ss - v_dot_v, 1e-8)
 
         return mu, math.sqrt(var)
@@ -1022,7 +1022,7 @@ class AntColonyOpt(BaseOptimizer):
         for i in range(k):
             ex = math.exp(-(i**2) / (2.0 * q * q * k * k))
             weights.append(ex / (q * k * math.sqrt(2.0 * math.pi)))
-        wsum = sum(weights)
+        wsum = _A.fold_sum(weights)
         weights = [w / wsum for w in weights]
 
         # Initial archive: k uniform samples (or as many as budget allows).

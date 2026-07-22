@@ -206,7 +206,12 @@ pi = math.pi
 
 
 def sum(x):  # noqa: A001
-    return _builtins.sum(x)
+    # Left fold, NOT builtins.sum: CPython 3.12+ compensates float sums,
+    # making results interpreter-version-dependent. Ports left-fold.
+    total = 0.0
+    for v in x:
+        total = total + float(v)
+    return total
 
 
 def mean(x):
@@ -257,12 +262,18 @@ def argmax(x: Sequence) -> int:
 def dot(a: Sequence, b: Sequence) -> float:
     if len(a) != len(b):
         raise ValueError(f"dot: length mismatch {len(a)} vs {len(b)}")
-    return sum(x * y for x, y in zip(a, b))
+    total = 0.0
+    for x, y in zip(a, b):
+        total = total + float(x) * float(y)
+    return total
 
 
 def norm(x: Sequence) -> float:
     """Euclidean (L2) norm."""
-    return math.sqrt(sum(v * v for v in x))
+    total = 0.0
+    for v in x:
+        total = total + float(v) * float(v)
+    return math.sqrt(total)
 
 
 def clip(x, lo: Number, hi: Number):
