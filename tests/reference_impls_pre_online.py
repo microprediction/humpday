@@ -12,6 +12,7 @@ import math
 import random
 
 from humpday import _array as _A
+from humpday._prng import portable_exp, portable_log
 from humpday.optimizers.base import BaseOptimizer
 
 
@@ -674,7 +675,11 @@ class FrozenHillClimbing(BaseOptimizer):
         # Geometric decay so that after `n_trials - 1` iterations
         # sigma == sigma_final. Matches the reference adapter
         # line-for-line.
-        decay = (sigma_final / sigma_init) ** (1.0 / max(1, self.n_trials - 1))
+        # portable_exp/log, not ** : libm pow differs across platforms in
+        # the last ulp (V8-on-Linux vs CPython caught by vector replay).
+        decay = portable_exp(
+            (1.0 / max(1, self.n_trials - 1)) * portable_log(sigma_final / sigma_init)
+        )
         sigma = sigma_init
 
         while self.evaluations < self.n_trials:
