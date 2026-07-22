@@ -71,7 +71,7 @@ class Rechenberg(BaseOptimizer):
             # Strict 1/5-rule on the rolling window — 1.5×/1.5⁻¹
             # adaptation, no smoothing.
             if len(window) >= window_size:
-                rate = sum(window) / window_size
+                rate = _A.fold_sum(window) / window_size
                 if rate > 1 / 5:
                     sigma = min(step_max, sigma * 1.5)
                 elif rate < 1 / 5:

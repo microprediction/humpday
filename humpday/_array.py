@@ -192,7 +192,19 @@ def rng_randrange(n):
     )
 
 
+def fold_sum(values):
+    """Strict left-fold float sum. CPython 3.12+ made builtin sum() on
+    floats Neumaier-compensated, so its result is interpreter-version-
+    dependent; every language port implements the plain left fold, so
+    trajectory code must use this instead of sum()."""
+    total = 0.0
+    for v in values:
+        total = total + float(v)
+    return total
+
+
 __all__ += [
+    "fold_sum",
     "use_portable_rng",
     "use_legacy_rng",
     "rng_random",
