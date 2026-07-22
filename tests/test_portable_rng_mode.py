@@ -100,3 +100,20 @@ def test_portable_primitives_shapes():
     assert _A.random_choice([1, 2, 3]) in (1, 2, 3)
     pick = _A.random_choice(10, k=4, replace=False)
     assert len(set(pick)) == 4
+
+
+def test_entire_roster_reproducible_under_portable_mode():
+    """Every optimizer, run twice from the same portable seed with
+    scrambled stdlib/numpy state in between, reproduces its run exactly.
+    This is what makes cross-language transition vectors possible."""
+    from humpday.optimizers.alloptimizers import PURE_OPTIMIZERS
+
+    for cls in PURE_OPTIMIZERS.values():
+        _A.use_portable_rng(11, 3)
+        a = _run(cls, n_trials=60, n_dim=2)
+        random.seed(777)
+        if np is not None:
+            np.random.seed(777)
+        _A.use_portable_rng(11, 3)
+        b = _run(cls, n_trials=60, n_dim=2)
+        assert a == b, f"{cls.__name__} not reproducible under portable RNG"
