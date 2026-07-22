@@ -447,19 +447,12 @@ class RandomSearch extends Optimizer {
         this.name = 'RandomSearch';
     }
 
-    optimize() {
+    *_run() {
+        // Statement-for-statement twin of RandomSearch._run in
+        // humpday/optimizers/evolutionary_algorithms.py.
         while (this.evaluations < this.nTrials) {
-            const x = Array(this.nDim).fill(0).map(() => Math.random());
-            this.evaluate(x);
+            yield MathUtils.randomUniform(this.nDim);
         }
-
-        return {
-            bestValue: this.bestValue,
-            bestX: this.bestX,
-            evaluations: this.evaluations,
-            success: true,
-            path: this.trackPath ? this.path : null
-        };
     }
 }
 

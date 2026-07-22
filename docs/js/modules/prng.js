@@ -150,4 +150,7 @@ class PCG32 {
 
 if (typeof module !== "undefined" && module.exports) {
     module.exports = { PCG32, portableLog };
+} else {
+    window.PCG32 = PCG32;
+    window.portableLog = portableLog;
 }
