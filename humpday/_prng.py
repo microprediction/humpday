@@ -31,6 +31,8 @@ Nothing here is cryptographic; the goal is cross-language determinism
 for optimizer trajectories and parity vectors.
 """
 
+import math as _math
+
 _MASK64 = (1 << 64) - 1
 _PCG_MULT = 6364136223846793005
 
@@ -133,7 +135,10 @@ class PCG32:
             s = u * u + v * v
             if 0.0 < s < 1.0:
                 break
-        f = (-2.0 * portable_log(s) / s) ** 0.5
+        # math.sqrt is IEEE-754 correctly rounded on every platform;
+        # `** 0.5` (libm pow) is NOT — glibc's pow differs from sqrt by
+        # one ulp on rare inputs, which the CI bit-comparison caught.
+        f = _math.sqrt(-2.0 * portable_log(s) / s)
         self._cached_gauss = v * f
         self._has_cached_gauss = True
         return u * f
