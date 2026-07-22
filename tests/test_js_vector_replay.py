@@ -28,6 +28,12 @@ JS_EXACT = [
     "HillClimbing",
     "EvolutionStrategy",
     "HarmonySearch",
+    # Batch 3
+    "SimulatedAnnealing",
+    "DifferentialEvolution",
+    "GeneticAlgorithm",
+    "ParticleSwarm",
+    "FireflyAlgorithm",
 ]
 
 
