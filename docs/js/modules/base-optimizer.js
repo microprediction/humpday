@@ -53,6 +53,16 @@ const MathUtils = {
         return out;
     },
 
+    randInt(n) {
+        return _portableRng !== null
+            ? _portableRng.randbelow(n)
+            : Math.floor(Math.random() * n);
+    },
+
+    choice(seq) {
+        return seq[MathUtils.randInt(seq.length)];
+    },
+
     norm(vec) {
         return Math.sqrt(vec.reduce((sum, x) => sum + x * x, 0));
     },
