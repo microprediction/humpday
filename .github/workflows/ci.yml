@@ -40,6 +40,12 @@ jobs:
       run: |
         pytest -v --cov=humpday --cov-report=xml --cov-report=term-missing
 
+    - name: Transition vectors (pure backend, portable contract)
+      env:
+        HUMPDAY_FORCE_PURE_ARRAY: "1"
+      run: |
+        pytest tests/test_transition_vectors.py tests/test_prng_parity.py tests/test_portable_rng_mode.py -q
+
     - name: Upload coverage to Codecov
       if: matrix.os == 'ubuntu-latest' && matrix.python-version == '3.11'
       uses: codecov/codecov-action@v4

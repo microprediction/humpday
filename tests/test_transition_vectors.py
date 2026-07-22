@@ -53,6 +53,12 @@ def _restore_legacy():
     _A.use_legacy_rng()
 
 
+pytestmark = pytest.mark.skipif(
+    _A.BACKEND != "pure",
+    reason="portable contract is defined on the pure backend (no BLAS/LAPACK)",
+)
+
+
 @pytest.mark.parametrize(
     "case",
     _DATA["cases"],

@@ -11,7 +11,14 @@ Objectives are restricted to polynomial arithmetic with a fixed
 evaluation order — no libm — so the objective itself cannot introduce
 platform variation.
 
-Regenerate with:  python parity/record_transition_vectors.py
+The vectors are recorded and replayed on the PURE backend only: the
+numpy backend routes dot/eigh/cholesky through BLAS/LAPACK, whose FMA
+and reduction order vary by platform (the CI probe showed PRIMA, CMA-ES
+and LBFGSB diverging between macOS and Linux under numpy, while all 23
+matched under the pure backend's fixed-order arithmetic). Ports
+implement the pure-backend semantics.
+
+Regenerate with:  HUMPDAY_FORCE_PURE_ARRAY=1 python parity/record_transition_vectors.py
 """
 
 import json
@@ -23,6 +30,12 @@ sys.path.insert(0, str(Path(__file__).parent.parent))
 
 from humpday import _array as _A  # noqa: E402
 from humpday.optimizers.alloptimizers import PURE_OPTIMIZERS  # noqa: E402
+
+if _A.BACKEND != "pure":
+    sys.exit(
+        "The portable contract is defined on the pure backend (fixed-order "
+        "arithmetic, no BLAS/LAPACK). Rerun with HUMPDAY_FORCE_PURE_ARRAY=1."
+    )
 
 OUT = Path(__file__).parent / "transition_vectors.json"
 
