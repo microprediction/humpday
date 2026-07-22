@@ -235,16 +235,18 @@ class HillClimbing extends Optimizer {
 
     *_run() {
         // Twin of HillClimbing._run in
-        // humpday/optimizers/search_algorithms.py... the decay constant
-        // uses Math.pow, verified bit-identical to CPython's ** for these
-        // arguments by the vector replay.
+        // humpday/optimizers/evolutionary_algorithms.py.
         const n = this.nDim;
         let x = MathUtils.randomUniform(n);
         let fx = yield x;
 
         const sigmaInit = 0.1;
         const sigmaFinal = 1e-3;
-        const decay = Math.pow(sigmaFinal / sigmaInit, 1.0 / Math.max(1, this.nTrials - 1));
+        // portableExp/portableLog on BOTH sides — Math.pow diverged from
+        // CPython's ** by one ulp on Linux (caught by the vector replay).
+        const decay = MathUtils.portableExp(
+            (1.0 / Math.max(1, this.nTrials - 1)) * MathUtils.portableLog(sigmaFinal / sigmaInit)
+        );
         let sigma = sigmaInit;
 
         while (this.evaluations < this.nTrials) {

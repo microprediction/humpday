@@ -10,9 +10,12 @@
 // optimizer onto the cross-language PCG32 stream (prng.js), which is
 // what the transition-vector replay uses. Mirrors humpday._array's
 // use_portable_rng / use_legacy_rng.
-const _PCG32 = (typeof module !== 'undefined' && module.exports)
-    ? require('./prng.js').PCG32
-    : (typeof PCG32 !== 'undefined' ? PCG32 : null);
+const _prngmod = (typeof module !== 'undefined' && module.exports)
+    ? require('./prng.js')
+    : { PCG32: (typeof PCG32 !== 'undefined' ? PCG32 : null),
+        portableLog: (typeof portableLog !== 'undefined' ? portableLog : null),
+        portableExp: (typeof portableExp !== 'undefined' ? portableExp : null) };
+const _PCG32 = _prngmod.PCG32;
 
 let _portableRng = null;
 
@@ -91,6 +94,12 @@ const MathUtils = {
         return arr.map(x => MathUtils.clip(x, min, max));
     }
 };
+
+// Deterministic transcendentals shared with the Python side (see
+// humpday/_prng.py): trajectory code must use these, never Math.pow /
+// Math.exp / Math.log, whose last-ulp behaviour is runtime-specific.
+MathUtils.portableLog = _prngmod.portableLog;
+MathUtils.portableExp = _prngmod.portableExp;
 
 // Base optimizer class
 class Optimizer {

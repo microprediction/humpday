@@ -38,6 +38,8 @@ _PCG_MULT = 6364136223846793005
 
 # Fixed double constants (their exact IEEE-754 values are part of the spec).
 _LN2 = 0.6931471805599453
+_LN2_HI = 6.93147180369123816490e-01
+_LN2_LO = 1.90821492927058770002e-10
 _SQRT2 = 1.4142135623730951
 _INV_SQRT2 = 0.7071067811865476
 _LOG_TERMS = 25
@@ -68,6 +70,38 @@ def portable_log(x):
         p = p * t2
         k += 1
     return 2.0 * s + e * _LN2
+
+
+def portable_exp(x):
+    """e**x with a fixed sequence of IEEE-754 operations (bit-exact across
+    languages, like portable_log). Range-reduce x = k*ln2 + r with
+    |r| <= ~0.347, Taylor for exp(r) in fixed order, then scale by 2^k
+    via repeated exact doubling/halving. Deterministic even into the
+    subnormal range (each halving rounds identically everywhere)."""
+    if x != x:
+        return x
+    if x > 710.0:
+        return float("inf")
+    if x < -745.0:
+        return 0.0
+    k = int(_math.floor(x / _LN2 + 0.5))
+    # Cody-Waite split of ln2: k*hi is exact (hi's low bits are zero),
+    # so the reduction keeps full precision at large |k|.
+    r = (x - k * _LN2_HI) - k * _LN2_LO
+    term = 1.0
+    s = 1.0
+    i = 1
+    while i < 26:
+        term = term * r / i
+        s = s + term
+        i += 1
+    while k > 0:
+        s = s * 2.0
+        k -= 1
+    while k < 0:
+        s = s * 0.5
+        k += 1
+    return s
 
 
 class PCG32:
