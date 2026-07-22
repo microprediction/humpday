@@ -5,9 +5,53 @@
  * and path visualization support shared by all optimization algorithms.
  */
 
+// Portable RNG plumbing. Legacy default is Math.random (unseedable,
+// fine for demos); usePortableRng(seed, seq) switches every converted
+// optimizer onto the cross-language PCG32 stream (prng.js), which is
+// what the transition-vector replay uses. Mirrors humpday._array's
+// use_portable_rng / use_legacy_rng.
+const _PCG32 = (typeof module !== 'undefined' && module.exports)
+    ? require('./prng.js').PCG32
+    : (typeof PCG32 !== 'undefined' ? PCG32 : null);
+
+let _portableRng = null;
+
+function usePortableRng(seed, seq = 0) {
+    _portableRng = new _PCG32(seed, seq);
+    return _portableRng;
+}
+
+function useLegacyRng() {
+    _portableRng = null;
+}
+
 // Mathematical utility functions
 const MathUtils = {
     random: () => Math.random(),
+
+    randomScalar() {
+        return _portableRng !== null ? _portableRng.random() : Math.random();
+    },
+
+    randomUniform(n) {
+        const out = new Array(n);
+        for (let i = 0; i < n; i++) out[i] = MathUtils.randomScalar();
+        return out;
+    },
+
+    gaussScalar() {
+        if (_portableRng !== null) return _portableRng.gauss();
+        // Legacy fallback: Box-Muller on Math.random (statistical use only).
+        const u1 = Math.max(Math.random(), 1e-300);
+        const u2 = Math.random();
+        return Math.sqrt(-2 * Math.log(u1)) * Math.cos(2 * Math.PI * u2);
+    },
+
+    randomNormal(n) {
+        const out = new Array(n);
+        for (let i = 0; i < n; i++) out[i] = MathUtils.gaussScalar();
+        return out;
+    },
 
     norm(vec) {
         return Math.sqrt(vec.reduce((sum, x) => sum + x * x, 0));
@@ -46,27 +90,97 @@ class Optimizer {
         this.nDim = nDim;
         this.evaluations = 0;
         this.bestValue = Infinity;
-        this.bestX = Array(nDim).fill(0).map(() => Math.random());
+        // Same stream position as Python: BaseOptimizer.__init__ draws
+        // best_x from the RNG (n draws) before the run starts.
+        this.bestX = MathUtils.randomUniform(nDim);
         this.trackPath = false;
         this.path = [];
+    }
+
+    _bookkeep(clippedX, value) {
+        // Track path for visualization (sample every few evaluations to avoid clutter)
+        if (this.trackPath && (this.evaluations % Math.max(1, Math.floor(this.nTrials / 20)) === 0 || this.evaluations === 1)) {
+            this.path.push([...clippedX]);
+        }
+        if (value < this.bestValue) {
+            this.bestValue = value;
+            this.bestX = [...clippedX];
+        }
+        return value;
     }
 
     evaluate(x) {
         this.evaluations++;
         const clippedX = MathUtils.clipArray(x, 0, 1);
         const value = this.objective(clippedX);
+        return this._bookkeep(clippedX, value);
+    }
 
-        // Track path for visualization (sample every few evaluations to avoid clutter)
-        if (this.trackPath && (this.evaluations % Math.max(1, Math.floor(this.nTrials / 20)) === 0 || this.evaluations === 1)) {
-            this.path.push([...clippedX]);
+    // ------------------------------------------------------------------ //
+    // Online (generator) protocol — the JS twin of BaseOptimizer._run    //
+    // driving in humpday/optimizers/base.py. A converted class defines   //
+    // *_run() and drops its optimize() override; the driver owns the     //
+    // increment/clip/objective/bookkeep order so trajectories replay the //
+    // Python transition vectors bit-for-bit under usePortableRng().      //
+    // ------------------------------------------------------------------ //
+    optimize() {
+        if (typeof this._run !== 'function') {
+            throw new Error(`${this.constructor.name} defines neither optimize() nor _run()`);
         }
-
-        if (value < this.bestValue) {
-            this.bestValue = value;
-            this.bestX = [...clippedX];
+        const gen = this._run();
+        let res = gen.next();
+        while (!res.done) {
+            this.evaluations++;
+            const clippedX = MathUtils.clipArray(res.value, 0, 1);
+            const value = this.objective(clippedX);
+            this._bookkeep(clippedX, value);
+            res = gen.next(value);
         }
+        return {
+            bestValue: this.bestValue,
+            bestX: this.bestX,
+            evaluations: this.evaluations,
+            success: true,
+            path: this.trackPath ? this.path : null
+        };
+    }
 
-        return value;
+    // Threadless scalar ask/tell over _run (subset of the Python surface;
+    // batch view arrives with the CMA-ES conversion).
+    suggestNext() {
+        if (typeof this._run !== 'function') {
+            throw new Error(`${this.constructor.name} has no _run(); ask/tell unavailable`);
+        }
+        if (!this._gd) {
+            const gen = this._run();
+            const res = gen.next();
+            this._gd = {
+                gen,
+                done: res.done,
+                pending: res.done ? null : MathUtils.clipArray(res.value, 0, 1),
+                awaiting: false,
+            };
+        }
+        const gd = this._gd;
+        if (gd.done) return null;
+        if (gd.awaiting) throw new Error('suggestNext() called again before receiveUpdate()');
+        gd.awaiting = true;
+        return gd.pending;
+    }
+
+    receiveUpdate(value) {
+        const gd = this._gd;
+        if (!gd || !gd.awaiting) throw new Error('receiveUpdate() without a matching suggestNext()');
+        gd.awaiting = false;
+        this.evaluations++;
+        this._bookkeep(gd.pending, value);
+        const res = gd.gen.next(value);
+        if (res.done) {
+            gd.done = true;
+            gd.pending = null;
+        } else {
+            gd.pending = MathUtils.clipArray(res.value, 0, 1);
+        }
     }
 
     // ------------------------------------------------------------------ //
@@ -247,9 +361,11 @@ class Optimizer {
 // Export for use in other modules
 if (typeof module !== 'undefined' && module.exports) {
     // Node.js environment
-    module.exports = { Optimizer, MathUtils };
+    module.exports = { Optimizer, MathUtils, usePortableRng, useLegacyRng };
 } else {
     // Browser environment
     window.Optimizer = Optimizer;
     window.MathUtils = MathUtils;
+    window.usePortableRng = usePortableRng;
+    window.useLegacyRng = useLegacyRng;
 }

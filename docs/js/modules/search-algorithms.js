@@ -28,42 +28,38 @@ class Rechenberg extends Optimizer {
         this.name = 'Rechenberg';
     }
 
-    optimize() {
-        let x = Array(this.nDim).fill(0).map(() => Math.random());
-        let fx = this.evaluate(x);
-
-        let sigma = 0.1;
-        const stepMin = 1e-12;
+    *_run() {
+        // Statement-for-statement twin of Rechenberg._run in
+        // humpday/optimizers/search_algorithms.py (same draw order:
+        // one uniform vector, then per-iteration one normal vector).
         const stepMax = 1.0;
-        const window = [];
+        const stepMin = 1e-12;
         const windowSize = 10;
 
-        // Box-Muller for componentwise standard normal samples.
-        const gaussian = () => {
-            const u1 = Math.max(Math.random(), 1e-300);
-            const u2 = Math.random();
-            return Math.sqrt(-2 * Math.log(u1)) * Math.cos(2 * Math.PI * u2);
-        };
+        let x = MathUtils.randomUniform(this.nDim);
+        let f = yield x;
+        let sigma = 0.1;
+        const window = [];
 
         while (this.evaluations < this.nTrials) {
-            // Componentwise Gaussian perturbation — sigma * z with
-            // z ~ N(0, I). Canonical (1+1)-ES, mirrors Python port.
-            const candidate = x.map(xi =>
-                MathUtils.clip(xi + sigma * gaussian(), 0, 1)
-            );
+            const z = MathUtils.randomNormal(this.nDim);
+            const xNew = MathUtils.clipArray(x.map((xi, i) => xi + sigma * z[i]), 0, 1);
 
-            const candidateFx = this.evaluate(candidate);
-            const accepted = candidateFx < fx;
+            if (this.evaluations >= this.nTrials) break;
+            const fNew = yield xNew;
+
+            const accepted = fNew < f;
             if (accepted) {
-                x = candidate;
-                fx = candidateFx;
+                x = xNew;
+                f = fNew;
             }
-            window.push(accepted ? 1 : 0);
+            window.push(accepted);
             if (window.length > windowSize) window.shift();
 
-            // Strict 1/5-rule on the rolling window.
             if (window.length >= windowSize) {
-                const rate = window.reduce((s, v) => s + v, 0) / windowSize;
+                let rate = 0.0;
+                for (const w of window) rate += w ? 1.0 : 0.0;
+                rate /= windowSize;
                 if (rate > 1 / 5) {
                     sigma = Math.min(stepMax, sigma * 1.5);
                 } else if (rate < 1 / 5) {
@@ -71,14 +67,6 @@ class Rechenberg extends Optimizer {
                 }
             }
         }
-
-        return {
-            bestValue: this.bestValue,
-            bestX: this.bestX,
-            evaluations: this.evaluations,
-            success: true,
-            path: this.trackPath ? this.path : null
-        };
     }
 }
 
@@ -338,13 +326,13 @@ class GridSearch extends Optimizer {
         this.name = 'GridSearch';
     }
 
-    optimize() {
+    *_run() {
+        // Twin of GridSearch._run in humpday/optimizers/search_algorithms.py.
         const n = this.nDim;
         const nPerAxis = Math.max(2, Math.round(Math.pow(this.nTrials, 1.0 / n)));
         const indices = new Array(n).fill(0);
         while (this.evaluations < this.nTrials) {
-            const x = indices.map(i => (i + 0.5) / nPerAxis);
-            this.evaluate(x);
+            yield indices.map(i => (i + 0.5) / nPerAxis);
             let d = n - 1;
             while (d >= 0) {
                 indices[d]++;
@@ -354,13 +342,6 @@ class GridSearch extends Optimizer {
             }
             if (d < 0) break;
         }
-        return {
-            bestValue: this.bestValue,
-            bestX: this.bestX,
-            evaluations: this.evaluations,
-            success: true,
-            path: this.trackPath ? this.path : null
-        };
     }
 }
 
