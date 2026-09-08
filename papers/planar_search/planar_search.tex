@@ -33,8 +33,10 @@ tight budgets, where its early exits buy more search directions than a
 classical line search. A projection argument then lifts the same rule
 off the line: after two observations under any radial Gaussian-process
 prior, the entire next-point decision lives in a plane, in any ambient
-dimension. We give the exact planar placement and an adaptive planar
-search that follows from it.
+dimension. We give the exact planar placement; across the full
+HumpDay catalog, however, a greedy off-line placement does not beat a
+line search, which locates the reduction's value in a fitted subspace
+rather than a cheap probe.
 \end{abstract}
 
 \section{Line searches are where the budget goes}
@@ -61,8 +63,11 @@ high-dimensional objectives when the budget is tight, for a reason that
 is about evaluation economy more than about the placement theorem. And
 the placement geometry is not confined to a line: after two
 observations under a radial prior the next-point decision collapses to
-a plane, exactly, in any ambient dimension, which turns the line search
-into an adaptive planar search.
+a plane, exactly, in any ambient dimension. Whether that exact
+reduction pays is a separate question, and we test it across the
+catalog: a greedy off-line placement does not beat a line search, which
+locates where the reduction's value can be captured and where it
+cannot.
 
 \section{The terminal-placement inner loop}
 
@@ -238,10 +243,13 @@ incumbent we take two evaluations per step along a shared random
 direction; the only difference between strategies is where the second
 goes. \emph{Line} keeps it on the line --- extrapolate past the trial
 when it improved, reflect when it did not. \emph{Planar} puts it at the
-equilateral apex over the base in a random plane containing the line.
-Start point, direction stream, and adaptive step are identical, so the
-comparison is on-line against off-line placement at the same budget, on
-ten HumpDay classic objectives over 24 seeds.
+equilateral apex over the base in a plane containing the line, with the
+transverse direction either a random perpendicular or a running
+momentum estimate of the improving direction. Start point, direction
+stream, and adaptive step are identical, so the comparison is on-line
+against off-line placement at the same budget. We run it across the
+whole catalog: $51$ analytic objectives at $d\in\{2,5,10\}$ and $69$
+physics simulators at their native dimensions, $222$ tasks in all.
 
 \begin{table}[t]
 \centering
@@ -250,44 +258,38 @@ ten HumpDay classic objectives over 24 seeds.
 \toprule
 dimension & random plane & momentum plane \\
 \midrule
-$d=2$  & $0.55$ & $0.47$ \\
-$d=5$  & $0.28$ & $0.23$ \\
-$d=10$ & $0.28$ & $0.19$ \\
+$d=2$--$3$ & $0.30$ & $0.31$ \\
+$d=4$--$7$ & $0.26$ & $0.31$ \\
+$d\ge 8$   & $0.21$ & $0.21$ \\
+\midrule
+overall    & $0.26$ & $0.27$ \\
 \bottomrule
 \end{tabular}
 \caption{Fraction of seeds on which the off-line (planar) third
-placement beats the on-line one, at budget 120 over 24 seeds and ten
-objectives. \emph{Random plane}: the transverse direction is a random
-perpendicular. \emph{Momentum plane}: it is a running estimate of the
-improving direction, projected off the line. In two dimensions the
-transverse direction spans the rest of the space and the off-line move
-mildly helps; in higher dimensions it is wasted, and a cheap direction
-estimate makes it worse, not better.}
+placement beats the on-line one, over $222$ tasks ($51$ analytic
+objectives and $69$ physics simulators) at $12$ to $16$ seeds each.
+\emph{Random plane}: a random perpendicular transverse direction.
+\emph{Momentum plane}: a running estimate of the improving direction,
+projected off the line. The rate is below one half at every dimension.}
 \label{tab:planar}
 \end{table}
 
-The reduction is exact for the posterior, but exploiting it is not free
-(Table~\ref{tab:planar}). With a random plane the off-line placement
-wins on $55\%$ of seeds in two dimensions and $28\%$ by five, no better
-than before. The gap is the isotropy assumption cashing out: any
-perpendicular is equivalent \emph{under the prior}, but a random
-perpendicular is almost surely not where the objective's structure
-lies, so in high dimension the off-line evaluation is spent on an
-uninformative direction. The exception proves the reading --- on
-\texttt{drop\_wave}, a radially symmetric ripple, the off-line move
-wins on $16$--$17$ of $24$ seeds in every dimension, because there the
-transverse direction always carries signal.
+The verdict is a clean negative (Table~\ref{tab:planar}). The off-line
+placement wins on about a quarter of seeds overall, and on no dimension
+band does it reach one half; the momentum-informed transverse direction
+is no better than a random one. Only \texttt{rastrigin} at $d=2$ shows
+a consistent edge, $12$ of $16$ seeds; across the catalog the
+fixed-geometry off-line move loses to staying on the line.
 
-A cheap fix does not close the gap. Pointing the plane along a running
-momentum estimate of the improving direction is \emph{worse} than a
-random perpendicular at every dimension ($0.47$, $0.23$, $0.19$): from a
-handful of points the estimate is poor, and committing the one off-line
-probe to a bad direction loses to sampling broadly. The reduction is
-exact, but aiming the plane is itself the hard problem --- it wants a
-fitted subspace model, as in LineBO, not a momentum heuristic. That is
-the honest boundary of the result: the geometry hands high-dimensional
-search a plane for free, and the value of the plane is only as good as
-the direction one can afford to estimate.
+The reason is that the reduction is a fact about the \emph{posterior},
+not about any particular objective. Under the prior the plane holds the
+whole next-point decision, but a random or roughly-estimated transverse
+direction almost never hits the objective's actual structure, so the
+one off-line probe is usually spent on an uninformative direction.
+Capturing the plane's value therefore needs a genuinely good direction
+--- a fitted subspace model, as in LineBO --- rather than a cheap
+greedy placement. Whether such a model turns the exact reduction into a
+win is the open question this leaves.
 
 \section{Related work}
 
