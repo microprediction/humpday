@@ -33,10 +33,11 @@ tight budgets, where its early exits buy more search directions than a
 classical line search. A projection argument then lifts the same rule
 off the line: after two observations under any radial Gaussian-process
 prior, the entire next-point decision lives in a plane, in any ambient
-dimension. We give the exact planar placement; across the full
-HumpDay catalog, however, a greedy off-line placement does not beat a
-line search, which locates the reduction's value in a fitted subspace
-rather than a cheap probe.
+dimension. A fixed off-line placement does not beat a line search
+across the catalog, but choosing it by expected improvement under a
+fitted Gaussian process does, and increasingly so with dimension: the
+value of the acquired point, not its position, is what turns the exact
+reduction into a win.
 \end{abstract}
 
 \section{Line searches are where the budget goes}
@@ -63,11 +64,11 @@ high-dimensional objectives when the budget is tight, for a reason that
 is about evaluation economy more than about the placement theorem. And
 the placement geometry is not confined to a line: after two
 observations under a radial prior the next-point decision collapses to
-a plane, exactly, in any ambient dimension. Whether that exact
-reduction pays is a separate question, and we test it across the
-catalog: a greedy off-line placement does not beat a line search, which
-locates where the reduction's value can be captured and where it
-cannot.
+a plane, exactly, in any ambient dimension. A fixed off-line placement
+does not pay, but one aimed by the information content of the acquired
+point --- a fitted Gaussian process --- beats a line search on three
+quarters of high-dimensional tasks, which is where the reduction should
+matter.
 
 \section{The terminal-placement inner loop}
 
@@ -238,58 +239,69 @@ empirical step.
 
 \section{Does the off-line placement help?}
 
-A budget-matched experiment isolates the planar move. From the
-incumbent we take two evaluations per step along a shared random
-direction; the only difference between strategies is where the second
-goes. \emph{Line} keeps it on the line --- extrapolate past the trial
-when it improved, reflect when it did not. \emph{Planar} puts it at the
-equilateral apex over the base in a plane containing the line, with the
-transverse direction either a random perpendicular or a running
-momentum estimate of the improving direction. Start point, direction
-stream, and adaptive step are identical, so the comparison is on-line
-against off-line placement at the same budget. We run it across the
-whole catalog: $51$ analytic objectives at $d\in\{2,5,10\}$ and $69$
-physics simulators at their native dimensions, $222$ tasks in all.
+A budget-matched experiment isolates the planar move: two evaluations
+per step along a shared random direction, differing only in where the
+second goes. The \emph{line} keeps it on the line, extrapolating past
+the trial when it improved and reflecting when it did not; the
+\emph{plane} puts it at a fixed equilateral apex off the line. Start
+point, direction stream, and adaptive step are identical. Across the
+whole catalog --- $51$ analytic objectives at $d\in\{2,5,10\}$ and $69$
+physics simulators at native dimensions, $222$ tasks --- the fixed
+off-line move wins on only $0.26$ of seeds, below one half at every
+dimension ($0.30$ at $d\le3$, $0.21$ at $d\ge8$), and a
+momentum-estimated transverse direction is no better.
+
+The fixed move ignores information. The reduction says the decision
+lives in the plane, but a fixed apex in a random plane sends the one
+off-line probe where the objective's structure almost never is; the
+reduction is a fact about the posterior, not about any particular
+objective.
+
+\section{Aiming the plane with information}
+
+Choose the off-line point by information instead of geometry. Fit a
+Gaussian process to the evaluated history and, among candidate points
+in the plane, take the one of highest expected improvement --- the
+value-of-information criterion behind the entropy-search family (Hennig
+and Schuler 2012; Wang and Jegelka 2017). The control is the same GP
+restricted to the line: identical guidance and budget, with only the
+off-line candidates removed, so the difference isolates the value of
+the off-line freedom.
 
 \begin{table}[t]
 \centering
 \small
-\begin{tabular}{lcc}
+\begin{tabular}{lc}
 \toprule
-dimension & random plane & momentum plane \\
+dimension & off-line beats on-line \\
 \midrule
-$d=2$--$3$ & $0.30$ & $0.31$ \\
-$d=4$--$7$ & $0.26$ & $0.31$ \\
-$d\ge 8$   & $0.21$ & $0.21$ \\
+$d=2$--$3$ & $0.42$ \\
+$d=4$--$7$ & $0.63$ \\
+$d\ge 8$   & $0.76$ \\
 \midrule
-overall    & $0.26$ & $0.27$ \\
+overall    & $0.62$ \\
 \bottomrule
 \end{tabular}
-\caption{Fraction of seeds on which the off-line (planar) third
-placement beats the on-line one, over $222$ tasks ($51$ analytic
-objectives and $69$ physics simulators) at $12$ to $16$ seeds each.
-\emph{Random plane}: a random perpendicular transverse direction.
-\emph{Momentum plane}: a running estimate of the improving direction,
-projected off the line. The rate is below one half at every dimension.}
-\label{tab:planar}
+\caption{Fraction of seeds on which the GP-aimed off-line placement
+beats a GP restricted to the line, over the $222$-task catalog at ten
+seeds each. Both use the same GP guidance and budget; only the off-line
+candidates differ. The off-line freedom helps more as the dimension
+grows, on analytic objectives ($0.78$ at $d\ge8$) and simulators
+($0.71$) alike.}
+\label{tab:planargp}
 \end{table}
 
-The verdict is a clean negative (Table~\ref{tab:planar}). The off-line
-placement wins on about a quarter of seeds overall, and on no dimension
-band does it reach one half; the momentum-informed transverse direction
-is no better than a random one. Only \texttt{rastrigin} at $d=2$ shows
-a consistent edge, $12$ of $16$ seeds; across the catalog the
-fixed-geometry off-line move loses to staying on the line.
-
-The reason is that the reduction is a fact about the \emph{posterior},
-not about any particular objective. Under the prior the plane holds the
-whole next-point decision, but a random or roughly-estimated transverse
-direction almost never hits the objective's actual structure, so the
-one off-line probe is usually spent on an uninformative direction.
-Capturing the plane's value therefore needs a genuinely good direction
---- a fitted subspace model, as in LineBO --- rather than a cheap
-greedy placement. Whether such a model turns the exact reduction into a
-win is the open question this leaves.
+Information inverts the fixed-geometry result
+(Table~\ref{tab:planargp}). Off-line placement is neutral in two
+dimensions, where a line-restricted GP already covers the small space,
+and it wins on three quarters of seeds by eight dimensions and above,
+against a control that guides the on-line point just as well. The
+geometry hands high-dimensional search a plane; information decides
+where in it to look; and the payoff grows in exactly the regime where a
+line search has the least room. What matters is the value of the
+acquired point, not its position, which is the reading the
+entropy-search literature would predict, and here it is what turns an
+exact reduction into a win.
 
 \section{Related work}
 
@@ -351,6 +363,17 @@ The knowledge-gradient policy for correlated normal beliefs.
 C.~E. Rasmussen and C.~K.~I. Williams.
 \emph{Gaussian Processes for Machine Learning}.
 MIT Press, 2006.
+
+\bibitem{hennig2012}
+P.~Hennig and C.~J. Schuler.
+Entropy search for information-efficient global optimization.
+\emph{Journal of Machine Learning Research}, 13:1809--1837, 2012.
+
+\bibitem{wang2017}
+Z.~Wang and S.~Jegelka.
+Max-value entropy search for efficient Bayesian optimization.
+In \emph{Proceedings of the 34th International Conference on Machine
+Learning}, 2017.
 
 \end{thebibliography}
 

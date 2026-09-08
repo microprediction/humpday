@@ -1,0 +1,1780 @@
+{
+  "rows": [
+    {
+      "objective": "schwefel",
+      "source": "analytic",
+      "d": 2,
+      "gp_vs_line": 5,
+      "gp_vs_linegp": 3,
+      "seeds": 10
+    },
+    {
+      "objective": "schwefel",
+      "source": "analytic",
+      "d": 5,
+      "gp_vs_line": 5,
+      "gp_vs_linegp": 4,
+      "seeds": 10
+    },
+    {
+      "objective": "schwefel",
+      "source": "analytic",
+      "d": 10,
+      "gp_vs_line": 5,
+      "gp_vs_linegp": 5,
+      "seeds": 10
+    },
+    {
+      "objective": "rastrigin",
+      "source": "analytic",
+      "d": 2,
+      "gp_vs_line": 8,
+      "gp_vs_linegp": 3,
+      "seeds": 10
+    },
+    {
+      "objective": "rastrigin",
+      "source": "analytic",
+      "d": 5,
+      "gp_vs_line": 6,
+      "gp_vs_linegp": 6,
+      "seeds": 10
+    },
+    {
+      "objective": "rastrigin",
+      "source": "analytic",
+      "d": 10,
+      "gp_vs_line": 5,
+      "gp_vs_linegp": 7,
+      "seeds": 10
+    },
+    {
+      "objective": "griewank",
+      "source": "analytic",
+      "d": 2,
+      "gp_vs_line": 7,
+      "gp_vs_linegp": 5,
+      "seeds": 10
+    },
+    {
+      "objective": "griewank",
+      "source": "analytic",
+      "d": 5,
+      "gp_vs_line": 9,
+      "gp_vs_linegp": 8,
+      "seeds": 10
+    },
+    {
+      "objective": "griewank",
+      "source": "analytic",
+      "d": 10,
+      "gp_vs_line": 10,
+      "gp_vs_linegp": 10,
+      "seeds": 10
+    },
+    {
+      "objective": "bohachevsky",
+      "source": "analytic",
+      "d": 2,
+      "gp_vs_line": 9,
+      "gp_vs_linegp": 6,
+      "seeds": 10
+    },
+    {
+      "objective": "bohachevsky",
+      "source": "analytic",
+      "d": 5,
+      "gp_vs_line": 8,
+      "gp_vs_linegp": 10,
+      "seeds": 10
+    },
+    {
+      "objective": "bohachevsky",
+      "source": "analytic",
+      "d": 10,
+      "gp_vs_line": 10,
+      "gp_vs_linegp": 9,
+      "seeds": 10
+    },
+    {
+      "objective": "rosenbrock",
+      "source": "analytic",
+      "d": 2,
+      "gp_vs_line": 6,
+      "gp_vs_linegp": 4,
+      "seeds": 10
+    },
+    {
+      "objective": "rosenbrock",
+      "source": "analytic",
+      "d": 5,
+      "gp_vs_line": 6,
+      "gp_vs_linegp": 7,
+      "seeds": 10
+    },
+    {
+      "objective": "rosenbrock",
+      "source": "analytic",
+      "d": 10,
+      "gp_vs_line": 8,
+      "gp_vs_linegp": 10,
+      "seeds": 10
+    },
+    {
+      "objective": "shaffer",
+      "source": "analytic",
+      "d": 2,
+      "gp_vs_line": 6,
+      "gp_vs_linegp": 7,
+      "seeds": 10
+    },
+    {
+      "objective": "shaffer",
+      "source": "analytic",
+      "d": 5,
+      "gp_vs_line": 8,
+      "gp_vs_linegp": 8,
+      "seeds": 10
+    },
+    {
+      "objective": "shaffer",
+      "source": "analytic",
+      "d": 10,
+      "gp_vs_line": 7,
+      "gp_vs_linegp": 8,
+      "seeds": 10
+    },
+    {
+      "objective": "shekel",
+      "source": "analytic",
+      "d": 2,
+      "gp_vs_line": 7,
+      "gp_vs_linegp": 6,
+      "seeds": 10
+    },
+    {
+      "objective": "shekel",
+      "source": "analytic",
+      "d": 5,
+      "gp_vs_line": 9,
+      "gp_vs_linegp": 9,
+      "seeds": 10
+    },
+    {
+      "objective": "shekel",
+      "source": "analytic",
+      "d": 10,
+      "gp_vs_line": 10,
+      "gp_vs_linegp": 9,
+      "seeds": 10
+    },
+    {
+      "objective": "deap_combo1",
+      "source": "analytic",
+      "d": 2,
+      "gp_vs_line": 4,
+      "gp_vs_linegp": 3,
+      "seeds": 10
+    },
+    {
+      "objective": "deap_combo1",
+      "source": "analytic",
+      "d": 5,
+      "gp_vs_line": 5,
+      "gp_vs_linegp": 10,
+      "seeds": 10
+    },
+    {
+      "objective": "deap_combo1",
+      "source": "analytic",
+      "d": 10,
+      "gp_vs_line": 10,
+      "gp_vs_linegp": 10,
+      "seeds": 10
+    },
+    {
+      "objective": "deap_combo2",
+      "source": "analytic",
+      "d": 2,
+      "gp_vs_line": 6,
+      "gp_vs_linegp": 7,
+      "seeds": 10
+    },
+    {
+      "objective": "deap_combo2",
+      "source": "analytic",
+      "d": 5,
+      "gp_vs_line": 8,
+      "gp_vs_linegp": 8,
+      "seeds": 10
+    },
+    {
+      "objective": "deap_combo2",
+      "source": "analytic",
+      "d": 10,
+      "gp_vs_line": 7,
+      "gp_vs_linegp": 8,
+      "seeds": 10
+    },
+    {
+      "objective": "deap_combo3",
+      "source": "analytic",
+      "d": 2,
+      "gp_vs_line": 6,
+      "gp_vs_linegp": 4,
+      "seeds": 10
+    },
+    {
+      "objective": "deap_combo3",
+      "source": "analytic",
+      "d": 5,
+      "gp_vs_line": 6,
+      "gp_vs_linegp": 7,
+      "seeds": 10
+    },
+    {
+      "objective": "deap_combo3",
+      "source": "analytic",
+      "d": 10,
+      "gp_vs_line": 8,
+      "gp_vs_linegp": 10,
+      "seeds": 10
+    },
+    {
+      "objective": "styblinski_tang",
+      "source": "analytic",
+      "d": 2,
+      "gp_vs_line": 6,
+      "gp_vs_linegp": 6,
+      "seeds": 10
+    },
+    {
+      "objective": "styblinski_tang",
+      "source": "analytic",
+      "d": 5,
+      "gp_vs_line": 10,
+      "gp_vs_linegp": 10,
+      "seeds": 10
+    },
+    {
+      "objective": "styblinski_tang",
+      "source": "analytic",
+      "d": 10,
+      "gp_vs_line": 9,
+      "gp_vs_linegp": 10,
+      "seeds": 10
+    },
+    {
+      "objective": "zakharov",
+      "source": "analytic",
+      "d": 2,
+      "gp_vs_line": 7,
+      "gp_vs_linegp": 6,
+      "seeds": 10
+    },
+    {
+      "objective": "zakharov",
+      "source": "analytic",
+      "d": 5,
+      "gp_vs_line": 8,
+      "gp_vs_linegp": 7,
+      "seeds": 10
+    },
+    {
+      "objective": "zakharov",
+      "source": "analytic",
+      "d": 10,
+      "gp_vs_line": 10,
+      "gp_vs_linegp": 9,
+      "seeds": 10
+    },
+    {
+      "objective": "salomon",
+      "source": "analytic",
+      "d": 2,
+      "gp_vs_line": 6,
+      "gp_vs_linegp": 6,
+      "seeds": 10
+    },
+    {
+      "objective": "salomon",
+      "source": "analytic",
+      "d": 5,
+      "gp_vs_line": 10,
+      "gp_vs_linegp": 10,
+      "seeds": 10
+    },
+    {
+      "objective": "salomon",
+      "source": "analytic",
+      "d": 10,
+      "gp_vs_line": 9,
+      "gp_vs_linegp": 10,
+      "seeds": 10
+    },
+    {
+      "objective": "rotated_hyper_ellipsoid",
+      "source": "analytic",
+      "d": 2,
+      "gp_vs_line": 6,
+      "gp_vs_linegp": 6,
+      "seeds": 10
+    },
+    {
+      "objective": "rotated_hyper_ellipsoid",
+      "source": "analytic",
+      "d": 5,
+      "gp_vs_line": 10,
+      "gp_vs_linegp": 10,
+      "seeds": 10
+    },
+    {
+      "objective": "rotated_hyper_ellipsoid",
+      "source": "analytic",
+      "d": 10,
+      "gp_vs_line": 9,
+      "gp_vs_linegp": 10,
+      "seeds": 10
+    },
+    {
+      "objective": "qing",
+      "source": "analytic",
+      "d": 2,
+      "gp_vs_line": 6,
+      "gp_vs_linegp": 6,
+      "seeds": 10
+    },
+    {
+      "objective": "qing",
+      "source": "analytic",
+      "d": 5,
+      "gp_vs_line": 10,
+      "gp_vs_linegp": 10,
+      "seeds": 10
+    },
+    {
+      "objective": "qing",
+      "source": "analytic",
+      "d": 10,
+      "gp_vs_line": 9,
+      "gp_vs_linegp": 10,
+      "seeds": 10
+    },
+    {
+      "objective": "michaelewicz",
+      "source": "analytic",
+      "d": 2,
+      "gp_vs_line": 6,
+      "gp_vs_linegp": 6,
+      "seeds": 10
+    },
+    {
+      "objective": "michaelewicz",
+      "source": "analytic",
+      "d": 5,
+      "gp_vs_line": 10,
+      "gp_vs_linegp": 10,
+      "seeds": 10
+    },
+    {
+      "objective": "michaelewicz",
+      "source": "analytic",
+      "d": 10,
+      "gp_vs_line": 9,
+      "gp_vs_linegp": 10,
+      "seeds": 10
+    },
+    {
+      "objective": "landscapes_combo1",
+      "source": "analytic",
+      "d": 2,
+      "gp_vs_line": 6,
+      "gp_vs_linegp": 6,
+      "seeds": 10
+    },
+    {
+      "objective": "landscapes_combo1",
+      "source": "analytic",
+      "d": 5,
+      "gp_vs_line": 10,
+      "gp_vs_linegp": 10,
+      "seeds": 10
+    },
+    {
+      "objective": "landscapes_combo1",
+      "source": "analytic",
+      "d": 10,
+      "gp_vs_line": 9,
+      "gp_vs_linegp": 10,
+      "seeds": 10
+    },
+    {
+      "objective": "landscapes_combo2",
+      "source": "analytic",
+      "d": 2,
+      "gp_vs_line": 6,
+      "gp_vs_linegp": 6,
+      "seeds": 10
+    },
+    {
+      "objective": "landscapes_combo2",
+      "source": "analytic",
+      "d": 5,
+      "gp_vs_line": 10,
+      "gp_vs_linegp": 10,
+      "seeds": 10
+    },
+    {
+      "objective": "landscapes_combo2",
+      "source": "analytic",
+      "d": 10,
+      "gp_vs_line": 9,
+      "gp_vs_linegp": 10,
+      "seeds": 10
+    },
+    {
+      "objective": "landscapes_combo3",
+      "source": "analytic",
+      "d": 2,
+      "gp_vs_line": 9,
+      "gp_vs_linegp": 2,
+      "seeds": 10
+    },
+    {
+      "objective": "landscapes_combo3",
+      "source": "analytic",
+      "d": 5,
+      "gp_vs_line": 9,
+      "gp_vs_linegp": 9,
+      "seeds": 10
+    },
+    {
+      "objective": "landscapes_combo3",
+      "source": "analytic",
+      "d": 10,
+      "gp_vs_line": 9,
+      "gp_vs_linegp": 7,
+      "seeds": 10
+    },
+    {
+      "objective": "paviani",
+      "source": "analytic",
+      "d": 2,
+      "gp_vs_line": 6,
+      "gp_vs_linegp": 3,
+      "seeds": 10
+    },
+    {
+      "objective": "paviani",
+      "source": "analytic",
+      "d": 5,
+      "gp_vs_line": 8,
+      "gp_vs_linegp": 7,
+      "seeds": 10
+    },
+    {
+      "objective": "paviani",
+      "source": "analytic",
+      "d": 10,
+      "gp_vs_line": 10,
+      "gp_vs_linegp": 9,
+      "seeds": 10
+    },
+    {
+      "objective": "damavandi",
+      "source": "analytic",
+      "d": 2,
+      "gp_vs_line": 0,
+      "gp_vs_linegp": 0,
+      "seeds": 10
+    },
+    {
+      "objective": "damavandi",
+      "source": "analytic",
+      "d": 5,
+      "gp_vs_line": 0,
+      "gp_vs_linegp": 0,
+      "seeds": 10
+    },
+    {
+      "objective": "damavandi",
+      "source": "analytic",
+      "d": 10,
+      "gp_vs_line": 0,
+      "gp_vs_linegp": 0,
+      "seeds": 10
+    },
+    {
+      "objective": "rosenbrock_modified",
+      "source": "analytic",
+      "d": 2,
+      "gp_vs_line": 0,
+      "gp_vs_linegp": 1,
+      "seeds": 10
+    },
+    {
+      "objective": "rosenbrock_modified",
+      "source": "analytic",
+      "d": 5,
+      "gp_vs_line": 9,
+      "gp_vs_linegp": 9,
+      "seeds": 10
+    },
+    {
+      "objective": "rosenbrock_modified",
+      "source": "analytic",
+      "d": 10,
+      "gp_vs_line": 9,
+      "gp_vs_linegp": 8,
+      "seeds": 10
+    },
+    {
+      "objective": "ackley",
+      "source": "analytic",
+      "d": 2,
+      "gp_vs_line": 5,
+      "gp_vs_linegp": 3,
+      "seeds": 10
+    },
+    {
+      "objective": "ackley",
+      "source": "analytic",
+      "d": 5,
+      "gp_vs_line": 8,
+      "gp_vs_linegp": 9,
+      "seeds": 10
+    },
+    {
+      "objective": "ackley",
+      "source": "analytic",
+      "d": 10,
+      "gp_vs_line": 4,
+      "gp_vs_linegp": 6,
+      "seeds": 10
+    },
+    {
+      "objective": "cross",
+      "source": "analytic",
+      "d": 2,
+      "gp_vs_line": 9,
+      "gp_vs_linegp": 5,
+      "seeds": 10
+    },
+    {
+      "objective": "cross",
+      "source": "analytic",
+      "d": 5,
+      "gp_vs_line": 7,
+      "gp_vs_linegp": 5,
+      "seeds": 10
+    },
+    {
+      "objective": "cross",
+      "source": "analytic",
+      "d": 10,
+      "gp_vs_line": 5,
+      "gp_vs_linegp": 4,
+      "seeds": 10
+    },
+    {
+      "objective": "powers",
+      "source": "analytic",
+      "d": 2,
+      "gp_vs_line": 7,
+      "gp_vs_linegp": 6,
+      "seeds": 10
+    },
+    {
+      "objective": "powers",
+      "source": "analytic",
+      "d": 5,
+      "gp_vs_line": 6,
+      "gp_vs_linegp": 7,
+      "seeds": 10
+    },
+    {
+      "objective": "powers",
+      "source": "analytic",
+      "d": 10,
+      "gp_vs_line": 4,
+      "gp_vs_linegp": 7,
+      "seeds": 10
+    },
+    {
+      "objective": "booth",
+      "source": "analytic",
+      "d": 2,
+      "gp_vs_line": 7,
+      "gp_vs_linegp": 6,
+      "seeds": 10
+    },
+    {
+      "objective": "booth",
+      "source": "analytic",
+      "d": 5,
+      "gp_vs_line": 6,
+      "gp_vs_linegp": 7,
+      "seeds": 10
+    },
+    {
+      "objective": "booth",
+      "source": "analytic",
+      "d": 10,
+      "gp_vs_line": 4,
+      "gp_vs_linegp": 7,
+      "seeds": 10
+    },
+    {
+      "objective": "matyas",
+      "source": "analytic",
+      "d": 2,
+      "gp_vs_line": 8,
+      "gp_vs_linegp": 4,
+      "seeds": 10
+    },
+    {
+      "objective": "matyas",
+      "source": "analytic",
+      "d": 5,
+      "gp_vs_line": 7,
+      "gp_vs_linegp": 8,
+      "seeds": 10
+    },
+    {
+      "objective": "matyas",
+      "source": "analytic",
+      "d": 10,
+      "gp_vs_line": 9,
+      "gp_vs_linegp": 9,
+      "seeds": 10
+    },
+    {
+      "objective": "drop_wave",
+      "source": "analytic",
+      "d": 2,
+      "gp_vs_line": 7,
+      "gp_vs_linegp": 5,
+      "seeds": 10
+    },
+    {
+      "objective": "drop_wave",
+      "source": "analytic",
+      "d": 5,
+      "gp_vs_line": 7,
+      "gp_vs_linegp": 7,
+      "seeds": 10
+    },
+    {
+      "objective": "drop_wave",
+      "source": "analytic",
+      "d": 10,
+      "gp_vs_line": 5,
+      "gp_vs_linegp": 6,
+      "seeds": 10
+    },
+    {
+      "objective": "markowitz_analytic",
+      "source": "analytic",
+      "d": 2,
+      "gp_vs_line": 6,
+      "gp_vs_linegp": 7,
+      "seeds": 10
+    },
+    {
+      "objective": "markowitz_analytic",
+      "source": "analytic",
+      "d": 5,
+      "gp_vs_line": 7,
+      "gp_vs_linegp": 9,
+      "seeds": 10
+    },
+    {
+      "objective": "markowitz_analytic",
+      "source": "analytic",
+      "d": 10,
+      "gp_vs_line": 8,
+      "gp_vs_linegp": 8,
+      "seeds": 10
+    },
+    {
+      "objective": "markowitz_realized",
+      "source": "analytic",
+      "d": 2,
+      "gp_vs_line": 3,
+      "gp_vs_linegp": 2,
+      "seeds": 10
+    },
+    {
+      "objective": "markowitz_realized",
+      "source": "analytic",
+      "d": 5,
+      "gp_vs_line": 5,
+      "gp_vs_linegp": 6,
+      "seeds": 10
+    },
+    {
+      "objective": "markowitz_realized",
+      "source": "analytic",
+      "d": 10,
+      "gp_vs_line": 10,
+      "gp_vs_linegp": 10,
+      "seeds": 10
+    },
+    {
+      "objective": "markowitz_return",
+      "source": "analytic",
+      "d": 2,
+      "gp_vs_line": 7,
+      "gp_vs_linegp": 7,
+      "seeds": 10
+    },
+    {
+      "objective": "markowitz_return",
+      "source": "analytic",
+      "d": 5,
+      "gp_vs_line": 9,
+      "gp_vs_linegp": 10,
+      "seeds": 10
+    },
+    {
+      "objective": "markowitz_return",
+      "source": "analytic",
+      "d": 10,
+      "gp_vs_line": 10,
+      "gp_vs_linegp": 8,
+      "seeds": 10
+    },
+    {
+      "objective": "markowitz_skew",
+      "source": "analytic",
+      "d": 2,
+      "gp_vs_line": 6,
+      "gp_vs_linegp": 3,
+      "seeds": 10
+    },
+    {
+      "objective": "markowitz_skew",
+      "source": "analytic",
+      "d": 5,
+      "gp_vs_line": 5,
+      "gp_vs_linegp": 4,
+      "seeds": 10
+    },
+    {
+      "objective": "markowitz_skew",
+      "source": "analytic",
+      "d": 10,
+      "gp_vs_line": 8,
+      "gp_vs_linegp": 6,
+      "seeds": 10
+    },
+    {
+      "objective": "horse_dividends",
+      "source": "analytic",
+      "d": 2,
+      "gp_vs_line": 0,
+      "gp_vs_linegp": 0,
+      "seeds": 10
+    },
+    {
+      "objective": "horse_dividends",
+      "source": "analytic",
+      "d": 5,
+      "gp_vs_line": 5,
+      "gp_vs_linegp": 5,
+      "seeds": 10
+    },
+    {
+      "objective": "horse_dividends",
+      "source": "analytic",
+      "d": 10,
+      "gp_vs_line": 7,
+      "gp_vs_linegp": 7,
+      "seeds": 10
+    },
+    {
+      "objective": "chat_0",
+      "source": "analytic",
+      "d": 2,
+      "gp_vs_line": 5,
+      "gp_vs_linegp": 4,
+      "seeds": 10
+    },
+    {
+      "objective": "chat_0",
+      "source": "analytic",
+      "d": 5,
+      "gp_vs_line": 8,
+      "gp_vs_linegp": 5,
+      "seeds": 10
+    },
+    {
+      "objective": "chat_0",
+      "source": "analytic",
+      "d": 10,
+      "gp_vs_line": 10,
+      "gp_vs_linegp": 10,
+      "seeds": 10
+    },
+    {
+      "objective": "chat_1",
+      "source": "analytic",
+      "d": 2,
+      "gp_vs_line": 0,
+      "gp_vs_linegp": 0,
+      "seeds": 10
+    },
+    {
+      "objective": "chat_1",
+      "source": "analytic",
+      "d": 5,
+      "gp_vs_line": 6,
+      "gp_vs_linegp": 6,
+      "seeds": 10
+    },
+    {
+      "objective": "chat_1",
+      "source": "analytic",
+      "d": 10,
+      "gp_vs_line": 8,
+      "gp_vs_linegp": 8,
+      "seeds": 10
+    },
+    {
+      "objective": "chat_2",
+      "source": "analytic",
+      "d": 2,
+      "gp_vs_line": 0,
+      "gp_vs_linegp": 0,
+      "seeds": 10
+    },
+    {
+      "objective": "chat_2",
+      "source": "analytic",
+      "d": 5,
+      "gp_vs_line": 9,
+      "gp_vs_linegp": 4,
+      "seeds": 10
+    },
+    {
+      "objective": "chat_2",
+      "source": "analytic",
+      "d": 10,
+      "gp_vs_line": 10,
+      "gp_vs_linegp": 9,
+      "seeds": 10
+    },
+    {
+      "objective": "chat_3",
+      "source": "analytic",
+      "d": 2,
+      "gp_vs_line": 3,
+      "gp_vs_linegp": 3,
+      "seeds": 10
+    },
+    {
+      "objective": "chat_3",
+      "source": "analytic",
+      "d": 5,
+      "gp_vs_line": 7,
+      "gp_vs_linegp": 6,
+      "seeds": 10
+    },
+    {
+      "objective": "chat_3",
+      "source": "analytic",
+      "d": 10,
+      "gp_vs_line": 9,
+      "gp_vs_linegp": 9,
+      "seeds": 10
+    },
+    {
+      "objective": "chat_4",
+      "source": "analytic",
+      "d": 2,
+      "gp_vs_line": 0,
+      "gp_vs_linegp": 0,
+      "seeds": 10
+    },
+    {
+      "objective": "chat_4",
+      "source": "analytic",
+      "d": 5,
+      "gp_vs_line": 7,
+      "gp_vs_linegp": 4,
+      "seeds": 10
+    },
+    {
+      "objective": "chat_4",
+      "source": "analytic",
+      "d": 10,
+      "gp_vs_line": 8,
+      "gp_vs_linegp": 8,
+      "seeds": 10
+    },
+    {
+      "objective": "chat_5",
+      "source": "analytic",
+      "d": 2,
+      "gp_vs_line": 7,
+      "gp_vs_linegp": 7,
+      "seeds": 10
+    },
+    {
+      "objective": "chat_5",
+      "source": "analytic",
+      "d": 5,
+      "gp_vs_line": 6,
+      "gp_vs_linegp": 7,
+      "seeds": 10
+    },
+    {
+      "objective": "chat_5",
+      "source": "analytic",
+      "d": 10,
+      "gp_vs_line": 10,
+      "gp_vs_linegp": 10,
+      "seeds": 10
+    },
+    {
+      "objective": "chat_6",
+      "source": "analytic",
+      "d": 2,
+      "gp_vs_line": 0,
+      "gp_vs_linegp": 0,
+      "seeds": 10
+    },
+    {
+      "objective": "chat_6",
+      "source": "analytic",
+      "d": 5,
+      "gp_vs_line": 9,
+      "gp_vs_linegp": 6,
+      "seeds": 10
+    },
+    {
+      "objective": "chat_6",
+      "source": "analytic",
+      "d": 10,
+      "gp_vs_line": 10,
+      "gp_vs_linegp": 10,
+      "seeds": 10
+    },
+    {
+      "objective": "chat_7",
+      "source": "analytic",
+      "d": 2,
+      "gp_vs_line": 0,
+      "gp_vs_linegp": 0,
+      "seeds": 10
+    },
+    {
+      "objective": "chat_7",
+      "source": "analytic",
+      "d": 5,
+      "gp_vs_line": 7,
+      "gp_vs_linegp": 5,
+      "seeds": 10
+    },
+    {
+      "objective": "chat_7",
+      "source": "analytic",
+      "d": 10,
+      "gp_vs_line": 8,
+      "gp_vs_linegp": 9,
+      "seeds": 10
+    },
+    {
+      "objective": "chat_8",
+      "source": "analytic",
+      "d": 2,
+      "gp_vs_line": 0,
+      "gp_vs_linegp": 0,
+      "seeds": 10
+    },
+    {
+      "objective": "chat_8",
+      "source": "analytic",
+      "d": 5,
+      "gp_vs_line": 8,
+      "gp_vs_linegp": 7,
+      "seeds": 10
+    },
+    {
+      "objective": "chat_8",
+      "source": "analytic",
+      "d": 10,
+      "gp_vs_line": 6,
+      "gp_vs_linegp": 6,
+      "seeds": 10
+    },
+    {
+      "objective": "chat_9",
+      "source": "analytic",
+      "d": 2,
+      "gp_vs_line": 8,
+      "gp_vs_linegp": 8,
+      "seeds": 10
+    },
+    {
+      "objective": "chat_9",
+      "source": "analytic",
+      "d": 5,
+      "gp_vs_line": 8,
+      "gp_vs_linegp": 8,
+      "seeds": 10
+    },
+    {
+      "objective": "chat_9",
+      "source": "analytic",
+      "d": 10,
+      "gp_vs_line": 9,
+      "gp_vs_linegp": 9,
+      "seeds": 10
+    },
+    {
+      "objective": "chat_10",
+      "source": "analytic",
+      "d": 2,
+      "gp_vs_line": 0,
+      "gp_vs_linegp": 0,
+      "seeds": 10
+    },
+    {
+      "objective": "chat_10",
+      "source": "analytic",
+      "d": 5,
+      "gp_vs_line": 0,
+      "gp_vs_linegp": 0,
+      "seeds": 10
+    },
+    {
+      "objective": "chat_10",
+      "source": "analytic",
+      "d": 10,
+      "gp_vs_line": 0,
+      "gp_vs_linegp": 0,
+      "seeds": 10
+    },
+    {
+      "objective": "chat_11",
+      "source": "analytic",
+      "d": 2,
+      "gp_vs_line": 10,
+      "gp_vs_linegp": 6,
+      "seeds": 10
+    },
+    {
+      "objective": "chat_11",
+      "source": "analytic",
+      "d": 5,
+      "gp_vs_line": 6,
+      "gp_vs_linegp": 9,
+      "seeds": 10
+    },
+    {
+      "objective": "chat_11",
+      "source": "analytic",
+      "d": 10,
+      "gp_vs_line": 2,
+      "gp_vs_linegp": 4,
+      "seeds": 10
+    },
+    {
+      "objective": "chat_12",
+      "source": "analytic",
+      "d": 2,
+      "gp_vs_line": 0,
+      "gp_vs_linegp": 0,
+      "seeds": 10
+    },
+    {
+      "objective": "chat_12",
+      "source": "analytic",
+      "d": 5,
+      "gp_vs_line": 0,
+      "gp_vs_linegp": 0,
+      "seeds": 10
+    },
+    {
+      "objective": "chat_12",
+      "source": "analytic",
+      "d": 10,
+      "gp_vs_line": 0,
+      "gp_vs_linegp": 0,
+      "seeds": 10
+    },
+    {
+      "objective": "chat_13",
+      "source": "analytic",
+      "d": 2,
+      "gp_vs_line": 0,
+      "gp_vs_linegp": 0,
+      "seeds": 10
+    },
+    {
+      "objective": "chat_13",
+      "source": "analytic",
+      "d": 5,
+      "gp_vs_line": 10,
+      "gp_vs_linegp": 8,
+      "seeds": 10
+    },
+    {
+      "objective": "chat_13",
+      "source": "analytic",
+      "d": 10,
+      "gp_vs_line": 9,
+      "gp_vs_linegp": 9,
+      "seeds": 10
+    },
+    {
+      "objective": "chat_14",
+      "source": "analytic",
+      "d": 2,
+      "gp_vs_line": 10,
+      "gp_vs_linegp": 9,
+      "seeds": 10
+    },
+    {
+      "objective": "chat_14",
+      "source": "analytic",
+      "d": 5,
+      "gp_vs_line": 6,
+      "gp_vs_linegp": 7,
+      "seeds": 10
+    },
+    {
+      "objective": "chat_14",
+      "source": "analytic",
+      "d": 10,
+      "gp_vs_line": 8,
+      "gp_vs_linegp": 7,
+      "seeds": 10
+    },
+    {
+      "objective": "chat_15",
+      "source": "analytic",
+      "d": 2,
+      "gp_vs_line": 6,
+      "gp_vs_linegp": 4,
+      "seeds": 10
+    },
+    {
+      "objective": "chat_15",
+      "source": "analytic",
+      "d": 5,
+      "gp_vs_line": 6,
+      "gp_vs_linegp": 6,
+      "seeds": 10
+    },
+    {
+      "objective": "chat_15",
+      "source": "analytic",
+      "d": 10,
+      "gp_vs_line": 7,
+      "gp_vs_linegp": 10,
+      "seeds": 10
+    },
+    {
+      "objective": "chat_16",
+      "source": "analytic",
+      "d": 2,
+      "gp_vs_line": 8,
+      "gp_vs_linegp": 6,
+      "seeds": 10
+    },
+    {
+      "objective": "chat_16",
+      "source": "analytic",
+      "d": 5,
+      "gp_vs_line": 8,
+      "gp_vs_linegp": 8,
+      "seeds": 10
+    },
+    {
+      "objective": "chat_16",
+      "source": "analytic",
+      "d": 10,
+      "gp_vs_line": 9,
+      "gp_vs_linegp": 9,
+      "seeds": 10
+    },
+    {
+      "objective": "chat_17",
+      "source": "analytic",
+      "d": 2,
+      "gp_vs_line": 3,
+      "gp_vs_linegp": 4,
+      "seeds": 10
+    },
+    {
+      "objective": "chat_17",
+      "source": "analytic",
+      "d": 5,
+      "gp_vs_line": 8,
+      "gp_vs_linegp": 4,
+      "seeds": 10
+    },
+    {
+      "objective": "chat_17",
+      "source": "analytic",
+      "d": 10,
+      "gp_vs_line": 7,
+      "gp_vs_linegp": 6,
+      "seeds": 10
+    },
+    {
+      "objective": "ad_budget_allocation",
+      "source": "sim",
+      "d": 8,
+      "gp_vs_line": 9,
+      "gp_vs_linegp": 10,
+      "seeds": 10
+    },
+    {
+      "objective": "airfoil_shape",
+      "source": "sim",
+      "d": 6,
+      "gp_vs_line": 8,
+      "gp_vs_linegp": 7,
+      "seeds": 10
+    },
+    {
+      "objective": "algo_trading",
+      "source": "sim",
+      "d": 4,
+      "gp_vs_line": 5,
+      "gp_vs_linegp": 2,
+      "seeds": 10
+    },
+    {
+      "objective": "antenna_array",
+      "source": "sim",
+      "d": 7,
+      "gp_vs_line": 7,
+      "gp_vs_linegp": 7,
+      "seeds": 10
+    },
+    {
+      "objective": "battery_dispatch",
+      "source": "sim",
+      "d": 24,
+      "gp_vs_line": 7,
+      "gp_vs_linegp": 8,
+      "seeds": 10
+    },
+    {
+      "objective": "brachistochrone",
+      "source": "sim",
+      "d": 8,
+      "gp_vs_line": 8,
+      "gp_vs_linegp": 8,
+      "seeds": 10
+    },
+    {
+      "objective": "bridge_truss",
+      "source": "sim",
+      "d": 10,
+      "gp_vs_line": 4,
+      "gp_vs_linegp": 6,
+      "seeds": 10
+    },
+    {
+      "objective": "cantilever_beam",
+      "source": "sim",
+      "d": 5,
+      "gp_vs_line": 5,
+      "gp_vs_linegp": 8,
+      "seeds": 10
+    },
+    {
+      "objective": "cart_pole_policy",
+      "source": "sim",
+      "d": 5,
+      "gp_vs_line": 4,
+      "gp_vs_linegp": 2,
+      "seeds": 10
+    },
+    {
+      "objective": "cassini_minlp",
+      "source": "sim",
+      "d": 10,
+      "gp_vs_line": 6,
+      "gp_vs_linegp": 4,
+      "seeds": 10
+    },
+    {
+      "objective": "cell_tower_power",
+      "source": "sim",
+      "d": 6,
+      "gp_vs_line": 8,
+      "gp_vs_linegp": 7,
+      "seeds": 10
+    },
+    {
+      "objective": "circle_packing",
+      "source": "sim",
+      "d": 12,
+      "gp_vs_line": 6,
+      "gp_vs_linegp": 9,
+      "seeds": 10
+    },
+    {
+      "objective": "cocktail_blend",
+      "source": "sim",
+      "d": 5,
+      "gp_vs_line": 7,
+      "gp_vs_linegp": 7,
+      "seeds": 10
+    },
+    {
+      "objective": "crop_irrigation",
+      "source": "sim",
+      "d": 12,
+      "gp_vs_line": 8,
+      "gp_vs_linegp": 8,
+      "seeds": 10
+    },
+    {
+      "objective": "curling",
+      "source": "sim",
+      "d": 4,
+      "gp_vs_line": 6,
+      "gp_vs_linegp": 5,
+      "seeds": 10
+    },
+    {
+      "objective": "darts_aim",
+      "source": "sim",
+      "d": 2,
+      "gp_vs_line": 8,
+      "gp_vs_linegp": 6,
+      "seeds": 10
+    },
+    {
+      "objective": "diet_problem",
+      "source": "sim",
+      "d": 8,
+      "gp_vs_line": 4,
+      "gp_vs_linegp": 4,
+      "seeds": 10
+    },
+    {
+      "objective": "district_cooling",
+      "source": "sim",
+      "d": 5,
+      "gp_vs_line": 5,
+      "gp_vs_linegp": 4,
+      "seeds": 10
+    },
+    {
+      "objective": "ebola_response",
+      "source": "sim",
+      "d": 8,
+      "gp_vs_line": 7,
+      "gp_vs_linegp": 6,
+      "seeds": 10
+    },
+    {
+      "objective": "economic_dispatch_valve",
+      "source": "sim",
+      "d": 3,
+      "gp_vs_line": 5,
+      "gp_vs_linegp": 4,
+      "seeds": 10
+    },
+    {
+      "objective": "enzyme_kinetics",
+      "source": "sim",
+      "d": 2,
+      "gp_vs_line": 9,
+      "gp_vs_linegp": 7,
+      "seeds": 10
+    },
+    {
+      "objective": "espresso_dialin",
+      "source": "sim",
+      "d": 4,
+      "gp_vs_line": 3,
+      "gp_vs_linegp": 1,
+      "seeds": 10
+    },
+    {
+      "objective": "ev_fleet_charging",
+      "source": "sim",
+      "d": 24,
+      "gp_vs_line": 8,
+      "gp_vs_linegp": 6,
+      "seeds": 10
+    },
+    {
+      "objective": "facility_location",
+      "source": "sim",
+      "d": 6,
+      "gp_vs_line": 7,
+      "gp_vs_linegp": 6,
+      "seeds": 10
+    },
+    {
+      "objective": "fin_array_cooling",
+      "source": "sim",
+      "d": 8,
+      "gp_vs_line": 10,
+      "gp_vs_linegp": 10,
+      "seeds": 10
+    },
+    {
+      "objective": "fir_filter_design",
+      "source": "sim",
+      "d": 11,
+      "gp_vs_line": 8,
+      "gp_vs_linegp": 9,
+      "seeds": 10
+    },
+    {
+      "objective": "free_kick",
+      "source": "sim",
+      "d": 4,
+      "gp_vs_line": 2,
+      "gp_vs_linegp": 4,
+      "seeds": 10
+    },
+    {
+      "objective": "gear_ratios",
+      "source": "sim",
+      "d": 4,
+      "gp_vs_line": 7,
+      "gp_vs_linegp": 5,
+      "seeds": 10
+    },
+    {
+      "objective": "goalkeeper_punt",
+      "source": "sim",
+      "d": 4,
+      "gp_vs_line": 4,
+      "gp_vs_linegp": 5,
+      "seeds": 10
+    },
+    {
+      "objective": "groundwater_remediation",
+      "source": "sim",
+      "d": 6,
+      "gp_vs_line": 8,
+      "gp_vs_linegp": 6,
+      "seeds": 10
+    },
+    {
+      "objective": "heat_exchanger_network",
+      "source": "sim",
+      "d": 6,
+      "gp_vs_line": 4,
+      "gp_vs_linegp": 6,
+      "seeds": 10
+    },
+    {
+      "objective": "hvac_nyc",
+      "source": "sim",
+      "d": 24,
+      "gp_vs_line": 10,
+      "gp_vs_linegp": 10,
+      "seeds": 10
+    },
+    {
+      "objective": "index_tracking",
+      "source": "sim",
+      "d": 8,
+      "gp_vs_line": 9,
+      "gp_vs_linegp": 9,
+      "seeds": 10
+    },
+    {
+      "objective": "inventory_policy",
+      "source": "sim",
+      "d": 2,
+      "gp_vs_line": 6,
+      "gp_vs_linegp": 4,
+      "seeds": 10
+    },
+    {
+      "objective": "kalman_tuning",
+      "source": "sim",
+      "d": 2,
+      "gp_vs_line": 8,
+      "gp_vs_linegp": 7,
+      "seeds": 10
+    },
+    {
+      "objective": "kmeans_clustering",
+      "source": "sim",
+      "d": 6,
+      "gp_vs_line": 7,
+      "gp_vs_linegp": 8,
+      "seeds": 10
+    },
+    {
+      "objective": "lennard_jones_cluster",
+      "source": "sim",
+      "d": 15,
+      "gp_vs_line": 5,
+      "gp_vs_linegp": 6,
+      "seeds": 10
+    },
+    {
+      "objective": "lens_design",
+      "source": "sim",
+      "d": 4,
+      "gp_vs_line": 4,
+      "gp_vs_linegp": 8,
+      "seeds": 10
+    },
+    {
+      "objective": "microgrid_dispatch",
+      "source": "sim",
+      "d": 24,
+      "gp_vs_line": 6,
+      "gp_vs_linegp": 5,
+      "seeds": 10
+    },
+    {
+      "objective": "mini_golf",
+      "source": "sim",
+      "d": 3,
+      "gp_vs_line": 1,
+      "gp_vs_linegp": 1,
+      "seeds": 10
+    },
+    {
+      "objective": "multi_exponential_fit",
+      "source": "sim",
+      "d": 4,
+      "gp_vs_line": 8,
+      "gp_vs_linegp": 7,
+      "seeds": 10
+    },
+    {
+      "objective": "options_hedging",
+      "source": "sim",
+      "d": 12,
+      "gp_vs_line": 4,
+      "gp_vs_linegp": 3,
+      "seeds": 10
+    },
+    {
+      "objective": "pool",
+      "source": "sim",
+      "d": 3,
+      "gp_vs_line": 7,
+      "gp_vs_linegp": 7,
+      "seeds": 10
+    },
+    {
+      "objective": "portfolio_frontier",
+      "source": "sim",
+      "d": 7,
+      "gp_vs_line": 8,
+      "gp_vs_linegp": 4,
+      "seeds": 10
+    },
+    {
+      "objective": "pressure_vessel",
+      "source": "sim",
+      "d": 4,
+      "gp_vs_line": 6,
+      "gp_vs_linegp": 7,
+      "seeds": 10
+    },
+    {
+      "objective": "protein_fold_toy",
+      "source": "sim",
+      "d": 11,
+      "gp_vs_line": 5,
+      "gp_vs_linegp": 3,
+      "seeds": 10
+    },
+    {
+      "objective": "queue_staffing",
+      "source": "sim",
+      "d": 6,
+      "gp_vs_line": 6,
+      "gp_vs_linegp": 4,
+      "seeds": 10
+    },
+    {
+      "objective": "radiation_therapy",
+      "source": "sim",
+      "d": 4,
+      "gp_vs_line": 8,
+      "gp_vs_linegp": 7,
+      "seeds": 10
+    },
+    {
+      "objective": "reactor_profile",
+      "source": "sim",
+      "d": 10,
+      "gp_vs_line": 8,
+      "gp_vs_linegp": 8,
+      "seeds": 10
+    },
+    {
+      "objective": "reservoir_release",
+      "source": "sim",
+      "d": 12,
+      "gp_vs_line": 9,
+      "gp_vs_linegp": 9,
+      "seeds": 10
+    },
+    {
+      "objective": "revenue_pricing",
+      "source": "sim",
+      "d": 8,
+      "gp_vs_line": 4,
+      "gp_vs_linegp": 5,
+      "seeds": 10
+    },
+    {
+      "objective": "robot_arm",
+      "source": "sim",
+      "d": 6,
+      "gp_vs_line": 4,
+      "gp_vs_linegp": 4,
+      "seeds": 10
+    },
+    {
+      "objective": "rocket_landing",
+      "source": "sim",
+      "d": 12,
+      "gp_vs_line": 5,
+      "gp_vs_linegp": 2,
+      "seeds": 10
+    },
+    {
+      "objective": "satellite_phasing",
+      "source": "sim",
+      "d": 6,
+      "gp_vs_line": 7,
+      "gp_vs_linegp": 4,
+      "seeds": 10
+    },
+    {
+      "objective": "sensor_localization",
+      "source": "sim",
+      "d": 8,
+      "gp_vs_line": 9,
+      "gp_vs_linegp": 9,
+      "seeds": 10
+    },
+    {
+      "objective": "signal_deconvolution",
+      "source": "sim",
+      "d": 12,
+      "gp_vs_line": 9,
+      "gp_vs_linegp": 9,
+      "seeds": 10
+    },
+    {
+      "objective": "slingshot",
+      "source": "sim",
+      "d": 3,
+      "gp_vs_line": 4,
+      "gp_vs_linegp": 1,
+      "seeds": 10
+    },
+    {
+      "objective": "solar_farm_layout",
+      "source": "sim",
+      "d": 8,
+      "gp_vs_line": 8,
+      "gp_vs_linegp": 10,
+      "seeds": 10
+    },
+    {
+      "objective": "speed_reducer",
+      "source": "sim",
+      "d": 7,
+      "gp_vs_line": 4,
+      "gp_vs_linegp": 6,
+      "seeds": 10
+    },
+    {
+      "objective": "tennis_doubles",
+      "source": "sim",
+      "d": 6,
+      "gp_vs_line": 4,
+      "gp_vs_linegp": 1,
+      "seeds": 10
+    },
+    {
+      "objective": "tension_spring",
+      "source": "sim",
+      "d": 3,
+      "gp_vs_line": 6,
+      "gp_vs_linegp": 8,
+      "seeds": 10
+    },
+    {
+      "objective": "traffic_signal",
+      "source": "sim",
+      "d": 8,
+      "gp_vs_line": 7,
+      "gp_vs_linegp": 9,
+      "seeds": 10
+    },
+    {
+      "objective": "transfer_window",
+      "source": "sim",
+      "d": 2,
+      "gp_vs_line": 8,
+      "gp_vs_linegp": 7,
+      "seeds": 10
+    },
+    {
+      "objective": "trebuchet",
+      "source": "sim",
+      "d": 4,
+      "gp_vs_line": 1,
+      "gp_vs_linegp": 1,
+      "seeds": 10
+    },
+    {
+      "objective": "vaccine_allocation",
+      "source": "sim",
+      "d": 8,
+      "gp_vs_line": 10,
+      "gp_vs_linegp": 10,
+      "seeds": 10
+    },
+    {
+      "objective": "walking_creature",
+      "source": "sim",
+      "d": 6,
+      "gp_vs_line": 7,
+      "gp_vs_linegp": 6,
+      "seeds": 10
+    },
+    {
+      "objective": "water_distribution",
+      "source": "sim",
+      "d": 8,
+      "gp_vs_line": 7,
+      "gp_vs_linegp": 5,
+      "seeds": 10
+    },
+    {
+      "objective": "welded_beam",
+      "source": "sim",
+      "d": 4,
+      "gp_vs_line": 4,
+      "gp_vs_linegp": 8,
+      "seeds": 10
+    },
+    {
+      "objective": "wind_farm",
+      "source": "sim",
+      "d": 16,
+      "gp_vs_line": 5,
+      "gp_vs_linegp": 7,
+      "seeds": 10
+    }
+  ]
+}

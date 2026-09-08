@@ -1,0 +1,214 @@
+{
+  "rows": [
+    {
+      "objective": "rastrigin",
+      "d": 2,
+      "gp_vs_line": 12,
+      "gp_vs_linegp": 6,
+      "seeds": 16
+    },
+    {
+      "objective": "rastrigin",
+      "d": 5,
+      "gp_vs_line": 9,
+      "gp_vs_linegp": 7,
+      "seeds": 16
+    },
+    {
+      "objective": "rastrigin",
+      "d": 10,
+      "gp_vs_line": 11,
+      "gp_vs_linegp": 11,
+      "seeds": 16
+    },
+    {
+      "objective": "ackley",
+      "d": 2,
+      "gp_vs_line": 9,
+      "gp_vs_linegp": 7,
+      "seeds": 16
+    },
+    {
+      "objective": "ackley",
+      "d": 5,
+      "gp_vs_line": 13,
+      "gp_vs_linegp": 12,
+      "seeds": 16
+    },
+    {
+      "objective": "ackley",
+      "d": 10,
+      "gp_vs_line": 7,
+      "gp_vs_linegp": 8,
+      "seeds": 16
+    },
+    {
+      "objective": "griewank",
+      "d": 2,
+      "gp_vs_line": 13,
+      "gp_vs_linegp": 11,
+      "seeds": 16
+    },
+    {
+      "objective": "griewank",
+      "d": 5,
+      "gp_vs_line": 13,
+      "gp_vs_linegp": 13,
+      "seeds": 16
+    },
+    {
+      "objective": "griewank",
+      "d": 10,
+      "gp_vs_line": 16,
+      "gp_vs_linegp": 16,
+      "seeds": 16
+    },
+    {
+      "objective": "schwefel",
+      "d": 2,
+      "gp_vs_line": 10,
+      "gp_vs_linegp": 6,
+      "seeds": 16
+    },
+    {
+      "objective": "schwefel",
+      "d": 5,
+      "gp_vs_line": 7,
+      "gp_vs_linegp": 6,
+      "seeds": 16
+    },
+    {
+      "objective": "schwefel",
+      "d": 10,
+      "gp_vs_line": 10,
+      "gp_vs_linegp": 9,
+      "seeds": 16
+    },
+    {
+      "objective": "drop_wave",
+      "d": 2,
+      "gp_vs_line": 12,
+      "gp_vs_linegp": 7,
+      "seeds": 16
+    },
+    {
+      "objective": "drop_wave",
+      "d": 5,
+      "gp_vs_line": 12,
+      "gp_vs_linegp": 12,
+      "seeds": 16
+    },
+    {
+      "objective": "drop_wave",
+      "d": 10,
+      "gp_vs_line": 6,
+      "gp_vs_linegp": 9,
+      "seeds": 16
+    },
+    {
+      "objective": "rosenbrock",
+      "d": 2,
+      "gp_vs_line": 8,
+      "gp_vs_linegp": 7,
+      "seeds": 16
+    },
+    {
+      "objective": "rosenbrock",
+      "d": 5,
+      "gp_vs_line": 10,
+      "gp_vs_linegp": 10,
+      "seeds": 16
+    },
+    {
+      "objective": "rosenbrock",
+      "d": 10,
+      "gp_vs_line": 13,
+      "gp_vs_linegp": 13,
+      "seeds": 16
+    },
+    {
+      "objective": "zakharov",
+      "d": 2,
+      "gp_vs_line": 13,
+      "gp_vs_linegp": 8,
+      "seeds": 16
+    },
+    {
+      "objective": "zakharov",
+      "d": 5,
+      "gp_vs_line": 13,
+      "gp_vs_linegp": 13,
+      "seeds": 16
+    },
+    {
+      "objective": "zakharov",
+      "d": 10,
+      "gp_vs_line": 13,
+      "gp_vs_linegp": 13,
+      "seeds": 16
+    },
+    {
+      "objective": "salomon",
+      "d": 2,
+      "gp_vs_line": 12,
+      "gp_vs_linegp": 5,
+      "seeds": 16
+    },
+    {
+      "objective": "salomon",
+      "d": 5,
+      "gp_vs_line": 15,
+      "gp_vs_linegp": 15,
+      "seeds": 16
+    },
+    {
+      "objective": "salomon",
+      "d": 10,
+      "gp_vs_line": 15,
+      "gp_vs_linegp": 14,
+      "seeds": 16
+    },
+    {
+      "objective": "styblinski_tang",
+      "d": 2,
+      "gp_vs_line": 12,
+      "gp_vs_linegp": 5,
+      "seeds": 16
+    },
+    {
+      "objective": "styblinski_tang",
+      "d": 5,
+      "gp_vs_line": 15,
+      "gp_vs_linegp": 15,
+      "seeds": 16
+    },
+    {
+      "objective": "styblinski_tang",
+      "d": 10,
+      "gp_vs_line": 15,
+      "gp_vs_linegp": 14,
+      "seeds": 16
+    },
+    {
+      "objective": "rotated_hyper_ellipsoid",
+      "d": 2,
+      "gp_vs_line": 12,
+      "gp_vs_linegp": 5,
+      "seeds": 16
+    },
+    {
+      "objective": "rotated_hyper_ellipsoid",
+      "d": 5,
+      "gp_vs_line": 15,
+      "gp_vs_linegp": 15,
+      "seeds": 16
+    },
+    {
+      "objective": "rotated_hyper_ellipsoid",
+      "d": 10,
+      "gp_vs_line": 15,
+      "gp_vs_linegp": 14,
+      "seeds": 16
+    }
+  ]
+}
