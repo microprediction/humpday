@@ -231,6 +231,53 @@ elementary, where $\kappa_0$ is only characterized by a transcendental
 equation. A full planar-search implementation is the remaining
 empirical step.
 
+\section{Does the off-line placement help?}
+
+A budget-matched experiment isolates the planar move. From the
+incumbent we take two evaluations per step along a shared random
+direction; the only difference between strategies is where the second
+goes. \emph{Line} keeps it on the line --- extrapolate past the trial
+when it improved, reflect when it did not. \emph{Planar} puts it at the
+equilateral apex over the base in a random plane containing the line.
+Start point, direction stream, and adaptive step are identical, so the
+comparison is on-line against off-line placement at the same budget, on
+ten HumpDay classic objectives over 24 seeds.
+
+\begin{table}[t]
+\centering
+\small
+\begin{tabular}{lccc}
+\toprule
+dimension & planar beats line & multimodal & unimodal \\
+\midrule
+$d=2$  & $0.55$ & $0.56$ & $0.52$ \\
+$d=5$  & $0.28$ & --- & --- \\
+$d=10$ & $0.28$ & --- & --- \\
+\bottomrule
+\end{tabular}
+\caption{Fraction of seeds on which the off-line (planar) third
+placement beats the on-line one, at budget 120 over 24 seeds and ten
+objectives. In two dimensions the transverse direction spans the rest
+of the space and the off-line move mildly helps; in higher dimensions a
+\emph{random} perpendicular is almost never the objective's informative
+direction, and the move is wasted.}
+\label{tab:planar}
+\end{table}
+
+The reduction is exact for the posterior, but exploiting it is not free
+(Table~\ref{tab:planar}). In two dimensions the off-line placement wins
+on $55\%$ of seeds; by five dimensions it wins on $28\%$, no better than
+before. The gap is the isotropy assumption cashing out: any perpendicular
+is equivalent \emph{under the prior}, but a random perpendicular is
+almost surely not where the objective's structure lies, so in high
+dimension the off-line evaluation is spent on an uninformative direction.
+The exception proves the reading --- on \texttt{drop\_wave}, a radially
+symmetric ripple, the off-line move wins on $16$--$17$ of $24$ seeds in
+every dimension, because there the transverse direction always carries
+signal. Using the plane in high dimension therefore needs an
+\emph{informed} transverse direction, not a random one, which is where
+LineBO's adaptive subspaces enter.
+
 \section{Related work}
 
 LineBO (Kirschner et al.\ 2019) optimizes through adaptively selected
