@@ -197,13 +197,39 @@ The plane costs one extra coordinate and, by the dimension-reduction
 proposition, captures the whole next-point decision no matter how large
 the ambient space.
 
-One adjustment is necessary. The theory paper rewards the terminal
-recommendation, whereas an optimizer keeps the best evaluated point. The
-geometric reduction survives that change exactly --- it is a fact about
-the posterior, not the objective --- but the opening step-size constants
-must be re-derived for the expected-improvement objective. We leave that
-derivation and a full planar-search implementation to the experiments
-accompanying this draft.
+One adjustment is necessary, and the opening constant closes. The
+theory paper rewards the terminal recommendation, whereas an optimizer
+keeps the best evaluated point, so its opening maximizes
+$\E[\max(e^{b},e^{X})]$ over the probe correlation $\rho$, with
+$X\sim N(b\rho,1-\rho^{2})$. The geometric reduction is unaffected --- it
+is a fact about the posterior, not the objective --- but the opening
+coefficient is not.
+
+\begin{proposition}[Expected-improvement opening]
+For the best-evaluated objective the optimal opening correlation
+satisfies $\rho^{*}(b)=\kappa_{\mathrm{EI}}\,b+O(b^{3})$ as $b\downarrow0$,
+with
+\begin{equation}
+\kappa_{\mathrm{EI}}=\frac{\E[e^{Z};Z>0]}{\E[Z\,e^{Z};Z>0]}
+=\frac{\Phi(1)}{\Phi(1)+\phi(1)}=0.776639\ldots,
+\qquad Z\sim N(0,1).
+\end{equation}
+\end{proposition}
+
+\noindent The first-order condition
+$\partial_\rho\E[\max(e^{b},e^{X})]
+=\E\!\left[e^{X}\mathbf{1}\{X>b\}\,(b-\rho X'/\sqrt{1-\rho^{2}})\right]=0$,
+with $X=b\rho+\sqrt{1-\rho^{2}}X'$ and $X'\sim N(0,1)$, gives at
+$b\downarrow0$ the ratio
+$\E[e^{Z};Z>0]=\kappa_{\mathrm{EI}}\,\E[Z e^{Z};Z>0]$, and
+$\E[e^{Z};Z>0]=e^{1/2}\Phi(1)$, $\E[Z e^{Z};Z>0]=e^{1/2}(\phi(1)+\Phi(1))$.
+So the optimizer opens \emph{wider} than the terminal rule ---
+$\kappa_{\mathrm{EI}}=0.777$ against the theory paper's
+$\kappa_0=0.540$ --- because a fresh high draw is worth more when the
+best point is kept rather than a mean recommendation. And it is
+elementary, where $\kappa_0$ is only characterized by a transcendental
+equation. A full planar-search implementation is the remaining
+empirical step.
 
 \section{Related work}
 
