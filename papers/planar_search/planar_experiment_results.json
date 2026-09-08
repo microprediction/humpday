@@ -13,8 +13,10 @@
       "group": "multimodal",
       "line": 1.250569140461805,
       "planar": 0.8335448040195191,
+      "planar_informed": 0.8340461999654887,
       "random": 0.33409844699346036,
       "planar_wins": 15,
+      "informed_wins": 13,
       "seeds": 24
     },
     {
@@ -23,8 +25,10 @@
       "group": "multimodal",
       "line": 4.192663107476799,
       "planar": 5.34184629741794,
+      "planar_informed": 6.200037241960093,
       "random": 4.515326699436992,
       "planar_wins": 10,
+      "informed_wins": 9,
       "seeds": 24
     },
     {
@@ -33,8 +37,10 @@
       "group": "multimodal",
       "line": 14.76385962105568,
       "planar": 16.764125212656353,
+      "planar_informed": 16.36560451808838,
       "random": 13.786804502192483,
       "planar_wins": 9,
+      "informed_wins": 6,
       "seeds": 24
     },
     {
@@ -43,8 +49,10 @@
       "group": "multimodal",
       "line": 0.13101604679349937,
       "planar": 0.1885817238118226,
+      "planar_informed": 0.18223240586132744,
       "random": 0.17999071590806628,
       "planar_wins": 11,
+      "informed_wins": 7,
       "seeds": 24
     },
     {
@@ -53,8 +61,10 @@
       "group": "multimodal",
       "line": 0.9920694741156717,
       "planar": 0.9975982010363977,
+      "planar_informed": 0.9990211242182432,
       "random": 0.9532754210338638,
       "planar_wins": 7,
+      "informed_wins": 7,
       "seeds": 24
     },
     {
@@ -63,8 +73,10 @@
       "group": "multimodal",
       "line": 1.019615546073734,
       "planar": 1.0184258316024484,
+      "planar_informed": 1.0284749791101244,
       "random": 1.0108643046323857,
       "planar_wins": 12,
+      "informed_wins": 5,
       "seeds": 24
     },
     {
@@ -73,8 +85,10 @@
       "group": "multimodal",
       "line": 0.500269697561368,
       "planar": 0.47003061159731474,
+      "planar_informed": 0.6384654063486803,
       "random": 1.0479940315404834,
       "planar_wins": 12,
+      "informed_wins": 9,
       "seeds": 24
     },
     {
@@ -83,8 +97,10 @@
       "group": "multimodal",
       "line": 1.237141664483343,
       "planar": 1.5148955300912985,
+      "planar_informed": 6.651755039725311,
       "random": 11.92045625662416,
       "planar_wins": 5,
+      "informed_wins": 2,
       "seeds": 24
     },
     {
@@ -93,8 +109,10 @@
       "group": "multimodal",
       "line": 6.55069070347212,
       "planar": 26.05521488776426,
+      "planar_informed": 63.728258138745,
       "random": 99.58418141131388,
       "planar_wins": 5,
+      "informed_wins": 1,
       "seeds": 24
     },
     {
@@ -103,8 +121,10 @@
       "group": "multimodal",
       "line": -0.14486844370966506,
       "planar": -0.1448792128211892,
+      "planar_informed": -0.24994526069629183,
       "random": -0.24991966631010412,
       "planar_wins": 13,
+      "informed_wins": 14,
       "seeds": 24
     },
     {
@@ -113,8 +133,10 @@
       "group": "multimodal",
       "line": 0.6398040395323,
       "planar": 1.0774808547655874,
+      "planar_informed": 0.8726755236661677,
       "random": 1.00836959600535,
       "planar_wins": 8,
+      "informed_wins": 11,
       "seeds": 24
     },
     {
@@ -123,8 +145,10 @@
       "group": "multimodal",
       "line": 2.395705075684166,
       "planar": 2.936940464674034,
+      "planar_informed": 2.7541842616550145,
       "random": 3.0999322210728337,
       "planar_wins": 7,
+      "informed_wins": 9,
       "seeds": 24
     },
     {
@@ -133,8 +157,10 @@
       "group": "multimodal",
       "line": -0.619499436541335,
       "planar": -0.7857512419923456,
+      "planar_informed": -0.785749623553323,
       "random": -0.9362362388364989,
       "planar_wins": 17,
+      "informed_wins": 13,
       "seeds": 24
     },
     {
@@ -143,8 +169,10 @@
       "group": "multimodal",
       "line": -0.36912769798063316,
       "planar": -0.477784376572123,
+      "planar_informed": -0.47778404983770084,
       "random": -0.6194981154743802,
       "planar_wins": 16,
+      "informed_wins": 13,
       "seeds": 24
     },
     {
@@ -153,8 +181,10 @@
       "group": "multimodal",
       "line": -0.22972368342151217,
       "planar": -0.22972368388395112,
+      "planar_informed": -0.22972368456281658,
       "random": -0.36912765684556553,
       "planar_wins": 17,
+      "informed_wins": 13,
       "seeds": 24
     },
     {
@@ -163,8 +193,10 @@
       "group": "multimodal",
       "line": 0.005757857813561699,
       "planar": 0.005630380535333148,
+      "planar_informed": 0.0056097980927856984,
       "random": 0.0084581068618867,
       "planar_wins": 13,
+      "informed_wins": 12,
       "seeds": 24
     },
     {
@@ -173,8 +205,10 @@
       "group": "multimodal",
       "line": 1.5940540349286647,
       "planar": 299.4579286574694,
+      "planar_informed": 421.56061407483037,
       "random": 1263.526135333193,
       "planar_wins": 3,
+      "informed_wins": 2,
       "seeds": 24
     },
     {
@@ -183,8 +217,10 @@
       "group": "multimodal",
       "line": 2282.690601486779,
       "planar": 4657.1318909033,
+      "planar_informed": 5046.81989054779,
       "random": 5682.578631354894,
       "planar_wins": 3,
+      "informed_wins": 3,
       "seeds": 24
     },
     {
@@ -193,8 +229,10 @@
       "group": "unimodal",
       "line": 3.349900446232541,
       "planar": 3.3499004363530838,
+      "planar_informed": 3.3499004347579495,
       "random": 3.349900655501167,
       "planar_wins": 13,
+      "informed_wins": 12,
       "seeds": 24
     },
     {
@@ -203,8 +241,10 @@
       "group": "unimodal",
       "line": 3.3500235387891935,
       "planar": 3.3731079146064715,
+      "planar_informed": 3.3825708422006455,
       "random": 3.4478229596067886,
       "planar_wins": 3,
+      "informed_wins": 2,
       "seeds": 24
     },
     {
@@ -213,8 +253,10 @@
       "group": "unimodal",
       "line": 3.526807950942575,
       "planar": 3.710826557262033,
+      "planar_informed": 3.741027279812481,
       "random": 3.7902984232853463,
       "planar_wins": 3,
+      "informed_wins": 3,
       "seeds": 24
     },
     {
@@ -223,8 +265,10 @@
       "group": "unimodal",
       "line": 364.52773117312177,
       "planar": 567.1994002868527,
+      "planar_informed": 667.1646964965615,
       "random": 425.4301139915058,
       "planar_wins": 10,
+      "informed_wins": 9,
       "seeds": 24
     },
     {
@@ -233,8 +277,10 @@
       "group": "unimodal",
       "line": 1119999.8539048072,
       "planar": 1504682.723325543,
+      "planar_informed": 9065273.083443599,
       "random": 39502099.77644338,
       "planar_wins": 7,
+      "informed_wins": 6,
       "seeds": 24
     },
     {
@@ -243,8 +289,10 @@
       "group": "unimodal",
       "line": 13635113.152189746,
       "planar": 1062993245.1629157,
+      "planar_informed": 2347859903.4984255,
       "random": 6861551638.465176,
       "planar_wins": 4,
+      "informed_wins": 1,
       "seeds": 24
     },
     {
@@ -253,8 +301,10 @@
       "group": "unimodal",
       "line": 5.0817588318015986e-06,
       "planar": 4.4533769859383e-06,
+      "planar_informed": 5.0959161153833806e-06,
       "random": 3.224291412718513e-06,
       "planar_wins": 14,
+      "informed_wins": 13,
       "seeds": 24
     },
     {
@@ -263,8 +313,10 @@
       "group": "unimodal",
       "line": 0.0018877325520069716,
       "planar": 0.45265776026216736,
+      "planar_informed": 0.5610902527415034,
       "random": 0.5067401799015887,
       "planar_wins": 4,
+      "informed_wins": 1,
       "seeds": 24
     },
     {
@@ -273,8 +325,10 @@
       "group": "unimodal",
       "line": 1.7290865205794685,
       "planar": 4.5753158408303625,
+      "planar_informed": 5.176021496346463,
       "random": 4.853539631975943,
       "planar_wins": 3,
+      "informed_wins": 2,
       "seeds": 24
     },
     {
@@ -283,8 +337,10 @@
       "group": "unimodal",
       "line": 0.0007666216681510968,
       "planar": 0.0007496488899319789,
+      "planar_informed": 0.0007469084703261633,
       "random": 0.0011261424303649781,
       "planar_wins": 13,
+      "informed_wins": 12,
       "seeds": 24
     },
     {
@@ -293,8 +349,10 @@
       "group": "unimodal",
       "line": 0.21223802374934414,
       "planar": 39.87089369726269,
+      "planar_informed": 56.128079513820225,
       "random": 168.23036361547452,
       "planar_wins": 3,
+      "informed_wins": 2,
       "seeds": 24
     },
     {
@@ -303,8 +361,10 @@
       "group": "unimodal",
       "line": 303.92554548029284,
       "planar": 620.0671038793212,
+      "planar_informed": 671.9515501472191,
       "random": 756.5987300882111,
       "planar_wins": 3,
+      "informed_wins": 3,
       "seeds": 24
     }
   ],

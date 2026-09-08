@@ -246,37 +246,48 @@ ten HumpDay classic objectives over 24 seeds.
 \begin{table}[t]
 \centering
 \small
-\begin{tabular}{lccc}
+\begin{tabular}{lcc}
 \toprule
-dimension & planar beats line & multimodal & unimodal \\
+dimension & random plane & momentum plane \\
 \midrule
-$d=2$  & $0.55$ & $0.56$ & $0.52$ \\
-$d=5$  & $0.28$ & --- & --- \\
-$d=10$ & $0.28$ & --- & --- \\
+$d=2$  & $0.55$ & $0.47$ \\
+$d=5$  & $0.28$ & $0.23$ \\
+$d=10$ & $0.28$ & $0.19$ \\
 \bottomrule
 \end{tabular}
 \caption{Fraction of seeds on which the off-line (planar) third
 placement beats the on-line one, at budget 120 over 24 seeds and ten
-objectives. In two dimensions the transverse direction spans the rest
-of the space and the off-line move mildly helps; in higher dimensions a
-\emph{random} perpendicular is almost never the objective's informative
-direction, and the move is wasted.}
+objectives. \emph{Random plane}: the transverse direction is a random
+perpendicular. \emph{Momentum plane}: it is a running estimate of the
+improving direction, projected off the line. In two dimensions the
+transverse direction spans the rest of the space and the off-line move
+mildly helps; in higher dimensions it is wasted, and a cheap direction
+estimate makes it worse, not better.}
 \label{tab:planar}
 \end{table}
 
 The reduction is exact for the posterior, but exploiting it is not free
-(Table~\ref{tab:planar}). In two dimensions the off-line placement wins
-on $55\%$ of seeds; by five dimensions it wins on $28\%$, no better than
-before. The gap is the isotropy assumption cashing out: any perpendicular
-is equivalent \emph{under the prior}, but a random perpendicular is
-almost surely not where the objective's structure lies, so in high
-dimension the off-line evaluation is spent on an uninformative direction.
-The exception proves the reading --- on \texttt{drop\_wave}, a radially
-symmetric ripple, the off-line move wins on $16$--$17$ of $24$ seeds in
-every dimension, because there the transverse direction always carries
-signal. Using the plane in high dimension therefore needs an
-\emph{informed} transverse direction, not a random one, which is where
-LineBO's adaptive subspaces enter.
+(Table~\ref{tab:planar}). With a random plane the off-line placement
+wins on $55\%$ of seeds in two dimensions and $28\%$ by five, no better
+than before. The gap is the isotropy assumption cashing out: any
+perpendicular is equivalent \emph{under the prior}, but a random
+perpendicular is almost surely not where the objective's structure
+lies, so in high dimension the off-line evaluation is spent on an
+uninformative direction. The exception proves the reading --- on
+\texttt{drop\_wave}, a radially symmetric ripple, the off-line move
+wins on $16$--$17$ of $24$ seeds in every dimension, because there the
+transverse direction always carries signal.
+
+A cheap fix does not close the gap. Pointing the plane along a running
+momentum estimate of the improving direction is \emph{worse} than a
+random perpendicular at every dimension ($0.47$, $0.23$, $0.19$): from a
+handful of points the estimate is poor, and committing the one off-line
+probe to a bad direction loses to sampling broadly. The reduction is
+exact, but aiming the plane is itself the hard problem --- it wants a
+fitted subspace model, as in LineBO, not a momentum heuristic. That is
+the honest boundary of the result: the geometry hands high-dimensional
+search a plane for free, and the value of the plane is only as good as
+the direction one can afford to estimate.
 
 \section{Related work}
 

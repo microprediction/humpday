@@ -55,12 +55,20 @@ def orthonormal(v, rng):
     return g / n
 
 
+def perp_component(g, v):
+    """Component of g orthogonal to unit vector v, or None if degenerate."""
+    gp = g - (g @ v) * v
+    n = np.linalg.norm(gp)
+    return gp / n if n > 1e-9 else None
+
+
 def run(obj, d, strategy, budget, seed):
     rng = np.random.default_rng(seed)
     f = lambda u: float(obj(list(u)))
     x = clip(rng.random(d)); fx = f(x)
     best_x, best_f = x.copy(), fx
     a = 0.3
+    m = np.zeros(d)  # momentum estimate of the improving direction
     used = 1
     while used + 2 <= budget:
         v = rng.standard_normal(d); v = v / np.linalg.norm(v)
@@ -68,20 +76,26 @@ def run(obj, d, strategy, budget, seed):
         if strategy == "random":
             x2 = clip(rng.random(d))
         elif strategy == "line":
-            # extrapolate past the trial if it helped, else reflect back
             x2 = clip(best_x + (2.0 * a) * v) if f1 < best_f \
                 else clip(best_x - a * v)
-        else:  # planar: equilateral apex over the base in a random plane
+        elif strategy == "planar_informed":
+            # transverse direction = accumulated improving direction, off the
+            # line; fall back to random until it has learned one (LineBO move)
+            vp = perp_component(m, v) if np.linalg.norm(m) > 1e-9 else None
+            if vp is None:
+                vp = orthonormal(v, rng)
+            x2 = clip(0.5 * (best_x + x1) + (np.sqrt(3) / 2.0) * a * vp)
+        else:  # planar: equilateral apex over the base in a RANDOM plane
             vp = orthonormal(v, rng)
             x2 = clip(0.5 * (best_x + x1) + (np.sqrt(3) / 2.0) * a * vp)
         f2 = f(x2); used += 1
-        # new incumbent
-        cand = [(fx, best_x)] if False else []
+        prev_x = best_x
         for xx, ff in ((x1, f1), (x2, f2)):
             if ff < best_f:
                 best_f, best_x = ff, xx.copy()
-        # adaptive step: grow on progress, shrink on stall
         improved = min(f1, f2) < fx
+        if improved:
+            m = 0.6 * m + 0.4 * (best_x - prev_x)  # learn the good direction
         fx = best_f
         a = min(0.5, a * 1.3) if improved else max(1e-3, a * 0.7)
     return best_f
@@ -93,7 +107,7 @@ def main():
     ap.add_argument("--seeds", type=int, default=24)
     ap.add_argument("--dims", type=int, nargs="+", default=[2, 5, 10])
     args = ap.parse_args()
-    strategies = ["line", "planar", "random"]
+    strategies = ["line", "planar", "planar_informed", "random"]
     rows = []
     planar_wins = {"multimodal": [0, 0], "unimodal": [0, 0]}  # [wins, total]
     for name, obj in OBJECTIVES.items():
@@ -106,15 +120,19 @@ def main():
             # paired seed wins: planar strictly below line
             wins = sum(1 for i in range(args.seeds)
                        if res["planar"][i] < res["line"][i])
+            iwins = sum(1 for i in range(args.seeds)
+                        if res["planar_informed"][i] < res["line"][i])
             grp = "multimodal" if name in MULTIMODAL else "unimodal"
             planar_wins[grp][0] += wins
             planar_wins[grp][1] += args.seeds
             rows.append(dict(objective=name, d=d, group=grp,
                              line=med["line"], planar=med["planar"],
+                             planar_informed=med["planar_informed"],
                              random=med["random"], planar_wins=wins,
-                             seeds=args.seeds))
+                             informed_wins=iwins, seeds=args.seeds))
             print(f"{name:16s} d={d:<2} [{grp:10s}]  line={med['line']:.4g}  "
-                  f"planar={med['planar']:.4g}  planar_wins={wins}/{args.seeds}")
+                  f"planar={med['planar']:.4g} ({wins}/{args.seeds})  "
+                  f"informed={med['planar_informed']:.4g} ({iwins}/{args.seeds})")
     print("\n=== planar-beats-line seed-win rate ===")
     for grp, (w, t) in planar_wins.items():
         print(f"  {grp:10s}: {w}/{t} = {w/t:.3f}")
