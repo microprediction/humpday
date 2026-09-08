@@ -50,19 +50,28 @@ class GP:
         self.L = np.linalg.cholesky(K)
         self.alpha = np.linalg.solve(self.L.T, np.linalg.solve(self.L, yz))
 
-    def ei(self, Xs, best_z):
+    def _post(self, Xs):
         Xs = np.atleast_2d(Xs)
         d = np.sqrt(((Xs[:, None] - self.X[None]) ** 2).sum(-1))
         Ks = np.exp(-0.5 * (d / self.ell) ** 2)
         mu = Ks @ self.alpha
         v = np.linalg.solve(self.L, Ks.T)
         s2 = np.clip(1.0 - (v ** 2).sum(0), 1e-12, None)
-        s = np.sqrt(s2)
-        z = (best_z - mu) / s  # minimization: improvement below best
+        return mu, np.sqrt(s2)
+
+    def ei(self, Xs, best_z):
+        mu, s = self._post(Xs)
+        z = (best_z - mu) / s
         from math import erf, pi
         Phi = 0.5 * (1 + np.vectorize(lambda t: erf(t / np.sqrt(2)))(z))
         phi = np.exp(-0.5 * z * z) / np.sqrt(2 * pi)
         return (best_z - mu) * Phi + s * phi
+
+    def info(self, Xs):
+        # pure information gain of the point: 1/2 log(1 + s2/noise), monotone
+        # in posterior variance -> just the posterior standard deviation.
+        _, s = self._post(Xs)
+        return s
 
 
 def run(obj, d, strategy, budget, seed):
@@ -86,15 +95,18 @@ def run(obj, d, strategy, budget, seed):
             online = [clip(best_x + t * a * v)
                       for t in (-1.5, -1.0, -0.5, 1.5, 2.0, 2.5, 3.0)]
             cands = list(online)
-            if strategy == "planar_gp":  # add off-line (in-plane) candidates
+            if strategy in ("planar_gp", "planar_var"):  # add off-line candidates
                 for _ in range(6):
                     vp = orthonormal(v, rng)
                     for h in (0.5, 1.0, 1.5):
                         cands.append(clip(base + h * (np.sqrt(3) / 2) * a * vp))
             cands = np.array(cands)
             gp = GP(X, Y)
-            best_z = (best_f - gp.mu_y) / gp.sd_y
-            x2 = cands[int(np.argmax(gp.ei(cands, best_z)))]
+            if strategy == "planar_var":     # pure information: max variance
+                x2 = cands[int(np.argmax(gp.info(cands)))]
+            else:                             # EI = value
+                best_z = (best_f - gp.mu_y) / gp.sd_y
+                x2 = cands[int(np.argmax(gp.ei(cands, best_z)))]
         f2 = f(x2); used += 1
         X.append(x2.copy()); Y.append(f2)
         for xx, ff in ((x1, f1), (x2, f2)):
@@ -115,20 +127,20 @@ def main():
                              "drop_wave", "rosenbrock", "zakharov", "salomon",
                              "styblinski_tang", "rotated_hyper_ellipsoid"])
     args = ap.parse_args()
-    strat = ["line", "line_gp", "planar_gp"]
+    strat = ["line_gp", "planar_gp", "planar_var"]
     rows = []
     for name in args.objectives:
         obj = OBJ[name]
         for d in args.dims:
             res = {s: [run(obj, d, s, args.budget, sd) for sd in range(args.seeds)]
                    for s in strat}
-            vs_line = sum(1 for i in range(args.seeds) if res["planar_gp"][i] < res["line"][i])
-            vs_gp = sum(1 for i in range(args.seeds) if res["planar_gp"][i] < res["line_gp"][i])
-            rows.append(dict(objective=name, d=d, gp_vs_line=vs_line,
-                             gp_vs_linegp=vs_gp, seeds=args.seeds))
-            print(f"{name:20s} d={d:<2} planar_gp>line {vs_line}/{args.seeds}  "
-                  f"planar_gp>line_gp {vs_gp}/{args.seeds}", flush=True)
-    for key, lab in (("gp_vs_line", "gp>line"), ("gp_vs_linegp", "gp>line_gp")):
+            ei_w = sum(1 for i in range(args.seeds) if res["planar_gp"][i] < res["line_gp"][i])
+            var_w = sum(1 for i in range(args.seeds) if res["planar_var"][i] < res["line_gp"][i])
+            rows.append(dict(objective=name, d=d, ei_vs_linegp=ei_w,
+                             var_vs_linegp=var_w, seeds=args.seeds))
+            print(f"{name:20s} d={d:<2} EI>line_gp {ei_w}/{args.seeds}  "
+                  f"VAR>line_gp {var_w}/{args.seeds}", flush=True)
+    for key, lab in (("ei_vs_linegp", "EI(value)"), ("var_vs_linegp", "VAR(info)")):
         for lo, hi, dl in ((0, 3, "low"), (4, 999, "high")):
             w = sum(r[key] for r in rows if lo <= r["d"] <= hi)
             t = sum(r["seeds"] for r in rows if lo <= r["d"] <= hi)

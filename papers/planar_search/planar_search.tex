@@ -65,10 +65,10 @@ is about evaluation economy more than about the placement theorem. And
 the placement geometry is not confined to a line: after two
 observations under a radial prior the next-point decision collapses to
 a plane, exactly, in any ambient dimension. A fixed off-line placement
-does not pay, but one aimed by the information content of the acquired
-point --- a fitted Gaussian process --- beats a line search on three
-quarters of high-dimensional tasks, which is where the reduction should
-matter.
+does not pay, but one aimed by expected improvement under a fitted
+Gaussian process --- by the value, not the information, of the acquired
+point --- beats a line search on three quarters of high-dimensional
+tasks, which is where the reduction should matter.
 
 \section{The terminal-placement inner loop}
 
@@ -257,51 +257,53 @@ off-line probe where the objective's structure almost never is; the
 reduction is a fact about the posterior, not about any particular
 objective.
 
-\section{Aiming the plane with information}
+\section{Aiming the plane by expected improvement}
 
-Choose the off-line point by information instead of geometry. Fit a
-Gaussian process to the evaluated history and, among candidate points
-in the plane, take the one of highest expected improvement --- the
-value-of-information criterion behind the entropy-search family (Hennig
-and Schuler 2012; Wang and Jegelka 2017). The control is the same GP
-restricted to the line: identical guidance and budget, with only the
-off-line candidates removed, so the difference isolates the value of
-the off-line freedom.
+Choose the off-line point by an acquisition instead of geometry. Fit a
+Gaussian process to the evaluated history, and among candidate points
+in the plane take the one a chosen acquisition ranks highest; the
+control is the same GP restricted to the line, identical guidance and
+budget, so the difference isolates the off-line freedom. Two
+acquisitions separate cleanly (Table~\ref{tab:planargp}). Expected
+improvement, which favors points likely to beat the incumbent, wins
+increasingly with dimension. Pure information gain --- the
+posterior-variance criterion of entropy search (Hennig and Schuler
+2012; Wang and Jegelka 2017), which favors the most uncertain point
+regardless of value --- does not.
 
 \begin{table}[t]
 \centering
 \small
-\begin{tabular}{lc}
+\begin{tabular}{lcc}
 \toprule
-dimension & off-line beats on-line \\
+dimension & expected improvement & information gain \\
 \midrule
-$d=2$--$3$ & $0.42$ \\
-$d=4$--$7$ & $0.63$ \\
-$d\ge 8$   & $0.76$ \\
+$d=2$--$3$ & $0.42$ & $0.27$ \\
+$d=4$--$7$ & $0.63$ & $0.37$ \\
+$d\ge 8$   & $0.76$ & $0.29$ \\
 \midrule
-overall    & $0.62$ \\
+overall    & $0.62$ & $0.31$ \\
 \bottomrule
 \end{tabular}
 \caption{Fraction of seeds on which the GP-aimed off-line placement
-beats a GP restricted to the line, over the $222$-task catalog at ten
-seeds each. Both use the same GP guidance and budget; only the off-line
-candidates differ. The off-line freedom helps more as the dimension
-grows, on analytic objectives ($0.78$ at $d\ge8$) and simulators
-($0.71$) alike.}
+beats a GP restricted to the line, over the $223$-task catalog at ten
+seeds each. Both use the same GP and budget; only the off-line
+candidates and the acquisition differ. Expected improvement helps more
+as the dimension grows (analytic $0.78$, simulators $0.71$ at $d\ge8$);
+the pure information-gain criterion does not help at any dimension.}
 \label{tab:planargp}
 \end{table}
 
-Information inverts the fixed-geometry result
-(Table~\ref{tab:planargp}). Off-line placement is neutral in two
-dimensions, where a line-restricted GP already covers the small space,
-and it wins on three quarters of seeds by eight dimensions and above,
-against a control that guides the on-line point just as well. The
-geometry hands high-dimensional search a plane; information decides
-where in it to look; and the payoff grows in exactly the regime where a
-line search has the least room. What matters is the value of the
-acquired point, not its position, which is the reading the
-entropy-search literature would predict, and here it is what turns an
-exact reduction into a win.
+Value, not information, turns the reduction into a win. The off-line
+freedom pays only when the one probe is aimed at a point likely to be
+good; aiming it at the most uncertain point --- pure exploration --- is
+no better than the fixed geometry. The geometry hands high-dimensional
+search a plane, and expected improvement decides where in it to look;
+the payoff grows in exactly the regime where a line search has the
+least room. All of this is heuristic --- a greedy one-step acquisition
+on a fitted Gaussian process, not the exact policy of the theory paper
+--- and the only exact object it uses is the dimension reduction
+itself.
 
 \section{Related work}
 

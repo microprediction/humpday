@@ -20,22 +20,23 @@ rows = []
 for name, src, d, obj in tasks:
     try:
         res = {s: [run(obj, d, s, BUDGET, sd) for sd in range(SEEDS)]
-               for s in ("line","line_gp","planar_gp")}
+               for s in ("line_gp","planar_gp","planar_var")}
     except Exception:
         continue
-    vl = sum(1 for i in range(SEEDS) if res["planar_gp"][i] < res["line"][i])
-    vg = sum(1 for i in range(SEEDS) if res["planar_gp"][i] < res["line_gp"][i])
-    rows.append(dict(objective=name, source=src, d=d, gp_vs_line=vl,
-                     gp_vs_linegp=vg, seeds=SEEDS))
+    ei = sum(1 for i in range(SEEDS) if res["planar_gp"][i] < res["line_gp"][i])
+    var = sum(1 for i in range(SEEDS) if res["planar_var"][i] < res["line_gp"][i])
+    rows.append(dict(objective=name, source=src, d=d, ei_vs_linegp=ei,
+                     var_vs_linegp=var, seeds=SEEDS))
     print(f"[{len(rows):3d}] {name:22s} {src:8s} d={d:<3} "
-          f"gp>line {vl}/{SEEDS}  gp>line_gp {vg}/{SEEDS}", flush=True)
-    json.dump(dict(rows=rows), open(os.path.join(HERE,"planar_gp_broad.json"),"w"))
+          f"EI {ei}/{SEEDS}  VAR {var}/{SEEDS}", flush=True)
+    json.dump(dict(rows=rows), open(os.path.join(HERE,"planar_gp_valinfo.json"),"w"))
 def rate(sel,key):
     w=sum(r[key] for r in rows if sel(r)); t=sum(r["seeds"] for r in rows if sel(r))
     return w,t,(w/t if t else float("nan"))
-print("\n=== planar_gp vs line_gp (off-line value, GP held fixed) ===")
-for lab,lo,hi in (("d=2-3",2,3),("d=4-7",4,7),("d>=8",8,999)):
-    r=rate(lambda x,lo=lo,hi=hi: lo<=x["d"]<=hi,"gp_vs_linegp")
-    print(f"  {lab:7s}: {r[2]:.3f} ({r[0]}/{r[1]})")
-json.dump(dict(rows=rows), open(os.path.join(HERE,"planar_gp_broad.json"),"w"), indent=2)
+print("\n=== off-line vs line_gp: EI(value) vs VAR(information) ===")
+for key,lab in (("ei_vs_linegp","EI value"),("var_vs_linegp","VAR info")):
+    for l2,lo,hi in (("d=2-3",2,3),("d=4-7",4,7),("d>=8",8,999)):
+        r=rate(lambda x,lo=lo,hi=hi: lo<=x["d"]<=hi,key)
+        print(f"  {lab:9s} {l2:7s}: {r[2]:.3f} ({r[0]}/{r[1]})")
+json.dump(dict(rows=rows), open(os.path.join(HERE,"planar_gp_valinfo.json"),"w"), indent=2)
 print("done")
