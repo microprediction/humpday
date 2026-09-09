@@ -44,8 +44,8 @@ reduction into a win.
 
 Derivative-free optimizers reduce a high-dimensional problem to a
 sequence of one-dimensional subproblems: pick a direction, place a few
-evaluations along it, return a point. Classical inner loops --- golden
-section, Brent --- assume smooth unimodal slices and spend eight to ten
+evaluations along it, return a point. Classical inner loops, golden
+section and Brent, assume smooth unimodal slices and spend eight to ten
 evaluations resolving each one. On the rough slices of real physics
 objectives that assumption fails, and on a tight global budget the cost
 of each line is what binds.
@@ -66,8 +66,8 @@ the placement geometry is not confined to a line: after two
 observations under a radial prior the next-point decision collapses to
 a plane, exactly, in any ambient dimension. A fixed off-line placement
 does not pay, but one aimed by expected improvement under a fitted
-Gaussian process --- by the value, not the information, of the acquired
-point --- beats a line search on three quarters of high-dimensional
+Gaussian process, by the value rather than the information of the
+acquired point, beats a line search on three quarters of high-dimensional
 tasks, which is where the reduction should matter.
 
 \section{The terminal-placement inner loop}
@@ -80,8 +80,8 @@ when the rule dictates and places the third otherwise. It is a heuristic
 adaptation, not the exact policy: it interpolates the opening-correlation
 table, extrapolates it above the tabulated range, forces flight after
 three stalled lines, and clips placements to the unit cube. The last is
-a genuine approximation --- choosing an unconstrained exterior winner and
-then clipping can lose to the best feasible interior point --- and we
+a genuine approximation: choosing an unconstrained exterior winner and
+then clipping can lose to the best feasible interior point, and we
 flag it rather than hide it.
 
 We benchmark \texttt{grass3} inside a common outer loop, iterated
@@ -94,7 +94,7 @@ placement, on matched directions and seeds.
 The objectives are the application suite of the HumpDay package (Cotton
 2021): small physics and engineering problems in which a point in the
 unit cube sets a deterministic simulator's controls and the objective is
-the outcome --- a break in pool, pins felled in bowling, a trebuchet's
+the outcome: a break in pool, pins felled in bowling, a trebuchet's
 range, a wind-farm layout. We use the 22 dynamics-simulating problems;
 their one-dimensional slices run from smooth to collision-cascade rough.
 
@@ -152,13 +152,13 @@ placement altogether helps on twelve of the twenty-two objectives,
 sometimes by a wide margin, so the benchmark speaks for evaluation
 economy and online adaptation more than for the placement theorem in
 particular. A control on exact exponentiated-OU fields, the model's own
-landscape, loses to broad probing --- terminal-placement wins do not
+landscape, loses to broad probing: terminal-placement wins do not
 come from the objectives resembling an OU path.
 
 As a standalone optimizer rather than an inner loop, a budget-truncated
 two-shot form is mid-field against a panel of eleven standard methods,
 best at the smallest budgets and overtaken by population methods as the
-budget grows --- the expected place for a rule built from a
+budget grows, the expected place for a rule built from a
 few-evaluation terminal-placement model.
 
 \section{From lines to planes}
@@ -207,9 +207,8 @@ One adjustment is necessary, and the opening constant closes. The
 theory paper rewards the terminal recommendation, whereas an optimizer
 keeps the best evaluated point, so its opening maximizes
 $\E[\max(e^{b},e^{X})]$ over the probe correlation $\rho$, with
-$X\sim N(b\rho,1-\rho^{2})$. The geometric reduction is unaffected --- it
-is a fact about the posterior, not the objective --- but the opening
-coefficient is not.
+$X\sim N(b\rho,1-\rho^{2})$. The geometric reduction is unaffected, a fact about the
+posterior and not the objective. But the opening coefficient is not.
 
 \begin{proposition}[Expected-improvement opening]
 For the best-evaluated objective the optimal opening correlation
@@ -229,15 +228,15 @@ with $X=b\rho+\sqrt{1-\rho^{2}}X'$ and $X'\sim N(0,1)$, gives at
 $b\downarrow0$ the ratio
 $\E[e^{Z};Z>0]=\kappa_{\mathrm{EI}}\,\E[Z e^{Z};Z>0]$, and
 $\E[e^{Z};Z>0]=e^{1/2}\Phi(1)$, $\E[Z e^{Z};Z>0]=e^{1/2}(\phi(1)+\Phi(1))$.
-So the optimizer opens \emph{wider} than the terminal rule ---
+So the optimizer opens \emph{wider} than the terminal rule,
 $\kappa_{\mathrm{EI}}=0.777$ against the theory paper's
-$\kappa_0=0.540$ --- because a fresh high draw is worth more when the
+$\kappa_0=0.540$, because a fresh high draw is worth more when the
 best point is kept rather than a mean recommendation. And it is
 elementary, where $\kappa_0$ is only characterized by a transcendental
 equation. A full planar-search implementation is the remaining
 empirical step.
 
-\section{Does the off-line placement help?}
+\section{The fixed off-line placement}
 
 A budget-matched experiment isolates the planar move: two evaluations
 per step along a shared random direction, differing only in where the
@@ -245,8 +244,8 @@ second goes. The \emph{line} keeps it on the line, extrapolating past
 the trial when it improved and reflecting when it did not; the
 \emph{plane} puts it at a fixed equilateral apex off the line. Start
 point, direction stream, and adaptive step are identical. Across the
-whole catalog --- $51$ analytic objectives at $d\in\{2,5,10\}$ and $69$
-physics simulators at native dimensions, $222$ tasks --- the fixed
+whole catalog of $51$ analytic objectives at $d\in\{2,5,10\}$ and $69$
+physics simulators at native dimensions, $222$ tasks in all, the fixed
 off-line move wins on only $0.26$ of seeds, below one half at every
 dimension ($0.30$ at $d\le3$, $0.21$ at $d\ge8$), and a
 momentum-estimated transverse direction is no better.
@@ -266,10 +265,10 @@ control is the same GP restricted to the line, identical guidance and
 budget, so the difference isolates the off-line freedom. Two
 acquisitions separate cleanly (Table~\ref{tab:planargp}). Expected
 improvement, which favors points likely to beat the incumbent, wins
-increasingly with dimension. Pure information gain --- the
+increasingly with dimension. Pure information gain, the
 posterior-variance criterion of entropy search (Hennig and Schuler
-2012; Wang and Jegelka 2017), which favors the most uncertain point
-regardless of value --- does not.
+2012; Wang and Jegelka 2017) that favors the most uncertain point
+regardless of value, does not.
 
 \begin{table}[t]
 \centering
@@ -296,14 +295,13 @@ the pure information-gain criterion does not help at any dimension.}
 
 Value, not information, turns the reduction into a win. The off-line
 freedom pays only when the one probe is aimed at a point likely to be
-good; aiming it at the most uncertain point --- pure exploration --- is
+good; aiming it at the most uncertain point, pure exploration, is
 no better than the fixed geometry. The geometry hands high-dimensional
 search a plane, and expected improvement decides where in it to look;
 the payoff grows in exactly the regime where a line search has the
-least room. All of this is heuristic --- a greedy one-step acquisition
-on a fitted Gaussian process, not the exact policy of the theory paper
---- and the only exact object it uses is the dimension reduction
-itself.
+least room. All of this is heuristic: a greedy one-step acquisition
+on a fitted Gaussian process, not the exact policy of the theory paper.
+The only exact object it uses is the dimension reduction itself.
 
 \section{Related work}
 
