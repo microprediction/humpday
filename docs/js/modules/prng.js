@@ -14,6 +14,8 @@ const MASK64 = (1n << 64n) - 1n;
 const PCG_MULT = 6364136223846793005n;
 
 const LN2 = 0.6931471805599453;
+const LN2_HI = 6.93147180369123816490e-01;
+const LN2_LO = 1.90821492927058770002e-10;
 const SQRT2 = 1.4142135623730951;
 const INV_SQRT2 = 0.7071067811865476;
 const LOG_TERMS = 25;
@@ -43,6 +45,23 @@ function portableLog(x) {
         k += 1;
     }
     return 2.0 * s + e * LN2;
+}
+
+function portableExp(x) {
+    if (Number.isNaN(x)) return x;
+    if (x > 710.0) return Infinity;
+    if (x < -745.0) return 0.0;
+    let k = Math.floor(x / LN2 + 0.5);
+    const r = (x - k * LN2_HI) - k * LN2_LO;
+    let term = 1.0;
+    let s = 1.0;
+    for (let i = 1; i < 26; i++) {
+        term = term * r / i;
+        s = s + term;
+    }
+    while (k > 0) { s = s * 2.0; k -= 1; }
+    while (k < 0) { s = s * 0.5; k += 1; }
+    return s;
 }
 
 class PCG32 {
@@ -149,8 +168,9 @@ class PCG32 {
 }
 
 if (typeof module !== "undefined" && module.exports) {
-    module.exports = { PCG32, portableLog };
+    module.exports = { PCG32, portableLog, portableExp };
 } else {
     window.PCG32 = PCG32;
     window.portableLog = portableLog;
+    window.portableExp = portableExp;
 }

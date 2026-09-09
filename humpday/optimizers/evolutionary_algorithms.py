@@ -10,6 +10,7 @@ import math
 import random
 
 from humpday import _array as _A
+from humpday._prng import portable_exp, portable_log
 
 from .base import BaseOptimizer, Batch
 
@@ -276,7 +277,12 @@ class SimulatedAnnealing(BaseOptimizer):
             # final_temp by the end of the restart's iteration count.
             initial_temp = 1.0
             final_temp = 1e-6
-            cooling = (final_temp / initial_temp) ** (1.0 / max(1, trials_per_restart))
+            # portable_exp/log, not ** : libm pow differs across platforms
+            # in the last ulp (same fix as HillClimbing's decay constant).
+            cooling = portable_exp(
+                (1.0 / max(1, trials_per_restart))
+                * portable_log(final_temp / initial_temp)
+            )
             temp = initial_temp
 
             for _iteration in range(trials_per_restart):
@@ -294,7 +300,9 @@ class SimulatedAnnealing(BaseOptimizer):
 
                 # Metropolis criterion.
                 delta = new_fx - fx
-                if delta < 0 or _A.random_scalar() < _A.exp(-delta / max(temp, 1e-12)):
+                if delta < 0 or _A.random_scalar() < portable_exp(
+                    -delta / max(temp, 1e-12)
+                ):
                     x, fx = new_x, new_fx
 
                 temp *= cooling
@@ -951,7 +959,10 @@ class FireflyAlgorithm(BaseOptimizer):
 
                     if intensities[j] < intensities[i]:  # j is brighter
                         r = _A.norm(fireflies[i] - fireflies[j])
-                        beta = beta0 * _A.exp(-gamma * r * r)
+                        # portable_exp, not libm exp: V8's Math.exp is
+                        # fdlibm-derived and diverges from platform libm
+                        # in the last ulp.
+                        beta = beta0 * portable_exp(-gamma * r * r)
 
                         # Move firefly i toward the brighter firefly j,
                         # with a small random jitter.
@@ -1169,7 +1180,11 @@ class HillClimbing(BaseOptimizer):
         # Geometric decay so that after `n_trials - 1` iterations
         # sigma == sigma_final. Matches the reference adapter
         # line-for-line.
-        decay = (sigma_final / sigma_init) ** (1.0 / max(1, self.n_trials - 1))
+        # portable_exp/log, not ** : libm pow differs across platforms in
+        # the last ulp (V8-on-Linux vs CPython caught by vector replay).
+        decay = portable_exp(
+            (1.0 / max(1, self.n_trials - 1)) * portable_log(sigma_final / sigma_init)
+        )
         sigma = sigma_init
 
         while self.evaluations < self.n_trials:
