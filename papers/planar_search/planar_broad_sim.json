@@ -1,0 +1,558 @@
+{
+  "budget": 90,
+  "seeds": 12,
+  "rows": [
+    {
+      "objective": "ad_budget_allocation",
+      "source": "sim",
+      "d": 8,
+      "planar_wins": 2,
+      "informed_wins": 0,
+      "seeds": 12
+    },
+    {
+      "objective": "airfoil_shape",
+      "source": "sim",
+      "d": 6,
+      "planar_wins": 1,
+      "informed_wins": 4,
+      "seeds": 12
+    },
+    {
+      "objective": "algo_trading",
+      "source": "sim",
+      "d": 4,
+      "planar_wins": 3,
+      "informed_wins": 4,
+      "seeds": 12
+    },
+    {
+      "objective": "antenna_array",
+      "source": "sim",
+      "d": 7,
+      "planar_wins": 5,
+      "informed_wins": 3,
+      "seeds": 12
+    },
+    {
+      "objective": "battery_dispatch",
+      "source": "sim",
+      "d": 24,
+      "planar_wins": 0,
+      "informed_wins": 2,
+      "seeds": 12
+    },
+    {
+      "objective": "brachistochrone",
+      "source": "sim",
+      "d": 8,
+      "planar_wins": 2,
+      "informed_wins": 1,
+      "seeds": 12
+    },
+    {
+      "objective": "bridge_truss",
+      "source": "sim",
+      "d": 10,
+      "planar_wins": 3,
+      "informed_wins": 3,
+      "seeds": 12
+    },
+    {
+      "objective": "cantilever_beam",
+      "source": "sim",
+      "d": 5,
+      "planar_wins": 4,
+      "informed_wins": 2,
+      "seeds": 12
+    },
+    {
+      "objective": "cart_pole_policy",
+      "source": "sim",
+      "d": 5,
+      "planar_wins": 2,
+      "informed_wins": 2,
+      "seeds": 12
+    },
+    {
+      "objective": "cassini_minlp",
+      "source": "sim",
+      "d": 10,
+      "planar_wins": 3,
+      "informed_wins": 2,
+      "seeds": 12
+    },
+    {
+      "objective": "cell_tower_power",
+      "source": "sim",
+      "d": 6,
+      "planar_wins": 1,
+      "informed_wins": 1,
+      "seeds": 12
+    },
+    {
+      "objective": "circle_packing",
+      "source": "sim",
+      "d": 12,
+      "planar_wins": 2,
+      "informed_wins": 2,
+      "seeds": 12
+    },
+    {
+      "objective": "cocktail_blend",
+      "source": "sim",
+      "d": 5,
+      "planar_wins": 5,
+      "informed_wins": 5,
+      "seeds": 12
+    },
+    {
+      "objective": "crop_irrigation",
+      "source": "sim",
+      "d": 12,
+      "planar_wins": 0,
+      "informed_wins": 4,
+      "seeds": 12
+    },
+    {
+      "objective": "curling",
+      "source": "sim",
+      "d": 4,
+      "planar_wins": 0,
+      "informed_wins": 1,
+      "seeds": 12
+    },
+    {
+      "objective": "darts_aim",
+      "source": "sim",
+      "d": 2,
+      "planar_wins": 7,
+      "informed_wins": 6,
+      "seeds": 12
+    },
+    {
+      "objective": "diet_problem",
+      "source": "sim",
+      "d": 8,
+      "planar_wins": 6,
+      "informed_wins": 6,
+      "seeds": 12
+    },
+    {
+      "objective": "district_cooling",
+      "source": "sim",
+      "d": 5,
+      "planar_wins": 4,
+      "informed_wins": 4,
+      "seeds": 12
+    },
+    {
+      "objective": "ebola_response",
+      "source": "sim",
+      "d": 8,
+      "planar_wins": 4,
+      "informed_wins": 7,
+      "seeds": 12
+    },
+    {
+      "objective": "economic_dispatch_valve",
+      "source": "sim",
+      "d": 3,
+      "planar_wins": 6,
+      "informed_wins": 7,
+      "seeds": 12
+    },
+    {
+      "objective": "enzyme_kinetics",
+      "source": "sim",
+      "d": 2,
+      "planar_wins": 3,
+      "informed_wins": 3,
+      "seeds": 12
+    },
+    {
+      "objective": "espresso_dialin",
+      "source": "sim",
+      "d": 4,
+      "planar_wins": 1,
+      "informed_wins": 2,
+      "seeds": 12
+    },
+    {
+      "objective": "ev_fleet_charging",
+      "source": "sim",
+      "d": 24,
+      "planar_wins": 6,
+      "informed_wins": 6,
+      "seeds": 12
+    },
+    {
+      "objective": "facility_location",
+      "source": "sim",
+      "d": 6,
+      "planar_wins": 3,
+      "informed_wins": 2,
+      "seeds": 12
+    },
+    {
+      "objective": "fin_array_cooling",
+      "source": "sim",
+      "d": 8,
+      "planar_wins": 0,
+      "informed_wins": 0,
+      "seeds": 12
+    },
+    {
+      "objective": "fir_filter_design",
+      "source": "sim",
+      "d": 11,
+      "planar_wins": 3,
+      "informed_wins": 0,
+      "seeds": 12
+    },
+    {
+      "objective": "free_kick",
+      "source": "sim",
+      "d": 4,
+      "planar_wins": 4,
+      "informed_wins": 4,
+      "seeds": 12
+    },
+    {
+      "objective": "gear_ratios",
+      "source": "sim",
+      "d": 4,
+      "planar_wins": 5,
+      "informed_wins": 5,
+      "seeds": 12
+    },
+    {
+      "objective": "goalkeeper_punt",
+      "source": "sim",
+      "d": 4,
+      "planar_wins": 1,
+      "informed_wins": 6,
+      "seeds": 12
+    },
+    {
+      "objective": "groundwater_remediation",
+      "source": "sim",
+      "d": 6,
+      "planar_wins": 4,
+      "informed_wins": 4,
+      "seeds": 12
+    },
+    {
+      "objective": "heat_exchanger_network",
+      "source": "sim",
+      "d": 6,
+      "planar_wins": 5,
+      "informed_wins": 6,
+      "seeds": 12
+    },
+    {
+      "objective": "hvac_nyc",
+      "source": "sim",
+      "d": 24,
+      "planar_wins": 0,
+      "informed_wins": 0,
+      "seeds": 12
+    },
+    {
+      "objective": "index_tracking",
+      "source": "sim",
+      "d": 8,
+      "planar_wins": 0,
+      "informed_wins": 1,
+      "seeds": 12
+    },
+    {
+      "objective": "inventory_policy",
+      "source": "sim",
+      "d": 2,
+      "planar_wins": 7,
+      "informed_wins": 5,
+      "seeds": 12
+    },
+    {
+      "objective": "kalman_tuning",
+      "source": "sim",
+      "d": 2,
+      "planar_wins": 6,
+      "informed_wins": 5,
+      "seeds": 12
+    },
+    {
+      "objective": "kmeans_clustering",
+      "source": "sim",
+      "d": 6,
+      "planar_wins": 4,
+      "informed_wins": 1,
+      "seeds": 12
+    },
+    {
+      "objective": "lennard_jones_cluster",
+      "source": "sim",
+      "d": 15,
+      "planar_wins": 4,
+      "informed_wins": 5,
+      "seeds": 12
+    },
+    {
+      "objective": "lens_design",
+      "source": "sim",
+      "d": 4,
+      "planar_wins": 3,
+      "informed_wins": 5,
+      "seeds": 12
+    },
+    {
+      "objective": "microgrid_dispatch",
+      "source": "sim",
+      "d": 24,
+      "planar_wins": 6,
+      "informed_wins": 2,
+      "seeds": 12
+    },
+    {
+      "objective": "mini_golf",
+      "source": "sim",
+      "d": 3,
+      "planar_wins": 1,
+      "informed_wins": 2,
+      "seeds": 12
+    },
+    {
+      "objective": "multi_exponential_fit",
+      "source": "sim",
+      "d": 4,
+      "planar_wins": 3,
+      "informed_wins": 5,
+      "seeds": 12
+    },
+    {
+      "objective": "options_hedging",
+      "source": "sim",
+      "d": 12,
+      "planar_wins": 2,
+      "informed_wins": 4,
+      "seeds": 12
+    },
+    {
+      "objective": "pool",
+      "source": "sim",
+      "d": 3,
+      "planar_wins": 4,
+      "informed_wins": 5,
+      "seeds": 12
+    },
+    {
+      "objective": "portfolio_frontier",
+      "source": "sim",
+      "d": 7,
+      "planar_wins": 6,
+      "informed_wins": 7,
+      "seeds": 12
+    },
+    {
+      "objective": "pressure_vessel",
+      "source": "sim",
+      "d": 4,
+      "planar_wins": 6,
+      "informed_wins": 6,
+      "seeds": 12
+    },
+    {
+      "objective": "protein_fold_toy",
+      "source": "sim",
+      "d": 11,
+      "planar_wins": 4,
+      "informed_wins": 4,
+      "seeds": 12
+    },
+    {
+      "objective": "queue_staffing",
+      "source": "sim",
+      "d": 6,
+      "planar_wins": 8,
+      "informed_wins": 4,
+      "seeds": 12
+    },
+    {
+      "objective": "radiation_therapy",
+      "source": "sim",
+      "d": 4,
+      "planar_wins": 5,
+      "informed_wins": 6,
+      "seeds": 12
+    },
+    {
+      "objective": "reactor_profile",
+      "source": "sim",
+      "d": 10,
+      "planar_wins": 5,
+      "informed_wins": 2,
+      "seeds": 12
+    },
+    {
+      "objective": "reservoir_release",
+      "source": "sim",
+      "d": 12,
+      "planar_wins": 4,
+      "informed_wins": 0,
+      "seeds": 12
+    },
+    {
+      "objective": "revenue_pricing",
+      "source": "sim",
+      "d": 8,
+      "planar_wins": 4,
+      "informed_wins": 1,
+      "seeds": 12
+    },
+    {
+      "objective": "robot_arm",
+      "source": "sim",
+      "d": 6,
+      "planar_wins": 2,
+      "informed_wins": 2,
+      "seeds": 12
+    },
+    {
+      "objective": "rocket_landing",
+      "source": "sim",
+      "d": 12,
+      "planar_wins": 2,
+      "informed_wins": 5,
+      "seeds": 12
+    },
+    {
+      "objective": "satellite_phasing",
+      "source": "sim",
+      "d": 6,
+      "planar_wins": 5,
+      "informed_wins": 6,
+      "seeds": 12
+    },
+    {
+      "objective": "sensor_localization",
+      "source": "sim",
+      "d": 8,
+      "planar_wins": 1,
+      "informed_wins": 1,
+      "seeds": 12
+    },
+    {
+      "objective": "signal_deconvolution",
+      "source": "sim",
+      "d": 12,
+      "planar_wins": 2,
+      "informed_wins": 2,
+      "seeds": 12
+    },
+    {
+      "objective": "slingshot",
+      "source": "sim",
+      "d": 3,
+      "planar_wins": 1,
+      "informed_wins": 1,
+      "seeds": 12
+    },
+    {
+      "objective": "solar_farm_layout",
+      "source": "sim",
+      "d": 8,
+      "planar_wins": 3,
+      "informed_wins": 1,
+      "seeds": 12
+    },
+    {
+      "objective": "speed_reducer",
+      "source": "sim",
+      "d": 7,
+      "planar_wins": 2,
+      "informed_wins": 3,
+      "seeds": 12
+    },
+    {
+      "objective": "tennis_doubles",
+      "source": "sim",
+      "d": 6,
+      "planar_wins": 5,
+      "informed_wins": 8,
+      "seeds": 12
+    },
+    {
+      "objective": "tension_spring",
+      "source": "sim",
+      "d": 3,
+      "planar_wins": 4,
+      "informed_wins": 7,
+      "seeds": 12
+    },
+    {
+      "objective": "traffic_signal",
+      "source": "sim",
+      "d": 8,
+      "planar_wins": 1,
+      "informed_wins": 1,
+      "seeds": 12
+    },
+    {
+      "objective": "transfer_window",
+      "source": "sim",
+      "d": 2,
+      "planar_wins": 3,
+      "informed_wins": 5,
+      "seeds": 12
+    },
+    {
+      "objective": "trebuchet",
+      "source": "sim",
+      "d": 4,
+      "planar_wins": 0,
+      "informed_wins": 0,
+      "seeds": 12
+    },
+    {
+      "objective": "vaccine_allocation",
+      "source": "sim",
+      "d": 8,
+      "planar_wins": 4,
+      "informed_wins": 4,
+      "seeds": 12
+    },
+    {
+      "objective": "walking_creature",
+      "source": "sim",
+      "d": 6,
+      "planar_wins": 2,
+      "informed_wins": 4,
+      "seeds": 12
+    },
+    {
+      "objective": "water_distribution",
+      "source": "sim",
+      "d": 8,
+      "planar_wins": 2,
+      "informed_wins": 2,
+      "seeds": 12
+    },
+    {
+      "objective": "welded_beam",
+      "source": "sim",
+      "d": 4,
+      "planar_wins": 4,
+      "informed_wins": 5,
+      "seeds": 12
+    },
+    {
+      "objective": "wind_farm",
+      "source": "sim",
+      "d": 16,
+      "planar_wins": 3,
+      "informed_wins": 6,
+      "seeds": 12
+    }
+  ]
+}

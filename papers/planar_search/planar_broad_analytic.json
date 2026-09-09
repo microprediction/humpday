@@ -1,0 +1,1230 @@
+{
+  "budget": 90,
+  "seeds": 16,
+  "rows": [
+    {
+      "objective": "schwefel_on_cube",
+      "source": "analytic",
+      "d": 2,
+      "planar_wins": 9,
+      "informed_wins": 10,
+      "seeds": 16
+    },
+    {
+      "objective": "schwefel_on_cube",
+      "source": "analytic",
+      "d": 5,
+      "planar_wins": 5,
+      "informed_wins": 7,
+      "seeds": 16
+    },
+    {
+      "objective": "schwefel_on_cube",
+      "source": "analytic",
+      "d": 10,
+      "planar_wins": 6,
+      "informed_wins": 7,
+      "seeds": 16
+    },
+    {
+      "objective": "rastrigin_on_cube",
+      "source": "analytic",
+      "d": 2,
+      "planar_wins": 12,
+      "informed_wins": 11,
+      "seeds": 16
+    },
+    {
+      "objective": "rastrigin_on_cube",
+      "source": "analytic",
+      "d": 5,
+      "planar_wins": 7,
+      "informed_wins": 8,
+      "seeds": 16
+    },
+    {
+      "objective": "rastrigin_on_cube",
+      "source": "analytic",
+      "d": 10,
+      "planar_wins": 5,
+      "informed_wins": 5,
+      "seeds": 16
+    },
+    {
+      "objective": "griewank_on_cube",
+      "source": "analytic",
+      "d": 2,
+      "planar_wins": 9,
+      "informed_wins": 7,
+      "seeds": 16
+    },
+    {
+      "objective": "griewank_on_cube",
+      "source": "analytic",
+      "d": 5,
+      "planar_wins": 3,
+      "informed_wins": 0,
+      "seeds": 16
+    },
+    {
+      "objective": "griewank_on_cube",
+      "source": "analytic",
+      "d": 10,
+      "planar_wins": 5,
+      "informed_wins": 0,
+      "seeds": 16
+    },
+    {
+      "objective": "bohachevsky_on_cube",
+      "source": "analytic",
+      "d": 2,
+      "planar_wins": 9,
+      "informed_wins": 9,
+      "seeds": 16
+    },
+    {
+      "objective": "bohachevsky_on_cube",
+      "source": "analytic",
+      "d": 5,
+      "planar_wins": 5,
+      "informed_wins": 2,
+      "seeds": 16
+    },
+    {
+      "objective": "bohachevsky_on_cube",
+      "source": "analytic",
+      "d": 10,
+      "planar_wins": 4,
+      "informed_wins": 2,
+      "seeds": 16
+    },
+    {
+      "objective": "rosenbrock_on_cube",
+      "source": "analytic",
+      "d": 2,
+      "planar_wins": 4,
+      "informed_wins": 6,
+      "seeds": 16
+    },
+    {
+      "objective": "rosenbrock_on_cube",
+      "source": "analytic",
+      "d": 5,
+      "planar_wins": 4,
+      "informed_wins": 4,
+      "seeds": 16
+    },
+    {
+      "objective": "rosenbrock_on_cube",
+      "source": "analytic",
+      "d": 10,
+      "planar_wins": 5,
+      "informed_wins": 1,
+      "seeds": 16
+    },
+    {
+      "objective": "shaffer_on_cube",
+      "source": "analytic",
+      "d": 2,
+      "planar_wins": 8,
+      "informed_wins": 7,
+      "seeds": 16
+    },
+    {
+      "objective": "shaffer_on_cube",
+      "source": "analytic",
+      "d": 5,
+      "planar_wins": 9,
+      "informed_wins": 8,
+      "seeds": 16
+    },
+    {
+      "objective": "shaffer_on_cube",
+      "source": "analytic",
+      "d": 10,
+      "planar_wins": 7,
+      "informed_wins": 1,
+      "seeds": 16
+    },
+    {
+      "objective": "shekel_on_cube",
+      "source": "analytic",
+      "d": 2,
+      "planar_wins": 5,
+      "informed_wins": 6,
+      "seeds": 16
+    },
+    {
+      "objective": "shekel_on_cube",
+      "source": "analytic",
+      "d": 5,
+      "planar_wins": 3,
+      "informed_wins": 1,
+      "seeds": 16
+    },
+    {
+      "objective": "shekel_on_cube",
+      "source": "analytic",
+      "d": 10,
+      "planar_wins": 3,
+      "informed_wins": 2,
+      "seeds": 16
+    },
+    {
+      "objective": "deap_combo1_on_cube",
+      "source": "analytic",
+      "d": 2,
+      "planar_wins": 9,
+      "informed_wins": 8,
+      "seeds": 16
+    },
+    {
+      "objective": "deap_combo1_on_cube",
+      "source": "analytic",
+      "d": 5,
+      "planar_wins": 2,
+      "informed_wins": 1,
+      "seeds": 16
+    },
+    {
+      "objective": "deap_combo1_on_cube",
+      "source": "analytic",
+      "d": 10,
+      "planar_wins": 5,
+      "informed_wins": 0,
+      "seeds": 16
+    },
+    {
+      "objective": "deap_combo2_on_cube",
+      "source": "analytic",
+      "d": 2,
+      "planar_wins": 8,
+      "informed_wins": 6,
+      "seeds": 16
+    },
+    {
+      "objective": "deap_combo2_on_cube",
+      "source": "analytic",
+      "d": 5,
+      "planar_wins": 9,
+      "informed_wins": 8,
+      "seeds": 16
+    },
+    {
+      "objective": "deap_combo2_on_cube",
+      "source": "analytic",
+      "d": 10,
+      "planar_wins": 7,
+      "informed_wins": 1,
+      "seeds": 16
+    },
+    {
+      "objective": "deap_combo3_on_cube",
+      "source": "analytic",
+      "d": 2,
+      "planar_wins": 4,
+      "informed_wins": 6,
+      "seeds": 16
+    },
+    {
+      "objective": "deap_combo3_on_cube",
+      "source": "analytic",
+      "d": 5,
+      "planar_wins": 4,
+      "informed_wins": 4,
+      "seeds": 16
+    },
+    {
+      "objective": "deap_combo3_on_cube",
+      "source": "analytic",
+      "d": 10,
+      "planar_wins": 5,
+      "informed_wins": 1,
+      "seeds": 16
+    },
+    {
+      "objective": "styblinski_tang_on_cube",
+      "source": "analytic",
+      "d": 2,
+      "planar_wins": 5,
+      "informed_wins": 5,
+      "seeds": 16
+    },
+    {
+      "objective": "styblinski_tang_on_cube",
+      "source": "analytic",
+      "d": 5,
+      "planar_wins": 3,
+      "informed_wins": 1,
+      "seeds": 16
+    },
+    {
+      "objective": "styblinski_tang_on_cube",
+      "source": "analytic",
+      "d": 10,
+      "planar_wins": 3,
+      "informed_wins": 2,
+      "seeds": 16
+    },
+    {
+      "objective": "zakharov_on_cube",
+      "source": "analytic",
+      "d": 2,
+      "planar_wins": 7,
+      "informed_wins": 5,
+      "seeds": 16
+    },
+    {
+      "objective": "zakharov_on_cube",
+      "source": "analytic",
+      "d": 5,
+      "planar_wins": 4,
+      "informed_wins": 2,
+      "seeds": 16
+    },
+    {
+      "objective": "zakharov_on_cube",
+      "source": "analytic",
+      "d": 10,
+      "planar_wins": 2,
+      "informed_wins": 3,
+      "seeds": 16
+    },
+    {
+      "objective": "salomon_on_cube",
+      "source": "analytic",
+      "d": 2,
+      "planar_wins": 5,
+      "informed_wins": 5,
+      "seeds": 16
+    },
+    {
+      "objective": "salomon_on_cube",
+      "source": "analytic",
+      "d": 5,
+      "planar_wins": 3,
+      "informed_wins": 1,
+      "seeds": 16
+    },
+    {
+      "objective": "salomon_on_cube",
+      "source": "analytic",
+      "d": 10,
+      "planar_wins": 3,
+      "informed_wins": 2,
+      "seeds": 16
+    },
+    {
+      "objective": "rotated_hyper_ellipsoid_on_cube",
+      "source": "analytic",
+      "d": 2,
+      "planar_wins": 5,
+      "informed_wins": 5,
+      "seeds": 16
+    },
+    {
+      "objective": "rotated_hyper_ellipsoid_on_cube",
+      "source": "analytic",
+      "d": 5,
+      "planar_wins": 3,
+      "informed_wins": 1,
+      "seeds": 16
+    },
+    {
+      "objective": "rotated_hyper_ellipsoid_on_cube",
+      "source": "analytic",
+      "d": 10,
+      "planar_wins": 3,
+      "informed_wins": 2,
+      "seeds": 16
+    },
+    {
+      "objective": "qing_on_cube",
+      "source": "analytic",
+      "d": 2,
+      "planar_wins": 5,
+      "informed_wins": 5,
+      "seeds": 16
+    },
+    {
+      "objective": "qing_on_cube",
+      "source": "analytic",
+      "d": 5,
+      "planar_wins": 3,
+      "informed_wins": 1,
+      "seeds": 16
+    },
+    {
+      "objective": "qing_on_cube",
+      "source": "analytic",
+      "d": 10,
+      "planar_wins": 3,
+      "informed_wins": 2,
+      "seeds": 16
+    },
+    {
+      "objective": "michaelewicz_on_cube",
+      "source": "analytic",
+      "d": 2,
+      "planar_wins": 5,
+      "informed_wins": 5,
+      "seeds": 16
+    },
+    {
+      "objective": "michaelewicz_on_cube",
+      "source": "analytic",
+      "d": 5,
+      "planar_wins": 3,
+      "informed_wins": 1,
+      "seeds": 16
+    },
+    {
+      "objective": "michaelewicz_on_cube",
+      "source": "analytic",
+      "d": 10,
+      "planar_wins": 3,
+      "informed_wins": 2,
+      "seeds": 16
+    },
+    {
+      "objective": "landscapes_combo1_on_cube",
+      "source": "analytic",
+      "d": 2,
+      "planar_wins": 5,
+      "informed_wins": 5,
+      "seeds": 16
+    },
+    {
+      "objective": "landscapes_combo1_on_cube",
+      "source": "analytic",
+      "d": 5,
+      "planar_wins": 3,
+      "informed_wins": 1,
+      "seeds": 16
+    },
+    {
+      "objective": "landscapes_combo1_on_cube",
+      "source": "analytic",
+      "d": 10,
+      "planar_wins": 3,
+      "informed_wins": 2,
+      "seeds": 16
+    },
+    {
+      "objective": "landscapes_combo2_on_cube",
+      "source": "analytic",
+      "d": 2,
+      "planar_wins": 5,
+      "informed_wins": 5,
+      "seeds": 16
+    },
+    {
+      "objective": "landscapes_combo2_on_cube",
+      "source": "analytic",
+      "d": 5,
+      "planar_wins": 3,
+      "informed_wins": 1,
+      "seeds": 16
+    },
+    {
+      "objective": "landscapes_combo2_on_cube",
+      "source": "analytic",
+      "d": 10,
+      "planar_wins": 3,
+      "informed_wins": 2,
+      "seeds": 16
+    },
+    {
+      "objective": "landscapes_combo3_on_cube",
+      "source": "analytic",
+      "d": 2,
+      "planar_wins": 9,
+      "informed_wins": 7,
+      "seeds": 16
+    },
+    {
+      "objective": "landscapes_combo3_on_cube",
+      "source": "analytic",
+      "d": 5,
+      "planar_wins": 3,
+      "informed_wins": 0,
+      "seeds": 16
+    },
+    {
+      "objective": "landscapes_combo3_on_cube",
+      "source": "analytic",
+      "d": 10,
+      "planar_wins": 3,
+      "informed_wins": 4,
+      "seeds": 16
+    },
+    {
+      "objective": "paviani_on_cube",
+      "source": "analytic",
+      "d": 2,
+      "planar_wins": 3,
+      "informed_wins": 5,
+      "seeds": 16
+    },
+    {
+      "objective": "paviani_on_cube",
+      "source": "analytic",
+      "d": 5,
+      "planar_wins": 4,
+      "informed_wins": 6,
+      "seeds": 16
+    },
+    {
+      "objective": "paviani_on_cube",
+      "source": "analytic",
+      "d": 10,
+      "planar_wins": 0,
+      "informed_wins": 3,
+      "seeds": 16
+    },
+    {
+      "objective": "damavandi_on_cube",
+      "source": "analytic",
+      "d": 2,
+      "planar_wins": 0,
+      "informed_wins": 0,
+      "seeds": 16
+    },
+    {
+      "objective": "damavandi_on_cube",
+      "source": "analytic",
+      "d": 5,
+      "planar_wins": 0,
+      "informed_wins": 0,
+      "seeds": 16
+    },
+    {
+      "objective": "damavandi_on_cube",
+      "source": "analytic",
+      "d": 10,
+      "planar_wins": 0,
+      "informed_wins": 0,
+      "seeds": 16
+    },
+    {
+      "objective": "rosenbrock_modified_on_cube",
+      "source": "analytic",
+      "d": 2,
+      "planar_wins": 0,
+      "informed_wins": 1,
+      "seeds": 16
+    },
+    {
+      "objective": "rosenbrock_modified_on_cube",
+      "source": "analytic",
+      "d": 5,
+      "planar_wins": 6,
+      "informed_wins": 9,
+      "seeds": 16
+    },
+    {
+      "objective": "rosenbrock_modified_on_cube",
+      "source": "analytic",
+      "d": 10,
+      "planar_wins": 6,
+      "informed_wins": 8,
+      "seeds": 16
+    },
+    {
+      "objective": "ackley_on_cube",
+      "source": "analytic",
+      "d": 2,
+      "planar_wins": 7,
+      "informed_wins": 6,
+      "seeds": 16
+    },
+    {
+      "objective": "ackley_on_cube",
+      "source": "analytic",
+      "d": 5,
+      "planar_wins": 5,
+      "informed_wins": 5,
+      "seeds": 16
+    },
+    {
+      "objective": "ackley_on_cube",
+      "source": "analytic",
+      "d": 10,
+      "planar_wins": 5,
+      "informed_wins": 3,
+      "seeds": 16
+    },
+    {
+      "objective": "cross_on_cube",
+      "source": "analytic",
+      "d": 2,
+      "planar_wins": 1,
+      "informed_wins": 4,
+      "seeds": 16
+    },
+    {
+      "objective": "cross_on_cube",
+      "source": "analytic",
+      "d": 5,
+      "planar_wins": 3,
+      "informed_wins": 4,
+      "seeds": 16
+    },
+    {
+      "objective": "cross_on_cube",
+      "source": "analytic",
+      "d": 10,
+      "planar_wins": 3,
+      "informed_wins": 4,
+      "seeds": 16
+    },
+    {
+      "objective": "powers_on_cube",
+      "source": "analytic",
+      "d": 2,
+      "planar_wins": 9,
+      "informed_wins": 5,
+      "seeds": 16
+    },
+    {
+      "objective": "powers_on_cube",
+      "source": "analytic",
+      "d": 5,
+      "planar_wins": 4,
+      "informed_wins": 3,
+      "seeds": 16
+    },
+    {
+      "objective": "powers_on_cube",
+      "source": "analytic",
+      "d": 10,
+      "planar_wins": 6,
+      "informed_wins": 2,
+      "seeds": 16
+    },
+    {
+      "objective": "booth_on_cube",
+      "source": "analytic",
+      "d": 2,
+      "planar_wins": 9,
+      "informed_wins": 5,
+      "seeds": 16
+    },
+    {
+      "objective": "booth_on_cube",
+      "source": "analytic",
+      "d": 5,
+      "planar_wins": 4,
+      "informed_wins": 3,
+      "seeds": 16
+    },
+    {
+      "objective": "booth_on_cube",
+      "source": "analytic",
+      "d": 10,
+      "planar_wins": 6,
+      "informed_wins": 2,
+      "seeds": 16
+    },
+    {
+      "objective": "matyas_on_cube",
+      "source": "analytic",
+      "d": 2,
+      "planar_wins": 4,
+      "informed_wins": 5,
+      "seeds": 16
+    },
+    {
+      "objective": "matyas_on_cube",
+      "source": "analytic",
+      "d": 5,
+      "planar_wins": 6,
+      "informed_wins": 3,
+      "seeds": 16
+    },
+    {
+      "objective": "matyas_on_cube",
+      "source": "analytic",
+      "d": 10,
+      "planar_wins": 2,
+      "informed_wins": 0,
+      "seeds": 16
+    },
+    {
+      "objective": "drop_wave_on_cube",
+      "source": "analytic",
+      "d": 2,
+      "planar_wins": 11,
+      "informed_wins": 7,
+      "seeds": 16
+    },
+    {
+      "objective": "drop_wave_on_cube",
+      "source": "analytic",
+      "d": 5,
+      "planar_wins": 8,
+      "informed_wins": 7,
+      "seeds": 16
+    },
+    {
+      "objective": "drop_wave_on_cube",
+      "source": "analytic",
+      "d": 10,
+      "planar_wins": 11,
+      "informed_wins": 7,
+      "seeds": 16
+    },
+    {
+      "objective": "markowitz_analytic_on_cube",
+      "source": "analytic",
+      "d": 2,
+      "planar_wins": 8,
+      "informed_wins": 4,
+      "seeds": 16
+    },
+    {
+      "objective": "markowitz_analytic_on_cube",
+      "source": "analytic",
+      "d": 5,
+      "planar_wins": 4,
+      "informed_wins": 9,
+      "seeds": 16
+    },
+    {
+      "objective": "markowitz_analytic_on_cube",
+      "source": "analytic",
+      "d": 10,
+      "planar_wins": 1,
+      "informed_wins": 2,
+      "seeds": 16
+    },
+    {
+      "objective": "markowitz_realized_on_cube",
+      "source": "analytic",
+      "d": 2,
+      "planar_wins": 6,
+      "informed_wins": 5,
+      "seeds": 16
+    },
+    {
+      "objective": "markowitz_realized_on_cube",
+      "source": "analytic",
+      "d": 5,
+      "planar_wins": 6,
+      "informed_wins": 5,
+      "seeds": 16
+    },
+    {
+      "objective": "markowitz_realized_on_cube",
+      "source": "analytic",
+      "d": 10,
+      "planar_wins": 2,
+      "informed_wins": 4,
+      "seeds": 16
+    },
+    {
+      "objective": "markowitz_return_on_cube",
+      "source": "analytic",
+      "d": 2,
+      "planar_wins": 4,
+      "informed_wins": 5,
+      "seeds": 16
+    },
+    {
+      "objective": "markowitz_return_on_cube",
+      "source": "analytic",
+      "d": 5,
+      "planar_wins": 4,
+      "informed_wins": 1,
+      "seeds": 16
+    },
+    {
+      "objective": "markowitz_return_on_cube",
+      "source": "analytic",
+      "d": 10,
+      "planar_wins": 2,
+      "informed_wins": 0,
+      "seeds": 16
+    },
+    {
+      "objective": "markowitz_skew_on_cube",
+      "source": "analytic",
+      "d": 2,
+      "planar_wins": 6,
+      "informed_wins": 8,
+      "seeds": 16
+    },
+    {
+      "objective": "markowitz_skew_on_cube",
+      "source": "analytic",
+      "d": 5,
+      "planar_wins": 8,
+      "informed_wins": 10,
+      "seeds": 16
+    },
+    {
+      "objective": "markowitz_skew_on_cube",
+      "source": "analytic",
+      "d": 10,
+      "planar_wins": 3,
+      "informed_wins": 4,
+      "seeds": 16
+    },
+    {
+      "objective": "horse_dividends_on_cube",
+      "source": "analytic",
+      "d": 2,
+      "planar_wins": 0,
+      "informed_wins": 0,
+      "seeds": 16
+    },
+    {
+      "objective": "horse_dividends_on_cube",
+      "source": "analytic",
+      "d": 5,
+      "planar_wins": 2,
+      "informed_wins": 5,
+      "seeds": 16
+    },
+    {
+      "objective": "horse_dividends_on_cube",
+      "source": "analytic",
+      "d": 10,
+      "planar_wins": 2,
+      "informed_wins": 7,
+      "seeds": 16
+    },
+    {
+      "objective": "chat_0",
+      "source": "analytic",
+      "d": 2,
+      "planar_wins": 1,
+      "informed_wins": 1,
+      "seeds": 16
+    },
+    {
+      "objective": "chat_0",
+      "source": "analytic",
+      "d": 5,
+      "planar_wins": 5,
+      "informed_wins": 8,
+      "seeds": 16
+    },
+    {
+      "objective": "chat_0",
+      "source": "analytic",
+      "d": 10,
+      "planar_wins": 3,
+      "informed_wins": 12,
+      "seeds": 16
+    },
+    {
+      "objective": "chat_1",
+      "source": "analytic",
+      "d": 2,
+      "planar_wins": 0,
+      "informed_wins": 0,
+      "seeds": 16
+    },
+    {
+      "objective": "chat_1",
+      "source": "analytic",
+      "d": 5,
+      "planar_wins": 2,
+      "informed_wins": 5,
+      "seeds": 16
+    },
+    {
+      "objective": "chat_1",
+      "source": "analytic",
+      "d": 10,
+      "planar_wins": 1,
+      "informed_wins": 5,
+      "seeds": 16
+    },
+    {
+      "objective": "chat_2",
+      "source": "analytic",
+      "d": 2,
+      "planar_wins": 0,
+      "informed_wins": 0,
+      "seeds": 16
+    },
+    {
+      "objective": "chat_2",
+      "source": "analytic",
+      "d": 5,
+      "planar_wins": 1,
+      "informed_wins": 10,
+      "seeds": 16
+    },
+    {
+      "objective": "chat_2",
+      "source": "analytic",
+      "d": 10,
+      "planar_wins": 1,
+      "informed_wins": 1,
+      "seeds": 16
+    },
+    {
+      "objective": "chat_3",
+      "source": "analytic",
+      "d": 2,
+      "planar_wins": 9,
+      "informed_wins": 7,
+      "seeds": 16
+    },
+    {
+      "objective": "chat_3",
+      "source": "analytic",
+      "d": 5,
+      "planar_wins": 7,
+      "informed_wins": 8,
+      "seeds": 16
+    },
+    {
+      "objective": "chat_3",
+      "source": "analytic",
+      "d": 10,
+      "planar_wins": 5,
+      "informed_wins": 7,
+      "seeds": 16
+    },
+    {
+      "objective": "chat_4",
+      "source": "analytic",
+      "d": 2,
+      "planar_wins": 0,
+      "informed_wins": 0,
+      "seeds": 16
+    },
+    {
+      "objective": "chat_4",
+      "source": "analytic",
+      "d": 5,
+      "planar_wins": 1,
+      "informed_wins": 8,
+      "seeds": 16
+    },
+    {
+      "objective": "chat_4",
+      "source": "analytic",
+      "d": 10,
+      "planar_wins": 1,
+      "informed_wins": 5,
+      "seeds": 16
+    },
+    {
+      "objective": "chat_5",
+      "source": "analytic",
+      "d": 2,
+      "planar_wins": 3,
+      "informed_wins": 4,
+      "seeds": 16
+    },
+    {
+      "objective": "chat_5",
+      "source": "analytic",
+      "d": 5,
+      "planar_wins": 8,
+      "informed_wins": 7,
+      "seeds": 16
+    },
+    {
+      "objective": "chat_5",
+      "source": "analytic",
+      "d": 10,
+      "planar_wins": 6,
+      "informed_wins": 3,
+      "seeds": 16
+    },
+    {
+      "objective": "chat_6",
+      "source": "analytic",
+      "d": 2,
+      "planar_wins": 0,
+      "informed_wins": 0,
+      "seeds": 16
+    },
+    {
+      "objective": "chat_6",
+      "source": "analytic",
+      "d": 5,
+      "planar_wins": 3,
+      "informed_wins": 8,
+      "seeds": 16
+    },
+    {
+      "objective": "chat_6",
+      "source": "analytic",
+      "d": 10,
+      "planar_wins": 1,
+      "informed_wins": 5,
+      "seeds": 16
+    },
+    {
+      "objective": "chat_7",
+      "source": "analytic",
+      "d": 2,
+      "planar_wins": 0,
+      "informed_wins": 0,
+      "seeds": 16
+    },
+    {
+      "objective": "chat_7",
+      "source": "analytic",
+      "d": 5,
+      "planar_wins": 4,
+      "informed_wins": 5,
+      "seeds": 16
+    },
+    {
+      "objective": "chat_7",
+      "source": "analytic",
+      "d": 10,
+      "planar_wins": 3,
+      "informed_wins": 12,
+      "seeds": 16
+    },
+    {
+      "objective": "chat_8",
+      "source": "analytic",
+      "d": 2,
+      "planar_wins": 0,
+      "informed_wins": 0,
+      "seeds": 16
+    },
+    {
+      "objective": "chat_8",
+      "source": "analytic",
+      "d": 5,
+      "planar_wins": 5,
+      "informed_wins": 10,
+      "seeds": 16
+    },
+    {
+      "objective": "chat_8",
+      "source": "analytic",
+      "d": 10,
+      "planar_wins": 1,
+      "informed_wins": 1,
+      "seeds": 16
+    },
+    {
+      "objective": "chat_9",
+      "source": "analytic",
+      "d": 2,
+      "planar_wins": 5,
+      "informed_wins": 9,
+      "seeds": 16
+    },
+    {
+      "objective": "chat_9",
+      "source": "analytic",
+      "d": 5,
+      "planar_wins": 2,
+      "informed_wins": 9,
+      "seeds": 16
+    },
+    {
+      "objective": "chat_9",
+      "source": "analytic",
+      "d": 10,
+      "planar_wins": 1,
+      "informed_wins": 1,
+      "seeds": 16
+    },
+    {
+      "objective": "chat_10",
+      "source": "analytic",
+      "d": 2,
+      "planar_wins": 0,
+      "informed_wins": 0,
+      "seeds": 16
+    },
+    {
+      "objective": "chat_10",
+      "source": "analytic",
+      "d": 5,
+      "planar_wins": 0,
+      "informed_wins": 0,
+      "seeds": 16
+    },
+    {
+      "objective": "chat_10",
+      "source": "analytic",
+      "d": 10,
+      "planar_wins": 0,
+      "informed_wins": 0,
+      "seeds": 16
+    },
+    {
+      "objective": "chat_11",
+      "source": "analytic",
+      "d": 2,
+      "planar_wins": 9,
+      "informed_wins": 11,
+      "seeds": 16
+    },
+    {
+      "objective": "chat_11",
+      "source": "analytic",
+      "d": 5,
+      "planar_wins": 2,
+      "informed_wins": 4,
+      "seeds": 16
+    },
+    {
+      "objective": "chat_11",
+      "source": "analytic",
+      "d": 10,
+      "planar_wins": 2,
+      "informed_wins": 7,
+      "seeds": 16
+    },
+    {
+      "objective": "chat_12",
+      "source": "analytic",
+      "d": 2,
+      "planar_wins": 0,
+      "informed_wins": 0,
+      "seeds": 16
+    },
+    {
+      "objective": "chat_12",
+      "source": "analytic",
+      "d": 5,
+      "planar_wins": 0,
+      "informed_wins": 0,
+      "seeds": 16
+    },
+    {
+      "objective": "chat_12",
+      "source": "analytic",
+      "d": 10,
+      "planar_wins": 0,
+      "informed_wins": 0,
+      "seeds": 16
+    },
+    {
+      "objective": "chat_13",
+      "source": "analytic",
+      "d": 2,
+      "planar_wins": 0,
+      "informed_wins": 0,
+      "seeds": 16
+    },
+    {
+      "objective": "chat_13",
+      "source": "analytic",
+      "d": 5,
+      "planar_wins": 2,
+      "informed_wins": 8,
+      "seeds": 16
+    },
+    {
+      "objective": "chat_13",
+      "source": "analytic",
+      "d": 10,
+      "planar_wins": 2,
+      "informed_wins": 0,
+      "seeds": 16
+    },
+    {
+      "objective": "chat_14",
+      "source": "analytic",
+      "d": 2,
+      "planar_wins": 4,
+      "informed_wins": 7,
+      "seeds": 16
+    },
+    {
+      "objective": "chat_14",
+      "source": "analytic",
+      "d": 5,
+      "planar_wins": 5,
+      "informed_wins": 9,
+      "seeds": 16
+    },
+    {
+      "objective": "chat_14",
+      "source": "analytic",
+      "d": 10,
+      "planar_wins": 5,
+      "informed_wins": 6,
+      "seeds": 16
+    },
+    {
+      "objective": "chat_15",
+      "source": "analytic",
+      "d": 2,
+      "planar_wins": 3,
+      "informed_wins": 4,
+      "seeds": 16
+    },
+    {
+      "objective": "chat_15",
+      "source": "analytic",
+      "d": 5,
+      "planar_wins": 5,
+      "informed_wins": 10,
+      "seeds": 16
+    },
+    {
+      "objective": "chat_15",
+      "source": "analytic",
+      "d": 10,
+      "planar_wins": 2,
+      "informed_wins": 6,
+      "seeds": 16
+    },
+    {
+      "objective": "chat_16",
+      "source": "analytic",
+      "d": 2,
+      "planar_wins": 3,
+      "informed_wins": 9,
+      "seeds": 16
+    },
+    {
+      "objective": "chat_16",
+      "source": "analytic",
+      "d": 5,
+      "planar_wins": 6,
+      "informed_wins": 8,
+      "seeds": 16
+    },
+    {
+      "objective": "chat_16",
+      "source": "analytic",
+      "d": 10,
+      "planar_wins": 2,
+      "informed_wins": 5,
+      "seeds": 16
+    },
+    {
+      "objective": "chat_17",
+      "source": "analytic",
+      "d": 2,
+      "planar_wins": 6,
+      "informed_wins": 5,
+      "seeds": 16
+    },
+    {
+      "objective": "chat_17",
+      "source": "analytic",
+      "d": 5,
+      "planar_wins": 7,
+      "informed_wins": 9,
+      "seeds": 16
+    },
+    {
+      "objective": "chat_17",
+      "source": "analytic",
+      "d": 10,
+      "planar_wins": 5,
+      "informed_wins": 8,
+      "seeds": 16
+    }
+  ]
+}
