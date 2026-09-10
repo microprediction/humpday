@@ -373,3 +373,47 @@ class TestAllOptimizersCoverage:
 
 if __name__ == "__main__":
     pytest.main([__file__])
+
+
+class TestSuggestUsesRealEvidence:
+    """suggest() previously returned score = 1000 + 100*i and time = 0.1*i, both fabricated
+    from list position and both marked 'Fake ... for compatibility'. A caller reading
+    (score, time, name) had every reason to take those for measurements."""
+
+    def test_scores_are_measured_elo_not_positional(self):
+        from humpday import elo_ratings, suggest
+
+        ratings = elo_ratings()
+        assert ratings, "the shipped ratings table must be readable"
+        for score, _time, name in suggest(n_dim=3, n_trials=50):
+            if name in ratings:
+                assert score == ratings[name], f"{name} should carry its measured rating"
+            else:
+                assert score != score, f"{name} is unrated, so its score must be nan"
+
+    def test_unmeasured_fields_are_nan_rather_than_invented(self):
+        from humpday import suggest
+
+        for _score, time, _name in suggest(n_dim=3):
+            assert time != time, "humpday records no timing evidence; time must be nan"
+
+    def test_scores_do_not_march_with_position(self):
+        # The tell of the old implementation: a fixed arithmetic progression down the list.
+        from humpday import suggest
+
+        scores = [s for s, _, _ in suggest(n_dim=3) if s == s]
+        gaps = {round(b - a, 6) for a, b in zip(scores, scores[1:])}
+        assert len(gaps) > 1, f"scores look positional, not measured: {scores}"
+
+    def test_the_shipped_table_covers_what_is_suggested(self):
+        from humpday import elo_ratings
+        from humpday.optimizers.alloptimizers import suggest_pure
+
+        ratings = elo_ratings()
+        suggested = set()
+        for dim in (2, 5, 25, 100):
+            suggested |= set(suggest_pure(dim, 100))
+        unrated = suggested - set(ratings)
+        # Rechenberg is unrated and leads the n_dim > 50 ordering. Recorded rather than asserted
+        # away: if the tournament grows to cover it, this should shrink to nothing.
+        assert unrated <= {"Rechenberg"}, f"unrated optimizers are being suggested: {unrated}"

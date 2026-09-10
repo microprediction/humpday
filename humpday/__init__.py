@@ -52,6 +52,30 @@ from humpday.optimizers.scipy_interface import (
     unit_cube_to_unbounded,
 )
 
+import json
+
+_ELO_CACHE: dict | None = None
+
+
+def elo_ratings() -> dict:
+    """Measured Elo ratings, optimizer name -> rating. Empty if the table is unavailable.
+
+    Recorded by ``benchmarks/record_elo.py`` over 6930 matches. Read the provenance before
+    leaning on these: the tournament ran in **two dimensions** on sphere and Rosenbrock variants
+    with 100 trials per problem, so the ratings say what beat what on smooth low-dimensional
+    surfaces and nothing more. They are not evidence about high-dimensional or noisy objectives.
+    """
+    global _ELO_CACHE
+    if _ELO_CACHE is None:
+        try:
+            from pathlib import Path
+
+            raw = json.loads((Path(__file__).parent / "data" / "elo_ratings.json").read_text())
+            _ELO_CACHE = dict(raw.get("ratings", {}))
+        except Exception:  # pragma: no cover - the table is optional
+            _ELO_CACHE = {}
+    return _ELO_CACHE
+
 
 # Simple suggest function using pure algorithms
 def suggest(n_dim: int, n_trials: int = 100, n_seconds: float = None):
@@ -59,23 +83,28 @@ def suggest(n_dim: int, n_trials: int = 100, n_seconds: float = None):
     Suggest optimizers for your problem.
 
     Args:
-        n_dim: Problem dimension
-        n_trials: Number of function evaluations
+        n_dim: Problem dimension. This is what selects the ordering.
+        n_trials: Evaluation budget. Recorded for the caller's reference and returned in the
+            provenance; the ordering does not currently vary with it.
         n_seconds: Ignored (for compatibility)
 
     Returns:
-        List of (score, time, name) tuples - best algorithms first
+        List of (score, time, name) tuples, best first.
+
+        ``score`` is the optimizer's **measured Elo rating** where one exists, and ``nan``
+        where it does not -- ``Rechenberg`` is unrated, and it leads the n_dim > 50 ordering.
+        ``time`` is always ``nan``: humpday records no timing evidence, and the field is kept
+        only so the tuple shape does not change.
+
+        The *ordering* is a hand-written rule over ``n_dim`` (see ``suggest_pure``), not a
+        ranking derived from the ratings, because the ratings were measured in two dimensions
+        only. Treat it as a starting point, not a measurement.
     """
     algorithm_names = suggest_pure(n_dim, n_trials)
-
-    # Create compatibility tuples (score, time, name)
-    suggestions = []
-    for i, name in enumerate(algorithm_names):
-        score = 1000 + i * 100  # Fake scores for compatibility
-        time_estimate = 0.1 * i  # Fake times for compatibility
-        suggestions.append((score, time_estimate, name))
-
-    return suggestions
+    ratings = elo_ratings()
+    return [
+        (ratings.get(name, float("nan")), float("nan"), name) for name in algorithm_names
+    ]
 
 
 def minimize_unit_cube(
