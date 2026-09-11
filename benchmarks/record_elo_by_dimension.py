@@ -42,7 +42,32 @@ from humpday.optimizers.adaptive_optimizer import (  # noqa: E402
 OUT = REPO_ROOT / "humpday" / "data" / "elo_by_dimension.json"
 
 # One per bucket boundary in suggest_pure, so every ordering it can return has evidence behind it.
-DEFAULT_DIMS = (2, 5, 10, 25)  # 50 and 100 are affordable but slow; ask for them by name
+# Dimensions where enough engineering demos live to make a tournament meaningful.
+DEFAULT_DIMS = (2, 3, 4, 5, 6, 7, 8, 10, 12, 24)
+
+
+def physics_generator(n_dim: int, seed: int):
+    """Cycle the engineering demos that live at this dimension.
+
+    These are the realistic half of the evidence. The analytic surfaces are smooth, and smoothness
+    rewards local search: on morphed surfaces the trust-region trio takes first, second and third
+    at every dimension recorded, and on the physics demos at the same dimensions they are displaced
+    -- PRIMA_BOBYQA falls to fifth at d=4 and the other two out of the top five altogether. Ranking
+    optimizers on surfaces alone measures how smooth the surfaces are.
+    """
+    from humpday.objectives import physics_objectives
+
+    group = [f for _n, f, d in physics_objectives() if d == n_dim]
+    if not group:
+        return None
+    rnd = random.Random(seed)
+
+    def cycle():
+        while True:
+            rnd.shuffle(group)
+            yield from group
+
+    return cycle()
 
 
 def stochastic_generator(n_dim: int, seed: int):
@@ -94,7 +119,7 @@ def _save(data: dict) -> None:
     tmp.replace(OUT)  # atomic: a crash mid-write cannot leave a truncated record
 
 
-def record(dims, n_problems: int, trials: int, seed: int) -> dict:
+def record(dims, n_problems: int, trials: int, seed: int, suite: str = "smooth") -> dict:
     """Play `n_problems` more matches per dimension, checkpointing after every one.
 
     A high-dimensional bucket runs for minutes, so nothing here is allowed to depend on reaching
@@ -104,18 +129,25 @@ def record(dims, n_problems: int, trials: int, seed: int) -> dict:
     data = load()
     for n_dim in dims:
         key = str(n_dim)
-        prior = data["by_dimension"].get(key, {})
+        prior = data["by_dimension"].get(key, {}).get(suite, {})
         elo = EloRatingSystem()
         for name, rating in prior.get("ratings", {}).items():
             elo.ratings[name] = rating  # resume rather than restart
         played = prior.get("match_history_count", 0)
         budget = budget_for(n_dim, trials)
         print(
-            f"n_dim={n_dim}: {n_problems} problems x {budget} trials (resuming from {played})",
+            f"n_dim={n_dim} [{suite}]: {n_problems} problems x {budget} trials "
+            f"(resuming from {played})",
             flush=True,
         )
 
-        generator = stochastic_generator(n_dim, seed + n_dim)
+        if suite == "physics":
+            generator = physics_generator(n_dim, seed + n_dim)
+            if generator is None:
+                print(f"   no physics demo at d={n_dim}; skipping", flush=True)
+                continue
+        else:
+            generator = stochastic_generator(n_dim, seed + n_dim)
         for i in range(n_problems):
             try:
                 elo = run_algorithm_tournament(
@@ -129,7 +161,7 @@ def record(dims, n_problems: int, trials: int, seed: int) -> dict:
                 print(f"   problem {i + 1} failed ({type(exc).__name__}: {exc}); "
                       f"keeping {played + i} matches", flush=True)
                 break
-            data["by_dimension"][key] = {
+            data["by_dimension"].setdefault(key, {})[suite] = {
                 "ratings": dict(elo.ratings),
                 "match_history_count": played + i + 1,
                 "trials_per_problem": budget,
@@ -151,9 +183,18 @@ def main() -> int:
         help="Fixed budget. Default scales with dimension: max(100, 10*n_dim).",
     )
     ap.add_argument("--seed", type=int, default=20260910)
+    ap.add_argument(
+        "--suite", choices=("physics", "smooth"), default="physics",
+        help="physics: the engineering demos, at the dimension each problem actually has. "
+             "smooth: randomly morphed analytic surfaces. Physics is the default because "
+             "smooth surfaces reward local search and rank optimizers accordingly.",
+    )
     a = ap.parse_args()
     random.seed(a.seed)
-    record([int(d) for d in a.dims.split(",") if d.strip()], a.problems, a.trials, a.seed)
+    record(
+        [int(d) for d in a.dims.split(",") if d.strip()],
+        a.problems, a.trials, a.seed, a.suite,
+    )
     return 0
 
 
