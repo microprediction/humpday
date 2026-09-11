@@ -15,6 +15,8 @@ except PackageNotFoundError:
     # this attribute existing.
     __version__ = "0.0.0+source"
 
+import json
+
 from humpday.optimizers.adaptive_optimizer import (
     EloRatingSystem,
     adaptive_optimize,
@@ -51,8 +53,6 @@ from humpday.optimizers.scipy_interface import (
     unbounded_to_unit_cube,
     unit_cube_to_unbounded,
 )
-
-import json
 
 _ELO_CACHE: dict | None = None
 

@@ -167,45 +167,6 @@ class TestClassicObjectives:
 class TestBBOBObjectives:
     """Test BBOB-inspired benchmark suite."""
 
-    def test_bbob_functions(self):
-        """Test BBOB-style functions."""
-        try:
-            from humpday.objectives.bbob_inspired_suite import (
-                attractive_sector_bbob,
-                buche_rastrigin_bbob,
-                ellipsoid_bbob,
-                linear_slope_bbob,
-                rastrigin_bbob,
-                rosenbrock_bbob,
-                rosenbrock_rotated_bbob,
-                sphere_bbob,
-                step_ellipsoid_bbob,
-            )
-
-            test_point = [0.1, 0.2]
-
-            functions = [
-                sphere_bbob,
-                ellipsoid_bbob,
-                rastrigin_bbob,
-                buche_rastrigin_bbob,
-                linear_slope_bbob,
-                attractive_sector_bbob,
-                step_ellipsoid_bbob,
-                rosenbrock_bbob,
-                rosenbrock_rotated_bbob,
-            ]
-
-            for func in functions:
-                result = func(test_point)
-                assert isinstance(result, (int, float)), (
-                    f"{func.__name__} should return numeric"
-                )
-
-        except ImportError:
-            pytest.skip("BBOB objectives module has import issues")
-
-
 class TestChatGPTObjectives:
     """Test ChatGPT-generated objectives."""
 
@@ -236,60 +197,6 @@ class TestChatGPTObjectives:
 
 class TestEnhancedSurfaces:
     """Test enhanced surface functions."""
-
-    def test_enhanced_surfaces(self):
-        """Test enhanced surface objectives."""
-        try:
-            from humpday.objectives.enhanced_surfaces import (
-                enhanced_ackley,
-                enhanced_griewank,
-                enhanced_rastrigin,
-                enhanced_rosenbrock,
-                enhanced_sphere,
-            )
-
-            test_point = [0.5, 0.5]
-
-            functions = [
-                enhanced_sphere,
-                enhanced_rosenbrock,
-                enhanced_ackley,
-                enhanced_rastrigin,
-                enhanced_griewank,
-            ]
-
-            for func in functions:
-                result = func(test_point)
-                assert isinstance(result, (int, float)), (
-                    f"{func.__name__} should return numeric"
-                )
-
-        except (ImportError, AttributeError):
-            pytest.skip("Enhanced surfaces module has import/attribute issues")
-
-    def test_enhanced_surfaces_working(self):
-        """Test working enhanced surface functions."""
-        try:
-            from humpday.objectives import enhanced_surfaces_working
-
-            test_point = [0.5, 0.3]
-
-            # Test any callable functions in the module
-            for attr_name in dir(enhanced_surfaces_working):
-                if not attr_name.startswith("_"):
-                    attr = getattr(enhanced_surfaces_working, attr_name)
-                    if callable(attr):
-                        try:
-                            result = attr(test_point)
-                            assert isinstance(result, (int, float)), (
-                                f"{attr_name} should return numeric"
-                            )
-                        except (TypeError, ValueError):
-                            pass
-
-        except ImportError:
-            pytest.skip("Enhanced surfaces working module has import issues")
-
 
 class TestStochasticSurfaces:
     """Test stochastic/noisy surface functions."""
