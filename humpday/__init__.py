@@ -3,6 +3,10 @@ Humpday: Lightweight derivative-free optimization
 Pure Python implementations with no external dependencies (beyond numpy/scipy)
 """
 
+# Module-level annotations are evaluated at import time, so `dict | None` here would be a
+# TypeError on Python 3.9, which pyproject still supports. This keeps them unevaluated.
+from __future__ import annotations
+
 from importlib.metadata import PackageNotFoundError
 from importlib.metadata import version as _pkg_version
 
