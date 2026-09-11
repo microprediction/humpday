@@ -302,8 +302,14 @@ class TestPRIMAPerformance:
         # Test on simple sphere function
         x0 = np.array([0.5, 0.5])
 
-        # Real PRIMA UOBYQA result
-        real_result = pdfo.pdfo(sphere, x0, method="uobyqa", options={"maxfev": 50})
+        # importorskip only proves pdfo imports. Its compiled extensions are built against a
+        # specific numpy ABI, so on numpy 2 with a numpy 1 build it imports and then raises
+        # "numpy.core.multiarray failed to import" on first call. That is a broken reference
+        # install, not a defect in our port, and it should skip rather than fail.
+        try:
+            real_result = pdfo.pdfo(sphere, x0, method="uobyqa", options={"maxfev": 50})
+        except ImportError as exc:  # pragma: no cover - depends on the local pdfo build
+            pytest.skip(f"pdfo is installed but unusable in this environment: {exc}")
 
         # My PRIMA UOBYQA result
         optimizer = PRIMA_UOBYQA(sphere, n_trials=50, n_dim=2)
