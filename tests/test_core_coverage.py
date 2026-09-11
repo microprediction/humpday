@@ -381,15 +381,14 @@ class TestSuggestUsesRealEvidence:
     (score, time, name) had every reason to take those for measurements."""
 
     def test_scores_are_measured_elo_not_positional(self):
-        from humpday import elo_ratings, suggest
+        # Scores come from the per-dimension tournament when one was recorded near this dimension,
+        # not from the global 2-d table and never from a position in a list.
+        from humpday import _ratings_for, suggest
 
-        ratings = elo_ratings()
-        assert ratings, "the shipped ratings table must be readable"
+        ratings, _ = _ratings_for(3)
+        assert ratings, "per-dimension ratings must ship"
         for score, _time, name in suggest(n_dim=3, n_trials=50):
-            if name in ratings:
-                assert score == ratings[name], f"{name} should carry its measured rating"
-            else:
-                assert score != score, f"{name} is unrated, so its score must be nan"
+            assert score == ratings[name], f"{name} should carry its measured rating"
 
     def test_unmeasured_fields_are_nan_rather_than_invented(self):
         from humpday import suggest
@@ -417,3 +416,38 @@ class TestSuggestUsesRealEvidence:
         # Rechenberg is unrated and leads the n_dim > 50 ordering. Recorded rather than asserted
         # away: if the tournament grows to cover it, this should shrink to nothing.
         assert unrated <= {"Rechenberg"}, f"unrated optimizers are being suggested: {unrated}"
+
+
+class TestSuggestUsesDimensionSpecificEvidence:
+    def test_recorded_dimensions_order_by_measured_rating(self):
+        from humpday import elo_by_dimension, suggest
+
+        table = elo_by_dimension()
+        assert table, "per-dimension ratings must ship"
+        for n_dim, ratings in table.items():
+            scores = [s for s, _, _ in suggest(n_dim=n_dim)]
+            assert scores == sorted(scores, reverse=True), f"d={n_dim} not ordered by rating"
+            assert suggest(n_dim=n_dim)[0][2] == max(ratings, key=ratings.get)
+
+    def test_ratings_are_not_stretched_to_a_far_away_dimension(self):
+        # Which optimizer wins changes with dimension, which is why these are recorded per
+        # dimension at all. The trust-region methods top the table at d=25 and cannot build their
+        # interpolation set at d=100 within a comparable budget, so serving them d=25 ratings
+        # would recommend precisely the wrong thing.
+        from humpday import elo_by_dimension, suggest
+
+        far = max(elo_by_dimension()) * 4
+        scores = [s for s, _, _ in suggest(n_dim=far)]
+        assert all(s != s for s in scores), "far from any measurement, report no ratings"
+
+    def test_minimize_default_follows_the_measurement_where_there_is_one(self):
+        from humpday import elo_by_dimension, suggest
+        from humpday.optimizers.alloptimizers import suggest_pure
+
+        n_dim = sorted(elo_by_dimension())[-1]
+        measured_best = suggest(n_dim=n_dim)[0][2]
+        assert measured_best == max(
+            elo_by_dimension()[n_dim], key=elo_by_dimension()[n_dim].get
+        )
+        # Recorded for contrast: the hand-written rule disagrees, and minimize() used to follow it.
+        assert isinstance(suggest_pure(n_dim, 100)[0], str)

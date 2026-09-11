@@ -55,6 +55,48 @@ from humpday.optimizers.scipy_interface import (
 )
 
 _ELO_CACHE: dict | None = None
+_ELO_BY_DIM_CACHE: dict | None = None
+
+
+def elo_by_dimension() -> dict:
+    """Measured ratings keyed by problem dimension, ``{n_dim: {optimizer: rating}}``.
+
+    Recorded by ``benchmarks/record_elo_by_dimension.py`` on randomly morphed surfaces, with the
+    evaluation budget scaled to the dimension so that model-based methods can actually build a
+    model before being scored. Empty if nothing has been recorded.
+    """
+    global _ELO_BY_DIM_CACHE
+    if _ELO_BY_DIM_CACHE is None:
+        try:
+            from pathlib import Path
+
+            raw = json.loads(
+                (Path(__file__).parent / "data" / "elo_by_dimension.json").read_text()
+            )
+            _ELO_BY_DIM_CACHE = {
+                int(k): dict(v.get("ratings", {})) for k, v in raw.get("by_dimension", {}).items()
+            }
+        except Exception:  # pragma: no cover - the table is optional
+            _ELO_BY_DIM_CACHE = {}
+    return _ELO_BY_DIM_CACHE
+
+
+# How far a recorded dimension may be stretched to speak for a requested one. Which optimizer wins
+# changes with dimension -- that is the entire reason these are recorded per dimension -- so ratings
+# measured at 25 are not evidence about 100. The trust-region methods make the point: they top the
+# table at d=25, and at d=100 they cannot even build their interpolation set within a comparable
+# budget. Outside this band the hand-written ordering is used and no ratings are reported.
+DIMENSION_STRETCH = 2.0
+
+
+def _ratings_for(n_dim: int):
+    """Ratings recorded near ``n_dim``, or ``(None, None)`` if nothing was measured near it."""
+    table = elo_by_dimension()
+    if not table:
+        return None, None
+    nearest = min(table, key=lambda d: abs(d - n_dim))
+    lo, hi = nearest / DIMENSION_STRETCH, nearest * DIMENSION_STRETCH
+    return (table[nearest], nearest) if lo <= n_dim <= hi else (None, None)
 
 
 def elo_ratings() -> dict:
@@ -100,11 +142,17 @@ def suggest(n_dim: int, n_trials: int = 100, n_seconds: float = None):
         ranking derived from the ratings, because the ratings were measured in two dimensions
         only. Treat it as a starting point, not a measurement.
     """
-    algorithm_names = suggest_pure(n_dim, n_trials)
-    ratings = elo_ratings()
-    return [
-        (ratings.get(name, float("nan")), float("nan"), name) for name in algorithm_names
-    ]
+    ratings, measured_at = _ratings_for(n_dim)
+    if ratings:
+        # Order by what was measured at the nearest recorded dimension. The hand-written rule in
+        # suggest_pure disagrees sharply with this: at n_dim=10 it leads with an optimizer that
+        # placed 18th of 23, and at n_dim=5 and 25 with ones that placed 12th and 13th.
+        names = sorted(ratings, key=lambda n: -ratings[n])
+        return [(ratings[n], float("nan"), n) for n in names]
+
+    # Nothing recorded near this dimension: fall back to the hand-written ordering, and do not
+    # dress it up with scores it has not earned.
+    return [(float("nan"), float("nan"), n) for n in suggest_pure(n_dim, n_trials)]
 
 
 def minimize_unit_cube(
@@ -117,15 +165,15 @@ def minimize_unit_cube(
         objective: Function to minimize (takes array in [0,1]^n)
         n_dim: Problem dimension
         n_trials: Number of evaluations
-        algorithm: Algorithm name (auto-selected if None)
+        algorithm: Algorithm name. Auto-selected via :func:`suggest` when None, which means the
+            measured best at this dimension where a tournament has been recorded near it, and the
+            hand-written ordering otherwise.
 
     Returns:
         (best_value, best_point) tuple
     """
     if algorithm is None:
-        # Auto-select algorithm
-        suggestions = suggest_pure(n_dim, n_trials)
-        algorithm = suggestions[0]
+        algorithm = suggest(n_dim, n_trials)[0][2]
 
     return pure_optimize(objective, algorithm, n_trials, n_dim)
 
