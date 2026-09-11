@@ -403,6 +403,29 @@ def _lambda_for(eval_time: float | None) -> float:
     return 0.0
 
 
+def _never_terrible_order(n_dim: int) -> list:
+    """Optimizers at this exact dimension ordered by worst rank across the recorded suites.
+
+    Empty when no tournament was recorded at this dimension, or only one suite was. Ranking by
+    worst rank rather than by mean rating avoids handing someone a specialist: PRIMA_UOBYQA
+    averages rank 3.0 on the analytic surfaces and 15.9 on the engineering demos.
+    """
+    try:
+        from humpday import elo_by_dimension
+    except Exception:  # pragma: no cover - during partial imports
+        return []
+    suites = elo_by_dimension().get(n_dim, {})
+    if len(suites) < 2:
+        return []
+    worst: dict = {}
+    for ratings in suites.values():
+        order = sorted(ratings, key=lambda n: -ratings[n])
+        for rank, name in enumerate(order, start=1):
+            worst[name] = max(worst.get(name, 0), rank)
+    shared = [n for n in worst if all(n in r for r in suites.values())]
+    return sorted(shared, key=lambda n: (worst[n], n))
+
+
 def recommend(
     n_dim: int,
     n_trials: int,
@@ -463,6 +486,17 @@ def recommend(
         }
     else:
         candidates = set(eligible(universe, n_dim, n_trials, eval_time))
+
+    # Per-dimension tournament first, where one has been recorded at exactly this dimension and
+    # on both objective suites. The grid is Borda-ranked over a single suite of analytic surfaces,
+    # and those are smooth, which rewards local search: on the engineering demos at d=2, d=3 and
+    # d=4 its pick loses to the never-terrible one on 4 of 5, 5 of 6 and 10 of 15 problems. The
+    # eligibility filter still applies, so nothing unsuitable for the dimension or budget is
+    # reachable through here -- this only reorders what was already allowed.
+    if not cost_aware and grid_path is None:
+        for name in _never_terrible_order(n_dim):
+            if name in candidates:
+                return name
 
     # Grid-driven pick when available.
     grid = _load_grid(grid_path or _GRID_PATH_DEFAULT)
