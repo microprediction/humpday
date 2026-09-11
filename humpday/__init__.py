@@ -81,22 +81,18 @@ def elo_by_dimension() -> dict:
     return _ELO_BY_DIM_CACHE
 
 
-# How far a recorded dimension may be stretched to speak for a requested one. Which optimizer wins
-# changes with dimension -- that is the entire reason these are recorded per dimension -- so ratings
-# measured at 25 are not evidence about 100. The trust-region methods make the point: they top the
-# table at d=25, and at d=100 they cannot even build their interpolation set within a comparable
-# budget. Outside this band the hand-written ordering is used and no ratings are reported.
-DIMENSION_STRETCH = 2.0
-
-
 def _ratings_for(n_dim: int):
-    """Ratings recorded near ``n_dim``, or ``(None, None)`` if nothing was measured near it."""
+    """Ratings recorded **at this exact dimension**, or ``(None, None)``.
+
+    No interpolation and no nearest-neighbour. Optimizer performance is not smooth in dimension:
+    a Bayesian method can work well at five and blow up at ten, and the trust-region methods in
+    this package top the table at twenty-five while being unable to build their interpolation set
+    at a hundred within a comparable budget. A rating measured at one dimension is evidence about
+    that dimension. Anywhere else, ``suggest`` falls back to the hand-written ordering and reports
+    no ratings, which is a reason to record more dimensions rather than to stretch the ones we have.
+    """
     table = elo_by_dimension()
-    if not table:
-        return None, None
-    nearest = min(table, key=lambda d: abs(d - n_dim))
-    lo, hi = nearest / DIMENSION_STRETCH, nearest * DIMENSION_STRETCH
-    return (table[nearest], nearest) if lo <= n_dim <= hi else (None, None)
+    return (table[n_dim], n_dim) if n_dim in table else (None, None)
 
 
 def elo_ratings() -> dict:
@@ -144,7 +140,7 @@ def suggest(n_dim: int, n_trials: int = 100, n_seconds: float = None):
     """
     ratings, measured_at = _ratings_for(n_dim)
     if ratings:
-        # Order by what was measured at the nearest recorded dimension. The hand-written rule in
+        # Order by what was measured at this dimension. The hand-written rule in
         # suggest_pure disagrees sharply with this: at n_dim=10 it leads with an optimizer that
         # placed 18th of 23, and at n_dim=5 and 25 with ones that placed 12th and 13th.
         names = sorted(ratings, key=lambda n: -ratings[n])
