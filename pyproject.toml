@@ -58,7 +58,10 @@ dev = [
     "pytest>=7.0.0",
     "pytest-cov>=4.0.0",
     "black>=23.0.0",
-    "ruff>=0.1.0",
+    # Pinned to a minor series, not >=0.1.0. The formatter's output changes between releases, so
+    # an open bound means `ruff format --check .` in CI starts failing on untouched files whenever
+    # ruff ships a new style. That is how this broke.
+    "ruff>=0.16,<0.17",
     "mypy>=1.0.0",
     "build>=0.10.0",
     "twine>=4.0.0",
@@ -136,6 +139,17 @@ target-version = ['py39']
 [tool.ruff]
 target-version = "py39"
 line-length = 88
+# Analysis scripts written for a specific paper, in the terse one-line style that suits a
+# throwaway experiment. They are not imported by the package or the tests, and linting them to
+# package standards would mean reformatting someone's published working rather than improving
+# anything. CI has been red since 2026-09-09 over 35 purely stylistic findings in here.
+exclude = [
+    "papers/planar_search",
+    # Ruff began formatting Python inside Markdown fences in 0.16. Documentation snippets are
+    # written to be read, not to satisfy PEP 8 blank-line rules: applying it puts two blank lines
+    # inside a five-line README example. The repo never formatted Markdown and still does not.
+    "*.md",
+]
 
 [tool.ruff.lint]
 select = [
