@@ -121,6 +121,7 @@ def __getattr__(name: str):
         return surfaces()
     raise AttributeError(f"module {__name__!r} has no attribute {name!r}")
 
+
 # Retired from this list but still importable from their own modules:
 #   horse.HORSE_OBJECTIVES        one racing-derived objective, not a formulaic surface
 #   bbob_inspired_suite           hard-coded to two dimensions; raises above d=2

@@ -108,7 +108,9 @@ def test_physics_objectives_is_empty_rather_than_raising_off_repository():
     original, mod._PHYSICS_CACHE = mod._PHYSICS_CACHE, None
     real_is_dir = pathlib.Path.is_dir
     try:
-        pathlib.Path.is_dir = lambda self: False  # simulate an installed, repo-less layout
+        pathlib.Path.is_dir = lambda self: (
+            False
+        )  # simulate an installed, repo-less layout
         assert mod.physics_objectives() == []
     finally:
         pathlib.Path.is_dir = real_is_dir
