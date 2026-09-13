@@ -128,3 +128,41 @@ def test_the_allowance_follows_the_objective_not_the_clock():
     # evaluation, so a five-thousand-evaluation run is allowed proportionally more than a fifty.
     assert R.SECONDS_PER_EVAL * 5000 > R.SECONDS_PER_EVAL * 50
     assert R.MIN_SECONDS <= R.SECONDS_PER_EVAL * 1000 <= R.MAX_SECONDS
+
+
+def test_the_recorder_races_exactly_what_recommend_can_return():
+    """Otherwise the table holds ratings for optimizers no caller can be given, and spends the
+    wall clock producing them. The two filters are one rule and must not drift apart."""
+    from humpday.eligibility import passes_dim, passes_trials
+    from humpday.optimizers.alloptimizers import PURE_OPTIMIZERS
+
+    for n_dim, budget in ((2, 50), (12, 1000), (100, 5000)):
+        expected = {
+            n
+            for n in PURE_OPTIMIZERS
+            if passes_dim(n, n_dim) and passes_trials(n, n_dim, budget)
+        }
+        assert R.REFERENCE in expected, (
+            "the timing reference must survive its own filter"
+        )
+        for suite in ratings.SUITES:
+            cell = ratings.cells().get(f"{n_dim}/{budget}/{suite}")
+            if not cell:
+                continue
+            raced = set(cell.get("ratings", {})) | set(cell.get("timed_out", []))
+            assert raced <= expected, (
+                f"raced the ineligible: {sorted(raced - expected)}"
+            )
+            assert set(cell.get("ineligible", {})).isdisjoint(raced)
+
+
+def test_an_absent_optimizer_says_why_it_is_absent():
+    from humpday import ratings as Rd
+
+    for n_dim in Rd.recorded_dimensions():
+        for suite in Rd.SUITES:
+            cell = Rd.cell_for(n_dim, suite, 5000)
+            if not cell:
+                continue
+            for name, reason in Rd.ineligible(n_dim, suite, 5000).items():
+                assert reason, f"{name} excluded at d={n_dim} with no reason recorded"

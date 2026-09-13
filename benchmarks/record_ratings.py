@@ -71,6 +71,13 @@ DEFAULT_BUDGETS = (50, 200, 1000, 5000)
 DEFAULT_OVERHEAD = 25.0
 REFERENCE = "RandomSearch"
 
+
+def DIM_CAP_OF(name: str) -> int:
+    from humpday.eligibility import DIM_CAP
+
+    return DIM_CAP.get(name, 0)
+
+
 # A second floor under that allowance, in overhead permitted per evaluation. The multiple above is
 # the wrong test on its own when the objective is an analytic surface costing microseconds: a flat
 # ten seconds then disqualified BOBYQA and NEWUOA at sixteen and twenty-four variables, which is a
@@ -254,11 +261,37 @@ def run_cell(
     Elo is computed over the pairwise outcomes within this cell alone. It is not comparable across
     cells and `humpday.ratings` never treats it as if it were.
     """
+    from humpday.eligibility import min_trials, passes_dim, passes_trials
     from humpday.optimizers.adaptive_optimizer import (
         EloRatingSystem,
         normalize_performance,
     )
     from humpday.optimizers.alloptimizers import PURE_OPTIMIZERS, pure_optimize
+
+    # Race what `eligibility` would let `recommend` consider, and nothing else. Two reasons, and
+    # the second is the important one. It is wasteful to pay the allowance twice a cell to
+    # rediscover that a GP is cubic in observations at a hundred variables, or that UOBYQA cannot
+    # fill a 5,151-point interpolation set out of a 5,000-evaluation budget -- both are arithmetic,
+    # not open questions. And a rating for an optimizer that `recommend` can never return is
+    # evidence about nothing: the table should describe the choice actually on offer.
+    ineligible = {}
+    contenders = []
+    for name in PURE_OPTIMIZERS:
+        if not passes_dim(name, n_dim):
+            ineligible[name] = f"dimension cap {DIM_CAP_OF(name)}"
+        elif not passes_trials(name, n_dim, budget):
+            ineligible[name] = f"needs {min_trials(name, n_dim)} evaluations"
+        else:
+            contenders.append(name)
+    if len(contenders) < 2 or REFERENCE not in contenders:
+        return {
+            "n_dim": n_dim,
+            "budget": budget,
+            "suite": suite,
+            "problems": 0,
+            "ratings": {},
+            "ineligible": ineligible,
+        }
 
     path = _shard_path(n_dim, budget, suite)
     shard = json.loads(path.read_text()) if path.exists() else {}
@@ -296,7 +329,7 @@ def run_cell(
         seconds = overhead * (time.time() - clock)
         seconds = min(max(seconds, SECONDS_PER_EVAL * budget, MIN_SECONDS), MAX_SECONDS)
 
-        for name in PURE_OPTIMIZERS:
+        for name in contenders:
             if name == REFERENCE or name in timed_out:
                 continue
             try:
@@ -329,6 +362,7 @@ def run_cell(
             "ratings": dict(elo.ratings),
             "strikes": strikes,
             "timed_out": timed_out,
+            "ineligible": ineligible,
             "seconds": round(time.time() - started, 1),
             "allowance": round(seconds, 1),
             "recorded_at": datetime.datetime.now(datetime.timezone.utc).isoformat(),
@@ -353,6 +387,8 @@ def _run_cell_job(job) -> str:
         f"{key}: {shard.get('problems', 0)}p in {time.time() - started:.0f}s  "
         + ", ".join(f"{n} {r:.0f}" for n, r in top)
     )
+    if not shard.get("problems"):
+        return f"{key}: nothing eligible"
     if shard.get("timed_out"):
         out += f"  [timed out: {', '.join(sorted(shard['timed_out']))}]"
     return out
@@ -363,10 +399,13 @@ def merge() -> dict:
     cells = {}
     for path in sorted(SHARDS.glob("*.json")):
         shard = json.loads(path.read_text())
+        if not shard.get("problems"):
+            continue  # a cell with no eligible field is not a cell
         cells[f"{shard['n_dim']}/{shard['budget']}/{shard['suite']}"] = {
             "ratings": shard.get("ratings", {}),
             "problems": shard.get("problems", 0),
             "timed_out": sorted(shard.get("timed_out", {})),
+            "ineligible": dict(sorted(shard.get("ineligible", {}).items())),
         }
     table = {
         "cells": cells,

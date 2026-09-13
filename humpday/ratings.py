@@ -207,3 +207,16 @@ def timed_out(n_dim: int, suite: str, n_trials: int = 100) -> list:
     """Optimizers that could not return inside the allowance in this cell. Ranked last, not rated."""
     cell = cell_for(n_dim, suite, n_trials)
     return sorted(cell.get("timed_out", [])) if cell else []
+
+
+def ineligible(n_dim: int, suite: str, n_trials: int = 100) -> dict:
+    """Optimizers not raced in this cell, mapped to why. Absent is not the same as bad.
+
+    These were excluded before the tournament by :mod:`humpday.eligibility`, on grounds that are
+    arithmetic rather than empirical: a Gaussian process is cubic in observations, and UOBYQA
+    cannot fill an interpolation set of ``(n+1)(n+2)/2`` points out of a smaller budget. Racing
+    them anyway would spend the wall clock rediscovering it and would leave the table holding
+    ratings that ``recommend`` can never act on.
+    """
+    cell = cell_for(n_dim, suite, n_trials)
+    return dict(cell.get("ineligible", {})) if cell else {}
