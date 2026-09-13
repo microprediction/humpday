@@ -89,6 +89,11 @@ SECONDS_PER_EVAL = 0.02
 # Outer floor for tiny budgets, and a ceiling so one method cannot hold a core for an afternoon.
 MIN_SECONDS, MAX_SECONDS = 5.0, 180.0
 
+# Problems abandoned before a cell is given up on. A problem whose evaluations alone exceed the
+# ceiling is skipped rather than raced; enough of those and the budget is simply beyond what this
+# suite can be measured at, which is worth recording rather than grinding at.
+MAX_SKIPS = 8
+
 # Wall clock for a whole cell. A cell that runs out stops early with the problems it managed, and
 # `humpday.ratings` already shrinks a thin cell's ranks toward the mean, so the table degrades by
 # growing less confident rather than by going missing.
@@ -309,8 +314,8 @@ def run_cell(
         next(generator)  # resume the stream where the shard left off
 
     started = time.time()
-    index = done - 1
-    for index in range(done, problems):
+    recorded, skipped = done, 0
+    while recorded < problems:
         if time.time() - started > cell_seconds:
             break
         objective = next(generator)
@@ -323,7 +328,14 @@ def run_cell(
                     0
                 ]
         except _Overran:
-            break  # the objective alone exhausts the ceiling; nothing here is measurable
+            # The evaluations alone exceed the ceiling, so nothing on this problem is measurable
+            # at this budget. Skip the problem, not the cell: an engineering suite is a handful of
+            # worked simulations of wildly different cost, and one cart-pole rollout that runs
+            # forty milliseconds a step should not cost the other five their tournament.
+            skipped += 1
+            if skipped > MAX_SKIPS:
+                break
+            continue
         except Exception:
             results[REFERENCE] = float("inf")
         seconds = overhead * (time.time() - clock)
@@ -358,18 +370,25 @@ def run_cell(
             "n_dim": n_dim,
             "budget": budget,
             "suite": suite,
-            "problems": index + 1,
+            "problems": recorded + 1,
             "ratings": dict(elo.ratings),
             "strikes": strikes,
             "timed_out": timed_out,
+            "skipped": skipped,
             "ineligible": ineligible,
             "seconds": round(time.time() - started, 1),
             "allowance": round(seconds, 1),
             "recorded_at": datetime.datetime.now(datetime.timezone.utc).isoformat(),
         }
         _write_shard(path, shard)
-    if index + 1 < problems and shard:
-        shard["stopped_early"] = f"{cell_seconds:.0f}s budget"
+        recorded += 1
+
+    if recorded < problems and shard:
+        shard["stopped_early"] = (
+            f"{skipped} problems too costly to measure"
+            if skipped > MAX_SKIPS
+            else f"{cell_seconds:.0f}s budget"
+        )
         _write_shard(path, shard)
     return shard
 
@@ -388,7 +407,9 @@ def _run_cell_job(job) -> str:
         + ", ".join(f"{n} {r:.0f}" for n, r in top)
     )
     if not shard.get("problems"):
-        return f"{key}: nothing eligible"
+        if shard.get("ineligible") is not None and not shard.get("skipped"):
+            return f"{key}: nothing eligible to race"
+        return f"{key}: not measurable at this budget"
     if shard.get("timed_out"):
         out += f"  [timed out: {', '.join(sorted(shard['timed_out']))}]"
     return out
@@ -405,6 +426,7 @@ def merge() -> dict:
             "ratings": shard.get("ratings", {}),
             "problems": shard.get("problems", 0),
             "timed_out": sorted(shard.get("timed_out", {})),
+            "overruns": dict(sorted(shard.get("strikes", {}).items())),
             "ineligible": dict(sorted(shard.get("ineligible", {}).items())),
         }
     table = {

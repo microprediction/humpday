@@ -209,6 +209,19 @@ def timed_out(n_dim: int, suite: str, n_trials: int = 100) -> list:
     return sorted(cell.get("timed_out", [])) if cell else []
 
 
+def overruns(n_dim: int, suite: str, n_trials: int = 100) -> dict:
+    """How many times each optimizer overran its allowance in this cell.
+
+    Disqualification is binary and coarse: an optimizer that overran twice in thirty problems is
+    recorded the same way as one that never returned at all. The count is kept so the difference is
+    visible. It is not used in the ordering -- a rating earned on the problems an optimizer
+    happened to finish fast is a biased sample however few times it stalled, which is why
+    :func:`_ranked` puts it last either way.
+    """
+    cell = cell_for(n_dim, suite, n_trials)
+    return dict(cell.get("overruns", {})) if cell else {}
+
+
 def ineligible(n_dim: int, suite: str, n_trials: int = 100) -> dict:
     """Optimizers not raced in this cell, mapped to why. Absent is not the same as bad.
 
