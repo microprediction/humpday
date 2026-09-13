@@ -359,6 +359,14 @@ def _snap_to_grid_cell(grid: dict, n_dim: int, n_trials: int) -> dict[str, dict]
     recommendations from a higher-dim sweep where the easy algorithms got
     eliminated), then to the largest n_trials ≤ caller's budget. Returns the
     cell's {algorithm: stats} dict, or None when the grid has no usable cell.
+
+    Note that this *does* stretch across dimensions, which `humpday.ratings`
+    refuses to do: at d=49 it will read the d=30 cell rather than report
+    nothing. That is part of why the grid sits below the recorded tournament
+    in `recommend` rather than above it. Tightening it to exact dimensions
+    would desynchronise the JavaScript port, which snaps the same way and is
+    held to it by tests/test_js_eligibility_parity.py, so the two would have
+    to move together.
     """
     cells = grid.get("cells", {})
     if not cells:
