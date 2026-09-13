@@ -122,11 +122,10 @@ and 3.13 with the pure-Python backend forced, which is what tests the no-depende
 than asserting it. A minimal-dependency job checks that the package imports and functions with
 nothing installed beyond the standard library.
 
-Three optimizers (`RandomSearch`, `GridSearch` and `Rechenberg`) have JavaScript implementations
-verified as bit-exact statement-level twins of the Python generators, replayed against committed
-transition vectors and compared as IEEE-754 patterns. The remaining ports are covered by a coarser
-end-to-end parity check with known divergent cases, and that distinction is recorded in the tests
-rather than blurred. Objective registries are themselves screened: an objective that accepts a
+Thirteen of the twenty-three optimizers have JavaScript implementations verified as bit-exact
+statement-level twins of the Python generators, replayed against committed transition vectors and
+compared as IEEE-754 patterns. The remaining ten are covered by a coarser end-to-end parity check
+with known divergent cases, and that distinction is recorded in the tests rather than blurred. Objective registries are themselves screened: an objective that accepts a
 vector of any length and then reads only its leading coordinates is a fixed-dimension problem in
 disguise, and would quietly corrupt a high-dimensional tournament.
 
