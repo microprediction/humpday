@@ -80,7 +80,11 @@ def main() -> int:
     for name, rating in elo.get_top_algorithms(n=22):
         print(f"  {name:28s}  {rating:7.1f}")
 
+    # Two destinations, one source of truth. benchmarks/ is the record for GOALS.md;
+    # humpday/data/ is the copy that ships, which humpday.suggest reads at runtime. Writing
+    # only the first is how the package came to have no access to its own evidence.
     out = REPO_ROOT / "benchmarks" / "elo_ratings.json"
+    shipped = REPO_ROOT / "humpday" / "data" / "elo_ratings.json"
     out.parent.mkdir(exist_ok=True)
     data = {
         "ratings": elo.ratings,
@@ -97,6 +101,9 @@ def main() -> int:
         },
     }
     with open(out, "w") as f:
+        json.dump(data, f, indent=2)
+    shipped.parent.mkdir(parents=True, exist_ok=True)
+    with open(shipped, "w") as f:
         json.dump(data, f, indent=2)
     print(f"\nWrote {out.relative_to(REPO_ROOT)}")
     return 0
