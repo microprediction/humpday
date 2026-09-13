@@ -2,7 +2,7 @@
 
 Notable changes to `humpday`. Format follows [Keep a Changelog](https://keepachangelog.com/).
 
-## [0.23.0] — unreleased
+## [0.23.0] — 2026-09-13
 
 The theme is that the recommenders claimed more evidence than they had. Several of these change
 what an existing call returns, so read Changed before upgrading.
