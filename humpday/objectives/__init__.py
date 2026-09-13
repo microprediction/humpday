@@ -124,7 +124,9 @@ def physics_objectives() -> List[Tuple[str, Callable, int]]:
         try:
             mod = importlib.import_module(f"example_applications.{demo.name}.problem")
             objective, n_dim = mod.objective, int(mod.N_DIM)
-        except Exception:  # pragma: no cover - a demo that will not import is simply skipped
+        except (
+            Exception
+        ):  # pragma: no cover - a demo that will not import is simply skipped
             continue
         found.append((demo.name, objective, n_dim))
     _PHYSICS_CACHE = found

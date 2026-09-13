@@ -167,6 +167,7 @@ class TestClassicObjectives:
 class TestBBOBObjectives:
     """Test BBOB-inspired benchmark suite."""
 
+
 class TestChatGPTObjectives:
     """Test ChatGPT-generated objectives."""
 
@@ -197,6 +198,7 @@ class TestChatGPTObjectives:
 
 class TestEnhancedSurfaces:
     """Test enhanced surface functions."""
+
 
 class TestStochasticSurfaces:
     """Test stochastic/noisy surface functions."""

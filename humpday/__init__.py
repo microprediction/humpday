@@ -75,7 +75,9 @@ def elo_ratings() -> dict:
         try:
             from pathlib import Path
 
-            raw = json.loads((Path(__file__).parent / "data" / "elo_ratings.json").read_text())
+            raw = json.loads(
+                (Path(__file__).parent / "data" / "elo_ratings.json").read_text()
+            )
             _ELO_CACHE = dict(raw.get("ratings", {}))
         except Exception:  # pragma: no cover - the table is optional
             _ELO_CACHE = {}
@@ -99,7 +101,8 @@ def elo_by_dimension() -> dict:
             )
             _ELO_BY_DIM_CACHE = {
                 int(k): {
-                    suite: dict(entry.get("ratings", {})) for suite, entry in suites.items()
+                    suite: dict(entry.get("ratings", {}))
+                    for suite, entry in suites.items()
                 }
                 for k, suites in raw.get("by_dimension", {}).items()
             }

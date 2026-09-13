@@ -78,7 +78,9 @@ def stochastic_generator(n_dim: int, seed: int):
     while True:
         # The generator chatters on construction; it is not our stdout to spend.
         with contextlib.redirect_stdout(io.StringIO()):
-            produced = create_fair_benchmark_run(n_functions=6, seed=rnd.randrange(2**31))
+            produced = create_fair_benchmark_run(
+                n_functions=6, seed=rnd.randrange(2**31)
+            )
         suite = produced[0] if isinstance(produced, tuple) else produced
         fns = list(suite.values()) if isinstance(suite, dict) else list(suite)
         yield from fns
@@ -108,7 +110,10 @@ EXPENSIVE_ABOVE = 25
 def load() -> dict:
     if OUT.exists():
         return json.loads(OUT.read_text())
-    return {"by_dimension": {}, "generator": "stochastic_surfaces.create_fair_benchmark_run"}
+    return {
+        "by_dimension": {},
+        "generator": "stochastic_surfaces.create_fair_benchmark_run",
+    }
 
 
 def _save(data: dict) -> None:
@@ -119,7 +124,9 @@ def _save(data: dict) -> None:
     tmp.replace(OUT)  # atomic: a crash mid-write cannot leave a truncated record
 
 
-def record(dims, n_problems: int, trials: int, seed: int, suite: str = "smooth") -> dict:
+def record(
+    dims, n_problems: int, trials: int, seed: int, suite: str = "smooth"
+) -> dict:
     """Play `n_problems` more matches per dimension, checkpointing after every one.
 
     A high-dimensional bucket runs for minutes, so nothing here is allowed to depend on reaching
@@ -158,8 +165,11 @@ def record(dims, n_problems: int, trials: int, seed: int, suite: str = "smooth")
                     elo_system=elo,
                 )
             except Exception as exc:  # keep what has been paid for, then move on
-                print(f"   problem {i + 1} failed ({type(exc).__name__}: {exc}); "
-                      f"keeping {played + i} matches", flush=True)
+                print(
+                    f"   problem {i + 1} failed ({type(exc).__name__}: {exc}); "
+                    f"keeping {played + i} matches",
+                    flush=True,
+                )
                 break
             data["by_dimension"].setdefault(key, {})[suite] = {
                 "ratings": dict(elo.ratings),
@@ -179,21 +189,28 @@ def main() -> int:
     ap.add_argument("--dims", default=",".join(str(d) for d in DEFAULT_DIMS))
     ap.add_argument("--problems", type=int, default=10)
     ap.add_argument(
-        "--trials", type=int, default=None,
+        "--trials",
+        type=int,
+        default=None,
         help="Fixed budget. Default scales with dimension: max(100, 10*n_dim).",
     )
     ap.add_argument("--seed", type=int, default=20260910)
     ap.add_argument(
-        "--suite", choices=("physics", "smooth"), default="physics",
+        "--suite",
+        choices=("physics", "smooth"),
+        default="physics",
         help="physics: the engineering demos, at the dimension each problem actually has. "
-             "smooth: randomly morphed analytic surfaces. Physics is the default because "
-             "smooth surfaces reward local search and rank optimizers accordingly.",
+        "smooth: randomly morphed analytic surfaces. Physics is the default because "
+        "smooth surfaces reward local search and rank optimizers accordingly.",
     )
     a = ap.parse_args()
     random.seed(a.seed)
     record(
         [int(d) for d in a.dims.split(",") if d.strip()],
-        a.problems, a.trials, a.seed, a.suite,
+        a.problems,
+        a.trials,
+        a.seed,
+        a.suite,
     )
     return 0
 

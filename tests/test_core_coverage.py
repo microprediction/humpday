@@ -394,7 +394,9 @@ class TestSuggestUsesRealEvidence:
     def test_unmeasured_fields_are_nan_rather_than_invented(self):
         from humpday import elo_by_dimension, suggest
 
-        for _score, time, _name in suggest(n_dim=sorted(elo_by_dimension())[0], smooth=False):
+        for _score, time, _name in suggest(
+            n_dim=sorted(elo_by_dimension())[0], smooth=False
+        ):
             assert time != time, "humpday records no timing evidence; time must be nan"
 
     def test_scores_do_not_march_with_position(self):
@@ -417,7 +419,9 @@ class TestSuggestUsesRealEvidence:
         unrated = suggested - set(ratings)
         # Rechenberg is unrated and leads the n_dim > 50 ordering. Recorded rather than asserted
         # away: if the tournament grows to cover it, this should shrink to nothing.
-        assert unrated <= {"Rechenberg"}, f"unrated optimizers are being suggested: {unrated}"
+        assert unrated <= {"Rechenberg"}, (
+            f"unrated optimizers are being suggested: {unrated}"
+        )
 
 
 class TestSuggestUsesDimensionSpecificEvidence:
@@ -430,8 +434,12 @@ class TestSuggestUsesDimensionSpecificEvidence:
             for suite, ratings in suites.items():
                 hint = suite == "smooth"
                 scores = [s for s, _, _ in suggest(n_dim=n_dim, smooth=hint)]
-                assert scores == sorted(scores, reverse=True), f"d={n_dim}/{suite} not ordered"
-                assert suggest(n_dim=n_dim, smooth=hint)[0][2] == max(ratings, key=ratings.get)
+                assert scores == sorted(scores, reverse=True), (
+                    f"d={n_dim}/{suite} not ordered"
+                )
+                assert suggest(n_dim=n_dim, smooth=hint)[0][2] == max(
+                    ratings, key=ratings.get
+                )
 
     def test_ratings_are_never_stretched_to_another_dimension(self):
         # Not even to the neighbouring one. Optimizer performance is not smooth in dimension: a
@@ -472,9 +480,12 @@ class TestSuggestHonoursObjectiveCharacter:
         differ = sum(
             1
             for d in both
-            if suggest(n_dim=d, smooth=True)[0][2] != suggest(n_dim=d, smooth=False)[0][2]
+            if suggest(n_dim=d, smooth=True)[0][2]
+            != suggest(n_dim=d, smooth=False)[0][2]
         )
-        assert differ >= len(both) // 3, "the suites should disagree on a fair share of dimensions"
+        assert differ >= len(both) // 3, (
+            "the suites should disagree on a fair share of dimensions"
+        )
 
     def test_default_is_never_terrible_rather_than_best_on_average(self):
         # The default optimises worst rank across suites. A specialist that wins one and places
@@ -495,7 +506,8 @@ class TestSuggestHonoursObjectiveCharacter:
                 if not all(other in r for r in suites.values()):
                     continue
                 other_worst = max(
-                    sorted(r, key=lambda n: -r[n]).index(other) + 1 for r in suites.values()
+                    sorted(r, key=lambda n: -r[n]).index(other) + 1
+                    for r in suites.values()
                 )
                 assert worst <= other_worst, (
                     f"d={n_dim}: {leader} is worst-ranked {worst}, but {other} is {other_worst}"
@@ -507,4 +519,6 @@ class TestSuggestHonoursObjectiveCharacter:
         n_dim = sorted(d for d, v in elo_by_dimension().items() if len(v) > 1)[0]
         for hint, suite in ((True, "smooth"), (False, "physics")):
             ratings = _ratings_for(n_dim, suite)
-            assert suggest(n_dim=n_dim, smooth=hint)[0][2] == max(ratings, key=ratings.get)
+            assert suggest(n_dim=n_dim, smooth=hint)[0][2] == max(
+                ratings, key=ratings.get
+            )

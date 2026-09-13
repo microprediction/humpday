@@ -20,7 +20,9 @@ MAX_SECONDS_PER_EVAL = 0.01
 def _probe(fn, n_dim, seed):
     rnd = random.Random(seed)
     worst_live, slowest = n_dim, 0.0
-    for _ in range(3):  # several points: a coordinate can be flat at one of them by chance
+    for _ in range(
+        3
+    ):  # several points: a coordinate can be flat at one of them by chance
         base = [rnd.random() for _ in range(n_dim)]
         started = time.time()
         value = float(fn(base))
@@ -28,7 +30,8 @@ def _probe(fn, n_dim, seed):
         live = sum(
             1
             for i in range(n_dim)
-            if abs(float(fn([*base[:i], 1.0 - base[i], *base[i + 1 :]])) - value) > 1e-12
+            if abs(float(fn([*base[:i], 1.0 - base[i], *base[i + 1 :]])) - value)
+            > 1e-12
         )
         worst_live = min(worst_live, live)
     return worst_live, slowest
@@ -48,7 +51,9 @@ def test_surface_is_raceable_in_high_dimension(fn):
 
 def test_surfaces_are_unique():
     names = [f.__name__ for f in SURFACES]
-    assert len(names) == len(set(names)), "the curated list must not repeat an objective"
+    assert len(names) == len(set(names)), (
+        "the curated list must not repeat an objective"
+    )
 
 
 def test_physics_objectives_load_and_evaluate():
