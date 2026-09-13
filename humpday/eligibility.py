@@ -439,11 +439,6 @@ def robust_order(n_dim: int, n_trials: int = 100) -> list:
     return _order(n_dim, n_trials)
 
 
-def _never_terrible_order(n_dim: int) -> list:
-    """Backwards-compatible alias."""
-    return robust_order(n_dim)
-
-
 def recommend(
     n_dim: int,
     n_trials: int,

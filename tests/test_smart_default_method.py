@@ -27,7 +27,10 @@ def _quadratic(x):
 
 def _expected_pick(n_dim: int, n_trials: int) -> str:
     """What recommend() should choose: measured evidence first, rule-based ranking after."""
-    measured = eligibility._never_terrible_order(n_dim)
+    # n_trials matters as much as n_dim: at 100 evaluations this reads the 50-budget cell and at
+    # 200 the 200-budget cell, and they do not agree. Passing only n_dim silently checked
+    # `recommend` against a different cell than the one it used.
+    measured = eligibility.robust_order(n_dim, n_trials)
     allowed = set(eligibility.eligible(list(eligibility.TIER), n_dim, n_trials, None))
     for name in measured:
         if name in allowed:

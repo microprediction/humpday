@@ -464,7 +464,9 @@ class TestSuggestUsesDimensionSpecificEvidence:
                 continue
             low, high = min(budgets), max(budgets)
             for suite, cell in ratings.cells_at(n_dim, high - 1).items():
-                assert cell is not ratings.cells()[f"{n_dim}/{high}/{suite}"]
+                # `.get`, not `[]`: a cell can be absent, because a suite whose problems cost more
+                # than the ceiling at that budget is skipped rather than faked.
+                assert cell is not ratings.cells().get(f"{n_dim}/{high}/{suite}")
             asked = (low + high) // 2
             for suite, cell in ratings.cells_at(n_dim, asked).items():
                 used = next(
