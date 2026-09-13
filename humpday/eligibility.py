@@ -424,9 +424,6 @@ def _lambda_for(eval_time: float | None) -> float:
     return 0.0
 
 
-# Weight of the prior when shrinking a suite's rank toward the cross-suite mean. A cell backed by
-# PRIOR_PROBLEMS problems is trusted halfway; fewer and it is pulled further toward the mean. Set
-# to the size of the smaller tournaments actually recorded, so those count for about half.
 def robust_order(n_dim: int, n_trials: int = 100) -> list:
     """Delegates to :func:`humpday.ratings.robust_order`.
 

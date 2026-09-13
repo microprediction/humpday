@@ -59,12 +59,14 @@ construction, since a truss is a truss; for those, repetition varies only the op
 randomization, and generalization rests on the number and variety of problems rather than on
 resampling any one of them.
 
-Least expected, the choice of objective suite substantially determines the ranking. Analytic
-surfaces are smooth, and smoothness rewards local search: on the morphed surfaces the three
-trust-region methods took the top three places at every dimension recorded. Raced on the
-engineering problems at the same dimensions they are displaced. `PRIMA_UOBYQA`, third on surfaces
-averaged over ten dimensions, falls to sixteenth. A ranking taken from analytic surfaces
-alone substantially measures how smooth those surfaces are.
+The choice of objective suite substantially determines the ranking. This is established rather
+than incidental: @cotton2026benchmark ranks a panel of optimizers on a memorisation-proof suite of
+real-world objectives and finds the rank correlation with their synthetic-benchmark ranking
+statistically indistinguishable from zero, with the mechanism being that benchmarks over-trust the
+model-based trust-region methods. The recorded tournaments reproduce it. On the morphed surfaces
+the three trust-region methods took the top three places at every dimension recorded; raced on the
+engineering problems at the same dimensions they are displaced, and `PRIMA_UOBYQA`, third on
+surfaces averaged over ten dimensions, falls to sixteenth.
 
 `humpday` therefore records both suites and, by default, ranks by *worst* position across them, so
 the recommendation is the optimizer that is never terrible rather than one that wins a suite and
@@ -129,10 +131,10 @@ develops the cost-weighted Borda recommender that `eligibility.recommend` implem
 browser for the worked applications, and the recorded tournaments are committed so results can be
 reproduced or contested.
 
-The credible near-term significance is as instrumentation rather than as a new method. The finding
-above, that a ranking taken from smooth analytic surfaces substantially measures smoothness, is a
-caution that applies to any optimizer comparison, and the package makes it cheap to check on a
-different suite.
+The credible near-term significance is as instrumentation rather than as a new method. The suite
+dependence above is a caution that applies to any optimizer comparison, and what the package adds to
+@cotton2026benchmark is that the comparison is now recorded per dimension, shipped as data, and
+re-runnable on a different suite by anyone who doubts it.
 
 # Quality control
 
