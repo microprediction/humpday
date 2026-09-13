@@ -56,10 +56,18 @@ def scalable_physics(n_dim: int, seed: int):
     with the structural constant turned up: pack n/2 circles rather than six, schedule n hours of
     battery dispatch rather than twenty-four, place n control points on a descent rather than eight.
 
-    They keep what makes the demos different from analytic surfaces. Packing is non-smooth, its
-    achievable radius being a minimum over pairwise gaps with sharp ridges where the binding
-    constraint switches. Dispatch is a constrained schedule with a state that carries between
-    steps. Neither is a rotated quadratic bowl.
+    How good a stand-in are they? Partial, and measured rather than asserted. Raced at twelve
+    dimensions against the real demos and the analytic surfaces:
+
+        real demos         CoordinateDescent, PRIMA_BOBYQA, Rechenberg, Alloy
+        this family        PRIMA_BOBYQA, PatternSearch, PRIMA_NEWUOA, CoordinateDescent
+        analytic surfaces  PRIMA_NEWUOA, PRIMA_UOBYQA, PRIMA_BOBYQA, NelderMead
+
+    They sit between the two. The direct-search methods that the real demos favour and the
+    surfaces do not, PatternSearch and CoordinateDescent, show up here; but a trust-region method
+    still leads, as on the surfaces. Three structures cannot stand in for seventy-six problems.
+    Read a high-dimensional physics rating as better evidence than analytic surfaces alone and
+    weaker evidence than the fixed demos, not as equivalent to them.
     """
     rnd = random.Random(seed)
 
