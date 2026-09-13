@@ -63,8 +63,13 @@ def _ranked(cell: dict) -> list:
 
     An optimizer is listed under ``timed_out`` when it twice failed to come back inside a wall clock
     allowance set at a multiple of what the objective's own evaluations cost, so the allowance
-    tracks the problem and the finding is about the method. Being unable to return is worse than
-    losing, and it is kept out of the Elo because it is not a result; here it simply ranks last.
+    tracks the problem rather than the machine. Being unable to return is worse than losing, and it
+    is kept out of the Elo because it is not a result; here it simply ranks last.
+
+    Read it as a fact about *this implementation* at that size, not about the algorithm. Everything
+    in humpday is a pure Python port, so at a hundred variables BOBYQA's interpolation algebra is
+    the expensive part in a way it is not in the Fortran reference. That is still the right answer
+    for a caller choosing what to run from this package, and the wrong one to cite about BOBYQA.
 
     A disqualification usually happens partway through a cell, so the optimizer carries a rating
     from the problems it did finish as well as a place in ``timed_out``. The timeout wins: a method
