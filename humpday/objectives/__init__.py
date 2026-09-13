@@ -33,15 +33,6 @@ import importlib
 import pathlib
 from typing import Callable, List, Tuple
 
-from humpday.objectives.chatgptobjectives import CHATGPT_OBJECTIVES
-from humpday.objectives.classic import (
-    CLASSIC_OBJECTIVES,
-    DEAP_OBJECTIVES,
-    LANDSCAPES_OBJECTIVES,
-    MISC_OBJECTIVES,
-    SWARM_OBJECTIVES,
-)
-
 # Read only their leading coordinates, whatever length of vector you hand them. Measured, not
 # assumed: perturbing coordinate i of a d=100 point leaves the value unchanged for most i.
 FIXED_DIMENSION = frozenset(
@@ -84,14 +75,52 @@ def _curate(*groups) -> List[Callable]:
     return out
 
 
-SURFACES: List[Callable] = _curate(
-    CLASSIC_OBJECTIVES,
-    DEAP_OBJECTIVES,
-    LANDSCAPES_OBJECTIVES,
-    SWARM_OBJECTIVES,
-    MISC_OBJECTIVES,
-    CHATGPT_OBJECTIVES,
-)
+_SURFACES_CACHE: List[Callable] | None = None
+
+
+def surfaces() -> List[Callable]:
+    """The curated list of classic formulaic surfaces.
+
+    Built on first use rather than at import. The modules it draws from import numpy at module
+    scope, and humpday declares no dependencies at all -- importing this package must not turn
+    numpy into one. ``SURFACES`` below is a module-level alias resolved through ``__getattr__``,
+    so ``from humpday.objectives import SURFACES`` still works and still costs nothing until read.
+    """
+    global _SURFACES_CACHE
+    if _SURFACES_CACHE is None:
+        try:
+            import numpy  # noqa: F401
+        except ImportError as exc:  # pragma: no cover - depends on the install
+            raise ImportError(
+                "humpday.objectives.SURFACES needs numpy: the analytic surfaces are written "
+                "against it, even though humpday itself has no dependencies and the optimizers "
+                "run without it. Install numpy, or use physics_objectives() instead."
+            ) from exc
+        from humpday.objectives.chatgptobjectives import CHATGPT_OBJECTIVES
+        from humpday.objectives.classic import (
+            CLASSIC_OBJECTIVES,
+            DEAP_OBJECTIVES,
+            LANDSCAPES_OBJECTIVES,
+            MISC_OBJECTIVES,
+            SWARM_OBJECTIVES,
+        )
+
+        _SURFACES_CACHE = _curate(
+            CLASSIC_OBJECTIVES,
+            DEAP_OBJECTIVES,
+            LANDSCAPES_OBJECTIVES,
+            SWARM_OBJECTIVES,
+            MISC_OBJECTIVES,
+            CHATGPT_OBJECTIVES,
+        )
+    return _SURFACES_CACHE
+
+
+def __getattr__(name: str):
+    if name == "SURFACES":
+        return surfaces()
+    raise AttributeError(f"module {__name__!r} has no attribute {name!r}")
+
 
 # Retired from this list but still importable from their own modules:
 #   horse.HORSE_OBJECTIVES        one racing-derived objective, not a formulaic surface
@@ -116,8 +145,15 @@ def physics_objectives() -> List[Tuple[str, Callable, int]]:
     global _PHYSICS_CACHE
     if _PHYSICS_CACHE is not None:
         return _PHYSICS_CACHE
+    # The demos are a repository asset, not package data: each is a directory with a README, a
+    # runnable script and a problem module, and they are not shipped in the wheel. Resolve them
+    # only when the repository is present, and return nothing otherwise rather than raising from
+    # an installed package -- a FileNotFoundError from site-packages is not a useful answer.
     root = pathlib.Path(__file__).resolve().parents[2] / "example_applications"
     found: List[Tuple[str, Callable, int]] = []
+    if not root.is_dir():
+        _PHYSICS_CACHE = found
+        return found
     for demo in sorted(p for p in root.iterdir() if (p / "problem.py").exists()):
         if demo.name in _PHYSICS_EXCLUDE:
             continue

@@ -6,6 +6,7 @@ every naive check while posing a 2-d problem at d=100. And one slow objective is
 tournament impractical once it is multiplied by trials, problems and optimizers.
 """
 
+import pathlib
 import random
 import time
 
@@ -70,3 +71,47 @@ def test_morphed_surfaces_differ_between_runs():
     a, b = morphed_surfaces(4, seed=1), morphed_surfaces(4, seed=2)
     x = [0.4] * 8
     assert [float(f(x)) for f in a] != [float(f(x)) for f in b]
+
+
+def test_importing_the_package_does_not_require_numpy():
+    """humpday declares no dependencies. Importing this package must not create one.
+
+    The surface modules import numpy at module scope, so a module-level `from ... import
+    CLASSIC_OBJECTIVES` here turns numpy into a hard requirement for anyone who imports
+    `humpday.objectives` at all. Built lazily instead.
+    """
+    import subprocess
+    import sys
+
+    probe = (
+        "import sys, builtins;"
+        "real=builtins.__import__;"
+        "builtins.__import__=lambda n,*a,**k: (_ for _ in ()).throw(ImportError(n))"
+        " if n.split('.')[0]=='numpy' else real(n,*a,**k);"
+        "import humpday.objectives;"
+        "print('ok')"
+    )
+    out = subprocess.run([sys.executable, "-c", probe], capture_output=True, text=True)
+    assert out.returncode == 0 and "ok" in out.stdout, (
+        f"importing humpday.objectives pulled in numpy: {out.stderr[-400:]}"
+    )
+
+
+def test_physics_objectives_is_empty_rather_than_raising_off_repository():
+    """The demos are a repository asset and are not in the wheel.
+
+    Resolving them relative to the installed package used to raise FileNotFoundError from
+    site-packages, which is not a useful answer to "what engineering problems do you have".
+    """
+    import humpday.objectives as mod
+
+    original, mod._PHYSICS_CACHE = mod._PHYSICS_CACHE, None
+    real_is_dir = pathlib.Path.is_dir
+    try:
+        pathlib.Path.is_dir = lambda self: (
+            False
+        )  # simulate an installed, repo-less layout
+        assert mod.physics_objectives() == []
+    finally:
+        pathlib.Path.is_dir = real_is_dir
+        mod._PHYSICS_CACHE = original
