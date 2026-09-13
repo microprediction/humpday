@@ -30,6 +30,20 @@ jobs:
           pip install -e ".[fast]"
           pip install pytest
 
+      - name: Versions must agree before anything is published
+        # docs/js/modules/package.json is bumped by hand, and when that is forgotten the release
+        # runs all the way to `npm publish` and dies on a 403 for republishing an existing
+        # version. Fail here instead, naming both files, while nothing has been shipped.
+        run: |
+          PY_VER=$(python -c "import tomllib,pathlib; print(tomllib.loads(pathlib.Path('pyproject.toml').read_text())['project']['version'])")
+          JS_VER=$(python -c "import json; print(json.load(open('docs/js/modules/package.json'))['version'])")
+          echo "pyproject.toml            $PY_VER"
+          echo "docs/js/modules/package.json  $JS_VER"
+          if [ "$PY_VER" != "$JS_VER" ]; then
+            echo "::error::Version mismatch. Bump docs/js/modules/package.json to $PY_VER and re-tag."
+            exit 1
+          fi
+
       - name: Set up Node
         uses: actions/setup-node@v4
         with:
