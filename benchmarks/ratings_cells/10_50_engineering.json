@@ -1,0 +1,40 @@
+{
+  "allowance": 5.0,
+  "budget": 50,
+  "ineligible": {
+    "GridSearch": "dimension cap 4",
+    "PRIMA_UOBYQA": "needs 71 evaluations"
+  },
+  "n_dim": 10,
+  "problems": 30,
+  "ratings": {
+    "Alloy": 1699.9136176752256,
+    "AntColonyOpt": 1436.338639597358,
+    "BayesianOpt": 1345.20535008295,
+    "CMAEvolutionStrategy": 1373.4749477157454,
+    "CoordinateDescent": 1962.57721442427,
+    "DifferentialEvolution": 1411.82887126755,
+    "EvolutionStrategy": 1542.7868735400748,
+    "FireflyAlgorithm": 1447.7657820212328,
+    "GeneticAlgorithm": 1582.5679578460988,
+    "GridSearch": 1500.0,
+    "HarmonySearch": 1551.5282958597936,
+    "HillClimbing": 1293.2379543913355,
+    "LBFGSB": 1007.2273293809665,
+    "NelderMead": 1606.019020801421,
+    "PRIMA_BOBYQA": 1501.3431575186785,
+    "PRIMA_NEWUOA": 1447.9889084761874,
+    "PRIMA_UOBYQA": 1500.0,
+    "ParticleSwarm": 1392.5656917873448,
+    "PatternSearch": 1913.168622981927,
+    "Powell": 1392.7379739445264,
+    "RandomSearch": 1565.8951645467398,
+    "Rechenberg": 1801.2161955444178,
+    "SimulatedAnnealing": 1224.6124305961555
+  },
+  "recorded_at": "2026-09-13T17:46:24.901095+00:00",
+  "seconds": 51.4,
+  "strikes": {},
+  "suite": "engineering",
+  "timed_out": {}
+}

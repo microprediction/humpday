@@ -1,0 +1,47 @@
+{
+  "allowance": 100.0,
+  "budget": 5000,
+  "ineligible": {
+    "BayesianOpt": "dimension cap 10",
+    "GridSearch": "dimension cap 4",
+    "PRIMA_UOBYQA": "dimension cap 12"
+  },
+  "n_dim": 16,
+  "problems": 30,
+  "ratings": {
+    "Alloy": 2009.8061552293545,
+    "AntColonyOpt": 1352.913406734243,
+    "BayesianOpt": 1500.0,
+    "CMAEvolutionStrategy": 1972.7341313040968,
+    "CoordinateDescent": 1671.224485317907,
+    "DifferentialEvolution": 1655.7991649545122,
+    "EvolutionStrategy": 1218.113525599809,
+    "FireflyAlgorithm": 1413.7469016740629,
+    "GeneticAlgorithm": 1782.4285965094941,
+    "GridSearch": 1500.0,
+    "HarmonySearch": 1622.346553661588,
+    "HillClimbing": 1692.7999253749156,
+    "LBFGSB": 579.3010173624217,
+    "NelderMead": 1133.9924464329445,
+    "PRIMA_BOBYQA": 1500.0,
+    "PRIMA_NEWUOA": 1500.0,
+    "PRIMA_UOBYQA": 1500.0,
+    "ParticleSwarm": 1825.7266253048947,
+    "PatternSearch": 1723.8772030183427,
+    "Powell": 1806.5359561659577,
+    "RandomSearch": 1057.9641541734318,
+    "Rechenberg": 1161.1599323224402,
+    "SimulatedAnnealing": 1319.5298188595796
+  },
+  "recorded_at": "2026-09-13T17:45:05.509263+00:00",
+  "seconds": 755.0,
+  "strikes": {
+    "PRIMA_BOBYQA": 2,
+    "PRIMA_NEWUOA": 2
+  },
+  "suite": "surfaces",
+  "timed_out": {
+    "PRIMA_BOBYQA": 100.0,
+    "PRIMA_NEWUOA": 100.0
+  }
+}
