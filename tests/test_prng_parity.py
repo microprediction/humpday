@@ -19,7 +19,7 @@ from pathlib import Path
 
 import pytest
 
-from humpday._prng import PCG32, portable_log
+from humpday._prng import PCG32, portable_exp, portable_log
 
 NODE = shutil.which("node")
 RUNNER = Path(__file__).parent / "js_prng_runner.js"
@@ -79,6 +79,16 @@ def test_double_and_gauss_golden():
     assert _bits(g.random()) == "3fe42b8055ed1fd0"
     g = PCG32(42, 54)
     assert _bits(g.gauss()) == "3fe9a1fbd078a681"
+
+
+def test_portable_exp_close_to_libm_and_golden():
+    for x in [-740.0, -10.0, -0.5, 0.0, 1e-9, 0.5, 1.0, 10.0, 700.0, 709.0]:
+        assert math.isclose(portable_exp(x), math.exp(x), rel_tol=5e-15)
+    # Golden bits — part of the cross-language spec.
+    assert _bits(portable_exp(1.0)) == "4005bf0a8b145768"
+    assert _bits(portable_exp(-0.5)) == "3fe368b2fc6f960c"
+    assert portable_exp(-800.0) == 0.0
+    assert portable_exp(800.0) == float("inf")
 
 
 def test_portable_log_close_to_libm():

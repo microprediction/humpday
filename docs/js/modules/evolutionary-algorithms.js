@@ -1063,61 +1063,49 @@ class HarmonySearch extends Optimizer {
         this.name = 'HarmonySearch';
     }
 
-    optimize() {
-        const HMS = Math.min(20, Math.max(5, this.nDim * 2)); // Harmony Memory Size
-        const HMCR = 0.9; // Harmony Memory Considering Rate
-        const PAR = 0.3; // Pitch Adjusting Rate
+    *_run() {
+        // Twin of HarmonySearch._run in
+        // humpday/optimizers/evolutionary_algorithms.py.
+        const HMS = Math.min(20, Math.max(5, this.nDim * 2));
+        const HMCR = 0.9;
+        const PAR = 0.3;
 
-        // Initialize harmony memory
         const harmonyMemory = [];
-        for (let i = 0; i < HMS && this.evaluations < this.nTrials; i++) {
-            const harmony = Array(this.nDim).fill(0).map(() => Math.random());
-            const fitness = this.evaluate(harmony);
-            harmonyMemory.push({ harmony: [...harmony], fitness });
+        for (let k = 0; k < HMS; k++) {
+            if (this.evaluations >= this.nTrials) break;
+            const harmony = MathUtils.randomUniform(this.nDim);
+            const fitness = yield harmony;
+            harmonyMemory.push({ harmony, fitness });
         }
 
         while (this.evaluations < this.nTrials) {
-            const newHarmony = [];
+            const newHarmony = new Array(this.nDim).fill(0);
 
             for (let j = 0; j < this.nDim; j++) {
-                if (Math.random() < HMCR) {
-                    // Pick from harmony memory
-                    const selectedHarmony = harmonyMemory[
-                        Math.floor(Math.random() * harmonyMemory.length)
-                    ];
-                    let value = selectedHarmony.harmony[j];
+                if (MathUtils.randomScalar() < HMCR) {
+                    const selected = MathUtils.choice(harmonyMemory);
+                    let value = selected.harmony[j];
 
-                    // Pitch adjustment
-                    if (Math.random() < PAR) {
-                        value = MathUtils.clip(value + (Math.random() - 0.5) * 0.1, 0, 1);
+                    if (MathUtils.randomScalar() < PAR) {
+                        value = Math.max(0.0, Math.min(1.0, value + 0.1 * MathUtils.randomNormal(1)[0]));
                     }
 
-                    newHarmony.push(value);
+                    newHarmony[j] = value;
                 } else {
-                    // Random selection
-                    newHarmony.push(Math.random());
+                    newHarmony[j] = MathUtils.randomScalar();
                 }
             }
 
-            const newFitness = this.evaluate(newHarmony);
+            const newFitness = yield newHarmony;
 
-            // Update harmony memory (replace worst if new harmony is better)
             harmonyMemory.sort((a, b) => a.fitness - b.fitness);
             if (newFitness < harmonyMemory[harmonyMemory.length - 1].fitness) {
                 harmonyMemory[harmonyMemory.length - 1] = {
-                    harmony: [...newHarmony],
-                    fitness: newFitness
+                    harmony: newHarmony.slice(),
+                    fitness: newFitness,
                 };
             }
         }
-
-        return {
-            bestValue: this.bestValue,
-            bestX: this.bestX,
-            evaluations: this.evaluations,
-            success: true,
-            path: this.trackPath ? this.path : null
-        };
     }
 }
 
@@ -1128,54 +1116,54 @@ class EvolutionStrategy extends Optimizer {
         this.name = 'EvolutionStrategy';
     }
 
-    optimize() {
-        const mu = Math.min(10, Math.max(2, Math.floor(this.nDim / 2)));
-        const lambda = mu * 4;
+    *_run() {
+        // Twin of EvolutionStrategy._run ((mu+lambda)-ES) in
+        // humpday/optimizers/evolutionary_algorithms.py.
+        const mu = 10;
+        const lambda_ = Math.min(30, Math.floor(this.nTrials / 3));
+        const sigma = 0.2;
 
-        // Initialize parent population
-        let parents = [];
-        for (let i = 0; i < mu && this.evaluations < this.nTrials; i++) {
-            const individual = Array(this.nDim).fill(0).map(() => Math.random());
-            const fitness = this.evaluate(individual);
-            const sigma = Array(this.nDim).fill(0.1); // Strategy parameters
-            parents.push({ x: individual, fitness, sigma });
+        let population = [];
+        let fitness = [];
+        for (let k = 0; k < mu; k++) {
+            if (this.evaluations >= this.nTrials) break;
+            const individual = MathUtils.randomUniform(this.nDim);
+            const f = yield individual;
+            population.push(individual);
+            fitness.push(f);
         }
 
         while (this.evaluations < this.nTrials) {
             const offspring = [];
+            const offspringFitness = [];
 
-            // Generate offspring
-            for (let i = 0; i < lambda && this.evaluations < this.nTrials; i++) {
-                // Select random parent
-                const parent = parents[Math.floor(Math.random() * parents.length)];
+            for (let k = 0; k < lambda_; k++) {
+                if (this.evaluations >= this.nTrials) break;
 
-                // Mutate strategy parameters
-                const newSigma = parent.sigma.map(s =>
-                    s * Math.exp(0.1 * (Math.random() - 0.5))
+                const parentIdx = MathUtils.randInt(population.length);
+                const parent = population[parentIdx];
+
+                const z = MathUtils.randomNormal(this.nDim);
+                const child = MathUtils.clipArray(
+                    parent.map((p, i) => p + sigma * z[i]), 0, 1
                 );
 
-                // Generate offspring
-                const child = parent.x.map((xi, j) =>
-                    MathUtils.clip(xi + newSigma[j] * (Math.random() - 0.5), 0, 1)
-                );
-
-                const fitness = this.evaluate(child);
-                offspring.push({ x: child, fitness, sigma: newSigma });
+                const childFitness = yield child;
+                offspring.push(child);
+                offspringFitness.push(childFitness);
             }
 
-            // Select best μ from parents + offspring
-            const combined = [...parents, ...offspring];
-            combined.sort((a, b) => a.fitness - b.fitness);
-            parents = combined.slice(0, mu);
+            if (offspring.length) {
+                const allIndividuals = population.concat(offspring);
+                const allFitness = fitness.concat(offspringFitness);
+                const indices = allFitness
+                    .map((_, i) => i)
+                    .sort((a, b) => allFitness[a] - allFitness[b])
+                    .slice(0, mu);
+                population = indices.map(i => allIndividuals[i]);
+                fitness = indices.map(i => allFitness[i]);
+            }
         }
-
-        return {
-            bestValue: this.bestValue,
-            bestX: this.bestX,
-            evaluations: this.evaluations,
-            success: true,
-            path: this.trackPath ? this.path : null
-        };
     }
 }
 
