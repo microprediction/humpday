@@ -25,7 +25,8 @@ budget. Every optimizer is a pure Python implementation and the package declares
 all: `numpy` is used through a shim when present, and the same code runs without it.
 
 Optimizers are rated by Elo over tournaments of paired outcomes, recorded separately for each
-problem dimension and for two kinds of objective. The first is a suite of classic analytic surfaces,
+problem dimension, each evaluation budget, and each of two kinds of objective. The first is a suite
+of classic analytic surfaces,
 regenerated with fresh random parameters on every run. The second is a set of engineering and
 physics problems drawn from worked applications: a brachistochrone descent, a truss, a cantilever
 beam, a cart-pole control policy, each posed at the dimension its problem actually has. Every
@@ -43,11 +44,13 @@ two hundred function evaluations, what should I call?*
 answer. Three properties of the tournament decide whether its output means anything, and each is
 easy to get wrong.
 
-The evaluation budget must scale with dimension. NEWUOA and BOBYQA build an interpolation set of
-roughly $2n+1$ points before proposing anything, which is 201 points at $n=100$; UOBYQA requires a
-full quadratic set of $(n+1)(n+2)/2$ points, which is 5,151. Given a flat hundred evaluations these
-methods return almost immediately having built no usable model. On a leaderboard recorded that way
-they placed first, second and third, rewarded precisely for doing nothing.
+The evaluation budget belongs in the index, not in the fine print. NEWUOA and BOBYQA build an
+interpolation set of roughly $2n+1$ points before proposing anything, which is 201 points at
+$n=100$; UOBYQA requires a full quadratic set of $(n+1)(n+2)/2$ points, which is 5,151. Given a flat
+hundred evaluations these methods return almost immediately having built no usable model. On a
+leaderboard recorded that way they placed first, second and third, rewarded precisely for doing
+nothing. The tournament is therefore recorded at four budgets from 50 to 5,000 and a query is
+answered from the recorded budget nearest below the caller's, never from a more generous one.
 
 A fixed objective can be learned. Instances in the analytic suite are therefore regenerated with a
 fresh shift, rotation, scale, noise level and modal frequency on every run, so repeated tournaments
@@ -65,10 +68,12 @@ alone substantially measures how smooth those surfaces are.
 
 `humpday` therefore records both suites and, by default, ranks by *worst* position across them, so
 the recommendation is the optimizer that is never terrible rather than one that wins a suite and
-collapses on the other. A caller who knows the character of their objective can request either
-suite. Ratings are never interpolated between dimensions: optimizer performance is not smooth in
-dimension, and a dimension nothing has raced falls back to a documented rule and reports no ratings
-rather than borrowing a neighbour's.
+collapses on the other. The rank taken from a cell is first shrunk toward the optimizer's
+cross-suite mean in proportion to how many problems back that cell, so a thin tournament moves the
+ordering less than a deep one. A caller who knows the character of their objective can request
+either suite. Ratings are never interpolated between dimensions: optimizer performance is not
+smooth in dimension, and a dimension nothing has raced falls back to a documented rule and reports
+no ratings rather than borrowing a neighbour's.
 
 # State of the field
 
@@ -94,6 +99,13 @@ algorithm code calls the same functions either way. That is the central trade-of
 reimplementing well-tested algorithms in pure Python costs accuracy risk and speed, and buys
 installability anywhere, a browser port, and the ability to test the recursions against golden
 transition vectors.
+
+Every run in the tournament is capped in wall-clock time, at the larger of a fixed multiple of what
+the objective's own evaluations cost and a fixed overhead allowance per evaluation. Without a cap
+the grid does not terminate; with a cap fixed in absolute seconds it would disqualify a method for
+the cost of the objective rather than its own, which is why the allowance is measured per cell
+against a pure-sampling reference. An optimizer that twice fails to return is recorded as having
+timed out rather than as having lost, and ranks last in that cell.
 
 Recorded ratings ship inside the package as data, so a recommendation needs no network and no
 benchmark run. The engineering demos are the exception and remain a repository asset rather than

@@ -2,6 +2,51 @@
 
 Notable changes to `humpday`. Format follows [Keep a Changelog](https://keepachangelog.com/).
 
+## [Unreleased]
+
+Benchmarking was three artifacts, built by three scripts at three times over different objectives,
+feeding different parts of the library. `minimize` and `suggest` could disagree about the same
+problem because they read different tables. This is one table, one aggregation, one consumer path.
+
+### Changed — behaviour
+
+- **One rating artifact, indexed by dimension, budget and suite.** `humpday/data/ratings.json`,
+  recorded by `benchmarks/record_ratings.py`. Budget joins the index because it changes the answer
+  as much as dimension does: NEWUOA and BOBYQA want roughly `2n+1` points before proposing
+  anything and UOBYQA wants `(n+1)(n+2)/2`, which is 5,151 at a hundred variables, so a budget that
+  is generous at ten is nothing at a hundred. Budget is interpolated downward only; dimension is
+  never interpolated.
+- **`suggest()` and `minimize()` read the same table.** `humpday.ratings.robust_order` is the one
+  ordering function, and `eligibility.recommend` consults it before the Borda grid. They were
+  written separately and were free to drift.
+- **`suggest()` reports no score under the default.** Ranking by worst position across two suites
+  is not a rating, and Elo from two tournaments is not on one scale. Passing `smooth=True` or
+  `smooth=False` selects one suite and returns its measured ratings, as before.
+- **An optimizer that cannot return is ranked last, not silently dropped.** Each run is capped at a
+  wall clock set to the larger of 25x what the objective's own evaluations cost and 20 ms per
+  evaluation, so the allowance follows the problem and a disqualification is a finding about the
+  method. Two overruns in a cell disqualify it there, recorded under `timed_out` and readable via
+  `humpday.ratings.timed_out`.
+
+### Added
+
+- `humpday.ratings` — the one place ratings are read: `robust_order`, `suite_order`, `rating`,
+  `timed_out`, `cells_at`, `recorded_dimensions`.
+- `humpday.problems_recorded()` — how many problems back each cell, since that is what makes a
+  rating worth anything and what the rank shrinkage weights by.
+- `benchmarks/record_ratings.py` — shards one file per cell under `benchmarks/ratings_cells/`, runs
+  cells in parallel, resumes rather than restarts, and skips a cell already deep enough.
+
+### Removed — breaking
+
+- `humpday.elo_ratings()`. It read a sweep of sphere and Rosenbrock variants in **two dimensions**,
+  which is one of the relics deleted here. There is no honest one-number replacement: that ratings
+  depend on dimension, budget and suite is the finding, not an inconvenience.
+- `benchmarks/elo_ratings.json`, `humpday/data/elo_ratings.json`, `humpday/data/elo_by_dimension.json`,
+  `benchmarks/record_elo.py`, `benchmarks/record_elo_by_dimension.py`.
+- `humpday.elo_by_dimension()` is **deprecated**, not removed: it is now a view on the one table and
+  can only show one budget at a time.
+
 ## [0.23.0] — 2026-09-13
 
 The theme is that the recommenders claimed more evidence than they had. Several of these change

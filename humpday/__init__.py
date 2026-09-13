@@ -58,109 +58,45 @@ from humpday.optimizers.scipy_interface import (
     unit_cube_to_unbounded,
 )
 
-_ELO_CACHE: dict | None = None
-_ELO_BY_DIM_CACHE: dict | None = None
-_COUNTS_CACHE: dict | None = None
 
+def elo_by_dimension(n_trials: int = 100) -> dict:
+    """Deprecated view: ``{dimension: {suite: {optimizer: rating}}}`` at one budget.
 
-def elo_ratings() -> dict:
-    """Overall Elo ratings, optimizer name -> rating. Empty if the table is unavailable.
-
-    Recorded by ``benchmarks/record_elo.py`` over 6930 matches in **two dimensions** on sphere and
-    Rosenbrock variants. Prefer :func:`elo_by_dimension`, which records per dimension and on both
-    analytic surfaces and engineering demos; this remains for the overall picture and for callers
-    that predate it.
+    Superseded by :mod:`humpday.ratings`, which indexes by budget as well, because which optimizer
+    wins depends on the budget at least as strongly as on the dimension. Kept because it was a
+    documented return shape; it can only show one budget at a time, and shows the recorded one
+    nearest below ``n_trials``.
     """
-    global _ELO_CACHE
-    if _ELO_CACHE is None:
-        try:
-            from pathlib import Path
+    from humpday import ratings
 
-            raw = json.loads(
-                (Path(__file__).parent / "data" / "elo_ratings.json").read_text()
-            )
-            _ELO_CACHE = dict(raw.get("ratings", {}))
-        except Exception:  # pragma: no cover - the table is optional
-            _ELO_CACHE = {}
-    return _ELO_CACHE
+    out: dict = {}
+    for n_dim in ratings.recorded_dimensions():
+        for suite, cell in ratings.cells_at(n_dim, n_trials).items():
+            out.setdefault(n_dim, {})[suite] = dict(cell.get("ratings", {}))
+    return out
 
 
-def elo_by_dimension() -> dict:
-    """Measured ratings keyed by problem dimension, ``{n_dim: {optimizer: rating}}``.
+def problems_recorded(n_dim: int = None, n_trials: int = 100) -> dict:
+    """How many problems back the ratings: ``{dimension: {suite: count}}``.
 
-    Recorded by ``benchmarks/record_elo_by_dimension.py`` on randomly morphed surfaces, with the
-    evaluation budget scaled to the dimension so that model-based methods can actually build a
-    model before being scored. Empty if nothing has been recorded.
+    The count is what makes a rating worth anything, so it is readable rather than buried in the
+    artifact, and it is what :func:`humpday.ratings.robust_order` shrinks toward the mean by.
     """
-    global _ELO_BY_DIM_CACHE
-    if _ELO_BY_DIM_CACHE is None:
-        try:
-            from pathlib import Path
+    from humpday import ratings
 
-            raw = json.loads(
-                (Path(__file__).parent / "data" / "elo_by_dimension.json").read_text()
-            )
-            _ELO_BY_DIM_CACHE = {
-                int(k): {
-                    suite: dict(entry.get("ratings", {}))
-                    for suite, entry in suites.items()
-                }
-                for k, suites in raw.get("by_dimension", {}).items()
-            }
-        except Exception:  # pragma: no cover - the table is optional
-            _ELO_BY_DIM_CACHE = {}
-    return _ELO_BY_DIM_CACHE
-
-
-def problems_recorded() -> dict:
-    """How many problems back each cell, ``{n_dim: {suite: count}}``.
-
-    The rating aggregation needs this: a rank from a fifteen-problem tournament should not carry
-    the same weight as one from fifty-five.
-    """
-    global _COUNTS_CACHE
-    if _COUNTS_CACHE is None:
-        try:
-            from pathlib import Path
-
-            raw = json.loads(
-                (Path(__file__).parent / "data" / "elo_by_dimension.json").read_text()
-            )
-            _COUNTS_CACHE = {
-                int(k): {
-                    s: int(e.get("match_history_count", 0)) for s, e in suites.items()
-                }
-                for k, suites in raw.get("by_dimension", {}).items()
-            }
-        except Exception:  # pragma: no cover - the table is optional
-            _COUNTS_CACHE = {}
-    return _COUNTS_CACHE
-
-
-def _ratings_for(n_dim: int, suite: str):
-    """Ratings recorded for this suite **at this exact dimension**, or None.
-
-    No interpolation and no nearest-neighbour. Optimizer performance is not smooth in dimension: a
-    Bayesian method can work well at five and blow up at ten, and the trust-region methods here top
-    the analytic table at twenty-five while being unable to build their interpolation set at a
-    hundred on a comparable budget. A rating measured at one dimension is evidence about that one.
-    """
-    return elo_by_dimension().get(n_dim, {}).get(suite)
-
-
-def _never_terrible(n_dim: int):
-    """Optimizers ordered by dependability across the recorded suites, or None.
-
-    The ordering lives in :func:`humpday.eligibility.robust_order` so that ``suggest`` and the
-    recommender behind ``minimize`` cannot disagree about what "never terrible" means. They were
-    written separately once and were free to drift.
-    """
-    from humpday.eligibility import robust_order
-
-    return robust_order(n_dim) or None
+    dims = ratings.recorded_dimensions() if n_dim is None else [n_dim]
+    out: dict = {}
+    for d in dims:
+        for suite, cell in ratings.cells_at(d, n_trials).items():
+            out.setdefault(d, {})[suite] = int(cell.get("problems", 0))
+    return out
 
 
 # Simple suggest function using pure algorithms
+def _or_nan(value) -> float:
+    return float("nan") if value is None else float(value)
+
+
 def suggest(
     n_dim: int, n_trials: int = 100, n_seconds: float = None, smooth: bool = None
 ):
@@ -169,43 +105,40 @@ def suggest(
 
     Args:
         n_dim: Problem dimension. Ratings are used only where a tournament was recorded at exactly
-            this dimension.
-        n_trials: Evaluation budget. Recorded for reference; the ordering does not vary with it.
+            this dimension; performance is not smooth in dimension and is never interpolated.
+        n_trials: Evaluation budget. Selects the recorded budget, taking the largest not exceeding
+            this one.
         n_seconds: Ignored (for compatibility).
         smooth: What kind of objective you have, if you know.
 
-            * ``True`` -- smooth and locally well-behaved. Ranked on morphed analytic surfaces,
-              where local model-based search does well.
+            * ``True`` -- smooth and locally well behaved. Ranked on the analytic surfaces.
             * ``False`` -- rugged, or realistic in the way an engineering problem is. Ranked on the
-              physics and engineering demos.
-            * ``None`` (default) -- you do not know, or you want a safe choice. Ranked by *worst*
-              position across both, so the leader is the optimizer that is never terrible rather
-              than the one that wins a suite and collapses on the other.
+              engineering suite.
+            * ``None`` (default) -- ranked by worst position across both, so the leader is the
+              optimizer that is never terrible rather than one that wins a suite and collapses on
+              the other.
 
-            Two suites are a coarse hint and not a taxonomy. "Globally lumpy, locally smooth" is one
-            class of objective; something like exp(OU) is not in it, and neither suite speaks for it.
+            Two suites are a coarse hint rather than a taxonomy.
 
     Returns:
-        List of (score, time, name) tuples. ``score`` is the measured Elo rating when a single
-        suite was selected, and ``nan`` under the default, where the ordering is by worst rank and
-        no single rating describes it. ``time`` is always ``nan``: humpday records no timing
-        evidence.
+        List of (score, time, name) tuples. ``score`` is the measured rating when one suite is
+        selected, and ``nan`` under the default, where the ordering is by worst rank and no single
+        rating describes it. ``time`` is always ``nan``: humpday records no timing evidence.
     """
+    from humpday import ratings
+
     if smooth is None:
-        robust = _never_terrible(n_dim)
-        if robust:
-            return [(float("nan"), float("nan"), n) for n in robust]
-        # Only one suite recorded here: fall through and use whichever it is.
-        for candidate in ("physics", "smooth"):
-            ratings = _ratings_for(n_dim, candidate)
-            if ratings:
-                names = sorted(ratings, key=lambda n: -ratings[n])
-                return [(ratings[n], float("nan"), n) for n in names]
+        order = ratings.robust_order(n_dim, n_trials)
+        if order:
+            return [(float("nan"), float("nan"), n) for n in order]
     else:
-        ratings = _ratings_for(n_dim, "smooth" if smooth else "physics")
-        if ratings:
-            names = sorted(ratings, key=lambda n: -ratings[n])
-            return [(ratings[n], float("nan"), n) for n in names]
+        suite = "surfaces" if smooth else "engineering"
+        order = ratings.suite_order(n_dim, suite, n_trials)
+        if order:
+            return [
+                (ratings.rating(n_dim, suite, n, n_trials), float("nan"), n)
+                for n in order
+            ]
 
     # Nothing recorded at this dimension: fall back to the hand-written ordering, and do not dress
     # it up with scores it has not earned.
@@ -239,7 +172,6 @@ def minimize_unit_cube(
 recommend = suggest
 
 __all__ = [
-    "elo_ratings",
     "elo_by_dimension",
     "problems_recorded",
     # Package metadata

@@ -16,10 +16,23 @@ Two filters decide which optimizers can sensibly run a given problem:
      expensive enough that HumpDay's own work stays a small fraction of
      total time.
 
-The recommender (`recommend`) consults both filters, then picks the top
-candidate from the existing rule-based ordering in `suggest_pure`. When
-a benchmarks-driven grid is available (see `benchmarks/build_recommendation_grid.py`)
-it will be consulted first; until then the rule fallback is used.
+`recommend` applies both filters, then picks from four sources in order,
+each falling through to the next only when it has nothing to say:
+
+  1. **The recorded tournament** (`humpday.ratings`), where one exists at
+     exactly this dimension and budget. This is the only layer measured on
+     engineering problems as well as analytic surfaces.
+  2. **The Borda grid** (`benchmarks/recommendation_grid.json`), which is
+     denser but ranks on nine analytic surfaces alone. It is also what
+     `papers/dfo_recommender` analyses and what the JavaScript port ships,
+     so it stays, one layer down.
+  3. **The rule-based ordering** mirroring `suggest_pure`, for dimensions
+     nothing has raced.
+  4. **RandomSearch**, which runs anywhere.
+
+Only the first two are evidence. The ordering is deliberate: a suite of
+smooth surfaces rewards local search, so where the tournament and the grid
+disagree, the tournament is the one that has seen a problem with structure.
 
 This module deliberately has no dependency on humpday.optimizers — it
 operates on algorithm *names* only — so unit tests can exercise the
@@ -406,63 +419,20 @@ def _lambda_for(eval_time: float | None) -> float:
 # Weight of the prior when shrinking a suite's rank toward the cross-suite mean. A cell backed by
 # PRIOR_PROBLEMS problems is trusted halfway; fewer and it is pulled further toward the mean. Set
 # to the size of the smaller tournaments actually recorded, so those count for about half.
-PRIOR_PROBLEMS = 15.0
+def robust_order(n_dim: int, n_trials: int = 100) -> list:
+    """Delegates to :func:`humpday.ratings.robust_order`.
 
-
-def robust_order(n_dim: int) -> list:
-    """Order optimizers at this dimension from most to least dependable across the suites.
-
-    Three things this is not, each for a reason.
-
-    It is not a comparison of Elo numbers across suites. The scales differ -- the analytic
-    tournaments run roughly five hundred points wider than the engineering ones -- so a rating is
-    only meaningful against the others in its own cell. Everything below works on within-suite
-    ranks.
-
-    It is not a mean rank. Averaging rewards a specialist that wins one suite and places near the
-    bottom of the other, which is the recommendation the whole two-suite exercise exists to avoid.
-
-    It is not the raw worst rank either. That hangs the entire ordering on one cell, and the
-    thinner cells here hold fifteen problems. Each suite's rank is first shrunk toward the
-    optimizer's cross-suite mean by a factor n / (n + PRIOR_PROBLEMS), so a rank from a
-    well-populated tournament moves the score more than one from a sparse tournament, and the
-    pessimistic rank is taken over the shrunk values. With equally sized cells this reduces to a
-    penalised mean; as a cell grows it approaches the true worst case.
-
-    Returns an empty list when fewer than two suites were recorded at this dimension.
+    Kept as a name here because `recommend` is the older entry point. The ordering itself lives in
+    one place so that `suggest` and the recommender behind `minimize` cannot disagree about what
+    "never terrible" means; they were written separately once and were free to drift.
     """
-    try:
-        from humpday import elo_by_dimension, problems_recorded
-    except Exception:  # pragma: no cover - during partial imports
-        return []
-    suites = elo_by_dimension().get(n_dim, {})
-    if len(suites) < 2:
-        return []
-    counts = problems_recorded().get(n_dim, {})
+    from humpday.ratings import robust_order as _order
 
-    ranks: dict = {}
-    for suite, ratings in suites.items():
-        order = sorted(ratings, key=lambda n: -ratings[n])
-        for position, name in enumerate(order, start=1):
-            ranks.setdefault(name, {})[suite] = position
-
-    shared = [n for n, r in ranks.items() if len(r) == len(suites)]
-    scored = []
-    for name in shared:
-        per_suite = ranks[name]
-        mean_rank = sum(per_suite.values()) / len(per_suite)
-        worst = 0.0
-        for suite, rank in per_suite.items():
-            n = float(counts.get(suite, 0))
-            weight = n / (n + PRIOR_PROBLEMS)
-            worst = max(worst, weight * rank + (1.0 - weight) * mean_rank)
-        scored.append((worst, mean_rank, name))
-    scored.sort()
-    return [name for _, _, name in scored]
+    return _order(n_dim, n_trials)
 
 
 def _never_terrible_order(n_dim: int) -> list:
-    """Backwards-compatible alias for :func:`robust_order`."""
+    """Backwards-compatible alias."""
     return robust_order(n_dim)
 
 
@@ -534,7 +504,7 @@ def recommend(
     # eligibility filter still applies, so nothing unsuitable for the dimension or budget is
     # reachable through here -- this only reorders what was already allowed.
     if not cost_aware and grid_path is None:
-        for name in _never_terrible_order(n_dim):
+        for name in robust_order(n_dim, n_trials):
             if name in candidates:
                 return name
 

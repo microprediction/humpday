@@ -222,9 +222,11 @@ WINRATE_MIN_WINS_PER_SIDE = 4
 # win-rate test still trips because both implementations are
 # deterministic — every paired matchup has the same winner.
 #
-# The remaining divergent set (PRIMA trio + Powell) tracks
-# benchmarks/elo_ratings.json: Python ratings substantially exceed JS
-# ratings on those four families.
+# The remaining divergent set (PRIMA trio + Powell) is the trust-region family, where the two
+# ports disagree numerically rather than structurally. It was identified against a two-dimensional
+# Elo sweep that has since been deleted; `humpday/data/ratings.json` is the current record, and it
+# rates those four only on the Python side, so this set is a standing claim about the JS ports
+# rather than something the table now measures.
 KNOWN_DIVERGENT_PORTS = {
     "PRIMA_UOBYQA",
     "PRIMA_NEWUOA",

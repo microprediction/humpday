@@ -197,12 +197,41 @@
             </li>
         </ol>
         <p>
-            The recommender consults a benchmarks-driven grid
-            (<code>benchmarks/recommendation_grid.json</code>) when one is
-            available, picking the eligible algorithm with the smallest
-            median best-value on the nearest <code>(n_dim, n_trials)</code>
-            cell. When no grid is present it falls through to the rule-based
-            ranking that mirrors <code>suggest_pure</code>.
+            Having filtered, the recommender picks from four sources in order,
+            falling through only when a source has nothing to say about your
+            problem:
+        </p>
+        <ol>
+            <li>
+                <strong>The recorded tournament</strong>
+                (<code>humpday/data/ratings.json</code>), where one was run at
+                exactly your dimension. This is the only source measured on
+                engineering problems as well as analytic surfaces, and it ranks
+                by worst position across the two, so the pick is the algorithm
+                that is never terrible rather than one that wins a suite and
+                collapses on the other. Dimension is never interpolated;
+                budget is interpolated downward only.
+            </li>
+            <li>
+                <strong>The Borda grid</strong> below, which is denser but
+                ranks on nine analytic surfaces alone. Those are smooth, and
+                smoothness rewards local search, which is why it sits one layer
+                down rather than first.
+            </li>
+            <li>
+                <strong>The rule-based ranking</strong> mirroring
+                <code>suggest_pure</code>, for dimensions nothing has raced.
+            </li>
+            <li>
+                <strong><code>RandomSearch</code></strong>, which runs anywhere.
+            </li>
+        </ol>
+        <p>
+            To ask the same question yourself without running anything, call
+            <code>humpday.suggest(n_dim, n_trials)</code>. Pass
+            <code>smooth=True</code> or <code>smooth=False</code> if you know
+            the character of your objective and want one suite's ranking
+            instead of the never-terrible one.
         </p>
 
         <h2>Dimensional caps</h2>
