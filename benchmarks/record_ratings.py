@@ -371,7 +371,11 @@ def run_cell(
             "budget": budget,
             "suite": suite,
             "problems": recorded + 1,
-            "ratings": dict(elo.ratings),
+            # Only what raced. EloRatingSystem seeds every optimizer at 1500 on construction, so
+            # `elo.ratings` carries an untouched initial rating for each one filtered out before
+            # the tournament -- a fabricated number sitting mid-table, which is the thing this
+            # whole artifact exists to stop shipping.
+            "ratings": {n: r for n, r in elo.ratings.items() if n in contenders},
             "strikes": strikes,
             "timed_out": timed_out,
             "skipped": skipped,
@@ -422,8 +426,13 @@ def merge() -> dict:
         shard = json.loads(path.read_text())
         if not shard.get("problems"):
             continue  # a cell with no eligible field is not a cell
+        excluded = set(shard.get("ineligible", {}))
         cells[f"{shard['n_dim']}/{shard['budget']}/{shard['suite']}"] = {
-            "ratings": shard.get("ratings", {}),
+            # Defended here too: a shard written before the filter existed carries seeded 1500s
+            # for optimizers that never played, and the shard says which those were.
+            "ratings": {
+                n: r for n, r in shard.get("ratings", {}).items() if n not in excluded
+            },
             "problems": shard.get("problems", 0),
             "timed_out": sorted(shard.get("timed_out", {})),
             "overruns": dict(sorted(shard.get("strikes", {}).items())),

@@ -166,3 +166,18 @@ def test_an_absent_optimizer_says_why_it_is_absent():
                 continue
             for name, reason in Rd.ineligible(n_dim, suite, 5000).items():
                 assert reason, f"{name} excluded at d={n_dim} with no reason recorded"
+
+
+def test_no_optimizer_is_rated_without_playing():
+    """EloRatingSystem seeds every optimizer at 1500 on construction.
+
+    An optimizer filtered out before the tournament therefore leaves an untouched 1500 in
+    `elo.ratings`, which lands mid-table and outranks anything that actually lost. It is a
+    fabricated number of exactly the kind `suggest()` used to return.
+    """
+    for key, cell in ratings.cells().items():
+        excluded = set(cell.get("ineligible", {}))
+        rated = set(cell.get("ratings", {}))
+        assert rated.isdisjoint(excluded), (
+            f"{key} rates optimizers it never raced: {sorted(rated & excluded)}"
+        )
