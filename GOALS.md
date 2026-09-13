@@ -81,6 +81,15 @@ Legend: ✅ done · 🟡 partial / in-progress · ❌ not done · ❓ unknown / 
 
 3. ~~Recommendation should consider trials AND dimension, not just dimension.~~ **Done in v0.20.0 / v0.21.0.** `humpday.minimize(...)` now auto-selects via `humpday.eligibility.recommend(n_dim, n_trials, eval_time)` which combines a dimensional cap filter, a min-trials filter, an overhead-tier vs. eval-time filter, and a Borda mean-rank lookup against `benchmarks/recommendation_grid.json` (12 objectives × 11 dims × 3 trial budgets × 3 seeds). See `docs/recommendations.html` for the full picture.
 
+4. **The wall-clock allowance mis-serves objectives whose cost varies with location.** It is set
+   at a multiple of what `RandomSearch` spent on the same problem, which is the right reference for
+   overhead but the wrong one for an objective that is cheap where a sampler looks and expensive
+   where an optimizer converges. In `4/1000/engineering`, eighteen of twenty-two optimizers overran
+   against a 0.8-second reference. `humpday.ratings.TIMEOUT_REVOLT` stops that being read as
+   eleven unusable optimizers, but it is a guard rather than a fix. A real one would calibrate
+   against the slowest *completed* run in the cell rather than the reference alone, which changes
+   the measurement and so needs the grid re-recorded.
+
 ### Test-infrastructure debts
 
 1. **`test_compendium`** and **`test_portfolio`** rely on seeded `random.choice` to avoid pre-existing algorithm flakes. Keep the seeds + the `BudgetExceeded` guard in `test_compendium` — both protect against future regressions.

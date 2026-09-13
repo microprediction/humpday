@@ -632,3 +632,43 @@ class TestRatingsTableSemantics:
                     if v is cell and k.endswith(f"/{suite}")
                 }
             assert len(budgets) == 1, f"d={n_dim} mixes budgets {sorted(budgets)}"
+
+    def test_a_cell_where_nearly_everyone_overran_does_not_rank_them_last(self):
+        """A mis-calibrated allowance must not read as eleven unusable optimizers.
+
+        The allowance is a multiple of what a random sampler spent on the same objective. When
+        evaluation cost depends on location -- as it does on the worked engineering demos -- an
+        optimizer that converges into an expensive basin pays what the sampler never did, and is
+        disqualified for the objective's shape rather than its own overhead.
+        """
+        from humpday.ratings import TIMEOUT_REVOLT, _ranked
+
+        revolt = {
+            "ratings": {f"o{i}": 1600 - i for i in range(9)},
+            "timed_out": [f"o{i}" for i in range(6)],
+        }
+        assert _ranked(revolt) == [f"o{i}" for i in range(9)], (
+            "with two thirds timed out the ordering should ignore the timeouts"
+        )
+
+        isolated = {
+            "ratings": {f"o{i}": 1600 - i for i in range(9)},
+            "timed_out": ["o0"],
+        }
+        assert _ranked(isolated)[-1] == "o0", (
+            "an isolated timeout is still a disqualification"
+        )
+        assert TIMEOUT_REVOLT < 0.5, "the guard must trip below a majority, not at one"
+
+    def test_the_shipped_table_is_a_complete_grid(self):
+        from itertools import product
+
+        from humpday import ratings
+
+        recorded = ratings.cells()
+        dims = sorted({int(k.split("/")[0]) for k in recorded})
+        budgets = sorted({int(k.split("/")[1]) for k in recorded})
+        for n_dim, budget, suite in product(dims, budgets, ratings.SUITES):
+            key = f"{n_dim}/{budget}/{suite}"
+            assert key in recorded, f"{key} is missing from the grid"
+            assert recorded[key]["problems"] >= 30, f"{key} is thin"

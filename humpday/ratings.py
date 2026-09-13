@@ -37,6 +37,12 @@ SUITES = ("surfaces", "engineering")
 # backed by this many problems is trusted halfway.
 PRIOR_PROBLEMS = 15.0
 
+# Share of a cell's contenders that may be disqualified on wall clock before the disqualifications
+# are read as evidence about the cell's allowance rather than about the optimizers. Eleven separate
+# methods being unusable at four variables is not the likely explanation; a mis-calibrated
+# allowance is.
+TIMEOUT_REVOLT = 1.0 / 3.0
+
 _TABLE: dict | None = None
 
 
@@ -75,9 +81,21 @@ def _ranked(cell: dict) -> list:
     from the problems it did finish as well as a place in ``timed_out``. The timeout wins: a method
     that stopped returning is not recommendable at that size on the strength of the rounds it
     completed before it stopped.
+
+    Unless nearly everyone timed out, in which case the allowance was wrong for the cell and the
+    disqualifications say nothing about the optimizers. This happens when an objective's cost
+    depends on *where* it is evaluated: the allowance is calibrated against a random sampler, and
+    an optimizer that converges into an expensive basin pays a cost the sampler never saw. One cell
+    of the ninety-six shows it plainly -- at four variables on the worked engineering demos,
+    eighteen of twenty-two optimizers overran at least once while the reference finished in 0.8
+    seconds. Above ``TIMEOUT_REVOLT`` the timeouts are recorded and not acted on.
     """
     out = sorted(cell.get("timed_out", []))
-    ratings = {n: r for n, r in cell.get("ratings", {}).items() if n not in set(out)}
+    ratings = dict(cell.get("ratings", {}))
+    contenders = set(ratings) | set(out)
+    if contenders and len(out) / len(contenders) > TIMEOUT_REVOLT:
+        return sorted(ratings, key=lambda n: -ratings[n])
+    ratings = {n: r for n, r in ratings.items() if n not in set(out)}
     return sorted(ratings, key=lambda n: -ratings[n]) + out
 
 

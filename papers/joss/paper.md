@@ -105,7 +105,11 @@ the objective's own evaluations cost and a fixed overhead allowance per evaluati
 the grid does not terminate; with a cap fixed in absolute seconds it would disqualify a method for
 the cost of the objective rather than its own, which is why the allowance is measured per cell
 against a pure-sampling reference. An optimizer that twice fails to return is recorded as having
-timed out rather than as having lost, and ranks last in that cell. Because every optimizer here is
+timed out rather than as having lost, and ranks last in that cell. The calibration has a known
+limit: where an objective's evaluation cost depends on location, an optimizer that converges into
+an expensive region pays a cost the sampler never saw. One cell of ninety-six shows it, with
+eighteen of twenty-two optimizers overrunning against a reference that finished in under a second,
+and where more than a third of a cell is disqualified the timeouts are recorded but not acted on. Because every optimizer here is
 a pure Python port, a timeout is a statement about this implementation at that size rather than
 about the algorithm: at a hundred variables BOBYQA's interpolation algebra dominates in a way it
 does not in the Fortran reference. That is the right answer for a caller choosing what to run from
