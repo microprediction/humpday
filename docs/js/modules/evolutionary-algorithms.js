@@ -24,120 +24,94 @@ if (typeof module !== 'undefined' && module.exports) {
         this.name = 'DifferentialEvolution';
     }
 
-    // Matches scipy.optimize.differential_evolution defaults, mirroring
-    // the Python port in humpday/optimizers/evolutionary_algorithms.py:
-    //   - best/1/bin mutation (base = current population best, not a
-    //     random member);
+    // Matches scipy.optimize.differential_evolution defaults:
+    //   - best/1/bin mutation (base = current population best);
     //   - dithered F drawn per-generation in [0.5, 1.0];
     //   - CR = 0.7;
-    //   - popSize = max(10, min(20, nTrials // 5)).
-    // The previous JS port used rand/1/bin with fixed F=0.5 — that's
-    // more exploratory but converges slowly on smooth landscapes and
-    // was the reason the JS DE lagged Python so badly on the win-rate
-    // test.
-    optimize() {
+    //   - L-BFGS-B polish on half the budget (scipy `polish=True`).
+    *_run() {
+        // Twin of DifferentialEvolution._run in
+        // humpday/optimizers/evolutionary_algorithms.py.
         const n = this.nDim;
-        // Reserve ~25% of the budget for a coordinate-descent polish,
-        // matching scipy DE's default `polish=True` (which uses L-BFGS-B
-        // — closest derivative-free equivalent is coord descent with a
-        // shrinking step). Without the polish JS DE was ~1000× off
-        // scipy DE on the sphere at n_trials=200.
-        // Half the budget goes to L-BFGS-B polish — see Python comment
-        // for the sweep data. Sweet spot is 50%: DE rosenbrock 2.2e-4
-        // → 3.5e-10 (matches scipy).
         const polishBudget = Math.max(15, Math.floor(this.nTrials / 2));
         const deBudget = this.nTrials - polishBudget;
 
         const popSize = Math.max(10, Math.min(20, Math.floor(deBudget / 5)));
         const CR = 0.7;
 
-        // Initialise population uniformly in [0, 1]^n and evaluate.
+        // All initial draws happen before the first yield (Python builds
+        // the population in a list comprehension, then evaluates).
         const population = [];
-        for (let i = 0; i < popSize && this.evaluations < deBudget; i++) {
-            const x = new Array(n);
-            for (let j = 0; j < n; j++) x[j] = Math.random();
-            const f = this.evaluate(x);
-            population.push({ x, f });
-        }
+        for (let i = 0; i < popSize; i++) population.push(MathUtils.randomUniform(n));
+        const fitness = [];
+        for (const ind of population) fitness.push(yield ind);
 
-        while (this.evaluations < deBudget && population.length >= 4) {
+        while (this.evaluations < deBudget) {
             // Dither: pick F uniformly in [0.5, 1.0] each generation.
-            const F = 0.5 + 0.5 * Math.random();
+            const F = 0.5 + 0.5 * MathUtils.randomScalar();
 
-            for (let i = 0; i < population.length; i++) {
+            for (let i = 0; i < popSize; i++) {
                 if (this.evaluations >= deBudget) break;
 
-                // best/1: base = current population best.
+                // best/1: base = current population best (first minimal
+                // index, like Python's min(range, key=...)).
                 let bestIdx = 0;
-                for (let k = 1; k < population.length; k++) {
-                    if (population[k].f < population[bestIdx].f) bestIdx = k;
+                for (let k = 1; k < popSize; k++) {
+                    if (fitness[k] < fitness[bestIdx]) bestIdx = k;
                 }
 
                 // Two donors distinct from i and bestIdx.
-                const candidates = [];
-                for (let k = 0; k < population.length; k++) {
+                let candidates = [];
+                for (let k = 0; k < popSize; k++) {
                     if (k !== i && k !== bestIdx) candidates.push(k);
                 }
                 if (candidates.length < 2) {
-                    for (let k = 0; k < population.length; k++) {
-                        if (k !== i && candidates.indexOf(k) < 0) candidates.push(k);
+                    candidates = [];
+                    for (let k = 0; k < popSize; k++) {
+                        if (k !== i) candidates.push(k);
                     }
                 }
-                // Sample without replacement (or with, if fewer than 2 candidates).
-                const replace = candidates.length < 2;
-                const b = candidates[Math.floor(Math.random() * candidates.length)];
-                let c;
-                if (replace) {
-                    c = candidates[Math.floor(Math.random() * candidates.length)];
+                let b, c;
+                if (candidates.length < 2) {
+                    b = MathUtils.choice(candidates);
+                    c = MathUtils.choice(candidates);
                 } else {
-                    do {
-                        c = candidates[Math.floor(Math.random() * candidates.length)];
-                    } while (c === b);
+                    [b, c] = MathUtils.sample(candidates, 2);
                 }
 
                 // Mutation: v = x_best + F * (x_b - x_c), clipped to [0, 1].
                 const mutant = new Array(n);
                 for (let j = 0; j < n; j++) {
                     mutant[j] = MathUtils.clip(
-                        population[bestIdx].x[j] + F * (population[b].x[j] - population[c].x[j]),
+                        population[bestIdx][j] + F * (population[b][j] - population[c][j]),
                         0, 1
                     );
                 }
 
-                // Binomial crossover with one guaranteed coord.
-                const jGuaranteed = Math.floor(Math.random() * n);
-                const trial = new Array(n);
+                // Binomial crossover with one guaranteed coord. The CR
+                // draw happens for every j (Python's `random() < CR or
+                // j == j_guaranteed` — left operand always evaluated).
+                const trial = population[i].slice();
+                const jGuaranteed = MathUtils.randInt(n);
                 for (let j = 0; j < n; j++) {
-                    trial[j] = (Math.random() < CR || j === jGuaranteed)
-                        ? mutant[j]
-                        : population[i].x[j];
+                    if (MathUtils.randomScalar() < CR || j === jGuaranteed) {
+                        trial[j] = mutant[j];
+                    }
                 }
 
-                const trialF = this.evaluate(trial);
-                if (trialF < population[i].f) {
-                    population[i] = { x: trial, f: trialF };
+                // (1+1) selection.
+                const trialFitness = yield trial;
+                if (trialFitness < fitness[i]) {
+                    population[i] = trial;
+                    fitness[i] = trialFitness;
                 }
             }
         }
 
         // --- Polish stage: L-BFGS from best DE point ----------------
-        // Matches scipy.differential_evolution `polish=True` (uses
-        // L-BFGS-B). Same inlined two-loop recursion as
-        // SimulatedAnnealing's polish.
-        this._lbfgsPolish();
-
-        return {
-            bestValue: this.bestValue,
-            bestX: this.bestX,
-            evaluations: this.evaluations,
-            success: true,
-            path: this.trackPath ? this.path : null
-        };
+        // Matches scipy.differential_evolution `polish=True`.
+        yield* this._lbfgsPolishGen();
     }
-
-    // `_lbfgsPolish` and `_fdGradientForPolish` now live on the base
-    // Optimizer class (docs/js/modules/base-optimizer.js); see comment
-    // there for the algorithm.
 }
 
 // Particle Swarm Optimization implementation
@@ -147,84 +121,85 @@ class ParticleSwarm extends Optimizer {
         this.name = 'ParticleSwarm';
     }
 
-    optimize() {
-        // Reserve budget for the L-BFGS-B polish stage (same pattern
-        // as DE/SA/BayesianOpt). Mirrors the Python port.
-        const polishReserve = Math.min(20 * this.nDim, Math.floor(this.nTrials / 2));
+    *_run() {
+        // Twin of ParticleSwarm._run in
+        // humpday/optimizers/evolutionary_algorithms.py.
+        const n = this.nDim;
+        const polishReserve = Math.min(20 * n, Math.floor(this.nTrials / 2));
         const psoBudget = Math.max(this.evaluations, this.nTrials - polishReserve);
 
-        const swarmSize = Math.min(40, Math.max(15, this.nDim * 3)); // Larger swarm for complex functions
+        const swarmSize = Math.min(40, Math.max(15, n * 3));
 
-        // Initialize swarm uniformly (matches Python — the earlier
-        // heuristic of seeding 25% near centre and 25% on edges was a
-        // JS-only deviation that biased the early-stage search).
-        const particles = [];
-        for (let i = 0; i < swarmSize && this.evaluations < psoBudget; i++) {
-            const position = Array(this.nDim).fill(0).map(() => Math.random());
-            const velocity = Array(this.nDim).fill(0).map(() => (Math.random() - 0.5) * 0.2);
-            const fitness = this.evaluate(position);
-            particles.push({
-                position: [...position],
-                velocity: [...velocity],
-                bestPosition: [...position],
-                bestFitness: fitness,
-            });
+        // Initialize swarm. Python builds positions and velocities in
+        // two list comprehensions (all position draws, then all velocity
+        // draws) before the evaluation loop.
+        const positions = [];
+        for (let i = 0; i < swarmSize; i++) positions.push(MathUtils.randomUniform(n));
+        const velocities = [];
+        for (let i = 0; i < swarmSize; i++) {
+            const u = MathUtils.randomUniform(n);
+            velocities.push(u.map(v => (v - 0.5) * 0.2));
         }
+        const personalBestPos = positions.map(p => p.slice());
+        const personalBestFit = [];
+        for (const p of positions) personalBestFit.push(yield p);
 
-        let iteration = 0;
-        const maxIterations = Math.max(1, Math.ceil(psoBudget / swarmSize));
+        const maxIterations = Math.max(1, Math.floor(psoBudget / swarmSize));
 
-        // SPSO-2011-style stagnation detection (Clerc et al. 2012). A
-        // canonical PSO has no restart and is known to converge
-        // prematurely on multimodal surfaces — once the global best
-        // stops improving, particles collapse onto it. Track the
-        // global-best value across iterations; when it has stalled for
-        // `stagnationWindow` iterations, reseed the worst half of the
-        // swarm with fresh uniform positions and small random
-        // velocities. The personal-best memory of the better half is
-        // preserved so prior progress isn't wasted.
+        // SPSO-2011-style stagnation detection: when the global best has
+        // stalled for `stagnationWindow` iterations, reseed the worst
+        // half of the swarm; the kept half retains its memory.
         const stagnationWindow = Math.max(10, Math.floor(maxIterations / 5));
         let stagnationCounter = 0;
         let lastGlobalBest = this.bestValue;
         const improvementAtol = 1e-12;
 
-        while (this.evaluations < psoBudget) {
-            iteration++;
+        for (let iteration = 0; iteration < maxIterations; iteration++) {
+            if (this.evaluations >= psoBudget) break;
 
-            const progress = iteration / maxIterations;
-            const w = 0.9 - 0.5 * progress;
-            const c1 = 2.5 - 1.0 * progress;
-            const c2 = 1.5 + 1.0 * progress;
-            const vmax = 0.2 * (1 - 0.5 * progress);
+            // Adaptive coefficients (anneal inertia / explore-exploit balance).
+            const w = 0.9 - 0.5 * (iteration / maxIterations);
+            const c1 = 2.5 - 1.0 * (iteration / maxIterations);
+            const c2 = 1.5 + 1.0 * (iteration / maxIterations);
 
-            for (let i = 0; i < particles.length && this.evaluations < psoBudget; i++) {
-                const particle = particles[i];
+            for (let i = 0; i < swarmSize; i++) {
+                if (this.evaluations >= psoBudget) break;
 
-                for (let j = 0; j < this.nDim; j++) {
-                    const r1 = Math.random();
-                    const r2 = Math.random();
-                    particle.velocity[j] = w * particle.velocity[j] +
-                        c1 * r1 * (particle.bestPosition[j] - particle.position[j]) +
-                        c2 * r2 * (this.bestX[j] - particle.position[j]);
-                    particle.velocity[j] = MathUtils.clip(particle.velocity[j], -vmax, vmax);
+                // r1, r2 are length-n uniform VECTORS drawn up front
+                // (not per-coordinate scalars) — stream order matters.
+                const r1 = MathUtils.randomUniform(n);
+                const r2 = MathUtils.randomUniform(n);
+                const v = velocities[i];
+                const p = positions[i];
+                const pb = personalBestPos[i];
+                const newV = new Array(n);
+                for (let k = 0; k < n; k++) {
+                    newV[k] = w * v[k]
+                        + (c1 * r1[k]) * (pb[k] - p[k])
+                        + (c2 * r2[k]) * (this.bestX[k] - p[k]);
                 }
 
-                for (let j = 0; j < this.nDim; j++) {
-                    particle.position[j] = MathUtils.clip(
-                        particle.position[j] + particle.velocity[j], 0, 1
-                    );
-                }
+                // Velocity clamping to [-vmax, +vmax].
+                const vmax = 0.2 * (1 - 0.5 * iteration / maxIterations);
+                for (let k = 0; k < n; k++) newV[k] = MathUtils.clip(newV[k], -vmax, vmax);
+                velocities[i] = newV;
 
-                const fitness = this.evaluate(particle.position);
-                if (fitness < particle.bestFitness) {
-                    particle.bestFitness = fitness;
-                    particle.bestPosition = [...particle.position];
+                // Update position with bounds clipping.
+                const newP = new Array(n);
+                for (let k = 0; k < n; k++) newP[k] = MathUtils.clip(p[k] + newV[k], 0, 1);
+                positions[i] = newP;
+
+                const fitness = yield positions[i];
+
+                // Personal-best bookkeeping.
+                if (fitness < personalBestFit[i]) {
+                    personalBestFit[i] = fitness;
+                    personalBestPos[i] = positions[i].slice();
                 }
             }
 
-            // Stagnation check — measured against this.bestValue because
-            // that's the global best across all evals (which the base
-            // Optimizer.evaluate updates automatically).
+            // Stagnation check against this.bestValue (the driver keeps
+            // it current across all evals).
             if (lastGlobalBest - this.bestValue > improvementAtol) {
                 stagnationCounter = 0;
                 lastGlobalBest = this.bestValue;
@@ -233,37 +208,28 @@ class ParticleSwarm extends Optimizer {
             }
 
             if (stagnationCounter >= stagnationWindow) {
-                // Reseed the worst half. Rank particles by personal-best
-                // fitness ascending, replace the bottom half.
-                const ranked = particles
-                    .map((p, idx) => ({idx, fit: p.bestFitness}))
-                    .sort((a, b) => a.fit - b.fit);
-                const half = Math.floor(swarmSize / 2);
-                for (let r = half; r < ranked.length; r++) {
-                    const j = ranked[r].idx;
-                    particles[j].position = Array(this.nDim).fill(0).map(() => Math.random());
-                    particles[j].velocity = Array(this.nDim).fill(0).map(() => (Math.random() - 0.5) * 0.2);
+                // Reseed the worst half: rank by personal-best fitness
+                // ascending (stable sort, like Python's sorted(key=...)).
+                const ranked = new Array(swarmSize);
+                for (let k = 0; k < swarmSize; k++) ranked[k] = k;
+                ranked.sort((a, b) => personalBestFit[a] - personalBestFit[b]);
+                const worst = ranked.slice(Math.floor(swarmSize / 2));
+                for (const j of worst) {
+                    positions[j] = MathUtils.randomUniform(n);
+                    const u = MathUtils.randomUniform(n);
+                    velocities[j] = u.map(v => (v - 0.5) * 0.2);
                     if (this.evaluations >= psoBudget) break;
-                    const fNew = this.evaluate(particles[j].position);
-                    particles[j].bestPosition = [...particles[j].position];
-                    particles[j].bestFitness = fNew;
+                    const fNew = yield positions[j];
+                    personalBestPos[j] = positions[j].slice();
+                    personalBestFit[j] = fNew;
                 }
                 stagnationCounter = 0;
                 lastGlobalBest = this.bestValue;
             }
         }
 
-        // Polish stage: L-BFGS-B from the swarm best (shared on base
-        // Optimizer). Closes the residual on smooth basins.
-        this._lbfgsPolish();
-
-        return {
-            bestValue: this.bestValue,
-            bestX: this.bestX,
-            evaluations: this.evaluations,
-            success: true,
-            path: this.trackPath ? this.path : null
-        };
+        // Polish stage: L-BFGS-B from the swarm best.
+        yield* this._lbfgsPolishGen();
     }
 }
 
@@ -275,24 +241,16 @@ class SimulatedAnnealing extends Optimizer {
     }
 
     // Two-stage algorithm matching scipy.optimize.dual_annealing in
-    // spirit (and the Python port in
-    // humpday/optimizers/evolutionary_algorithms.py line-for-line):
+    // spirit:
     //
     //   Stage 1 — multi-restart Metropolis SA explores globally with a
     //             geometric cooling schedule from T = 1.0 to T = 1e-6.
-    //   Stage 2 — coordinate-descent polish from the best SA point,
-    //             halving the step on each unimproved round, refines to
-    //             high precision.
-    //
-    // scipy's dual_annealing uses L-BFGS-B for stage 2; the closest
-    // derivative-free equivalent is a coordinate descent with shrinking
-    // step. Without the polish stage humpday's SA was ~1e9× off scipy
-    // on sphere and Rosenbrock; the global SA can't reach machine
-    // precision because its proposals are noisy.
-    optimize() {
+    //   Stage 2 — L-BFGS-B polish from the best SA point (scipy's
+    //             dual_annealing uses L-BFGS-B for its local search).
+    *_run() {
+        // Twin of SimulatedAnnealing._run in
+        // humpday/optimizers/evolutionary_algorithms.py.
         const n = this.nDim;
-        // 50% polish — same rationale as DE. SA rosenbrock 2.8e-5
-        // → 2.8e-8 (1000x better).
         const polishBudget = Math.max(20, Math.floor(this.nTrials / 2));
         const saBudget = this.nTrials - polishBudget;
 
@@ -305,19 +263,22 @@ class SimulatedAnnealing extends Optimizer {
 
             let x;
             if (restart === 0) {
-                // Center-biased first restart (matches Python).
-                x = new Array(n);
-                for (let i = 0; i < n; i++) x[i] = 0.5 + (Math.random() - 0.5) * 0.4;
+                // Center-biased first restart.
+                const u = MathUtils.randomUniform(n);
+                x = u.map(v => 0.5 + (v - 0.5) * 0.4);
             } else {
-                // Uniform random subsequent restarts.
-                x = new Array(n);
-                for (let i = 0; i < n; i++) x[i] = Math.random();
+                x = MathUtils.randomUniform(n);
             }
-            let fx = this.evaluate(x);
+            let fx = yield x;
 
             const initialTemp = 1.0;
             const finalTemp = 1e-6;
-            const cooling = Math.pow(finalTemp / initialTemp, 1.0 / Math.max(1, trialsPerRestart));
+            // portableExp/portableLog on BOTH sides, not pow: libm pow
+            // differs across platforms in the last ulp.
+            const cooling = MathUtils.portableExp(
+                (1.0 / Math.max(1, trialsPerRestart))
+                * MathUtils.portableLog(finalTemp / initialTemp)
+            );
             let temp = initialTemp;
 
             for (let iter = 0; iter < trialsPerRestart; iter++) {
@@ -325,17 +286,18 @@ class SimulatedAnnealing extends Optimizer {
 
                 // Neighbour proposal: step scales with current temp.
                 const stepSize = 0.4 * temp;
+                const u = MathUtils.randomUniform(n);
                 const newX = new Array(n);
                 for (let i = 0; i < n; i++) {
-                    newX[i] = MathUtils.clip(
-                        x[i] + (Math.random() - 0.5) * 2 * stepSize, 0, 1
-                    );
+                    newX[i] = MathUtils.clip(x[i] + ((u[i] - 0.5) * 2) * stepSize, 0, 1);
                 }
-                const newFx = this.evaluate(newX);
+                const newFx = yield newX;
 
-                // Metropolis criterion.
+                // Metropolis criterion. The acceptance draw happens only
+                // when delta >= 0 (short-circuit) — stream position
+                // depends on it.
                 const delta = newFx - fx;
-                if (delta < 0 || Math.random() < Math.exp(-delta / Math.max(temp, 1e-12))) {
+                if (delta < 0 || MathUtils.randomScalar() < MathUtils.portableExp(-delta / Math.max(temp, 1e-12))) {
                     x = newX;
                     fx = newFx;
                 }
@@ -345,22 +307,8 @@ class SimulatedAnnealing extends Optimizer {
         }
 
         // --- Stage 2: L-BFGS polish from best SA point -----------------
-        // Matches scipy.dual_annealing's L-BFGS-B refinement. Inlined
-        // two-loop recursion with FD gradient and Armijo line search —
-        // same algorithm the LBFGSB optimizer uses.
-        this._lbfgsPolish();
-
-        return {
-            bestValue: this.bestValue,
-            bestX: this.bestX,
-            evaluations: this.evaluations,
-            success: true,
-            path: this.trackPath ? this.path : null
-        };
+        yield* this._lbfgsPolishGen();
     }
-
-    // `_lbfgsPolish` and `_fdGradientForPolish` are on the base
-    // Optimizer class (docs/js/modules/base-optimizer.js).
 }
 
 // Genetic Algorithm implementation
@@ -370,73 +318,77 @@ class GeneticAlgorithm extends Optimizer {
         this.name = 'GeneticAlgorithm';
     }
 
-    optimize() {
-        const popSize = Math.min(50, Math.max(20, this.nDim * 4));
+    *_run() {
+        // Twin of GeneticAlgorithm._run in
+        // humpday/optimizers/evolutionary_algorithms.py. Selection is
+        // tournament-of-3 (distinct competitors via sample), crossover
+        // is one-point, mutation is per-coordinate Bernoulli.
+        const n = this.nDim;
+        const popSize = Math.min(50, Math.max(20, n * 4));
         const mutationRate = 0.1;
         const crossoverRate = 0.8;
 
-        // Initialize population
+        // All initial draws happen before the first yield.
         let population = [];
-        for (let i = 0; i < popSize && this.evaluations < this.nTrials; i++) {
-            const individual = Array(this.nDim).fill(0).map(() => Math.random());
-            const fitness = this.evaluate(individual);
-            population.push({ x: individual, fitness });
-        }
+        for (let i = 0; i < popSize; i++) population.push(MathUtils.randomUniform(n));
+        let fitness = [];
+        for (const ind of population) fitness.push(yield ind);
 
-        // Evolution loop
-        while (this.evaluations < this.nTrials) {
-            const newPop = [];
-            for (let i = 0; i < popSize && this.evaluations < this.nTrials; i++) {
-                const parent1 = this.tournamentSelection(population);
-                const parent2 = this.tournamentSelection(population);
+        const generations = Math.floor(this.nTrials / popSize);
 
-                let child = [...parent1.x];
+        for (let gen = 0; gen < generations; gen++) {
+            if (this.evaluations >= this.nTrials) break;
 
-                // Crossover
-                if (Math.random() < crossoverRate) {
-                    const crossPoint = Math.floor(Math.random() * this.nDim);
-                    for (let j = crossPoint; j < this.nDim; j++) {
-                        child[j] = parent2.x[j];
-                    }
+            const newPopulation = [];
+            const newFitness = [];
+
+            for (let i = 0; i < popSize; i++) {
+                if (this.evaluations >= this.nTrials) break;
+
+                const parent1 = this.tournamentSelection(population, fitness);
+                const parent2 = this.tournamentSelection(population, fitness);
+
+                const child = parent1.slice();
+
+                // One-point crossover.
+                if (MathUtils.randomScalar() < crossoverRate) {
+                    const crossPoint = MathUtils.randInt(n);
+                    for (let j = crossPoint; j < n; j++) child[j] = parent2[j];
                 }
 
-                // Mutation
-                for (let j = 0; j < this.nDim; j++) {
-                    if (Math.random() < mutationRate) {
-                        child[j] = MathUtils.clip(
-                            child[j] + (Math.random() - 0.5) * 0.2, 0, 1
+                // Per-coordinate mutation with uniform [-0.1, 0.1] noise.
+                for (let j = 0; j < n; j++) {
+                    if (MathUtils.randomScalar() < mutationRate) {
+                        child[j] = Math.max(
+                            0.0,
+                            Math.min(1.0, child[j] + (MathUtils.randomScalar() - 0.5) * 0.2)
                         );
                     }
                 }
 
-                const fitness = this.evaluate(child);
-                newPop.push({ x: child, fitness });
+                const fitnessVal = yield child;
+                newPopulation.push(child);
+                newFitness.push(fitnessVal);
             }
 
-            population = newPop;
+            population = newPopulation;
+            fitness = newFitness;
         }
-
-        return {
-            bestValue: this.bestValue,
-            bestX: this.bestX,
-            evaluations: this.evaluations,
-            success: true,
-            path: this.trackPath ? this.path : null
-        };
     }
 
-    tournamentSelection(population) {
-        const tournamentSize = 3;
-        let best = population[Math.floor(Math.random() * population.length)];
-
-        for (let i = 1; i < tournamentSize; i++) {
-            const competitor = population[Math.floor(Math.random() * population.length)];
-            if (competitor.fitness < best.fitness) {
-                best = competitor;
-            }
+    tournamentSelection(population, fitness) {
+        // Tournament-of-3: three DISTINCT indices (partial Fisher-Yates
+        // sample, matching _A.random_choice(..., replace=False)); return
+        // a copy of the lowest-fitness competitor (first minimum in draw
+        // order, like Python's min(competitors, key=...)).
+        const indices = new Array(population.length);
+        for (let k = 0; k < population.length; k++) indices[k] = k;
+        const competitors = MathUtils.sample(indices, 3);
+        let bestIdx = competitors[0];
+        for (let k = 1; k < competitors.length; k++) {
+            if (fitness[competitors[k]] < fitness[bestIdx]) bestIdx = competitors[k];
         }
-
-        return best;
+        return population[bestIdx].slice();
     }
 }
 
@@ -878,64 +830,71 @@ class FireflyAlgorithm extends Optimizer {
         this.name = 'FireflyAlgorithm';
     }
 
-    optimize() {
-        // Reserve budget for L-BFGS-B polish (mirrors Python port).
-        const polishReserve = Math.min(20 * this.nDim, Math.floor(this.nTrials / 2));
+    *_run() {
+        // Twin of FireflyAlgorithm._run in
+        // humpday/optimizers/evolutionary_algorithms.py.
+        const n = this.nDim;
+        const polishReserve = Math.min(20 * n, Math.floor(this.nTrials / 2));
         const fireflyBudget = Math.max(this.evaluations, this.nTrials - polishReserve);
 
-        const nFireflies = Math.min(25, Math.max(10, this.nDim * 2));
-        const alpha0 = 0.1; // Initial randomization parameter
-        const gamma = 1.0; // Light absorption coefficient
-        const alphaDamp = 0.99; // Mirrors mealpy FFA's alpha_damp.
+        const nFireflies = Math.min(15, Math.max(2, Math.floor(fireflyBudget / 5)));
+        const alpha0 = 0.2;  // Initial randomness coefficient.
+        const beta0 = 1.0;   // Attractiveness at zero distance.
+        const gamma = 1.0;   // Light-absorption coefficient.
+        const alphaDamp = 0.99;  // mealpy FFA's alpha_damp.
         let alpha = alpha0;
 
-        // Initialize fireflies
+        // Initialize fireflies — all draws before the first yield.
         const fireflies = [];
-        for (let i = 0; i < nFireflies && this.evaluations < fireflyBudget; i++) {
-            const position = Array(this.nDim).fill(0).map(() => Math.random());
-            const intensity = this.evaluate(position);
-            fireflies.push({ position: [...position], intensity });
-        }
+        for (let i = 0; i < nFireflies; i++) fireflies.push(MathUtils.randomUniform(n));
+        const intensities = [];
+        for (const fly of fireflies) intensities.push(yield fly);
 
         while (this.evaluations < fireflyBudget) {
-            for (let i = 0; i < fireflies.length && this.evaluations < fireflyBudget; i++) {
-                for (let j = 0; j < fireflies.length; j++) {
-                    if (i !== j && fireflies[j].intensity < fireflies[i].intensity) {
-                        // Move firefly i towards j
-                        const distance = MathUtils.norm(
-                            MathUtils.subtract(fireflies[i].position, fireflies[j].position)
+            const evalsAtSweepStart = this.evaluations;
+            for (let i = 0; i < nFireflies; i++) {
+                for (let j = 0; j < nFireflies; j++) {
+                    if (this.evaluations >= fireflyBudget) break;
+
+                    if (intensities[j] < intensities[i]) {  // j is brighter
+                        const r = MathUtils.norm(
+                            MathUtils.subtract(fireflies[i], fireflies[j])
                         );
-                        const beta = 1.0 / (1.0 + gamma * distance * distance);
+                        // portableExp, not Math.exp: V8's exp is
+                        // fdlibm-derived and diverges from libm in the
+                        // last ulp.
+                        const beta = beta0 * MathUtils.portableExp(-gamma * r * r);
 
-                        const newPosition = fireflies[i].position.map((xi, k) => {
-                            const attraction = beta * (fireflies[j].position[k] - xi);
-                            const randomization = alpha * (Math.random() - 0.5);
-                            return MathUtils.clip(xi + attraction + randomization, 0, 1);
-                        });
+                        // Move firefly i toward the brighter firefly j,
+                        // with a small random jitter.
+                        const g = MathUtils.randomNormal(n);
+                        const fi = fireflies[i];
+                        const fj = fireflies[j];
+                        const moved = new Array(n);
+                        for (let k = 0; k < n; k++) {
+                            moved[k] = MathUtils.clip(
+                                (fi[k] + beta * (fj[k] - fi[k])) + alpha * g[k],
+                                0, 1
+                            );
+                        }
+                        fireflies[i] = moved;
 
-                        const newIntensity = this.evaluate(newPosition);
-
-                        if (newIntensity < fireflies[i].intensity) {
-                            fireflies[i].position = newPosition;
-                            fireflies[i].intensity = newIntensity;
+                        if (this.evaluations < fireflyBudget) {
+                            intensities[i] = yield fireflies[i];
                         }
                     }
                 }
             }
-            // Anneal α (mealpy FFA alpha damping).
+            // Anneal α at the end of each outer (i, j) sweep.
             alpha *= alphaDamp;
+
+            // Termination guard: a sweep with no evaluations means the
+            // swarm has collapsed — no future sweep can differ.
+            if (this.evaluations === evalsAtSweepStart) break;
         }
 
         // Polish stage: L-BFGS-B from the firefly best.
-        this._lbfgsPolish();
-
-        return {
-            bestValue: this.bestValue,
-            bestX: this.bestX,
-            evaluations: this.evaluations,
-            success: true,
-            path: this.trackPath ? this.path : null
-        };
+        yield* this._lbfgsPolishGen();
     }
 }
 
