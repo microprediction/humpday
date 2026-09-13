@@ -115,3 +115,53 @@ def test_physics_objectives_is_empty_rather_than_raising_off_repository():
     finally:
         pathlib.Path.is_dir = real_is_dir
         mod._PHYSICS_CACHE = original
+
+
+def test_scalable_engineering_objectives_are_raceable():
+    """The fixed demos stop at 24 dimensions, so high-dimensional physics comes from these.
+
+    They are screened exactly like the shipped suites. The packing objective is the reason:
+    written with a hard `min` over clearances, as the real demo is, it reads zero of fifty
+    coordinates at a random point, because the binding constraint is a single pair and moving
+    any other circle changes nothing. That is a valid objective and a useless tournament.
+    """
+    import itertools
+
+    from benchmarks.record_elo_by_dimension import scalable_physics
+
+    for n_dim in (50, 100):
+        for fn in itertools.islice(scalable_physics(n_dim, seed=7), 3):
+            live, slowest = _probe(fn, n_dim, hash(fn.__name__) & 0xFFFF)
+            assert live >= n_dim * 0.9, (
+                f"{fn.__name__} at d={n_dim} reads only {live} of {n_dim} coordinates"
+            )
+            assert slowest <= MAX_SECONDS_PER_EVAL, f"{fn.__name__} is too slow to race"
+
+
+def test_rating_aggregation_penalises_a_specialist():
+    """A specialist that wins one suite and sinks in the other must not lead the robust order."""
+    from humpday import elo_by_dimension
+    from humpday.eligibility import robust_order
+
+    for n_dim, suites in elo_by_dimension().items():
+        if len(suites) < 2:
+            continue
+        order = robust_order(n_dim)
+        assert order, f"d={n_dim} has two suites but no robust order"
+        leader = order[0]
+        leader_worst = max(
+            sorted(r, key=lambda n: -r[n]).index(leader) + 1 for r in suites.values()
+        )
+        for other in order[1:]:
+            other_best = min(
+                sorted(r, key=lambda n: -r[n]).index(other) + 1 for r in suites.values()
+            )
+            # Nothing ranked below the leader may be better than it in *every* suite.
+            if other_best < leader_worst:
+                other_worst = max(
+                    sorted(r, key=lambda n: -r[n]).index(other) + 1
+                    for r in suites.values()
+                )
+                assert other_worst >= leader_worst, (
+                    f"d={n_dim}: {other} beats {leader} in every suite yet ranks below it"
+                )

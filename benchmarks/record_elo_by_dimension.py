@@ -27,6 +27,7 @@ import contextlib
 import datetime
 import io
 import json
+import math
 import random
 import sys
 from pathlib import Path
@@ -44,6 +45,93 @@ OUT = REPO_ROOT / "humpday" / "data" / "elo_by_dimension.json"
 # One per bucket boundary in suggest_pure, so every ordering it can return has evidence behind it.
 # Dimensions where enough engineering demos live to make a tournament meaningful.
 DEFAULT_DIMS = (2, 3, 4, 5, 6, 7, 8, 10, 12, 24)
+
+
+def scalable_physics(n_dim: int, seed: int):
+    """Engineering objectives that take the dimension as a parameter.
+
+    The fixed demos under ``example_applications`` stop at 24 dimensions (one reaches 60), so above
+    that the physics half of the tournament has nothing to say, and recording only analytic surfaces
+    there would rank optimizers on exactly the suite that misleads. These are the same structures
+    with the structural constant turned up: pack n/2 circles rather than six, schedule n hours of
+    battery dispatch rather than twenty-four, place n control points on a descent rather than eight.
+
+    How good a stand-in are they? Partial, and measured rather than asserted. Raced at twelve
+    dimensions against the real demos and the analytic surfaces:
+
+        real demos         CoordinateDescent, PRIMA_BOBYQA, Rechenberg, Alloy
+        this family        PRIMA_BOBYQA, PatternSearch, PRIMA_NEWUOA, CoordinateDescent
+        analytic surfaces  PRIMA_NEWUOA, PRIMA_UOBYQA, PRIMA_BOBYQA, NelderMead
+
+    They sit between the two. The direct-search methods that the real demos favour and the
+    surfaces do not, PatternSearch and CoordinateDescent, show up here; but a trust-region method
+    still leads, as on the surfaces. Three structures cannot stand in for seventy-six problems.
+    Read a high-dimensional physics rating as better evidence than analytic surfaces alone and
+    weaker evidence than the fixed demos, not as equivalent to them.
+    """
+    rnd = random.Random(seed)
+
+    def packing(u):
+        """Pack n/2 circles into the unit square, scored by a soft minimum over clearances.
+
+        A hard `min` is the honest packing objective but it is useless to race at this size: with
+        twenty-five circles the binding constraint is a single pair, so moving any other circle
+        leaves the value untouched. Measured, the hard version reads 0 of 50 coordinates at a
+        random point, which gives an optimizer nothing to follow. The soft minimum below keeps the
+        structure -- still dominated by the tightest clearances, still ridged where the binding
+        pair changes -- while letting every circle move the score.
+        """
+        pts = [(u[2 * i], u[2 * i + 1]) for i in range(len(u) // 2)]
+        gaps = []
+        for cx, cy in pts:
+            gaps += [cx, 1 - cx, cy, 1 - cy]
+        for i in range(len(pts)):
+            for j in range(i + 1, len(pts)):
+                dx, dy = pts[i][0] - pts[j][0], pts[i][1] - pts[j][1]
+                gaps.append(math.hypot(dx, dy) / 2)
+        beta = 60.0  # sharp enough that the tightest clearances dominate
+        lo = min(gaps)
+        soft = lo - math.log(sum(math.exp(-beta * (g - lo)) for g in gaps)) / beta
+        return -soft
+
+    def dispatch(u, price=None):
+        # Charge/discharge a battery against a price curve, with state of charge carried across
+        # steps and penalised at the bounds. Revenue is negated so lower is better.
+        price = price or [
+            1.0 + math.sin(2 * math.pi * k / max(len(u), 2)) for k in range(len(u))
+        ]
+        soc, revenue = 0.5, 0.0
+        for k, x in enumerate(u):
+            rate = 2.0 * x - 1.0  # [-1, 1]: discharge when positive
+            soc -= rate * 0.1
+            if soc < 0.0 or soc > 1.0:
+                revenue -= 10.0 * abs(soc - min(max(soc, 0.0), 1.0))
+                soc = min(max(soc, 0.0), 1.0)
+            revenue += rate * price[k]
+        return -revenue
+
+    def descent(u):
+        # Time down a piecewise-linear curve through n control heights: a discretised
+        # brachistochrone, where the heights interact through the speed carried forward.
+        ys = [1.0 - 0.9 * v for v in u]
+        t, v = 0.0, 0.0
+        dx = 1.0 / max(len(ys), 1)
+        prev = 1.0
+        for y in ys:
+            drop = prev - y
+            v = math.sqrt(max(v * v + 2 * 9.81 * drop, 1e-9))
+            t += math.hypot(dx, drop) / v
+            prev = y
+        return t
+
+    family = [packing, dispatch, descent]
+
+    def cycle():
+        while True:
+            rnd.shuffle(family)
+            yield from family
+
+    return cycle()
 
 
 def physics_generator(n_dim: int, seed: int):
@@ -151,8 +239,13 @@ def record(
         if suite == "physics":
             generator = physics_generator(n_dim, seed + n_dim)
             if generator is None:
-                print(f"   no physics demo at d={n_dim}; skipping", flush=True)
-                continue
+                # No fixed demo at this dimension: use the scalable engineering family rather
+                # than leaving the dimension with analytic surfaces as its only evidence.
+                print(
+                    f"   no fixed demo at d={n_dim}; using scalable engineering family",
+                    flush=True,
+                )
+                generator = scalable_physics(n_dim, seed + n_dim)
         else:
             generator = stochastic_generator(n_dim, seed + n_dim)
         for i in range(n_problems):

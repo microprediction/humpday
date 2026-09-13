@@ -120,6 +120,37 @@
         "trials_per_problem": 120
       }
     },
+    "16": {
+      "physics": {
+        "match_history_count": 10,
+        "ratings": {
+          "Alloy": 2211.264744513432,
+          "AntColonyOpt": 1703.2858649089876,
+          "BayesianOpt": 1285.2576194911485,
+          "CMAEvolutionStrategy": 1331.0146286336285,
+          "CoordinateDescent": 2042.7597850756806,
+          "DifferentialEvolution": 1692.3069172383011,
+          "EvolutionStrategy": 1665.763144679809,
+          "FireflyAlgorithm": 1521.0372359150933,
+          "GeneticAlgorithm": 1523.0459915912597,
+          "GridSearch": 855.2413150094997,
+          "HarmonySearch": 1506.1152561704562,
+          "HillClimbing": 1974.54274802155,
+          "LBFGSB": 1160.1361067647044,
+          "NelderMead": 1145.791342579243,
+          "PRIMA_BOBYQA": 1629.264350628053,
+          "PRIMA_NEWUOA": 1155.700436428666,
+          "PRIMA_UOBYQA": 745.6309020526536,
+          "ParticleSwarm": 1583.9454383586365,
+          "PatternSearch": 2070.772194345096,
+          "Powell": 1041.1111589256857,
+          "RandomSearch": 1344.180049851882,
+          "Rechenberg": 1835.63088290387,
+          "SimulatedAnnealing": 1476.2018859126608
+        },
+        "trials_per_problem": 160
+      }
+    },
     "2": {
       "physics": {
         "match_history_count": 15,
@@ -602,5 +633,5 @@
     }
   },
   "generator": "stochastic_surfaces.create_fair_benchmark_run",
-  "recorded_at": "2026-09-11T20:06:07.146691+00:00"
+  "recorded_at": "2026-09-13T05:32:22.636884+00:00"
 }

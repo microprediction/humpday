@@ -60,6 +60,7 @@ from humpday.optimizers.scipy_interface import (
 
 _ELO_CACHE: dict | None = None
 _ELO_BY_DIM_CACHE: dict | None = None
+_COUNTS_CACHE: dict | None = None
 
 
 def elo_ratings() -> dict:
@@ -111,6 +112,31 @@ def elo_by_dimension() -> dict:
     return _ELO_BY_DIM_CACHE
 
 
+def problems_recorded() -> dict:
+    """How many problems back each cell, ``{n_dim: {suite: count}}``.
+
+    The rating aggregation needs this: a rank from a fifteen-problem tournament should not carry
+    the same weight as one from fifty-five.
+    """
+    global _COUNTS_CACHE
+    if _COUNTS_CACHE is None:
+        try:
+            from pathlib import Path
+
+            raw = json.loads(
+                (Path(__file__).parent / "data" / "elo_by_dimension.json").read_text()
+            )
+            _COUNTS_CACHE = {
+                int(k): {
+                    s: int(e.get("match_history_count", 0)) for s, e in suites.items()
+                }
+                for k, suites in raw.get("by_dimension", {}).items()
+            }
+        except Exception:  # pragma: no cover - the table is optional
+            _COUNTS_CACHE = {}
+    return _COUNTS_CACHE
+
+
 def _ratings_for(n_dim: int, suite: str):
     """Ratings recorded for this suite **at this exact dimension**, or None.
 
@@ -123,26 +149,15 @@ def _ratings_for(n_dim: int, suite: str):
 
 
 def _never_terrible(n_dim: int):
-    """Order by worst rank across the suites, so the leader is the one that is never bad.
+    """Optimizers ordered by dependability across the recorded suites, or None.
 
-    Best-on-average picks a specialist. The analytic surfaces are smooth and smoothness rewards
-    local search, so the trust-region methods sweep them; on the engineering demos at the same
-    dimensions they are displaced. An optimizer that wins one and places near the bottom of the
-    other is a worse default than one that is respectable on both, because the caller usually does
-    not know which kind of objective they have.
+    The ordering lives in :func:`humpday.eligibility.robust_order` so that ``suggest`` and the
+    recommender behind ``minimize`` cannot disagree about what "never terrible" means. They were
+    written separately once and were free to drift.
     """
-    suites = elo_by_dimension().get(n_dim, {})
-    if len(suites) < 2:
-        return None
-    worst = {}
-    for ratings in suites.values():
-        order = sorted(ratings, key=lambda n: -ratings[n])
-        for rank, name in enumerate(order, start=1):
-            worst[name] = max(worst.get(name, 0), rank)
-    for name in list(worst):  # only rank what every suite actually scored
-        if not all(name in r for r in suites.values()):
-            del worst[name]
-    return sorted(worst, key=lambda n: (worst[n], n)) or None
+    from humpday.eligibility import robust_order
+
+    return robust_order(n_dim) or None
 
 
 # Simple suggest function using pure algorithms
@@ -226,6 +241,7 @@ recommend = suggest
 __all__ = [
     "elo_ratings",
     "elo_by_dimension",
+    "problems_recorded",
     # Package metadata
     "__version__",
     # Core interface

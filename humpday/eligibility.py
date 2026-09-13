@@ -403,27 +403,67 @@ def _lambda_for(eval_time: float | None) -> float:
     return 0.0
 
 
-def _never_terrible_order(n_dim: int) -> list:
-    """Optimizers at this exact dimension ordered by worst rank across the recorded suites.
+# Weight of the prior when shrinking a suite's rank toward the cross-suite mean. A cell backed by
+# PRIOR_PROBLEMS problems is trusted halfway; fewer and it is pulled further toward the mean. Set
+# to the size of the smaller tournaments actually recorded, so those count for about half.
+PRIOR_PROBLEMS = 15.0
 
-    Empty when no tournament was recorded at this dimension, or only one suite was. Ranking by
-    worst rank rather than by mean rating avoids handing someone a specialist: PRIMA_UOBYQA
-    averages rank 3.0 on the analytic surfaces and 15.9 on the engineering demos.
+
+def robust_order(n_dim: int) -> list:
+    """Order optimizers at this dimension from most to least dependable across the suites.
+
+    Three things this is not, each for a reason.
+
+    It is not a comparison of Elo numbers across suites. The scales differ -- the analytic
+    tournaments run roughly five hundred points wider than the engineering ones -- so a rating is
+    only meaningful against the others in its own cell. Everything below works on within-suite
+    ranks.
+
+    It is not a mean rank. Averaging rewards a specialist that wins one suite and places near the
+    bottom of the other, which is the recommendation the whole two-suite exercise exists to avoid.
+
+    It is not the raw worst rank either. That hangs the entire ordering on one cell, and the
+    thinner cells here hold fifteen problems. Each suite's rank is first shrunk toward the
+    optimizer's cross-suite mean by a factor n / (n + PRIOR_PROBLEMS), so a rank from a
+    well-populated tournament moves the score more than one from a sparse tournament, and the
+    pessimistic rank is taken over the shrunk values. With equally sized cells this reduces to a
+    penalised mean; as a cell grows it approaches the true worst case.
+
+    Returns an empty list when fewer than two suites were recorded at this dimension.
     """
     try:
-        from humpday import elo_by_dimension
+        from humpday import elo_by_dimension, problems_recorded
     except Exception:  # pragma: no cover - during partial imports
         return []
     suites = elo_by_dimension().get(n_dim, {})
     if len(suites) < 2:
         return []
-    worst: dict = {}
-    for ratings in suites.values():
+    counts = problems_recorded().get(n_dim, {})
+
+    ranks: dict = {}
+    for suite, ratings in suites.items():
         order = sorted(ratings, key=lambda n: -ratings[n])
-        for rank, name in enumerate(order, start=1):
-            worst[name] = max(worst.get(name, 0), rank)
-    shared = [n for n in worst if all(n in r for r in suites.values())]
-    return sorted(shared, key=lambda n: (worst[n], n))
+        for position, name in enumerate(order, start=1):
+            ranks.setdefault(name, {})[suite] = position
+
+    shared = [n for n, r in ranks.items() if len(r) == len(suites)]
+    scored = []
+    for name in shared:
+        per_suite = ranks[name]
+        mean_rank = sum(per_suite.values()) / len(per_suite)
+        worst = 0.0
+        for suite, rank in per_suite.items():
+            n = float(counts.get(suite, 0))
+            weight = n / (n + PRIOR_PROBLEMS)
+            worst = max(worst, weight * rank + (1.0 - weight) * mean_rank)
+        scored.append((worst, mean_rank, name))
+    scored.sort()
+    return [name for _, _, name in scored]
+
+
+def _never_terrible_order(n_dim: int) -> list:
+    """Backwards-compatible alias for :func:`robust_order`."""
+    return robust_order(n_dim)
 
 
 def recommend(
