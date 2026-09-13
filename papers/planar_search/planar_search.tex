@@ -1,0 +1,380 @@
+\documentclass[11pt]{article}
+\usepackage[margin=1.15in]{geometry}
+\usepackage{amsmath,amssymb,amsthm}
+\usepackage{booktabs}
+\usepackage{xcolor}
+\usepackage[colorlinks=true,linkcolor=blue!60!black,citecolor=blue!60!black,urlcolor=blue!60!black]{hyperref}
+\hypersetup{pdftitle={Adaptive Planar Search},pdfauthor={Peter Cotton}}
+
+\newtheoremstyle{itheads}{\topsep}{\topsep}{}{}{\itshape}{.}{.5em}{}
+\theoremstyle{itheads}
+\newtheorem{theorem}{Theorem}
+\newtheorem{proposition}{Proposition}
+
+\newcommand{\E}{\mathbb{E}}
+\newcommand{\R}{\mathbb{R}}
+
+\title{Adaptive Planar Search:\\[4pt]
+{\large A Terminal-Placement Acquisition for Derivative-Free Optimization}}
+\author{Peter Cotton}
+\date{Draft, September 2026}
+
+\begin{document}
+\maketitle
+
+\begin{abstract}
+\noindent Derivative-free optimizers spend most of their budget on
+one-dimensional line searches. We use the terminal-placement rule of
+the companion theory paper as a line-search inner loop: with its scale
+and correlation length estimated online, it flees, probes, or commits
+in one to three evaluations. On the HumpDay physics benchmark it is a
+competitive inner loop on rough and high-dimensional objectives at
+tight budgets, where its early exits buy more search directions than a
+classical line search. A projection argument then lifts the same rule
+off the line: after two observations under any radial Gaussian-process
+prior, the entire next-point decision lives in a plane, in any ambient
+dimension. A fixed off-line placement does not beat a line search
+across the catalog, but choosing it by expected improvement under a
+fitted Gaussian process does, and increasingly so with dimension: the
+value of the acquired point, not its position, is what turns the exact
+reduction into a win.
+\end{abstract}
+
+\section{Line searches are where the budget goes}
+
+Derivative-free optimizers reduce a high-dimensional problem to a
+sequence of one-dimensional subproblems: pick a direction, place a few
+evaluations along it, return a point. Classical inner loops, golden
+section and Brent, assume smooth unimodal slices and spend eight to ten
+evaluations resolving each one. On the rough slices of real physics
+objectives that assumption fails, and on a tight global budget the cost
+of each line is what binds.
+
+The companion theory paper solves a different one-dimensional problem
+exactly: place three evaluations on an exponentiated Ornstein--Uhlenbeck
+slice and be paid the value at the final point. Its policy flees a
+below-median start, probes between two good values, and stays above a
+ceiling, all in closed form. Read as an inner loop it costs one to
+three evaluations per line, not eight to ten. This paper asks what that
+buys in an optimizer, and how far off the line the same geometry
+reaches.
+
+Two findings. As an inner loop the rule is competitive on rough and
+high-dimensional objectives when the budget is tight, for a reason that
+is about evaluation economy more than about the placement theorem. And
+the placement geometry is not confined to a line: after two
+observations under a radial prior the next-point decision collapses to
+a plane, exactly, in any ambient dimension. A fixed off-line placement
+does not pay, but one aimed by expected improvement under a fitted
+Gaussian process, by the value rather than the information of the
+acquired point, beats a line search on three quarters of high-dimensional
+tasks, which is where the reduction should matter.
+
+\section{The terminal-placement inner loop}
+
+We implement the three-evaluation rule as an inner loop, \texttt{grass3}:
+the exact final placement and opening step of the theory paper, with the
+mean, scale, and correlation length estimated online from the
+optimizer's own history. It flees or stays after one or two evaluations
+when the rule dictates and places the third otherwise. It is a heuristic
+adaptation, not the exact policy: it interpolates the opening-correlation
+table, extrapolates it above the tabulated range, forces flight after
+three stalled lines, and clips placements to the unit cube. The last is
+a genuine approximation: choosing an unconstrained exterior winner and
+then clipping can lose to the best feasible interior point, and we
+flag it rather than hide it.
+
+We benchmark \texttt{grass3} inside a common outer loop, iterated
+random-direction search at budget 120, against four fixed inner loops:
+golden section with two and with six evaluations, Brent, and random
+placement, on matched directions and seeds.
+
+\section{Benchmark}
+
+The objectives are the application suite of the HumpDay package (Cotton
+2021): small physics and engineering problems in which a point in the
+unit cube sets a deterministic simulator's controls and the objective is
+the outcome: a break in pool, pins felled in bowling, a trebuchet's
+range, a wind-farm layout. We use the 22 dynamics-simulating problems;
+their one-dimensional slices run from smooth to collision-cascade rough.
+
+\begin{table}[t]
+\centering
+\small
+\begin{tabular}{lccccc}
+\toprule
+Objective & $d$ & \texttt{grass3} & rank & best rival & seed wins \\
+\midrule
+plinko\_funnel & 7  & $-57.0$  & 1/5 & golden6 $-50.8$  & 13/16 \\
+wind\_farm     & 16 & $-94.1$  & 1/5 & golden6 $-93.6$  & 16/24 \\
+bowling        & 4  & $-105.0$ & 1/5 & golden2 $-104.0$ & 4/8   \\
+free\_kick     & 4  & $-32.9$  & 5/5 & golden2 $-105.2$ & 3/24  \\
+\bottomrule
+\end{tabular}
+\caption{\texttt{grass3} as an inner loop, median objective over seeds
+at budget 120; lower is better. Comparators are golden section (two and
+six evaluations) and Brent in the shared outer loop, and whole-cube
+random search. Rank is among the five, averaging tied medians; seed
+wins count seeds on which \texttt{grass3} beats the best rival. Across
+all 22 objectives \texttt{grass3} has mean rank $2.95/5$ and is first or
+second on eight (nine counting joint second places);
+\texttt{free\_kick} is a representative loss.}
+\label{tab:bench}
+\end{table}
+
+The rule wins on two kinds of objective. On collision and agent-chaos
+objectives with rough but structured slices it is the best inner loop;
+on a plinko objective it leads its strongest rival on 13 of 16 seeds
+(Table~\ref{tab:bench}). It also wins on high-dimensional objectives even
+when slices are smooth: on a sixteen-dimensional wind-farm layout it
+leads golden6 on 16 of 24 seeds, and golden2 and Brent on 21 and 22.
+
+The high-dimensional win is evaluation economy. Early exits of one or
+two evaluations let the outer loop try several times more directions
+than an inner loop spending eight to ten per line. The win is
+budget-starved rather than general: it appears when the dimension times
+a classical line's cost exceeds the whole budget, so a method with a
+fixed number of directions per iteration cannot complete one pass.
+
+The rule loses in two regimes. On landscapes too rough to carry
+navigable structure, broad sampling wins and placement theory has
+nothing to exploit; on needle landscapes, where the value hides in a
+spike, golden section's fixed full-segment probes are the right move. It
+is also not a drop-in for the line search inside an existing optimizer:
+substituted into Powell, whose direction updates need genuine line
+minimization, it loses to Brent.
+
+Three qualifications keep the reading honest. Random search samples the
+whole cube rather than sharing the outer loop, and the Brent baseline
+spends one call reevaluating the known incumbent, so the economy margin
+is somewhat overstated. An ablation is more sobering: omitting the third
+placement altogether helps on twelve of the twenty-two objectives,
+sometimes by a wide margin, so the benchmark speaks for evaluation
+economy and online adaptation more than for the placement theorem in
+particular. A control on exact exponentiated-OU fields, the model's own
+landscape, loses to broad probing: terminal-placement wins do not
+come from the objectives resembling an OU path.
+
+As a standalone optimizer rather than an inner loop, a budget-truncated
+two-shot form is mid-field against a panel of eleven standard methods,
+best at the smallest budgets and overtaken by population methods as the
+budget grows, the expected place for a rule built from a
+few-evaluation terminal-placement model.
+
+\section{From lines to planes}
+
+The line is not special. Fix a Gaussian-process prior with constant mean
+and radial covariance $K(\|x-y\|)$, and observe values at
+$x_1,\dots,x_n$. Let $H$ be their affine hull and write a candidate as
+$x=h+w$ with $h\in H$ and $w\perp H$. Then
+\begin{equation}
+\|x-x_i\|^{2}=\|h-x_i\|^{2}+\|w\|^{2},
+\end{equation}
+so the candidate's posterior depends only on its position within $H$ and
+its distance from $H$. Every perpendicular direction is equivalent.
+
+\begin{proposition}[Dimension reduction]
+Under a radial Gaussian-process prior on an unrestricted domain, a
+single-point acquisition can be optimized in at most $n$ dimensions
+after $n$ observations, regardless of the ambient dimension.
+\end{proposition}
+
+With two observations the next-point decision lives in a plane, in any
+ambient dimension, and needs no OU structure. The companion theory paper
+computes that planar decision exactly for the exponential kernel: after
+observing values $b,d$ at correlation $\rho$, the candidate's
+correlations $(x,y)$ to the two observations range over the triangle
+inequalities $\{xy\le\rho,\ x\ge\rho y,\ y\ge\rho x\}$, whose boundary is
+the one-dimensional bracket and two exterior rays and whose interior
+holds one extra candidate, the point that matches both observed values.
+
+That extra candidate is worth a measurable amount. With
+$b=d=\rho=\tfrac12$ the optimal third point forms an equilateral triangle
+with the two observations, and its conditional expected terminal reward
+exceeds the best collinear choice by about $2.9\%$. The gain is a planar
+effect: it is unavailable to any line search.
+
+\section{An adaptive planar search}
+
+The reduction suggests a move. Evaluate a trial along a chosen direction;
+use its observed value to choose the next point within a plane containing
+that line; under the isotropic model, take any perpendicular direction.
+The plane costs one extra coordinate and, by the dimension-reduction
+proposition, captures the whole next-point decision no matter how large
+the ambient space.
+
+One adjustment is necessary, and the opening constant closes. The
+theory paper rewards the terminal recommendation, whereas an optimizer
+keeps the best evaluated point, so its opening maximizes
+$\E[\max(e^{b},e^{X})]$ over the probe correlation $\rho$, with
+$X\sim N(b\rho,1-\rho^{2})$. The geometric reduction is unaffected, a fact about the
+posterior and not the objective. But the opening coefficient is not.
+
+\begin{proposition}[Expected-improvement opening]
+For the best-evaluated objective the optimal opening correlation
+satisfies $\rho^{*}(b)=\kappa_{\mathrm{EI}}\,b+O(b^{3})$ as $b\downarrow0$,
+with
+\begin{equation}
+\kappa_{\mathrm{EI}}=\frac{\E[e^{Z};Z>0]}{\E[Z\,e^{Z};Z>0]}
+=\frac{\Phi(1)}{\Phi(1)+\phi(1)}=0.776639\ldots,
+\qquad Z\sim N(0,1).
+\end{equation}
+\end{proposition}
+
+\noindent The first-order condition
+$\partial_\rho\E[\max(e^{b},e^{X})]
+=\E\!\left[e^{X}\mathbf{1}\{X>b\}\,(b-\rho X'/\sqrt{1-\rho^{2}})\right]=0$,
+with $X=b\rho+\sqrt{1-\rho^{2}}X'$ and $X'\sim N(0,1)$, gives at
+$b\downarrow0$ the ratio
+$\E[e^{Z};Z>0]=\kappa_{\mathrm{EI}}\,\E[Z e^{Z};Z>0]$, and
+$\E[e^{Z};Z>0]=e^{1/2}\Phi(1)$, $\E[Z e^{Z};Z>0]=e^{1/2}(\phi(1)+\Phi(1))$.
+So the optimizer opens \emph{wider} than the terminal rule,
+$\kappa_{\mathrm{EI}}=0.777$ against the theory paper's
+$\kappa_0=0.540$, because a fresh high draw is worth more when the
+best point is kept rather than a mean recommendation. And it is
+elementary, where $\kappa_0$ is only characterized by a transcendental
+equation. A full planar-search implementation is the remaining
+empirical step.
+
+\section{The fixed off-line placement}
+
+A budget-matched experiment isolates the planar move: two evaluations
+per step along a shared random direction, differing only in where the
+second goes. The \emph{line} keeps it on the line, extrapolating past
+the trial when it improved and reflecting when it did not; the
+\emph{plane} puts it at a fixed equilateral apex off the line. Start
+point, direction stream, and adaptive step are identical. Across the
+whole catalog of $51$ analytic objectives at $d\in\{2,5,10\}$ and $69$
+physics simulators at native dimensions, $222$ tasks in all, the fixed
+off-line move wins on only $0.26$ of seeds, below one half at every
+dimension ($0.30$ at $d\le3$, $0.21$ at $d\ge8$), and a
+momentum-estimated transverse direction is no better.
+
+The fixed move ignores information. The reduction says the decision
+lives in the plane, but a fixed apex in a random plane sends the one
+off-line probe where the objective's structure almost never is; the
+reduction is a fact about the posterior, not about any particular
+objective.
+
+\section{Aiming the plane by expected improvement}
+
+Choose the off-line point by an acquisition instead of geometry. Fit a
+Gaussian process to the evaluated history, and among candidate points
+in the plane take the one a chosen acquisition ranks highest; the
+control is the same GP restricted to the line, identical guidance and
+budget, so the difference isolates the off-line freedom. Two
+acquisitions separate cleanly (Table~\ref{tab:planargp}). Expected
+improvement, which favors points likely to beat the incumbent, wins
+increasingly with dimension. Pure information gain, the
+posterior-variance criterion of entropy search (Hennig and Schuler
+2012; Wang and Jegelka 2017) that favors the most uncertain point
+regardless of value, does not.
+
+\begin{table}[t]
+\centering
+\small
+\begin{tabular}{lcc}
+\toprule
+dimension & expected improvement & information gain \\
+\midrule
+$d=2$--$3$ & $0.42$ & $0.27$ \\
+$d=4$--$7$ & $0.63$ & $0.37$ \\
+$d\ge 8$   & $0.76$ & $0.29$ \\
+\midrule
+overall    & $0.62$ & $0.31$ \\
+\bottomrule
+\end{tabular}
+\caption{Fraction of seeds on which the GP-aimed off-line placement
+beats a GP restricted to the line, over the $223$-task catalog at ten
+seeds each. Both use the same GP and budget; only the off-line
+candidates and the acquisition differ. Expected improvement helps more
+as the dimension grows (analytic $0.78$, simulators $0.71$ at $d\ge8$);
+the pure information-gain criterion does not help at any dimension.}
+\label{tab:planargp}
+\end{table}
+
+Value, not information, turns the reduction into a win. The off-line
+freedom pays only when the one probe is aimed at a point likely to be
+good; aiming it at the most uncertain point, pure exploration, is
+no better than the fixed geometry. The geometry hands high-dimensional
+search a plane, and expected improvement decides where in it to look;
+the payoff grows in exactly the regime where a line search has the
+least room. All of this is heuristic: a greedy one-step acquisition
+on a fitted Gaussian process, not the exact policy of the theory paper.
+The only exact object it uses is the dimension reduction itself.
+
+\section{Related work}
+
+LineBO (Kirschner et al.\ 2019) optimizes through adaptively selected
+one-dimensional subspaces; the reduction here identifies when one extra
+transverse coordinate carries measurable value, sharpening the choice of
+subspace to a plane after two observations. The Stochastic Three Points
+method (Bergou et al.\ 2020) compares an incumbent with two opposite
+trials; the planar candidate suggests an adaptive triangle variant whose
+third location is chosen after seeing the second value. Knowledge
+gradient (Frazier, Powell and Dayanik 2009) supplies the
+measure-then-choose framework; the contribution here is explicit geometry
+and the resulting planar move within it.
+
+\section{Scope}
+
+The defensible claim for high-dimensional derivative-free optimization is
+an exact simplification of the next decision under a radial prior:
+whatever the ambient dimension, two observations reduce it to a plane.
+Learning useful directions over a long run remains hard, and constraints
+or unknown anisotropy break the isotropy the reduction uses. The
+immediate application is therefore small evaluation budgets and local
+searches, where a single well-placed plane is most of what a step can
+afford.
+
+\begin{thebibliography}{9}
+
+\bibitem{cottongrass2026}
+P.~Cotton.
+When the grass is greener: three-shot search on exponentiated Gaussian
+landscapes.
+Working paper, 2026.
+\url{https://github.com/microprediction/browniansearch}.
+
+\bibitem{humpday2021}
+P.~Cotton.
+HumpDay: pure Python derivative-free optimization and its application
+suite.
+\url{https://github.com/microprediction/humpday}, 2021.
+
+\bibitem{kirschner2019}
+J.~Kirschner, M.~Mutn\'y, N.~Hiller, R.~Ischebeck, and A.~Krause.
+Adaptive and safe Bayesian optimization in high dimensions via
+one-dimensional subspaces.
+In \emph{Proceedings of the 36th International Conference on Machine
+Learning}, 2019.
+
+\bibitem{bergou2020}
+E.~H. Bergou, E.~Gorbunov, and P.~Richt\'arik.
+Stochastic three points method for unconstrained smooth minimization.
+\emph{SIAM Journal on Optimization}, 30(4):2726--2749, 2020.
+
+\bibitem{frazier2009}
+P.~I. Frazier, W.~B. Powell, and S.~Dayanik.
+The knowledge-gradient policy for correlated normal beliefs.
+\emph{INFORMS Journal on Computing}, 21(4):599--613, 2009.
+
+\bibitem{rasmussen2006}
+C.~E. Rasmussen and C.~K.~I. Williams.
+\emph{Gaussian Processes for Machine Learning}.
+MIT Press, 2006.
+
+\bibitem{hennig2012}
+P.~Hennig and C.~J. Schuler.
+Entropy search for information-efficient global optimization.
+\emph{Journal of Machine Learning Research}, 13:1809--1837, 2012.
+
+\bibitem{wang2017}
+Z.~Wang and S.~Jegelka.
+Max-value entropy search for efficient Bayesian optimization.
+In \emph{Proceedings of the 34th International Conference on Machine
+Learning}, 2017.
+
+\end{thebibliography}
+
+\end{document}

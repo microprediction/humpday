@@ -1,0 +1,214 @@
+{
+  "rows": [
+    {
+      "objective": "rastrigin",
+      "d": 2,
+      "ei_vs_linegp": 6,
+      "var_vs_linegp": 8,
+      "seeds": 16
+    },
+    {
+      "objective": "rastrigin",
+      "d": 5,
+      "ei_vs_linegp": 7,
+      "var_vs_linegp": 5,
+      "seeds": 16
+    },
+    {
+      "objective": "rastrigin",
+      "d": 10,
+      "ei_vs_linegp": 11,
+      "var_vs_linegp": 9,
+      "seeds": 16
+    },
+    {
+      "objective": "ackley",
+      "d": 2,
+      "ei_vs_linegp": 7,
+      "var_vs_linegp": 2,
+      "seeds": 16
+    },
+    {
+      "objective": "ackley",
+      "d": 5,
+      "ei_vs_linegp": 12,
+      "var_vs_linegp": 11,
+      "seeds": 16
+    },
+    {
+      "objective": "ackley",
+      "d": 10,
+      "ei_vs_linegp": 8,
+      "var_vs_linegp": 4,
+      "seeds": 16
+    },
+    {
+      "objective": "griewank",
+      "d": 2,
+      "ei_vs_linegp": 11,
+      "var_vs_linegp": 7,
+      "seeds": 16
+    },
+    {
+      "objective": "griewank",
+      "d": 5,
+      "ei_vs_linegp": 13,
+      "var_vs_linegp": 4,
+      "seeds": 16
+    },
+    {
+      "objective": "griewank",
+      "d": 10,
+      "ei_vs_linegp": 16,
+      "var_vs_linegp": 1,
+      "seeds": 16
+    },
+    {
+      "objective": "schwefel",
+      "d": 2,
+      "ei_vs_linegp": 6,
+      "var_vs_linegp": 7,
+      "seeds": 16
+    },
+    {
+      "objective": "schwefel",
+      "d": 5,
+      "ei_vs_linegp": 6,
+      "var_vs_linegp": 6,
+      "seeds": 16
+    },
+    {
+      "objective": "schwefel",
+      "d": 10,
+      "ei_vs_linegp": 9,
+      "var_vs_linegp": 9,
+      "seeds": 16
+    },
+    {
+      "objective": "drop_wave",
+      "d": 2,
+      "ei_vs_linegp": 7,
+      "var_vs_linegp": 7,
+      "seeds": 16
+    },
+    {
+      "objective": "drop_wave",
+      "d": 5,
+      "ei_vs_linegp": 12,
+      "var_vs_linegp": 9,
+      "seeds": 16
+    },
+    {
+      "objective": "drop_wave",
+      "d": 10,
+      "ei_vs_linegp": 9,
+      "var_vs_linegp": 10,
+      "seeds": 16
+    },
+    {
+      "objective": "rosenbrock",
+      "d": 2,
+      "ei_vs_linegp": 7,
+      "var_vs_linegp": 8,
+      "seeds": 16
+    },
+    {
+      "objective": "rosenbrock",
+      "d": 5,
+      "ei_vs_linegp": 10,
+      "var_vs_linegp": 6,
+      "seeds": 16
+    },
+    {
+      "objective": "rosenbrock",
+      "d": 10,
+      "ei_vs_linegp": 13,
+      "var_vs_linegp": 2,
+      "seeds": 16
+    },
+    {
+      "objective": "zakharov",
+      "d": 2,
+      "ei_vs_linegp": 8,
+      "var_vs_linegp": 3,
+      "seeds": 16
+    },
+    {
+      "objective": "zakharov",
+      "d": 5,
+      "ei_vs_linegp": 13,
+      "var_vs_linegp": 6,
+      "seeds": 16
+    },
+    {
+      "objective": "zakharov",
+      "d": 10,
+      "ei_vs_linegp": 13,
+      "var_vs_linegp": 4,
+      "seeds": 16
+    },
+    {
+      "objective": "salomon",
+      "d": 2,
+      "ei_vs_linegp": 5,
+      "var_vs_linegp": 2,
+      "seeds": 16
+    },
+    {
+      "objective": "salomon",
+      "d": 5,
+      "ei_vs_linegp": 15,
+      "var_vs_linegp": 5,
+      "seeds": 16
+    },
+    {
+      "objective": "salomon",
+      "d": 10,
+      "ei_vs_linegp": 14,
+      "var_vs_linegp": 5,
+      "seeds": 16
+    },
+    {
+      "objective": "styblinski_tang",
+      "d": 2,
+      "ei_vs_linegp": 5,
+      "var_vs_linegp": 2,
+      "seeds": 16
+    },
+    {
+      "objective": "styblinski_tang",
+      "d": 5,
+      "ei_vs_linegp": 15,
+      "var_vs_linegp": 5,
+      "seeds": 16
+    },
+    {
+      "objective": "styblinski_tang",
+      "d": 10,
+      "ei_vs_linegp": 14,
+      "var_vs_linegp": 5,
+      "seeds": 16
+    },
+    {
+      "objective": "rotated_hyper_ellipsoid",
+      "d": 2,
+      "ei_vs_linegp": 5,
+      "var_vs_linegp": 2,
+      "seeds": 16
+    },
+    {
+      "objective": "rotated_hyper_ellipsoid",
+      "d": 5,
+      "ei_vs_linegp": 15,
+      "var_vs_linegp": 5,
+      "seeds": 16
+    },
+    {
+      "objective": "rotated_hyper_ellipsoid",
+      "d": 10,
+      "ei_vs_linegp": 14,
+      "var_vs_linegp": 5,
+      "seeds": 16
+    }
+  ]
+}

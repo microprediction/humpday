@@ -1,0 +1,40 @@
+{
+  "ratings": {
+    "PRIMA_UOBYQA": 1466.0904300638636,
+    "PRIMA_NEWUOA": 1119.9936705044481,
+    "PRIMA_BOBYQA": 1176.6353818783343,
+    "NelderMead": 1703.8654443587732,
+    "Powell": 1470.8075799959252,
+    "LBFGSB": 1392.947954960934,
+    "DifferentialEvolution": 1894.383070224484,
+    "ParticleSwarm": 1551.6895517082562,
+    "SimulatedAnnealing": 1872.2546831640257,
+    "GeneticAlgorithm": 1323.446530670753,
+    "RandomSearch": 1424.6944699478022,
+    "BayesianOpt": 1671.1406974988895,
+    "CMAEvolutionStrategy": 1627.7056792858104,
+    "TabuSearch": 1423.2792876438543,
+    "FireflyAlgorithm": 1545.5953249666363,
+    "AntColonyOpt": 1617.8303028723044,
+    "EvolutionStrategy": 1785.8674930525924,
+    "HillClimbing": 1365.7718872705937,
+    "HarmonySearch": 1442.2264472694524,
+    "AdaptiveRandomSearch": 1234.1687305859891,
+    "CoordinateDescent": 1271.1507639466713,
+    "PatternSearch": 1618.4546181296073
+  },
+  "match_history_count": 6930,
+  "initial_rating": 1500.0,
+  "k_factor": 32.0,
+  "recorded_at": "2026-05-27T02:09:38.833132+00:00",
+  "config": {
+    "n_dim": 2,
+    "trials_per_problem": 100,
+    "n_problems_per_family": 15,
+    "families": [
+      "sphere",
+      "rosenbrock"
+    ],
+    "seed": 20260526
+  }
+}

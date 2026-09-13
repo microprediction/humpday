@@ -25,22 +25,33 @@ def _quadratic(x):
     return float(np.sum((np.asarray(x) - 0.3) ** 2))
 
 
+def _expected_pick(n_dim: int, n_trials: int) -> str:
+    """What recommend() should choose: measured evidence first, rule-based ranking after."""
+    measured = eligibility._never_terrible_order(n_dim)
+    allowed = set(eligibility.eligible(list(eligibility.TIER), n_dim, n_trials, None))
+    for name in measured:
+        if name in allowed:
+            return name
+    return suggest_pure(n_dim, n_trials)[0]
+
+
 @pytest.mark.parametrize("n_dim", [1, 2, 5, 20, 75])
 def test_minimize_no_method_no_timing_matches_rule_ranking(
     n_dim, monkeypatch, tmp_path
 ):
-    """With auto_timing disabled AND no benchmarks grid, the recommender's
-    pick should equal the rule-based top — which is suggest_pure[0] for the
-    dimensions tested here when the trial budget is large enough to clear
-    every algorithm's `min_trials` (CMA-ES at n=20 wants 4·n = 80 evals
-    before it's eligible)."""
+    """With auto_timing disabled AND no benchmarks grid, the pick follows the layering.
+
+    A per-dimension tournament, where one was recorded at exactly this dimension on both objective
+    suites, takes precedence: it is measured evidence and the rule-based ranking is not. The
+    rule-based top (suggest_pure[0]) is the fallback for dimensions nothing has raced, which is
+    what this used to assert unconditionally."""
     # Point the grid lookup at a path that doesn't exist so we exercise the
     # rule-based fallback rather than the committed benchmarks grid.
     monkeypatch.setattr(eligibility, "_GRID_PATH_DEFAULT", tmp_path / "no_grid.json")
     eligibility._clear_grid_cache()
 
     bounds = [(-1.0, 1.0)] * n_dim
-    expected = suggest_pure(n_dim, 200)[0]
+    expected = _expected_pick(n_dim, 200)
 
     with patch(
         "humpday.optimizers.scipy_interface.pure_optimize",
@@ -80,7 +91,7 @@ def test_cube_minimize_no_method_no_timing_matches_rule_ranking(monkeypatch, tmp
     eligibility._clear_grid_cache()
 
     n_dim = 8
-    expected = suggest_pure(n_dim, 50)[0]
+    expected = _expected_pick(n_dim, 50)
     with patch(
         "humpday.optimizers.scipy_interface.pure_optimize",
         return_value=(0.0, np.zeros(n_dim)),
