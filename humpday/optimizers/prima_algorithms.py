@@ -396,6 +396,15 @@ def _solve_trsbox(g, H, rho, x_current, xl, xu, n):
     return _A.asarray(d)
 
 
+# Ceiling on UOBYQA's trust-region radius. The unit cube has diameter sqrt(n) but a radius past 1
+# is already the whole box in any coordinate, so this only prevents runaway growth.
+_UOBYQA_DELTA_MAX = 1.0
+
+# Factor by which the resolution falls once the search converges at the current one. Powell uses a
+# similar order; slower than halving, so a reduction is a deliberate change of scale.
+_UOBYQA_RHO_DECAY = 0.1
+
+
 class PRIMA_UOBYQA(BaseOptimizer):
     """PRIMA UOBYQA — quadratic-interpolation trust-region method.
 
@@ -411,163 +420,54 @@ class PRIMA_UOBYQA(BaseOptimizer):
         # Trust region parameters
         rhobeg = 0.5
         rhoend = 1e-8
-        rho = rhobeg
 
-        # Initial base point pulled into the interior of [0, 1]^n.
-        xbase = _A.clip(0.5 * _A.ones(n), 0.1, 0.9)
-        _ = yield xbase
+        # First-pass seed: deterministic cube-centre, clipped a hair off the
+        # bound so the interpolation layout has headroom. Restart passes
+        # below perturb self.best_x by ~rhobeg.
+        #
+        # Without this outer loop the generator ran a single trust-region
+        # pass and returned as soon as rho decayed to rhoend -- the
+        # `rho > rhoend` clause below, not the budget clause beside it. On a
+        # smooth basin that happens long before n_trials is spent, so extra
+        # budget bought nothing: over the analytic surfaces at d<=6 mean rank
+        # went 2.6 -> 3.2 -> 7.2 -> 7.6 as the budget went 50 -> 200 -> 1000
+        # -> 5000, while NEWUOA and BOBYQA, which already restart, stayed
+        # flat (#154).
+        xseed = _A.clip(0.5 * _A.ones(n), 0.1, 0.9)
 
-        XPT, FVAL = yield from self._initialize_interpolation_points(xbase, rho, npt, n)
-        if not FVAL:
-            return
-        nused = min(len(FVAL), npt)
-        # argmin via stdlib — works on lists, ndarrays, _Vec.
-        kopt = min(range(nused), key=FVAL.__getitem__)
+        while self.evaluations < self.n_trials:
+            # Two radii, as in Powell's UOBYQA. `delta` is the trust-region radius actually used
+            # for the step and moves freely; `rho` is a floor under it and the convergence
+            # criterion, reduced only once the search has converged at the current resolution.
+            #
+            # Collapsing both into one variable is what broke this. The old update grew the single
+            # radius with `min(rho * 2.0, rhobeg)` -- capped at the value it starts from -- so on a
+            # problem the quadratic model fits well, ratio is about 1 every iteration, the grow
+            # branch fires every iteration, and the shrink branches never run. Traced on a sphere
+            # at d=4: 1,049 trust-region solves, one distinct rho, pinned at 0.5 the whole way. The
+            # `rho > rhoend` guard could therefore never end the pass, and the run spent its entire
+            # budget taking the same full-radius step -- identical best values at 200, 1,000 and
+            # 5,000 evaluations (#327).
+            rho = rhobeg
+            delta = rhobeg
 
-        # Shift xbase so the best init point sits at the origin BEFORE
-        # the first TR iteration — see NEWUOA #172 comment.
-        if float(_A.norm(XPT[kopt])) > 1e-12:
-            shift = XPT[kopt].copy()
-            new_xbase = _A.clip(xbase + shift, 0, 1)
-            actual_shift = new_xbase - xbase
-            xbase = new_xbase
-            for i in range(nused):
-                XPT[i] = XPT[i] - actual_shift
-
-        iteration = 0
-        # Cap the trust-region loop by budget directly. The previous
-        # `min(100, n_trials // npt)` was the same cap NEWUOA had before
-        # #167 fixed it; on a 3-D problem with budget=80 and npt=10 it
-        # gave only 8 iterations and the loop terminated long before
-        # rho could converge. The outer `evaluations < n_trials` guard
-        # is sufficient; this is just a guard against pathological
-        # infinite loops.
-        max_iterations = self.n_trials
-
-        # Iterations between Powell-style geometry steps. Each geometry
-        # step costs one objective evaluation but improves the
-        # interpolation set's conditioning, which lets the TR steps make
-        # better progress on smooth basins like Rosenbrock. Setting this
-        # to the size of the interpolation set means every point gets
-        # one geometry refresh per outer cycle.
-        geometry_step_period = npt
-
-        while (
-            self.evaluations < self.n_trials
-            and rho > rhoend
-            and iteration < max_iterations
-        ):
-            iteration += 1
-
-            try:
-                g, H, A_model = self._build_robust_quadratic_model(
-                    XPT, FVAL, nused, n, kopt
-                )
-            except Exception:
-                rho *= 0.5
-                continue
-
-            # Periodic geometry step: replace the worst-positioned
-            # interpolation point with one chosen to maximise its
-            # Lagrange polynomial in the trust region. Powell's UOBYQA
-            # does this whenever the geometry score for the worst
-            # point falls below a threshold; the simpler period rule
-            # here approximates that behaviour.
-            do_geometry = (
-                nused >= npt
-                and iteration > 1
-                and (iteration % geometry_step_period) == 0
-            )
-            if do_geometry:
-                t_geom, d_geom = self._geometry_step(A_model, XPT, kopt, nused, n, rho)
-                if t_geom is not None and d_geom is not None:
-                    xnew = _A.clip(xbase + XPT[kopt] + d_geom, 0, 1)
-                    if self.evaluations >= self.n_trials:
-                        break
-                    fnew = yield xnew
-                    XPT[t_geom] = xnew - xbase
-                    FVAL[t_geom] = fnew
-                    kopt = min(range(nused), key=FVAL.__getitem__)
-                    # Apply unconditional base shift before next TR step.
-                    if float(_A.norm(XPT[kopt])) > 1e-12:
-                        shift = XPT[kopt].copy()
-                        new_xbase = _A.clip(xbase + shift, 0, 1)
-                        actual_shift = new_xbase - xbase
-                        xbase = new_xbase
-                        for i in range(nused):
-                            XPT[i] = XPT[i] - actual_shift
-                    continue
-
-            try:
-                d = self._solve_trust_region_steihaug(g, H, rho, n)
-            except Exception:
-                d = self._fallback_step(g, rho, n)
-
-            xnew = _A.clip(xbase + XPT[kopt] + d, 0, 1)
-
+            # Initial base point pulled into the interior of [0, 1]^n.
+            xbase = _A.clip(xseed, 0, 1)
+            _ = yield xbase
             if self.evaluations >= self.n_trials:
                 break
 
-            fnew = yield xnew
-
-            # Predicted reduction: -(g·d + 0.5 d·H·d).
-            Hd = _A.linalg.matvec(H, d)
-            predicted_reduction = -(_A.dot(g, d) + 0.5 * _A.dot(d, Hd))
-            actual_reduction = FVAL[kopt] - fnew
-
-            # Update interpolation set: replace the point furthest from
-            # the current best. The Lagrange-polynomial machinery
-            # (`A_model`, `_lagrange_values_at`) is exposed for a proper
-            # geometry-step path but the BIGLAG replacement rule
-            # `|Λ_t(x_new)| · dist^4` is *worse* than plain "farthest
-            # from kopt" on the test problems (Powell's BIGLAG selects
-            # for numerical stability of the model update; "farthest"
-            # selects for keeping the best-data points near the
-            # optimum). The 12× residual gap vs PDFO uobyqa is the
-            # geometry-step path (separate iteration that runs when
-            # min |Λ_t(XPT[t])| · dist^4 falls below a threshold),
-            # which isn't ported yet.
-            new_pos = xnew - xbase
-            if nused < npt:
-                XPT.append(new_pos)
-                FVAL.append(fnew)
-                nused += 1
-            else:
-                candidates = [i for i in range(nused) if i != kopt]
-                if candidates:
-                    idx = max(
-                        candidates,
-                        key=lambda i: float(_A.norm(XPT[i] - XPT[kopt])),
-                    )
-                    XPT[idx] = new_pos
-                    FVAL[idx] = fnew
-
+            XPT, FVAL = yield from self._initialize_interpolation_points(
+                xbase, rho, npt, n
+            )
+            if not FVAL:
+                break
+            nused = min(len(FVAL), npt)
+            # argmin via stdlib — works on lists, ndarrays, _Vec.
             kopt = min(range(nused), key=FVAL.__getitem__)
 
-            # Four-tier TR radius update — mirrors NEWUOA's
-            # `_update_trust_region_radius`. The intermediate (0.1, 0.25)
-            # tier with `rho *= 0.8` is PRIMA-canonical and keeps rho
-            # from collapsing too quickly on borderline iterations.
-            if abs(predicted_reduction) > 1e-12:
-                ratio = actual_reduction / predicted_reduction
-            else:
-                ratio = 10 if actual_reduction > 0 else 0
-
-            if ratio >= 0.75:
-                rho = min(rho * 2.0, rhobeg)
-            elif ratio >= 0.25:
-                pass  # Keep rho
-            elif ratio >= 0.1:
-                rho = rho * 0.8
-            else:
-                rho = max(rho * 0.5, rhoend)
-
-            # Unconditional base-point shift — see NEWUOA #172 comment.
-            # Plain `g` is the gradient at xbase; the TR step is taken
-            # from xbase + XPT[kopt], so the subproblem only stays
-            # consistent when XPT[kopt] ≈ 0 at the start of every
-            # iteration. Uses actual_shift to handle the post-clip
-            # case correctly.
+            # Shift xbase so the best init point sits at the origin BEFORE
+            # the first TR iteration — see NEWUOA #172 comment.
             if float(_A.norm(XPT[kopt])) > 1e-12:
                 shift = XPT[kopt].copy()
                 new_xbase = _A.clip(xbase + shift, 0, 1)
@@ -575,6 +475,180 @@ class PRIMA_UOBYQA(BaseOptimizer):
                 xbase = new_xbase
                 for i in range(nused):
                     XPT[i] = XPT[i] - actual_shift
+
+            iteration = 0
+            # Cap the trust-region loop by budget directly. The previous
+            # `min(100, n_trials // npt)` was the same cap NEWUOA had before
+            # #167 fixed it; on a 3-D problem with budget=80 and npt=10 it
+            # gave only 8 iterations and the loop terminated long before
+            # rho could converge. The outer `evaluations < n_trials` guard
+            # is sufficient; this is just a guard against pathological
+            # infinite loops.
+            max_iterations = self.n_trials
+
+            # Iterations between Powell-style geometry steps. Each geometry
+            # step costs one objective evaluation but improves the
+            # interpolation set's conditioning, which lets the TR steps make
+            # better progress on smooth basins like Rosenbrock. Setting this
+            # to the size of the interpolation set means every point gets
+            # one geometry refresh per outer cycle.
+            geometry_step_period = npt
+
+            while (
+                self.evaluations < self.n_trials
+                and rho > rhoend
+                and iteration < max_iterations
+            ):
+                iteration += 1
+
+                try:
+                    g, H, A_model = self._build_robust_quadratic_model(
+                        XPT, FVAL, nused, n, kopt
+                    )
+                except Exception:
+                    rho *= 0.5
+                    continue
+
+                # Periodic geometry step: replace the worst-positioned
+                # interpolation point with one chosen to maximise its
+                # Lagrange polynomial in the trust region. Powell's UOBYQA
+                # does this whenever the geometry score for the worst
+                # point falls below a threshold; the simpler period rule
+                # here approximates that behaviour.
+                do_geometry = (
+                    nused >= npt
+                    and iteration > 1
+                    and (iteration % geometry_step_period) == 0
+                )
+                if do_geometry:
+                    t_geom, d_geom = self._geometry_step(
+                        A_model, XPT, kopt, nused, n, rho
+                    )
+                    if t_geom is not None and d_geom is not None:
+                        xnew = _A.clip(xbase + XPT[kopt] + d_geom, 0, 1)
+                        if self.evaluations >= self.n_trials:
+                            break
+                        fnew = yield xnew
+                        XPT[t_geom] = xnew - xbase
+                        FVAL[t_geom] = fnew
+                        kopt = min(range(nused), key=FVAL.__getitem__)
+                        # Apply unconditional base shift before next TR step.
+                        if float(_A.norm(XPT[kopt])) > 1e-12:
+                            shift = XPT[kopt].copy()
+                            new_xbase = _A.clip(xbase + shift, 0, 1)
+                            actual_shift = new_xbase - xbase
+                            xbase = new_xbase
+                            for i in range(nused):
+                                XPT[i] = XPT[i] - actual_shift
+                        continue
+
+                try:
+                    d = self._solve_trust_region_steihaug(g, H, delta, n)
+                except Exception:
+                    d = self._fallback_step(g, delta, n)
+
+                xnew = _A.clip(xbase + XPT[kopt] + d, 0, 1)
+
+                if self.evaluations >= self.n_trials:
+                    break
+
+                fnew = yield xnew
+
+                # Predicted reduction: -(g·d + 0.5 d·H·d).
+                Hd = _A.linalg.matvec(H, d)
+                predicted_reduction = -(_A.dot(g, d) + 0.5 * _A.dot(d, Hd))
+                actual_reduction = FVAL[kopt] - fnew
+
+                # Update interpolation set: replace the point furthest from
+                # the current best. The Lagrange-polynomial machinery
+                # (`A_model`, `_lagrange_values_at`) is exposed for a proper
+                # geometry-step path but the BIGLAG replacement rule
+                # `|Λ_t(x_new)| · dist^4` is *worse* than plain "farthest
+                # from kopt" on the test problems (Powell's BIGLAG selects
+                # for numerical stability of the model update; "farthest"
+                # selects for keeping the best-data points near the
+                # optimum). The 12× residual gap vs PDFO uobyqa is the
+                # geometry-step path (separate iteration that runs when
+                # min |Λ_t(XPT[t])| · dist^4 falls below a threshold),
+                # which isn't ported yet.
+                new_pos = xnew - xbase
+                if nused < npt:
+                    XPT.append(new_pos)
+                    FVAL.append(fnew)
+                    nused += 1
+                else:
+                    candidates = [i for i in range(nused) if i != kopt]
+                    if candidates:
+                        idx = max(
+                            candidates,
+                            key=lambda i: float(_A.norm(XPT[i] - XPT[kopt])),
+                        )
+                        XPT[idx] = new_pos
+                        FVAL[idx] = fnew
+
+                kopt = min(range(nused), key=FVAL.__getitem__)
+
+                # Four-tier TR radius update — mirrors NEWUOA's
+                # `_update_trust_region_radius`. The intermediate (0.1, 0.25)
+                # tier with `rho *= 0.8` is PRIMA-canonical and keeps rho
+                # from collapsing too quickly on borderline iterations.
+                if abs(predicted_reduction) > 1e-12:
+                    ratio = actual_reduction / predicted_reduction
+                else:
+                    ratio = 10 if actual_reduction > 0 else 0
+
+                # `delta` adapts to how well the model predicted, floored at the current
+                # resolution `rho`. It may grow beyond rhobeg -- capping it at the starting value
+                # is precisely the bug.
+                if ratio >= 0.75:
+                    delta = min(delta * 2.0, _UOBYQA_DELTA_MAX)
+                elif ratio >= 0.25:
+                    pass
+                elif ratio >= 0.1:
+                    delta = max(delta * 0.8, rho)
+                else:
+                    delta = max(delta * 0.5, rho)
+
+                # `rho` falls only when the search has stopped making progress at this resolution,
+                # which is what Powell's reduction criterion expresses: a step short relative to
+                # rho, or a reduction too small to matter. Without this the loop has no way to end
+                # on a problem the model fits, because delta simply keeps growing.
+                step_norm = float(_A.norm(d))
+                scale = max(1.0, abs(float(FVAL[kopt])))
+                if step_norm <= 0.5 * rho or abs(actual_reduction) <= 1e-14 * scale:
+                    rho = max(rho * _UOBYQA_RHO_DECAY, rhoend)
+                    delta = max(delta, rho)
+
+                # Unconditional base-point shift — see NEWUOA #172 comment.
+                # Plain `g` is the gradient at xbase; the TR step is taken
+                # from xbase + XPT[kopt], so the subproblem only stays
+                # consistent when XPT[kopt] ≈ 0 at the start of every
+                # iteration. Uses actual_shift to handle the post-clip
+                # case correctly.
+                if float(_A.norm(XPT[kopt])) > 1e-12:
+                    shift = XPT[kopt].copy()
+                    new_xbase = _A.clip(xbase + shift, 0, 1)
+                    actual_shift = new_xbase - xbase
+                    xbase = new_xbase
+                    for i in range(nused):
+                        XPT[i] = XPT[i] - actual_shift
+
+            # ---------- end one trust-region pass ----------
+
+            # Jitter self.best_x by a uniform vector of magnitude ~rhobeg,
+            # clipped back into the cube. Large enough to leave the basin
+            # this pass converged into; if best_x is already the global
+            # optimum the restart costs one pass and cannot worsen the
+            # result, because BaseOptimizer.evaluate only ever improves it.
+            if self.evaluations < self.n_trials:
+                xseed = _A.clip(
+                    [
+                        float(self.best_x[i]) + (_A.rng_random() - 0.5) * 2.0 * rhobeg
+                        for i in range(n)
+                    ],
+                    0,
+                    1,
+                )
 
     def _polynomial_basis_row(self, x, n):
         """Return the polynomial basis row φ(x) = (1, x_1, ..., x_n,
