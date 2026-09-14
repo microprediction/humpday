@@ -242,3 +242,45 @@ def test_the_recommendation_grid_is_inside_the_package():
     assert eligibility._load_grid(grid), (
         "the shipped grid must be readable and non-empty"
     )
+
+
+def test_evolution_strategy_adapts_its_step_size():
+    """Closes #329. Without adaptation this is a fixed-radius sampler, not an evolution strategy.
+
+    Asserted as a property of the run rather than of the source, so a future edit that reinstates a
+    constant sigma fails here. Both directions must fire: a rule that only grows is as stuck as a
+    constant.
+    """
+    from humpday.optimizers.evolutionary_algorithms import EvolutionStrategy
+
+    seen = []
+    original = EvolutionStrategy._run
+
+    def spy(self):
+        gen = original(self)
+        try:
+            value = None
+            while True:
+                point = gen.send(value)
+                seen.append(gen.gi_frame.f_locals.get("sigma"))
+                value = yield point
+        except StopIteration:
+            return
+
+    EvolutionStrategy._run = spy
+    try:
+
+        def sphere(u):
+            return sum((x - 0.4) ** 2 for x in u)
+
+        best = EvolutionStrategy(objective=sphere, n_trials=2000, n_dim=4).optimize()[0]
+    finally:
+        EvolutionStrategy._run = original
+
+    sigmas = [s for s in seen if s is not None]
+    assert len(set(sigmas)) > 5, f"sigma took only {len(set(sigmas))} distinct values"
+    assert any(b > a for a, b in zip(sigmas, sigmas[1:])), "sigma never grew"
+    assert any(b < a for a, b in zip(sigmas, sigmas[1:])), "sigma never shrank"
+    assert best < 1e-8, (
+        f"best {best:.3e} on a sphere with 2,000 evaluations; a fixed radius stalls near 1e-3"
+    )

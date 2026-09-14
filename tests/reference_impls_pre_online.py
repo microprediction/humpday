@@ -590,6 +590,14 @@ class FrozenRandomSearch(BaseOptimizer):
         return self.best_value, self.best_x
 
 
+# Mirrors humpday.optimizers.evolutionary_algorithms; imported rather than re-declared would be
+# better, but these frozen references deliberately avoid importing from the live module.
+_ES_TARGET_SUCCESS = 0.2
+_ES_ADAPT = 0.817
+_ES_SIGMA_MIN = 1e-12
+_ES_SIGMA_MAX = 0.5
+
+
 class FrozenEvolutionStrategy(BaseOptimizer):
     """(μ + λ)-Evolution Strategy.
 
@@ -601,7 +609,10 @@ class FrozenEvolutionStrategy(BaseOptimizer):
     def optimize(self):
         mu = 10  # Parents
         lambda_ = min(30, self.n_trials // 3)  # Offspring
-        sigma = 0.2  # Mutation strength
+        # Mutation strength, adapted by Rechenberg's 1/5 rule. Kept in step with the live
+        # EvolutionStrategy, which gained the rule in #329; before it, sigma was assigned once and
+        # never moved, making this a fixed-radius sampler rather than an evolution strategy.
+        sigma = 0.2
 
         # Initialize μ parents.
         population = []
@@ -619,6 +630,8 @@ class FrozenEvolutionStrategy(BaseOptimizer):
             offspring = []
             offspring_fitness = []
 
+            successes = 0
+
             for _ in range(lambda_):
                 if self.evaluations >= self.n_trials:
                     break
@@ -629,10 +642,18 @@ class FrozenEvolutionStrategy(BaseOptimizer):
                 child = _A.clip(parent + sigma * _A.random_normal(self.n_dim), 0, 1)
 
                 child_fitness = self.evaluate(child)
+                if child_fitness < fitness[parent_idx]:
+                    successes += 1
                 offspring.append(child)
                 offspring_fitness.append(child_fitness)
 
             if offspring:
+                rate = successes / len(offspring)
+                if rate > _ES_TARGET_SUCCESS:
+                    sigma = min(sigma / _ES_ADAPT, _ES_SIGMA_MAX)
+                elif rate < _ES_TARGET_SUCCESS:
+                    sigma = max(sigma * _ES_ADAPT, _ES_SIGMA_MIN)
+
                 # (μ + λ) selection: keep the best μ across both pools.
                 # Replaces numpy's `np.argsort(all_fitness)[:mu]` with a
                 # standard-library equivalent — no shim primitive needed.

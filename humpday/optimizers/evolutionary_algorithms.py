@@ -1097,6 +1097,14 @@ class AntColonyOpt(BaseOptimizer):
             archive = archive[:k]
 
 
+# Rechenberg's 1/5 rule, shared with FrozenEvolutionStrategy and the JavaScript twin so the three
+# stay bit-exact. Schwefel's 0.817 factor; bounds strictly wide of the 0.2 starting value.
+_ES_TARGET_SUCCESS = 0.2
+_ES_ADAPT = 0.817
+_ES_SIGMA_MIN = 1e-12
+_ES_SIGMA_MAX = 0.5
+
+
 class EvolutionStrategy(BaseOptimizer):
     """(μ + λ)-Evolution Strategy.
 
@@ -1108,7 +1116,19 @@ class EvolutionStrategy(BaseOptimizer):
     def _run(self):
         mu = 10  # Parents
         lambda_ = min(30, self.n_trials // 3)  # Offspring
-        sigma = 0.2  # Mutation strength
+
+        # Mutation strength, adapted by Rechenberg's 1/5 success rule. It used to be assigned here
+        # and never touched again, which made this a fixed-radius sampler rather than an evolution
+        # strategy: step-size adaptation is the thing that distinguishes the two. Measured on a
+        # sphere at d=4 it stalled at 1.8e-03 with 5,000 evaluations where NelderMead reached
+        # 1.3e-25, and the extra budget bought three decimal places and then nothing.
+        #
+        # The rule: if more than a fifth of offspring beat their parent the search is making easy
+        # progress and the step should grow; if fewer, it is overshooting and the step should
+        # shrink. 0.817 is Schwefel's recommended factor. The bounds are deliberately wide of the
+        # initial value on both sides -- a clamp at the value a variable starts from is how
+        # PRIMA_UOBYQA's trust region came to be pinned for an entire run (#327).
+        sigma = 0.2
 
         # Initialize μ parents.
         population = []
@@ -1126,6 +1146,8 @@ class EvolutionStrategy(BaseOptimizer):
             offspring = []
             offspring_fitness = []
 
+            successes = 0
+
             for _ in range(lambda_):
                 if self.evaluations >= self.n_trials:
                     break
@@ -1136,10 +1158,21 @@ class EvolutionStrategy(BaseOptimizer):
                 child = _A.clip(parent + sigma * _A.random_normal(self.n_dim), 0, 1)
 
                 child_fitness = yield child
+                if child_fitness < fitness[parent_idx]:
+                    successes += 1
                 offspring.append(child)
                 offspring_fitness.append(child_fitness)
 
             if offspring:
+                # Adapt before selection, so the rate refers to the parents that produced these
+                # offspring. No RNG is drawn here, which keeps the call sequence identical to the
+                # JavaScript twin.
+                rate = successes / len(offspring)
+                if rate > _ES_TARGET_SUCCESS:
+                    sigma = min(sigma / _ES_ADAPT, _ES_SIGMA_MAX)
+                elif rate < _ES_TARGET_SUCCESS:
+                    sigma = max(sigma * _ES_ADAPT, _ES_SIGMA_MIN)
+
                 # (μ + λ) selection: keep the best μ across both pools.
                 # Replaces numpy's `np.argsort(all_fitness)[:mu]` with a
                 # standard-library equivalent — no shim primitive needed.

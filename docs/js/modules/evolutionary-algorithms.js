@@ -1080,7 +1080,16 @@ class EvolutionStrategy extends Optimizer {
         // humpday/optimizers/evolutionary_algorithms.py.
         const mu = 10;
         const lambda_ = Math.min(30, Math.floor(this.nTrials / 3));
-        const sigma = 0.2;
+
+        // Mutation strength, adapted by Rechenberg's 1/5 success rule. Previously a `const`,
+        // which made this a fixed-radius sampler rather than an evolution strategy. Constants and
+        // update order match the Python twin exactly; no RNG is drawn by the adaptation, so the
+        // call sequence is unchanged and the two stay bit-exact.
+        const TARGET_SUCCESS = 0.2;
+        const ADAPT = 0.817;
+        const SIGMA_MIN = 1e-12;
+        const SIGMA_MAX = 0.5;
+        let sigma = 0.2;
 
         let population = [];
         let fitness = [];
@@ -1095,6 +1104,7 @@ class EvolutionStrategy extends Optimizer {
         while (this.evaluations < this.nTrials) {
             const offspring = [];
             const offspringFitness = [];
+            let successes = 0;
 
             for (let k = 0; k < lambda_; k++) {
                 if (this.evaluations >= this.nTrials) break;
@@ -1108,11 +1118,21 @@ class EvolutionStrategy extends Optimizer {
                 );
 
                 const childFitness = yield child;
+                if (childFitness < fitness[parentIdx]) successes++;
                 offspring.push(child);
                 offspringFitness.push(childFitness);
             }
 
             if (offspring.length) {
+                // Adapt before selection, so the rate refers to the parents that produced these
+                // offspring — same order as the Python twin.
+                const rate = successes / offspring.length;
+                if (rate > TARGET_SUCCESS) {
+                    sigma = Math.min(sigma / ADAPT, SIGMA_MAX);
+                } else if (rate < TARGET_SUCCESS) {
+                    sigma = Math.max(sigma * ADAPT, SIGMA_MIN);
+                }
+
                 const allIndividuals = population.concat(offspring);
                 const allFitness = fitness.concat(offspringFitness);
                 const indices = allFitness
