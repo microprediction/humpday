@@ -2,7 +2,7 @@
 
 Notable changes to `humpday`. Format follows [Keep a Changelog](https://keepachangelog.com/).
 
-## [Unreleased]
+## [0.24.0] — 14 September 2026
 
 Benchmarking was three artifacts, built by three scripts at three times over different objectives,
 feeding different parts of the library. `minimize` and `suggest` could disagree about the same
