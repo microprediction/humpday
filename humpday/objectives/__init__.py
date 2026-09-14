@@ -48,6 +48,12 @@ FIXED_DIMENSION = frozenset(
         "rosenbrock_modified_on_cube",
         "paviani_on_cube",
         "shekel_on_cube",
+        # Genuinely n-dimensional, but `sin(i * x^2 / pi) ** (2m)` underflows to zero for most
+        # terms once i is large, so at a hundred variables it reads 58 of them and the rest are
+        # inert. It passed this screen only while it was silently the sphere; implementing it for
+        # real surfaced the exclusion it always warranted. Fine at low dimension, wrong for a
+        # tournament that races to d=100.
+        "michaelewicz_on_cube",
     }
 )
 

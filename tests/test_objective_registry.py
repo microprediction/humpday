@@ -181,3 +181,72 @@ def test_rating_aggregation_penalises_a_specialist():
                 assert other_worst >= leader_worst, (
                     f"d={n_dim}: {other} beats {leader} in every suite yet ranks below it"
                 )
+
+
+def test_no_two_surfaces_are_the_same_function():
+    """Six entries in SURFACES were `sum(xi**2)` wearing different names.
+
+    `classic.py` imported them from `landscapes` when installed and silently substituted the
+    sphere when not — and it is not a declared dependency, so the substitution was always in
+    effect. The `_on_cube` wrappers still applied their individual shifts and scalings, which
+    preserves rank order and hid it completely.
+
+    Rank correlation is the right screen: a monotone rescaling of the same function gives exactly
+    1.0, while two genuinely different functions that happen to be similarly bowl-shaped do not.
+    """
+    import itertools
+    import random
+
+    from humpday.objectives import SURFACES
+
+    rnd = random.Random(7)
+    n_dim = 5
+    points = [[rnd.random() for _ in range(n_dim)] for _ in range(120)]
+
+    def ranks(values):
+        order = sorted(range(len(values)), key=values.__getitem__)
+        out = [0] * len(values)
+        for position, index in enumerate(order):
+            out[index] = position
+        return out
+
+    def spearman(a, b):
+        ra, rb = ranks(a), ranks(b)
+        n = len(a)
+        ma, mb = sum(ra) / n, sum(rb) / n
+        num = sum((x - ma) * (y - mb) for x, y in zip(ra, rb))
+        den = (sum((x - ma) ** 2 for x in ra) * sum((y - mb) ** 2 for y in rb)) ** 0.5
+        return num / den if den else 0.0
+
+    evaluated = {}
+    for fn in SURFACES:
+        try:
+            evaluated[fn.__name__] = [float(fn(p)) for p in points]
+        except Exception:
+            continue
+
+    # Pre-existing, filed separately: the `*_combo*` surfaces sum several functions after a single
+    # shared divisor, so where one component's range dwarfs the others the sum is rank-identical to
+    # that component. Listed rather than silently tolerated, and the screen still catches anything
+    # new.
+    KNOWN_DOMINATED_COMBOS = {
+        ("rosenbrock_on_cube", "deap_combo3_on_cube"),
+        ("shaffer_on_cube", "deap_combo2_on_cube"),
+        ("zakharov_on_cube", "landscapes_combo3_on_cube"),
+        ("rotated_hyper_ellipsoid_on_cube", "landscapes_combo2_on_cube"),
+        ("qing_on_cube", "landscapes_combo1_on_cube"),
+    }
+
+    duplicates = []
+    for (na, va), (nb, vb) in itertools.combinations(evaluated.items(), 2):
+        if (na, nb) in KNOWN_DOMINATED_COMBOS or (nb, na) in KNOWN_DOMINATED_COMBOS:
+            continue
+        if len(set(va)) < 2 or len(set(vb)) < 2:
+            continue
+        if abs(spearman(va, vb)) > 0.999:
+            duplicates.append((na, nb))
+
+    assert not duplicates, (
+        "these entries are the same function under different names: "
+        + ", ".join(f"{a} == {b}" for a, b in duplicates)
+    )
