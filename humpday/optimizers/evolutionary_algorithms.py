@@ -64,59 +64,79 @@ class DifferentialEvolution(BaseOptimizer):
         for ind in population:
             fitness.append((yield ind))
 
-        while self.evaluations < de_budget:
-            # Dither: pick F uniformly in [0.5, 1.0] per generation. This
-            # is scipy's default `mutation=(0.5, 1)` behaviour, which
-            # helps the population avoid stagnation by varying the
-            # mutation scale.
-            F = 0.5 + 0.5 * _A.random_scalar()
+        while True:
+            before = self.evaluations
 
-            for i in range(pop_size):
-                if self.evaluations >= de_budget:
-                    break
+            while self.evaluations < de_budget:
+                # Dither: pick F uniformly in [0.5, 1.0] per generation. This
+                # is scipy's default `mutation=(0.5, 1)` behaviour, which
+                # helps the population avoid stagnation by varying the
+                # mutation scale.
+                F = 0.5 + 0.5 * _A.random_scalar()
 
-                # `best1bin`: base point is the current population best,
-                # not a random member. Find best index.
-                best_idx = min(range(pop_size), key=fitness.__getitem__)
+                for i in range(pop_size):
+                    if self.evaluations >= de_budget:
+                        break
 
-                # Two donors distinct from i and best_idx.
-                candidates = [k for k in range(pop_size) if k != i and k != best_idx]
-                if len(candidates) < 2:
-                    candidates = [k for k in range(pop_size) if k != i]
-                if len(candidates) < 2:
-                    b, c = _A.random_choice(candidates, k=2, replace=True)
-                else:
-                    b, c = _A.random_choice(candidates, k=2, replace=False)
-                b, c = int(b), int(c)
+                    # `best1bin`: base point is the current population best,
+                    # not a random member. Find best index.
+                    best_idx = min(range(pop_size), key=fitness.__getitem__)
 
-                # Mutation: v = x_best + F * (x_b - x_c), clipped to bounds.
-                mutant = _A.clip(
-                    population[best_idx] + F * (population[b] - population[c]),
-                    0,
-                    1,
-                )
+                    # Two donors distinct from i and best_idx.
+                    candidates = [
+                        k for k in range(pop_size) if k != i and k != best_idx
+                    ]
+                    if len(candidates) < 2:
+                        candidates = [k for k in range(pop_size) if k != i]
+                    if len(candidates) < 2:
+                        b, c = _A.random_choice(candidates, k=2, replace=True)
+                    else:
+                        b, c = _A.random_choice(candidates, k=2, replace=False)
+                    b, c = int(b), int(c)
 
-                # Binomial crossover with at least one guaranteed coord.
-                trial = population[i].copy()
-                j_guaranteed = _A.random_int(self.n_dim)
-                for j in range(self.n_dim):
-                    if _A.random_scalar() < CR or j == j_guaranteed:
-                        trial[j] = mutant[j]
+                    # Mutation: v = x_best + F * (x_b - x_c), clipped to bounds.
+                    mutant = _A.clip(
+                        population[best_idx] + F * (population[b] - population[c]),
+                        0,
+                        1,
+                    )
 
-                # (1+1) selection.
-                trial_fitness = yield trial
-                if trial_fitness < fitness[i]:
-                    population[i] = trial
-                    fitness[i] = trial_fitness
+                    # Binomial crossover with at least one guaranteed coord.
+                    trial = population[i].copy()
+                    j_guaranteed = _A.random_int(self.n_dim)
+                    for j in range(self.n_dim):
+                        if _A.random_scalar() < CR or j == j_guaranteed:
+                            trial[j] = mutant[j]
 
-        # --- Polish stage: L-BFGS from the best DE point ---------------
-        # Matches scipy.differential_evolution's `polish=True` exactly —
-        # scipy uses L-BFGS-B. SimulatedAnnealing got the same upgrade
-        # in the previous commit (#188); same inlined two-loop recursion
-        # + FD gradient + Armijo line search the LBFGSB optimizer uses.
-        # Closes the residual sphere gap that coord descent couldn't
-        # reach.
-        yield from self._lbfgs_polish_gen()
+                    # (1+1) selection.
+                    trial_fitness = yield trial
+                    if trial_fitness < fitness[i]:
+                        population[i] = trial
+                        fitness[i] = trial_fitness
+
+            # --- Polish stage: L-BFGS from the best DE point -----------
+            # Matches scipy.differential_evolution's `polish=True` exactly —
+            # scipy uses L-BFGS-B. SimulatedAnnealing got the same upgrade
+            # in the previous commit (#188); same inlined two-loop recursion
+            # + FD gradient + Armijo line search the LBFGSB optimizer uses.
+            # Closes the residual sphere gap that coord descent couldn't
+            # reach.
+            yield from self._lbfgs_polish_gen()
+
+            # The reserve is sized for the worst case, but the polish converges in eight to
+            # eighteen evaluations and the remainder used to be forfeited: measured, DE spent 2,508
+            # of a 5,000 budget and returned. Because the reserve is proportional to n_trials it
+            # leaked about half at every budget.
+            #
+            # Re-split what is left and go round again. The first round is unchanged, so the split
+            # tuned on 2-D Rosenbrock at n_trials=200 is reproduced exactly; later rounds only use
+            # evaluations that were previously thrown away. `BaseOptimizer` keeps the best point
+            # seen, so another round can fail to help but cannot make the answer worse.
+            if self.evaluations >= self.n_trials or self.evaluations == before:
+                break
+            de_budget = self.n_trials - max(15, (self.n_trials - self.evaluations) // 2)
+            if self.evaluations >= de_budget:
+                break
 
 
 class ParticleSwarm(BaseOptimizer):

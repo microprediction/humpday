@@ -34,7 +34,7 @@ if (typeof module !== 'undefined' && module.exports) {
         // humpday/optimizers/evolutionary_algorithms.py.
         const n = this.nDim;
         const polishBudget = Math.max(15, Math.floor(this.nTrials / 2));
-        const deBudget = this.nTrials - polishBudget;
+        let deBudget = this.nTrials - polishBudget;
 
         const popSize = Math.max(10, Math.min(20, Math.floor(deBudget / 5)));
         const CR = 0.7;
@@ -46,7 +46,10 @@ if (typeof module !== 'undefined' && module.exports) {
         const fitness = [];
         for (const ind of population) fitness.push(yield ind);
 
-        while (this.evaluations < deBudget) {
+        while (true) {
+            const before = this.evaluations;
+
+            while (this.evaluations < deBudget) {
             // Dither: pick F uniformly in [0.5, 1.0] each generation.
             const F = 0.5 + 0.5 * MathUtils.randomScalar();
 
@@ -108,9 +111,20 @@ if (typeof module !== 'undefined' && module.exports) {
             }
         }
 
-        // --- Polish stage: L-BFGS from best DE point ----------------
-        // Matches scipy.differential_evolution `polish=True`.
-        yield* this._lbfgsPolishGen();
+            // --- Polish stage: L-BFGS from best DE point ------------
+            // Matches scipy.differential_evolution `polish=True`.
+            yield* this._lbfgsPolishGen();
+
+            // Re-split whatever the polish did not spend and go round again; twin of the Python
+            // change. The reserve is sized for the worst case, but the polish converges in eight
+            // to eighteen evaluations and the remainder used to be forfeited -- about half the
+            // budget, at every budget. The first round is unchanged, so the split tuned on 2-D
+            // Rosenbrock at nTrials=200 is reproduced exactly.
+            if (this.evaluations >= this.nTrials || this.evaluations === before) break;
+            deBudget =
+                this.nTrials - Math.max(15, Math.floor((this.nTrials - this.evaluations) / 2));
+            if (this.evaluations >= deBudget) break;
+        }
     }
 }
 
