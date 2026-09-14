@@ -924,65 +924,75 @@ class FrozenSimulatedAnnealing(BaseOptimizer):
         polish_budget = max(20, self.n_trials // 2)
         sa_budget = self.n_trials - polish_budget
 
-        # --- Stage 1: multi-restart SA ---------------------------------
-        num_restarts = max(3, sa_budget // 30)
-        trials_per_restart = max(1, sa_budget // num_restarts)
+        # Twin of the live SimulatedAnnealing, which gained this in the budget-forfeit fix.
+        while True:
+            outer_before = self.evaluations
 
-        for restart in range(num_restarts):
-            if self.evaluations >= sa_budget:
-                break
+            # --- Stage 1: multi-restart SA ---------------------------------
+            num_restarts = max(3, sa_budget // 30)
+            trials_per_restart = max(1, sa_budget // num_restarts)
 
-            if restart == 0:
-                x = 0.5 + (_A.random_uniform(self.n_dim) - 0.5) * 0.4
-            else:
-                x = _A.random_uniform(self.n_dim)
-
-            fx = self.evaluate(x)
-
-            # Fixed initial temperature, geometric cooling. Reaches
-            # final_temp by the end of the restart's iteration count.
-            initial_temp = 1.0
-            final_temp = 1e-6
-            # portable_exp/log, not ** : libm pow differs across platforms
-            # in the last ulp (same fix as HillClimbing's decay constant).
-            cooling = portable_exp(
-                (1.0 / max(1, trials_per_restart))
-                * portable_log(final_temp / initial_temp)
-            )
-            temp = initial_temp
-
-            for _iteration in range(trials_per_restart):
+            for restart in range(num_restarts):
                 if self.evaluations >= sa_budget:
                     break
 
-                # Neighbour proposal: step scales with current temp.
-                step_size = 0.4 * temp
-                new_x = _A.clip(
-                    x + (_A.random_uniform(self.n_dim) - 0.5) * 2 * step_size,
-                    0,
-                    1,
+                if restart == 0:
+                    x = 0.5 + (_A.random_uniform(self.n_dim) - 0.5) * 0.4
+                else:
+                    x = _A.random_uniform(self.n_dim)
+
+                fx = self.evaluate(x)
+
+                # Fixed initial temperature, geometric cooling. Reaches
+                # final_temp by the end of the restart's iteration count.
+                initial_temp = 1.0
+                final_temp = 1e-6
+                # portable_exp/log, not ** : libm pow differs across platforms
+                # in the last ulp (same fix as HillClimbing's decay constant).
+                cooling = portable_exp(
+                    (1.0 / max(1, trials_per_restart))
+                    * portable_log(final_temp / initial_temp)
                 )
-                new_fx = self.evaluate(new_x)
+                temp = initial_temp
 
-                # Metropolis criterion.
-                delta = new_fx - fx
-                if delta < 0 or _A.random_scalar() < portable_exp(
-                    -delta / max(temp, 1e-12)
-                ):
-                    x, fx = new_x, new_fx
+                for _iteration in range(trials_per_restart):
+                    if self.evaluations >= sa_budget:
+                        break
 
-                temp *= cooling
+                    # Neighbour proposal: step scales with current temp.
+                    step_size = 0.4 * temp
+                    new_x = _A.clip(
+                        x + (_A.random_uniform(self.n_dim) - 0.5) * 2 * step_size,
+                        0,
+                        1,
+                    )
+                    new_fx = self.evaluate(new_x)
 
-        # --- Stage 2: L-BFGS polish from best SA point -----------------
-        # Matches scipy.dual_annealing exactly — scipy uses L-BFGS-B for
-        # its local-search refinement. Two-loop recursion with FD
-        # gradient (2·n_dim evals per iter) and Armijo line search; same
-        # algorithm the `LBFGSB` optimizer uses. Replaces the previous
-        # coordinate-descent polish, which couldn't handle curved
-        # valleys like Rosenbrock and stalled around 1e-9 on the sphere
-        # at small budgets. With LBFGS the polish reaches machine
-        # precision on smooth basins in ~10 iterations.
-        self._lbfgs_polish()
+                    # Metropolis criterion.
+                    delta = new_fx - fx
+                    if delta < 0 or _A.random_scalar() < portable_exp(
+                        -delta / max(temp, 1e-12)
+                    ):
+                        x, fx = new_x, new_fx
+
+                    temp *= cooling
+
+            # --- Stage 2: L-BFGS polish from best SA point -----------------
+            # Matches scipy.dual_annealing exactly — scipy uses L-BFGS-B for
+            # its local-search refinement. Two-loop recursion with FD
+            # gradient (2·n_dim evals per iter) and Armijo line search; same
+            # algorithm the `LBFGSB` optimizer uses. Replaces the previous
+            # coordinate-descent polish, which couldn't handle curved
+            # valleys like Rosenbrock and stalled around 1e-9 on the sphere
+            # at small budgets. With LBFGS the polish reaches machine
+            # precision on smooth basins in ~10 iterations.
+            self._lbfgs_polish()
+
+            if self.evaluations >= self.n_trials or self.evaluations == outer_before:
+                break
+            sa_budget = self.n_trials - max(20, (self.n_trials - self.evaluations) // 2)
+            if self.evaluations >= sa_budget:
+                break
 
         return self.best_value, self.best_x
 

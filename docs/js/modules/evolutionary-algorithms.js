@@ -266,7 +266,10 @@ class SimulatedAnnealing extends Optimizer {
         // humpday/optimizers/evolutionary_algorithms.py.
         const n = this.nDim;
         const polishBudget = Math.max(20, Math.floor(this.nTrials / 2));
-        const saBudget = this.nTrials - polishBudget;
+        let saBudget = this.nTrials - polishBudget;
+
+        while (true) {
+            const outerBefore = this.evaluations;
 
         // --- Stage 1: multi-restart Metropolis SA ----------------------
         const numRestarts = Math.max(3, Math.floor(saBudget / 30));
@@ -322,6 +325,14 @@ class SimulatedAnnealing extends Optimizer {
 
         // --- Stage 2: L-BFGS polish from best SA point -----------------
         yield* this._lbfgsPolishGen();
+
+            // Twin of the Python change: re-split whatever the polish did not spend. The reserve
+            // is sized for the worst case, the polish converges in about eighteen evaluations, and
+            // the rest used to be forfeited -- roughly half the budget, at every budget.
+            if (this.evaluations >= this.nTrials || this.evaluations === outerBefore) break;
+            saBudget = this.nTrials - Math.max(20, Math.floor((this.nTrials - this.evaluations) / 2));
+            if (this.evaluations >= saBudget) break;
+        }
     }
 }
 
