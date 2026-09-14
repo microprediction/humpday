@@ -70,7 +70,7 @@ print(f"Solution: {result.x}")  # [2.0, 3.0]
 
 ## Algorithms
 
-22 validated optimizers: **[See them in action](https://humpday.microprediction.org)** | **[Source code](humpday/optimizers/alloptimizers.py)**
+23 validated optimizers: **[See them in action](https://humpday.microprediction.org)** | **[Source code](humpday/optimizers/alloptimizers.py)**
 
 Trust region methods, evolutionary algorithms, metaheuristics.
 
@@ -91,7 +91,7 @@ Marginal install footprint on top of a Python environment that already has numpy
 
 | Library | Adds on top of numpy | Global optimizers |
 |---------|---------------------:|------------------:|
-| **Humpday** | **~1 MB** (or zero without `[fast]`) | **22** |
+| **Humpday** | **~1 MB** (or zero without `[fast]`) | **23** |
 | SciPy       | ~100 MB | 6 documented |
 | Optuna      | ~30 MB  | 11 samplers |
 | Nevergrad   | ~230 MB | 540+ registered (tuned variants of ~30 base methods) |
