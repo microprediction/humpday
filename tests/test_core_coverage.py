@@ -436,17 +436,30 @@ class TestSuggestUsesDimensionSpecificEvidence:
         # Not even to the neighbouring one. Optimizer performance is not smooth in dimension: a
         # Bayesian method can work well at five and blow up at ten, and the trust-region methods
         # here top d=25 while being unable to build a model at d=100 on a comparable budget.
+        #
+        # The probes are chosen to be absent from the recorded grid and are asserted to be so.
+        # The first version of this test probed n_dim*4 and n_dim*8 of the two smallest recorded
+        # dimensions -- 8, 16, 12 and 24, every one of which is itself recorded, so all four
+        # `continue`d and the test made no assertion at all. Making `cell_for` fall back to the
+        # nearest dimension left it, and 146 other ratings tests, passing.
         from humpday import ratings, suggest
 
         recorded = set(ratings.recorded_dimensions())
-        for n_dim in sorted(recorded)[:2]:
-            for probe in (n_dim * 4, n_dim * 8):
-                if probe in recorded or probe < 1:
-                    continue
-                scores = [s for s, _, _ in suggest(n_dim=probe, smooth=False)]
-                assert all(s != s for s in scores), (
-                    f"d={probe} was not measured; ratings from d={n_dim} are not evidence about it"
+        probes = [d for d in (7, 9, 11, 13, 19, 30, 37, 75, 99) if d not in recorded]
+        assert len(probes) >= 5, (
+            f"the grid now covers the probe dimensions; pick unrecorded ones: {recorded}"
+        )
+        for probe in probes:
+            assert not ratings.robust_order(probe), f"d={probe} was never raced"
+            for suite in ratings.SUITES:
+                assert ratings.cell_for(probe, suite, 1000) is None, (
+                    f"d={probe} resolved to a cell from another dimension"
                 )
+                assert ratings.rating(probe, suite, "NelderMead", 1000) is None
+            scores = [s for s, _, _ in suggest(n_dim=probe, smooth=False)]
+            assert all(s != s for s in scores), (
+                f"d={probe} was not measured; ratings from another dimension are not evidence"
+            )
 
     def test_budget_is_interpolated_downward_only(self):
         # A cell recorded at a smaller budget describes an optimizer with less room, which is the
@@ -575,12 +588,36 @@ class TestRatingsTableSemantics:
         assert _ranked(cell) == ["A", "C", "B"]
 
     def test_a_disqualified_optimizer_reports_no_rating(self):
+        # Swept across every recorded budget, not just the default. The first version looped over
+        # `timed_out(n_dim, suite)` at the default n_trials=100, which resolves to the 50-evaluation
+        # cells -- where nothing has ever overrun, because 50 evaluations is too few to be slow in.
+        # Zero iterations, zero assertions, while 79 disqualifications sat in the other budgets.
         from humpday import ratings
 
-        for n_dim in ratings.recorded_dimensions():
-            for suite in ratings.SUITES:
-                for name in ratings.timed_out(n_dim, suite):
-                    assert ratings.rating(n_dim, suite, name) is None
+        checked = 0
+        for key, cell in ratings.cells().items():
+            n_dim, budget, suite = key.split("/")
+            for name in cell.get("timed_out", []):
+                assert ratings.rating(int(n_dim), suite, name, int(budget)) is None, (
+                    f"{name} timed out in {key} but still reports a rating"
+                )
+                assert (
+                    ratings._ranked(cell).index(name)
+                    >= len(
+                        [
+                            n
+                            for n in cell.get("ratings", {})
+                            if n not in cell.get("timed_out", [])
+                        ]
+                    )
+                    or len(cell["timed_out"])
+                    / len(set(cell.get("ratings", {})) | set(cell["timed_out"]))
+                    > ratings.TIMEOUT_REVOLT
+                ), f"{name} should rank last in {key}"
+                checked += 1
+        assert checked > 20, (
+            f"only {checked} disqualifications checked; the sweep is not reaching the data"
+        )
 
     def test_thin_cells_move_the_order_less_than_deep_ones(self):
         # The shrinkage is what lets cells of unequal depth be combined at all: a cell that ran out

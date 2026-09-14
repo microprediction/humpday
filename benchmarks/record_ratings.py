@@ -71,6 +71,10 @@ DEFAULT_BUDGETS = (50, 200, 1000, 5000)
 DEFAULT_OVERHEAD = 25.0
 REFERENCE = "RandomSearch"
 
+# What EloRatingSystem seeds every optimizer with in its constructor. A rating still exactly equal
+# to it means the optimizer never completed a rated match.
+INITIAL_RATING = 1500.0
+
 
 def DIM_CAP_OF(name: str) -> int:
     from humpday.eligibility import DIM_CAP
@@ -426,13 +430,32 @@ def merge() -> dict:
         shard = json.loads(path.read_text())
         if not shard.get("problems"):
             continue  # a cell with no eligible field is not a cell
+        # Drop every rating that was never earned. Two ways that happens, and the first fix
+        # caught only one of them.
+        #
+        # An optimizer filtered out before the tournament is named under `ineligible`. One that
+        # struck out on its first two problems is named under `timed_out` and never completed a
+        # rated match either, so its entry is still the bare 1500.0 that EloRatingSystem seeds
+        # every optimizer with in its constructor. Fifty such entries shipped in v0.24.0, where
+        # `elo_by_dimension()` ranked a seeded 1500.0 above a PatternSearch that had earned
+        # 1499.4 by losing.
+        #
+        # Equality with the seed is the exact test for "never played": `run_cell` only feeds Elo
+        # the names present in `results`, which an optimizer joins solely by returning a value.
+        # A timed-out optimizer that did complete some problems has a real, if partial, rating and
+        # keeps it -- `_ranked` still places it last, and the revolt branch still needs it.
         excluded = set(shard.get("ineligible", {}))
+        struck_out = set(shard.get("timed_out", {}))
+        kept = {}
+        for n, r in shard.get("ratings", {}).items():
+            if n in excluded:
+                continue
+            if n in struck_out and r == INITIAL_RATING:
+                continue
+            kept[n] = r
+
         cells[f"{shard['n_dim']}/{shard['budget']}/{shard['suite']}"] = {
-            # Defended here too: a shard written before the filter existed carries seeded 1500s
-            # for optimizers that never played, and the shard says which those were.
-            "ratings": {
-                n: r for n, r in shard.get("ratings", {}).items() if n not in excluded
-            },
+            "ratings": kept,
             "problems": shard.get("problems", 0),
             "timed_out": sorted(shard.get("timed_out", {})),
             "overruns": dict(sorted(shard.get("strikes", {}).items())),

@@ -171,13 +171,74 @@ def test_an_absent_optimizer_says_why_it_is_absent():
 def test_no_optimizer_is_rated_without_playing():
     """EloRatingSystem seeds every optimizer at 1500 on construction.
 
-    An optimizer filtered out before the tournament therefore leaves an untouched 1500 in
+    An optimizer that never completed a rated match therefore leaves an untouched 1500 in
     `elo.ratings`, which lands mid-table and outranks anything that actually lost. It is a
     fabricated number of exactly the kind `suggest()` used to return.
+
+    Two ways to never play, and the first version of this test only checked one of them, so
+    fifty seeded entries shipped in v0.24.0: filtered out before the tournament (`ineligible`),
+    or struck out on the first two problems (`timed_out`). The second is the one that got
+    through, and `elo_by_dimension()` ranked a seeded 1500.0 above a PatternSearch that had
+    earned 1499.4 by losing.
     """
+    from benchmarks.record_ratings import INITIAL_RATING
+
     for key, cell in ratings.cells().items():
-        excluded = set(cell.get("ineligible", {}))
         rated = set(cell.get("ratings", {}))
-        assert rated.isdisjoint(excluded), (
-            f"{key} rates optimizers it never raced: {sorted(rated & excluded)}"
+        assert rated.isdisjoint(set(cell.get("ineligible", {}))), (
+            f"{key} rates optimizers it never raced: "
+            f"{sorted(rated & set(cell.get('ineligible', {})))}"
         )
+        untouched = [
+            n for n, r in cell.get("ratings", {}).items() if r == INITIAL_RATING
+        ]
+        assert not untouched, (
+            f"{key} ships the construction seed as a rating for {sorted(untouched)}; "
+            "an optimizer that completed no rated match has no rating to report"
+        )
+
+
+def test_a_disqualified_optimizer_keeps_a_rating_it_did_earn():
+    """The converse, so the fix above cannot be over-applied.
+
+    An optimizer disqualified late in a cell played most of its matches, and that rating is real
+    even though it ranks last. It is also what the TIMEOUT_REVOLT branch falls back on when a
+    cell's allowance turns out to have been mis-calibrated, so discarding every timed-out
+    optimizer's rating would empty exactly the cells that need one.
+    """
+    partial = 0
+    for cell in ratings.cells().values():
+        for name in cell.get("timed_out", []):
+            if name in cell.get("ratings", {}):
+                partial += 1
+    assert partial, (
+        "no timed-out optimizer retains a rating anywhere; the never-played filter is "
+        "discarding earned ratings as well as seeded ones"
+    )
+
+
+def test_the_recommendation_grid_is_inside_the_package():
+    """It was resolved as `Path(__file__).parent.parent`, which is the repository.
+
+    An installed humpday therefore looked for `site-packages/benchmarks/recommendation_grid.json`,
+    found nothing, and silently fell through to the rule-based ranking — recommending a different
+    optimizer than the repo, the README and every test describe. At d=30 with 100 evaluations the
+    repo said PRIMA_BOBYQA and a `pip install humpday` said DifferentialEvolution.
+
+    Third instance of this defect, after `physics_objectives` and the `humpday.objectives` numpy
+    import, so it is pinned rather than merely fixed. `parent.parent` escapes the package; only
+    `parent` stays inside it.
+    """
+    import humpday
+    from humpday import eligibility
+
+    package = Path(humpday.__file__).parent
+    grid = eligibility._GRID_PATH_DEFAULT
+    assert grid.is_file(), f"the grid must ship with the package; looked at {grid}"
+    assert package in grid.parents, (
+        f"{grid} resolves outside the package directory {package}, so an installed humpday "
+        "cannot read it"
+    )
+    assert eligibility._load_grid(grid), (
+        "the shipped grid must be readable and non-empty"
+    )
