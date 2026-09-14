@@ -215,3 +215,30 @@ def test_a_disqualified_optimizer_keeps_a_rating_it_did_earn():
         "no timed-out optimizer retains a rating anywhere; the never-played filter is "
         "discarding earned ratings as well as seeded ones"
     )
+
+
+def test_the_recommendation_grid_is_inside_the_package():
+    """It was resolved as `Path(__file__).parent.parent`, which is the repository.
+
+    An installed humpday therefore looked for `site-packages/benchmarks/recommendation_grid.json`,
+    found nothing, and silently fell through to the rule-based ranking — recommending a different
+    optimizer than the repo, the README and every test describe. At d=30 with 100 evaluations the
+    repo said PRIMA_BOBYQA and a `pip install humpday` said DifferentialEvolution.
+
+    Third instance of this defect, after `physics_objectives` and the `humpday.objectives` numpy
+    import, so it is pinned rather than merely fixed. `parent.parent` escapes the package; only
+    `parent` stays inside it.
+    """
+    import humpday
+    from humpday import eligibility
+
+    package = Path(humpday.__file__).parent
+    grid = eligibility._GRID_PATH_DEFAULT
+    assert grid.is_file(), f"the grid must ship with the package; looked at {grid}"
+    assert package in grid.parents, (
+        f"{grid} resolves outside the package directory {package}, so an installed humpday "
+        "cannot read it"
+    )
+    assert eligibility._load_grid(grid), (
+        "the shipped grid must be readable and non-empty"
+    )

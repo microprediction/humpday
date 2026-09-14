@@ -325,9 +325,17 @@ def _rule_based_ranking(n_dim: int, n_trials: int) -> list[str]:
 # one with the smallest median_best. If absent or unreadable we fall back to
 # the rule-based ranking (which is what shipped before the grid existed).
 
-_GRID_PATH_DEFAULT = (
-    Path(__file__).parent.parent / "benchmarks" / "recommendation_grid.json"
-)
+# Inside the package, not `parent.parent`. That resolved to the REPOSITORY, so an installed
+# humpday looked for site-packages/benchmarks/recommendation_grid.json, found nothing, and fell
+# through to the rule-based ranking -- silently recommending a different optimizer than the repo,
+# the README and every test describe. At d=30 with 100 evaluations the repo said PRIMA_BOBYQA and
+# a `pip install humpday` said DifferentialEvolution.
+#
+# Nothing caught it because tests/test_js_eligibility_parity.py passes `grid_path` explicitly and
+# so never exercises this default, and any test run from the repo root finds the file regardless
+# of which path was computed. This is the third instance of the same defect: `physics_objectives`
+# and the `humpday.objectives` numpy import were the first two.
+_GRID_PATH_DEFAULT = Path(__file__).parent / "data" / "recommendation_grid.json"
 _grid_cache: dict | None = None
 _grid_cache_path: Path | None = None
 

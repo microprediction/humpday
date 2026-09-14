@@ -7,7 +7,16 @@ import functools
 from typing import List
 
 import numpy as np
-from scipy.stats import norm
+
+# scipy is NOT a dependency -- it appears in pyproject.toml only under the `reference` test extra,
+# so neither `pip install humpday` nor `humpday[fast]` provides it. A module-scope
+# `from scipy.stats import norm` here made this module, cubetosimplex, objectives.horse and
+# objectives.allobjectives all unimportable from a real install, while passing every test because
+# the dev environment has scipy.
+#
+# The two functions needed are in the standard library. NormHelper already wraps them with a scipy
+# fallback for environments where `statistics.NormalDist` is unavailable.
+from humpday.transforms.normhelper import NormHelper
 
 # Scale of the latent-logistic ("Thurstone") map between cube and simplex.
 # It cancels exactly in the cube<->simplex round-trip, so any positive value
@@ -30,7 +39,8 @@ def cube_to_simplex_simple(u: List[float]) -> List[float]:
     :returns: a point p in (0,1)^{n+1} with sum(p)=1
     """
     # Convert to normal scores
-    z_scores = [norm.ppf(max(1e-10, min(1 - 1e-10, ui))) for ui in u]
+    _ppf = NormHelper._norminv_function()
+    z_scores = [_ppf(max(1e-10, min(1 - 1e-10, ui))) for ui in u]
     z_scores = [0.0] + z_scores  # Add reference point
 
     # Convert to exponential weights (softmax-like transformation)
@@ -57,7 +67,8 @@ def simplex_to_cube_simple(p: List[float]):
     log_ratios = [np.log(p[i] / p[0]) * STD_L for i in range(1, len(p))]
 
     # Convert back to uniform scores
-    u = [norm.cdf(lr) for lr in log_ratios]
+    _cdf = NormHelper._normcdf_function()
+    u = [_cdf(lr) for lr in log_ratios]
     return u
 
 
