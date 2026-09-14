@@ -41,6 +41,7 @@ import multiprocessing
 import os
 import random
 import signal
+import statistics
 import sys
 import time
 from pathlib import Path
@@ -89,6 +90,22 @@ def DIM_CAP_OF(name: str) -> int:
 # What matters is overhead per evaluation, which is also what `humpday.eligibility` tiers on, so
 # that is what is budgeted: twenty milliseconds a step, or a hundred seconds over five thousand.
 SECONDS_PER_EVAL = 0.02
+
+# Multiple of the MEDIAN completed run in this cell.
+#
+# Expect this to make the expensive engineering cells THINNER rather than merely more accurate.
+# Where an objective genuinely costs a converging optimizer tens of seconds, a fair allowance means
+# twenty-three times that per problem, and the per-cell wall clock will stop the cell well short of
+# the target. That is the intended trade: `humpday.ratings` already shrinks a cell's ranks toward
+# the cross-suite mean by how many problems back it, so a thin honest cell is worth more than a
+# deep one whose disqualifications are an artifact. Watch `problems` and `timed_out` together when
+# reading a re-record. The slowest completed run was the obvious
+# statistic and is the wrong one: it is an extreme, so a single slow optimizer ratchets the
+# allowance for all twenty-three and the cell stops being affordable -- measured, one problem in
+# 4/1000/engineering did not finish in nineteen minutes where the whole cell previously took
+# sixty-one. The median tracks what the objective costs a typical converging optimizer and is not
+# moved by one outlier, so the factor can be generous.
+TYPICAL_FACTOR = 4.0
 
 # Outer floor for tiny budgets, and a ceiling so one method cannot hold a core for an afternoon.
 MIN_SECONDS, MAX_SECONDS = 5.0, 180.0
@@ -319,6 +336,7 @@ def run_cell(
 
     started = time.time()
     recorded, skipped = done, 0
+    completed: list = [float(v) for v in shard.get("completed_seconds", [])]
     while recorded < problems:
         if time.time() - started > cell_seconds:
             break
@@ -342,16 +360,33 @@ def run_cell(
             continue
         except Exception:
             results[REFERENCE] = float("inf")
+        # Allowance for every other optimizer on this problem.
+        #
+        # A random sampler is the right reference for an optimizer's own overhead and the wrong one
+        # for an objective whose cost depends on where it is evaluated: the sampler never visits
+        # the expensive basin the optimizer converges into. In one cell of the previous recording
+        # eighteen of twenty-three optimizers overran against a reference that finished in 0.8
+        # seconds, which is not eighteen overhead problems, it is one mis-calibrated allowance.
+        #
+        # So the reference is a floor on the estimate, not the whole of it: the allowance also
+        # tracks the slowest run that has actually completed in this cell, which is a direct
+        # measurement of what the objective costs an optimizer that is converging. It can only
+        # grow, and the ceiling still bounds it.
         seconds = overhead * (time.time() - clock)
-        seconds = min(max(seconds, SECONDS_PER_EVAL * budget, MIN_SECONDS), MAX_SECONDS)
+        seconds = max(seconds, SECONDS_PER_EVAL * budget, MIN_SECONDS)
+        typical = statistics.median(completed) if completed else 0.0
+        seconds = min(max(seconds, TYPICAL_FACTOR * typical), MAX_SECONDS)
 
         for name in contenders:
             if name == REFERENCE or name in timed_out:
                 continue
+            run_clock = time.time()
             try:
                 with _deadline(seconds):
                     value, _ = pure_optimize(objective, name, budget, n_dim)
                 results[name] = value
+                completed.append(time.time() - run_clock)
+                del completed[:-200]  # a rolling tail is enough for a median
             except _Overran:  # BaseException, so this must precede the Exception clause
                 strikes[name] = strikes.get(name, 0) + 1
                 if strikes[name] >= TIMEOUT_STRIKES:
@@ -386,6 +421,7 @@ def run_cell(
             "ineligible": ineligible,
             "seconds": round(time.time() - started, 1),
             "allowance": round(seconds, 1),
+            "completed_seconds": [round(v, 3) for v in completed[-200:]],
             "recorded_at": datetime.datetime.now(datetime.timezone.utc).isoformat(),
         }
         _write_shard(path, shard)
