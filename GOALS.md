@@ -54,7 +54,7 @@ Legend: ✅ done · 🟡 partial / in-progress · ❌ not done · ❓ unknown / 
 - **All algorithms · ext links** — ✅ verified by Crossref / direct-fetch audit. Six paper links that previously pointed to the WRONG paper were corrected: uobyqa (was a TSP paper → Powell 2002), bobyqa (was Hager–Zhang CG_DESCENT → Powell 2009 NA report), tabu-search (was Feo–Resende GRASP → Glover 1986), ant-colony (was the harmony-search paper → Dorigo 1996), harmony-search (replaced unresolvable Kluwer DOI → Geem 2001 canonical DOI), adaptive-random-search (dead Kluwer DOI → Solis & Wets 1981). Source-code buttons all anchor to specific class lines.
 - **LBFGSB · logic** — 🟡 because the class is named L-BFGS-B but is structurally finite-difference gradient + momentum, not a faithful L-BFGS-B (which would require analytical gradients HumpDay does not have). The page now says this honestly ("Finite-Difference Quasi-Newton — HumpDay's `LBFGSB` class, a derivative-free baseline"). Either rename the class or replace its body with a real quasi-Newton implementation.
 - **BayesianOpt · logic** — 🟡 because the GP kernel had broadcasting tricks (numpy path) and a separate pure-Python path with explicit loops, gated on `_A.BACKEND`. Both paths verified against the sphere, but no rigorous validation against `scikit-optimize` or `BoTorch`.
-- **All algorithms · perf** — Elo ratings recorded by `benchmarks/record_elo.py` and saved to `benchmarks/elo_ratings.json`. The current sweep ran 21 algorithms × 30 problems (15 sphere variants + 15 Rosenbrock variants) × 100 trials in 2 dimensions, generating ~7k pairwise match results. Re-run the script after any algorithm-logic change to refresh the file. As of the latest run, the top five are **DifferentialEvolution · SimulatedAnnealing · EvolutionStrategy · NelderMead · BayesianOpt**.
+- **All algorithms · perf** — Elo ratings recorded by `benchmarks/record_ratings.py` into `humpday/data/ratings.json`, one cell per (dimension, budget, suite) over twelve dimensions, four budgets and both objective suites. Re-run it after any algorithm-logic change; it skips cells already deep enough, so a targeted refresh is `--dims 10 --problems 40`. There is no single leaderboard, and the reason is the finding: which optimizer leads changes with all three of those axes. Read a cell, or `humpday.suggest(n_dim, n_trials)` for the never-terrible ordering across suites.
 
 ## Project-level work items (separate from per-algorithm goals)
 
@@ -71,15 +71,24 @@ Legend: ✅ done · 🟡 partial / in-progress · ❌ not done · ❓ unknown / 
    | CMA-ES IPOP restart layer (Auger & Hansen 2005) | ❌ JS is vanilla Hansen, single while loop, no TolFun/TolX/ConditionCov + λ-doubling | `humpday/optimizers/evolutionary_algorithms.py::CMAEvolutionStrategy` | ~40 LOC |
    | NelderMead 1e-12 convergence tolerances | ❌ JS still on 1e-8 (vs Python's 1e-12 since the restart fix) | same NM port | trivial |
    | Rotated benchmark functions (`rotated_rosenbrock_on_cube` / `rotated_rastrigin_on_cube` / `rotated_ackley_on_cube`) | ❌ no JS objective module has these | `humpday/objectives/classic.py` | ~30 LOC + a JS port of the `_rotation_for(n_dim, seed)` Mezzadri-2007 cache |
-   | Auto-selection: dimensional cap, overhead tier, Borda grid lookup | ❌ no JS equivalent of `humpday.eligibility` | `humpday/eligibility.py` + `benchmarks/recommendation_grid.json` | ~150 LOC + ship the grid JSON as a JS asset |
+   | Auto-selection: dimensional cap, overhead tier, ratings table, Borda grid lookup | ❌ no JS equivalent of `humpday.eligibility` | `humpday/eligibility.py` + `humpday/data/ratings.json` + `benchmarks/recommendation_grid.json` | ~150 LOC + ship both JSONs as JS assets |
 
    Goal: **JS ≡ Python** for every algorithm-level behavioral feature, with the JS-side modules under `docs/js/modules/` running on the browser-side parity test in `tests/test_js_parity.py`. The auto-selector is the only feature that requires *also* shipping data (the grid JSON) — every other gap is pure code.
 
    Already-ported (this row's the good news, so a maintainer doesn't think the whole thing is on fire): L-BFGS-B port (Byrd-Lu-Nocedal-Zhu with bound-aware projection) ✅, L-BFGS-B polish stages on DE/SA/CMA/BO/PSO/FA ✅, PRIMA UOBYQA Steihaug-Toint TR ✅, GridSearch ✅, Firefly α-damping ✅, CoordinateDescent / PatternSearch restart-on-step-threshold ✅.
 
-2. **PRIMA trio underperformance in the Elo benchmark.** `benchmarks/elo_ratings.json` (the 2-D sphere + Rosenbrock sweep, 100 trials per problem) has UOBYQA at 1466, BOBYQA at 1177, and NEWUOA at 1120 — bottom-three among the 21 algorithms. That's surprising: PRIMA is a sophisticated trust-region family designed to dominate on smooth surfaces in low dimensions, exactly the regime the benchmark covers. Investigate whether (a) the pure-Python ports have a numerical regression vs. the Fortran references, (b) 100 trials is below the budget where PRIMA pays off in 2-D, or (c) the Rosenbrock variants' ill-conditioning is hitting a PRIMA-specific failure mode. Re-running with `trials_per_problem=500` and a smooth-only objective family would help isolate which.
+2. ~~**PRIMA trio underperformance in the Elo benchmark.**~~ **Answered — it was (b), the budget.** The old table raced every method at a flat 100 trials, which is below what a trust-region method needs to build its interpolation set, and it read that as a loss. Recorded against budget, the PRIMA trio sweeps the analytic surfaces at every dimension measured. The ports were fine; the benchmark was asking them to work without a model. The residual question is the opposite one, now visible in `timed_out`: at five thousand evaluations their pure-Python linear algebra is the expensive part, and whether that is worth optimising depends on how costly the user's objective is.
 
 3. ~~Recommendation should consider trials AND dimension, not just dimension.~~ **Done in v0.20.0 / v0.21.0.** `humpday.minimize(...)` now auto-selects via `humpday.eligibility.recommend(n_dim, n_trials, eval_time)` which combines a dimensional cap filter, a min-trials filter, an overhead-tier vs. eval-time filter, and a Borda mean-rank lookup against `benchmarks/recommendation_grid.json` (12 objectives × 11 dims × 3 trial budgets × 3 seeds). See `docs/recommendations.html` for the full picture.
+
+4. **The wall-clock allowance mis-serves objectives whose cost varies with location.** It is set
+   at a multiple of what `RandomSearch` spent on the same problem, which is the right reference for
+   overhead but the wrong one for an objective that is cheap where a sampler looks and expensive
+   where an optimizer converges. In `4/1000/engineering`, eighteen of twenty-two optimizers overran
+   against a 0.8-second reference. `humpday.ratings.TIMEOUT_REVOLT` stops that being read as
+   eleven unusable optimizers, but it is a guard rather than a fix. A real one would calibrate
+   against the slowest *completed* run in the cell rather than the reference alone, which changes
+   the measurement and so needs the grid re-recorded.
 
 ### Test-infrastructure debts
 

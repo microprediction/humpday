@@ -117,6 +117,21 @@ def test_physics_objectives_is_empty_rather_than_raising_off_repository():
         mod._PHYSICS_CACHE = original
 
 
+def test_the_ratings_table_is_package_data_not_a_repository_asset():
+    """The counterpart of the test above, and the opposite answer.
+
+    The demos are deliberately left out of the wheel; the ratings table must be in it, or a
+    recommendation needs a benchmark run. What makes that work is resolving it relative to the
+    package rather than the repository, which is precisely what `physics_objectives` got wrong.
+    """
+    import humpday
+    import humpday.ratings
+
+    table = pathlib.Path(humpday.__file__).parent / "data" / "ratings.json"
+    assert table.is_file(), "the ratings table must live inside the package directory"
+    assert humpday.ratings.cells(), "the shipped table must not be empty"
+
+
 def test_scalable_engineering_objectives_are_raceable():
     """The fixed demos stop at 24 dimensions, so high-dimensional physics comes from these.
 
@@ -127,7 +142,7 @@ def test_scalable_engineering_objectives_are_raceable():
     """
     import itertools
 
-    from benchmarks.record_elo_by_dimension import scalable_physics
+    from benchmarks.record_ratings import _scalable as scalable_physics
 
     for n_dim in (50, 100):
         for fn in itertools.islice(scalable_physics(n_dim, seed=7), 3):
@@ -140,10 +155,11 @@ def test_scalable_engineering_objectives_are_raceable():
 
 def test_rating_aggregation_penalises_a_specialist():
     """A specialist that wins one suite and sinks in the other must not lead the robust order."""
-    from humpday import elo_by_dimension
+    from humpday import ratings
     from humpday.eligibility import robust_order
 
-    for n_dim, suites in elo_by_dimension().items():
+    for n_dim in ratings.recorded_dimensions():
+        suites = {s: c["ratings"] for s, c in ratings.cells_at(n_dim, 100).items()}
         if len(suites) < 2:
             continue
         order = robust_order(n_dim)

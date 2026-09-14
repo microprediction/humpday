@@ -380,74 +380,65 @@ class TestSuggestUsesRealEvidence:
     from list position and both marked 'Fake ... for compatibility'. A caller reading
     (score, time, name) had every reason to take those for measurements."""
 
-    def test_scores_are_measured_elo_not_positional(self):
-        # Scores come from the per-dimension tournament when one was recorded near this dimension,
-        # not from the global 2-d table and never from a position in a list.
-        from humpday import _ratings_for, elo_by_dimension, suggest
+    def test_scores_are_measured_not_positional(self):
+        from humpday import ratings, suggest
 
-        measured = sorted(elo_by_dimension())[0]
-        ratings = _ratings_for(measured, "physics")
-        assert ratings, "per-dimension ratings must ship"
-        for score, _time, name in suggest(n_dim=measured, n_trials=50, smooth=False):
-            assert score == ratings[name], f"{name} should carry its measured rating"
+        n_dim = ratings.recorded_dimensions()[0]
+        cell = ratings.cells_at(n_dim, 100)["engineering"]["ratings"]
+        for score, _time, name in suggest(n_dim=n_dim, smooth=False):
+            assert score == cell[name], f"{name} should carry its measured rating"
 
     def test_unmeasured_fields_are_nan_rather_than_invented(self):
-        from humpday import elo_by_dimension, suggest
+        from humpday import ratings, suggest
 
-        for _score, time, _name in suggest(
-            n_dim=sorted(elo_by_dimension())[0], smooth=False
-        ):
-            assert time != time, "humpday records no timing evidence; time must be nan"
+        n_dim = ratings.recorded_dimensions()[0]
+        for _score, elapsed, _name in suggest(n_dim=n_dim, smooth=False):
+            assert elapsed != elapsed, (
+                "humpday records no timing evidence; time must be nan"
+            )
+
+    def test_the_default_reports_no_score_because_it_has_none(self):
+        # Ranking by worst position across suites is not a rating, and Elo from two tournaments is
+        # not on one scale. Returning a number here would be inventing the comparison.
+        from humpday import ratings, suggest
+
+        n_dim = ratings.recorded_dimensions()[0]
+        assert all(s != s for s, _, _ in suggest(n_dim=n_dim))
 
     def test_scores_do_not_march_with_position(self):
         # The tell of the old implementation: a fixed arithmetic progression down the list.
-        from humpday import elo_by_dimension, suggest
+        from humpday import ratings, suggest
 
-        first = sorted(elo_by_dimension())[0]
-        scores = [s for s, _, _ in suggest(n_dim=first, smooth=False) if s == s]
+        n_dim = ratings.recorded_dimensions()[0]
+        scores = [s for s, _, _ in suggest(n_dim=n_dim, smooth=False) if s == s]
         gaps = {round(b - a, 6) for a, b in zip(scores, scores[1:])}
         assert len(gaps) > 1, f"scores look positional, not measured: {scores}"
 
-    def test_the_shipped_table_covers_what_is_suggested(self):
-        from humpday import elo_ratings
-        from humpday.optimizers.alloptimizers import suggest_pure
-
-        ratings = elo_ratings()
-        suggested = set()
-        for dim in (2, 5, 25, 100):
-            suggested |= set(suggest_pure(dim, 100))
-        unrated = suggested - set(ratings)
-        # Rechenberg is unrated and leads the n_dim > 50 ordering. Recorded rather than asserted
-        # away: if the tournament grows to cover it, this should shrink to nothing.
-        assert unrated <= {"Rechenberg"}, (
-            f"unrated optimizers are being suggested: {unrated}"
-        )
-
 
 class TestSuggestUsesDimensionSpecificEvidence:
-    def test_recorded_dimensions_order_by_measured_rating(self):
-        from humpday import elo_by_dimension, suggest
+    def test_recorded_cells_order_by_measured_rating(self):
+        from humpday import ratings, suggest
 
-        table = elo_by_dimension()
-        assert table, "per-dimension ratings must ship"
-        for n_dim, suites in table.items():
-            for suite, ratings in suites.items():
-                hint = suite == "smooth"
+        assert ratings.recorded_dimensions(), "ratings must ship with the package"
+        for n_dim in ratings.recorded_dimensions():
+            for suite, cell in ratings.cells_at(n_dim, 100).items():
+                hint = suite == "surfaces"
                 scores = [s for s, _, _ in suggest(n_dim=n_dim, smooth=hint)]
                 assert scores == sorted(scores, reverse=True), (
                     f"d={n_dim}/{suite} not ordered"
                 )
+                measured = cell["ratings"]
                 assert suggest(n_dim=n_dim, smooth=hint)[0][2] == max(
-                    ratings, key=ratings.get
+                    measured, key=measured.get
                 )
 
     def test_ratings_are_never_stretched_to_another_dimension(self):
         # Not even to the neighbouring one. Optimizer performance is not smooth in dimension: a
         # Bayesian method can work well at five and blow up at ten, and the trust-region methods
         # here top d=25 while being unable to build a model at d=100 on a comparable budget.
-        from humpday import elo_by_dimension, suggest
+        from humpday import ratings, suggest
 
-        recorded = set(elo_by_dimension())
+        recorded = set(ratings.recorded_dimensions())
         for n_dim in sorted(recorded)[:2]:
             for probe in (n_dim * 4, n_dim * 8):
                 if probe in recorded or probe < 1:
@@ -457,25 +448,58 @@ class TestSuggestUsesDimensionSpecificEvidence:
                     f"d={probe} was not measured; ratings from d={n_dim} are not evidence about it"
                 )
 
-    def test_minimize_default_follows_the_measurement_where_there_is_one(self):
-        from humpday import elo_by_dimension, suggest
-        from humpday.optimizers.alloptimizers import suggest_pure
+    def test_budget_is_interpolated_downward_only(self):
+        # A cell recorded at a smaller budget describes an optimizer with less room, which is the
+        # safe direction to be wrong in. Reading a 5000-evaluation result to answer a question
+        # about 50 would flatter the methods that spend their budget building a model.
+        from humpday import ratings
 
-        n_dim = sorted(elo_by_dimension())[-1]
-        physics = elo_by_dimension()[n_dim]["physics"]
-        assert suggest(n_dim=n_dim, smooth=False)[0][2] == max(physics, key=physics.get)
-        # Recorded for contrast: the hand-written rule disagrees, and minimize() used to follow it.
-        assert isinstance(suggest_pure(n_dim, 100)[0], str)
+        for n_dim in ratings.recorded_dimensions():
+            budgets = sorted(
+                int(k.split("/")[1])
+                for k in ratings.cells()
+                if k.startswith(f"{n_dim}/")
+            )
+            if len(set(budgets)) < 2:
+                continue
+            low, high = min(budgets), max(budgets)
+            for suite, cell in ratings.cells_at(n_dim, high - 1).items():
+                # `.get`, not `[]`: a cell can be absent, because a suite whose problems cost more
+                # than the ceiling at that budget is skipped rather than faked.
+                assert cell is not ratings.cells().get(f"{n_dim}/{high}/{suite}")
+            asked = (low + high) // 2
+            for suite, cell in ratings.cells_at(n_dim, asked).items():
+                used = next(
+                    b
+                    for b in sorted(budgets, reverse=True)
+                    if ratings.cells().get(f"{n_dim}/{b}/{suite}") is cell
+                )
+                assert used <= asked, (
+                    f"d={n_dim}/{suite}: read budget {used} to answer {asked}"
+                )
+
+    def test_minimize_and_suggest_read_the_same_table(self):
+        # They were recorded by different scripts over different objectives once, and were free to
+        # disagree about the same problem. One table now, one ordering function.
+        from humpday import ratings, suggest
+        from humpday.eligibility import robust_order
+
+        for n_dim in ratings.recorded_dimensions():
+            assert [n for _, _, n in suggest(n_dim=n_dim)] == robust_order(n_dim)
 
 
 class TestSuggestHonoursObjectiveCharacter:
     def test_the_two_suites_disagree(self):
         # If they agreed, the `smooth` argument would be pointless. They do not: the analytic
         # surfaces are smooth, smoothness rewards local search, and the trust-region methods sweep
-        # them while being displaced on the engineering demos at the same dimensions.
-        from humpday import elo_by_dimension, suggest
+        # them while being displaced on the engineering problems at the same dimensions.
+        from humpday import ratings, suggest
 
-        both = [d for d, v in elo_by_dimension().items() if len(v) > 1]
+        both = [
+            d
+            for d in ratings.recorded_dimensions()
+            if len(ratings.cells_at(d, 100)) > 1
+        ]
         assert both, "both suites must be recorded somewhere"
         differ = sum(
             1
@@ -489,36 +513,162 @@ class TestSuggestHonoursObjectiveCharacter:
 
     def test_default_is_never_terrible_rather_than_best_on_average(self):
         # The default optimises worst rank across suites. A specialist that wins one and places
-        # near the bottom of the other must not lead it: PRIMA_UOBYQA averages 3.0 on smooth and
-        # 15.9 on physics, which is exactly the recommendation this guards against.
-        from humpday import elo_by_dimension, suggest
+        # near the bottom of the other must not lead it: PRIMA_UOBYQA averages 3.0 on surfaces and
+        # 15.9 on engineering, which is exactly the recommendation this guards against.
+        from humpday import ratings, suggest
 
-        for n_dim, suites in elo_by_dimension().items():
-            if len(suites) < 2:
+        for n_dim in ratings.recorded_dimensions():
+            at = ratings.cells_at(n_dim, 100)
+            if len(at) < 2:
                 continue
+            ranked = {
+                suite: sorted(c["ratings"], key=lambda n: -c["ratings"][n])
+                for suite, c in at.items()
+            }
+            common = set.intersection(*(set(o) for o in ranked.values()))
             leader = suggest(n_dim=n_dim)[0][2]
-            worst = max(
-                sorted(r, key=lambda n: -r[n]).index(leader) + 1
-                for r in suites.values()
-                if leader in r
-            )
-            for other in suites["smooth"]:
-                if not all(other in r for r in suites.values()):
-                    continue
-                other_worst = max(
-                    sorted(r, key=lambda n: -r[n]).index(other) + 1
-                    for r in suites.values()
-                )
+            worst = max(o.index(leader) + 1 for o in ranked.values())
+            for other in common:
+                other_worst = max(o.index(other) + 1 for o in ranked.values())
                 assert worst <= other_worst, (
                     f"d={n_dim}: {leader} is worst-ranked {worst}, but {other} is {other_worst}"
                 )
 
     def test_explicit_hint_selects_the_matching_suite(self):
-        from humpday import _ratings_for, elo_by_dimension, suggest
+        from humpday import ratings, suggest
 
-        n_dim = sorted(d for d, v in elo_by_dimension().items() if len(v) > 1)[0]
-        for hint, suite in ((True, "smooth"), (False, "physics")):
-            ratings = _ratings_for(n_dim, suite)
-            assert suggest(n_dim=n_dim, smooth=hint)[0][2] == max(
-                ratings, key=ratings.get
-            )
+        for n_dim in ratings.recorded_dimensions():
+            at = ratings.cells_at(n_dim, 100)
+            if len(at) < 2:
+                continue
+            for hint, suite in ((True, "surfaces"), (False, "engineering")):
+                measured = at[suite]["ratings"]
+                assert suggest(n_dim=n_dim, smooth=hint)[0][2] == max(
+                    measured, key=measured.get
+                )
+
+
+class TestPublicSurface:
+    def test_every_exported_name_resolves(self):
+        # Twice now a block edit has deleted a public function while leaving its name in __all__,
+        # and `from humpday import *` is the only thing that notices.
+        import humpday
+
+        missing = [n for n in humpday.__all__ if not hasattr(humpday, n)]
+        assert not missing, f"exported but undefined: {missing}"
+
+
+if __name__ == "__main__":
+    pytest.main([__file__])
+
+
+class TestRatingsTableSemantics:
+    """The table is the only evidence in the library, so its edge cases are pinned here rather
+    than left to whatever the recorder happened to write."""
+
+    def test_a_disqualified_optimizer_ranks_last_and_only_once(self):
+        # It is disqualified partway through a cell, so it holds a rating from the rounds it did
+        # finish as well as a place in timed_out. Listing it twice would let it lead and trail.
+        from humpday.ratings import _ranked
+
+        cell = {"ratings": {"A": 1600, "B": 1580, "C": 1400}, "timed_out": ["B"]}
+        assert _ranked(cell) == ["A", "C", "B"]
+
+    def test_a_disqualified_optimizer_reports_no_rating(self):
+        from humpday import ratings
+
+        for n_dim in ratings.recorded_dimensions():
+            for suite in ratings.SUITES:
+                for name in ratings.timed_out(n_dim, suite):
+                    assert ratings.rating(n_dim, suite, name) is None
+
+    def test_thin_cells_move_the_order_less_than_deep_ones(self):
+        # The shrinkage is what lets cells of unequal depth be combined at all: a cell that ran out
+        # of wall clock after four problems should not decide the ordering on one bad placing.
+        from humpday.ratings import PRIOR_PROBLEMS, robust_order
+
+        names = [f"opt{i}" for i in range(5)]
+        good = {n: 1600 - 10 * i for i, n in enumerate(names)}
+        reversed_ = {n: 1600 - 10 * i for i, n in enumerate(reversed(names))}
+
+        def order(problems):
+            import humpday.ratings as r
+
+            r._TABLE = {
+                "7/100/surfaces": {"ratings": good, "problems": 50},
+                "7/100/engineering": {"ratings": reversed_, "problems": problems},
+            }
+            try:
+                return robust_order(7, 100)
+            finally:
+                r._TABLE = None
+
+        thin = order(1)
+        deep = order(int(PRIOR_PROBLEMS) * 20)
+        assert thin[0] == "opt0", "a one-problem cell should barely move the leader"
+        assert deep[0] != "opt0", "a deep contradicting cell should"
+
+    def test_every_shipped_cell_is_backed_by_problems(self):
+        from humpday import ratings
+
+        for key, cell in ratings.cells().items():
+            assert cell.get("problems", 0) > 0, f"{key} ships ratings backed by nothing"
+            assert cell.get("ratings") or cell.get("timed_out"), f"{key} is empty"
+
+    def test_the_two_suites_are_always_read_at_the_same_budget(self):
+        # Pairing a suite measured at a thousand evaluations against one measured at fifty would
+        # read a budget effect as a suite effect, which is the confusion this table exists to end.
+        from humpday import ratings
+
+        for n_dim in ratings.recorded_dimensions():
+            at = ratings.cells_at(n_dim, 5000)
+            if len(at) < 2:
+                continue
+            budgets = set()
+            for suite, cell in at.items():
+                budgets |= {
+                    int(k.split("/")[1])
+                    for k, v in ratings.cells().items()
+                    if v is cell and k.endswith(f"/{suite}")
+                }
+            assert len(budgets) == 1, f"d={n_dim} mixes budgets {sorted(budgets)}"
+
+    def test_a_cell_where_nearly_everyone_overran_does_not_rank_them_last(self):
+        """A mis-calibrated allowance must not read as eleven unusable optimizers.
+
+        The allowance is a multiple of what a random sampler spent on the same objective. When
+        evaluation cost depends on location -- as it does on the worked engineering demos -- an
+        optimizer that converges into an expensive basin pays what the sampler never did, and is
+        disqualified for the objective's shape rather than its own overhead.
+        """
+        from humpday.ratings import TIMEOUT_REVOLT, _ranked
+
+        revolt = {
+            "ratings": {f"o{i}": 1600 - i for i in range(9)},
+            "timed_out": [f"o{i}" for i in range(6)],
+        }
+        assert _ranked(revolt) == [f"o{i}" for i in range(9)], (
+            "with two thirds timed out the ordering should ignore the timeouts"
+        )
+
+        isolated = {
+            "ratings": {f"o{i}": 1600 - i for i in range(9)},
+            "timed_out": ["o0"],
+        }
+        assert _ranked(isolated)[-1] == "o0", (
+            "an isolated timeout is still a disqualification"
+        )
+        assert TIMEOUT_REVOLT < 0.5, "the guard must trip below a majority, not at one"
+
+    def test_the_shipped_table_is_a_complete_grid(self):
+        from itertools import product
+
+        from humpday import ratings
+
+        recorded = ratings.cells()
+        dims = sorted({int(k.split("/")[0]) for k in recorded})
+        budgets = sorted({int(k.split("/")[1]) for k in recorded})
+        for n_dim, budget, suite in product(dims, budgets, ratings.SUITES):
+            key = f"{n_dim}/{budget}/{suite}"
+            assert key in recorded, f"{key} is missing from the grid"
+            assert recorded[key]["problems"] >= 30, f"{key} is thin"

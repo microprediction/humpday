@@ -5,6 +5,13 @@ For every grid cell (n_dim, n_trials) the recommendation grid covers, run
 `Eligibility.recommend(n_dim, n_trials, eval_time)` on both sides at each
 overhead-tier threshold and assert they pick the same algorithm.
 
+This compares the **grid** layer only: the Python call passes `grid_path`
+explicitly, which is what skips the recorded tournament. Python consults that
+tournament first and JavaScript has no equivalent, so the two ports genuinely
+differ wherever a tournament exists. That divergence is asserted below rather
+than left for someone to discover, since a parity test that quietly stopped
+covering the default path is worse than no parity test.
+
 This test runs in a Node subprocess. If `node` isn't on PATH it skips
 cleanly so Python-only CI runs aren't broken.
 """
@@ -86,4 +93,37 @@ def test_js_recommend_matches_python_on_every_grid_cell():
             f"  n_dim={d}, n_trials={t}, eval_time={et:.0e}: python={py!r} js={js!r}"
             for d, t, et, py, js in mismatches[:10]
         )
+    )
+
+
+@pytest.mark.skipif(NODE is None, reason="node not on PATH")
+def test_the_js_port_lags_the_recorded_tournament():
+    """Python's default path reads `humpday.ratings`; the JavaScript port does not have it.
+
+    Porting it is tracked in GOALS.md. Until then this records the size of the gap, so that
+    `test_js_recommend_matches_python_on_every_grid_cell` passing is not read as the two ports
+    agreeing about what `minimize` will do.
+    """
+    from humpday import ratings
+
+    recorded = ratings.recorded_dimensions()
+    if not recorded:
+        pytest.skip("no tournament recorded")
+
+    E._clear_grid_cache()
+    differs = [
+        (n_dim, n_trials)
+        for n_dim in recorded
+        for n_trials in (50, 200, 1000)
+        if E.recommend(n_dim=n_dim, n_trials=n_trials, eval_time=1e-3)
+        != E.recommend(
+            n_dim=n_dim,
+            n_trials=n_trials,
+            eval_time=1e-3,
+            grid_path=REPO_ROOT / "benchmarks" / "recommendation_grid.json",
+        )
+    ]
+    assert differs, (
+        "Python's default path and the grid path agree everywhere, which means the recorded "
+        "tournament is not reaching `recommend` -- check the fall-through order in eligibility.py"
     )
