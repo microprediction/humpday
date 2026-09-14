@@ -13,7 +13,6 @@
       "ratings": {
         "Alloy": 1830.2010978475005,
         "AntColonyOpt": 1294.1091517119078,
-        "BayesianOpt": 1500.0,
         "CMAEvolutionStrategy": 1616.7077074108915,
         "CoordinateDescent": 1623.808866093121,
         "DifferentialEvolution": 1827.171757986459,
@@ -53,7 +52,6 @@
       "ratings": {
         "Alloy": 1807.6081873367118,
         "AntColonyOpt": 1185.8131029148342,
-        "BayesianOpt": 1500.0,
         "CMAEvolutionStrategy": 1901.7740837268805,
         "CoordinateDescent": 1578.7136238186454,
         "DifferentialEvolution": 1418.4387319010443,
@@ -221,7 +219,6 @@
       "ratings": {
         "Alloy": 1758.1293977855437,
         "AntColonyOpt": 1370.165976084304,
-        "BayesianOpt": 1500.0,
         "CMAEvolutionStrategy": 1582.843791235746,
         "CoordinateDescent": 1736.7449369369024,
         "DifferentialEvolution": 1639.7908919321442,
@@ -259,7 +256,6 @@
       "ratings": {
         "Alloy": 1585.1222208040526,
         "AntColonyOpt": 1466.9564075963872,
-        "BayesianOpt": 1500.0,
         "CMAEvolutionStrategy": 2026.1140723422875,
         "CoordinateDescent": 1468.8724169863135,
         "DifferentialEvolution": 1535.6346105916114,
@@ -855,7 +851,6 @@
         "HillClimbing": 1694.3696104409237,
         "LBFGSB": 1505.347155995436,
         "NelderMead": 1163.6167671628157,
-        "PRIMA_BOBYQA": 1500.0,
         "PRIMA_NEWUOA": 1497.0295133300067,
         "ParticleSwarm": 1577.1051938440442,
         "PatternSearch": 1805.5181046236412,
@@ -893,8 +888,6 @@
         "HillClimbing": 1784.7806484891307,
         "LBFGSB": 674.2963844084362,
         "NelderMead": 1984.661882370736,
-        "PRIMA_BOBYQA": 1500.0,
-        "PRIMA_NEWUOA": 1500.0,
         "ParticleSwarm": 1792.056025092979,
         "PatternSearch": 1398.2471879951904,
         "Powell": 2049.966262647275,
@@ -931,8 +924,6 @@
         "HillClimbing": 1391.9726923518092,
         "LBFGSB": 1359.5619455776955,
         "NelderMead": 1589.9249863197163,
-        "PRIMA_BOBYQA": 1500.0,
-        "PRIMA_NEWUOA": 1500.0,
         "ParticleSwarm": 1585.2143489596172,
         "PatternSearch": 1894.4888820101426,
         "Powell": 1790.4884068475096,
@@ -969,8 +960,6 @@
         "HillClimbing": 1455.626103376379,
         "LBFGSB": 1216.8289732736027,
         "NelderMead": 1957.2672092423163,
-        "PRIMA_BOBYQA": 1500.0,
-        "PRIMA_NEWUOA": 1500.0,
         "ParticleSwarm": 1389.5618363725512,
         "PatternSearch": 1858.491896358017,
         "Powell": 1803.5623063028104,
@@ -1071,8 +1060,6 @@
         "HillClimbing": 1595.1609387470448,
         "LBFGSB": 1811.5073740270946,
         "NelderMead": 1378.213696119846,
-        "PRIMA_BOBYQA": 1500.0,
-        "PRIMA_NEWUOA": 1500.0,
         "ParticleSwarm": 1418.9619971313978,
         "PatternSearch": 1513.2534256123615,
         "Powell": 1428.7325317325349,
@@ -1109,8 +1096,6 @@
         "HillClimbing": 1692.7999253749156,
         "LBFGSB": 579.3010173624217,
         "NelderMead": 1133.9924464329445,
-        "PRIMA_BOBYQA": 1500.0,
-        "PRIMA_NEWUOA": 1500.0,
         "ParticleSwarm": 1825.7266253048947,
         "PatternSearch": 1723.8772030183427,
         "Powell": 1806.5359561659577,
@@ -1132,7 +1117,6 @@
       "ratings": {
         "Alloy": 1708.1175306436116,
         "AntColonyOpt": 1547.1290744238343,
-        "BayesianOpt": 1500.0,
         "CMAEvolutionStrategy": 1704.123799216852,
         "CoordinateDescent": 1344.7346076237513,
         "DifferentialEvolution": 1648.3855271424418,
@@ -1167,7 +1151,6 @@
       "ratings": {
         "Alloy": 1700.7156057390835,
         "AntColonyOpt": 1526.3258817649946,
-        "BayesianOpt": 1500.0,
         "CMAEvolutionStrategy": 1962.8439696870853,
         "CoordinateDescent": 1655.7708140784614,
         "DifferentialEvolution": 1614.195566135812,
@@ -1326,7 +1309,6 @@
       "ratings": {
         "Alloy": 1490.456163658872,
         "AntColonyOpt": 1705.4327838165927,
-        "BayesianOpt": 1500.0,
         "CMAEvolutionStrategy": 1713.5755238214338,
         "CoordinateDescent": 1535.056300736674,
         "DifferentialEvolution": 1905.0921328346888,
@@ -1361,7 +1343,6 @@
       "ratings": {
         "Alloy": 1666.1045077792633,
         "AntColonyOpt": 1819.2822829781169,
-        "BayesianOpt": 1500.0,
         "CMAEvolutionStrategy": 1696.2301094975874,
         "CoordinateDescent": 1559.6048046449703,
         "DifferentialEvolution": 1928.0596434938311,
@@ -1411,8 +1392,6 @@
         "HarmonySearch": 1413.921805600997,
         "HillClimbing": 1699.8971697526983,
         "LBFGSB": 1569.0790238534553,
-        "PRIMA_BOBYQA": 1500.0,
-        "PRIMA_NEWUOA": 1500.0,
         "ParticleSwarm": 1544.227953817114,
         "PatternSearch": 1795.6729819955176,
         "Powell": 1519.083004025021,
@@ -1449,8 +1428,6 @@
         "HarmonySearch": 1588.1208807957667,
         "HillClimbing": 1764.2392419871383,
         "LBFGSB": 942.7791864659255,
-        "PRIMA_BOBYQA": 1500.0,
-        "PRIMA_NEWUOA": 1500.0,
         "ParticleSwarm": 1673.395144042514,
         "PatternSearch": 1708.8288160636992,
         "Powell": 2014.987092936491,
@@ -1487,8 +1464,6 @@
         "HarmonySearch": 1577.1894501009426,
         "HillClimbing": 1490.2162830375557,
         "LBFGSB": 1243.9179688374893,
-        "PRIMA_BOBYQA": 1500.0,
-        "PRIMA_NEWUOA": 1500.0,
         "ParticleSwarm": 1616.7255911055563,
         "PatternSearch": 1776.2572048269765,
         "Powell": 1543.2442951447074,
@@ -1525,8 +1500,6 @@
         "HarmonySearch": 1486.8063373715195,
         "HillClimbing": 1484.249212697674,
         "LBFGSB": 1142.5389624395787,
-        "PRIMA_BOBYQA": 1500.0,
-        "PRIMA_NEWUOA": 1500.0,
         "ParticleSwarm": 1719.6370846519626,
         "PatternSearch": 1632.6981190117892,
         "Powell": 1989.7690337270626,
@@ -1627,8 +1600,6 @@
         "HarmonySearch": 1429.1980928155174,
         "HillClimbing": 1763.766475779151,
         "LBFGSB": 1543.1115205999763,
-        "PRIMA_BOBYQA": 1500.0,
-        "PRIMA_NEWUOA": 1500.0,
         "ParticleSwarm": 1783.5852099576784,
         "PatternSearch": 1717.8821436852404,
         "Powell": 1368.0701438369279,
@@ -1665,8 +1636,6 @@
         "HarmonySearch": 1675.7578366051769,
         "HillClimbing": 1600.9071695043299,
         "LBFGSB": 590.7280152970319,
-        "PRIMA_BOBYQA": 1500.0,
-        "PRIMA_NEWUOA": 1500.0,
         "ParticleSwarm": 1940.4943068252007,
         "PatternSearch": 1679.418908658118,
         "Powell": 2049.635283708959,
@@ -1688,7 +1657,6 @@
       "ratings": {
         "Alloy": 1380.9709190949156,
         "AntColonyOpt": 1375.6840727823912,
-        "BayesianOpt": 1500.0,
         "CMAEvolutionStrategy": 1618.5460138337148,
         "CoordinateDescent": 1454.5270297087184,
         "DifferentialEvolution": 1738.1216804130313,
@@ -1723,7 +1691,6 @@
       "ratings": {
         "Alloy": 1723.5937108993423,
         "AntColonyOpt": 1634.4979391518968,
-        "BayesianOpt": 1500.0,
         "CMAEvolutionStrategy": 1797.482173282149,
         "CoordinateDescent": 1459.1957511513067,
         "DifferentialEvolution": 1532.9458702009836,
@@ -1882,7 +1849,6 @@
       "ratings": {
         "Alloy": 1469.8534858109151,
         "AntColonyOpt": 1626.176905392746,
-        "BayesianOpt": 1500.0,
         "CMAEvolutionStrategy": 1797.3265906602192,
         "CoordinateDescent": 1340.8093367569945,
         "DifferentialEvolution": 1803.7947133478463,
@@ -1917,7 +1883,6 @@
       "ratings": {
         "Alloy": 1574.8525057223742,
         "AntColonyOpt": 1705.6768999545027,
-        "BayesianOpt": 1500.0,
         "CMAEvolutionStrategy": 1916.6987458760823,
         "CoordinateDescent": 1793.3409349927572,
         "DifferentialEvolution": 1675.3594793311086,
@@ -2014,7 +1979,6 @@
       "ratings": {
         "Alloy": 1682.7387413520428,
         "AntColonyOpt": 1330.9123196068858,
-        "BayesianOpt": 1500.0,
         "CMAEvolutionStrategy": 1927.1925121275335,
         "CoordinateDescent": 1766.6430920166265,
         "DifferentialEvolution": 1422.3954562336012,
@@ -2176,7 +2140,6 @@
       "ratings": {
         "Alloy": 1485.3658696432237,
         "AntColonyOpt": 1886.4108966214417,
-        "BayesianOpt": 1500.0,
         "CMAEvolutionStrategy": 1976.3638138538308,
         "CoordinateDescent": 1694.3869772365738,
         "DifferentialEvolution": 1790.3283097756917,
@@ -2211,7 +2174,6 @@
       "ratings": {
         "Alloy": 1558.5487231940526,
         "AntColonyOpt": 1758.5187844833374,
-        "BayesianOpt": 1500.0,
         "CMAEvolutionStrategy": 2019.5558034196008,
         "CoordinateDescent": 1677.8313857356457,
         "DifferentialEvolution": 1865.2425048710743,
@@ -2248,7 +2210,6 @@
       "ratings": {
         "Alloy": 1813.457183623276,
         "AntColonyOpt": 1364.8368130266372,
-        "BayesianOpt": 1500.0,
         "CMAEvolutionStrategy": 1765.2692870038109,
         "CoordinateDescent": 1708.9700264946573,
         "DifferentialEvolution": 1563.1273870137532,
@@ -2284,7 +2245,6 @@
       "ratings": {
         "Alloy": 1998.4042969685934,
         "AntColonyOpt": 1278.944202850501,
-        "BayesianOpt": 1500.0,
         "CMAEvolutionStrategy": 1713.163802855611,
         "CoordinateDescent": 1812.3676935881113,
         "DifferentialEvolution": 1574.2992963721035,
@@ -2462,7 +2422,6 @@
       "ratings": {
         "Alloy": 1658.55322018612,
         "AntColonyOpt": 1655.548059444698,
-        "BayesianOpt": 1500.0,
         "CMAEvolutionStrategy": 1722.7687897021106,
         "CoordinateDescent": 1416.7460263901955,
         "DifferentialEvolution": 1729.6933715988093,
@@ -2498,7 +2457,6 @@
       "ratings": {
         "Alloy": 1501.4637725532507,
         "AntColonyOpt": 1482.8053388554342,
-        "BayesianOpt": 1500.0,
         "CMAEvolutionStrategy": 1781.9519438831426,
         "CoordinateDescent": 1788.4915138818214,
         "DifferentialEvolution": 1736.7378556881552,
@@ -2790,7 +2748,6 @@
       "ratings": {
         "Alloy": 1852.2666179493615,
         "AntColonyOpt": 1445.8211317030966,
-        "BayesianOpt": 1500.0,
         "CMAEvolutionStrategy": 1787.298713326935,
         "CoordinateDescent": 1653.4942961301815,
         "DifferentialEvolution": 1778.37707860527,
@@ -2826,7 +2783,6 @@
       "ratings": {
         "Alloy": 1781.9508734097324,
         "AntColonyOpt": 1312.0545892227979,
-        "BayesianOpt": 1500.0,
         "CMAEvolutionStrategy": 1724.6490084251295,
         "CoordinateDescent": 1856.0186434299114,
         "DifferentialEvolution": 1458.4653267621466,
@@ -2990,7 +2946,6 @@
       "ratings": {
         "Alloy": 1783.5964877676608,
         "AntColonyOpt": 1670.3168363682512,
-        "BayesianOpt": 1500.0,
         "CMAEvolutionStrategy": 1865.7650410020858,
         "CoordinateDescent": 1647.8936889636411,
         "DifferentialEvolution": 1814.850534436675,
@@ -3026,7 +2981,6 @@
       "ratings": {
         "Alloy": 1894.2414277067755,
         "AntColonyOpt": 1561.9701127479882,
-        "BayesianOpt": 1500.0,
         "CMAEvolutionStrategy": 1911.4008117247486,
         "CoordinateDescent": 1694.983997896659,
         "DifferentialEvolution": 1604.8500714645877,
@@ -3062,7 +3016,6 @@
       "ratings": {
         "Alloy": 1632.4028994397756,
         "AntColonyOpt": 1297.2399178711644,
-        "BayesianOpt": 1500.0,
         "CMAEvolutionStrategy": 1633.275309784449,
         "CoordinateDescent": 1794.3136820743794,
         "DifferentialEvolution": 1568.729958574778,
@@ -3098,7 +3051,6 @@
       "ratings": {
         "Alloy": 1897.4944870153502,
         "AntColonyOpt": 1270.4819442484034,
-        "BayesianOpt": 1500.0,
         "CMAEvolutionStrategy": 1804.3683376609713,
         "CoordinateDescent": 1738.1789907142947,
         "DifferentialEvolution": 1465.4272015055947,
@@ -3262,7 +3214,6 @@
       "ratings": {
         "Alloy": 1755.9924160941707,
         "AntColonyOpt": 1532.554372458854,
-        "BayesianOpt": 1500.0,
         "CMAEvolutionStrategy": 1713.7434418118987,
         "CoordinateDescent": 1694.402764234094,
         "DifferentialEvolution": 1686.2554998225633,
@@ -3298,7 +3249,6 @@
       "ratings": {
         "Alloy": 1718.3853706404152,
         "AntColonyOpt": 1692.2884543724917,
-        "BayesianOpt": 1500.0,
         "CMAEvolutionStrategy": 2028.060208734152,
         "CoordinateDescent": 1443.3344707392973,
         "DifferentialEvolution": 1849.4368518851484,
@@ -3324,5 +3274,5 @@
       ]
     }
   },
-  "recorded_at": "2026-09-13T22:04:15.485110+00:00"
+  "recorded_at": "2026-09-14T04:13:01.905054+00:00"
 }
