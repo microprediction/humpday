@@ -179,27 +179,72 @@ def paviani_on_cube(u: [float]) -> float:
     )
 
 
-# Landscapes - conditional import
-try:
-    from landscapes.single_objective import (
-        michalewicz,
-        qing,
-        rotated_hyper_ellipsoid,
-        salomon,
-        styblinski_tang,
-        zakharov,
-    )
+# These six were imported from `landscapes` when it happened to be installed, and silently
+# replaced with `sum(xi**2)` -- the sphere -- when it was not. It is not a declared dependency and
+# is not installed, so six names that read as distinct multimodal benchmarks were one separable
+# convex quadratic. Measured Spearman rank correlation between them, d=5 over 200 random points:
+# five of the six pairwise correlations were exactly 1.0000.
+#
+# That reached `humpday.objectives.SURFACES` (6 of 34 entries), the recommendation grid, which
+# lists three of them as separate regimes, and `papers/planar_search`. In the grid it biased
+# results toward coordinate-wise methods, which is precisely the axis-alignment advantage the
+# rotated variants exist to remove.
+#
+# Implemented directly instead. The optional import is gone entirely rather than kept as a
+# preferred path: an objective that changes definition depending on what is installed cannot be
+# compared across runs, which is the same defect in a slower form. `humpday/objectives/README.md`
+# records `enhanced_surfaces` being deleted for exactly this, around `opfunu`.
+#
+# Formulas as given by Jamil & Yang (2013) and the Simon Fraser test-function repository, with the
+# domains the `_on_cube` wrappers below already assume.
 
-    LANDSCAPES_AVAILABLE = True
-except ImportError:
-    LANDSCAPES_AVAILABLE = False
-    # Create dummy functions so the module doesn't break
-    michalewicz = lambda x, m=10: sum(xi**2 for xi in x)  # Simple fallback
-    qing = lambda x: sum(xi**2 for xi in x)
-    rotated_hyper_ellipsoid = lambda x: sum(xi**2 for xi in x)
-    salomon = lambda x: sum(xi**2 for xi in x)
-    styblinski_tang = lambda x: sum(xi**2 for xi in x)
-    zakharov = lambda x: sum(xi**2 for xi in x)
+
+def styblinski_tang(x) -> float:
+    """0.5 * sum(x^4 - 16x^2 + 5x). Domain [-5, 5]; minimum -39.16599n at x_i = -2.903534."""
+    return 0.5 * sum(xi**4 - 16.0 * xi**2 + 5.0 * xi for xi in x)
+
+
+def salomon(x) -> float:
+    """1 - cos(2*pi*||x||) + 0.1*||x||. Domain [-100, 100]; minimum 0 at the origin.
+
+    Concentric ridges around the origin -- the reason it is in a benchmark suite at all, and
+    exactly what the sphere fallback erased.
+    """
+    norm = math.sqrt(sum(xi * xi for xi in x))
+    return 1.0 - math.cos(2.0 * math.pi * norm) + 0.1 * norm
+
+
+def michalewicz(x, m: int = 10) -> float:
+    """-sum(sin(x_i) * sin(i*x_i^2/pi)^(2m)). Steep ridges; `m` controls their sharpness.
+
+    `i` is 1-based, as in the published definition.
+    """
+    total = 0.0
+    for i, xi in enumerate(x, start=1):
+        total += math.sin(xi) * math.sin(i * xi * xi / math.pi) ** (2 * m)
+    return -total
+
+
+def qing(x) -> float:
+    """sum((x_i^2 - i)^2). Domain [-500, 500]; 2^n global minima at x_i = +/- sqrt(i)."""
+    return sum((xi * xi - i) ** 2 for i, xi in enumerate(x, start=1))
+
+
+def rotated_hyper_ellipsoid(x) -> float:
+    """sum_{i=1..n} sum_{j=1..i} x_j^2. Domain [-65.536, 65.536]; convex but not separable."""
+    total = 0.0
+    running = 0.0
+    for xi in x:
+        running += xi * xi
+        total += running
+    return total
+
+
+def zakharov(x) -> float:
+    """sum(x^2) + (sum(0.5*i*x))^2 + (sum(0.5*i*x))^4. Domain [-5, 10]; minimum 0 at the origin."""
+    s1 = sum(xi * xi for xi in x)
+    s2 = sum(0.5 * i * xi for i, xi in enumerate(x, start=1))
+    return s1 + s2**2 + s2**4
 
 
 def styblinski_tang_on_cube(u: [float]) -> float:
