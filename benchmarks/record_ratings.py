@@ -466,7 +466,7 @@ def merge() -> dict:
         shard = json.loads(path.read_text())
         if not shard.get("problems"):
             continue  # a cell with no eligible field is not a cell
-        # Drop every rating that was never earned. Two ways that happens, and the first fix
+        # Drop every rating that was never earned. Three ways that happens, and the first fix
         # caught only one of them.
         #
         # An optimizer filtered out before the tournament is named under `ineligible`. One that
@@ -476,19 +476,21 @@ def merge() -> dict:
         # `elo_by_dimension()` ranked a seeded 1500.0 above a PatternSearch that had earned
         # 1499.4 by losing.
         #
-        # Equality with the seed is the exact test for "never played": `run_cell` only feeds Elo
-        # the names present in `results`, which an optimizer joins solely by returning a value.
-        # A timed-out optimizer that did complete some problems has a real, if partial, rating and
-        # keeps it -- `_ranked` still places it last, and the revolt branch still needs it.
+        # The third way needs no `timed_out` entry at all: a cell that stops early on the
+        # wall-clock budget (#339) can end after an optimizer's first overrun, one strike short
+        # of the two that would name it in `timed_out`, having still never returned a value.
+        #
+        # Equality with the seed is the exact test for "never played" in all three cases:
+        # `run_cell` only feeds Elo the names present in `results`, which an optimizer joins
+        # solely by returning a value. A timed-out optimizer that did complete some problems has
+        # a real, if partial, rating and keeps it -- `_ranked` still places it last, and the
+        # revolt branch still needs it.
         excluded = set(shard.get("ineligible", {}))
-        struck_out = set(shard.get("timed_out", {}))
-        kept = {}
-        for n, r in shard.get("ratings", {}).items():
-            if n in excluded:
-                continue
-            if n in struck_out and r == INITIAL_RATING:
-                continue
-            kept[n] = r
+        kept = {
+            n: r
+            for n, r in shard.get("ratings", {}).items()
+            if n not in excluded and r != INITIAL_RATING
+        }
 
         cells[f"{shard['n_dim']}/{shard['budget']}/{shard['suite']}"] = {
             "ratings": kept,

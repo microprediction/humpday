@@ -188,9 +188,12 @@ def test_eligible_eval_time_none_skips_overhead_filter():
 
 
 def test_recommend_low_dim_expensive_picks_quadratic_model():
-    # 2D, 200 trials, 1 second per eval — UOBYQA dominates
+    # 2D, 200 trials, 1 second per eval — a serious local search dominates
+    # naive samplers. The recorded tournament (humpday.ratings) is robust
+    # across both suites here (30/30 problems, no timeouts), so it wins
+    # over the grid's PRIMA/NelderMead-only pick — see robust_order(2, 200).
     pick = E.recommend(n_dim=2, n_trials=200, eval_time=1.0)
-    assert pick == "NelderMead" or pick.startswith("PRIMA")
+    assert pick == "Alloy" or pick == "NelderMead" or pick.startswith("PRIMA")
 
 
 def test_recommend_low_dim_cheap_avoids_bayesian():
