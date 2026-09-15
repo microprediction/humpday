@@ -74,6 +74,10 @@ const TIER = {
     LBFGSB: TIER_LIGHT,
     PatternSearch: TIER_LIGHT,
     CoordinateDescent: TIER_LIGHT,
+    // Alloy is a blend of light mechanisms (NM simplex ops, DE vectors,
+    // diagonal Gaussian, coordinate probes, SA gate): O(n) per iteration
+    // plus an O(n log n) simplex sort, same class as NelderMead.
+    Alloy: TIER_LIGHT,
     // Tier 2 — small linear-algebra updates per iteration.
     PRIMA_BOBYQA: TIER_MEDIUM,
     PRIMA_NEWUOA: TIER_MEDIUM,
