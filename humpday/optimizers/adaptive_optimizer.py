@@ -8,6 +8,7 @@ for which algorithms to use based on their performance.
 
 import json
 import os
+import warnings
 from collections.abc import Generator
 from typing import Any, Callable, Dict, List, Optional, Tuple
 
@@ -18,6 +19,8 @@ from .alloptimizers import PURE_OPTIMIZERS, pure_optimize
 
 class EloRatingSystem:
     """Elo rating system for optimization algorithms."""
+
+    last_error: Optional[Exception] = None  # the exception behind the last False
 
     def __init__(self, initial_rating: float = 1500.0, k_factor: float = 32.0):
         self.initial_rating = initial_rating
@@ -73,42 +76,56 @@ class EloRatingSystem:
         return sorted_ratings[:n]
 
     def save_ratings(self, filepath: str) -> bool:
-        """Save ratings and history to file. Returns True if successful."""
+        """Save ratings and history to file. Returns True if successful.
+
+        On an I/O failure the exception is kept in ``last_error`` and False is
+        returned; nothing else is swallowed. A bare filename saves into the
+        current directory (its parent is "" and needs no creating).
+        """
+        data = {
+            "ratings": self.ratings,
+            "match_history": self.match_history,
+            "initial_rating": self.initial_rating,
+            "k_factor": self.k_factor,
+        }
         try:
-            data = {
-                "ratings": self.ratings,
-                "match_history": self.match_history,
-                "initial_rating": self.initial_rating,
-                "k_factor": self.k_factor,
-            }
-            os.makedirs(os.path.dirname(filepath), exist_ok=True)
+            parent = os.path.dirname(filepath)
+            if parent:
+                os.makedirs(parent, exist_ok=True)
             with open(filepath, "w") as f:
                 json.dump(data, f, indent=2)
-            return True
-        except Exception:
+        except OSError as exc:
+            self.last_error = exc
             return False
+        self.last_error = None
+        return True
 
     def load_ratings(self, filepath: str) -> bool:
         """Load ratings and history from file. Returns True if successful."""
+        if not os.path.exists(filepath):
+            return False
         try:
-            if os.path.exists(filepath):
-                with open(filepath) as f:
-                    data = json.load(f)
+            with open(filepath) as f:
+                data = json.load(f)
+        except (OSError, ValueError) as exc:  # unreadable, or not JSON
+            self.last_error = exc
+            return False
+        if not isinstance(data, dict):
+            self.last_error = ValueError(f"{filepath}: expected a JSON object")
+            return False
 
-                self.ratings = data.get("ratings", {})
-                self.match_history = data.get("match_history", [])
-                self.initial_rating = data.get("initial_rating", 1500.0)
-                self.k_factor = data.get("k_factor", 32.0)
+        self.ratings = data.get("ratings", {})
+        self.match_history = data.get("match_history", [])
+        self.initial_rating = data.get("initial_rating", 1500.0)
+        self.k_factor = data.get("k_factor", 32.0)
 
-                # Ensure all algorithms have ratings
-                for alg in PURE_OPTIMIZERS.keys():
-                    if alg not in self.ratings:
-                        self.ratings[alg] = self.initial_rating
+        # Ensure all algorithms have ratings
+        for alg in PURE_OPTIMIZERS.keys():
+            if alg not in self.ratings:
+                self.ratings[alg] = self.initial_rating
 
-                return True
-        except Exception:
-            pass
-        return False
+        self.last_error = None
+        return True
 
 
 def normalize_performance(values: List[float]) -> List[float]:
@@ -133,6 +150,7 @@ def run_algorithm_tournament(
     n_dim: int,
     elo_system: Optional[EloRatingSystem] = None,
     algorithms_to_test: Optional[List[str]] = None,
+    stats: Optional[Dict[str, int]] = None,
 ) -> EloRatingSystem:
     """
     Run a tournament between algorithms on multiple problems.
@@ -144,6 +162,10 @@ def run_algorithm_tournament(
         n_dim: Problem dimension
         elo_system: Existing Elo system to update (creates new if None)
         algorithms_to_test: List of algorithm names to test (tests all if None)
+        stats: Optional dict that receives what actually happened:
+            ``problems`` consumed from the generator and ``evaluations``
+            (objective calls) made. Both are what a budget should be
+            charged for, as opposed to what was requested.
 
     Returns:
         Updated EloRatingSystem
@@ -153,6 +175,11 @@ def run_algorithm_tournament(
 
     if algorithms_to_test is None:
         algorithms_to_test = list(PURE_OPTIMIZERS.keys())
+
+    if stats is None:
+        stats = {}
+    stats.setdefault("problems", 0)
+    stats.setdefault("evaluations", 0)
 
     print(
         f"Running tournament with {len(algorithms_to_test)} algorithms on {n_problems} problems..."
@@ -164,15 +191,20 @@ def run_algorithm_tournament(
         except StopIteration:
             print(f"Objective generator exhausted after {problem_idx} problems")
             break
+        stats["problems"] += 1
 
         print(f"Problem {problem_idx + 1}/{n_problems}")
+
+        def counted(x, _f=objective):
+            stats["evaluations"] += 1
+            return _f(x)
 
         # Run all algorithms on this problem
         results = {}
         for alg_name in algorithms_to_test:
             try:
                 best_value, _ = pure_optimize(
-                    objective, alg_name, trials_per_problem, n_dim
+                    counted, alg_name, trials_per_problem, n_dim
                 )
                 results[alg_name] = best_value
             except Exception as e:
@@ -248,43 +280,55 @@ def adaptive_optimize(
         if verbose:
             print("Initializing new Elo rating system")
 
-    # Warmup phase: test all algorithms on several problems
-    if verbose:
-        print(f"\nWarmup phase: testing all algorithms on {n_warmup_problems} problems")
+    # The budget is total objective evaluations, so every round is paid for
+    # before it is dispatched: a problem costs (algorithms x trials) at most,
+    # and only as many problems as fit are scheduled. Actual spend is then
+    # read back from the tournament, since optimizers may stop early.
+    stats = {"problems": 0, "evaluations": 0}
+    round_cost = len(PURE_OPTIMIZERS) * trials_per_warmup
+    warmup_problems = min(n_warmup_problems, trials_budget // round_cost)
 
-    elo_system = run_algorithm_tournament(
-        objective_generator=objective_generator,
-        trials_per_problem=trials_per_warmup,
-        n_problems=n_warmup_problems,
-        n_dim=n_dim,
-        elo_system=elo_system,
-    )
+    if warmup_problems > 0:
+        if verbose:
+            print(
+                f"\nWarmup phase: testing all algorithms on {warmup_problems} problems"
+            )
+        elo_system = run_algorithm_tournament(
+            objective_generator=objective_generator,
+            trials_per_problem=trials_per_warmup,
+            n_problems=warmup_problems,
+            n_dim=n_dim,
+            elo_system=elo_system,
+            stats=stats,
+        )
+    elif verbose:
+        print(
+            f"\nBudget of {trials_budget} evaluations cannot pay for one warmup "
+            f"round ({round_cost}); no problems will be run"
+        )
 
     # Get current top algorithms
     top_algorithms = elo_system.get_top_algorithms(10)
-    if verbose:
+    if verbose and warmup_problems > 0:
         print("\nTop algorithms after warmup:")
         for i, (alg, rating) in enumerate(top_algorithms[:5], 1):
             print(f"{i}. {alg}: {rating:.1f}")
 
-    # Adaptive phase: focus on top algorithms
-    remaining_budget = trials_budget - (
-        n_warmup_problems * len(PURE_OPTIMIZERS) * trials_per_warmup
+    # Adaptive phase: focus on top algorithms, with whatever is actually left.
+    remaining_budget = trials_budget - stats["evaluations"]
+    top_algorithm_names = [alg for alg, _ in top_algorithms[:8]]
+    adaptive_round_cost = len(top_algorithm_names) * trials_per_warmup
+    adaptive_problems = (
+        remaining_budget // adaptive_round_cost
+        if warmup_problems > 0 and adaptive_round_cost > 0
+        else 0
     )
-    if remaining_budget > 0:
-        # Select top algorithms for continued testing
-        top_algorithm_names = [alg for alg, _ in top_algorithms[:8]]
-
+    if adaptive_problems > 0:
         if verbose:
             print(
                 f"\nAdaptive phase: focusing on top {len(top_algorithm_names)} algorithms"
             )
             print(f"Remaining budget: {remaining_budget} trials")
-
-        # Continue testing with adaptive strategy
-        adaptive_problems = max(
-            1, remaining_budget // (len(top_algorithm_names) * trials_per_warmup)
-        )
 
         elo_system = run_algorithm_tournament(
             objective_generator=objective_generator,
@@ -293,6 +337,7 @@ def adaptive_optimize(
             n_dim=n_dim,
             elo_system=elo_system,
             algorithms_to_test=top_algorithm_names,
+            stats=stats,
         )
 
     # Final results
@@ -318,11 +363,21 @@ def adaptive_optimize(
         "general_purpose": [alg for alg, _ in final_top_algorithms[:5]],
     }
 
-    # Save updated ratings
+    # Save updated ratings. A failed save is reported, never announced as
+    # a success: the caller asked for persistence and did not get it.
+    ratings_saved = None
     if elo_ratings_file:
-        elo_system.save_ratings(elo_ratings_file)
-        if verbose:
-            print(f"\nSaved updated Elo ratings to {elo_ratings_file}")
+        ratings_saved = elo_system.save_ratings(elo_ratings_file)
+        if ratings_saved:
+            if verbose:
+                print(f"\nSaved updated Elo ratings to {elo_ratings_file}")
+        else:
+            warnings.warn(
+                f"could not save Elo ratings to {elo_ratings_file}: "
+                f"{elo_system.last_error}",
+                RuntimeWarning,
+                stacklevel=2,
+            )
 
     if verbose:
         print("\nFinal top algorithms:")
@@ -333,10 +388,10 @@ def adaptive_optimize(
         "elo_system": elo_system,
         "top_algorithms": final_top_algorithms,
         "recommendations": recommendations,
-        "total_problems_solved": n_warmup_problems + adaptive_problems
-        if remaining_budget > 0
-        else n_warmup_problems,
+        "total_problems_solved": stats["problems"],
+        "total_evaluations": stats["evaluations"],
         "total_matches": len(elo_system.match_history),
+        "ratings_saved": ratings_saved,
     }
 
 

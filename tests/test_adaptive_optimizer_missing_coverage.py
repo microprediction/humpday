@@ -54,12 +54,23 @@ class TestAdaptiveOptimizerMissingCoverage:
         elo.update_ratings("RandomSearch", "NelderMead", 1.0)
         elo.update_ratings("RandomSearch", "NelderMead", 0.0)
 
-        # Test save to invalid path (should trigger error handling)
-        try:
-            success = elo.save_ratings("/invalid/nonexistent/path/ratings.json")
-            assert success is False
-        except (OSError, PermissionError, FileNotFoundError):
-            pass  # Expected error
+        # Test save against an injected I/O failure. (A supposedly unwritable
+        # absolute path is not a reliable stand-in: a privileged environment
+        # can create it.)
+        import builtins
+        from unittest import mock
+
+        real_open = builtins.open
+
+        def denied(path, *args, **kwargs):
+            if str(path).endswith("ratings.json"):
+                raise PermissionError("injected")
+            return real_open(path, *args, **kwargs)
+
+        with mock.patch("builtins.open", side_effect=denied):
+            success = elo.save_ratings("ratings.json")
+        assert success is False
+        assert isinstance(elo.last_error, PermissionError)
 
     def test_elo_system_file_operations(self):
         """Test EloRatingSystem file save/load edge cases (lines 185, 187)."""
