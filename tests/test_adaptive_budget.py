@@ -71,11 +71,16 @@ def test_never_exceeds_the_budget(budget):
     assert r["total_problems_solved"] >= budget // ROUND
 
 
-def test_remainder_smaller_than_an_adaptive_round_is_not_spent():
-    # One full warmup round fits; what is left cannot pay for 8 x TRIALS.
-    r, calls = _run(_problems(20), budget=ROUND + 8 * TRIALS - 1, n_warmup_problems=1)
-    assert calls <= ROUND
-    assert r["total_problems_solved"] == 1
+def test_spends_until_another_adaptive_round_is_unaffordable():
+    # Optimizers may stop early, so the warmup's actual spend can be below
+    # its nominal cost; the adaptive phase is allocated from what is really
+    # left. Either way the run ends only when one more round of 8 x TRIALS
+    # would break the budget (or the generator runs dry -- it does not here).
+    budget = ROUND + 8 * TRIALS - 1
+    r, calls = _run(_problems(50), budget=budget, n_warmup_problems=1)
+    assert calls <= budget
+    assert budget - calls < 8 * TRIALS
+    assert r["total_problems_solved"] >= 1
 
 
 def test_short_generator_counts_only_consumed_problems():
