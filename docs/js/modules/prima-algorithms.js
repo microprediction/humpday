@@ -388,18 +388,18 @@ function dogleg(g, H, rho, n) {
     const Hg = Linalg.matvec(H, g);
     let gHg = 0;
     for (let i = 0; i < n; i++) gHg += g[i] * Hg[i];
-    const alphaC = gHg > 1e-12 ? gNormSq / gHg : 1.0;
-
-    const dCauchy = g.map(v => -alphaC * v);
-    let cauchyNorm = 0;
-    for (let i = 0; i < n; i++) cauchyNorm += dCauchy[i] * dCauchy[i];
-    cauchyNorm = Math.sqrt(cauchyNorm);
-
-    if (cauchyNorm >= rho) {
-        // Cauchy is already outside TR → step rho along -g.
-        const gNorm = Math.sqrt(gNormSq);
+    const gNorm = Math.sqrt(gNormSq);
+    if (gHg <= 0) {
+        // Non-positive curvature along -g: the model keeps decreasing all
+        // the way to the boundary (twin of PRIMA_NEWUOA._dogleg_method).
         return g.map(v => (-rho / gNorm) * v);
     }
+    const alphaC = gNormSq / gHg;
+    if (alphaC * gNorm >= rho) {
+        // Cauchy point is outside the TR → step rho along -g.
+        return g.map(v => (-rho / gNorm) * v);
+    }
+    const dCauchy = g.map(v => -alphaC * v);
 
     try {
         const L = Linalg.cholesky(H);

@@ -413,6 +413,72 @@ _UOBYQA_DELTA_MAX = 1.0
 _UOBYQA_RHO_DECAY = 0.1
 
 
+def _steihaug_boundary(d, p, rho, n):
+    """Find tau >= 0 such that ||d + tau p|| = rho, return d + tau p."""
+    dd = float(_A.dot(d, d))
+    dp = float(_A.dot(d, p))
+    pp = float(_A.dot(p, p))
+    if pp < 1e-30:
+        return d
+    disc = dp * dp - pp * (dd - rho * rho)
+    if disc < 0:
+        return d  # d already outside TR — shouldn't happen
+    tau = (-dp + math.sqrt(disc)) / pp
+    return _A.asarray([float(d[i]) + tau * float(p[i]) for i in range(n)])
+
+
+def _steihaug_cg(g, H, rho, n):
+    """Steihaug-Toint truncated CG for min g·d + ½ d·H·d s.t. ||d|| <= rho.
+
+    Handles indefinite H: when the CG direction has negative curvature it
+    steps to the trust-region boundary along that direction instead of
+    trusting a Newton step. Shared by UOBYQA (whose overdetermined
+    regression makes indefinite models the common case) and NEWUOA's
+    dogleg fallback. Reference: Steihaug (1983), SIAM J. Numer. Anal. 20(3);
+    Nocedal & Wright (2006) section 7.5.
+    """
+    g_norm = float(_A.norm(g))
+    if g_norm < 1e-15:
+        return _A.zeros(n)
+
+    # Standard CG tolerance: stop when the residual is 10% of the
+    # initial gradient norm (Steihaug's recommendation). The TR
+    # boundary / negative-curvature checks usually trip first.
+    tol = max(0.1 * g_norm, 1e-8)
+    max_iter = 2 * n + 5
+
+    d = _A.zeros(n)
+    r = _A.asarray([float(g[i]) for i in range(n)])  # residual at d=0
+    p = _A.asarray([-float(r[i]) for i in range(n)])
+
+    for _ in range(max_iter):
+        Hp = _A.linalg.matvec(H, p)
+        pHp = float(_A.dot(p, Hp))
+
+        if pHp <= 1e-15:
+            # Negative or zero curvature along p: step to TR boundary.
+            return _steihaug_boundary(d, p, rho, n)
+
+        rr = float(_A.dot(r, r))
+        alpha = rr / pHp
+        d_new = _A.asarray([float(d[i]) + alpha * float(p[i]) for i in range(n)])
+
+        if float(_A.norm(d_new)) >= rho:
+            # Step would exit TR: cap at boundary along p.
+            return _steihaug_boundary(d, p, rho, n)
+
+        r_new = _A.asarray([float(r[i]) + alpha * float(Hp[i]) for i in range(n)])
+        if float(_A.norm(r_new)) < tol:
+            return d_new
+
+        beta = float(_A.dot(r_new, r_new)) / rr
+        p = _A.asarray([-float(r_new[i]) + beta * float(p[i]) for i in range(n)])
+        d = d_new
+        r = r_new
+
+    return d
+
+
 class PRIMA_UOBYQA(BaseOptimizer):
     """PRIMA UOBYQA — quadratic-interpolation trust-region method.
 
@@ -864,63 +930,11 @@ class PRIMA_UOBYQA(BaseOptimizer):
         Steihaug-Toint catches negative curvature and steps to the
         boundary in the descent direction instead.
         """
-        g_norm = float(_A.norm(g))
-        if g_norm < 1e-15:
-            return _A.zeros(n)
-
-        # Standard CG tolerance: stop when the residual is 10% of the
-        # initial gradient norm (Steihaug's recommendation). The TR
-        # boundary / negative-curvature checks usually trip first.
-        tol = max(0.1 * g_norm, 1e-8)
-        max_iter = 2 * n + 5
-
-        d = _A.zeros(n)
-        r = _A.asarray([float(g[i]) for i in range(n)])  # residual at d=0
-        p = _A.asarray([-float(r[i]) for i in range(n)])
-
-        for _ in range(max_iter):
-            Hp = _A.linalg.matvec(H, p)
-            pHp = float(_A.dot(p, Hp))
-
-            if pHp <= 1e-15:
-                # Negative or zero curvature along p: step to TR boundary.
-                return self._steihaug_boundary_step(d, p, rho, n)
-
-            rr = float(_A.dot(r, r))
-            alpha = rr / pHp
-            d_new = _A.asarray([float(d[i]) + alpha * float(p[i]) for i in range(n)])
-
-            if float(_A.norm(d_new)) >= rho:
-                # Step would exit TR: cap at boundary along p.
-                return self._steihaug_boundary_step(d, p, rho, n)
-
-            r_new = _A.asarray([float(r[i]) + alpha * float(Hp[i]) for i in range(n)])
-            if float(_A.norm(r_new)) < tol:
-                return d_new
-
-            beta = float(_A.dot(r_new, r_new)) / rr
-            p = _A.asarray([-float(r_new[i]) + beta * float(p[i]) for i in range(n)])
-            d = d_new
-            r = r_new
-
-        return d
+        return _steihaug_cg(g, H, rho, n)
 
     def _steihaug_boundary_step(self, d, p, rho, n):
-        """Find tau ≥ 0 such that ||d + tau·p|| = rho, return d + tau·p.
-
-        Solves the quadratic (d + tau·p)·(d + tau·p) = rho² for the
-        positive root, which is the standard Steihaug boundary step.
-        """
-        dd = float(_A.dot(d, d))
-        dp = float(_A.dot(d, p))
-        pp = float(_A.dot(p, p))
-        if pp < 1e-30:
-            return d
-        disc = dp * dp - pp * (dd - rho * rho)
-        if disc < 0:
-            return d  # d already outside TR — shouldn't happen
-        tau = (-dp + math.sqrt(disc)) / pp
-        return _A.asarray([float(d[i]) + tau * float(p[i]) for i in range(n)])
+        """Find tau ≥ 0 such that ||d + tau·p|| = rho, return d + tau·p."""
+        return _steihaug_boundary(d, p, rho, n)
 
     def _initialize_interpolation_points(self, xbase, rho, npt, n):
         """Lay out the initial interpolation set. Returns (XPT_list, FVAL_list)
@@ -1234,24 +1248,43 @@ class PRIMA_NEWUOA(BaseOptimizer):
                 d_newton = -_A.linalg.solve(H, g)
                 if _A.norm(d_newton) <= rho:
                     return d_newton
-        except Exception:
+        except (ValueError, ArithmeticError):
             pass
         return self._dogleg_method(g, H, rho, n)
 
     def _dogleg_method(self, g, H, rho, n):
-        """Dogleg trust-region solver."""
+        """Dogleg trust-region solver, safeguarded for indefinite models.
+
+        The Cauchy point is the exact minimiser of the model along -g inside
+        the ball, so the returned step always achieves at least Cauchy
+        decrease. The Newton leg is only taken once H has been shown positive
+        definite (Cholesky succeeds); a stationary point of an indefinite
+        quadratic is a saddle or a maximum and was previously accepted
+        whenever it lay inside the radius, increasing the model.
+        """
         g_norm_sq = _A.dot(g, g)
         if g_norm_sq < 1e-12:
             return _A.zeros(n)
+        g_norm = math.sqrt(g_norm_sq)
 
         Hg = _A.linalg.matvec(H, g)
         gHg = _A.dot(g, Hg)
-        alpha_c = g_norm_sq / gHg if gHg > 1e-12 else 1.0
-
+        if gHg <= 0:
+            # Non-positive curvature along -g: the model keeps decreasing
+            # all the way to the boundary.
+            return -(rho / g_norm) * g
+        alpha_c = g_norm_sq / gHg
+        if alpha_c * g_norm >= rho:
+            return -(rho / g_norm) * g
         d_cauchy = -alpha_c * g
 
-        if _A.norm(d_cauchy) >= rho:
-            return -rho * g / math.sqrt(g_norm_sq)
+        try:
+            _A.linalg.cholesky(H)  # positive definiteness, or ValueError
+        except (ValueError, ArithmeticError):
+            # Indefinite model: conjugate gradients run to the boundary along
+            # the first negative-curvature direction, which beats stopping at
+            # the Cauchy point on non-convex models.
+            return _steihaug_cg(g, H, rho, n)
 
         try:
             d_newton = -_A.linalg.solve(H, g)
@@ -1268,8 +1301,8 @@ class PRIMA_NEWUOA(BaseOptimizer):
             if discriminant >= 0 and a > 1e-12:
                 tau = (-b_coef + math.sqrt(discriminant)) / (2 * a)
                 return d_cauchy + tau * diff
-        except Exception:
-            pass
+        except (ValueError, ArithmeticError):
+            pass  # not positive definite, or singular: the Cauchy point stands
 
         return d_cauchy
 
