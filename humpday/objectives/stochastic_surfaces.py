@@ -10,17 +10,43 @@ from typing import Any, Callable, Dict
 import numpy as np
 
 
+def _stable_seed(function_id: str) -> int:
+    """A seed derived from the instance id that is the same in every process.
+
+    Python's hash() of a str is salted per process (PYTHONHASHSEED), so a
+    rotation seeded from it made a "fixed" instance a different landscape in
+    every worker.
+    """
+    return int(hashlib.md5(function_id.encode()).hexdigest()[:8], 16)
+
+
 class StochasticSurfaceGenerator:
     """
     Generates random variations of benchmark functions to ensure fair comparison.
     Critical for avoiding bias from lucky/unlucky initial guesses.
+
+    Every landscape is frozen when its objective is built: shifts, scale,
+    rotation and the Ackley coefficients are drawn once and reused on every
+    evaluation, and the rotation matrix is factorised once. The only thing
+    that varies between evaluations of the same point is the separately
+    configured observation noise (`noise_level`), and that has its own
+    stream, so evaluating an objective never touches the global RNGs the
+    optimizers draw from.
     """
 
     def __init__(self, seed: int = None):
-        """Initialize with optional seed for reproducible experiments."""
-        if seed is not None:
-            np.random.seed(seed)
-            random.seed(seed)
+        """Initialize with optional seed for reproducible experiments.
+
+        The generator owns its random streams (numpy's RandomState and a
+        stdlib Random) rather than reseeding the global ones, so building a
+        suite does not reset the optimizers' RNG. RandomState(seed) draws the
+        same sequence np.random.seed(seed) used to, so seeded suites are the
+        ones they were before.
+        """
+        self._rng = np.random.RandomState(seed)
+        self._py_rng = random.Random(seed)
+        self._noise_rng = np.random.RandomState(None if seed is None else seed + 1)
+        self._rotations: Dict[tuple, np.ndarray] = {}
 
         # Generate random parameters for this run
         self._generate_random_parameters()
@@ -29,27 +55,27 @@ class StochasticSurfaceGenerator:
         """Generate random parameters that will be used across all functions in this run."""
 
         # Random shifts (different for each dimension)
-        self.global_shift = np.random.uniform(
+        self.global_shift = self._rng.uniform(
             -0.3, 0.3
         )  # Global shift for all functions
         self.dimension_shifts = {}  # Will be generated per function call
 
         # Random rotations
-        self.use_rotation = np.random.choice(
+        self.use_rotation = self._rng.choice(
             [True, False], p=[0.7, 0.3]
         )  # 70% chance of rotation
 
         # Random scaling factors
-        self.scale_factor = np.random.uniform(0.5, 2.0)
+        self.scale_factor = self._rng.uniform(0.5, 2.0)
 
         # Random noise level
-        self.noise_level = np.random.uniform(0.0, 0.05)  # Up to 5% noise
+        self.noise_level = self._rng.uniform(0.0, 0.05)  # Up to 5% noise
 
         # Random conditioning (for appropriate functions)
-        self.conditioning_factor = np.random.uniform(1.0, 100.0)
+        self.conditioning_factor = self._rng.uniform(1.0, 100.0)
 
         # Random multimodal density
-        self.modal_frequency = np.random.uniform(0.5, 2.0)
+        self.modal_frequency = self._rng.uniform(0.5, 2.0)
 
     def _get_dimension_shifts(self, n_dim: int, function_name: str) -> np.ndarray:
         """Get consistent dimension-specific shifts for a function."""
@@ -61,55 +87,57 @@ class StochasticSurfaceGenerator:
             seed_hash = int(hashlib.md5(seed_string.encode()).hexdigest()[:8], 16)
 
             # Use the hash as seed for this function's shifts
-            temp_state = np.random.get_state()
-            np.random.seed(seed_hash)
-            self.dimension_shifts[key] = np.random.uniform(-0.2, 0.2, n_dim)
-            np.random.set_state(temp_state)
+            self.dimension_shifts[key] = np.random.RandomState(seed_hash).uniform(
+                -0.2, 0.2, n_dim
+            )
 
         return self.dimension_shifts[key]
 
+    def _rotation_matrix(self, n_dim: int, seed: int) -> np.ndarray:
+        """The rotation for (seed, n_dim), built once and reused. Building it
+        means a QR factorisation in higher dimensions, which used to happen
+        on every evaluation and be charged to the objective's cost."""
+        key = (int(seed), n_dim)
+        matrix = self._rotations.get(key)
+        if matrix is None:
+            rng = np.random.RandomState(seed)
+            if n_dim == 2:
+                # 2D rotation
+                theta = rng.uniform(0, 2 * np.pi)
+                cos_t, sin_t = np.cos(theta), np.sin(theta)
+                matrix = np.array([[cos_t, -sin_t], [sin_t, cos_t]])
+            else:
+                # Higher dimensions: random orthogonal matrix
+                matrix = self._random_orthogonal_matrix(n_dim, rng)
+            self._rotations[key] = matrix
+        return matrix
+
     def _apply_rotation(self, x: np.ndarray, seed: int = 42) -> np.ndarray:
-        """Apply random rotation to break coordinate alignment."""
+        """Apply the instance's fixed rotation to break coordinate alignment."""
         if not self.use_rotation or len(x) == 1:
             return x
+        return self._rotation_matrix(len(x), seed) @ x
 
-        # Generate rotation matrix deterministically for this instance
-        temp_state = np.random.get_state()
-        np.random.seed(seed)
-
-        n_dim = len(x)
-        if n_dim == 2:
-            # 2D rotation
-            theta = np.random.uniform(0, 2 * np.pi)
-            cos_t, sin_t = np.cos(theta), np.sin(theta)
-            rotation_matrix = np.array([[cos_t, -sin_t], [sin_t, cos_t]])
-        else:
-            # Higher dimensions: random orthogonal matrix
-            rotation_matrix = self._random_orthogonal_matrix(n_dim)
-
-        np.random.set_state(temp_state)
-
-        return rotation_matrix @ x
-
-    def _random_orthogonal_matrix(self, n: int) -> np.ndarray:
+    def _random_orthogonal_matrix(self, n: int, rng=None) -> np.ndarray:
         """Generate random orthogonal matrix using QR decomposition."""
-        A = np.random.randn(n, n)
+        rng = np.random if rng is None else rng
+        A = rng.randn(n, n)
         Q, R = np.linalg.qr(A)
         # Make sure we have a proper rotation (det = 1)
         Q[:, 0] *= np.sign(R[0, 0])
         return Q
 
     def _add_noise(self, value: float) -> float:
-        """Add random noise to function evaluation."""
+        """Add observation noise from the generator's own stream."""
         if self.noise_level > 0:
-            noise = np.random.normal(0, self.noise_level * abs(value))
+            noise = self._noise_rng.normal(0, self.noise_level * abs(value))
             return value + noise
         return value
 
     def stochastic_sphere(self, function_id: str = None) -> Callable:
         """Random variation of sphere function."""
         if function_id is None:
-            function_id = f"sphere_{np.random.randint(0, 1000000)}"
+            function_id = f"sphere_{self._rng.randint(0, 1000000)}"
 
         def func(x):
             x = np.array(x)
@@ -122,7 +150,7 @@ class StochasticSurfaceGenerator:
             scaled_x = self.scale_factor * (10 * x - 5) + dim_shifts + self.global_shift
 
             # Apply random rotation
-            rotated_x = self._apply_rotation(scaled_x, seed=hash(function_id) % 2**31)
+            rotated_x = self._apply_rotation(scaled_x, seed=_stable_seed(function_id))
 
             # Compute sphere function
             result = np.sum(rotated_x**2)
@@ -135,7 +163,7 @@ class StochasticSurfaceGenerator:
     def stochastic_rastrigin(self, function_id: str = None) -> Callable:
         """Random variation of Rastrigin function."""
         if function_id is None:
-            function_id = f"rastrigin_{np.random.randint(0, 1000000)}"
+            function_id = f"rastrigin_{self._rng.randint(0, 1000000)}"
 
         def func(x):
             x = np.array(x)
@@ -150,7 +178,7 @@ class StochasticSurfaceGenerator:
             )
 
             # Apply rotation
-            rotated_x = self._apply_rotation(scaled_x, seed=hash(function_id) % 2**31)
+            rotated_x = self._apply_rotation(scaled_x, seed=_stable_seed(function_id))
 
             # Rastrigin with random frequency modulation
             freq = self.modal_frequency
@@ -165,7 +193,7 @@ class StochasticSurfaceGenerator:
     def stochastic_rosenbrock(self, function_id: str = None) -> Callable:
         """Random variation of Rosenbrock function."""
         if function_id is None:
-            function_id = f"rosenbrock_{np.random.randint(0, 1000000)}"
+            function_id = f"rosenbrock_{self._rng.randint(0, 1000000)}"
 
         def func(x):
             x = np.array(x)
@@ -183,7 +211,7 @@ class StochasticSurfaceGenerator:
             )
 
             # Apply rotation
-            rotated_x = self._apply_rotation(scaled_x, seed=hash(function_id) % 2**31)
+            rotated_x = self._apply_rotation(scaled_x, seed=_stable_seed(function_id))
 
             # Rosenbrock with random conditioning factor
             a = 1.0
@@ -201,7 +229,13 @@ class StochasticSurfaceGenerator:
     def stochastic_ackley(self, function_id: str = None) -> Callable:
         """Random variation of Ackley function."""
         if function_id is None:
-            function_id = f"ackley_{np.random.randint(0, 1000000)}"
+            function_id = f"ackley_{self._rng.randint(0, 1000000)}"
+
+        # Ackley's coefficients are part of this instance's landscape: drawn
+        # once here, from the instance id, not on every evaluation.
+        coeff_rng = np.random.RandomState(_stable_seed(function_id + "/ackley"))
+        a = 20 * coeff_rng.uniform(0.8, 1.2)  # Slight randomization
+        b = 0.2 * coeff_rng.uniform(0.8, 1.2)
 
         def func(x):
             x = np.array(x)
@@ -217,11 +251,8 @@ class StochasticSurfaceGenerator:
             )
 
             # Apply rotation
-            rotated_x = self._apply_rotation(scaled_x, seed=hash(function_id) % 2**31)
+            rotated_x = self._apply_rotation(scaled_x, seed=_stable_seed(function_id))
 
-            # Ackley with random parameters
-            a = 20 * np.random.uniform(0.8, 1.2)  # Slight randomization
-            b = 0.2 * np.random.uniform(0.8, 1.2)
             c = 2 * np.pi * self.modal_frequency
 
             term1 = -a * np.exp(-b * np.sqrt(np.sum(rotated_x**2) / n_dim))
@@ -235,7 +266,7 @@ class StochasticSurfaceGenerator:
     def stochastic_griewank(self, function_id: str = None) -> Callable:
         """Random variation of Griewank function."""
         if function_id is None:
-            function_id = f"griewank_{np.random.randint(0, 1000000)}"
+            function_id = f"griewank_{self._rng.randint(0, 1000000)}"
 
         def func(x):
             x = np.array(x)
@@ -249,7 +280,7 @@ class StochasticSurfaceGenerator:
             )
 
             # Apply rotation
-            rotated_x = self._apply_rotation(scaled_x, seed=hash(function_id) % 2**31)
+            rotated_x = self._apply_rotation(scaled_x, seed=_stable_seed(function_id))
 
             # Griewank function
             sum_sq = np.sum(rotated_x**2) / 4000
@@ -275,10 +306,10 @@ class StochasticSurfaceGenerator:
 
         for i in range(n_functions):
             # Randomly select base function type
-            base_name, base_func = random.choice(base_functions)
+            base_name, base_func = self._py_rng.choice(base_functions)
 
             # Create unique instance
-            instance_id = f"{base_name}_instance_{i}_{np.random.randint(0, 1000000)}"
+            instance_id = f"{base_name}_instance_{i}_{self._rng.randint(0, 1000000)}"
             suite[instance_id] = base_func(instance_id)
 
         return suite
