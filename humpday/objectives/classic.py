@@ -8,6 +8,7 @@
 ## Basis of tricky functions
 import datetime
 import math
+import random as _random
 
 import numpy as np
 
@@ -77,34 +78,76 @@ def shaffer_on_cube(u: [float]) -> float:
     return 0.01 * schaffer(u_squished)[0] / (0.1042133 * 0.71809)
 
 
-def shekel_on_cube(u: [float]) -> float:
-    # https://deap.readthedocs.io/en/master/api/benchmarks.html#deap.benchmarks.schaffer
+_SHEKEL_PEAKS: dict = {}
 
-    n_dim = len(u)
-    NUMMAX = 15
-    A = 10 * np.random.rand(NUMMAX, n_dim)
-    C = np.random.rand(NUMMAX)
-    u_squished = [800 * (smoosh(ui) - 0.5) for ui in u]
-    return 1.2298 - shekel(u_squished, A, C)[0]
+
+def _shekel_peaks(n_dim: int):
+    """Shekel's 15 peak locations in [0, 10]^n and widths, fixed per dimension.
+
+    They used to be drawn from np.random on every call, which made the
+    surface a different function each evaluation and consumed the global
+    stream the optimizers draw from; and the cube was mapped to [-400, 400]^n
+    while the peaks sat in [0, 10]^n, so the surface was constant to 1e-6
+    everywhere. A fixed seed gives one landscape; DEAP's domain gives it
+    structure.
+    """
+    if n_dim not in _SHEKEL_PEAKS:
+        rng = np.random.RandomState(1729 + n_dim)
+        _SHEKEL_PEAKS[n_dim] = (10 * rng.rand(15, n_dim), rng.rand(15))
+    return _SHEKEL_PEAKS[n_dim]
+
+
+def shekel_on_cube(u: [float]) -> float:
+    # https://deap.readthedocs.io/en/master/api/benchmarks.html#deap.benchmarks.shekel
+    A, C = _shekel_peaks(len(u))
+    u_scaled = [10 * smoosh(ui) for ui in u]
+    return 1.2298 - shekel(u_scaled, A, C)[0]
 
 
 ## Combinations
+#
+# A combination exists to blend behaviours, which only happens if each
+# component is put on a common scale first. The `_on_cube` wrappers do not
+# achieve that: on the unit cube qing_on_cube returns values around 1e13 and
+# michaelewicz_on_cube around 1.4, so summing them and dividing by a constant
+# gave qing plus a rounding error, rank-identical to qing alone. Each
+# component is therefore scaled by its own empirical range on the cube at the
+# dimension being evaluated -- measured once on a fixed sample and cached --
+# and the combination is the mean of the scaled components.
+
+_COMBO_SAMPLE = 64
+_COMBO_RANGES: dict = {}
+
+
+def _component_range(f, n_dim: int):
+    key = (f.__name__, n_dim)
+    if key not in _COMBO_RANGES:
+        rnd = _random.Random(1729 + n_dim)
+        values = [f([rnd.random() for _ in range(n_dim)]) for _ in range(_COMBO_SAMPLE)]
+        lo, hi = min(values), max(values)
+        _COMBO_RANGES[key] = (lo, (hi - lo) or 1.0)
+    return _COMBO_RANGES[key]
+
+
+def _blend(u, *components) -> float:
+    n_dim = len(u)
+    total = 0.0
+    for f in components:
+        lo, span = _component_range(f, n_dim)
+        total += (f(u) - lo) / span
+    return total / len(components)
 
 
 def deap_combo1_on_cube(u: [float]) -> float:
-    return 0.3 * (schwefel_on_cube(u) + griewank_on_cube(u) + shekel_on_cube(u)) / 1.883
+    return _blend(u, schwefel_on_cube, griewank_on_cube, shekel_on_cube)
 
 
 def deap_combo2_on_cube(u: [float]) -> float:
-    return 0.5 * (shaffer_on_cube(u) + shekel_on_cube(u)) - 0.1075
+    return _blend(u, shaffer_on_cube, shekel_on_cube)
 
 
 def deap_combo3_on_cube(u: [float]) -> float:
-    return (
-        0.5
-        * (rosenbrock_on_cube(u) + bohachevsky_on_cube(u) + shekel_on_cube(u))
-        / 1.88
-    )
+    return _blend(u, rosenbrock_on_cube, bohachevsky_on_cube, shekel_on_cube)
 
 
 DEAP_OBJECTIVES = [
@@ -278,15 +321,15 @@ def michaelewicz_on_cube(u: [float]) -> float:
 
 
 def landscapes_combo1_on_cube(u: [float]) -> float:
-    return (qing_on_cube(u) + michaelewicz_on_cube(u)) / (1.5744 * 1.4688)
+    return _blend(u, qing_on_cube, michaelewicz_on_cube)
 
 
 def landscapes_combo2_on_cube(u: [float]) -> float:
-    return (rotated_hyper_ellipsoid_on_cube(u) + salomon_on_cube(u)) / (6.7555 * 0.82)
+    return _blend(u, rotated_hyper_ellipsoid_on_cube, salomon_on_cube)
 
 
 def landscapes_combo3_on_cube(u: [float]) -> float:
-    return (2 + zakharov_on_cube(u) + styblinski_tang_on_cube(u)) / 4.4329
+    return _blend(u, zakharov_on_cube, styblinski_tang_on_cube)
 
 
 LANDSCAPES_OBJECTIVES = [
