@@ -192,8 +192,11 @@ class TestSciPyAlgorithms:
             noise = 0.01 * np.random.randn()
             return clean + noise
 
+        from humpday import _array as _A
+
         for AlgorithmClass in [NelderMead, Powell, LBFGSB]:
-            np.random.seed(789)
+            np.random.seed(789)  # the objective's noise
+            _A.seed(789)  # the optimizer's own draws, on whichever backend is live
             optimizer = AlgorithmClass(noisy_function, n_trials=60, n_dim=2)
             best_value, best_x = optimizer.optimize()
 

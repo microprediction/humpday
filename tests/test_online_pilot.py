@@ -12,6 +12,7 @@ import random
 
 import pytest
 
+from humpday import _array as _A
 from humpday.optimizers.alloy import Alloy
 from humpday.optimizers.evolutionary_algorithms import (
     AntColonyOpt,
@@ -66,16 +67,13 @@ from .reference_impls_pre_online import (
     FrozenSimulatedAnnealing,
 )
 
-try:
-    import numpy as np
-except ImportError:  # pure backend
-    np = None
-
 
 def _seed(seed):
+    # Only _A.seed reaches the live backend's stream (numpy's global RNG, or
+    # the pure backend's private random.Random); the stdlib global is seeded
+    # for the legacy rng_* facade.
     random.seed(seed)
-    if np is not None:
-        np.random.seed(seed)
+    _A.seed(seed)
 
 
 def sphere(x):

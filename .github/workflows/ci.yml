@@ -43,7 +43,7 @@ jobs:
 
 
     - name: Upload coverage to Codecov
-      if: matrix.os == 'ubuntu-latest' && matrix.python-version == '3.11'
+      if: matrix.python-version == '3.11'
       uses: codecov/codecov-action@v4
       with:
         file: ./coverage.xml
@@ -72,6 +72,16 @@ jobs:
         HUMPDAY_FORCE_PURE_ARRAY: "1"
       run: |
         pytest tests/test_transition_vectors.py tests/test_prng_parity.py tests/test_portable_rng_mode.py -q
+    - name: Full suite on the pure backend
+      # The whole default suite on the backend a dependency-free install
+      # actually gets. tests/conftest.py fails any test that starts or
+      # finishes on the other backend, so a green run here means the suite
+      # validated the pure implementation and not numpy.
+      if: matrix.python-version == '3.11'
+      env:
+        HUMPDAY_FORCE_PURE_ARRAY: "1"
+      run: |
+        pytest tests -q
 
   test-minimal:
     runs-on: ubuntu-latest
