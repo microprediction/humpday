@@ -29,6 +29,14 @@ class _PRIMALinAlgError(ValueError):
     use the broad `Exception` clause, so this never escapes the algorithm."""
 
 
+# What the model builders may fall back from: the interpolation set was
+# numerically unusable (rank deficiency, a singular system, an overflow).
+# Anything else -- a backend that cannot do the requested factorisation, a
+# programming error -- must surface, or a dependency-free install quietly
+# runs a different algorithm from the one the optimizer's name promises.
+_MODEL_FALLBACK_ERRORS = (_PRIMALinAlgError, ValueError, ArithmeticError)
+
+
 def _build_min_frobenius_quadratic(XPT, FVAL, H_prev, n):
     """Powell's NEWUOA-style minimum-Frobenius-norm quadratic update.
 
@@ -152,7 +160,7 @@ def _build_min_frobenius_quadratic(XPT, FVAL, H_prev, n):
         neg_ZT_b = [-v for v in ZT_b]
         try:
             mu = list(_A.linalg.solve(M, neg_ZT_b))
-        except Exception:
+        except ValueError:  # singular M (numpy's LinAlgError is a ValueError)
             mu = list(_A.linalg.matvec(_A.linalg.pinv(M), neg_ZT_b))
 
         x_q = [0.0] * p_quad
@@ -1183,7 +1191,7 @@ class PRIMA_NEWUOA(BaseOptimizer):
             _c, g, H = _build_min_frobenius_quadratic(XPT, FVAL, H_prev, n)
             self._H_prev = H
             return g, H
-        except Exception:
+        except _MODEL_FALLBACK_ERRORS:
             g = self._finite_difference_gradient(XPT, FVAL, kopt, n)
             H = _A.linalg.eye(n)
             # Don't update H_prev — keep the last successful Hessian.
@@ -1516,7 +1524,7 @@ class PRIMA_BOBYQA(BaseOptimizer):
             _c, g, H = _build_min_frobenius_quadratic(XPT, FVAL, H_prev, n)
             self._H_prev = H
             return g, H
-        except Exception:
+        except _MODEL_FALLBACK_ERRORS:
             g = self._finite_difference_gradient_bounded(XPT, FVAL, kopt, n)
             H = _A.linalg.eye(n)
             return g, H
