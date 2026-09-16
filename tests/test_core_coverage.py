@@ -708,4 +708,8 @@ class TestRatingsTableSemantics:
         for n_dim, budget, suite in product(dims, budgets, ratings.SUITES):
             key = f"{n_dim}/{budget}/{suite}"
             assert key in recorded, f"{key} is missing from the grid"
-            assert recorded[key]["problems"] >= 30, f"{key} is thin"
+            # A cell need not reach the 30-problem target: #339 lets a cell stop early on
+            # its wall-clock budget rather than burn a fixed depth against an objective
+            # whose per-evaluation cost the recorder discovers as it goes. What "complete"
+            # still means is that every cell has at least one honest measurement.
+            assert recorded[key]["problems"] >= 1, f"{key} was never measured"
