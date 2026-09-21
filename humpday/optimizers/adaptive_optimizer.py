@@ -455,6 +455,24 @@ def _uniform_in(low: float, high: float, n: int):
     return [low + span * _A.random_scalar() for _ in range(n)]
 
 
+def _frozen_per_dimension(low: float, high: float, n_dim: int):
+    """Per-dimension parameters for one problem instance, drawn once.
+
+    The draw for `n_dim` happens now, at construction, so it is part of the
+    instance and independent of whatever the optimizer later draws. Any other
+    length is drawn once on first use, since these objectives accept any
+    dimension. Returns `params_for(length) -> list`.
+    """
+    cache = {n_dim: _uniform_in(low, high, n_dim)}
+
+    def params_for(length: int):
+        if length not in cache:
+            cache[length] = _uniform_in(low, high, length)
+        return cache[length]
+
+    return params_for
+
+
 def sphere_variants_generator(
     n_dim: int = 2,
 ) -> Generator[Callable[[Any], float], None, None]:
@@ -464,19 +482,34 @@ def sphere_variants_generator(
         """sum(x_i ^ 2)"""
         return sum(float(xi) * float(xi) for xi in x)
 
-    def shifted_sphere(x):
-        """Sphere with a random per-dimension shift in [-0.3, 0.3]."""
-        shift = _uniform_in(-0.3, 0.3, len(x))
-        return sum((float(xi) + s) * (float(xi) + s) for xi, s in zip(x, shift))
+    def shifted_sphere_instance():
+        """Sphere with a random per-dimension shift in [-0.3, 0.3], drawn once
+        for this instance so it is one fixed problem."""
+        shifts = _frozen_per_dimension(-0.3, 0.3, n_dim)
 
-    def scaled_sphere(x):
-        """Sphere with random per-dimension scaling in [0.5, 2.0]."""
-        scales = _uniform_in(0.5, 2.0, len(x))
-        return sum((s * float(xi)) * (s * float(xi)) for xi, s in zip(x, scales))
+        def shifted_sphere(x):
+            shift = shifts(len(x))
+            return sum((float(xi) + s) * (float(xi) + s) for xi, s in zip(x, shift))
 
-    variants = [sphere_pure, shifted_sphere, scaled_sphere]
+        return shifted_sphere
+
+    def scaled_sphere_instance():
+        """Sphere with random per-dimension scaling in [0.5, 2.0], drawn once."""
+        scales_for = _frozen_per_dimension(0.5, 2.0, n_dim)
+
+        def scaled_sphere(x):
+            scales = scales_for(len(x))
+            return sum((s * float(xi)) * (s * float(xi)) for xi, s in zip(x, scales))
+
+        return scaled_sphere
+
+    variants = [
+        lambda: sphere_pure,
+        shifted_sphere_instance,
+        scaled_sphere_instance,
+    ]
     while True:
-        yield _A.random_choice(variants)
+        yield _A.random_choice(variants)()
 
 
 def rosenbrock_variants_generator(
@@ -496,17 +529,30 @@ def rosenbrock_variants_generator(
     def rosenbrock_pure(x):
         return _rosenbrock(list(x))
 
-    def scaled_rosenbrock(x):
-        """Rosenbrock × random scale in [0.1, 5.0]."""
+    def scaled_rosenbrock_instance():
+        """Rosenbrock x a random scale in [0.1, 5.0], drawn once for this instance."""
         scale = _uniform_in(0.1, 5.0, 1)[0]
-        return scale * _rosenbrock(list(x))
 
-    def shifted_rosenbrock(x):
-        """Rosenbrock with a random per-dimension shift in [-0.2, 0.2]."""
-        shift = _uniform_in(-0.2, 0.2, len(x))
-        shifted = [float(xi) + s for xi, s in zip(x, shift)]
-        return _rosenbrock(shifted)
+        def scaled_rosenbrock(x):
+            return scale * _rosenbrock(list(x))
 
-    variants = [rosenbrock_pure, scaled_rosenbrock, shifted_rosenbrock]
+        return scaled_rosenbrock
+
+    def shifted_rosenbrock_instance():
+        """Rosenbrock with a random per-dimension shift in [-0.2, 0.2], drawn once."""
+        shifts = _frozen_per_dimension(-0.2, 0.2, n_dim)
+
+        def shifted_rosenbrock(x):
+            shift = shifts(len(x))
+            shifted = [float(xi) + s for xi, s in zip(x, shift)]
+            return _rosenbrock(shifted)
+
+        return shifted_rosenbrock
+
+    variants = [
+        lambda: rosenbrock_pure,
+        scaled_rosenbrock_instance,
+        shifted_rosenbrock_instance,
+    ]
     while True:
-        yield _A.random_choice(variants)
+        yield _A.random_choice(variants)()
