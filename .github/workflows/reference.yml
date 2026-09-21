@@ -1,0 +1,51 @@
+name: Reference alignment
+
+# The comparison against the third-party implementations the ports were written from. It is
+# deselected in the default run (`-m "not slow and not browser and not reference"`) because it
+# takes minutes and needs optional packages, so without a job of its own the ceilings in
+# tests/test_reference_alignment.py would gate nothing. Weekly rather than per push: what it
+# catches is a port drifting from its reference, which does not happen between two commits, and
+# the references themselves move when their packages release.
+
+on:
+  schedule:
+    - cron: "17 6 * * 1"  # Mondays, early
+  workflow_dispatch:
+  pull_request:
+    paths:
+      # The files that can move a ratio: the algorithms, the shim they compute in, and the
+      # harness itself.
+      - "humpday/optimizers/**"
+      - "humpday/_array*.py"
+      - "tests/test_reference_alignment.py"
+      - ".github/workflows/reference.yml"
+
+jobs:
+  reference:
+    runs-on: ubuntu-latest
+    name: Ports against their references
+    steps:
+    - uses: actions/checkout@v4
+
+    - name: Set up Python
+      uses: actions/setup-python@v5
+      with:
+        python-version: "3.12"
+
+    - name: Install with the reference comparisons
+      run: |
+        python -m pip install --upgrade pip
+        pip install -e ".[reference]"
+
+    - name: Compare
+      # -s so the table is in the log whether or not the run passes: the numbers are the point,
+      # and a failure is read by comparing them with the committed snapshot.
+      run: |
+        pytest tests/test_reference_alignment.py -m reference -s
+
+    - name: Keep the measured table
+      if: always()
+      uses: actions/upload-artifact@v4
+      with:
+        name: reference-alignment
+        path: benchmarks/reference_alignment.json
