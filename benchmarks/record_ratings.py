@@ -27,6 +27,14 @@ run, so this can be run repeatedly and in pieces:
     python benchmarks/record_ratings.py --dims 50,100        # just the expensive end
     python benchmarks/record_ratings.py --problems 30        # deepen what is already there
     python benchmarks/record_ratings.py --merge              # rebuild the shipped table only
+
+Resuming a cell continues one recording rather than splicing two together. Each shard records the
+seed, backend and package version it was recorded with, and a run that disagrees with an existing
+shard on any of those stops and says so instead of extending it; delete the shard to rebuild the
+cell. Shards carry the full stream position too, counting the problems drawn and skipped as well
+as the ones rated, so the second half of a cell races problems the first half has not seen. Within
+a cell, every optimizer run is seeded from its own coordinates (cell, problem, optimizer), so the
+tournament does not depend on how the work was divided between workers.
 """
 
 from __future__ import annotations
@@ -42,8 +50,10 @@ import os
 import random
 import signal
 import statistics
+import subprocess
 import sys
 import time
+import zlib
 from pathlib import Path
 
 REPO_ROOT = Path(__file__).parent.parent
@@ -262,6 +272,66 @@ def _scalable(n_dim: int, seed: int):
 GENERATORS = {"surfaces": surfaces_generator, "engineering": engineering_generator}
 
 
+# How many exception messages per optimizer a shard keeps, so a table can be audited for what
+# actually went wrong without growing without bound.
+MAX_FAILURE_REASONS = 5
+
+
+def _git_revision() -> str:
+    try:
+        return subprocess.check_output(
+            ["git", "-C", str(REPO_ROOT), "rev-parse", "--short", "HEAD"],
+            text=True,
+            stderr=subprocess.DEVNULL,
+        ).strip()
+    except (OSError, subprocess.CalledProcessError):
+        return "unknown"
+
+
+def _provenance(seed: int, overhead: float, cell_seconds: float) -> dict:
+    """What a shard was recorded with. Two shards are only combined when this agrees.
+
+    The parts that change the stream of problems and optimizer draws (seed, backend, package
+    version) must match exactly; the wall-clock settings are recorded so a table can say what it
+    was measured under, but a resume may change them.
+    """
+    import humpday
+    from humpday import _array as _A
+
+    return {
+        "seed": int(seed),
+        "backend": _A.BACKEND,
+        "humpday": getattr(humpday, "__version__", "unknown"),
+        "git": _git_revision(),
+        "python": ".".join(str(v) for v in sys.version_info[:3]),
+        "overhead": float(overhead),
+        "cell_seconds": float(cell_seconds),
+    }
+
+
+_PROVENANCE_MUST_MATCH = ("seed", "backend", "humpday")
+
+
+def _seed_run(
+    seed: int, n_dim: int, budget: int, suite: str, draw: int, name: str
+) -> None:
+    """One deterministic seed per (cell, problem, optimizer) run.
+
+    The optimizer's draws used to depend on whatever the worker process had done before, so the
+    same cell recorded on a different worker schedule was a different tournament. Seeding every
+    run from its coordinates makes a cell reproducible however the work is scheduled, and keeps
+    the problems' randomness independent of the optimizers'.
+    """
+    import random as _random
+
+    from humpday import _array as _A
+
+    key = f"{seed}/{n_dim}/{budget}/{suite}/{draw}/{name}"
+    value = zlib.crc32(key.encode()) & 0xFFFFFFFF
+    _A.seed(value)
+    _random.seed(value)
+
+
 def _shard_path(n_dim: int, budget: int, suite: str) -> Path:
     return SHARDS / f"{n_dim}_{budget}_{suite}.json"
 
@@ -290,7 +360,7 @@ def run_cell(
     from humpday.eligibility import min_trials, passes_dim, passes_trials
     from humpday.optimizers.adaptive_optimizer import (
         EloRatingSystem,
-        normalize_performance,
+        pairwise_outcome,
     )
     from humpday.optimizers.alloptimizers import PURE_OPTIMIZERS, pure_optimize
 
@@ -325,26 +395,54 @@ def run_cell(
     if done >= problems:
         return shard
 
+    provenance = _provenance(seed, overhead, cell_seconds)
+    if shard:
+        # A resumed cell continues one recording; it must not splice a second one onto it. Anything
+        # recorded without provenance predates this check and is rebuilt rather than extended.
+        previous = shard.get("provenance")
+        mismatch = [
+            k
+            for k in _PROVENANCE_MUST_MATCH
+            if previous is None or previous.get(k) != provenance.get(k)
+        ]
+        if mismatch:
+            raise ValueError(
+                f"{path.name}: existing shard was recorded with different "
+                f"{', '.join(mismatch)} ({previous}); delete it to rebuild the cell"
+            )
+        # The shard describes the recording, not the process that happened to finish it, so the
+        # provenance written when the cell was started is the one it keeps.
+        provenance = previous
+
     elo = EloRatingSystem()
     elo.ratings.update(shard.get("ratings", {}))
     strikes = dict(shard.get("strikes", {}))
     timed_out = dict(shard.get("timed_out", {}))
+    played = dict(shard.get("played", {}))
+    failures = dict(shard.get("failures", {}))
+    failure_reasons = {k: list(v) for k, v in shard.get("failure_reasons", {}).items()}
 
+    # Resume where the stream actually left off: every draw counts, including the problems that
+    # were skipped as too costly, or the resumed cell races a different sequence of problems.
+    drawn = int(shard.get("drawn", done))
     generator = GENERATORS[suite](n_dim, seed + n_dim + budget)
-    for _ in range(done):
-        next(generator)  # resume the stream where the shard left off
+    for _ in range(drawn):
+        next(generator)
 
     started = time.time()
-    recorded, skipped = done, 0
+    recorded, skipped = done, int(shard.get("skipped", 0))
     completed: list = [float(v) for v in shard.get("completed_seconds", [])]
     while recorded < problems:
         if time.time() - started > cell_seconds:
             break
         objective = next(generator)
+        draw = drawn
+        drawn += 1
         results = {}
 
         clock = time.time()
         try:
+            _seed_run(seed, n_dim, budget, suite, draw, REFERENCE)
             with _deadline(MAX_SECONDS):
                 results[REFERENCE] = pure_optimize(objective, REFERENCE, budget, n_dim)[
                     0
@@ -358,8 +456,12 @@ def run_cell(
             if skipped > MAX_SKIPS:
                 break
             continue
-        except Exception:
+        except Exception as exc:
             results[REFERENCE] = float("inf")
+            failures[REFERENCE] = failures.get(REFERENCE, 0) + 1
+            failure_reasons.setdefault(REFERENCE, [])
+            if len(failure_reasons[REFERENCE]) < MAX_FAILURE_REASONS:
+                failure_reasons[REFERENCE].append(f"{type(exc).__name__}: {exc}"[:200])
         # Allowance for every other optimizer on this problem.
         #
         # A random sampler is the right reference for an optimizer's own overhead and the wrong one
@@ -382,6 +484,7 @@ def run_cell(
                 continue
             run_clock = time.time()
             try:
+                _seed_run(seed, n_dim, budget, suite, draw, name)
                 with _deadline(seconds):
                     value, _ = pure_optimize(objective, name, budget, n_dim)
                 results[name] = value
@@ -391,19 +494,29 @@ def run_cell(
                 strikes[name] = strikes.get(name, 0) + 1
                 if strikes[name] >= TIMEOUT_STRIKES:
                     timed_out[name] = round(seconds, 1)
-            except Exception:
+            except Exception as exc:
                 results[name] = float("inf")  # a failure is a loss, not an exclusion
+                failures[name] = failures.get(name, 0) + 1
+                failure_reasons.setdefault(name, [])
+                if len(failure_reasons[name]) < MAX_FAILURE_REASONS:
+                    failure_reasons[name].append(f"{type(exc).__name__}: {exc}"[:200])
 
+        # Rate on the values themselves. Normalising the round first meant one optimizer raising
+        # an exception -- recorded as inf, so max_val is inf -- turned every score in the round
+        # into NaN, and NaN compares false both ways, so the whole round was scored as a draw
+        # except where the tie test also failed. See pairwise_outcome.
         if len(results) > 1:
             names = list(results)
-            scores = dict(zip(names, normalize_performance(list(results.values()))))
             for i, a in enumerate(names):
                 for b in names[i + 1 :]:
-                    if scores[a] == scores[b]:
-                        outcome = 0.5
-                    else:
-                        outcome = 1.0 if scores[a] > scores[b] else 0.0
+                    outcome = pairwise_outcome(results[a], results[b])
+                    if outcome is None:
+                        continue  # two failures carry no evidence about each other
                     elo.update_ratings(a, b, outcome)
+                    # Participation is what distinguishes an earned 1500 from a seeded one, so it
+                    # is counted here, where a rated match actually happens, and persisted.
+                    played[a] = played.get(a, 0) + 1
+                    played[b] = played.get(b, 0) + 1
 
         shard = {
             "n_dim": n_dim,
@@ -417,7 +530,16 @@ def run_cell(
             "ratings": {n: r for n, r in elo.ratings.items() if n in contenders},
             "strikes": strikes,
             "timed_out": timed_out,
+            # Rated matches per optimizer. `merge` needs this to tell an optimizer that played and
+            # happens to sit at 1500 from one that never raced at all.
+            "played": played,
+            "failures": failures,
+            "failure_reasons": failure_reasons,
             "skipped": skipped,
+            # Draws taken from the generator, including the skipped ones, so a resumed cell picks
+            # the stream up where it left off rather than replaying problems it already saw.
+            "drawn": drawn,
+            "provenance": provenance,
             "ineligible": ineligible,
             "seconds": round(time.time() - started, 1),
             "allowance": round(seconds, 1),
@@ -428,6 +550,10 @@ def run_cell(
         recorded += 1
 
     if recorded < problems and shard:
+        # The last write happened before these last draws; without this a cell that stopped on the
+        # skip limit would resume from the wrong point in the stream.
+        shard["drawn"] = drawn
+        shard["skipped"] = skipped
         shard["stopped_early"] = (
             f"{skipped} problems too costly to measure"
             if skipped > MAX_SKIPS
@@ -480,16 +606,31 @@ def merge() -> dict:
         # wall-clock budget (#339) can end after an optimizer's first overrun, one strike short
         # of the two that would name it in `timed_out`, having still never returned a value.
         #
-        # Equality with the seed is the exact test for "never played" in all three cases:
-        # `run_cell` only feeds Elo the names present in `results`, which an optimizer joins
-        # solely by returning a value. A timed-out optimizer that did complete some problems has
-        # a real, if partial, rating and keeps it -- `_ranked` still places it last, and the
-        # revolt branch still needs it.
+        # The test is participation, not the value of the rating. Equality with the seed catches
+        # all three cases but is not the same question, and it answers wrongly for the optimizer
+        # that played and came back to exactly 1500 -- win one, lose one, or draw every match in
+        # a round of equal values. Such an optimizer has a real rating, earned across real
+        # matches, and dropping it silently withdraws it from the grid. `run_cell` counts a match
+        # for each name on each rated pair, so a positive count is the direct evidence.
+        #
+        # A timed-out optimizer that did complete some problems has a real, if partial, rating and
+        # keeps it -- `_ranked` still places it last, and the revolt branch still needs it.
         excluded = set(shard.get("ineligible", {}))
+        played = shard.get("played")
+        if played is None:
+            # A shard recorded before participation was tracked. Fall back to the old test, which
+            # is right except for the exactly-1500 case it cannot see.
+            def _earned(name: str, rating: float) -> bool:
+                return rating != INITIAL_RATING
+        else:
+
+            def _earned(name: str, rating: float) -> bool:
+                return played.get(name, 0) > 0
+
         kept = {
             n: r
             for n, r in shard.get("ratings", {}).items()
-            if n not in excluded and r != INITIAL_RATING
+            if n not in excluded and _earned(n, r)
         }
 
         cells[f"{shard['n_dim']}/{shard['budget']}/{shard['suite']}"] = {

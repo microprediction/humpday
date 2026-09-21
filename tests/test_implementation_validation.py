@@ -312,12 +312,14 @@ class TestAdaptiveSystem:
             sphere_variants_generator,
         )
 
-        # Quick test with small budget
+        # Quick test with a budget that pays for two warmup rounds
+        # (23 algorithms x 20 trials = 460 each) -- the budget is a cap
+        # on evaluations, so a 500 budget would run one.
         objective_gen = sphere_variants_generator(2)
 
         results = adaptive_optimize(
             objective_generator=objective_gen,
-            trials_budget=500,
+            trials_budget=1000,
             n_dim=2,
             n_warmup_problems=2,
             trials_per_warmup=20,  # Increased to avoid population size issues
