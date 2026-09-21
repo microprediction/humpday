@@ -5,8 +5,12 @@ These tests ensure our lightweight implementations are correct without adding de
 The reference implementations are only used for testing, not in the main package.
 """
 
-import numpy as np
 import pytest
+
+# numpy is the `fast` extra rather than a dependency, and CI runs the whole suite on the
+# dependency-free backend too. A test that needs numpy to express itself skips there rather
+# than failing to import, which is how this suite already treats its optional dependencies.
+np = pytest.importorskip("numpy")
 
 
 def test_sphere_implementation():

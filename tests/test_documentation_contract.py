@@ -58,6 +58,13 @@ def _run_isolated(source: str, name: str, tmp_path: Path) -> None:
     os.chdir(tmp_path)
     try:
         exec(compile(source, name, "exec"), {"__name__": "__doc__"})
+    except ModuleNotFoundError as exc:
+        # A snippet that uses numpy, directly or through humpday.objectives, cannot run on a
+        # dependency-free install, and CI runs this suite there too. Skipping says so; failing
+        # would claim the documentation is wrong when it is the environment that is thinner.
+        if (exc.name or "").split(".")[0] == "numpy":
+            pytest.skip(f"{name} needs numpy, which this environment does not have")
+        raise
     finally:
         os.chdir(previous)
 
@@ -86,7 +93,14 @@ def test_every_example_imports_what_it_says_it_imports(example):
         re.M,
     )
     assert imports, f"{example.name} imports nothing at all"
-    exec(compile("\n".join(imports), str(example), "exec"), {})
+    try:
+        exec(compile("\n".join(imports), str(example), "exec"), {})
+    except ModuleNotFoundError as exc:
+        if (exc.name or "").split(".")[0] == "numpy":
+            pytest.skip(
+                f"{example.name} needs numpy, which this environment does not have"
+            )
+        raise
 
 
 @pytest.mark.parametrize(
@@ -97,7 +111,14 @@ def test_every_example_imports_what_it_says_it_imports(example):
 def test_every_example_runs(example, tmp_path, monkeypatch):
     monkeypatch.chdir(tmp_path)
     monkeypatch.setattr(sys, "argv", [str(example)])
-    runpy.run_path(str(example), run_name="__main__")
+    try:
+        runpy.run_path(str(example), run_name="__main__")
+    except ModuleNotFoundError as exc:
+        if (exc.name or "").split(".")[0] == "numpy":
+            pytest.skip(
+                f"{example.name} needs numpy, which this environment does not have"
+            )
+        raise
 
 
 def _relative_targets(page: Path):

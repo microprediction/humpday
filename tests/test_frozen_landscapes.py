@@ -13,8 +13,12 @@ import subprocess
 import sys
 from unittest import mock
 
-import numpy as np
 import pytest
+
+# numpy is the `fast` extra rather than a dependency, and CI runs the whole suite on the
+# dependency-free backend too. A test that needs numpy to express itself skips there rather
+# than failing to import, which is how this suite already treats its optional dependencies.
+np = pytest.importorskip("numpy")
 
 from humpday import _array as _A
 from humpday.objectives.stochastic_surfaces import StochasticSurfaceGenerator

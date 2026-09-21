@@ -28,6 +28,10 @@ import os
 
 import pytest
 
+# This module compares the two backends against each other, so it needs the one that is
+# optional. Without numpy there is nothing to compare the pure backend with.
+pytest.importorskip("numpy")
+
 from humpday import _array_numpy as A_np
 from humpday import _array_pure as A_pure
 

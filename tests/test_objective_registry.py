@@ -12,6 +12,12 @@ import time
 
 import pytest
 
+pytest.importorskip(
+    "numpy",
+    reason="humpday.objectives still imports numpy at module scope (#377), so these "
+    "objectives cannot be built on a dependency-free install",
+)
+
 from humpday.objectives import SURFACES, morphed_surfaces, physics_objectives
 
 DIM = 100

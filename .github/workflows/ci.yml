@@ -73,10 +73,16 @@ jobs:
       run: |
         pytest tests/test_transition_vectors.py tests/test_prng_parity.py tests/test_portable_rng_mode.py -q
     - name: Full suite on the pure backend
-      # The whole default suite on the backend a dependency-free install
-      # actually gets. tests/conftest.py fails any test that starts or
-      # finishes on the other backend, so a green run here means the suite
-      # validated the pure implementation and not numpy.
+      # The default suite on the backend a dependency-free install actually
+      # gets. tests/conftest.py fails any test that starts or finishes on the
+      # other backend, so what passes here exercised the pure implementation
+      # and not numpy.
+      #
+      # Not the whole suite: around thirty modules need numpy to express what
+      # they are testing (comparing the two backends, building an objective
+      # out of arrays) and skip here rather than failing to import. A handful
+      # more skip only because humpday.objectives still imports numpy at
+      # module scope, which is #377; those come back when it does not.
       if: matrix.python-version == '3.11'
       env:
         HUMPDAY_FORCE_PURE_ARRAY: "1"

@@ -1,5 +1,13 @@
 import random
 
+import pytest
+
+pytest.importorskip(
+    "numpy",
+    reason="humpday.objectives still imports numpy at module scope (#377), so these "
+    "objectives cannot be built on a dependency-free install",
+)
+
 from humpday.objectives.portfolio import PORTFOLIO_OBJECTIVES
 from humpday.optimizers.alloptimizers import OPTIMIZERS
 

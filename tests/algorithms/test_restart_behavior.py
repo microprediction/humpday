@@ -11,7 +11,12 @@ PSO/CMA would stall, and assert that the restart-equipped version
 escapes.
 """
 
-import numpy as np
+import pytest
+
+# numpy is the `fast` extra rather than a dependency, and CI runs the whole suite on the
+# dependency-free backend too. A test that needs numpy to express itself skips there rather
+# than failing to import, which is how this suite already treats its optional dependencies.
+np = pytest.importorskip("numpy")
 
 from humpday.optimizers.evolutionary_algorithms import (
     CMAEvolutionStrategy,

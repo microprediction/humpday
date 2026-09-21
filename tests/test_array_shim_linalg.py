@@ -16,6 +16,11 @@ from __future__ import annotations
 import math
 
 import pytest
+
+# This module compares the two backends against each other, so it needs the one that is
+# optional. Without numpy there is nothing to compare the pure backend with.
+pytest.importorskip("numpy")
+
 from numpy.linalg import LinAlgError
 
 from humpday import _array_numpy_linalg as L_np

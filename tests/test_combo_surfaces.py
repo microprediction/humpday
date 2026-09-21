@@ -10,6 +10,12 @@ import random
 
 import pytest
 
+pytest.importorskip(
+    "numpy",
+    reason="humpday.objectives still imports numpy at module scope (#377), so these "
+    "objectives cannot be built on a dependency-free install",
+)
+
 from humpday.objectives import classic as C
 
 COMBOS = {
