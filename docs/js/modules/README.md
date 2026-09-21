@@ -2,9 +2,11 @@
 
 23 derivative-free optimizers in zero-dependency JavaScript. This is the
 browser/Node twin of the [Python humpday
-package](https://github.com/microprediction/humpday); parity tests in the
-repository hold the two implementations in agreement, so the algorithm you
-run here is the algorithm the Python package ships.
+package](https://github.com/microprediction/humpday). Thirteen of the
+twenty-three are bit-exact twins: driven from the same seed they replay the
+recorded transition vectors point for point, so the trajectory here is the
+Python trajectory. The other ten are ports held to the same behaviour but not
+to the last bit, and the differences are tracked in the repository's issues.
 
 Every optimizer minimises a black-box function on the unit cube `[0,1]^n`
 under a hard evaluation budget. No gradients, no dependencies, no build

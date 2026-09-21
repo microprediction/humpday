@@ -24,14 +24,16 @@ that pit every HumpDay optimizer against a real physics or engineering problem.
 
 Mixtures, portfolios, and allocations live on the **probability simplex** (weights
 that sum to 1), not the cube. HumpDay optimizes them by lifting a plain `[0,1]ⁿ`
-objective through a smooth bijection **φθ** onto the simplex — so every box-domain
-optimizer works unchanged.
+objective through a smooth bijection **φθ** onto the interior of the simplex — so
+every box-domain optimizer works unchanged. The vertices are not in the image;
+`attainable_weights(n_dim, scale)` says how close to them a given scale reaches.
 
 [![The cube-to-simplex bijection: a coordinate net flowing between the unit square and the probability simplex](docs/assets/simplex-cube-bijection.gif)](https://humpday.microprediction.org/simplex-cube-bijection.html)
 
-The map's scale is a tunable *preconditioner*: too small
-and the whole cube collapses onto the centroid; tuned (the `θ★` shown), off-centre
-optima map back to interior cube points where optimizers sample densely.
+The map's scale is a tunable *preconditioner*, and the `scale` argument of
+`cube_to_simplex`, `simplex_to_cube` and `lift_to_cube`: too large and the whole
+cube collapses onto the centroid; tuned (the `θ★` shown), off-centre optima map
+back to interior cube points where optimizers sample densely.
 [**Explore it live →**](https://humpday.microprediction.org/simplex-cube-bijection.html)
 (drag to orbit, morph cube ⇆ simplex, watch the optimum's pre-image move).
 
@@ -43,11 +45,13 @@ centre circle becomes an oval, the corners smear toward the boundary:
 
 ```bash
 pip install humpday        # Python
-npm install humpday        # JavaScript (the same roster, parity-tested)
+npm install humpday        # JavaScript (the same roster; 13 of 23 bit-exact, rest ported)
 ```
 
 Zero runtime dependencies. Every algorithm has a pure-Python implementation
-that works wherever Python runs.
+that works wherever Python runs. The bundled objective suites in
+`humpday.objectives` are the exception: they are written against numpy, so
+`humpday[fast]` below is what you want if you plan to use them.
 
 If you want the numpy-accelerated backend for higher dimensions:
 

@@ -1,12 +1,16 @@
+"""Minimum-variance portfolios with derivative-free solvers.
+
+Needs the numpy backend (`pip install humpday[fast]`) because the portfolio objectives are
+written against it.
+"""
+
 import time
 from pprint import pprint
 from typing import List
 
 import numpy as np
-from humpday.optimizers.nloptcube import (
-    nlopt_directr_cube,
-)
 
+from humpday import pure_optimize
 from humpday.objectives.portfolio import (
     make_sigma_matrix,
     make_solution,
@@ -29,17 +33,37 @@ def nice_div(a, b):
         )
 
 
+def run(algorithm: str, objective, n_dim: int, n_trials: int):
+    """One optimizer run, reported as (best value, best point, objective calls).
+
+    The old `nlopt_directr_cube(objective, n_dim=..., n_trials=..., with_count=True)` wrappers
+    are gone, along with the third-party packages behind them: humpday now implements every
+    algorithm itself and dispatches by name. Nothing reports its own evaluation count, so this
+    counts them, which is the honest number anyway.
+    """
+    calls = 0
+
+    def counted(u):
+        nonlocal calls
+        calls += 1
+        return objective(u)
+
+    value, point = pure_optimize(counted, algorithm, n_trials, n_dim)
+    return value, point, calls
+
+
 def normalize(x):
     return [xi / sum(x) for xi in x] if sum(x) > 0 else [1.0 / len(x) for xi in x]
 
 
-def verify_markowitz(optimizer, n_dim, n_trials):
+def verify_markowitz(algorithm, n_dim, n_trials):
     """How good are derivative free solvers?
 
     This little exercise tasks some of the speedier optimizers with variance minimization
     for a portfolio, and also looks at how consistent the answers are between two runs.
 
-    Some examples of speedy optimizers are suggested by the unused imports.
+    Try any name in `humpday.ALGORITHM_NAMES`; `humpday.suggest(n_dim, n_trials)` will rank
+    them on the recorded tournament.
 
     Obviously, you're better off doing this with derivs or worse case, quadratic solvers
 
@@ -47,15 +71,11 @@ def verify_markowitz(optimizer, n_dim, n_trials):
 
     # Run optimizer twice
     st = time.time()
-    v1, u1, t1 = optimizer(
-        markowitz_realized_on_cube, n_dim=n_dim, n_trials=n_trials, with_count=True
-    )
+    v1, u1, t1 = run(algorithm, markowitz_realized_on_cube, n_dim, n_trials)
     tau1 = time.time() - st
 
     st = time.time()
-    v2, u2, t2 = optimizer(
-        markowitz_analytic_on_cube, n_dim=n_dim, n_trials=n_trials, with_count=True
-    )
+    v2, u2, t2 = run(algorithm, markowitz_analytic_on_cube, n_dim, n_trials)
     tau2 = time.time() - st
 
     # Solve
@@ -92,22 +112,18 @@ def verify_markowitz(optimizer, n_dim, n_trials):
     return results
 
 
-def markowitz_return(optimizer, n_dim, n_trials):
+def markowitz_return(algorithm, n_dim, n_trials):
     """
     Maximizing a different objective, just for fun
     """
 
     # Run optimizer twice
     st = time.time()
-    v1, u1, t1 = optimizer(
-        markowitz_return_on_cube, n_dim=n_dim, n_trials=n_trials, with_count=True
-    )
+    v1, u1, t1 = run(algorithm, markowitz_return_on_cube, n_dim, n_trials)
     tau1 = time.time() - st
 
     st = time.time()
-    v2, u2, t2 = optimizer(
-        markowitz_return_on_cube, n_dim=n_dim, n_trials=n_trials, with_count=True
-    )
+    v2, u2, t2 = run(algorithm, markowitz_return_on_cube, n_dim, n_trials)
     tau2 = time.time() - st
 
     # Use Markowitz approximation
@@ -146,6 +162,7 @@ def markowitz_return(optimizer, n_dim, n_trials):
 
 
 if __name__ == "__main__":
-    optimizer = nlopt_directr_cube
-    results = markowitz_return(optimizer=optimizer, n_dim=5, n_trials=150000)
+    results = markowitz_return(
+        algorithm="DifferentialEvolution", n_dim=5, n_trials=2000
+    )
     pprint(results)

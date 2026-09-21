@@ -1,50 +1,39 @@
-# HumpDay Browser Demo
+# HumpDay on the web
 
-This directory contains the browser-based interactive demonstration of HumpDay optimization package.
+This directory is the site published at [humpday.microprediction.org](https://humpday.microprediction.org):
+the optimizer contest, the per-algorithm pages, and the application demonstrations.
 
-## Features
+## How it works
 
-🏁 **Live Optimizer Racing** - Watch different scipy optimizers compete in real-time
-📊 **Interactive Visualizations** - See convergence curves update as optimizers run  
-🌐 **Zero Installation** - Runs entirely in your browser using Pyodide
-📱 **Mobile Friendly** - Works on phones and tablets
-🔗 **Shareable** - Send links to specific optimization problems
+The optimizers run as native JavaScript, in `js/modules/`. There is no Python in the browser: the
+page loads `prng.js`, `base-optimizer.js` and the algorithm modules as ordinary script tags, and
+every algorithm is a port of the Python one rather than a call into it. Thirteen of the
+twenty-three are bit-exact twins, replaying `parity/transition_vectors.json` point for point; the
+rest agree on behaviour but not on every last bit, and #78 tracks the difference.
 
-## How It Works
+An earlier version of this demo ran CPython in the browser through Pyodide and called SciPy. That
+is gone, along with the download it required.
 
-The demo uses [Pyodide](https://pyodide.org/) to run Python directly in the browser, including:
-- NumPy for numerical computing
-- SciPy optimizers (Powell, Nelder-Mead, L-BFGS-B, TNC)
-- Plotly for interactive plotting
+## Pages
 
-## Objective Functions
+- `contest.html` races the optimizers against each other on a chosen objective.
+- `algorithms.html` and `algorithms/` explain one algorithm each, with a live visualization.
+- `applications/` works a real problem per page, with the objective written out.
+- `recommendations.html` reads the recorded tournament: which optimizer for which dimension and
+  budget.
 
-- **Sphere**: Simple quadratic function (easy to optimize)
-- **Rosenbrock**: Classic "banana function" with narrow valley (medium difficulty)
-- **Rastrigin**: Highly multimodal with many local minima (hard)  
-- **Ackley**: Nearly flat outer region with central spike (very hard)
+## Local development
 
-## Local Development
-
-To run locally:
 ```bash
-# Simple HTTP server (Python 3)
-python -m http.server 8000
-
-# Or with Node.js
+python -m http.server 8000     # from this directory
+# or
 npx serve .
-
-# Then open http://localhost:8000
 ```
 
-Note: Must use HTTP server (not file://) due to Pyodide CORS requirements.
+Then open http://localhost:8000. A server rather than `file://`, because the pages fetch their
+modules and their data.
 
-## Future Enhancements
+## Keeping it honest
 
-- [ ] Add more objective functions from humpday package
-- [ ] Thurstone-based ranking system  
-- [ ] Custom objective function input
-- [ ] 3D visualization of optimization landscapes
-- [ ] Comparison with heavier optimizers (Optuna, etc.)
-- [ ] Save and share optimization results
-- [ ] Educational mode with explanations
+The parity tests in `tests/` compare the JavaScript against the Python, replaying the recorded
+transition vectors through both. Run them with `pytest tests -q` from the repository root.
