@@ -5,12 +5,38 @@ This module provides thin wrappers that allow our unit hypercube [0,1]^n optimiz
 to work with arbitrary rectangular bounds, following SciPy conventions.
 """
 
+import math
 from typing import Any, Callable, List, Optional, Tuple, Union
 
 from humpday import _array as _A
 from humpday import eligibility as _E
 
 from .alloptimizers import PURE_OPTIMIZERS, pure_optimize
+
+
+class _Ledger:
+    """The one objective everything in `cube_minimize` calls through.
+
+    Counts every call and keeps the best finite observation, so the timing
+    probes are charged to the budget and their values are not thrown away,
+    and the result reports what was actually evaluated rather than what was
+    requested.
+    """
+
+    def __init__(self, objective: Callable):
+        self._objective = objective
+        self.count = 0
+        self.best_value: Optional[float] = None
+        self.best_x = None
+
+    def __call__(self, x_unit):
+        self.count += 1
+        value = self._objective(x_unit)
+        v = float(value)
+        if math.isfinite(v) and (self.best_value is None or v < self.best_value):
+            self.best_value = v
+            self.best_x = _A.asarray([float(c) for c in x_unit])
+        return value
 
 
 def unbounded_to_unit_cube(x_real, scale: Union[float, Any] = 1.0):
@@ -120,9 +146,11 @@ def cube_minimize(
              and BayesianOpt (GP fit); when each call is seconds, the
              sample-efficient algorithms become eligible.
 
-        The timing step costs 4 objective evaluations at startup. Disable
-        with `options={'auto_timing': False}` for stochastic objectives or
-        when reproducibility matters more than expense-aware selection.
+        The timing step costs at most 4 objective evaluations at startup,
+        charged against `maxiter` and never its last call; their values
+        count toward the result. Disable with `options={'auto_timing':
+        False}` for stochastic objectives or when reproducibility matters
+        more than expense-aware selection.
     bounds : sequence or tuple, optional
         Bounds for variables. Either:
         - List of (min, max) tuples for each dimension: [(x1_min, x1_max), (x2_min, x2_max), ...]
@@ -143,10 +171,12 @@ def cube_minimize(
     --------
     OptimizeResult
         Result object with attributes:
-        - x: Solution array
-        - fun: Function value at solution
-        - nfev: Number of function evaluations
-        - success: Whether optimization succeeded
+        - x: The best point observed, timing probes included
+        - fun: The objective value at that point
+        - nfev: The number of objective calls actually made, timing included
+        - success: True when a finite objective value was observed. This is
+          a budget-limited best effort, not a convergence claim; it is False
+          when nothing was evaluated or every value was NaN or infinite.
         - message: Description of termination
     """
 
@@ -205,20 +235,27 @@ def cube_minimize(
     #
     # Callers can disable the timing call with options={'auto_timing': False}
     # — useful for stochastic objectives where one extra eval changes seeds.
+    maxiter = int(maxiter)
+    ledger = _Ledger(cube_obj)
     eval_time_used: Optional[float] = None
     if method is None:
         auto_timing = options.get("auto_timing", True)
-        if auto_timing:
+        # Timing is charged to the budget and keeps its observations. It uses
+        # at most four probes and never the budget's last call, so a caller
+        # who asked for one evaluation gets one evaluation, by the optimizer.
+        n_probe = min(4, max(maxiter - 1, 0)) if auto_timing else 0
+        if n_probe > 0:
             try:
                 x_sample = _A.asarray([0.5] * n_dim)
-                timing = _E.time_objective(cube_obj, x_sample, n_warmup=1, n_measure=3)
+                n_warmup = 1 if n_probe >= 2 else 0
+                timing = _E.time_objective(
+                    ledger, x_sample, n_warmup=n_warmup, n_measure=n_probe - n_warmup
+                )
                 eval_time_used = timing.eval_time
-                # Account for the timing calls against the budget so the user
-                # gets the n_trials they asked for, not n_trials + 4.
-                maxiter = max(maxiter - 4, 1)
             except Exception:
-                # If the objective throws on a random feasible point, skip
-                # timing and let recommend() fall back to dim/trials only.
+                # The objective threw on a feasible point: skip timing and let
+                # recommend() fall back to dim/trials only. The calls already
+                # made stay on the ledger and against the budget.
                 eval_time_used = None
         # `options['cost_weight']` opts in to the cost-aware recommender
         # described in papers/dfo_recommender/ §4. Default 0.0 preserves the
@@ -226,7 +263,7 @@ def cube_minimize(
         # time schedule; a numeric value pins λ across all eval-times.
         method = _E.recommend(
             n_dim=n_dim,
-            n_trials=maxiter,
+            n_trials=max(maxiter - ledger.count, 1),
             eval_time=eval_time_used,
             available=list(PURE_OPTIMIZERS.keys()),
             cost_weight=options.get("cost_weight", 0.0),
@@ -237,8 +274,26 @@ def cube_minimize(
         available = ", ".join(list(PURE_OPTIMIZERS.keys())[:10])
         raise ValueError(f"Unknown method '{method}'. Available: {available}...")
 
-    # Run the optimizer on the prepared cube objective.
-    best_value, best_x_unit = pure_optimize(cube_obj, method, maxiter, n_dim)
+    # Run the optimizer on what is left of the budget, through the same ledger.
+    remaining = maxiter - ledger.count
+    best_x_unit = _A.asarray([0.5] * n_dim)
+    if remaining > 0:
+        _value, best_x_unit = pure_optimize(ledger, method, remaining, n_dim)
+
+    # The answer is the best finite value anything observed, timing included.
+    if ledger.best_value is not None:
+        best_value = ledger.best_value
+        best_x_unit = ledger.best_x
+        success = True
+        message = f"{method}: best of {ledger.count} evaluations (budget {maxiter})"
+    else:
+        best_value = float("inf")
+        success = False
+        message = (
+            "no finite objective value was observed"
+            if ledger.count
+            else "no evaluations were made"
+        )
 
     # Transform solution back to caller's coordinate system.
     if bounds is None:
@@ -246,19 +301,16 @@ def cube_minimize(
     else:
         best_x = transform_solution(_A.asarray(best_x_unit), lower, upper)
 
-    # Create result object
-    result = OptimizeResult(
+    return OptimizeResult(
         x=best_x,
         fun=best_value,
-        nfev=maxiter,  # Our optimizers don't currently track exact evaluations
-        success=True,  # We always return the best found solution
-        message="Optimization completed successfully",
+        nfev=ledger.count,
+        success=success,
+        message=message,
         method=method,
         eval_time_measured=eval_time_used,
         tier=_E.TIER.get(method),
     )
-
-    return result
 
 
 class OptimizeResult:
