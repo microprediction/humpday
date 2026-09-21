@@ -670,6 +670,95 @@ class TestRatingsTableSemantics:
                 }
             assert len(budgets) == 1, f"d={n_dim} mixes budgets {sorted(budgets)}"
 
+    def test_suites_recorded_at_disjoint_budgets_are_not_ranked_against_each_other(
+        self,
+    ):
+        """#357. The fallback used to hand back every suite at its own best budget.
+
+        `robust_order` saw two suites, ranked them against each other, and reported a budget
+        effect as a suite effect -- the confusion the common-budget rule exists to prevent. The
+        shipped 96-cell table is complete enough not to reach the fallback; a partially recorded
+        one, or one being rebuilt a cell at a time, reaches it immediately.
+        """
+        import humpday.ratings as r
+
+        r._TABLE = {
+            "2/50/surfaces": {"problems": 30, "ratings": {"A": 1600, "B": 1400}},
+            "2/200/engineering": {"problems": 30, "ratings": {"A": 1400, "B": 1600}},
+        }
+        try:
+            budget, at = r._cells_and_budget(2, 200)
+            assert set(at) == {"engineering"}, (
+                f"answered from two budgets at once: {sorted(at)}"
+            )
+            assert budget == 200
+            assert r.robust_order(2, 200) == [], (
+                "a single suite is not a cross-suite ranking"
+            )
+        finally:
+            r._TABLE = None
+
+    def test_a_shared_budget_is_preferred_to_a_larger_one_only_one_suite_has(self):
+        """The fallback must not take over whenever the suites differ. Two suites at fifty is a
+        better answer to a request for two hundred than one suite at two hundred."""
+        import humpday.ratings as r
+
+        r._TABLE = {
+            "2/50/surfaces": {"problems": 30, "ratings": {"A": 1600, "B": 1400}},
+            "2/200/surfaces": {"problems": 30, "ratings": {"A": 1600, "B": 1400}},
+            "2/50/engineering": {"problems": 30, "ratings": {"A": 1400, "B": 1600}},
+        }
+        try:
+            budget, at = r._cells_and_budget(2, 200)
+            assert (budget, set(at)) == (50, {"surfaces", "engineering"})
+            assert r.robust_order(2, 200), (
+                "both suites share fifty and should be ranked"
+            )
+        finally:
+            r._TABLE = None
+
+    def test_one_suite_recorded_alone_is_returned_and_declined(self):
+        import humpday.ratings as r
+
+        r._TABLE = {
+            "2/50/surfaces": {"problems": 30, "ratings": {"A": 1600, "B": 1400}}
+        }
+        try:
+            budget, at = r._cells_and_budget(2, 100)
+            assert (budget, set(at)) == (50, {"surfaces"})
+            assert r.robust_order(2, 100) == []
+        finally:
+            r._TABLE = None
+
+    def test_nothing_recorded_at_a_dimension_says_so(self):
+        import humpday.ratings as r
+
+        r._TABLE = {"2/50/surfaces": {"problems": 30, "ratings": {"A": 1600}}}
+        try:
+            assert r._cells_and_budget(9, 100) == (None, {})
+            assert r.cells_at(9, 100) == {}
+        finally:
+            r._TABLE = None
+
+    def test_every_reader_of_the_table_sees_one_budget(self):
+        """`elo_by_dimension` and `problems_recorded` both document a single budget and both read
+        it through `cells_at`, so the invariant belongs to the function rather than to its
+        callers. Checked here on a table whose suites do not line up."""
+        import humpday
+        import humpday.ratings as r
+
+        r._TABLE = {
+            "2/50/surfaces": {"problems": 30, "ratings": {"A": 1600, "B": 1400}},
+            "2/200/engineering": {"problems": 12, "ratings": {"A": 1400, "B": 1600}},
+        }
+        try:
+            assert humpday.elo_by_dimension(200) == {
+                2: {"engineering": {"A": 1400, "B": 1600}}
+            }
+            assert humpday.problems_recorded(2, 200) == {2: {"engineering": 12}}
+        finally:
+            r._TABLE = None
+
     def test_a_cell_where_nearly_everyone_overran_does_not_rank_them_last(self):
         """A mis-calibrated allowance must not read as eleven unusable optimizers.
 
