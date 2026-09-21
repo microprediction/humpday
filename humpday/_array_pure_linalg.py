@@ -37,6 +37,22 @@ from typing import List, Sequence, Tuple
 
 from ._array_pure import _Vec
 
+
+def _fold_sum(values) -> float:
+    """Left-to-right float sum, which is what the cross-language contract means by a sum.
+
+    Never the builtin `sum()`. CPython 3.12 gave it Neumaier compensation, so the same
+    trajectory recorded on 3.12 and replayed on 3.11 diverges in the last ulp -- which is
+    exactly how the PRIMA vectors came apart once these routines started being reached (the
+    NumPy-free NEWUOA and BOBYQA used to fall back before they had a full SVD). Every port
+    implements the fold, so the fold is what the vectors have to record.
+    """
+    total = 0.0
+    for value in values:
+        total += value
+    return total
+
+
 # Tolerance below which we treat a pivot as zero, *relative to the scale of the
 # matrix it came from*. An absolute threshold makes every routine here fail on a
 # small multiple of a perfectly conditioned matrix, and shrinking trust-region
@@ -75,7 +91,7 @@ def _complete_orthonormal(cols: List[List[float]], m: int) -> List[List[float]]:
                     p += q[k] * cand[k]
                 for k in range(m):
                     cand[k] -= p * q[k]
-        nrm = math.sqrt(sum(v * v for v in cand))
+        nrm = math.sqrt(_fold_sum(v * v for v in cand))
         if nrm > 1e-8:
             out.append([v / nrm for v in cand])
     return out
@@ -394,19 +410,19 @@ def qr(A) -> Tuple[List[List[float]], List[List[float]]]:
     # A column whose residual is this small, relative to the largest column
     # of A, is treated as dependent on the ones before it.
     rank_floor = _PIVOT_TOL * max(
-        [math.sqrt(sum(v * v for v in c)) for c in cols] or [0.0]
+        [math.sqrt(_fold_sum(v * v for v in c)) for c in cols] or [0.0]
     )
 
     for j in range(n):
         # Subtract projections onto previous q_i.
         for i in range(j):
             qi = cols[i]
-            r_ij = sum(qi[k] * cols[j][k] for k in range(m))
+            r_ij = _fold_sum(qi[k] * cols[j][k] for k in range(m))
             R[i][j] = r_ij
             for k in range(m):
                 cols[j][k] -= r_ij * qi[k]
         # Normalise the residual to get q_j.
-        r_jj = math.sqrt(sum(v * v for v in cols[j]))
+        r_jj = math.sqrt(_fold_sum(v * v for v in cols[j]))
         R[j][j] = r_jj
         if r_jj <= rank_floor:
             # Rank-deficient column: fill with a unit vector orthogonal to
