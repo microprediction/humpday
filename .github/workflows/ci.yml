@@ -103,3 +103,34 @@ jobs:
       run: |
         python -c "import humpday; print('Import successful')"
         python -c "from humpday import minimize, suggest; print('Core functions available')"
+  wheel-contract:
+    runs-on: ubuntu-latest
+    name: Installed wheel (console scripts)
+    # The package's contract with an installed user, checked the only way it can be: build the
+    # wheel, install it somewhere that is not the checkout, and run what the metadata advertises.
+    # `humpday = "humpday.__main__:main"` was declared for several releases with no such module,
+    # and every source-tree test passed throughout.
+    steps:
+    - uses: actions/checkout@v4
+
+    - name: Set up Python
+      uses: actions/setup-python@v5
+      with:
+        python-version: "3.12"
+
+    - name: Build the wheel
+      run: |
+        python -m pip install --upgrade pip build
+        python -m build --wheel
+
+    - name: Install it outside the checkout and run every console script
+      run: |
+        python -m venv /tmp/wheel-venv
+        /tmp/wheel-venv/bin/pip install dist/*.whl
+        cd "$(mktemp -d)"
+        /tmp/wheel-venv/bin/python -c "import humpday; print(humpday.__version__)"
+        /tmp/wheel-venv/bin/humpday --version
+        /tmp/wheel-venv/bin/humpday suggest --dim 8 --trials 200 -n 3
+        /tmp/wheel-venv/bin/humpday recommend --dim 8 --trials 200
+        /tmp/wheel-venv/bin/humpday --json ratings --dim 8
+        /tmp/wheel-venv/bin/python -m humpday --help

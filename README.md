@@ -72,6 +72,18 @@ result = minimize(objective, bounds=[(-5, 5), (-5, 5)], method='DifferentialEvol
 print(f"Solution: {result.x}")  # [2.0, 3.0]
 ```
 
+Installing also puts a `humpday` command on your PATH, which reads out the
+recorded evidence rather than running an optimization:
+
+```bash
+humpday suggest --dim 8 --trials 200        # ranked, from the recorded tournament
+humpday recommend --dim 8 --trials 200      # the single pick, from the grid
+humpday ratings --dim 8                     # what was measured, and off how many problems
+humpday optimizers --dim 100 --trials 50    # the roster, and why anything is excluded
+```
+
+Add `--json` to any of them for machine-readable output.
+
 ## Algorithms
 
 23 validated optimizers: **[See them in action](https://humpday.microprediction.org)** | **[Source code](humpday/optimizers/alloptimizers.py)**
