@@ -7,6 +7,7 @@ for which algorithms to use based on their performance.
 """
 
 import json
+import math
 import os
 import warnings
 from collections.abc import Generator
@@ -128,19 +129,32 @@ class EloRatingSystem:
         return True
 
 
-def normalize_performance(values: List[float]) -> List[float]:
-    """Normalize performance values to [0, 1] range."""
-    if not values or len(values) < 2:
-        return [0.5] * len(values)
+def pairwise_outcome(value_a: float, value_b: float) -> Optional[float]:
+    """Elo outcome for A against B from two objective values (lower is better).
 
-    min_val = min(values)
-    max_val = max(values)
+    Returns 1.0, 0.5 or 0.0, or None when the pair carries no evidence. A
+    finite value beats a non-finite one (a failed run, an exception recorded
+    as inf, a NaN); two finite values compare directly; two non-finite values
+    are not compared at all, since nothing distinguishes them.
 
-    if max_val == min_val:
-        return [0.5] * len(values)
-
-    # Invert because lower objective values are better
-    return [(max_val - val) / (max_val - min_val) for val in values]
+    Comparing the raw values keeps finite order exact without a normalisation
+    step. Normalising first is what let a single inf turn every score into
+    NaN, and NaN compares false both ways, so every pair fell through to the
+    equal branch or handed the win to whichever algorithm was listed later.
+    """
+    a_ok = isinstance(value_a, (int, float)) and math.isfinite(value_a)
+    b_ok = isinstance(value_b, (int, float)) and math.isfinite(value_b)
+    if a_ok and b_ok:
+        if value_a < value_b:
+            return 1.0
+        if value_a > value_b:
+            return 0.0
+        return 0.5
+    if a_ok:
+        return 1.0
+    if b_ok:
+        return 0.0
+    return None
 
 
 def run_algorithm_tournament(
@@ -211,29 +225,18 @@ def run_algorithm_tournament(
                 print(f"Algorithm {alg_name} failed: {e}")
                 results[alg_name] = float("inf")
 
-        # Convert to normalized scores
-        performance_values = list(results.values())
-        normalized_scores = normalize_performance(performance_values)
-
-        # Update Elo ratings with pairwise comparisons
+        # Update Elo ratings with pairwise comparisons on the raw values. A
+        # failed run (recorded as inf) loses to every finite result and is not
+        # compared with another failure; see pairwise_outcome.
         alg_names = list(results.keys())
         for i in range(len(alg_names)):
             for j in range(i + 1, len(alg_names)):
                 alg_a = alg_names[i]
                 alg_b = alg_names[j]
 
-                score_a = normalized_scores[i]
-                score_b = normalized_scores[j]
-
-                # Convert to Elo score (0, 0.5, 1)
-                if score_a > score_b:
-                    elo_score_a = 1.0
-                elif score_a < score_b:
-                    elo_score_a = 0.0
-                else:
-                    elo_score_a = 0.5
-
-                elo_system.update_ratings(alg_a, alg_b, elo_score_a)
+                elo_score_a = pairwise_outcome(results[alg_a], results[alg_b])
+                if elo_score_a is not None:
+                    elo_system.update_ratings(alg_a, alg_b, elo_score_a)
 
     return elo_system
 

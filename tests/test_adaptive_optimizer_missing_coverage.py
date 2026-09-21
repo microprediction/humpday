@@ -11,31 +11,54 @@ import pytest
 class TestAdaptiveOptimizerMissingCoverage:
     """Target specific missing lines in adaptive_optimizer.py."""
 
-    def test_normalize_performance_edge_cases(self):
-        """Test normalize_performance with edge cases (lines 97, 100-101, 108, 114)."""
+    def test_pairwise_outcome_orders_finite_values(self):
+        """Lower is better, ties draw, and the scale does not matter."""
+        from humpday.optimizers.adaptive_optimizer import pairwise_outcome
+
+        assert pairwise_outcome(1.0, 2.0) == 1.0
+        assert pairwise_outcome(2.0, 1.0) == 0.0
+        assert pairwise_outcome(1.0, 1.0) == 0.5
+        assert pairwise_outcome(-3.0, -1.0) == 1.0
+        # Differences far below any normalisation resolution still decide.
+        assert pairwise_outcome(1e-15, 2e-15) == 1.0
+
+    def test_pairwise_outcome_handles_failures(self):
+        """A failure loses to any finite value, and two failures are not compared."""
+        import math
+
+        from humpday.optimizers.adaptive_optimizer import pairwise_outcome
+
+        for bad in (float("inf"), float("nan"), -float("inf")):
+            assert pairwise_outcome(1.0, bad) == 1.0, bad
+            assert pairwise_outcome(bad, 1.0) == 0.0, bad
+
+        assert pairwise_outcome(float("inf"), float("inf")) is None
+        assert pairwise_outcome(float("nan"), float("inf")) is None
+        assert math.isnan(float("nan"))  # guards the premise of the case above
+
+    def test_one_failure_does_not_erase_the_round(self):
+        """The regression behind #344: an inf used to make every score NaN.
+
+        With a NaN score no comparison is true, so every pair fell through to
+        the equal branch or to the later-listed algorithm, and a round of real
+        results was recorded as a round of draws.
+        """
         from humpday.optimizers.adaptive_optimizer import (
-            normalize_performance,
+            EloRatingSystem,
+            pairwise_outcome,
         )
 
-        # Test with all equal values (should trigger division by zero handling)
-        equal_values = [1.0, 1.0, 1.0, 1.0]
-        normalized = normalize_performance(equal_values)
-        assert all(isinstance(x, (int, float)) for x in normalized)
+        results = {"Good": 1.0, "Middling": 2.0, "Broken": float("inf")}
+        elo = EloRatingSystem()
+        names = list(results)
+        for i, a in enumerate(names):
+            for b in names[i + 1 :]:
+                outcome = pairwise_outcome(results[a], results[b])
+                if outcome is not None:
+                    elo.update_ratings(a, b, outcome)
 
-        # Test with single value
-        single_value = [5.0]
-        normalized_single = normalize_performance(single_value)
-        assert len(normalized_single) == 1
-
-        # Test with negative values
-        negative_values = [-1.0, -2.0, -3.0]
-        normalized_negative = normalize_performance(negative_values)
-        assert len(normalized_negative) == 3
-
-        # Test with zeros and very small differences
-        small_diff_values = [0.0, 1e-15, 2e-15]
-        normalized_small = normalize_performance(small_diff_values)
-        assert len(normalized_small) == 3
+        assert elo.get_rating("Good") > elo.get_rating("Middling")
+        assert elo.get_rating("Middling") > elo.get_rating("Broken")
 
     def test_elo_system_edge_cases(self):
         """Test EloRatingSystem edge cases (lines 143, 153-155)."""
