@@ -12,18 +12,16 @@ try:
 except ImportError:  # allow running the __main__ self-check without pytest
     pytest = None
 
+from humpday import _array as _A
 from humpday.optimizers.alloptimizers import PURE_OPTIMIZERS
-
-try:
-    import numpy as np
-except Exception:  # noqa: BLE001
-    np = None
 
 
 def _seed(s):
+    # The live backend owns the stream the optimizers draw from (numpy's global
+    # RNG, or the pure backend's private random.Random), and only _A.seed reaches
+    # it. The stdlib global is seeded too for the legacy rng_* facade.
     random.seed(s)
-    if np is not None:
-        np.random.seed(s)
+    _A.seed(s)
 
 
 def _sphere(x):

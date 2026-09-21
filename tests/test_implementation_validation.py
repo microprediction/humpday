@@ -241,11 +241,15 @@ class TestOptimizerImplementations:
         def test_objective(x):
             return np.sum(np.asarray(x) ** 2)
 
-        # Run same optimizer with same seed multiple times
-        np.random.seed(42)
+        from humpday import _array as _A
+
+        # Run same optimizer with same seed multiple times. _A.seed reaches the
+        # live backend's stream; np.random.seed alone leaves the pure backend's
+        # private RNG untouched.
+        _A.seed(42)
         result1 = RandomSearch(test_objective, 20, 2).optimize()
 
-        np.random.seed(42)
+        _A.seed(42)
         result2 = RandomSearch(test_objective, 20, 2).optimize()
 
         # Results should be identical (same random seed)
