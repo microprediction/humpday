@@ -1,46 +1,63 @@
-
 # Optimizers
 
-Provides a number of popular derivative free global optimizers with a common, simple calling convention. 
+Twenty-three derivative-free optimizers, each implemented here rather than wrapped, behind one
+calling convention. The wrapper modules this file used to document -- `pysotcube`, `nloptcube`,
+`comparisons.eloratings` and the rest -- were removed along with the third-party packages they
+depended on; `pip install humpday` now pulls in nothing at all.
 
+### Usage
 
-### Usage 
+```python
+from humpday import pure_optimize
+from humpday.objectives.classic import schwefel_on_cube
 
-    from humpday.optimizers.pysotcube import pysot_ei_cube
-    from humpday.objectives.classic import schwefel_on_cube
-    best_val, best_x, fevals = pysot_ei_cube(schwefel_on_cube, n_trials=16, n_dim=5, with_count=True)
+best_value, best_x = pure_optimize(schwefel_on_cube, "NelderMead", n_trials=50, n_dim=5)
+```
 
-The argument with_count must be set to true if you want three return values, including the function evaluation count, rather than two. 
+`humpday.ALGORITHM_NAMES` lists what the second argument accepts. For a rectangular domain rather
+than the unit cube, use `humpday.minimize(objective, bounds=..., method=...)`, which returns a
+scipy-shaped `OptimizeResult`.
 
-### Limitations:
+### Limitations
 
-- Function is defined on the unit hyper-cube.  
-- Single objective optimization only
+- `pure_optimize` takes an objective on the unit hyper-cube. `minimize` transforms for you.
+- Single objective only.
 
-Refer to the original packages, or create a map from your domain to the cube.  
+For a domain that is a simplex rather than a box -- portfolios, mixtures, allocations -- lift the
+objective with `humpday.transforms.cubetosimplex.lift_to_cube`.
 
-### Preliminary study
+### Which one to use
 
-You may be interested in the [Comparision of Global Optimizers](https://www.microprediction.com/blog/optimize). However this repo
-intends to fix some of the issues with that study. See the [HumpDay](https://www.microprediction.com/blog/humpday) post. 
+```python
+from humpday import suggest
 
-### Elo Ratings
+suggest(n_dim=5, n_trials=50)   # ranked, from the recorded tournament
+```
 
-Just run the script elo_ratings.py to initiate an endless sequence of head-to-head optimizer battles, with 
-elo ratings updated after each 'game'. 
+The ranking comes from `humpday/data/ratings.json`, a recorded round-robin over two objective
+suites at each (dimension, budget) cell, rather than from a rule of thumb. `humpday.ratings`
+reads it, and `benchmarks/record_ratings.py` is what writes it. The Elo demo script this file used
+to point at, and the three separate rating artifacts behind it, were replaced by that one
+tournament.
 
-    from humpday.comparisons.eloratings import demo_optimizer_elo
-    demo_optimizer_elo()
-   
 ### Run every optimizer against your problem
 
-Or lots of objectives. Modify this pattern as you heed:
+```python
+from humpday import ALGORITHM_NAMES, pure_optimize
+from humpday.objectives.classic import schwefel_on_cube
 
-    from humpday.optimizers.alloptimizers import OPTIMIZERS   
-    from humpday.objectives.allobjectives import OBJECTIVES
-    for objective in OBJECTIVES:
-        print(' ')
-        print(objective.__name__)
-        for optimizer in OPTIMIZERS:
-            print(optimizer.__name__,(optimizer.__name__,optimizer(objective, n_trials=50, n_dim=5, with_count=True)))
+for name in ALGORITHM_NAMES:
+    value, _ = pure_optimize(schwefel_on_cube, name, n_trials=50, n_dim=5)
+    print(f"{name:<24} {value:.6f}")
+```
 
+Not every optimizer is worth running at every size: `humpday.eligibility.passes_dim` and
+`passes_trials` say which ones can use the dimension and budget you have, and `recommend` applies
+both before it picks.
+
+### Background
+
+The [Comparison of Global Optimizers](https://www.microprediction.com/blog/optimize) and the
+[HumpDay](https://www.microprediction.com/blog/humpday) posts describe the study this package grew
+out of. They predate the self-contained implementations and the recorded tournament, so read them
+as history rather than as instructions.

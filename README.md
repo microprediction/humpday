@@ -45,11 +45,13 @@ centre circle becomes an oval, the corners smear toward the boundary:
 
 ```bash
 pip install humpday        # Python
-npm install humpday        # JavaScript (the same roster, parity-tested)
+npm install humpday        # JavaScript (the same roster; 13 of 23 bit-exact, rest ported)
 ```
 
 Zero runtime dependencies. Every algorithm has a pure-Python implementation
-that works wherever Python runs.
+that works wherever Python runs. The bundled objective suites in
+`humpday.objectives` are the exception: they are written against numpy, so
+`humpday[fast]` below is what you want if you plan to use them.
 
 If you want the numpy-accelerated backend for higher dimensions:
 
