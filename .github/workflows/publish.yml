@@ -60,6 +60,18 @@ jobs:
         pip install dist/*.whl
         python -c "import humpday; print(f'humpday {humpday.__version__} installed successfully')"
 
+    # Outside any checkout, so the wheel is what answers. A console script that the source tree
+    # imports fine can still be missing from the wheel, or point at a module that was never
+    # written -- `humpday = "humpday.__main__:main"` shipped that way through several releases.
+    - name: Test every console script from the installed wheel
+      run: |
+        cd "$(mktemp -d)"
+        humpday --version
+        humpday suggest --dim 8 --trials 200 -n 3
+        humpday recommend --dim 8 --trials 200
+        humpday --json ratings --dim 8
+        python -m humpday --help
+
   publish:
     needs: [build, test-install]
     runs-on: ubuntu-latest
