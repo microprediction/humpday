@@ -10,7 +10,12 @@ This test suite ensures:
 This is the practical validation that can be run without JavaScript dependencies.
 """
 
-import numpy as np
+import pytest
+
+# numpy is the `fast` extra rather than a dependency, and CI runs the whole suite on the
+# dependency-free backend too. A test that needs numpy to express itself skips there rather
+# than failing to import, which is how this suite already treats its optional dependencies.
+np = pytest.importorskip("numpy")
 
 
 class TestObjectiveImplementations:
@@ -241,11 +246,15 @@ class TestOptimizerImplementations:
         def test_objective(x):
             return np.sum(np.asarray(x) ** 2)
 
-        # Run same optimizer with same seed multiple times
-        np.random.seed(42)
+        from humpday import _array as _A
+
+        # Run same optimizer with same seed multiple times. _A.seed reaches the
+        # live backend's stream; np.random.seed alone leaves the pure backend's
+        # private RNG untouched.
+        _A.seed(42)
         result1 = RandomSearch(test_objective, 20, 2).optimize()
 
-        np.random.seed(42)
+        _A.seed(42)
         result2 = RandomSearch(test_objective, 20, 2).optimize()
 
         # Results should be identical (same random seed)
@@ -308,12 +317,14 @@ class TestAdaptiveSystem:
             sphere_variants_generator,
         )
 
-        # Quick test with small budget
+        # Quick test with a budget that pays for two warmup rounds
+        # (23 algorithms x 20 trials = 460 each) -- the budget is a cap
+        # on evaluations, so a 500 budget would run one.
         objective_gen = sphere_variants_generator(2)
 
         results = adaptive_optimize(
             objective_generator=objective_gen,
-            trials_budget=500,
+            trials_budget=1000,
             n_dim=2,
             n_warmup_problems=2,
             trials_per_warmup=20,  # Increased to avoid population size issues

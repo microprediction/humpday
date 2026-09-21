@@ -8,15 +8,23 @@ This document describes the organization and structure of the Humpday optimizati
 humpday/
 ├── humpday/                    # Main package
 │   ├── __init__.py            # Main API exports
-│   ├── optimizers/            # Optimization algorithms
-│   ├── objectives/            # Test functions and benchmarks  
-│   └── analysis/              # Performance analysis tools
-├── docs/                      # Documentation and demos
-├── examples/                  # Usage examples
-├── experiments/               # Research experiments and validation
-├── tests/                     # Test suite
-├── paper/                     # Academic paper materials
-└── pyproject.toml            # Project configuration
+│   ├── __main__.py            # The `humpday` console command
+│   ├── _array.py              # Backend shim: numpy when present, pure Python otherwise
+│   ├── _prng.py               # PCG32 and the portable transcendentals shared with the JS port
+│   ├── eligibility.py         # Which optimizers can use a given dimension and budget
+│   ├── ratings.py             # Reads the recorded tournament in humpday/data/ratings.json
+│   ├── optimizers/            # The algorithms, one module per family
+│   ├── objectives/            # Test functions and benchmarks
+│   └── transforms/            # Cube, simplex and bounds mappings
+├── benchmarks/                 # record_ratings.py: writes the tournament the package ships
+├── docs/                       # The published site, including the JavaScript port
+├── examples/                   # Usage examples
+├── example_applications/       # ~80 worked problems, each with a browser demo
+├── experiments/                # Research experiments and validation
+├── papers/                     # Academic paper materials
+├── parity/                     # Transition vectors shared by the Python and JS twins
+├── tests/                      # Test suite
+└── pyproject.toml              # Project configuration
 ```
 
 ## Core Package (`humpday/`)
@@ -31,16 +39,26 @@ The main interface provides simple functions for optimization without requiring 
 ### Optimizers (`humpday/optimizers/`)
 
 **Core Files:**
-- `optimizers.py` - **THE MAIN FILE**: Contains all 21 validated pure Python algorithms
-- `alloptimizers.py` - Wrapper functions for backward compatibility
+- `base.py` - `Optimizer`, the ask/tell loop, the budget cap and the best-point bookkeeping
+- `prima_algorithms.py` - UOBYQA, NEWUOA, BOBYQA
+- `scipy_algorithms.py` - NelderMead, Powell, LBFGSB (implemented here, not called out to SciPy)
+- `evolutionary_algorithms.py` - DE, PSO, CMA-ES, ES, GA, SA, Harmony, Firefly, ACOR, Bayesian
+- `search_algorithms.py` - Rechenberg, CoordinateDescent, PatternSearch, HillClimbing, GridSearch,
+  RandomSearch
+- `alloy.py` - Alloy, the portfolio-of-methods optimizer
+- `alloptimizers.py` - the `PURE_OPTIMIZERS` registry and `pure_optimize`
 - `adaptive_optimizer.py` - Elo rating system for algorithm selection
+- `scipy_interface.py` - `minimize`, `OptimizeResult` and the bounds transforms
 
-**Legacy Files (mostly deprecated):**
-- `expanded_scipy.py` - SciPy-based optimizers (being phased out)
-- `comprehensive_derivative_free.py` - External package wrappers (deprecated)
-- `primacube.py` - PRIMA algorithm wrappers (deprecated)
+There is no `optimizers.py`, and there are no wrapper modules: `expanded_scipy.py`,
+`comprehensive_derivative_free.py`, `primacube.py`, `pysotcube.py` and `nloptcube.py` were all
+removed along with the third-party packages behind them.
 
-**Current Philosophy:** Pure Python implementations only, no external dependencies beyond numpy. All algorithms are in `optimizers.py` with the registry `PURE_OPTIMIZERS` containing exactly 22 algorithms that match the JavaScript implementations.
+**Current Philosophy:** every algorithm is implemented here, and `pip install humpday` has no
+dependencies at all. numpy is the `fast` extra: `humpday/_array.py` dispatches to it when it is
+installed and to a pure-Python backend when it is not, and the algorithms call the shim either
+way. `PURE_OPTIMIZERS` holds 23 algorithms, all of which have a JavaScript counterpart in
+`docs/js/modules/`.
 
 ### Objectives (`humpday/objectives/`)
 
@@ -59,18 +77,21 @@ from humpday.objectives.deapobjectives import sphere, rosenbrock, ackley
 result = sphere([0.1, 0.2])[0]  # Extract the value
 ```
 
-### Analysis (`humpday/analysis/`)
-- Performance analysis tools
-- Algorithm categorization
-- Results processing
+### Ratings and eligibility (`humpday/ratings.py`, `humpday/eligibility.py`)
+- `ratings.py` reads the recorded tournament: per (dimension, budget, suite) cell, an Elo table
+  over the optimizers that raced there. Nothing is interpolated across dimensions.
+- `eligibility.py` says which optimizers can use a given dimension and budget at all, and
+  `recommend` picks one, optionally trading quality against wall-clock cost.
+- `benchmarks/record_ratings.py` is what writes the table; it is not imported by the package.
 
 ## Documentation (`docs/`)
 
 **Structure:**
 - `algorithm-visualization-demo.html` - Interactive 3D visualization demo
 - `contest.html` - Algorithm comparison interface
-- `js/` - JavaScript implementations of algorithms (for web demos)
-- `adaptive-optimization.md` - Guide to new Elo rating system
+- `js/modules/` - the JavaScript port of the algorithms, loaded as plain script tags
+- `algorithms/`, `applications/` - one page per algorithm, one per worked problem
+- `adaptive-optimization.md` - Guide to the Elo rating system
 
 **Key Pages:**
 - Main demo with embeddable 3D visualization
@@ -96,14 +117,16 @@ result = sphere([0.1, 0.2])[0]  # Extract the value
 ## Key Design Principles
 
 ### 1. Lightweight and Self-Contained
-- **Only numpy dependency** in core package
-- Pure Python implementations preferred over external packages
+- **No dependencies at all** in the core package; numpy is the `fast` extra
+- Every algorithm implemented here rather than wrapped
 - No complex build requirements
 
 ### 2. JavaScript Compatibility
-- 22 algorithms exactly match JavaScript implementations
-- Validation tests ensure consistency
-- Web demos use identical algorithm logic
+- All 23 algorithms have a JavaScript counterpart, and 13 of them are bit-exact twins that
+  replay `parity/transition_vectors.json` point for point on the shared PCG32 stream
+- The other 10 agree on behaviour, not on every last bit; #78 tracks the differences and #325
+  tracks the JavaScript recommender lagging the recorded table
+- Claims beyond that are not tested and should not be made
 
 ### 3. User-Friendly API
 - Simple `suggest()` and `minimize()` functions for basic use
@@ -117,9 +140,10 @@ result = sphere([0.1, 0.2])[0]  # Extract the value
 
 ## Algorithm Organization
 
-### The 22 Validated Algorithms
+### The 23 Algorithms
 
-All algorithms are in `optimizers.py` with base class `BaseOptimizer`:
+Every one subclasses `Optimizer` in `humpday/optimizers/base.py`, and
+`humpday.ALGORITHM_NAMES` is the registry itself rather than a copy of it:
 
 **Derivative-Free Methods:**
 1. `PRIMA_UOBYQA` - Trust region, unconstrained
@@ -150,6 +174,7 @@ All algorithms are in `optimizers.py` with base class `BaseOptimizer`:
 20. `HarmonySearch` - Harmony search
 21. `FireflyAlgorithm` - Firefly algorithm
 22. `AntColonyOpt` - Socha-Dorigo continuous ACOR
+23. `Alloy` - a portfolio of the above, spending its budget across several
 
 ### Algorithm Selection Philosophy
 
@@ -167,10 +192,11 @@ All algorithms are in `optimizers.py` with base class `BaseOptimizer`:
 ## Common Patterns
 
 ### Adding New Algorithms
-1. Inherit from `BaseOptimizer` in `optimizers.py`
-2. Implement `optimize()` method
-3. Add to `PURE_OPTIMIZERS` registry
-4. Test against JavaScript equivalent
+1. Inherit from `Optimizer` in `humpday/optimizers/base.py`, in the module for its family
+2. Implement the `_run()` generator, so the algorithm works ask/tell as well as batch
+3. Add to the `PURE_OPTIMIZERS` registry in `alloptimizers.py`
+4. Write the JavaScript twin in `docs/js/modules/`, and record transition vectors if it is exact
+5. Give it a tier and caps in `eligibility.py`, or it cannot be recommended
 
 ### Adding New Objectives  
 1. Add to appropriate file in `objectives/`
@@ -187,7 +213,7 @@ All algorithms are in `optimizers.py` with base class `BaseOptimizer`:
 ## Current Development Focus
 
 ### ✅ Completed
-- Pure Python implementations of 22 algorithms
+- Implementations of 23 algorithms, with no mandatory dependency
 - Elo rating system for adaptive selection
 - Interactive 3D visualization demos
 - Comprehensive test functions library
@@ -207,10 +233,10 @@ All algorithms are in `optimizers.py` with base class `BaseOptimizer`:
 ## Working with the Repository
 
 ### For Contributors
-1. Check `optimizers.py` for current algorithm implementations
+1. Check `humpday/optimizers/` for the current implementations, one module per family
 2. Use existing test functions from `objectives/`
-3. Follow the lightweight, dependency-free philosophy
-4. Test against JavaScript implementations for consistency
+3. Follow the lightweight, dependency-free philosophy: call `humpday._array`, never numpy directly
+4. Test against the JavaScript implementations for consistency
 
 ### For Users
 - Start with `suggest()` and `minimize()` functions
@@ -221,8 +247,11 @@ All algorithms are in `optimizers.py` with base class `BaseOptimizer`:
 ### For AI Assistants  
 - **DON'T** redefine existing test functions
 - **DO** use functions from `humpday.objectives.deapobjectives`
-- **FOCUS** on `optimizers.py` for algorithm implementations
-- **REMEMBER** the 22-algorithm limit and JavaScript compatibility requirements
+- **FOCUS** on `humpday/optimizers/`, whose modules replaced the single `optimizers.py`
+- **REMEMBER** that every Python change to a trajectory needs its JavaScript twin updated in
+  lockstep, and `parity/record_transition_vectors.py` re-run
+- **DON'T** import numpy in package code; use the `humpday._array` shim, or the install with no
+  extras breaks
 - **LEVERAGE** the existing adaptive optimization system instead of building new selection logic
 
 This organization reflects the evolution from a complex multi-dependency system to a streamlined, self-contained optimization library focused on reliability and ease of use.

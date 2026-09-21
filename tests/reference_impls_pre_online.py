@@ -1550,6 +1550,7 @@ class FrozenCMAEvolutionStrategy(BaseOptimizer):
             c1 = 2 / ((n + 1.3) ** 2 + mueff)
             cmu = min(1 - c1, 2 * (mueff - 2 + 1 / mueff) / ((n + 2) ** 2 + mueff))
             damps = 1 + 2 * max(0, math.sqrt((mueff - 1) / (n + 1)) - 1) + cs
+            chi_n = math.sqrt(n) * (1 - 1 / (4 * n) + 1 / (21 * n * n))
 
             # Fresh state per restart. Initial mean is a random interior
             # point in [0.3, 0.7]^n — same distribution the
@@ -1647,10 +1648,11 @@ class FrozenCMAEvolutionStrategy(BaseOptimizer):
                     cs * (2 - cs) * mueff
                 ) * _A.linalg.matvec(invsqrtC, y)
 
+                ps_norm = _A.norm(ps)
                 hsig = (
                     1
-                    if _A.norm(ps) / math.sqrt(1 - (1 - cs) ** (2 * generation))
-                    < 1.4 + 2 / (n + 1)
+                    if ps_norm / math.sqrt(1 - (1 - cs) ** (2 * generation))
+                    < (1.4 + 2 / (n + 1)) * chi_n
                     else 0
                 )
 
@@ -1669,7 +1671,7 @@ class FrozenCMAEvolutionStrategy(BaseOptimizer):
 
                     pc_outer = _A.linalg.outer(pc, pc)
                     new_C = _A.linalg.matrix_zeros(n, n)
-                    base = 1 - c1 - cmu
+                    base = 1 - c1 - cmu + c1 * (1 - hsig) * cc * (2 - cc)
                     for r in range(n):
                         for c in range(n):
                             new_C[r][c] = (
@@ -1716,9 +1718,7 @@ class FrozenCMAEvolutionStrategy(BaseOptimizer):
                 # And do NOT cap at 0.5: reference pycma has no upper
                 # bound on sigma; oversized proposals are handled by the
                 # `_A.clip(..., 0, 1)` already applied to each x sample.
-                sigma = sigma * math.exp(
-                    (cs / damps) * (_A.norm(ps) / math.sqrt(n) - 1)
-                )
+                sigma = sigma * math.exp((cs / damps) * (ps_norm / chi_n - 1))
 
                 # ---- IPOP termination checks ----
                 # Maintain a rolling window of best-of-generation values
@@ -2359,6 +2359,7 @@ class FrozenAlloy(BaseOptimizer):
 from humpday.optimizers.prima_algorithms import (  # noqa: E402
     _build_min_frobenius_quadratic,
     _solve_trsbox,
+    _steihaug_cg,
 )
 
 # Mirrors humpday.optimizers.prima_algorithms.
@@ -3162,24 +3163,30 @@ class FrozenPRIMA_NEWUOA(BaseOptimizer):
                 d_newton = -_A.linalg.solve(H, g)
                 if _A.norm(d_newton) <= rho:
                     return d_newton
-        except Exception:
+        except (ValueError, ArithmeticError):
             pass
         return self._dogleg_method(g, H, rho, n)
 
     def _dogleg_method(self, g, H, rho, n):
-        """Dogleg trust-region solver."""
+        """Dogleg trust-region solver, safeguarded for indefinite models (#352)."""
         g_norm_sq = _A.dot(g, g)
         if g_norm_sq < 1e-12:
             return _A.zeros(n)
+        g_norm = math.sqrt(g_norm_sq)
 
         Hg = _A.linalg.matvec(H, g)
         gHg = _A.dot(g, Hg)
-        alpha_c = g_norm_sq / gHg if gHg > 1e-12 else 1.0
-
+        if gHg <= 0:
+            return -(rho / g_norm) * g
+        alpha_c = g_norm_sq / gHg
+        if alpha_c * g_norm >= rho:
+            return -(rho / g_norm) * g
         d_cauchy = -alpha_c * g
 
-        if _A.norm(d_cauchy) >= rho:
-            return -rho * g / math.sqrt(g_norm_sq)
+        try:
+            _A.linalg.cholesky(H)
+        except (ValueError, ArithmeticError):
+            return _steihaug_cg(g, H, rho, n)
 
         try:
             d_newton = -_A.linalg.solve(H, g)
@@ -3196,7 +3203,7 @@ class FrozenPRIMA_NEWUOA(BaseOptimizer):
             if discriminant >= 0 and a > 1e-12:
                 tau = (-b_coef + math.sqrt(discriminant)) / (2 * a)
                 return d_cauchy + tau * diff
-        except Exception:
+        except (ValueError, ArithmeticError):
             pass
 
         return d_cauchy

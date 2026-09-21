@@ -5,8 +5,12 @@ Tests Nelder-Mead, Powell, and L-BFGS-B algorithms for correctness,
 convergence behavior, and robustness across different problem types.
 """
 
-import numpy as np
 import pytest
+
+# numpy is the `fast` extra rather than a dependency, and CI runs the whole suite on the
+# dependency-free backend too. A test that needs numpy to express itself skips there rather
+# than failing to import, which is how this suite already treats its optional dependencies.
+np = pytest.importorskip("numpy")
 
 from humpday.optimizers.scipy_algorithms import LBFGSB, NelderMead, Powell
 
@@ -192,8 +196,11 @@ class TestSciPyAlgorithms:
             noise = 0.01 * np.random.randn()
             return clean + noise
 
+        from humpday import _array as _A
+
         for AlgorithmClass in [NelderMead, Powell, LBFGSB]:
-            np.random.seed(789)
+            np.random.seed(789)  # the objective's noise
+            _A.seed(789)  # the optimizer's own draws, on whichever backend is live
             optimizer = AlgorithmClass(noisy_function, n_trials=60, n_dim=2)
             best_value, best_x = optimizer.optimize()
 

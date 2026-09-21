@@ -113,13 +113,42 @@ const MathUtils = {
 // Deterministic transcendentals shared with the Python side (see
 // humpday/_prng.py): trajectory code must use these, never Math.pow /
 // Math.exp / Math.log, whose last-ulp behaviour is runtime-specific.
-MathUtils.portableLog = _prngmod.portableLog;
-MathUtils.portableExp = _prngmod.portableExp;
+//
+// A page that does not load prng.js first leaves these null, and the first
+// optimizer to need one fails with "MathUtils.portableLog is not a function"
+// somewhere in the middle of a run -- which is how every page on the site came
+// to be missing the script without anyone noticing. Say what is actually
+// wrong, at the point the name is used.
+function _missingPrng(name) {
+    return function () {
+        throw new Error(
+            'humpday: MathUtils.' + name + ' needs js/modules/prng.js, which this page loads ' +
+            'after base-optimizer.js or not at all. Load prng.js first: this module captures ' +
+            'the portable math when it runs.'
+        );
+    };
+}
+
+MathUtils.portableLog = _prngmod.portableLog || _missingPrng('portableLog');
+MathUtils.portableExp = _prngmod.portableExp || _missingPrng('portableExp');
+
+// Thrown by evaluate() when nTrials objective calls have been made. Caught by
+// the wrapper the Optimizer constructor puts around legacy optimize()
+// overrides, and by the generator driver; never seen by callers.
+class BudgetExhausted extends Error {
+    constructor(nTrials) {
+        super(`budget of ${nTrials} objective evaluations exhausted`);
+        this.name = 'BudgetExhausted';
+    }
+}
 
 // Base optimizer class
 class Optimizer {
     constructor(objective, nTrials, nDim) {
         this.objective = objective;
+        if (!Number.isInteger(nTrials) || nTrials < 0) {
+            throw new Error(`nTrials must be a non-negative integer, got ${nTrials}`);
+        }
         this.nTrials = nTrials;
         this.nDim = nDim;
         this.evaluations = 0;
@@ -129,6 +158,22 @@ class Optimizer {
         this.bestX = MathUtils.randomUniform(nDim);
         this.trackPath = false;
         this.path = [];
+
+        // An optimizer that overrides optimize() owns its own loop, so the
+        // driver below cannot cap it; evaluate() throws BudgetExhausted at the
+        // cap instead, and this wrapper turns that into a normal return.
+        if (this.optimize !== Optimizer.prototype.optimize) {
+            const legacy = this.optimize.bind(this);
+            this.optimize = () => {
+                if (this.nTrials <= 0) return this._result();
+                try {
+                    return legacy();
+                } catch (e) {
+                    if (e instanceof BudgetExhausted) return this._result();
+                    throw e;
+                }
+            };
+        }
     }
 
     _bookkeep(clippedX, value) {
@@ -144,10 +189,27 @@ class Optimizer {
     }
 
     evaluate(x) {
+        // The cap for optimizers that still own their loop (the ones that
+        // override optimize() instead of defining _run): the constructor
+        // wraps their optimize() so this signal ends the run with the best
+        // point banked so far. The objective is never called past nTrials.
+        if (this.evaluations >= this.nTrials) {
+            throw new BudgetExhausted(this.nTrials);
+        }
         this.evaluations++;
         const clippedX = MathUtils.clipArray(x, 0, 1);
         const value = this.objective(clippedX);
         return this._bookkeep(clippedX, value);
+    }
+
+    _result() {
+        return {
+            bestValue: this.bestValue,
+            bestX: this.bestX,
+            evaluations: this.evaluations,
+            success: true,
+            path: this.trackPath ? this.path : null
+        };
     }
 
     // ------------------------------------------------------------------ //
@@ -161,22 +223,29 @@ class Optimizer {
         if (typeof this._run !== 'function') {
             throw new Error(`${this.constructor.name} defines neither optimize() nor _run()`);
         }
+        // nTrials is a hard cap on objective calls, enforced by the driver
+        // rather than trusted to every algorithm (twin of BaseOptimizer.optimize).
+        if (this.nTrials <= 0) return this._result();
         const gen = this._run();
-        let res = gen.next();
-        while (!res.done) {
-            this.evaluations++;
-            const clippedX = MathUtils.clipArray(res.value, 0, 1);
-            const value = this.objective(clippedX);
-            this._bookkeep(clippedX, value);
-            res = gen.next(value);
+        try {
+            let res = gen.next();
+            while (!res.done) {
+                if (this.evaluations >= this.nTrials) {
+                    gen.return();
+                    break;
+                }
+                this.evaluations++;
+                const clippedX = MathUtils.clipArray(res.value, 0, 1);
+                const value = this.objective(clippedX);
+                this._bookkeep(clippedX, value);
+                res = gen.next(value);
+            }
+        } catch (e) {
+            // A _run that calls evaluate() itself (e.g. for a polish stage)
+            // hits the cap there.
+            if (!(e instanceof BudgetExhausted)) throw e;
         }
-        return {
-            bestValue: this.bestValue,
-            bestX: this.bestX,
-            evaluations: this.evaluations,
-            success: true,
-            path: this.trackPath ? this.path : null
-        };
+        return this._result();
     }
 
     // Threadless scalar ask/tell over _run (subset of the Python surface;
@@ -196,7 +265,7 @@ class Optimizer {
             };
         }
         const gd = this._gd;
-        if (gd.done) return null;
+        if (gd.done || this.evaluations >= this.nTrials) return null;
         if (gd.awaiting) throw new Error('suggestNext() called again before receiveUpdate()');
         gd.awaiting = true;
         return gd.pending;
@@ -208,7 +277,20 @@ class Optimizer {
         gd.awaiting = false;
         this.evaluations++;
         this._bookkeep(gd.pending, value);
-        const res = gd.gen.next(value);
+        if (this.evaluations >= this.nTrials) {
+            // Budget spent: the run is over (twin of BaseOptimizer._gen_feed).
+            gd.done = true;
+            gd.pending = null;
+            gd.gen.return();
+            return;
+        }
+        let res;
+        try {
+            res = gd.gen.next(value);
+        } catch (e) {
+            if (!(e instanceof BudgetExhausted)) throw e;
+            res = { done: true };
+        }
         if (res.done) {
             gd.done = true;
             gd.pending = null;
@@ -412,7 +494,7 @@ class Optimizer {
 // Export for use in other modules
 if (typeof module !== 'undefined' && module.exports) {
     // Node.js environment
-    module.exports = { Optimizer, MathUtils, usePortableRng, useLegacyRng };
+    module.exports = { Optimizer, MathUtils, usePortableRng, useLegacyRng, BudgetExhausted };
 } else {
     // Browser environment
     window.Optimizer = Optimizer;

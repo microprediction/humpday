@@ -25,7 +25,7 @@ print(f"Function value: {result.fun}")  # ~0 (minimum value)
 
 The primary interface function with cube-based optimization:
 
-```python
+```text
 cube_minimize(
     fun,                    # Objective function to minimize
     x0=None,               # Initial guess (currently ignored)
@@ -39,14 +39,16 @@ cube_minimize(
 **Parameters:**
 
 - **`fun`**: Objective function that takes numpy array and returns scalar
-- **`method`**: Any of the 22 Humpday algorithms:
-  - `'NelderMead'`, `'DifferentialEvolution'`, `'ParticleSwarm'`
+- **`method`**: any name in `humpday.ALGORITHM_NAMES`, which is the registry itself rather than a
+  copy of it that can drift:
+  - `'NelderMead'`, `'Powell'`, `'LBFGSB'`
   - `'PRIMA_UOBYQA'`, `'PRIMA_NEWUOA'`, `'PRIMA_BOBYQA'`
-  - `'CMAEvolutionStrategy'`, `'EvolutionStrategy'`, `'GeneticAlgorithm'`
-  - `'BayesianOpt'`, `'RandomSearch'`, `'Rechenberg'`
+  - `'DifferentialEvolution'`, `'ParticleSwarm'`, `'CMAEvolutionStrategy'`
+  - `'EvolutionStrategy'`, `'GeneticAlgorithm'`, `'Rechenberg'`
+  - `'SimulatedAnnealing'`, `'HarmonySearch'`, `'FireflyAlgorithm'`
+  - `'AntColonyOpt'`, `'BayesianOpt'`, `'Alloy'`
   - `'HillClimbing'`, `'CoordinateDescent'`, `'PatternSearch'`
-  - `'SimulatedAnnealing'`, `'HarmonySearch'`
-  - `'FireflyAlgorithm'`, `'AntColonyOpt'`, `'Powell'`, `'LBFGSB'`
+  - `'RandomSearch'`, `'GridSearch'`
 - **`bounds`**: Bounds specification (see below)
 - **`options`**: Dictionary with `'maxiter'` for function evaluation limit
 
@@ -81,15 +83,21 @@ bounds = None  # Uses [0,1]^n
 ### Algorithm-Specific Functions
 ```python
 from humpday import (
-    minimize_nelder_mead,
-    minimize_differential_evolution,
-    minimize_particle_swarm,
-    minimize_cma_es,
-    minimize_prima_uobyqa
+    cube_cma_es,
+    cube_differential_evolution,
+    cube_nelder_mead,
+    cube_particle_swarm,
+    cube_prima_uobyqa,
 )
 
-# Each function has the same interface:
-result = minimize_nelder_mead(objective, bounds=bounds, options=options)
+
+def objective(x):
+    return sum(xi**2 for xi in x)
+
+
+# Each function has the same interface as cube_minimize, with the method fixed:
+result = cube_nelder_mead(objective, bounds=[(-5, 5), (-5, 5)], options={"maxiter": 100})
+print(result.x, result.fun)
 ```
 
 ### Scalar (1D) Optimization
@@ -128,6 +136,11 @@ recovered = transform_from_unit_cube(point_unit, bounds)
 
 ### Multi-Modal Function
 ```python
+import numpy as np
+
+from humpday import cube_minimize
+
+
 def ackley(x):
     """Ackley function - challenging multimodal landscape."""
     a, b, c = 20, 0.2, 2*np.pi
@@ -140,7 +153,7 @@ def ackley(x):
 
 # Search on [-5, 5]^3
 bounds = [(-5, 5)] * 3
-result = scipy_minimize(ackley, bounds=bounds, method='DifferentialEvolution')
+result = cube_minimize(ackley, bounds=bounds, method='DifferentialEvolution')
 
 print(f"Global minimum: {result.fun:.6f}")  # Should be ~0
 print(f"At point: {result.x}")              # Should be ~[0, 0, 0]
@@ -148,6 +161,11 @@ print(f"At point: {result.x}")              # Should be ~[0, 0, 0]
 
 ### Portfolio Optimization
 ```python
+import numpy as np
+
+from humpday import cube_minimize
+
+
 def portfolio_risk(weights):
     """Simple portfolio risk minimization."""
     # Correlation matrix (example)
@@ -164,7 +182,7 @@ def portfolio_risk(weights):
 
 # Each weight between 0 and 1
 bounds = [(0, 1), (0, 1), (0, 1)]
-result = scipy_minimize(portfolio_risk, bounds=bounds, method='DifferentialEvolution')
+result = cube_minimize(portfolio_risk, bounds=bounds, method='DifferentialEvolution')
 
 print(f"Optimal weights: {result.x}")
 print(f"Sum: {np.sum(result.x):.4f}")  # Should be ~1.0
@@ -172,12 +190,17 @@ print(f"Sum: {np.sum(result.x):.4f}")  # Should be ~1.0
 
 ### High-Dimensional Problem
 ```python
+import numpy as np
+
+from humpday import cube_minimize
+
+
 # 100-dimensional sphere function
 def high_dim_sphere(x):
     return np.sum((x - 0.3)**2)  # Minimum at x = [0.3, 0.3, ..., 0.3]
 
 bounds = [(0, 1)] * 100
-result = scipy_minimize(high_dim_sphere, bounds=bounds, 
+result = cube_minimize(high_dim_sphere, bounds=bounds, 
                        method='ParticleSwarm',
                        options={'maxiter': 2000})
 

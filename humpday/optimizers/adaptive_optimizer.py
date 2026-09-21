@@ -7,7 +7,9 @@ for which algorithms to use based on their performance.
 """
 
 import json
+import math
 import os
+import warnings
 from collections.abc import Generator
 from typing import Any, Callable, Dict, List, Optional, Tuple
 
@@ -18,6 +20,8 @@ from .alloptimizers import PURE_OPTIMIZERS, pure_optimize
 
 class EloRatingSystem:
     """Elo rating system for optimization algorithms."""
+
+    last_error: Optional[Exception] = None  # the exception behind the last False
 
     def __init__(self, initial_rating: float = 1500.0, k_factor: float = 32.0):
         self.initial_rating = initial_rating
@@ -73,57 +77,84 @@ class EloRatingSystem:
         return sorted_ratings[:n]
 
     def save_ratings(self, filepath: str) -> bool:
-        """Save ratings and history to file. Returns True if successful."""
+        """Save ratings and history to file. Returns True if successful.
+
+        On an I/O failure the exception is kept in ``last_error`` and False is
+        returned; nothing else is swallowed. A bare filename saves into the
+        current directory (its parent is "" and needs no creating).
+        """
+        data = {
+            "ratings": self.ratings,
+            "match_history": self.match_history,
+            "initial_rating": self.initial_rating,
+            "k_factor": self.k_factor,
+        }
         try:
-            data = {
-                "ratings": self.ratings,
-                "match_history": self.match_history,
-                "initial_rating": self.initial_rating,
-                "k_factor": self.k_factor,
-            }
-            os.makedirs(os.path.dirname(filepath), exist_ok=True)
+            parent = os.path.dirname(filepath)
+            if parent:
+                os.makedirs(parent, exist_ok=True)
             with open(filepath, "w") as f:
                 json.dump(data, f, indent=2)
-            return True
-        except Exception:
+        except OSError as exc:
+            self.last_error = exc
             return False
+        self.last_error = None
+        return True
 
     def load_ratings(self, filepath: str) -> bool:
         """Load ratings and history from file. Returns True if successful."""
+        if not os.path.exists(filepath):
+            return False
         try:
-            if os.path.exists(filepath):
-                with open(filepath) as f:
-                    data = json.load(f)
+            with open(filepath) as f:
+                data = json.load(f)
+        except (OSError, ValueError) as exc:  # unreadable, or not JSON
+            self.last_error = exc
+            return False
+        if not isinstance(data, dict):
+            self.last_error = ValueError(f"{filepath}: expected a JSON object")
+            return False
 
-                self.ratings = data.get("ratings", {})
-                self.match_history = data.get("match_history", [])
-                self.initial_rating = data.get("initial_rating", 1500.0)
-                self.k_factor = data.get("k_factor", 32.0)
+        self.ratings = data.get("ratings", {})
+        self.match_history = data.get("match_history", [])
+        self.initial_rating = data.get("initial_rating", 1500.0)
+        self.k_factor = data.get("k_factor", 32.0)
 
-                # Ensure all algorithms have ratings
-                for alg in PURE_OPTIMIZERS.keys():
-                    if alg not in self.ratings:
-                        self.ratings[alg] = self.initial_rating
+        # Ensure all algorithms have ratings
+        for alg in PURE_OPTIMIZERS.keys():
+            if alg not in self.ratings:
+                self.ratings[alg] = self.initial_rating
 
-                return True
-        except Exception:
-            pass
-        return False
+        self.last_error = None
+        return True
 
 
-def normalize_performance(values: List[float]) -> List[float]:
-    """Normalize performance values to [0, 1] range."""
-    if not values or len(values) < 2:
-        return [0.5] * len(values)
+def pairwise_outcome(value_a: float, value_b: float) -> Optional[float]:
+    """Elo outcome for A against B from two objective values (lower is better).
 
-    min_val = min(values)
-    max_val = max(values)
+    Returns 1.0, 0.5 or 0.0, or None when the pair carries no evidence. A
+    finite value beats a non-finite one (a failed run, an exception recorded
+    as inf, a NaN); two finite values compare directly; two non-finite values
+    are not compared at all, since nothing distinguishes them.
 
-    if max_val == min_val:
-        return [0.5] * len(values)
-
-    # Invert because lower objective values are better
-    return [(max_val - val) / (max_val - min_val) for val in values]
+    Comparing the raw values keeps finite order exact without a normalisation
+    step. Normalising first is what let a single inf turn every score into
+    NaN, and NaN compares false both ways, so every pair fell through to the
+    equal branch or handed the win to whichever algorithm was listed later.
+    """
+    a_ok = isinstance(value_a, (int, float)) and math.isfinite(value_a)
+    b_ok = isinstance(value_b, (int, float)) and math.isfinite(value_b)
+    if a_ok and b_ok:
+        if value_a < value_b:
+            return 1.0
+        if value_a > value_b:
+            return 0.0
+        return 0.5
+    if a_ok:
+        return 1.0
+    if b_ok:
+        return 0.0
+    return None
 
 
 def run_algorithm_tournament(
@@ -133,6 +164,7 @@ def run_algorithm_tournament(
     n_dim: int,
     elo_system: Optional[EloRatingSystem] = None,
     algorithms_to_test: Optional[List[str]] = None,
+    stats: Optional[Dict[str, int]] = None,
 ) -> EloRatingSystem:
     """
     Run a tournament between algorithms on multiple problems.
@@ -144,6 +176,10 @@ def run_algorithm_tournament(
         n_dim: Problem dimension
         elo_system: Existing Elo system to update (creates new if None)
         algorithms_to_test: List of algorithm names to test (tests all if None)
+        stats: Optional dict that receives what actually happened:
+            ``problems`` consumed from the generator and ``evaluations``
+            (objective calls) made. Both are what a budget should be
+            charged for, as opposed to what was requested.
 
     Returns:
         Updated EloRatingSystem
@@ -153,6 +189,11 @@ def run_algorithm_tournament(
 
     if algorithms_to_test is None:
         algorithms_to_test = list(PURE_OPTIMIZERS.keys())
+
+    if stats is None:
+        stats = {}
+    stats.setdefault("problems", 0)
+    stats.setdefault("evaluations", 0)
 
     print(
         f"Running tournament with {len(algorithms_to_test)} algorithms on {n_problems} problems..."
@@ -164,44 +205,38 @@ def run_algorithm_tournament(
         except StopIteration:
             print(f"Objective generator exhausted after {problem_idx} problems")
             break
+        stats["problems"] += 1
 
         print(f"Problem {problem_idx + 1}/{n_problems}")
+
+        def counted(x, _f=objective):
+            stats["evaluations"] += 1
+            return _f(x)
 
         # Run all algorithms on this problem
         results = {}
         for alg_name in algorithms_to_test:
             try:
                 best_value, _ = pure_optimize(
-                    objective, alg_name, trials_per_problem, n_dim
+                    counted, alg_name, trials_per_problem, n_dim
                 )
                 results[alg_name] = best_value
             except Exception as e:
                 print(f"Algorithm {alg_name} failed: {e}")
                 results[alg_name] = float("inf")
 
-        # Convert to normalized scores
-        performance_values = list(results.values())
-        normalized_scores = normalize_performance(performance_values)
-
-        # Update Elo ratings with pairwise comparisons
+        # Update Elo ratings with pairwise comparisons on the raw values. A
+        # failed run (recorded as inf) loses to every finite result and is not
+        # compared with another failure; see pairwise_outcome.
         alg_names = list(results.keys())
         for i in range(len(alg_names)):
             for j in range(i + 1, len(alg_names)):
                 alg_a = alg_names[i]
                 alg_b = alg_names[j]
 
-                score_a = normalized_scores[i]
-                score_b = normalized_scores[j]
-
-                # Convert to Elo score (0, 0.5, 1)
-                if score_a > score_b:
-                    elo_score_a = 1.0
-                elif score_a < score_b:
-                    elo_score_a = 0.0
-                else:
-                    elo_score_a = 0.5
-
-                elo_system.update_ratings(alg_a, alg_b, elo_score_a)
+                elo_score_a = pairwise_outcome(results[alg_a], results[alg_b])
+                if elo_score_a is not None:
+                    elo_system.update_ratings(alg_a, alg_b, elo_score_a)
 
     return elo_system
 
@@ -248,43 +283,55 @@ def adaptive_optimize(
         if verbose:
             print("Initializing new Elo rating system")
 
-    # Warmup phase: test all algorithms on several problems
-    if verbose:
-        print(f"\nWarmup phase: testing all algorithms on {n_warmup_problems} problems")
+    # The budget is total objective evaluations, so every round is paid for
+    # before it is dispatched: a problem costs (algorithms x trials) at most,
+    # and only as many problems as fit are scheduled. Actual spend is then
+    # read back from the tournament, since optimizers may stop early.
+    stats = {"problems": 0, "evaluations": 0}
+    round_cost = len(PURE_OPTIMIZERS) * trials_per_warmup
+    warmup_problems = min(n_warmup_problems, trials_budget // round_cost)
 
-    elo_system = run_algorithm_tournament(
-        objective_generator=objective_generator,
-        trials_per_problem=trials_per_warmup,
-        n_problems=n_warmup_problems,
-        n_dim=n_dim,
-        elo_system=elo_system,
-    )
+    if warmup_problems > 0:
+        if verbose:
+            print(
+                f"\nWarmup phase: testing all algorithms on {warmup_problems} problems"
+            )
+        elo_system = run_algorithm_tournament(
+            objective_generator=objective_generator,
+            trials_per_problem=trials_per_warmup,
+            n_problems=warmup_problems,
+            n_dim=n_dim,
+            elo_system=elo_system,
+            stats=stats,
+        )
+    elif verbose:
+        print(
+            f"\nBudget of {trials_budget} evaluations cannot pay for one warmup "
+            f"round ({round_cost}); no problems will be run"
+        )
 
     # Get current top algorithms
     top_algorithms = elo_system.get_top_algorithms(10)
-    if verbose:
+    if verbose and warmup_problems > 0:
         print("\nTop algorithms after warmup:")
         for i, (alg, rating) in enumerate(top_algorithms[:5], 1):
             print(f"{i}. {alg}: {rating:.1f}")
 
-    # Adaptive phase: focus on top algorithms
-    remaining_budget = trials_budget - (
-        n_warmup_problems * len(PURE_OPTIMIZERS) * trials_per_warmup
+    # Adaptive phase: focus on top algorithms, with whatever is actually left.
+    remaining_budget = trials_budget - stats["evaluations"]
+    top_algorithm_names = [alg for alg, _ in top_algorithms[:8]]
+    adaptive_round_cost = len(top_algorithm_names) * trials_per_warmup
+    adaptive_problems = (
+        remaining_budget // adaptive_round_cost
+        if warmup_problems > 0 and adaptive_round_cost > 0
+        else 0
     )
-    if remaining_budget > 0:
-        # Select top algorithms for continued testing
-        top_algorithm_names = [alg for alg, _ in top_algorithms[:8]]
-
+    if adaptive_problems > 0:
         if verbose:
             print(
                 f"\nAdaptive phase: focusing on top {len(top_algorithm_names)} algorithms"
             )
             print(f"Remaining budget: {remaining_budget} trials")
-
-        # Continue testing with adaptive strategy
-        adaptive_problems = max(
-            1, remaining_budget // (len(top_algorithm_names) * trials_per_warmup)
-        )
 
         elo_system = run_algorithm_tournament(
             objective_generator=objective_generator,
@@ -293,6 +340,7 @@ def adaptive_optimize(
             n_dim=n_dim,
             elo_system=elo_system,
             algorithms_to_test=top_algorithm_names,
+            stats=stats,
         )
 
     # Final results
@@ -318,11 +366,21 @@ def adaptive_optimize(
         "general_purpose": [alg for alg, _ in final_top_algorithms[:5]],
     }
 
-    # Save updated ratings
+    # Save updated ratings. A failed save is reported, never announced as
+    # a success: the caller asked for persistence and did not get it.
+    ratings_saved = None
     if elo_ratings_file:
-        elo_system.save_ratings(elo_ratings_file)
-        if verbose:
-            print(f"\nSaved updated Elo ratings to {elo_ratings_file}")
+        ratings_saved = elo_system.save_ratings(elo_ratings_file)
+        if ratings_saved:
+            if verbose:
+                print(f"\nSaved updated Elo ratings to {elo_ratings_file}")
+        else:
+            warnings.warn(
+                f"could not save Elo ratings to {elo_ratings_file}: "
+                f"{elo_system.last_error}",
+                RuntimeWarning,
+                stacklevel=2,
+            )
 
     if verbose:
         print("\nFinal top algorithms:")
@@ -333,10 +391,10 @@ def adaptive_optimize(
         "elo_system": elo_system,
         "top_algorithms": final_top_algorithms,
         "recommendations": recommendations,
-        "total_problems_solved": n_warmup_problems + adaptive_problems
-        if remaining_budget > 0
-        else n_warmup_problems,
+        "total_problems_solved": stats["problems"],
+        "total_evaluations": stats["evaluations"],
         "total_matches": len(elo_system.match_history),
+        "ratings_saved": ratings_saved,
     }
 
 
@@ -397,6 +455,24 @@ def _uniform_in(low: float, high: float, n: int):
     return [low + span * _A.random_scalar() for _ in range(n)]
 
 
+def _frozen_per_dimension(low: float, high: float, n_dim: int):
+    """Per-dimension parameters for one problem instance, drawn once.
+
+    The draw for `n_dim` happens now, at construction, so it is part of the
+    instance and independent of whatever the optimizer later draws. Any other
+    length is drawn once on first use, since these objectives accept any
+    dimension. Returns `params_for(length) -> list`.
+    """
+    cache = {n_dim: _uniform_in(low, high, n_dim)}
+
+    def params_for(length: int):
+        if length not in cache:
+            cache[length] = _uniform_in(low, high, length)
+        return cache[length]
+
+    return params_for
+
+
 def sphere_variants_generator(
     n_dim: int = 2,
 ) -> Generator[Callable[[Any], float], None, None]:
@@ -406,19 +482,34 @@ def sphere_variants_generator(
         """sum(x_i ^ 2)"""
         return sum(float(xi) * float(xi) for xi in x)
 
-    def shifted_sphere(x):
-        """Sphere with a random per-dimension shift in [-0.3, 0.3]."""
-        shift = _uniform_in(-0.3, 0.3, len(x))
-        return sum((float(xi) + s) * (float(xi) + s) for xi, s in zip(x, shift))
+    def shifted_sphere_instance():
+        """Sphere with a random per-dimension shift in [-0.3, 0.3], drawn once
+        for this instance so it is one fixed problem."""
+        shifts = _frozen_per_dimension(-0.3, 0.3, n_dim)
 
-    def scaled_sphere(x):
-        """Sphere with random per-dimension scaling in [0.5, 2.0]."""
-        scales = _uniform_in(0.5, 2.0, len(x))
-        return sum((s * float(xi)) * (s * float(xi)) for xi, s in zip(x, scales))
+        def shifted_sphere(x):
+            shift = shifts(len(x))
+            return sum((float(xi) + s) * (float(xi) + s) for xi, s in zip(x, shift))
 
-    variants = [sphere_pure, shifted_sphere, scaled_sphere]
+        return shifted_sphere
+
+    def scaled_sphere_instance():
+        """Sphere with random per-dimension scaling in [0.5, 2.0], drawn once."""
+        scales_for = _frozen_per_dimension(0.5, 2.0, n_dim)
+
+        def scaled_sphere(x):
+            scales = scales_for(len(x))
+            return sum((s * float(xi)) * (s * float(xi)) for xi, s in zip(x, scales))
+
+        return scaled_sphere
+
+    variants = [
+        lambda: sphere_pure,
+        shifted_sphere_instance,
+        scaled_sphere_instance,
+    ]
     while True:
-        yield _A.random_choice(variants)
+        yield _A.random_choice(variants)()
 
 
 def rosenbrock_variants_generator(
@@ -438,17 +529,30 @@ def rosenbrock_variants_generator(
     def rosenbrock_pure(x):
         return _rosenbrock(list(x))
 
-    def scaled_rosenbrock(x):
-        """Rosenbrock × random scale in [0.1, 5.0]."""
+    def scaled_rosenbrock_instance():
+        """Rosenbrock x a random scale in [0.1, 5.0], drawn once for this instance."""
         scale = _uniform_in(0.1, 5.0, 1)[0]
-        return scale * _rosenbrock(list(x))
 
-    def shifted_rosenbrock(x):
-        """Rosenbrock with a random per-dimension shift in [-0.2, 0.2]."""
-        shift = _uniform_in(-0.2, 0.2, len(x))
-        shifted = [float(xi) + s for xi, s in zip(x, shift)]
-        return _rosenbrock(shifted)
+        def scaled_rosenbrock(x):
+            return scale * _rosenbrock(list(x))
 
-    variants = [rosenbrock_pure, scaled_rosenbrock, shifted_rosenbrock]
+        return scaled_rosenbrock
+
+    def shifted_rosenbrock_instance():
+        """Rosenbrock with a random per-dimension shift in [-0.2, 0.2], drawn once."""
+        shifts = _frozen_per_dimension(-0.2, 0.2, n_dim)
+
+        def shifted_rosenbrock(x):
+            shift = shifts(len(x))
+            shifted = [float(xi) + s for xi, s in zip(x, shift)]
+            return _rosenbrock(shifted)
+
+        return shifted_rosenbrock
+
+    variants = [
+        lambda: rosenbrock_pure,
+        scaled_rosenbrock_instance,
+        shifted_rosenbrock_instance,
+    ]
     while True:
-        yield _A.random_choice(variants)
+        yield _A.random_choice(variants)()

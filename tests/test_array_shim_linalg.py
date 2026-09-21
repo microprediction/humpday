@@ -16,6 +16,11 @@ from __future__ import annotations
 import math
 
 import pytest
+
+# This module compares the two backends against each other, so it needs the one that is
+# optional. Without numpy there is nothing to compare the pure backend with.
+pytest.importorskip("numpy")
+
 from numpy.linalg import LinAlgError
 
 from humpday import _array_numpy_linalg as L_np
@@ -367,3 +372,133 @@ def test_pure_eigh_non_symmetric_raises():
     A = [[1.0, 2.0], [3.0, 4.0]]
     with pytest.raises(ValueError, match="symmetric"):
         L_pure.eigh(A)
+
+
+# ---------------------------------------------------------------------------
+# Scale invariance (#350) and the full factorisation (#343)
+# ---------------------------------------------------------------------------
+# A well-conditioned matrix stays well-conditioned when every entry is
+# multiplied by 1e-8; the decisions inside a factorisation (is this pivot
+# zero? has this rotation converged?) must be made relative to the matrix,
+# never against an absolute 1e-12.
+
+SCALES = [1.0, 1e-4, 1e-8, 1e-12]
+
+_SPD_2 = [[2.0, 1.0], [1.0, 2.0]]  # condition number 3
+_SPD_4 = [
+    [4.0, 1.0, 0.5, 0.2],
+    [1.0, 3.0, 0.7, 0.1],
+    [0.5, 0.7, 2.5, 0.3],
+    [0.2, 0.1, 0.3, 2.0],
+]
+_TALL = [[1.0, 0.0], [0.0, 1.0], [1.0, 1.0], [1.0, -1.0]]  # 4 x 2
+_WIDE = [[1.0, 2.0, 0.0, 1.0], [0.0, 1.0, 1.0, -1.0], [2.0, 0.0, 1.0, 0.5]]  # 3 x 4
+
+
+def _scaled(M, s):
+    return [[s * v for v in row] for row in M]
+
+
+def _frob(M):
+    return math.sqrt(sum(v * v for row in M for v in row))
+
+
+def _is_identity(M, tol):
+    n = len(M)
+    for i in range(n):
+        for j in range(n):
+            want = 1.0 if i == j else 0.0
+            assert abs(float(M[i][j]) - want) <= tol, f"not identity at ({i},{j})"
+
+
+@pytest.mark.parametrize("L", BACKENDS)
+@pytest.mark.parametrize("scale", SCALES)
+@pytest.mark.parametrize("A0", [_SPD_2, _SPD_4], ids=["2x2", "4x4"])
+def test_pinv_of_scaled_well_conditioned_matrix_inverts_it(L, scale, A0):
+    A = _scaled(A0, scale)
+    P = L.pinv(A)
+    _is_identity(L.matmul(A, P), tol=1e-9)
+    # Moore-Penrose: A P A = A and P A P = P, relative to each side's size.
+    APA = L.matmul(L.matmul(A, P), A)
+    assert _frob(
+        [[float(APA[i][j]) - A[i][j] for j in range(len(A))] for i in range(len(A))]
+    ) <= 1e-9 * _frob(A)
+    PAP = L.matmul(L.matmul(P, A), P)
+    P_list = [list(map(float, r)) for r in P]
+    assert _frob(
+        [
+            [float(PAP[i][j]) - P_list[i][j] for j in range(len(P_list[0]))]
+            for i in range(len(P_list))
+        ]
+    ) <= 1e-9 * _frob(P_list)
+
+
+@pytest.mark.parametrize("L", BACKENDS)
+@pytest.mark.parametrize("scale", SCALES)
+def test_eigh_of_scaled_matrix_is_the_scaled_eigh(L, scale):
+    A = _scaled(_SPD_4, scale)
+    vals, V = L.eigh(A)
+    # A V = V diag(vals), relative to |A|; and V is orthonormal.
+    AV = L.matmul(A, V)
+    n = len(A)
+    for j in range(n):
+        for i in range(n):
+            assert (
+                abs(float(AV[i][j]) - float(V[i][j]) * float(vals[j])) <= 1e-9 * scale
+            )
+    _is_identity(L.matmul(L.transpose(V), V), tol=1e-9)
+    # Eigenvalues scale exactly with the matrix.
+    vals0, _ = L.eigh(_SPD_4)
+    for a, b in zip(vals, vals0):
+        assert math.isclose(float(a), scale * float(b), rel_tol=1e-9)
+
+
+@pytest.mark.parametrize("L", BACKENDS)
+@pytest.mark.parametrize("scale", SCALES)
+def test_solve_on_scaled_matrix(L, scale):
+    A = _scaled(_SPD_4, scale)
+    x_true = [1.0, -2.0, 0.5, 3.0]
+    b = L.matvec(A, x_true)
+    x = L.solve(A, b)
+    _close_vec(x, x_true, tol=1e-8)
+
+
+@pytest.mark.parametrize("L", BACKENDS)
+@pytest.mark.parametrize("scale", SCALES)
+@pytest.mark.parametrize("A0", [_TALL, _WIDE, _SPD_4], ids=["tall", "wide", "square"])
+def test_svd_full_matrices_is_a_complete_orthonormal_factorisation(L, scale, A0):
+    A = _scaled(A0, scale)
+    m, n = len(A), len(A[0])
+    k = min(m, n)
+    U, s, Vt = L.svd(A, full_matrices=True)
+    assert (len(U), len(U[0])) == (m, m)
+    assert (len(Vt), len(Vt[0])) == (n, n)
+    assert len(s) == k
+    _is_identity(L.matmul(L.transpose(U), U), tol=1e-9)
+    _is_identity(L.matmul(L.transpose(Vt), Vt), tol=1e-9)
+    # Reconstruction with the k leading singular vectors.
+    R = [[0.0] * n for _ in range(m)]
+    for i in range(m):
+        for j in range(n):
+            R[i][j] = sum(
+                float(U[i][t]) * float(s[t]) * float(Vt[t][j]) for t in range(k)
+            )
+    assert _frob(
+        [[R[i][j] - A[i][j] for j in range(n)] for i in range(m)]
+    ) <= 1e-9 * _frob(A)
+    # The trailing columns of U span the left null space: A^T u = 0.
+    AT = L.transpose(A)
+    for t in range(k, m):
+        u = [float(U[i][t]) for i in range(m)]
+        assert max(abs(float(v)) for v in L.matvec(AT, u)) <= 1e-9 * _frob(A)
+
+
+@pytest.mark.parametrize("L", BACKENDS)
+@pytest.mark.parametrize("scale", SCALES)
+def test_svd_reduced_of_scaled_matrix(L, scale):
+    A = _scaled(_TALL, scale)
+    U, s, Vt = L.svd(A, full_matrices=False)
+    _is_identity(L.matmul(L.transpose(U), U), tol=1e-9)
+    s0 = L.svd(_TALL, full_matrices=False)[1]
+    for a, b in zip(s, s0):
+        assert math.isclose(float(a), scale * float(b), rel_tol=1e-9)

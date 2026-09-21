@@ -37,8 +37,64 @@ from typing import List, Sequence, Tuple
 
 from ._array_pure import _Vec
 
-# Tolerance below which we treat a pivot as zero.
+
+def _fold_sum(values) -> float:
+    """Left-to-right float sum, which is what the cross-language contract means by a sum.
+
+    Never the builtin `sum()`. CPython 3.12 gave it Neumaier compensation, so the same
+    trajectory recorded on 3.12 and replayed on 3.11 diverges in the last ulp -- which is
+    exactly how the PRIMA vectors came apart once these routines started being reached (the
+    NumPy-free NEWUOA and BOBYQA used to fall back before they had a full SVD). Every port
+    implements the fold, so the fold is what the vectors have to record.
+    """
+    total = 0.0
+    for value in values:
+        total += value
+    return total
+
+
+# Tolerance below which we treat a pivot as zero, *relative to the scale of the
+# matrix it came from*. An absolute threshold makes every routine here fail on a
+# small multiple of a perfectly conditioned matrix, and shrinking trust-region
+# models are exactly that.
 _PIVOT_TOL = 1e-14
+
+
+def _scale(A) -> float:
+    """Largest absolute entry of a matrix -- the unit every tolerance is relative to."""
+    best = 0.0
+    for row in A:
+        for v in row:
+            a = abs(float(v))
+            if a > best:
+                best = a
+    return best
+
+
+def _complete_orthonormal(cols: List[List[float]], m: int) -> List[List[float]]:
+    """Extend orthonormal column vectors (each of length `m`) to a full basis of R^m.
+
+    Candidates are the standard basis vectors, each orthogonalised twice against what
+    is already there (the second pass removes the rounding the first leaves behind);
+    a candidate that lies in the span already is skipped. Returns a new list.
+    """
+    out = [list(c) for c in cols]
+    for i in range(m):
+        if len(out) >= m:
+            break
+        cand = [0.0] * m
+        cand[i] = 1.0
+        for _pass in range(2):
+            for q in out:
+                p = 0.0
+                for k in range(m):
+                    p += q[k] * cand[k]
+                for k in range(m):
+                    cand[k] -= p * q[k]
+        nrm = math.sqrt(_fold_sum(v * v for v in cand))
+        if nrm > 1e-8:
+            out.append([v / nrm for v in cand])
+    return out
 
 
 # ---------------------------------------------------------------------------
@@ -143,6 +199,7 @@ def solve(A, b: Sequence) -> _Vec:
     # is overkill at the sizes we target.
     M = [list(row) for row in A]
     rhs = list(b)
+    pivot_floor = _PIVOT_TOL * _scale(M)
 
     for k in range(n):
         # Partial pivot — find the row with the largest |M[i][k]| at or below k.
@@ -153,7 +210,7 @@ def solve(A, b: Sequence) -> _Vec:
             if v > pivot_val:
                 pivot_val = v
                 pivot_row = i
-        if pivot_val < _PIVOT_TOL:
+        if pivot_val <= pivot_floor:
             raise ValueError("solve: singular matrix (pivot below tolerance)")
         if pivot_row != k:
             M[k], M[pivot_row] = M[pivot_row], M[k]
@@ -301,6 +358,11 @@ def eigh(
     M = [list(row) for row in A]
     V = eye(n)
 
+    # `tol` is relative: an off-diagonal entry counts as zero against the
+    # largest entry of A, not against 1.0, so a matrix scaled by 1e-8 is
+    # rotated exactly as its unscaled copy would be.
+    tol_abs = tol * _scale(M)
+
     for _sweep in range(max_sweeps):
         # Sum of squared off-diagonal entries — convergence criterion.
         off = 0.0
@@ -308,12 +370,12 @@ def eigh(
             Mp = M[p]
             for q in range(p + 1, n):
                 off += Mp[q] * Mp[q]
-        if off < tol * tol:
+        if off <= tol_abs * tol_abs:
             break
         # One sweep over all off-diagonal positions.
         for p in range(n):
             for q in range(p + 1, n):
-                if abs(M[p][q]) > tol:
+                if abs(M[p][q]) > tol_abs:
                     _jacobi_rotate(M, V, p, q)
 
     # Diagonal of M is the eigenvalues; columns of V are eigenvectors.
@@ -345,37 +407,27 @@ def qr(A) -> Tuple[List[List[float]], List[List[float]]]:
     # Build by copying A's columns and orthogonalising in-place.
     cols = [[float(A[i][j]) for i in range(m)] for j in range(n)]
     R = matrix_zeros(n, n)
+    # A column whose residual is this small, relative to the largest column
+    # of A, is treated as dependent on the ones before it.
+    rank_floor = _PIVOT_TOL * max(
+        [math.sqrt(_fold_sum(v * v for v in c)) for c in cols] or [0.0]
+    )
 
     for j in range(n):
         # Subtract projections onto previous q_i.
         for i in range(j):
             qi = cols[i]
-            r_ij = sum(qi[k] * cols[j][k] for k in range(m))
+            r_ij = _fold_sum(qi[k] * cols[j][k] for k in range(m))
             R[i][j] = r_ij
             for k in range(m):
                 cols[j][k] -= r_ij * qi[k]
         # Normalise the residual to get q_j.
-        r_jj = math.sqrt(sum(v * v for v in cols[j]))
+        r_jj = math.sqrt(_fold_sum(v * v for v in cols[j]))
         R[j][j] = r_jj
-        if r_jj < _PIVOT_TOL:
-            # Rank-deficient column: fill with an arbitrary unit vector
-            # orthogonal to what we have so far. For PRIMA's use, simplest
-            # safe choice is the j-th standard basis vector projected against
-            # current Q.
-            cand = [0.0] * m
-            cand[j if j < m else 0] = 1.0
-            for i in range(j):
-                qi = cols[i]
-                p = sum(qi[k] * cand[k] for k in range(m))
-                for k in range(m):
-                    cand[k] -= p * qi[k]
-            nrm = math.sqrt(sum(v * v for v in cand))
-            if nrm < _PIVOT_TOL:
-                cand = [0.0] * m
-                cand[(j + 1) % m] = 1.0
-            else:
-                cand = [v / nrm for v in cand]
-            cols[j] = cand
+        if r_jj <= rank_floor:
+            # Rank-deficient column: fill with a unit vector orthogonal to
+            # what we have so far, so Q keeps orthonormal columns.
+            cols[j] = _complete_orthonormal(cols[:j], m)[j]
         else:
             cols[j] = [v / r_jj for v in cols[j]]
 
@@ -392,7 +444,7 @@ def qr(A) -> Tuple[List[List[float]], List[List[float]]]:
 def svd(
     A, full_matrices: bool = False
 ) -> Tuple[List[List[float]], _Vec, List[List[float]]]:
-    """Reduced SVD: returns (U, s, Vt) with A ≈ U @ diag(s) @ Vt.
+    """SVD: returns (U, s, Vt) with A ≈ U @ diag(s) @ Vt, in numpy's conventions.
 
     Implementation: compute eigendecomposition of A^T A (n × n, symmetric
     PSD). Eigenvalues give σ_i^2 (sorted descending after reordering); V
@@ -400,16 +452,11 @@ def svd(
     A v_i / σ_i for nonzero σ_i, with rank-deficient columns filled from
     the orthogonal complement.
 
-    Only `full_matrices=False` is supported (and is the numpy default for
-    SVD callers in humpday). The full form (square U / V) would require
-    extending U to an orthonormal basis when k < m; pull-request when
-    someone needs it.
+    With `full_matrices=False` (the reduced form) U is m × k and Vt is k × n
+    for k = min(m, n). With `full_matrices=True` U is completed to an m × m
+    orthonormal basis and Vt to n × n, so `U[:, k:]` spans the left null
+    space of A -- what a caller wanting the orthogonal complement needs.
     """
-    if full_matrices:
-        raise NotImplementedError(
-            "svd(full_matrices=True) not supported in the pure backend yet"
-        )
-
     m = len(A)
     n = len(A[0])
     k = min(m, n)
@@ -430,34 +477,31 @@ def svd(
     # arithmetic; clip to handle floating-point noise.
     singular_values = [math.sqrt(max(s, 0.0)) for s in sigma_sq[:k]]
 
-    # Build U columns: u_i = A v_i / σ_i for σ_i > 0; otherwise fall back
-    # to an orthogonalised standard basis vector. Done columnwise then
-    # reassembled into a 2-D list-of-rows.
+    # Build U columns: u_i = A v_i / σ_i for σ_i that are not negligible
+    # against σ_max; the rest come from the orthogonal complement of the
+    # columns already built. Done columnwise then reassembled into a 2-D
+    # list-of-rows.
+    sigma_floor = _PIVOT_TOL * (singular_values[0] if singular_values else 0.0)
     U_cols: List[List[float]] = []
     for j in range(k):
         sigma = singular_values[j]
-        if sigma > _PIVOT_TOL:
+        if sigma > sigma_floor:
             v_j = [V_sorted_cols[r][j] for r in range(n)]
             A_v = matvec(A_2d, v_j)
             U_cols.append([float(c) / sigma for c in A_v])
         else:
-            # Rank-deficient: pick a standard basis vector and orthogonalise
-            # against the U columns already built.
-            cand = [0.0] * m
-            cand[j if j < m else 0] = 1.0
-            for prev in U_cols:
-                dot_p = sum(prev[i] * cand[i] for i in range(m))
-                for i in range(m):
-                    cand[i] -= dot_p * prev[i]
-            nrm = math.sqrt(sum(v * v for v in cand))
-            if nrm > _PIVOT_TOL:
-                cand = [v / nrm for v in cand]
-            U_cols.append(cand)
+            U_cols.append(_complete_orthonormal(U_cols, m)[j])
 
-    U = [[U_cols[j][i] for j in range(k)] for i in range(m)]
+    u_width = m if full_matrices else k
+    if full_matrices and m > k:
+        U_cols = _complete_orthonormal(U_cols, m)
+    U = [[U_cols[j][i] for j in range(u_width)] for i in range(m)]
+
     # Vt: rows are V's columns transposed (i.e. the right singular vectors
-    # written as rows).
-    Vt = [[V_sorted_cols[r][c] for r in range(n)] for c in range(k)]
+    # written as rows). The eigendecomposition already yields all n of them;
+    # the reduced form keeps the first k.
+    v_rows = n if full_matrices else k
+    Vt = [[V_sorted_cols[r][c] for r in range(n)] for c in range(v_rows)]
     return U, _Vec(singular_values), Vt
 
 

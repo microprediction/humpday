@@ -12,6 +12,12 @@ import time
 
 import pytest
 
+pytest.importorskip(
+    "numpy",
+    reason="humpday.objectives still imports numpy at module scope (#377), so these "
+    "objectives cannot be built on a dependency-free install",
+)
+
 from humpday.objectives import SURFACES, morphed_surfaces, physics_objectives
 
 DIM = 100
@@ -21,6 +27,10 @@ MAX_SECONDS_PER_EVAL = 0.01
 def _probe(fn, n_dim, seed):
     rnd = random.Random(seed)
     worst_live, slowest = n_dim, 0.0
+    # One untimed call first: a surface may do one-off setup for a dimension
+    # (the combos measure their components' ranges), which a tournament pays
+    # once per cell, not per evaluation.
+    fn([rnd.random() for _ in range(n_dim)])
     for _ in range(
         3
     ):  # several points: a coordinate can be flat at one of them by chance
@@ -225,17 +235,11 @@ def test_no_two_surfaces_are_the_same_function():
         except Exception:
             continue
 
-    # Pre-existing, filed separately: the `*_combo*` surfaces sum several functions after a single
-    # shared divisor, so where one component's range dwarfs the others the sum is rank-identical to
-    # that component. Listed rather than silently tolerated, and the screen still catches anything
-    # new.
-    KNOWN_DOMINATED_COMBOS = {
-        ("rosenbrock_on_cube", "deap_combo3_on_cube"),
-        ("shaffer_on_cube", "deap_combo2_on_cube"),
-        ("zakharov_on_cube", "landscapes_combo3_on_cube"),
-        ("rotated_hyper_ellipsoid_on_cube", "landscapes_combo2_on_cube"),
-        ("qing_on_cube", "landscapes_combo1_on_cube"),
-    }
+    # The `*_combo*` surfaces used to sum components of wildly different scale after one shared
+    # divisor, which made five of them rank-identical to their dominant component (#336). Each
+    # component is now scaled to its own empirical range before the blend, so nothing is tolerated
+    # here; the set stays so a future exception has somewhere explicit to go.
+    KNOWN_DOMINATED_COMBOS = set()
 
     duplicates = []
     for (na, va), (nb, vb) in itertools.combinations(evaluated.items(), 2):

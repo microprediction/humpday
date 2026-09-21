@@ -29,11 +29,19 @@ class NormHelper:
 
     @staticmethod
     def _normcdf_function():
-        try:
-            from statistics import NormalDist
+        """The standard normal CDF, computed through erfc so that the lower tail survives.
 
-            return NormalDist(mu=0, sigma=1.0).cdf
-        except ImportError:
-            from scipy.stats import norm
+        statistics.NormalDist.cdf evaluates 0.5 * (1 + erf(x / sqrt(2))). For x below about -6
+        the erf term is within a double's last bit of -1 and the sum cancels: NormalDist().cdf
+        returns 1.11e-16 at -8.2, where the true value is 1.20e-16, and exactly 0.0 at -9.21,
+        where it is 1.63e-20. Anything inverting that CDF -- the simplex transform below does --
+        loses every concentrated point to a flat zero.
 
-            return norm.cdf
+        0.5 * erfc(-x / sqrt(2)) is the same function without the cancellation, accurate into the
+        1e-300s, and math.erfc is in the standard library everywhere this package runs, so this
+        needs no fallback of its own.
+        """
+        import math
+
+        _SQRT2 = math.sqrt(2.0)
+        return lambda x: 0.5 * math.erfc(-float(x) / _SQRT2)

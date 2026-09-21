@@ -21,10 +21,16 @@ tolerates floating-point noise.
 
 from __future__ import annotations
 
+import contextlib
 import importlib
 import math
+import os
 
 import pytest
+
+# This module compares the two backends against each other, so it needs the one that is
+# optional. Without numpy there is nothing to compare the pure backend with.
+pytest.importorskip("numpy")
 
 from humpday import _array_numpy as A_np
 from humpday import _array_pure as A_pure
@@ -304,32 +310,58 @@ def test_pure_vec_slice_returns_vec():
 # ---------------------------------------------------------------------------
 
 
-def test_dispatch_picks_numpy_when_available():
-    """In an env that has numpy installed (which every CI runner does),
-    the dispatch module should select the numpy backend."""
+@contextlib.contextmanager
+def _array_dispatched_with(force_pure):
+    """Reload humpday._array with HUMPDAY_FORCE_PURE_ARRAY set (or unset), and
+    on exit put BOTH the environment and the module back the way they were.
+
+    Reloading mutates the one module object every optimizer holds, so leaving
+    it on the wrong backend silently switches every later test in the session.
+    Restoring the environment alone does not restore the module, which is how
+    a suite launched with the pure backend forced used to finish on numpy.
+    """
     from humpday import _array
 
-    importlib.reload(_array)  # respect any env changes a prior test made
-    # On any normal dev box / CI runner, numpy is importable, so we should
-    # land on the numpy backend.
-    assert _array.BACKEND == "numpy"
-
-
-def test_dispatch_force_pure(monkeypatch):
-    """Setting HUMPDAY_FORCE_PURE_ARRAY=1 should pin the pure backend even
-    when numpy is installed."""
-    monkeypatch.setenv("HUMPDAY_FORCE_PURE_ARRAY", "1")
-    from humpday import _array
-
+    original = os.environ.get("HUMPDAY_FORCE_PURE_ARRAY")
+    if force_pure:
+        os.environ["HUMPDAY_FORCE_PURE_ARRAY"] = "1"
+    else:
+        os.environ.pop("HUMPDAY_FORCE_PURE_ARRAY", None)
     importlib.reload(_array)
     try:
+        yield _array
+    finally:
+        if original is None:
+            os.environ.pop("HUMPDAY_FORCE_PURE_ARRAY", None)
+        else:
+            os.environ["HUMPDAY_FORCE_PURE_ARRAY"] = original
+        importlib.reload(_array)
+
+
+def test_dispatch_picks_numpy_when_available():
+    """Without the override, and with numpy importable, dispatch lands on the
+    numpy backend -- regardless of how this session was launched."""
+    with _array_dispatched_with(force_pure=False) as _array:
+        assert _array.BACKEND == "numpy"
+        assert not isinstance(_array.zeros(3), A_pure._Vec)
+
+
+def test_dispatch_force_pure():
+    """Setting HUMPDAY_FORCE_PURE_ARRAY=1 should pin the pure backend even
+    when numpy is installed."""
+    with _array_dispatched_with(force_pure=True) as _array:
         assert _array.BACKEND == "pure"
         # And the re-exported `zeros` should come from the pure backend.
         assert isinstance(_array.zeros(3), A_pure._Vec)
-    finally:
-        # Restore the default backend for subsequent tests.
-        monkeypatch.delenv("HUMPDAY_FORCE_PURE_ARRAY", raising=False)
-        importlib.reload(_array)
+
+
+def test_dispatch_tests_leave_the_backend_as_they_found_it():
+    from humpday import _array
+
+    before = _array.BACKEND
+    with _array_dispatched_with(force_pure=before != "pure"):
+        assert _array.BACKEND != before
+    assert _array.BACKEND == before
 
 
 def test_both_backends_export_the_same_names():

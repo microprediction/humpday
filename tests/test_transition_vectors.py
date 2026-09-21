@@ -7,6 +7,7 @@ transcendental is steering a trajectory branch and needs replacing with
 a portable version. Ports replay this same file in their own language.
 """
 
+import builtins
 import json
 import struct
 from pathlib import Path
@@ -77,6 +78,10 @@ _KNOWN_OS_SENSITIVE = {("PRIMA_UOBYQA", "rosen01", 2)}
     ids=lambda c: f"{c['optimizer']}-{c['objective']}-d{c['n_dim']}",
 )
 def test_replay_transition_vector(case):
+    _replay(case)
+
+
+def _replay(case):
     cls = PURE_OPTIMIZERS[case["optimizer"]]
     objective = OBJECTIVES[case["objective"]]
     _A.use_portable_rng(case["seed"], case["seq"])
@@ -94,3 +99,37 @@ def test_replay_transition_vector(case):
         opt.receive_update(v)
         i += 1
     assert i == len(case["x"]), f"run ended early: {i} < {len(case['x'])}"
+
+
+def _uncompensated_sum(iterable, start=0):
+    """builtin sum() as CPython 3.11 and earlier computed it: a plain left fold."""
+    total = start
+    for value in iterable:
+        total = total + value
+    return total
+
+
+@pytest.mark.parametrize(
+    "case",
+    [
+        c
+        for c in _DATA["cases"]
+        if (c["optimizer"], c["objective"], c["n_dim"]) not in _KNOWN_OS_SENSITIVE
+    ],
+    ids=lambda c: f"{c['optimizer']}-{c['objective']}-d{c['n_dim']}",
+)
+def test_the_trajectory_does_not_depend_on_how_python_adds_up(case, monkeypatch):
+    """The same replay with builtin sum() degraded to its pre-3.12 behaviour.
+
+    CPython 3.12 gave sum() Neumaier compensation, so a trajectory that routes a float sum
+    through the builtin is one number on 3.11 and a different one on 3.12, in the last ulp. The
+    recorder's rule is that every trajectory-relevant sum is an explicit left fold, which every
+    port implements; this is that rule as a test, on the machine doing the recording, rather
+    than as a comment that CI enforces one interpreter at a time.
+
+    It has already earned its place: the NumPy-free NEWUOA and BOBYQA used to fall back for want
+    of a full SVD, and when they stopped falling back they began running through a QR that summed
+    with the builtin. Seven cases recorded on 3.12 then failed on 3.11 and nowhere else.
+    """
+    monkeypatch.setattr(builtins, "sum", _uncompensated_sum)
+    _replay(case)

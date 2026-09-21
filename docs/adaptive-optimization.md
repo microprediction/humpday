@@ -56,7 +56,7 @@ print("Best algorithms:", [alg for alg, rating in top_algorithms])
 
 The main function that orchestrates the learning process.
 
-```python
+```text
 adaptive_optimize(
     objective_generator,    # Generator yielding objective functions
     trials_budget,         # Total evaluation budget
@@ -79,6 +79,8 @@ adaptive_optimize(
 Manages skill ratings for optimization algorithms.
 
 ```python
+from humpday import EloRatingSystem
+
 elo_system = EloRatingSystem()
 
 # Get current rating
@@ -99,7 +101,7 @@ elo_system.load_ratings('my_ratings.json')
 
 Get algorithm suggestions based on learned performance.
 
-```python
+```text
 suggested = suggest_algorithm_from_elo(
     elo_system,           # Trained EloRatingSystem
     n_dim=5,             # Problem dimension
@@ -157,7 +159,7 @@ def my_problem_generator(n_dim):
 
 ### Research and Development
 
-```python
+```text
 # Test algorithms on problems similar to yours
 my_generator = create_my_domain_generator()
 
@@ -175,7 +177,7 @@ best_val, best_x = pure_optimize(my_real_objective, top_alg, 200, 10)
 
 ### Automated Hyperparameter Tuning
 
-```python
+```text
 def hyperparameter_generator(param_dims):
     """Generate diverse hyperparameter optimization problems."""
     while True:
@@ -192,7 +194,7 @@ results = adaptive_optimize(
 
 ### Continuous Learning
 
-```python
+```text
 # Load existing ratings
 elo_system = EloRatingSystem()
 elo_system.load_ratings('production_elos.json')
@@ -221,11 +223,19 @@ The Elo system reveals interesting patterns:
 The adaptive system integrates seamlessly with existing Humpday usage:
 
 ```python
+from humpday import EloRatingSystem, pure_optimize, suggest_algorithm_from_elo
+
+
+def objective(x):
+    return sum(xi**2 for xi in x)
+
+
 # Traditional usage
 best_val, best_x = pure_optimize(objective, 'NelderMead', 100, 2)
 
 # Adaptive usage - automatically selects best algorithm
-elo_system = load_my_trained_elo_system()
+elo_system = EloRatingSystem()          # or one you trained earlier and loaded
+elo_system.load_ratings('my_ratings.json')
 suggested_alg = suggest_algorithm_from_elo(elo_system, n_dim=2, problem_type='smooth')
 best_val, best_x = pure_optimize(objective, suggested_alg, 100, 2)
 ```
@@ -247,7 +257,7 @@ def custom_tournament(algorithms, problems):
 
 Train separate Elo systems for different problem classes:
 
-```python
+```text
 smooth_elo = train_on_smooth_problems()
 multimodal_elo = train_on_multimodal_problems()
 

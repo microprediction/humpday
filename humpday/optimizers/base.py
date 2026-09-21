@@ -91,7 +91,11 @@ class BaseOptimizer:
 
     def __init__(self, objective: Callable, n_trials: int, n_dim: int):
         self.objective = objective
-        self.n_trials = n_trials
+        if n_trials != int(n_trials) or int(n_trials) < 0:
+            raise ValueError(
+                f"n_trials must be a non-negative integer, got {n_trials!r}"
+            )
+        self.n_trials = int(n_trials)
         self.n_dim = n_dim
         self.evaluations = 0
         self.best_value = float("inf")
@@ -144,6 +148,12 @@ class BaseOptimizer:
             raise NotImplementedError(
                 f"{type(self).__name__} defines neither optimize() nor _run()"
             )
+        # n_trials is a hard cap on objective calls, enforced here rather than
+        # trusted to every algorithm: a population method that wants more
+        # points than the budget allows gets the budget, and the best of the
+        # points it did evaluate is already banked by _bookkeep.
+        if self.n_trials <= 0:
+            return self.best_value, self.best_x
         gen = self._run()
         try:
             yielded = next(gen)
@@ -154,13 +164,19 @@ class BaseOptimizer:
                     # the trajectory matches the evaluate_batch() form.
                     vals = []
                     for p in yielded:
+                        if self.evaluations >= self.n_trials:
+                            break
                         self.evaluations += 1
                         p_clipped = _A.clip(p, 0, 1)
                         v = self.objective(p_clipped)
                         self._bookkeep(p_clipped, v)
                         vals.append(v)
+                    if len(vals) < len(yielded):
+                        break  # the budget ran out inside a generation
                     yielded = gen.send(vals)
                 else:
+                    if self.evaluations >= self.n_trials:
+                        break
                     self.evaluations += 1
                     x_clipped = _A.clip(yielded, 0, 1)
                     value = self.objective(x_clipped)
@@ -168,6 +184,8 @@ class BaseOptimizer:
                     yielded = gen.send(value)
         except StopIteration:
             pass
+        finally:
+            gen.close()
         return self.best_value, self.best_x
 
     def evaluate_batch(self, points):
@@ -262,6 +280,14 @@ class BaseOptimizer:
         self._bookkeep(gd.group[gd.idx], float(value))
         gd.vals.append(float(value))
         gd.idx += 1
+        if self.evaluations >= self.n_trials:
+            # Budget spent: the run is over whether or not the generator's
+            # current group was fully answered (the driver, not the
+            # algorithm, owns the cap).
+            gd.done = True
+            gd.group = None
+            gd.gen.close()
+            return
         if gd.idx < len(gd.group):
             return
         try:
@@ -294,10 +320,25 @@ class BaseOptimizer:
             return None
         return list(group)
 
+    def _asktell_budget_spent(self):
+        """True when no evaluation is left to ask for. An instance that spent its
+        budget in optimize() rather than through ask/tell still refuses to switch
+        views, the way a fresh call to either driver would."""
+        if self.evaluations < self.n_trials:
+            return False
+        if self.evaluations and getattr(self, "_gd", None) is None and self._at is None:
+            raise RuntimeError(
+                "ask/tell on an instance that has already evaluated; "
+                "construct a fresh optimizer."
+            )
+        return True
+
     def suggest_next(self):
         """Scalar view: next point to evaluate (clipped [0,1]^n) or None when done.
         Works over synchronous population methods too — their generation is served
         one point at a time, and the values are handed back once the group fills."""
+        if self._asktell_budget_spent():
+            return None
         if getattr(type(self), "_run", None) is not None:
             gd = getattr(self, "_gd", None) or self._gen_start()
             if gd.mode == "batch":
@@ -352,6 +393,8 @@ class BaseOptimizer:
         """Batch view: the next group of points to evaluate together (size 1 for
         sequential algorithms, the generation size for synchronous population
         methods), or None when done. Pair with tell_batch()."""
+        if self._asktell_budget_spent():
+            return None
         if getattr(type(self), "_run", None) is not None:
             gd = getattr(self, "_gd", None) or self._gen_start()
             if gd.mode == "scalar":
@@ -361,6 +404,11 @@ class BaseOptimizer:
                 return None
             if gd.awaiting:
                 raise RuntimeError("suggest_batch() called again before tell_batch()")
+            # A generation larger than what is left of the budget is served
+            # only as far as the budget goes; tell_batch() then ends the run.
+            remaining = self.n_trials - self.evaluations
+            if len(gd.group) > remaining:
+                gd.group = gd.group[:remaining]
             gd.awaiting = True
             return list(gd.group)
         at = self._at or self._asktell_start()
@@ -407,6 +455,8 @@ class BaseOptimizer:
 
     def is_done(self):
         """True once the driven run has completed (or been closed)."""
+        if self.evaluations >= self.n_trials:
+            return True
         gd = getattr(self, "_gd", None)
         if gd is not None:
             return gd.done

@@ -650,6 +650,9 @@ class CMAEvolutionStrategy extends Optimizer {
                 2 * (mueff - 2 + 1 / mueff) / ((n + 2) ** 2 + mueff)
             );
             const damps = 1 + 2 * Math.max(0, Math.sqrt((mueff - 1) / (n + 1)) - 1) + cs;
+            // E||N(0, I_n)||: the scale the hsig gate and the step-size update
+            // compare the evolution path against (twin of the Python port).
+            const chiN = Math.sqrt(n) * (1 - 1 / (4 * n) + 1 / (21 * n * n));
 
             // Fresh state per restart.
             let mean = new Array(n);
@@ -720,7 +723,7 @@ class CMAEvolutionStrategy extends Optimizer {
                 psNorm = Math.sqrt(psNorm);
 
                 const hsigDenom = Math.sqrt(1 - Math.pow(1 - cs, 2 * generation));
-                const hsig = psNorm / hsigDenom < 1.4 + 2 / (n + 1) ? 1 : 0;
+                const hsig = psNorm / hsigDenom < (1.4 + 2 / (n + 1)) * chiN ? 1 : 0;
 
                 const pcFactor = hsig * Math.sqrt(cc * (2 - cc) * mueff);
                 for (let i = 0; i < n; i++) {
@@ -741,7 +744,9 @@ class CMAEvolutionStrategy extends Optimizer {
                     }
                 }
 
-                const base = 1 - c1 - cmu;
+                // hsig = 0 leaves the rank-one term short of its variance; the
+                // standard recurrence keeps that much of the old C instead.
+                const base = 1 - c1 - cmu + c1 * (1 - hsig) * cc * (2 - cc);
                 const newC = Linalg.zeros(n, n);
                 for (let r = 0; r < n; r++) {
                     for (let c = 0; c < n; c++) {
@@ -785,7 +790,7 @@ class CMAEvolutionStrategy extends Optimizer {
                 }
 
                 // Step-size update.
-                sigma = sigma * Math.exp((cs / damps) * (psNorm / Math.sqrt(n) - 1));
+                sigma = sigma * Math.exp((cs / damps) * (psNorm / chiN - 1));
 
                 // ---- IPOP termination checks ----
                 fbestHistory.push(population[0].f);

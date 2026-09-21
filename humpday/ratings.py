@@ -131,6 +131,39 @@ def cell_for(n_dim: int, suite: str, n_trials: int):
     return None if budget is None else _load().get(f"{n_dim}/{budget}/{suite}")
 
 
+def _cells_and_budget(n_dim: int, n_trials: int):
+    """The cells :func:`cells_at` answers with, and the single budget all of them were recorded
+    at. Returns ``(None, {})`` where nothing is recorded at this dimension.
+
+    The budget is returned rather than inferred because "every cell here is from one budget" is
+    the invariant the caller depends on, and a cell does not carry its own budget: it is in the
+    table key, which the caller never sees.
+    """
+    per_suite = {suite: _budgets(n_dim, suite) for suite in SUITES}
+    present = {suite: b for suite, b in per_suite.items() if b}
+    if not present:
+        return None, {}
+
+    shared = set.intersection(*(set(b) for b in present.values()))
+    budget = _pick(sorted(shared), n_trials)
+    if budget is None:
+        # No budget every suite here was recorded at. One budget still has to be chosen, because
+        # returning each suite at its own is the comparison this function exists to refuse, so the
+        # choice is made over every budget recorded at this dimension and the suites that were not
+        # recorded at it drop out. With the suites disjoint that leaves a single suite, which
+        # `robust_order` declines to rank -- the honest answer, rather than a cross-suite ordering
+        # of a budget effect.
+        budget = _pick(
+            sorted({b for budgets in present.values() for b in budgets}), n_trials
+        )
+    cells = {
+        suite: _load()[f"{n_dim}/{budget}/{suite}"]
+        for suite, budgets in present.items()
+        if budget in budgets
+    }
+    return budget, cells
+
+
 def cells_at(n_dim: int, n_trials: int) -> dict:
     """One cell per suite at this dimension, all at the **same** budget.
 
@@ -140,22 +173,10 @@ def cells_at(n_dim: int, n_trials: int) -> dict:
     interpolation set and fifty is not, so pairing one suite measured at a thousand against another
     measured at fifty would read a budget effect as a suite effect. If the suites were recorded at
     different budgets -- one cell abandoned on wall clock, say -- the largest budget they share is
-    used, and if they share none this returns whatever single suite exists, which
-    :func:`robust_order` then declines to rank.
+    used, and if they share none, the suites that were not recorded at the one budget chosen are
+    left out rather than folded in at a budget of their own.
     """
-    per_suite = {suite: _budgets(n_dim, suite) for suite in SUITES}
-    present = {suite: b for suite, b in per_suite.items() if b}
-    if not present:
-        return {}
-
-    shared = set.intersection(*(set(b) for b in present.values()))
-    budget = _pick(sorted(shared), n_trials)
-    if budget is None:  # nothing in common: answer for whichever suite exists, alone
-        return {
-            suite: _load()[f"{n_dim}/{_pick(b, n_trials)}/{suite}"]
-            for suite, b in present.items()
-        }
-    return {suite: _load()[f"{n_dim}/{budget}/{suite}"] for suite in present}
+    return _cells_and_budget(n_dim, n_trials)[1]
 
 
 def robust_order(n_dim: int, n_trials: int = 100) -> list:

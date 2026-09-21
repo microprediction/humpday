@@ -1,8 +1,7 @@
 import functools
-from typing import List
+from typing import List, Sequence
 
-import numpy as np
-
+from humpday.transforms.thurstone_transform import attainable_weights  # noqa: F401
 from humpday.transforms.thurstone_transform import (
     cube_to_simplex_simple as cube_to_simplex_impl,
 )
@@ -13,26 +12,31 @@ from humpday.transforms.thurstone_transform import (
 # Line by line explanation at https://medium.com/@mike.roweprediger/how-to-change-the-domain-of-a-function-from-a-simplex-to-a-cube-593161ab55aa
 
 
-def cube_to_simplex(u: List[float]) -> List[float]:
+def cube_to_simplex(u: Sequence[float], scale: float = None) -> List[float]:
     """
     :param  u is a point on the interior of the hyper-cube (0,1)^n
+    :param  scale the latent scale (the tunable preconditioner), default STD_L
     :returns  a point p in (0,1)^{n+1} with sum(p)=1
 
+    The image is an open subset of the simplex rather than the whole of it. See
+    :func:`humpday.transforms.thurstone_transform.attainable_weights`, re-exported here, for its
+    bounds at a given dimension and scale.
     """
-    return cube_to_simplex_impl(u)
+    return cube_to_simplex_impl(u, scale)
 
 
-def simplex_to_cube(p: List[float]):
+def simplex_to_cube(p: Sequence[float], scale: float = None) -> List[float]:
     """The inverse map
 
     :param    p in [0,1]^{n+1}  with entries summing to unity
+    :param    scale the latent scale, which must match the one used going the other way
     :returns  (0,1)^n
 
     """
-    return simplex_to_cube_impl(p)
+    return simplex_to_cube_impl(p, scale)
 
 
-def lift_to_cube(objective, fail_value=100000):
+def lift_to_cube(objective, fail_value=100000, scale: float = None):
     """Modify a function's domain from the simplex to the cube
 
         Useful for minimizing on a simplex, even if the optimizer expects a rectangular domain or does not
@@ -51,7 +55,7 @@ def lift_to_cube(objective, fail_value=100000):
     @functools.wraps(objective)
     def wrapper(us):
         try:
-            s = cube_to_simplex(us)
+            s = cube_to_simplex(us, scale)
             # s is a point on the simplex in one higher dimension
         except:
             return fail_value
@@ -78,13 +82,16 @@ def minimize_optimizer_on_simplex(
     with_count=False,
     fail_value=100000,
     return_point_on_simplex=False,
+    scale: float = None,
     **kwargs,
 ):
     """
          Minimize objective on the (interior of the) n_dim-simplex in n_dim+1 dimensions by
          optimizing an objective function lifted to the n_dim-cube.
 
-         See above. Not great for corners.
+         See above. The corners themselves are not in the image: the map reaches weights down to
+         about 2e-17 away from a vertex, and the reference component (the first) no lower than
+         1/(1 + n_dim * exp(8.21 / scale)). A smaller `scale` reaches further out.
 
     :param optimizer:
     :param objective:   Expects a k+1 vector
@@ -95,7 +102,9 @@ def minimize_optimizer_on_simplex(
     :param return_point_on_simplex: If True, will return point on simplex. Otherwise the image on the cube.
     :return: Same as any other optimizer
     """
-    lifted_objective_on_cube = lift_to_cube(objective=objective, fail_value=fail_value)
+    lifted_objective_on_cube = lift_to_cube(
+        objective=objective, fail_value=fail_value, scale=scale
+    )
     f_best, x_best, feval_count = optimizer(
         lifted_objective_on_cube,
         n_trials=n_trials,
@@ -106,12 +115,12 @@ def minimize_optimizer_on_simplex(
 
     if return_point_on_simplex:
         try:
-            s_best = cube_to_simplex(x_best)
+            s_best = cube_to_simplex(x_best, scale)
         except:
             print(x_best)
             raise ValueError("Could not move optimal point back to simplex")
     else:
-        s_best = np.copy(x_best)
+        s_best = list(x_best)
     if with_count:
         return f_best, s_best, feval_count
     else:
