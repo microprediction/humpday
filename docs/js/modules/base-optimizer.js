@@ -113,8 +113,24 @@ const MathUtils = {
 // Deterministic transcendentals shared with the Python side (see
 // humpday/_prng.py): trajectory code must use these, never Math.pow /
 // Math.exp / Math.log, whose last-ulp behaviour is runtime-specific.
-MathUtils.portableLog = _prngmod.portableLog;
-MathUtils.portableExp = _prngmod.portableExp;
+//
+// A page that does not load prng.js first leaves these null, and the first
+// optimizer to need one fails with "MathUtils.portableLog is not a function"
+// somewhere in the middle of a run -- which is how every page on the site came
+// to be missing the script without anyone noticing. Say what is actually
+// wrong, at the point the name is used.
+function _missingPrng(name) {
+    return function () {
+        throw new Error(
+            'humpday: MathUtils.' + name + ' needs js/modules/prng.js, which this page loads ' +
+            'after base-optimizer.js or not at all. Load prng.js first: this module captures ' +
+            'the portable math when it runs.'
+        );
+    };
+}
+
+MathUtils.portableLog = _prngmod.portableLog || _missingPrng('portableLog');
+MathUtils.portableExp = _prngmod.portableExp || _missingPrng('portableExp');
 
 // Thrown by evaluate() when nTrials objective calls have been made. Caught by
 // the wrapper the Optimizer constructor puts around legacy optimize()
