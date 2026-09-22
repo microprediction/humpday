@@ -206,7 +206,26 @@ class Powell extends Optimizer {
     }
 
     optimize() {
-        let x = Array(this.nDim).fill(0).map(() => Math.random());
+        // A pass converges and stops; on the sphere that left 4,969 of 5,000 evaluations
+        // unrequested and the answer no better than at a budget of 200. Restart from a fresh
+        // point while the budget lasts, keeping the best seen. Twin of Powell._run in
+        // humpday/optimizers/scipy_algorithms.py.
+        this._powellPass();
+        while (this.evaluations + 2 + 2 * this.nDim <= this.nTrials) {
+            this._powellPass();
+        }
+
+        return {
+            bestValue: this.bestValue,
+            bestX: this.bestX,
+            evaluations: this.evaluations,
+            success: true,
+            path: this.trackPath ? this.path : null
+        };
+    }
+
+    _powellPass() {
+        let x = MathUtils.randomUniform(this.nDim);
         let fx = this.evaluate(x);
 
         // Initialize direction set (coordinate directions)
@@ -246,14 +265,6 @@ class Powell extends Optimizer {
                 directions[this.nDim - 1] = newDirection.map(d => d / norm);
             }
         }
-
-        return {
-            bestValue: this.bestValue,
-            bestX: this.bestX,
-            evaluations: this.evaluations,
-            success: true,
-            path: this.trackPath ? this.path : null
-        };
     }
 
     lineSearch(x0, direction) {

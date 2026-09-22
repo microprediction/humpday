@@ -57,11 +57,19 @@ def test_a_budget_of_one_is_one_call_by_the_optimizer():
 
 
 def test_explicit_method_reports_actual_calls():
+    """nfev is the count of calls that happened, whatever the optimizer chose to do.
+
+    This used to assert `nfev < 1000` on the grounds that "Powell terminates early on a
+    quadratic". It did, and #330 counted the cost: thirty-two evaluations of five thousand on
+    the sphere, with the rest handed back. Powell now restarts until the budget is gone, so the
+    number this test is really about -- that the ledger matches the calls -- is checked without
+    also pinning how many of them there are.
+    """
     _A.seed(123)
     f, seen = _counted(_centered)
     r = minimize(f, bounds=[(0, 1)] * 2, method="Powell", options={"maxiter": 1000})
     assert r.nfev == len(seen)
-    assert r.nfev < 1000  # Powell terminates early on a quadratic
+    assert r.nfev <= 1000
     assert r.fun == min(seen)
 
 

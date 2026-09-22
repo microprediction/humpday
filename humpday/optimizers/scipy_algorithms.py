@@ -192,6 +192,23 @@ class Powell(BaseOptimizer):
     """
 
     def _run(self):
+        # One Powell pass converges and returns, and on a smooth problem it does so early:
+        # measured on the sphere at n_trials=5000, thirty-two evaluations were used and 4,968
+        # handed back, and the answer at 5000 was the answer at 200. scipy has the same
+        # property and the same excuse -- it is a local method -- but a budget that was asked
+        # for should be spent, so passes restart from fresh interior points while it lasts.
+        #
+        # The first pass is unchanged. Later ones cost nothing that was being used, and
+        # BaseOptimizer keeps the best point seen, so a pass that finds a worse basin cannot
+        # make the answer worse. A pass needs its start plus a line search to do anything, so
+        # stop starting one that cannot afford that. The first pass is unconditional, so a
+        # budget too small for a restart still buys the one point it can afford rather than
+        # returning the infinity the optimizer was constructed with.
+        yield from self._powell_pass_gen()
+        while self.evaluations + 2 + 2 * self.n_dim <= self.n_trials:
+            yield from self._powell_pass_gen()
+
+    def _powell_pass_gen(self):
         n = self.n_dim
         x = 0.3 + 0.4 * _A.random_uniform(n)  # Interior start
 

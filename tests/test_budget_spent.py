@@ -20,7 +20,7 @@ from humpday.optimizers.alloptimizers import PURE_OPTIMIZERS
 # Optimizers whose budget this file pins. It is not the whole roster: the rest of #330 is
 # unfixed, and a test that fails for known reasons teaches nobody anything. Add a name here
 # when its restart layer lands.
-SPENDERS = ["LBFGSB"]
+SPENDERS = ["LBFGSB", "Powell"]
 
 BUDGETS = [200, 1000, 5000]
 
@@ -81,7 +81,11 @@ def test_more_budget_is_never_worse(name, objective):
             f"{name} on {objective} did worse with {larger} evaluations "
             f"({after:.6e}) than with {smaller} ({before:.6e})"
         )
-    assert results[-1] < results[0] * (1 - 1e-9), (
-        f"{name} on {objective} got nothing from {BUDGETS[-1]} evaluations that it did not "
-        f"already have at {BUDGETS[0]}: {results[0]:.6e} -> {results[-1]:.6e}"
-    )
+    # And it bought something -- unless the smallest budget already solved the problem, which
+    # Powell does on both of these: there is no improving on an exact zero, and demanding one
+    # would be asking the test to fail for the best possible reason.
+    if results[0] > 1e-30:
+        assert results[-1] < results[0] * (1 - 1e-9), (
+            f"{name} on {objective} got nothing from {BUDGETS[-1]} evaluations that it did not "
+            f"already have at {BUDGETS[0]}: {results[0]:.6e} -> {results[-1]:.6e}"
+        )
