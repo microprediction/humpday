@@ -328,15 +328,18 @@ class Optimizer {
         return this._driveGen(this._lbfgsPolishGen());
     }
 
-    *_lbfgsPolishGen() {
+    // Polish from `start`, or from the best point seen when it is undefined. A polish that
+    // always begins at the running best cannot restart: once converged, every further pass
+    // re-derives the same point. Twin of _lbfgs_polish_gen in humpday/optimizers/base.py.
+    *_lbfgsPolishGen(start, startValue) {
         const FACTR = 1e7;
         const PGTOL = 1e-5;
         const EPS_MACH = 2.220446049250313e-16;
         const MEMORY = Math.min(10, Math.max(1, this.nDim));
         const n = this.nDim;
 
-        let x = this.bestX.slice();
-        let f = this.bestValue;
+        let x = start === undefined ? this.bestX.slice() : start.slice();
+        let f = start === undefined ? this.bestValue : startValue;
         let grad = yield* this._fdGradientPolishGen(x);
 
         const sList = [];

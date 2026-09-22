@@ -513,3 +513,26 @@ class LBFGSB(BaseOptimizer):
         self.best_x = _A.random_uniform(self.n_dim)
         self.best_value = yield self.best_x
         yield from self._lbfgs_polish_gen()
+
+        # And then again from somewhere else, for as long as the budget lasts.
+        #
+        # A descent converges and stops, which on a smooth problem is the right thing to do and
+        # on any budget worth the name leaves most of it unspent: measured on the sphere at
+        # n_trials=5000, this used eleven evaluations and handed back 4,989, and the first
+        # local minimum it found was the answer however much more it was given. The projected
+        # gradient at exit was 0.73 against a pgtol of 1e-5 on Rosenbrock, so it was not even
+        # always converged -- a failed line search returns exactly like a solved problem.
+        #
+        # Multi-start is the standard remedy and the one already used by HillClimbing and by
+        # the restart layers in DE and SA: keep descending from fresh points until the budget
+        # is gone. On a unimodal problem the later passes re-find the same minimum and change
+        # nothing, since _bookkeep keeps the best point seen; on a multimodal one they are the
+        # difference between the basin you happened to land in and the best of several.
+        #
+        # A pass needs a gradient (2*n_dim evaluations) plus a step before it can do anything,
+        # so stop restarting when that no longer fits rather than spending the tail on half a
+        # gradient.
+        while self.evaluations + 2 * self.n_dim + 2 <= self.n_trials:
+            start = _A.random_uniform(self.n_dim)
+            start_value = yield start
+            yield from self._lbfgs_polish_gen(start=start, start_value=start_value)

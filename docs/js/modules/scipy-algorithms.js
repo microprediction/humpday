@@ -298,9 +298,21 @@ class LBFGSB extends Optimizer {
         // Optimizer class): two-loop recursion + bound-aware direction
         // projection + projected-gradient pgtol + factr·eps_mach
         // termination + feasibility-capped Armijo line search.
-        this.bestX = Array(this.nDim).fill(0).map(() => Math.random());
+        this.bestX = MathUtils.randomUniform(this.nDim);
         this.bestValue = this.evaluate(this.bestX);
         this._lbfgsPolish();
+
+        // And then again from somewhere else, for as long as the budget lasts. A descent
+        // converges and stops, which on the sphere at nTrials=5000 meant eleven evaluations
+        // used and 4,989 handed back. Multi-start is the standard remedy: keep descending
+        // from fresh points, keeping the best seen. Twin of LBFGSB._run in
+        // humpday/optimizers/scipy_algorithms.py.
+        while (this.evaluations + 2 * this.nDim + 2 <= this.nTrials) {
+            const start = MathUtils.randomUniform(this.nDim);
+            const startValue = this.evaluate(start);
+            this._driveGen(this._lbfgsPolishGen(start, startValue));
+        }
+
         return {
             bestValue: this.bestValue,
             bestX: this.bestX,
