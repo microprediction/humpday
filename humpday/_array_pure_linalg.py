@@ -59,6 +59,13 @@ def _fold_sum(values) -> float:
 # models are exactly that.
 _PIVOT_TOL = 1e-14
 
+# Relative tolerance for a singular value obtained by diagonalising A^T A. That route squares
+# the condition number, so σ is only accurate to about sqrt(eps) relative to σ_max — anything
+# smaller is roundoff wearing a singular value's clothes. Used as the rank floor by `svd` and as
+# the default cutoff by `pinv`, both of which previously used a floor appropriate to an
+# unsquared computation and so invented rank (#391).
+_SIGMA_REL_TOL = math.sqrt(2.220446049250313e-16)  # ~1.49e-08
+
 
 def _scale(A) -> float:
     """Largest absolute entry of a matrix -- the unit every tolerance is relative to."""
@@ -477,20 +484,47 @@ def svd(
     # arithmetic; clip to handle floating-point noise.
     singular_values = [math.sqrt(max(s, 0.0)) for s in sigma_sq[:k]]
 
-    # Build U columns: u_i = A v_i / σ_i for σ_i that are not negligible
-    # against σ_max; the rest come from the orthogonal complement of the
-    # columns already built. Done columnwise then reassembled into a 2-D
-    # list-of-rows.
-    sigma_floor = _PIVOT_TOL * (singular_values[0] if singular_values else 0.0)
+    # Build U columns: u_i = A v_i / σ_i for σ_i that are real, the rest from the orthogonal
+    # complement of the columns already built.
+    #
+    # What counts as real has to account for how σ was obtained. These come from the
+    # eigenvalues of A^T A, which squares the condition number: an exactly zero singular value
+    # surfaces as sqrt(roundoff) — around 1e-8 relative to σ_max, not 1e-16. The floor used to
+    # be _PIVOT_TOL (1e-14), which accepts that noise as a singular value, divides A v by it,
+    # and hands back a U column that is neither unit nor orthogonal. On the exactly singular
+    # [[1,2,3],[2,1,3],[3,1,4]] that produced σ_3 = 3.16e-08, ||U^T U - I|| = 1.0 and a
+    # pseudo-inverse 331 times wrong; on a 4x3 case with a null vector, 2.3 million times (#391).
+    sigma_floor = _SIGMA_REL_TOL * (singular_values[0] if singular_values else 0.0)
     U_cols: List[List[float]] = []
     for j in range(k):
         sigma = singular_values[j]
+        column = None
         if sigma > sigma_floor:
             v_j = [V_sorted_cols[r][j] for r in range(n)]
             A_v = matvec(A_2d, v_j)
-            U_cols.append([float(c) / sigma for c in A_v])
-        else:
-            U_cols.append(_complete_orthonormal(U_cols, m)[j])
+            candidate = [float(c) / sigma for c in A_v]
+            # Orthonormalise against what is already there, twice, then normalise. In exact
+            # arithmetic A v_i / σ_i is already orthonormal; in floating point it drifts, and
+            # the drift is what makes U^T U differ from the identity.
+            for _pass in range(2):
+                for q in U_cols:
+                    dot = _fold_sum(q[r] * candidate[r] for r in range(m))
+                    for r in range(m):
+                        candidate[r] -= dot * q[r]
+            norm = math.sqrt(_fold_sum(c * c for c in candidate))
+            if norm > _SIGMA_REL_TOL:
+                column = [c / norm for c in candidate]
+            else:
+                # The direction collapsed under orthogonalisation, so this σ was noise after
+                # all however it compared with the floor.
+                singular_values[j] = 0.0
+        if column is None:
+            # Below the floor the number is roundoff, not a small singular value, and reporting
+            # it invites a caller to compute a rank from it. numpy can return a genuine 1e-16
+            # because it factors A directly; this route cannot tell that from noise.
+            singular_values[j] = 0.0
+            column = _complete_orthonormal(U_cols, m)[j]
+        U_cols.append(column)
 
     u_width = m if full_matrices else k
     if full_matrices and m > k:
@@ -510,12 +544,16 @@ def svd(
 # ---------------------------------------------------------------------------
 
 
-def pinv(A, rcond: float = 1e-15) -> List[List[float]]:
+def pinv(A, rcond: float = _SIGMA_REL_TOL) -> List[List[float]]:
     """Moore-Penrose pseudo-inverse: pinv(A) = V @ diag(1/s_truncated) @ U^T.
     Singular values below `rcond * max(s)` are treated as zero (their
     reciprocals are set to zero) — same convention as numpy.
 
     `A` is m × n; `pinv(A)` is n × m.
+
+    The default cutoff is sqrt(eps) rather than numpy's 1e-15, because these singular values
+    come from diagonalising A^T A and are only accurate to about that (#391). numpy computes
+    its SVD directly and can afford the tighter default; this cannot.
     """
     U, s, Vt = svd(A, full_matrices=False)
     if len(s) == 0:
