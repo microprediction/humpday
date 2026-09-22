@@ -1387,19 +1387,36 @@ class FrozenBayesianOpt(BaseOptimizer):
             out.append(row)
         return out
 
+    # Mirrors BayesianOpt._GP_MAX_OBSERVATIONS / _conditioning_set (#330): the kernel solve is
+    # cubic in the number of observations and runs once per iteration, so an uncapped set made
+    # the whole run quartic in the budget.
+    _GP_MAX_OBSERVATIONS = 128
+
+    def _conditioning_set(self):
+        n = len(self.X_observed)
+        if n <= self._GP_MAX_OBSERVATIONS:
+            return self.X_observed, self.y_observed
+        half = self._GP_MAX_OBSERVATIONS // 2
+        by_value = sorted(range(n), key=self.y_observed.__getitem__)[:half]
+        keep = set(by_value) | set(range(n - half, n))
+        order = sorted(keep)
+        return (
+            [self.X_observed[i] for i in order],
+            [self.y_observed[i] for i in order],
+        )
+
     def _gp_predict(self, x_query):
         """Posterior mean and std for a single query point `x_query`."""
-        n_obs = len(self.X_observed)
+        X_obs, y_obs = self._conditioning_set()
+        n_obs = len(X_obs)
 
         # K = k(X, X) + noise * I
-        K = self._kernel_matrix(self.X_observed, self.X_observed)
+        K = self._kernel_matrix(X_obs, X_obs)
         for i in range(n_obs):
             K[i][i] += self.noise_variance
 
         # K_s = k(X, x_query) as a column vector of length n_obs.
-        K_s_col = [
-            self._kernel_matrix([x_obs], [x_query])[0][0] for x_obs in self.X_observed
-        ]
+        K_s_col = [self._kernel_matrix([x_obs], [x_query])[0][0] for x_obs in X_obs]
 
         # K_ss = k(x_query, x_query) — a single scalar.
         K_ss = self._kernel_matrix([x_query], [x_query])[0][0]
@@ -1417,9 +1434,9 @@ class FrozenBayesianOpt(BaseOptimizer):
                     K[i][i] += jitter
         if L is None:
             # Pathological kernel — fall back to a flat prior.
-            mu = _A.fold_sum(self.y_observed) / max(1, n_obs)
+            mu = _A.fold_sum(y_obs) / max(1, n_obs)
             var = 0.0
-            for y in self.y_observed:
+            for y in y_obs:
                 var += (y - mu) ** 2
             var /= max(1, n_obs)
             return mu, math.sqrt(max(var, 1e-8))
@@ -1427,7 +1444,7 @@ class FrozenBayesianOpt(BaseOptimizer):
         # alpha = K^-1 y, computed as L^-T (L^-1 y) via two triangular solves.
         # Our shim only exposes a general `solve`; that's still correct, just
         # not as fast.
-        alpha = _A.linalg.solve(L, self.y_observed)
+        alpha = _A.linalg.solve(L, y_obs)
         Lt = _A.linalg.transpose(L)
         alpha = _A.linalg.solve(Lt, alpha)
 
