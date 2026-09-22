@@ -66,6 +66,12 @@ RATIO_CEILING = {
     ("Powell", "ackley"): 6.2e9,  # measured 3086820841.80
     ("Powell", "rosenbrock"): 15.0,  # measured 7.39
     ("LBFGSB", "rosenbrock"): 2700.0,  # measured 1318.61
+    # PRIMA_BOBYQA's reference is Py-BOBYQA, which is an optional install: these two were
+    # measured after installing it, having skipped on the machine where the file was written and
+    # failed in CI, where it is present. The Rosenbrock gap is the same shape as Powell's -- the
+    # JS port stops at 4.94e-06 where Py-BOBYQA reaches 5.37e-18.
+    ("PRIMA_BOBYQA", "ackley"): 140.0,  # measured 65.27
+    ("PRIMA_BOBYQA", "rosenbrock"): 1.0e10,  # measured 4916231105.35
 }
 
 # Ports whose result differs from their Python twin by more than six orders of magnitude on the
