@@ -20,7 +20,7 @@ from humpday.optimizers.alloptimizers import PURE_OPTIMIZERS
 # Optimizers whose budget this file pins. It is not the whole roster: the rest of #330 is
 # unfixed, and a test that fails for known reasons teaches nobody anything. Add a name here
 # when its restart layer lands.
-SPENDERS = ["LBFGSB", "Powell"]
+SPENDERS = ["LBFGSB", "Powell", "CoordinateDescent", "PatternSearch"]
 
 BUDGETS = [200, 1000, 5000]
 
