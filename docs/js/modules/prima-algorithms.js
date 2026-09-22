@@ -1621,8 +1621,13 @@ class PRIMA_BOBYQA extends Optimizer {
             if (step_pos > 1e-10) {
                 const offset = new Array(n).fill(0);
                 offset[i] = step_pos;
+                // The offset stored has to be the one evaluated: clipping the point without
+                // adjusting the offset fits the model to coordinates nothing was measured at
+                // (#390). Twin of _evaluated_offset in prima_algorithms.py.
+                const point = this._clip01(this._addVec(xbase, offset));
+                for (let k = 0; k < n; k++) offset[k] = point[k] - xbase[k];
                 XPT.push(offset);
-                FVAL.push(this.evaluate(this._clip01(this._addVec(xbase, offset))));
+                FVAL.push(this.evaluate(point));
             }
 
             if (FVAL.length >= npt || this.evaluations >= this.nTrials) return { XPT, FVAL };
@@ -1630,8 +1635,13 @@ class PRIMA_BOBYQA extends Optimizer {
             if (step_neg < -1e-10) {
                 const offset = new Array(n).fill(0);
                 offset[i] = step_neg;
+                // The offset stored has to be the one evaluated: clipping the point without
+                // adjusting the offset fits the model to coordinates nothing was measured at
+                // (#390). Twin of _evaluated_offset in prima_algorithms.py.
+                const point = this._clip01(this._addVec(xbase, offset));
+                for (let k = 0; k < n; k++) offset[k] = point[k] - xbase[k];
                 XPT.push(offset);
-                FVAL.push(this.evaluate(this._clip01(this._addVec(xbase, offset))));
+                FVAL.push(this.evaluate(point));
             }
         }
 

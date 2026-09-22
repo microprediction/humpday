@@ -16,6 +16,18 @@ from humpday._prng import portable_exp, portable_log
 from humpday.optimizers.base import BaseOptimizer
 
 
+def _evaluated_offset(xbase, offset, n):
+    """The point actually evaluated and the offset that reaches it.
+
+    Mirrors _evaluated_offset in humpday/optimizers/prima_algorithms.py (#390): XPT stored the
+    proposed offset while FVAL recorded the value at the clipped point, so the model was fitted
+    to coordinates nothing had been evaluated at.
+    """
+    point = _A.clip(xbase + offset, 0, 1)
+    actual = _A.asarray([float(point[k]) - float(xbase[k]) for k in range(n)])
+    return point, actual
+
+
 class FrozenDifferentialEvolution(BaseOptimizer):
     """Differential Evolution.
 
@@ -2908,8 +2920,9 @@ class FrozenPRIMA_UOBYQA(BaseOptimizer):
                     return XPT, FVAL
                 offset = _A.zeros(n)
                 offset[i] = sign * rho
+                point, offset = _evaluated_offset(xbase, offset, n)
                 XPT.append(offset)
-                FVAL.append(self.evaluate(_A.clip(xbase + offset, 0, 1)))
+                FVAL.append(self.evaluate(point))
 
         # Cross-term diagonals at rho/sqrt(2) per coordinate.
         diag_step = rho / math.sqrt(2)
@@ -2920,8 +2933,9 @@ class FrozenPRIMA_UOBYQA(BaseOptimizer):
                 offset = _A.zeros(n)
                 offset[i] = diag_step
                 offset[j] = diag_step
+                point, offset = _evaluated_offset(xbase, offset, n)
                 XPT.append(offset)
-                FVAL.append(self.evaluate(_A.clip(xbase + offset, 0, 1)))
+                FVAL.append(self.evaluate(point))
 
         return XPT, FVAL
 
@@ -3094,15 +3108,17 @@ class FrozenPRIMA_NEWUOA(BaseOptimizer):
                     return XPT, FVAL
                 offset = _A.zeros(n)
                 offset[i] = sign * rho
+                point, offset = _evaluated_offset(xbase, offset, n)
                 XPT.append(offset)
-                FVAL.append(self.evaluate(_A.clip(xbase + offset, 0, 1)))
+                FVAL.append(self.evaluate(point))
 
         # One extra point along the diagonal to bring count to 2n+1.
         if len(FVAL) < npt and self.evaluations < self.n_trials:
             diag_step = rho / math.sqrt(n)
             offset = _A.full(n, diag_step)
+            point, offset = _evaluated_offset(xbase, offset, n)
             XPT.append(offset)
-            FVAL.append(self.evaluate(_A.clip(xbase + offset, 0, 1)))
+            FVAL.append(self.evaluate(point))
 
         return XPT, FVAL
 
@@ -3447,8 +3463,9 @@ class FrozenPRIMA_BOBYQA(BaseOptimizer):
             if step_pos > 1e-10:
                 offset = _A.zeros(n)
                 offset[i] = step_pos
+                point, offset = _evaluated_offset(xbase, offset, n)
                 XPT.append(offset)
-                FVAL.append(self.evaluate(_A.clip(xbase + offset, 0, 1)))
+                FVAL.append(self.evaluate(point))
 
             if len(FVAL) >= npt or self.evaluations >= self.n_trials:
                 return XPT, FVAL
@@ -3456,8 +3473,9 @@ class FrozenPRIMA_BOBYQA(BaseOptimizer):
             if step_neg < -1e-10:
                 offset = _A.zeros(n)
                 offset[i] = step_neg
+                point, offset = _evaluated_offset(xbase, offset, n)
                 XPT.append(offset)
-                FVAL.append(self.evaluate(_A.clip(xbase + offset, 0, 1)))
+                FVAL.append(self.evaluate(point))
 
         # Optional diagonal-direction point, clipped to bounds.
         if len(FVAL) < npt and self.evaluations < self.n_trials:
@@ -3469,8 +3487,9 @@ class FrozenPRIMA_BOBYQA(BaseOptimizer):
                 elif xi_target < float(xl[i]):
                     diagonal_step[i] = float(xl[i]) - float(xbase[i])
             offset = _A.asarray(diagonal_step)
+            point, offset = _evaluated_offset(xbase, offset, n)
             XPT.append(offset)
-            FVAL.append(self.evaluate(_A.clip(xbase + offset, 0, 1)))
+            FVAL.append(self.evaluate(point))
 
         return XPT, FVAL
 

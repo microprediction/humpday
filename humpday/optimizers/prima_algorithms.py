@@ -479,6 +479,22 @@ def _steihaug_cg(g, H, rho, n):
     return d
 
 
+def _evaluated_offset(xbase, offset, n):
+    """The point that will actually be evaluated, and the offset that reaches it.
+
+    `XPT` stores offsets from `xbase` and `FVAL` the objective at those offsets -- so the two
+    have to describe the same point. They did not: the offset was stored as proposed while the
+    value was measured at `clip(xbase + offset, 0, 1)`. With xbase at [0.9, 0.9] and rho 0.5, the
+    positive first-axis entry claimed to represent [1.4, 0.9] and was measured at [1.0, 0.9], a
+    coordinate error of 0.4 fed straight into the quadratic fit, before any conditioning question
+    arises. Both optimizers restart from non-central bases, so this is reached in ordinary use,
+    and a later base shift carries the wrong coordinate along rather than repairing it (#390).
+    """
+    point = _A.clip(xbase + offset, 0, 1)
+    actual = _A.asarray([float(point[k]) - float(xbase[k]) for k in range(n)])
+    return point, actual
+
+
 class PRIMA_UOBYQA(BaseOptimizer):
     """PRIMA UOBYQA — quadratic-interpolation trust-region method.
 
@@ -962,8 +978,9 @@ class PRIMA_UOBYQA(BaseOptimizer):
                     return XPT, FVAL
                 offset = _A.zeros(n)
                 offset[i] = sign * rho
+                point, offset = _evaluated_offset(xbase, offset, n)
                 XPT.append(offset)
-                FVAL.append((yield _A.clip(xbase + offset, 0, 1)))
+                FVAL.append((yield point))
 
         # Cross-term diagonals at rho/sqrt(2) per coordinate.
         diag_step = rho / math.sqrt(2)
@@ -974,8 +991,9 @@ class PRIMA_UOBYQA(BaseOptimizer):
                 offset = _A.zeros(n)
                 offset[i] = diag_step
                 offset[j] = diag_step
+                point, offset = _evaluated_offset(xbase, offset, n)
                 XPT.append(offset)
-                FVAL.append((yield _A.clip(xbase + offset, 0, 1)))
+                FVAL.append((yield point))
 
         return XPT, FVAL
 
@@ -1146,15 +1164,17 @@ class PRIMA_NEWUOA(BaseOptimizer):
                     return XPT, FVAL
                 offset = _A.zeros(n)
                 offset[i] = sign * rho
+                point, offset = _evaluated_offset(xbase, offset, n)
                 XPT.append(offset)
-                FVAL.append((yield _A.clip(xbase + offset, 0, 1)))
+                FVAL.append((yield point))
 
         # One extra point along the diagonal to bring count to 2n+1.
         if len(FVAL) < npt and self.evaluations < self.n_trials:
             diag_step = rho / math.sqrt(n)
             offset = _A.full(n, diag_step)
+            point, offset = _evaluated_offset(xbase, offset, n)
             XPT.append(offset)
-            FVAL.append((yield _A.clip(xbase + offset, 0, 1)))
+            FVAL.append((yield point))
 
         return XPT, FVAL
 
@@ -1512,8 +1532,9 @@ class PRIMA_BOBYQA(BaseOptimizer):
             if step_pos > 1e-10:
                 offset = _A.zeros(n)
                 offset[i] = step_pos
+                point, offset = _evaluated_offset(xbase, offset, n)
                 XPT.append(offset)
-                FVAL.append((yield _A.clip(xbase + offset, 0, 1)))
+                FVAL.append((yield point))
 
             if len(FVAL) >= npt or self.evaluations >= self.n_trials:
                 return XPT, FVAL
@@ -1521,8 +1542,9 @@ class PRIMA_BOBYQA(BaseOptimizer):
             if step_neg < -1e-10:
                 offset = _A.zeros(n)
                 offset[i] = step_neg
+                point, offset = _evaluated_offset(xbase, offset, n)
                 XPT.append(offset)
-                FVAL.append((yield _A.clip(xbase + offset, 0, 1)))
+                FVAL.append((yield point))
 
         # Optional diagonal-direction point, clipped to bounds.
         if len(FVAL) < npt and self.evaluations < self.n_trials:
@@ -1534,8 +1556,9 @@ class PRIMA_BOBYQA(BaseOptimizer):
                 elif xi_target < float(xl[i]):
                     diagonal_step[i] = float(xl[i]) - float(xbase[i])
             offset = _A.asarray(diagonal_step)
+            point, offset = _evaluated_offset(xbase, offset, n)
             XPT.append(offset)
-            FVAL.append((yield _A.clip(xbase + offset, 0, 1)))
+            FVAL.append((yield point))
 
         return XPT, FVAL
 
