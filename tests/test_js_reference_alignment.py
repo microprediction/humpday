@@ -23,11 +23,13 @@ import pytest
 
 from tests.test_reference_alignment import (  # noqa: E402
     CONVERGED_GAP,
+    DEFAULT_WIN_CEILING,
     N_RUNS,
     PROBLEMS,
     REFERENCES,
     _all_installed,
     _run_humpday,
+    head_to_head,
 )
 
 NODE = shutil.which("node")
@@ -87,8 +89,18 @@ KNOWN_PORT_DIVERGENCE = {
 }
 
 
+# Pairs that lose more head to head than the Python gate's default allows. Same statistic and
+# same reason as there: a ratio of two medians is not a measurement when the outcome is
+# bimodal, and the JavaScript ports face the same multimodal problems.
+WIN_CEILING: dict[tuple[str, str], float] = {}
+
+
 def _ratio_ceiling(algorithm: str, problem: str) -> float:
     return RATIO_CEILING.get((algorithm, problem), DEFAULT_RATIO_CEILING)
+
+
+def _win_ceiling(algorithm: str, problem: str) -> float:
+    return WIN_CEILING.get((algorithm, problem), DEFAULT_WIN_CEILING)
 
 
 # Points the two implementations must agree on before any optimizer runs: the optimum, the
@@ -186,14 +198,23 @@ def test_the_javascript_port_tracks_its_reference(algorithm, problem_id):
     js_gap = js_med - opt_value
     ref_gap = ref_med - opt_value
     ratio = (js_gap + 1e-15) / (ref_gap + 1e-15)
+    lost = head_to_head(js_vals, ref_vals)
 
     print(
         f"  {algorithm:<14} {problem_id:<11} js={js_med:>11.4g}  {ref_label}={ref_med:>11.4g}"
-        f"  js/ref={ratio:>9.2f}"
+        f"  js/ref={ratio:>9.2f}  lost={lost:>5.2f}"
+    )
+
+    win_cap = _win_ceiling(algorithm, problem_id)
+    assert lost <= win_cap, (
+        f"{algorithm} in JavaScript loses {lost:.2f} of head-to-head pairings against "
+        f"{ref_label} on {problem_id}, over its ceiling of {win_cap:g}"
     )
 
     if js_gap <= CONVERGED_GAP:
         return  # solved it; the ratio is then the epsilon guard dividing itself
+    if lost <= 0.5:
+        return  # ahead head to head, so the ratio is comparing two different modes
     ceiling = _ratio_ceiling(algorithm, problem_id)
     assert ratio <= ceiling, (
         f"{algorithm} in JavaScript is {ratio:.2f}x the {ref_label} gap on {problem_id}, "
