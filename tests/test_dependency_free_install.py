@@ -88,3 +88,52 @@ def test_objectives_that_still_need_numpy_say_so(without_numpy):
         portfolio.make_sigma_matrix()
     with pytest.raises(ImportError, match="fast"):
         chatgptobjectives.chat_0([0.3, 0.6])
+
+
+def test_the_surfaces_do_not_depend_on_the_calendar():
+    """#373. The domain warp used to be `datetime.today().day`.
+
+    Every surface that calls `smoosh` was therefore a different landscape on the 3rd of the
+    month than on the 17th, and POWER cycled through three values on `day % 3`. Two
+    recommendation grids built on different days measured different objectives, and neither
+    recorded which.
+    """
+    import importlib
+
+    from humpday.objectives import classic
+
+    baseline = classic.schwefel_on_cube([0.3, 0.6, 0.45])
+    reloaded = importlib.reload(classic)
+    assert reloaded.schwefel_on_cube([0.3, 0.6, 0.45]) == baseline
+    assert reloaded.DAY == reloaded._DEFAULT_MORPH_DAY
+
+
+def test_the_warp_can_still_be_moved_on_purpose(monkeypatch):
+    """Anti-memorisation was the point of the date, and it is still available -- opt in."""
+    import importlib
+
+    from humpday.objectives import classic
+
+    fixed = classic.schwefel_on_cube([0.3, 0.6, 0.45])
+    monkeypatch.setenv("HUMPDAY_MORPH_DAY", "5")
+    moved = importlib.reload(classic)
+    try:
+        assert moved.DAY == 5
+        assert moved.schwefel_on_cube([0.3, 0.6, 0.45]) != fixed
+    finally:
+        monkeypatch.delenv("HUMPDAY_MORPH_DAY", raising=False)
+        importlib.reload(classic)
+
+
+def test_a_bad_morph_day_is_refused(monkeypatch):
+    import importlib
+
+    from humpday.objectives import classic
+
+    monkeypatch.setenv("HUMPDAY_MORPH_DAY", "the seventeenth")
+    try:
+        with pytest.raises(ValueError, match="HUMPDAY_MORPH_DAY"):
+            importlib.reload(classic)
+    finally:
+        monkeypatch.delenv("HUMPDAY_MORPH_DAY", raising=False)
+        importlib.reload(classic)

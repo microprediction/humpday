@@ -8,6 +8,7 @@
 ## Basis of tricky functions
 import datetime
 import math
+import os
 import random as _random
 
 from humpday import _array as _A
@@ -21,7 +22,37 @@ from humpday.objectives.deapobjectives import (
     shekel,
 )
 
-DAY = datetime.datetime.today().day
+# The domain warp, and where its number comes from.
+#
+# This used to be `datetime.today().day`, which made every surface that calls `smoosh` a
+# different landscape on the 3rd of the month than on the 17th, and cycled POWER through three
+# values on `day % 3`. The intent was anti-memorisation, and it works for that, but it also means
+# `benchmarks/recommendation_grid.json` measures different objectives depending on when it is
+# built, two grids are not comparable, and neither can be reproduced from its recorded inputs
+# (#373).
+#
+# So the number is now fixed, and explicit. `HUMPDAY_MORPH_DAY` overrides it -- set it to a day
+# of the month for the old behaviour on a chosen day, or to "today" for the old behaviour
+# outright, which is what an anti-memorisation experiment wants and what a recorded grid must
+# not have.
+_DEFAULT_MORPH_DAY = 17
+
+
+def _morph_day() -> int:
+    setting = os.environ.get("HUMPDAY_MORPH_DAY", "").strip().lower()
+    if not setting:
+        return _DEFAULT_MORPH_DAY
+    if setting == "today":
+        return datetime.datetime.today().day
+    try:
+        return int(setting)
+    except ValueError:
+        raise ValueError(
+            f"HUMPDAY_MORPH_DAY must be a day of the month or 'today', got {setting!r}"
+        ) from None
+
+
+DAY = _morph_day()
 OFFSET = DAY / 50
 POWER = 1 + (DAY % 3) / 3.0
 SHIFT = DAY / 100
