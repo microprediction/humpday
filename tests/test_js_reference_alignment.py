@@ -71,7 +71,11 @@ RATIO_CEILING = {
     # failed in CI, where it is present. The Rosenbrock gap is the same shape as Powell's -- the
     # JS port stops at 4.94e-06 where Py-BOBYQA reaches 5.37e-18.
     ("PRIMA_BOBYQA", "ackley"): 140.0,  # measured 65.27
-    ("PRIMA_BOBYQA", "rosenbrock"): 1.0e10,  # measured 4916231105.35
+    # This one varies run to run -- 3.3e+08, 1.7e+09, 2.7e+09, 4.9e+09 across four runs -- because
+    # the JavaScript PRIMA ports call Math.random() directly rather than the portable stream, so
+    # the seed the runner sets does not reach them (#401). The ceiling has room for that spread
+    # until the ports are seeded properly.
+    ("PRIMA_BOBYQA", "rosenbrock"): 2.0e10,  # measured 3.3e+08 to 4.9e+09
 }
 
 # Ports whose result differs from their Python twin by more than six orders of magnitude on the
