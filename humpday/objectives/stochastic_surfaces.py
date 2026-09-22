@@ -86,9 +86,22 @@ class StochasticSurfaceGenerator:
             seed_string = f"{function_name}_{n_dim}_{self.global_shift}"
             seed_hash = int(hashlib.md5(seed_string.encode()).hexdigest()[:8], 16)
 
-            # Use the hash as seed for this function's shifts
+            # Scaled to the domain, not to nothing. Every surface here is evaluated at
+            # `scale_factor * (10 * x - 5) + shifts`, so the centre of the cube lands on
+            # `shifts` -- and most of these functions have their optimum at the origin of that
+            # coordinate. With shifts of +-0.2 in a domain spanning +-5 * scale_factor, the
+            # optimum sat within a few percent of the cube's centre on every instance: one
+            # evaluation at (0.5, ..., 0.5) beat the best of 200 random draws on ten of twelve
+            # problems, and beat what NelderMead, DE, CMA-ES and RandomSearch reached with two
+            # hundred evaluations on five of six (#387). Three optimizers start at that exact
+            # point, so the suite was scoring aim rather than search.
+            #
+            # +-2.5 * scale_factor puts the optimum uniformly in [0.25, 0.75] of each axis:
+            # far enough from the centre that no fixed starting point is favoured, and far
+            # enough from the bounds that it does not become a boundary problem instead.
+            spread = 2.5 * self.scale_factor
             self.dimension_shifts[key] = np.random.RandomState(seed_hash).uniform(
-                -0.2, 0.2, n_dim
+                -spread, spread, n_dim
             )
 
         return self.dimension_shifts[key]
