@@ -273,19 +273,81 @@ class GridSearch extends Optimizer {
     *_run() {
         // Twin of GridSearch._run in humpday/optimizers/search_algorithms.py.
         const n = this.nDim;
-        const nPerAxis = Math.max(2, Math.round(Math.pow(this.nTrials, 1.0 / n)));
+        let lo = new Array(n).fill(0.0);
+        let hi = new Array(n).fill(1.0);
+
+        let first = true;
+        for (;;) {
+            const remaining = this.nTrials - this.evaluations;
+            // Half the remaining per level, so there is always something left to refine with.
+            let bins = GridSearch._oddBinsThatFit(Math.floor(remaining / 2), n);
+            if (bins < 2) {
+                bins = GridSearch._oddBinsThatFit(remaining, n);
+            }
+            if (bins < 2) {
+                if (first && remaining > 0) {
+                    yield* this._sweepGen(lo, hi, 2);
+                }
+                break;
+            }
+            const bestCell = yield* this._sweepGen(lo, hi, bins);
+            first = false;
+            if (bestCell === null) break;
+            [lo, hi] = bestCell;
+        }
+    }
+
+    // Largest b with b**n <= budget, odd where it can be: an odd bin count puts a sample at
+    // the centre of the box, and the refinement re-centres on the winning cell, so a centred
+    // optimum is hit exactly at every level rather than approached.
+    static _oddBinsThatFit(budget, n) {
+        const bins = GridSearch._binsThatFit(budget, n);
+        if (bins > 2 && bins % 2 === 0) return bins - 1;
+        return bins;
+    }
+
+    static _binsThatFit(budget, n) {
+        if (budget < Math.pow(2, n)) return 0;
+        let b = 2;
+        while (Math.pow(b + 1, n) <= budget) b++;
+        return b;
+    }
+
+    *_sweepGen(lo, hi, bins) {
+        const n = this.nDim;
+        const widths = [];
+        for (let d = 0; d < n; d++) widths.push((hi[d] - lo[d]) / bins);
         const indices = new Array(n).fill(0);
-        while (this.evaluations < this.nTrials) {
-            yield indices.map(i => (i + 0.5) / nPerAxis);
+        let bestValue = Infinity;
+        let bestIndices = null;
+
+        for (;;) {
+            if (this.evaluations >= this.nTrials) break;
+            const x = [];
+            for (let d = 0; d < n; d++) x.push(lo[d] + (indices[d] + 0.5) * widths[d]);
+            const value = yield x;
+            if (value < bestValue) {
+                bestValue = value;
+                bestIndices = indices.slice();
+            }
             let d = n - 1;
             while (d >= 0) {
                 indices[d]++;
-                if (indices[d] < nPerAxis) break;
+                if (indices[d] < bins) break;
                 indices[d] = 0;
                 d--;
             }
             if (d < 0) break;
         }
+
+        if (bestIndices === null) return null;
+        const newLo = [];
+        const newHi = [];
+        for (let d = 0; d < n; d++) {
+            newLo.push(lo[d] + bestIndices[d] * widths[d]);
+            newHi.push(lo[d] + (bestIndices[d] + 1) * widths[d]);
+        }
+        return [newLo, newHi];
     }
 }
 

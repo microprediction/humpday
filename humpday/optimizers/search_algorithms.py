@@ -267,12 +267,18 @@ class GridSearch(BaseOptimizer):
     """Regular-grid baseline.
 
     Evaluates a uniform Cartesian grid over the unit cube `[0, 1]^n_dim`
-    with `n_per_axis = round(n_trials^(1/n_dim))` points per axis. Each
-    axis is split into equal-width bins; the evaluated point in each bin
-    is the bin centre `(i + 0.5) / n_per_axis`.
+    in levels. Each level sweeps the largest complete grid that fits in
+    half the remaining budget, keeps the cell that won, and sweeps that
+    cell in turn, so the resolution compounds instead of being decided
+    by one choice of spacing. Each axis is split into equal-width bins
+    and the evaluated point in each bin is its centre, so samples never
+    sit on the box edges; the bin count is kept odd where it can be, so
+    the centre of the box is always one of them.
 
     Like RandomSearch, this is included as a baseline (regression check,
-    contest sanity floor), not as a SOTA algorithm.
+    contest sanity floor), not as a SOTA algorithm -- though refinement
+    makes it a better one than a single sweep was, which is worth
+    remembering when reading it as a floor.
 
     Note: grid size scales as `n_per_axis^n_dim`. For modest budgets and
     `n_dim >= 5` the grid degenerates to fewer than 2 points per axis,
@@ -282,23 +288,110 @@ class GridSearch(BaseOptimizer):
 
     def _run(self):
         n = self.n_dim
-        n_per_axis = max(2, int(round(self.n_trials ** (1.0 / n))))
+        lo = [0.0] * n
+        hi = [1.0] * n
 
-        # Lexicographic enumeration of indices across n axes, each in
-        # [0, n_per_axis). Bin-centred coordinates lie at (idx + 0.5) /
-        # n_per_axis, so they are evenly spread inside [0, 1] without
-        # ever sitting exactly on the bounds.
+        first = True
+        while True:
+            remaining = self.n_trials - self.evaluations
+            # Half the remaining budget per level, so there is always something left to refine
+            # with. A sweep that spends everything is one grid, and one grid is decided by
+            # whether its bin centres happen to land on the optimum: at two dimensions a budget
+            # of 1,000 gives 31 bins, whose centres include exactly 0.5 and hit the sphere's
+            # minimum dead on, while 5,000 gives 70 and straddles it. Halving turns that piece
+            # of luck into a sequence of levels, each of which narrows the box by its own bin
+            # count, so the resolution compounds instead of depending on a parity.
+            bins = self._odd_bins_that_fit(remaining // 2, n)
+            if bins < 2:
+                # Not enough left to split; spend what remains on one final sweep.
+                bins = self._odd_bins_that_fit(remaining, n)
+            if bins < 2:
+                if first and remaining > 0:
+                    # Not even the coarsest complete grid fits -- the case the docstring warns
+                    # about, where 2**n_dim already exceeds the budget. Sweep as much of it as
+                    # there is room for, which is what this did at every size before, rather
+                    # than returning without having looked at anything.
+                    yield from self._sweep_gen(lo, hi, 2)
+                break
+            best_cell = yield from self._sweep_gen(lo, hi, bins)
+            first = False
+            if best_cell is None:
+                break
+            # Refine into the cell that won, and sweep again with whatever is left. A grid is
+            # exhausted the moment it is finished, so without this the budget past the first
+            # sweep is forfeited -- 904 evaluations of 5,000 at four dimensions (#330) -- and
+            # a larger budget bought a coarser answer rather than a finer one.
+            lo, hi = best_cell
+
+    @classmethod
+    def _odd_bins_that_fit(cls, budget: int, n: int) -> int:
+        """As `_bins_that_fit`, but odd where it can be, which keeps the centre of the box in
+        the sample.
+
+        An odd bin count puts a bin centre exactly at the middle of the box; an even one
+        straddles it. That matters more than it looks, because a great many test objectives
+        have their optimum at the centre of the cube, and because the refinement below keeps
+        re-centring on the winning cell -- an odd count at every level means the centre of the
+        current box is evaluated at every level, so a centred optimum is found exactly rather
+        than approached. Dropping one bin per axis to get there costs a few percent of
+        resolution and buys the exact hit.
+        """
+        bins = cls._bins_that_fit(budget, n)
+        if bins > 2 and bins % 2 == 0:
+            return bins - 1
+        return bins
+
+    @staticmethod
+    def _bins_that_fit(budget: int, n: int) -> int:
+        """Largest b with b**n <= budget, found by integer search rather than by rounding.
+
+        `round(budget ** (1 / n))` overshoots about half the time -- at four dimensions and a
+        budget of 1000 it asks for 6 bins, which is 1,296 points, so the sweep was cut off
+        partway through and what remained was a slab of the cube rather than a grid of it. The
+        answer then depended on which corner the odometer had reached, which is why a budget of
+        5,000 scored worse than one of 1,000.
+        """
+        if budget < 2**n:
+            return 0
+        b = 2
+        while (b + 1) ** n <= budget:
+            b += 1
+        return b
+
+    def _sweep_gen(self, lo, hi, bins):
+        """Evaluate the full `bins**n` grid inside the box, and return the best cell's box.
+
+        Points sit at bin centres, so they are spread inside the box without ever landing on
+        its edges -- the same convention the single sweep used, applied to a box that shrinks.
+        """
+        n = self.n_dim
+        widths = [(hi[d] - lo[d]) / bins for d in range(n)]
         indices = [0] * n
-        while self.evaluations < self.n_trials:
-            x = _A.asarray([(idx + 0.5) / n_per_axis for idx in indices])
-            yield x
+        best_value = float("inf")
+        best_indices = None
+
+        while True:
+            if self.evaluations >= self.n_trials:
+                break
+            x = _A.asarray([lo[d] + (indices[d] + 0.5) * widths[d] for d in range(n)])
+            value = yield x
+            if value < best_value:
+                best_value = value
+                best_indices = list(indices)
             # Increment indices like an odometer; stop once all wrap.
             d = n - 1
             while d >= 0:
                 indices[d] += 1
-                if indices[d] < n_per_axis:
+                if indices[d] < bins:
                     break
                 indices[d] = 0
                 d -= 1
             if d < 0:
                 break  # full grid exhausted
+
+        if best_indices is None:
+            return None
+        return (
+            [lo[d] + best_indices[d] * widths[d] for d in range(n)],
+            [lo[d] + (best_indices[d] + 1) * widths[d] for d in range(n)],
+        )
