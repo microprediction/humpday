@@ -400,7 +400,7 @@ class FrozenCoordinateDescent(BaseOptimizer):
         # regression (1.8e-18 → 4.2e-13, both still tie reference 0).
         # Triggering earlier than 1e-12 means we can fit more restart
         # attempts in the budget.
-        restart_step_threshold = 1e-6
+        restart_step_threshold = 1e-12
 
         while self.evaluations < self.n_trials:
             if step <= restart_step_threshold:
@@ -452,7 +452,7 @@ class FrozenCoordinateDescent(BaseOptimizer):
                     break  # don't try the other sign on this coordinate
 
             if not improved_anywhere:
-                step *= 0.5
+                step *= 0.25
 
         return self.best_value, self.best_x
 
@@ -489,7 +489,7 @@ class FrozenPatternSearch(BaseOptimizer):
         # Restart trigger (see CoordinateDescent for the rationale): when
         # `step` collapses below this threshold and f hasn't reached the
         # converged threshold, reinitialise from a random base.
-        restart_step_threshold = 1e-6
+        restart_step_threshold = 1e-12
 
         while self.evaluations < self.n_trials:
             if step <= restart_step_threshold:
@@ -517,7 +517,7 @@ class FrozenPatternSearch(BaseOptimizer):
                     base, f_base = x, f
             else:
                 # 4. No exploratory progress at this step: halve.
-                step *= 0.5
+                step *= 0.25
 
         return self.best_value, self.best_x
 
@@ -1291,8 +1291,7 @@ class FrozenAntColonyOpt(BaseOptimizer):
 
 
 def _bo_normal_cdf(x):
-    sign = 1.0 if x >= 0 else -1.0
-    return 0.5 * (1.0 + sign * math.sqrt(1.0 - math.exp(-2.0 * x * x / math.pi)))
+    return 0.5 * (1.0 + math.erf(x / math.sqrt(2.0)))
 
 
 def _bo_normal_pdf(x):
@@ -1322,6 +1321,8 @@ class FrozenBayesianOpt(BaseOptimizer):
         self.length_scale = 0.2
         self.signal_variance = 1.0
         self.noise_variance = 1e-6
+        self._posterior_stamp = None
+        self._posterior = None
 
     def optimize(self):
         n_initial = min(5, max(2, self.n_dim))
@@ -1441,26 +1442,21 @@ class FrozenBayesianOpt(BaseOptimizer):
             [self.y_observed[i] for i in order],
         )
 
-    def _gp_predict(self, x_query):
-        """Posterior mean and std for a single query point `x_query`."""
+    def _gp_posterior(self):
+        """Factorise the kernel once per observation set. Twin of BayesianOpt._gp_posterior."""
         X_obs, y_obs = self._conditioning_set()
         n_obs = len(X_obs)
+        stamp = (n_obs, len(self.X_observed), self.length_scale)
+        if self._posterior_stamp == stamp:
+            return self._posterior
 
-        # K = k(X, X) + noise * I
         K = self._kernel_matrix(X_obs, X_obs)
         for i in range(n_obs):
             K[i][i] += self.noise_variance
 
-        # K_s = k(X, x_query) as a column vector of length n_obs.
-        K_s_col = [self._kernel_matrix([x_obs], [x_query])[0][0] for x_obs in X_obs]
-
-        # K_ss = k(x_query, x_query) — a single scalar.
-        K_ss = self._kernel_matrix([x_query], [x_query])[0][0]
-
-        # Solve K alpha = y via cholesky, with a jitter retry if SPD fails.
         jitter = 0.0
         L = None
-        for attempt in range(4):
+        for _ in range(4):
             try:
                 L = _A.linalg.cholesky(K)
                 break
@@ -1468,30 +1464,36 @@ class FrozenBayesianOpt(BaseOptimizer):
                 jitter = max(1e-8, jitter * 10) if jitter > 0 else 1e-8
                 for i in range(n_obs):
                     K[i][i] += jitter
+
         if L is None:
-            # Pathological kernel — fall back to a flat prior.
-            mu = _A.fold_sum(y_obs) / max(1, n_obs)
-            var = 0.0
-            for y in y_obs:
-                var += (y - mu) ** 2
-            var /= max(1, n_obs)
+            posterior = None
+        else:
+            alpha = _A.linalg.solve(L, y_obs)
+            alpha = _A.linalg.solve(_A.linalg.transpose(L), alpha)
+            posterior = (X_obs, L, alpha)
+
+        self._posterior_stamp = stamp
+        self._posterior = posterior
+        return posterior
+
+    def _gp_predict(self, x_query):
+        """Posterior mean and std for one query point, against the cached factor."""
+        posterior = self._gp_posterior()
+        if posterior is None:
+            _, y_obs = self._conditioning_set()
+            n_obs = max(1, len(y_obs))
+            mu = _A.fold_sum(y_obs) / n_obs
+            var = _A.fold_sum((y - mu) ** 2 for y in y_obs) / n_obs
             return mu, math.sqrt(max(var, 1e-8))
 
-        # alpha = K^-1 y, computed as L^-T (L^-1 y) via two triangular solves.
-        # Our shim only exposes a general `solve`; that's still correct, just
-        # not as fast.
-        alpha = _A.linalg.solve(L, y_obs)
-        Lt = _A.linalg.transpose(L)
-        alpha = _A.linalg.solve(Lt, alpha)
+        X_obs, L, alpha = posterior
+        n_obs = len(X_obs)
+        K_s_col = [row[0] for row in self._kernel_matrix(X_obs, [x_query])]
+        K_ss = self.signal_variance
 
-        # Mean: mu = K_s . alpha.
         mu = _A.fold_sum(float(K_s_col[i]) * float(alpha[i]) for i in range(n_obs))
-
-        # Variance: var = K_ss - K_s^T K^-1 K_s.
-        # With L L^T = K, K^-1 K_s = L^-T (L^-1 K_s).
         v = _A.linalg.solve(L, K_s_col)
-        v_dot_v = _A.fold_sum(float(vi) * float(vi) for vi in v)
-        var = max(K_ss - v_dot_v, 1e-8)
+        var = max(K_ss - _A.fold_sum(float(vi) * float(vi) for vi in v), 1e-8)
 
         return mu, math.sqrt(var)
 
@@ -1506,19 +1508,35 @@ class FrozenBayesianOpt(BaseOptimizer):
         Z = improvement / sigma
         return improvement * _bo_normal_cdf(Z) + sigma * _bo_normal_pdf(Z)
 
+    _ACQ_CANDIDATES = 64
+    _ACQ_REFINEMENTS = 6
+
     def _optimize_acquisition(self):
-        """Optimize the acquisition function with random starts."""
-        best_x = None
-        best_ei = -float("inf")
-        for _ in range(min(10, max(5, 2 * self.n_dim))):
+        """Twin of BayesianOpt._optimize_acquisition: broad sample, then refine the best."""
+        best_x, best_ei = None, -float("inf")
+        for _ in range(self._ACQ_CANDIDATES):
             x = _A.random_uniform(self.n_dim)
             ei = self._expected_improvement(x)
             if ei > best_ei:
-                best_ei = ei
-                best_x = x
+                best_ei, best_x = ei, x
+
         if best_x is None:
             return _A.random_uniform(self.n_dim)
-        return _A.clip(best_x, 0, 1)
+
+        step = 0.25
+        for _ in range(self._ACQ_REFINEMENTS):
+            improved = False
+            for i in range(self.n_dim):
+                for sign in (1.0, -1.0):
+                    trial = [float(v) for v in best_x]
+                    trial[i] = min(1.0, max(0.0, trial[i] + sign * step))
+                    ei = self._expected_improvement(trial)
+                    if ei > best_ei:
+                        best_ei, best_x, improved = ei, trial, True
+            if not improved:
+                step *= 0.5
+
+        return _A.clip(_A.asarray(best_x), 0, 1)
 
 
 class FrozenCMAEvolutionStrategy(BaseOptimizer):

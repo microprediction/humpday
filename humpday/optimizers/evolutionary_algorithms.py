@@ -523,6 +523,8 @@ class BayesianOpt(BaseOptimizer):
         self.length_scale = 0.2
         self.signal_variance = 1.0
         self.noise_variance = 1e-6
+        self._posterior_stamp = None
+        self._posterior = None
 
     # How many observations the Gaussian process is allowed to condition on.
     #
@@ -650,26 +652,34 @@ class BayesianOpt(BaseOptimizer):
             out.append(row)
         return out
 
-    def _gp_predict(self, x_query):
-        """Posterior mean and std for a single query point `x_query`."""
+    def _gp_posterior(self):
+        """Factorise the kernel once for the current observation set, and cache it.
+
+        The Cholesky factor of `k(X, X) + noise I` depends on the observations and nothing
+        else, so it is the same for every point the acquisition asks about. It used to be
+        rebuilt and refactorised inside `_gp_predict`, once per query -- an O(n^3) solve to
+        answer an O(n^2) question, repeated for every candidate.
+
+        That is why `_optimize_acquisition` could only afford ten candidates, and ten uniform
+        samples do not find the narrow ridges of an expected-improvement surface. The cost of
+        the cap was the algorithm: BayesianOpt sat at 2.58 on Ackley, which is where a run
+        trapped on the ring sits, against gp_minimize's 0.032 (#81).
+
+        Returns `(X_obs, L, alpha)`, or None when the kernel will not factorise.
+        """
         X_obs, y_obs = self._conditioning_set()
         n_obs = len(X_obs)
+        stamp = (n_obs, len(self.X_observed), self.length_scale)
+        if self._posterior_stamp == stamp:
+            return self._posterior
 
-        # K = k(X, X) + noise * I
         K = self._kernel_matrix(X_obs, X_obs)
         for i in range(n_obs):
             K[i][i] += self.noise_variance
 
-        # K_s = k(X, x_query) as a column vector of length n_obs.
-        K_s_col = [self._kernel_matrix([x_obs], [x_query])[0][0] for x_obs in X_obs]
-
-        # K_ss = k(x_query, x_query) — a single scalar.
-        K_ss = self._kernel_matrix([x_query], [x_query])[0][0]
-
-        # Solve K alpha = y via cholesky, with a jitter retry if SPD fails.
         jitter = 0.0
         L = None
-        for attempt in range(4):
+        for _ in range(4):
             try:
                 L = _A.linalg.cholesky(K)
                 break
@@ -677,30 +687,44 @@ class BayesianOpt(BaseOptimizer):
                 jitter = max(1e-8, jitter * 10) if jitter > 0 else 1e-8
                 for i in range(n_obs):
                     K[i][i] += jitter
+
         if L is None:
-            # Pathological kernel — fall back to a flat prior.
-            mu = _A.fold_sum(y_obs) / max(1, n_obs)
-            var = 0.0
-            for y in y_obs:
-                var += (y - mu) ** 2
-            var /= max(1, n_obs)
+            posterior = None
+        else:
+            # alpha = K^-1 y as L^-T (L^-1 y). The shim exposes only a general `solve`;
+            # still correct, just not as fast as a triangular one.
+            alpha = _A.linalg.solve(L, y_obs)
+            alpha = _A.linalg.solve(_A.linalg.transpose(L), alpha)
+            posterior = (X_obs, L, alpha)
+
+        self._posterior_stamp = stamp
+        self._posterior = posterior
+        return posterior
+
+    def _gp_predict(self, x_query):
+        """Posterior mean and std for one query point, against the cached factor."""
+        posterior = self._gp_posterior()
+        if posterior is None:
+            # Pathological kernel -- fall back to a flat prior over what has been seen.
+            _, y_obs = self._conditioning_set()
+            n_obs = max(1, len(y_obs))
+            mu = _A.fold_sum(y_obs) / n_obs
+            var = _A.fold_sum((y - mu) ** 2 for y in y_obs) / n_obs
             return mu, math.sqrt(max(var, 1e-8))
 
-        # alpha = K^-1 y, computed as L^-T (L^-1 y) via two triangular solves.
-        # Our shim only exposes a general `solve`; that's still correct, just
-        # not as fast.
-        alpha = _A.linalg.solve(L, y_obs)
-        Lt = _A.linalg.transpose(L)
-        alpha = _A.linalg.solve(Lt, alpha)
+        X_obs, L, alpha = posterior
+        n_obs = len(X_obs)
 
-        # Mean: mu = K_s . alpha.
+        # k(X, x_query) as a column of length n_obs; k(x_query, x_query) is the signal
+        # variance, since the RBF kernel of a point with itself is exp(0).
+        K_s_col = [row[0] for row in self._kernel_matrix(X_obs, [x_query])]
+        K_ss = self.signal_variance
+
         mu = _A.fold_sum(float(K_s_col[i]) * float(alpha[i]) for i in range(n_obs))
 
-        # Variance: var = K_ss - K_s^T K^-1 K_s.
-        # With L L^T = K, K^-1 K_s = L^-T (L^-1 K_s).
+        # var = K_ss - K_s^T K^-1 K_s, and with L L^T = K that is K_ss - |L^-1 K_s|^2.
         v = _A.linalg.solve(L, K_s_col)
-        v_dot_v = _A.fold_sum(float(vi) * float(vi) for vi in v)
-        var = max(K_ss - v_dot_v, 1e-8)
+        var = max(K_ss - _A.fold_sum(float(vi) * float(vi) for vi in v), 1e-8)
 
         return mu, math.sqrt(var)
 
@@ -715,19 +739,70 @@ class BayesianOpt(BaseOptimizer):
         Z = improvement / sigma
         return improvement * _normal_cdf(Z) + sigma * _normal_pdf(Z)
 
+    # How hard the acquisition function is searched before a point is proposed.
+    #
+    # This was ten uniform samples, which is a random search of the acquisition surface rather
+    # than an optimisation of it. Expected improvement concentrates on narrow ridges between
+    # the observations, and ten draws in the cube miss them; on Ackley that left the port at
+    # 2.58 against gp_minimize's 0.032, losing 0.90 of head-to-head pairings.
+    #
+    # scikit-optimize samples 10,000 candidates and then runs L-BFGS-B from the best five: a
+    # broad look followed by a local one. The same shape is affordable here now that the kernel
+    # is factorised once per iteration rather than once per candidate, and these two numbers are
+    # the knee of it, measured over 41 seeds on Rosenbrock and Ackley as the summed fraction of
+    # head-to-head pairings lost to gp_minimize (lower is better):
+    #
+    #     candidates  refinements   rosenbrock  ackley   sum   secs
+    #             10            0         0.76    0.78  1.54    0.6   <- what this used to be
+    #             16            3         0.64    0.53  1.16    1.5
+    #             64            3         0.58    0.62  1.20    3.9
+    #            128            3         0.57    0.49  1.06    7.0
+    #            256            3         0.52    0.63  1.15   13.5
+    #            256            6         0.56    0.46  1.02   14.2
+    #             64            6         0.52    0.47  0.98    4.4
+    #
+    # Everything from 64 upward is the same within the noise of a rate on 41 samples; what the
+    # table really shows is that escaping ten mattered and that refining is worth more than
+    # sampling wider, which is the same lesson as scikit-optimize's L-BFGS-B step. So take the
+    # cheapest of the indistinguishable ones rather than the widest: 64 candidates costs a
+    # third of 256 and measures no worse.
+    _ACQ_CANDIDATES = 64
+    _ACQ_REFINEMENTS = 6
+
     def _optimize_acquisition(self):
-        """Optimize the acquisition function with random starts."""
-        best_x = None
-        best_ei = -float("inf")
-        for _ in range(min(10, max(5, 2 * self.n_dim))):
+        """Maximise expected improvement: a broad sample, then refine the best of it.
+
+        Every evaluation here is of the surrogate, not the objective, so none of it is charged
+        to the budget. The only cost is time, and the factorisation cache is what makes it
+        cheap: a candidate is now O(n_obs^2) against the O(n_obs^3) it used to be.
+        """
+        best_x, best_ei = None, -float("inf")
+        for _ in range(self._ACQ_CANDIDATES):
             x = _A.random_uniform(self.n_dim)
             ei = self._expected_improvement(x)
             if ei > best_ei:
-                best_ei = ei
-                best_x = x
+                best_ei, best_x = ei, x
+
         if best_x is None:
             return _A.random_uniform(self.n_dim)
-        return _A.clip(best_x, 0, 1)
+
+        # Local refinement: a coordinate pattern search on the surrogate, halving the step.
+        # L-BFGS-B on the acquisition would need its gradient, and the acquisition's gradient
+        # through a Cholesky solve is not something the array shim exposes.
+        step = 0.25
+        for _ in range(self._ACQ_REFINEMENTS):
+            improved = False
+            for i in range(self.n_dim):
+                for sign in (1.0, -1.0):
+                    trial = [float(v) for v in best_x]
+                    trial[i] = min(1.0, max(0.0, trial[i] + sign * step))
+                    ei = self._expected_improvement(trial)
+                    if ei > best_ei:
+                        best_ei, best_x, improved = ei, trial, True
+            if not improved:
+                step *= 0.5
+
+        return _A.clip(_A.asarray(best_x), 0, 1)
 
 
 # ---- Standard-normal CDF / PDF used by BayesianOpt's EI -----------------
@@ -737,10 +812,14 @@ class BayesianOpt(BaseOptimizer):
 
 
 def _normal_cdf(x):
-    """Standard-normal CDF, scalar input. Uses the same Abramowitz-style
-    approximation as the original numpy implementation."""
-    sign = 1.0 if x >= 0 else -1.0
-    return 0.5 * (1.0 + sign * math.sqrt(1.0 - math.exp(-2.0 * x * x / math.pi)))
+    """Standard-normal CDF, scalar input.
+
+    `math.erf` rather than the Abramowitz-style approximation this used to carry, whose worst
+    error is about 1.4e-2 -- three digits of a quantity expected improvement then multiplies
+    by. The reference, scikit-optimize, calls `scipy.stats.norm.cdf`. There was never a reason
+    to approximate: `erf` is in the standard library and is exact to the last ulp.
+    """
+    return 0.5 * (1.0 + math.erf(x / math.sqrt(2.0)))
 
 
 def _normal_pdf(x):
