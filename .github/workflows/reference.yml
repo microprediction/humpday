@@ -35,7 +35,9 @@ jobs:
     - name: Install with the reference comparisons
       run: |
         python -m pip install --upgrade pip
-        pip install -e ".[reference]"
+        # `dev` as well as `reference`: the latter brings the implementations to compare
+        # against, not pytest to run the comparison with.
+        pip install -e ".[dev,reference]"
 
     - name: Compare
       # -s so the table is in the log whether or not the run passes: the numbers are the point,
