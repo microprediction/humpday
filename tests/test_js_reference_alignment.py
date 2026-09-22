@@ -48,42 +48,33 @@ N_TRIALS = 200
 # algorithm here, so the bar is looser than the Python gate's 3.0.
 DEFAULT_RATIO_CEILING = 10.0
 
-# What the ports do today. Two of them are a long way behind, and the numbers are the point of
-# this file rather than an embarrassment to be hidden in a tolerance:
-#
-#   Powell's JavaScript line search tries four fixed step sizes (+-0.1, +-0.2) and keeps the best.
-#   The Python port uses the bracketing Brent search scipy uses. On a smooth problem that is the
-#   difference between converging and sampling: 8.06e-05 against scipy's exact zero on the sphere.
+# What the ports do today.
 #
 #   LBFGSB's JavaScript port tracks its reference on the sphere and Ackley and falls behind on
 #   Rosenbrock, where the curvature is what the memory is for.
 #
-# Both are #78's territory -- nine ports that agree with Python on behaviour but not on quality.
+#   PRIMA_BOBYQA falls behind on Rosenbrock and Ackley.
+#
+# Both are #78's territory -- ports that agree with Python on behaviour but not on quality.
 # Recorded so they cannot get worse, and so that fixing one shows up as a failing ceiling that
-# wants lowering.
+# wants lowering. Powell's three entries were removed when its line search was ported; that is
+# what this table is for.
 RATIO_CEILING = {
-    ("Powell", "sphere"): 1.7e11,  # measured 80609000013.37
-    ("Powell", "ackley"): 6.2e9,  # measured 3086820841.80
-    ("Powell", "rosenbrock"): 15.0,  # measured 7.39
     ("LBFGSB", "rosenbrock"): 2700.0,  # measured 1318.61
-    # PRIMA_BOBYQA's reference is Py-BOBYQA, which is an optional install: these two were
-    # measured after installing it, having skipped on the machine where the file was written and
-    # failed in CI, where it is present. The Rosenbrock gap is the same shape as Powell's -- the
-    # JS port stops at 4.94e-06 where Py-BOBYQA reaches 5.37e-18.
+    # PRIMA_BOBYQA's reference is Py-BOBYQA, an optional install.
     ("PRIMA_BOBYQA", "ackley"): 140.0,  # measured 65.27
-    # This one varies run to run -- 3.3e+08, 1.7e+09, 2.7e+09, 4.9e+09 across four runs -- because
-    # the JavaScript PRIMA ports call Math.random() directly rather than the portable stream, so
-    # the seed the runner sets does not reach them (#401). The ceiling has room for that spread
-    # until the ports are seeded properly.
+    # This one varies run to run -- 3.3e+08, 1.7e+09, 2.7e+09, 4.9e+09 -- because the JavaScript
+    # PRIMA ports call Math.random() directly rather than the portable stream, so the seed the
+    # runner sets does not reach them (#401). The ceiling has room for that spread until the
+    # ports are seeded properly.
     ("PRIMA_BOBYQA", "rosenbrock"): 2.0e10,  # measured 3.3e+08 to 4.9e+09
 }
 
 # Ports whose result differs from their Python twin by more than six orders of magnitude on the
 # sphere. Listed rather than tolerated: the test below asserts the divergence is still there, so
-# repairing one fails this file and asks for the entry to be removed.
-KNOWN_PORT_DIVERGENCE = {
-    "Powell": "the JS line search is four fixed steps where Python uses Brent (#78)",
-}
+# repairing one fails this file and asks for the entry to be removed. Powell was the only entry
+# and it has been removed, which is how the mechanism is supposed to end.
+KNOWN_PORT_DIVERGENCE: dict = {}
 
 
 def _ratio_ceiling(algorithm: str, problem: str) -> float:
