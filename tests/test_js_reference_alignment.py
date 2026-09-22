@@ -48,34 +48,35 @@ N_TRIALS = 200
 # algorithm here, so the bar is looser than the Python gate's 3.0.
 DEFAULT_RATIO_CEILING = 10.0
 
-# What the ports do today. Two of them are a long way behind, and the numbers are the point of
-# this file rather than an embarrassment to be hidden in a tolerance:
+# What the ports do today, measured with both languages on the same objectives -- which they
+# were not, the first time these numbers were taken. The runner defined its objectives in
+# JavaScript, the harness defined them in Python, and the shifted ones from #387 reached only
+# one side, so every ratio below was computed across two different problems (#406). The
+# identity tests above exist so that cannot recur.
 #
-#   Powell's JavaScript line search tries four fixed step sizes (+-0.1, +-0.2) and keeps the best.
-#   The Python port uses the bracketing Brent search scipy uses. On a smooth problem that is the
-#   difference between converging and sampling: 8.06e-05 against scipy's exact zero on the sphere.
+# Re-measured, the picture changes in one place and holds in the others:
 #
-#   LBFGSB's JavaScript port tracks its reference on the sphere and Ackley and falls behind on
-#   Rosenbrock, where the curvature is what the memory is for.
+#   Powell on the sphere is genuinely 8e+10 behind scipy -- 8.06e-05 against 3.08e-33 -- because
+#   its JavaScript line search tries four fixed step sizes where Python uses Brent (#78).
 #
-# Both are #78's territory -- nine ports that agree with Python on behaviour but not on quality.
-# Recorded so they cannot get worse, and so that fixing one shows up as a failing ceiling that
-# wants lowering.
+#   Powell on Ackley was recorded as 3.09e+09 and is actually 0.18: the JavaScript port is
+#   better than scipy's Powell there. That number was an artifact of the mismatch.
+#
+#   LBFGSB falls behind on Rosenbrock, where the curvature is what the memory is for, by the
+#   same 1,318 as before -- that pair was unaffected.
+#
+#   PRIMA_BOBYQA falls behind on Rosenbrock and Ackley.
+#
+# All of these are #78's territory: ports that agree with Python on behaviour but not on quality.
 RATIO_CEILING = {
     ("Powell", "sphere"): 1.7e11,  # measured 80609000013.37
-    ("Powell", "ackley"): 6.2e9,  # measured 3086820841.80
-    ("Powell", "rosenbrock"): 15.0,  # measured 7.39
-    ("LBFGSB", "rosenbrock"): 2700.0,  # measured 1318.61
-    # PRIMA_BOBYQA's reference is Py-BOBYQA, which is an optional install: these two were
-    # measured after installing it, having skipped on the machine where the file was written and
-    # failed in CI, where it is present. The Rosenbrock gap is the same shape as Powell's -- the
-    # JS port stops at 4.94e-06 where Py-BOBYQA reaches 5.37e-18.
-    ("PRIMA_BOBYQA", "ackley"): 140.0,  # measured 65.27
-    # This one varies run to run -- 3.3e+08, 1.7e+09, 2.7e+09, 4.9e+09 across four runs -- because
-    # the JavaScript PRIMA ports call Math.random() directly rather than the portable stream, so
-    # the seed the runner sets does not reach them (#401). The ceiling has room for that spread
-    # until the ports are seeded properly.
-    ("PRIMA_BOBYQA", "rosenbrock"): 2.0e10,  # measured 3.3e+08 to 4.9e+09
+    ("Powell", "rosenbrock"): 17.0,  # measured 7.99
+    ("LBFGSB", "rosenbrock"): 2700.0,  # measured 1318.23
+    ("PRIMA_BOBYQA", "ackley"): 160.0,  # measured 71.51
+    # This one varies run to run because the JavaScript PRIMA ports call Math.random() directly
+    # rather than the portable stream, so the seed the runner sets does not reach them (#401).
+    # The ceiling has room for that spread until the ports are seeded properly.
+    ("PRIMA_BOBYQA", "rosenbrock"): 2.0e10,  # measured 7.1e+08 to 4.9e+09
 }
 
 # Ports whose result differs from their Python twin by more than six orders of magnitude on the
@@ -88,6 +89,68 @@ KNOWN_PORT_DIVERGENCE = {
 
 def _ratio_ceiling(algorithm: str, problem: str) -> float:
     return RATIO_CEILING.get((algorithm, problem), DEFAULT_RATIO_CEILING)
+
+
+# Points the two implementations must agree on before any optimizer runs: the optimum, the
+# centre of the cube, two interior points and both bounds. Chosen to catch a shift (the optimum
+# and the centre disagree), a scale (the interior points disagree) and a domain mapping (the
+# bounds disagree).
+IDENTITY_POINTS = [
+    [0.4127, 0.6831],
+    [0.5, 0.5],
+    [0.13, 0.87],
+    [0.62, 0.31],
+    [0.0, 0.0],
+    [1.0, 1.0],
+]
+
+
+def _probe_js(problem: str, point: list) -> float:
+    result = subprocess.run(
+        [NODE, str(RUNNER), "--probe", problem, ",".join(repr(v) for v in point)],
+        capture_output=True,
+        text=True,
+        cwd=REPO_ROOT,
+    )
+    assert result.returncode == 0, result.stderr
+    return float(json.loads(result.stdout)["value"])
+
+
+@pytest.mark.skipif(not NODE, reason="node not on PATH")
+@pytest.mark.parametrize("problem_id", sorted(PROBLEMS))
+def test_both_languages_optimize_the_same_function(problem_id):
+    """The check that was missing, and without which the rest of this file means nothing.
+
+    The JS runner defines its objectives in JavaScript and the Python harness defines them in
+    Python; nothing tied the two together. They drifted -- the runner carried the shifted
+    objectives from #387 while the Python side still had the old ones -- and every ratio in this
+    file was computed across two different problems. The optimizers all passed, because an
+    optimizer solves whichever sphere it is given (#406).
+
+    Comparing final values cannot catch that. Comparing the functions can.
+    """
+    python_f = PROBLEMS[problem_id]["func"]
+    for point in IDENTITY_POINTS:
+        py = float(python_f(point))
+        js = _probe_js(problem_id, point)
+        assert js == pytest.approx(py, rel=1e-12, abs=1e-12), (
+            f"{problem_id} differs between the languages at {point}: "
+            f"Python {py!r}, JavaScript {js!r}"
+        )
+
+
+@pytest.mark.skipif(not NODE, reason="node not on PATH")
+@pytest.mark.parametrize("problem_id", sorted(PROBLEMS))
+def test_the_optimum_is_where_both_languages_say_it_is(problem_id):
+    """And it is a minimum on both sides, not merely the same number."""
+    problem = PROBLEMS[problem_id]
+    x_opt = problem["x_opt"]
+    assert _probe_js(problem_id, x_opt) == pytest.approx(problem["opt"], abs=1e-12)
+    for offset in (0.05, -0.05):
+        moved = [min(1.0, max(0.0, v + offset)) for v in x_opt]
+        assert _probe_js(problem_id, moved) > problem["opt"], (
+            f"{problem_id} is not minimised at {x_opt} in JavaScript"
+        )
 
 
 def _run_js(algorithm: str, problem: str, seed: int) -> float:
