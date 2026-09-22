@@ -519,9 +519,10 @@ class BaseOptimizer:
     #      x + step*direction stays in [0,1]^n before backtracking,
     #      avoiding wasted line-search iterations that get clipped.
     #
-    # See: Byrd, Lu, Nocedal, Zhu (1995), "A Limited Memory Algorithm
-    # for Bound Constrained Optimization", SIAM J. Sci. Comput. 16(5).
-    # scipy reference: scipy/optimize/lbfgsb_src/ + _minimize_lbfgsb.
+    # Following, but not reproducing: Byrd, Lu, Nocedal, Zhu (1995), "A Limited Memory
+    # Algorithm for Bound Constrained Optimization", SIAM J. Sci. Comput. 16(5), and
+    # scipy/optimize/lbfgsb_src/ + _minimize_lbfgsb. See the note on _lbfgs_polish_gen for
+    # which parts are here and which are not (#407).
 
     # scipy's default `factr` is 1e7 (moderate accuracy). 1e2 = "high
     # accuracy" per scipy's docstring; we use the moderate default.
@@ -542,6 +543,22 @@ class BaseOptimizer:
     def _lbfgs_polish(self):
         return self._drive_gen(self._lbfgs_polish_gen())
 
+    # What this is, and what it is not.
+    #
+    # Projected L-BFGS on a box, not the Byrd-Lu-Nocedal-Zhu bound-constrained algorithm. It
+    # takes the unconstrained two-loop direction, zeroes components pointing out of an active
+    # bound, and backtracks along it. What it does not have is the generalised Cauchy point
+    # along the piecewise projected-gradient path, or the free-variable subspace minimisation
+    # that follows it -- the two pieces that make L-BFGS-B what it is. Calling direction
+    # clipping "the simple-bounds reduction of the Cauchy point" overstated the case, and the
+    # docstrings said "faithful port of scipy" where they should have said this (#407).
+    #
+    # It also uses Armijo backtracking where scipy uses a strong-Wolfe line search.
+    #
+    # The pieces that were simply wrong are fixed: the projected-gradient norm is scipy's
+    # `projgr`, and the two-loop recursion scales H0 by s.y/y.y as scipy's does. What remains is
+    # a different algorithm from scipy's, performing comparably on these problems, and it should
+    # be described that way rather than as a port.
     def _lbfgs_polish_gen(self, start=None, start_value=None):
         """Polish from `start`, or from the best point seen when it is None.
 
@@ -656,8 +673,13 @@ class BaseOptimizer:
             x, f, grad = new_x, new_f, new_grad
 
     def _lbfgs_two_loop(self, grad, s_list, y_list):
-        """Two-loop recursion for the L-BFGS search direction
-        (Nocedal 1980)."""
+        """Two-loop recursion for the L-BFGS search direction (Nocedal 1980).
+
+        The middle step scales by gamma = s.y / y.y from the newest curvature pair, which is
+        what scipy's recurrence does and what sets the step length before any line search. The
+        previous version used the identity there, which is a legitimate variant but a slower one
+        and not the recurrence it claimed to be (#407).
+        """
         n = len(grad)
         direction = [-float(g) for g in grad]
         alpha = [0.0] * len(s_list)
@@ -674,6 +696,19 @@ class BaseOptimizer:
             direction = [
                 direction[k] - alpha[i] * float(y_list[i][k]) for k in range(n)
             ]
+
+        # H0 = gamma * I with gamma = s.y / y.y from the newest pair, as in scipy. This is the
+        # scale of the step before any line search, and using the identity here -- as this did --
+        # leaves the first trial step wrong by whatever the curvature is (#407).
+        if s_list:
+            newest_s = s_list[-1]
+            newest_y = y_list[-1]
+            sy = _A.fold_sum(float(newest_s[k]) * float(newest_y[k]) for k in range(n))
+            yy = _A.fold_sum(float(newest_y[k]) * float(newest_y[k]) for k in range(n))
+            if yy > 1e-30 and sy > 0.0:
+                gamma = sy / yy
+                direction = [gamma * d for d in direction]
+
         for i in range(len(s_list)):
             sy = _A.fold_sum(
                 float(s_list[i][k]) * float(y_list[i][k]) for k in range(n)
@@ -690,21 +725,28 @@ class BaseOptimizer:
         return direction
 
     def _proj_grad_sup_norm(self, x, grad):
-        """Sup-norm of the bound-projected gradient: ||P(x - g) - x||_inf.
+        """Sup-norm of the bound-projected gradient: ||P(x - g) - x||_inf, on [0, 1]^n.
 
-        For simple bounds [0, 1] this reduces to clipping g componentwise
-        wherever a bound is active in the steepest-descent direction —
-        the standard convergence criterion for box-constrained L-BFGS.
+        This is scipy's `projgr`: a positive gradient component is bounded by how far the
+        variable can travel down to its lower bound, and a negative one by how far up to its
+        upper bound. The distance matters at every point, not only on the boundary -- a step of
+        100 from x = 0.01 moves 0.01, whatever the gradient says.
+
+        The previous version clipped only when a variable sat exactly on a bound, so it returned
+        the raw gradient everywhere inside the cube: at x = [0.01, 0.5] with g = [100, 0] it
+        reported 100 where the projected step is 0.01 (#407). That is the quantity the
+        convergence test compares against pgtol, so the test was reading a number four orders
+        too large and the polish carried on past its own stopping criterion.
         """
         n = len(grad)
         m = 0.0
         for k in range(n):
             gk = float(grad[k])
             xk = float(x[k])
-            if xk <= 0.0 and gk > 0.0:
-                continue  # bound active, gradient points outward
-            if xk >= 1.0 and gk < 0.0:
-                continue  # bound active, gradient points outward
+            if gk < 0.0:
+                gk = max(gk, xk - 1.0)  # bounded by the distance to the upper bound
+            else:
+                gk = min(gk, xk)  # bounded by the distance to the lower bound
             if abs(gk) > m:
                 m = abs(gk)
         return m

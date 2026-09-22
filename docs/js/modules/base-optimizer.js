@@ -446,6 +446,24 @@ class Optimizer {
             alpha[i] = rho * dot;
             for (let k = 0; k < n; k++) direction[k] -= alpha[i] * yList[i][k];
         }
+
+        // H0 = gamma * I with gamma = s.y / y.y from the newest pair, as in scipy. Using the
+        // identity here leaves the first trial step wrong by whatever the curvature is (#407).
+        if (sList.length) {
+            const newestS = sList[sList.length - 1];
+            const newestY = yList[yList.length - 1];
+            let sy = 0;
+            let yy = 0;
+            for (let k = 0; k < n; k++) {
+                sy += newestS[k] * newestY[k];
+                yy += newestY[k] * newestY[k];
+            }
+            if (yy > 1e-30 && sy > 0.0) {
+                const gamma = sy / yy;
+                for (let k = 0; k < n; k++) direction[k] *= gamma;
+            }
+        }
+
         for (let i = 0; i < sList.length; i++) {
             let sy = 0;
             for (let k = 0; k < n; k++) sy += sList[i][k] * yList[i][k];
@@ -459,12 +477,19 @@ class Optimizer {
         return direction;
     }
 
+    // ||P(x - g) - x||_inf on [0,1]^n: scipy's `projgr`. A positive gradient component is
+    // bounded by how far the variable can travel down to its lower bound and a negative one by
+    // how far up to its upper bound, at every point rather than only on the boundary -- a step
+    // of 100 from x = 0.01 moves 0.01. This used to clip only on a bound and so returned the
+    // raw gradient everywhere inside the cube, four orders too large in that example, against a
+    // tolerance the polish stops on (#407). Twin of _proj_grad_sup_norm in base.py.
     _projGradSupNorm(x, grad) {
         let m = 0.0;
         for (let k = 0; k < grad.length; k++) {
-            const gk = grad[k], xk = x[k];
-            if (xk <= 0.0 && gk > 0.0) continue;
-            if (xk >= 1.0 && gk < 0.0) continue;
+            let gk = grad[k];
+            const xk = x[k];
+            if (gk < 0.0) gk = Math.max(gk, xk - 1.0);
+            else gk = Math.min(gk, xk);
             if (Math.abs(gk) > m) m = Math.abs(gk);
         }
         return m;
