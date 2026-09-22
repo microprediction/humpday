@@ -95,17 +95,17 @@ class CoordinateDescent extends Optimizer {
 
         let step = 0.1;
         const restartStepThreshold = 1e-6;
-        const convergedThreshold = 1e-8;
 
         while (this.evaluations < this.nTrials) {
             if (step <= restartStepThreshold) {
-                if (f > convergedThreshold) {
-                    x = MathUtils.randomUniform(n);
-                    f = yield x;
-                    step = 0.1;
-                    continue;
-                }
-                break;
+                // Restart either way. This used to break once f was below a "converged"
+                // threshold, which read the situation backwards: a finished basin is the
+                // reason to look at another one. 130 evaluations of 5,000 on the sphere (#330).
+                // Twin of CoordinateDescent._run in humpday/optimizers/search_algorithms.py.
+                x = MathUtils.randomUniform(n);
+                f = yield x;
+                step = 0.1;
+                continue;
             }
 
             let improvedAnywhere = false;
@@ -165,17 +165,15 @@ class PatternSearch extends Optimizer {
         let fBase = yield base;
         let step = 0.1;
         const restartStepThreshold = 1e-6;
-        const convergedThreshold = 1e-8;
 
         while (this.evaluations < this.nTrials) {
             if (step <= restartStepThreshold) {
-                if (fBase > convergedThreshold) {
-                    base = MathUtils.randomUniform(this.nDim);
-                    fBase = yield base;
-                    step = 0.1;
-                    continue;
-                }
-                break;
+                // Restart either way; see CoordinateDescent. 4,830 of 5,000 handed back on
+                // the sphere. Twin of PatternSearch._run in search_algorithms.py.
+                base = MathUtils.randomUniform(this.nDim);
+                fBase = yield base;
+                step = 0.1;
+                continue;
             }
 
             let [x, f] = yield* this._exploreGen(base.slice(), fBase, step);

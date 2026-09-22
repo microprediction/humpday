@@ -109,26 +109,28 @@ class CoordinateDescent(BaseOptimizer):
         f = yield x
 
         step = 0.1
-        # Restart trigger: when `step` collapses below this threshold
-        # and the current f is still above the "converged" threshold,
-        # the run is stuck in a local basin and won't recover.
-        # Reinitialise from a random point with step = 0.1.
+        # Restart trigger: when `step` collapses below this threshold the sweep has taken
+        # this basin as far as it goes. Reinitialise from a random point with step = 0.1.
         # Closes Ackley trapping (was median 1.29, 8/16 seeds stuck;
         # now 4.4e-16, 3/16 seeds stuck) at the cost of a small sphere
         # regression (1.8e-18 → 4.2e-13, both still tie reference 0).
         # Triggering earlier than 1e-12 means we can fit more restart
         # attempts in the budget.
         restart_step_threshold = 1e-6
-        converged_threshold = 1e-8
 
         while self.evaluations < self.n_trials:
             if step <= restart_step_threshold:
-                if f > converged_threshold:
-                    x = _A.random_uniform(n)
-                    f = yield x
-                    step = 0.1
-                    continue
-                break  # already converged in a good basin
+                # Restart either way. This used to `break` when f was already below the
+                # converged threshold -- "converged in a good basin" -- which read the
+                # situation exactly backwards: a basin that is finished is the reason to go
+                # and look at another one, not to stop. On the sphere it meant 130 evaluations
+                # of 5,000 and the same answer at every budget (#330). _bookkeep holds the
+                # best point seen, so a restart that lands somewhere worse cannot cost
+                # anything but the evaluations that were being discarded anyway.
+                x = _A.random_uniform(n)
+                f = yield x
+                step = 0.1
+                continue
 
             improved_anywhere = False
 
@@ -203,20 +205,18 @@ class PatternSearch(BaseOptimizer):
         base = _A.random_uniform(self.n_dim)
         f_base = yield base
         step = 0.1
-        # Restart trigger (see CoordinateDescent for the rationale): when
-        # `step` collapses below this threshold and f hasn't reached the
-        # converged threshold, reinitialise from a random base.
+        # Restart trigger (see CoordinateDescent for the rationale): when `step` collapses
+        # below this threshold, reinitialise from a random base.
         restart_step_threshold = 1e-6
-        converged_threshold = 1e-8
 
         while self.evaluations < self.n_trials:
             if step <= restart_step_threshold:
-                if f_base > converged_threshold:
-                    base = _A.random_uniform(self.n_dim)
-                    f_base = yield base
-                    step = 0.1
-                    continue
-                break  # already converged
+                # Restart either way; see CoordinateDescent for why converging is a reason to
+                # move on rather than to stop. This handed back 4,830 of 5,000 on the sphere.
+                base = _A.random_uniform(self.n_dim)
+                f_base = yield base
+                step = 0.1
+                continue
 
             # 1. Exploratory move from base.
             x, f = yield from self._explore_gen(base.copy(), f_base, step)

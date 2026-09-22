@@ -401,16 +401,15 @@ class FrozenCoordinateDescent(BaseOptimizer):
         # Triggering earlier than 1e-12 means we can fit more restart
         # attempts in the budget.
         restart_step_threshold = 1e-6
-        converged_threshold = 1e-8
 
         while self.evaluations < self.n_trials:
             if step <= restart_step_threshold:
-                if f > converged_threshold:
-                    x = _A.random_uniform(n)
-                    f = self.evaluate(x)
-                    step = 0.1
-                    continue
-                break  # already converged in a good basin
+                # Restart either way, mirroring CoordinateDescent._run: a finished basin is
+                # the reason to look at another one, not to stop (#330).
+                x = _A.random_uniform(n)
+                f = self.evaluate(x)
+                step = 0.1
+                continue
 
             improved_anywhere = False
 
@@ -491,16 +490,14 @@ class FrozenPatternSearch(BaseOptimizer):
         # `step` collapses below this threshold and f hasn't reached the
         # converged threshold, reinitialise from a random base.
         restart_step_threshold = 1e-6
-        converged_threshold = 1e-8
 
         while self.evaluations < self.n_trials:
             if step <= restart_step_threshold:
-                if f_base > converged_threshold:
-                    base = _A.random_uniform(self.n_dim)
-                    f_base = self.evaluate(base)
-                    step = 0.1
-                    continue
-                break  # already converged
+                # Restart either way, mirroring PatternSearch._run (#330).
+                base = _A.random_uniform(self.n_dim)
+                f_base = self.evaluate(base)
+                step = 0.1
+                continue
 
             # 1. Exploratory move from base.
             x, f = self._explore(base.copy(), f_base, step)
