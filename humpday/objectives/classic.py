@@ -10,8 +10,7 @@ import datetime
 import math
 import random as _random
 
-import numpy as np
-
+from humpday import _array as _A
 from humpday.objectives.deapobjectives import (
     bohachevsky,
     griewank,
@@ -92,8 +91,20 @@ def _shekel_peaks(n_dim: int):
     structure.
     """
     if n_dim not in _SHEKEL_PEAKS:
-        rng = np.random.RandomState(1729 + n_dim)
-        _SHEKEL_PEAKS[n_dim] = (10 * rng.rand(15, n_dim), rng.rand(15))
+        # A private stream, seeded by dimension, taken through the backend shim rather than
+        # numpy so this module imports on a dependency-free install (#377). `use_portable_rng`
+        # gives the cross-language PCG32; the optimizers' own stream is saved and restored
+        # around it so building a landscape cannot disturb a run in progress.
+        import humpday._array as _shim
+
+        saved = _shim._portable
+        try:
+            _A.use_portable_rng(1729 + n_dim)
+            peaks = [[10.0 * _A.rng_random() for _ in range(n_dim)] for _ in range(15)]
+            widths = [_A.rng_random() for _ in range(15)]
+        finally:
+            _shim._portable = saved
+        _SHEKEL_PEAKS[n_dim] = (peaks, widths)
     return _SHEKEL_PEAKS[n_dim]
 
 
@@ -173,7 +184,7 @@ def rosenbrock_modified_on_cube(u: [float]) -> float:
     if len(u) == 1:
         return (0.25 - u_scaled[0]) ** 2
     else:
-        return 5 + 0.001 * np.sum(
+        return 5 + 0.001 * _A.sum(
             [
                 100 * (ui_plus - ui * ui) + (1 - ui) * (1 - ui)
                 for ui, ui_plus in zip(u_scaled[1:], u_scaled)
@@ -206,19 +217,18 @@ def damavandi2(u1, u2) -> float:
 
 def paviani_on_cube(u: [float]) -> float:
     # http://infinity77.net/global_optimization/test_functions_nd_P.html#go_benchmark.Paviani
-    x = np.array([2.001 + 5.996 * smoosh(ui) for ui in u])
+    x = [2.001 + 5.996 * smoosh(ui) for ui in u]
 
-    def safe_np_log(x):
-        lb = np.array([1e-6] * len(x))
-        xup = np.maximum(x, lb)
-        return np.log(xup)
+    def safe_log(values):
+        return [math.log(max(float(v), 1e-6)) for v in values]
 
+    lo = safe_log([xi - 2 for xi in x])
+    hi = safe_log([10.0 - xi for xi in x])
+    product = 1.0
+    for xi in x:
+        product *= float(xi)
     return (
-        float(
-            np.sum(safe_np_log(x - 2) ** 2.0 + safe_np_log(10.0 - x) ** 2.0)
-            - np.prod(x) ** 0.2
-        )
-        / 8.6456
+        float(_A.sum([a * a + b * b for a, b in zip(lo, hi)]) - product**0.2) / 8.6456
     )
 
 
@@ -353,16 +363,16 @@ LANDSCAPES_OBJECTIVES = [
 def ackley_on_cube(u: [float]) -> float:
     # allow parameter range -32.768<=x(i)<=32.768, global minimum at x=(0,0,...,0)
     rescaled_u = [2 * 32.768 * smoosh(ui) - 32.768 for ui in u]
-    x = np.asarray(rescaled_u)
-    ndim = len(x)
+    x = _A.asarray(rescaled_u)
+    ndim = len(rescaled_u)
     a = 20.0
     b = 0.2
     c = 2.0 * math.pi
     return (
-        -a * np.exp(-b * np.sqrt(1.0 / ndim * np.sum(x**2)))
-        - np.exp(1.0 / ndim * np.sum(np.cos(c * x)))
+        -a * math.exp(-b * math.sqrt(1.0 / ndim * float(_A.sum(x * x))))
+        - math.exp(1.0 / ndim * float(_A.sum(_A.cos(c * x))))
         + a
-        + np.exp(1.0)
+        + math.e
     ) / 20.0
 
 
@@ -445,12 +455,28 @@ import functools
 
 @functools.cache
 def _rotation_for(n_dim: int, seed: int = 12345):
-    """Deterministic uniform-random orthogonal matrix Q(n_dim, seed)."""
-    rng = np.random.default_rng(seed)
-    A = rng.standard_normal((n_dim, n_dim))
-    Q, R = np.linalg.qr(A)
-    Q = Q * np.sign(np.diag(R))
-    return Q
+    """Deterministic uniform-random orthogonal matrix Q(n_dim, seed).
+
+    Built through the backend shim rather than numpy, so this module imports on a
+    dependency-free install (#377). The optimizers' own RNG state is saved and restored, as in
+    `_shekel_peaks`: constructing a landscape must not consume the stream a run is drawing from.
+    """
+    import humpday._array as _shim
+
+    saved = _shim._portable
+    try:
+        _A.use_portable_rng(seed)
+        rows = [[_A.rng_gauss() for _ in range(n_dim)] for _ in range(n_dim)]
+    finally:
+        _shim._portable = saved
+
+    Q, R = _A.linalg.qr(rows)
+    # Fix the sign convention so Q is unique: without it QR is only determined up to the sign
+    # of each column, and two backends can disagree on a matrix that is meant to be fixed.
+    signs = [
+        1.0 if float(_A.linalg.diagonal(R)[i]) >= 0.0 else -1.0 for i in range(n_dim)
+    ]
+    return [[float(Q[i][j]) * signs[j] for j in range(n_dim)] for i in range(n_dim)]
 
 
 def rotated_rosenbrock_on_cube(u):
@@ -460,8 +486,8 @@ def rotated_rosenbrock_on_cube(u):
     exploit."""
     n = len(u)
     Q = _rotation_for(n)
-    x = 4.0 * (np.asarray(u, dtype=float) - 0.5)  # [-2, 2]^n
-    y = Q @ x
+    x = [4.0 * (float(ui) - 0.5) for ui in u]  # [-2, 2]^n
+    y = _A.linalg.matvec(Q, x)
     return float(
         sum(100.0 * (y[i + 1] - y[i] ** 2) ** 2 + (1 - y[i]) ** 2 for i in range(n - 1))
     )
@@ -472,9 +498,17 @@ def rotated_rastrigin_on_cube(u):
     multimodal landscape whose local-minima grid is rotated off-axis."""
     n = len(u)
     Q = _rotation_for(n)
-    x = 10.24 * (np.asarray(u, dtype=float) - 0.5)  # [-5.12, 5.12]^n
-    y = Q @ x
-    return float(10.0 * n + np.sum(y * y - 10.0 * np.cos(2.0 * np.pi * y)))
+    x = [10.24 * (float(ui) - 0.5) for ui in u]  # [-5.12, 5.12]^n
+    y = _A.linalg.matvec(Q, x)
+    return float(
+        10.0 * n
+        + _A.sum(
+            [
+                float(yi) * float(yi) - 10.0 * math.cos(2.0 * math.pi * float(yi))
+                for yi in y
+            ]
+        )
+    )
 
 
 def rotated_ackley_on_cube(u):
@@ -484,12 +518,12 @@ def rotated_ackley_on_cube(u):
     non-separable landscapes."""
     n = len(u)
     Q = _rotation_for(n)
-    x = 65.536 * (np.asarray(u, dtype=float) - 0.5)  # [-32.768, 32.768]^n
-    y = Q @ x
+    x = [65.536 * (float(ui) - 0.5) for ui in u]  # [-32.768, 32.768]^n
+    y = [float(v) for v in _A.linalg.matvec(Q, x)]
     a, b, c = 20.0, 0.2, 2.0 * math.pi
     return float(
-        -a * np.exp(-b * np.sqrt(np.sum(y * y) / n))
-        - np.exp(np.sum(np.cos(c * y)) / n)
+        -a * math.exp(-b * math.sqrt(_A.sum([yi * yi for yi in y]) / n))
+        - math.exp(_A.sum([math.cos(c * yi) for yi in y]) / n)
         + a
         + math.e
     )
