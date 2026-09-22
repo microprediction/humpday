@@ -763,7 +763,7 @@ def _all_installed(modules):
 #
 # Ceilings are measured, not chosen: each is about twice the value recorded in
 # benchmarks/reference_alignment.json, which gives a row room to move with a library version or
-# a seed without letting it double. They are not targets. Seven of sixty pairs need one, and
+# a seed without letting it double. They are not targets. Thirteen of sixty pairs need one, and
 # each is a port that has genuinely not solved its problem, not a converged run a few ulps
 # behind another -- the floor below takes care of those. #78 tracks the divergences.
 DEFAULT_RATIO_CEILING = 3.0
@@ -777,13 +777,23 @@ DEFAULT_RATIO_CEILING = 3.0
 CONVERGED_GAP = 1e-10
 
 RATIO_CEILING = {
-    ("Rechenberg", "ackley"): 1e6,  # measured 519288.77
-    ("SimulatedAnnealing", "rosenbrock"): 90000.0,  # measured 44953.14
-    ("CoordinateDescent", "ackley"): 790.0,  # measured 395.44
-    ("BayesianOpt", "ackley"): 63.0,  # measured 31.74
-    ("RandomSearch", "sphere"): 13.0,  # measured 6.67
-    ("LBFGSB", "rosenbrock"): 6.1,  # measured 3.06
-    ("PatternSearch", "ackley"): 6.1,  # measured 3.03
+    # Re-measured after the objectives moved off the centre and off grid nodes (#387). Thirteen
+    # pairs now, against seven before, and several of the numbers are far larger: an optimum an
+    # optimizer could arrive at without searching was flattering most of the roster, not just the
+    # three that start there. These are what the ports do on problems they have to find.
+    ("SimulatedAnnealing", "rosenbrock"): 6.4e6,  # measured 3195457.21
+    ("Rechenberg", "ackley"): 1.1e6,  # measured 519288.77
+    ("LBFGSB", "rosenbrock"): 44000.0,  # measured 22005.70
+    ("DifferentialEvolution", "rosenbrock"): 25000.0,  # measured 12387.21
+    ("CoordinateDescent", "ackley"): 1100.0,  # measured 530.43
+    ("BayesianOpt", "ackley"): 140.0,  # measured 68.88
+    ("CMAEvolutionStrategy", "rosenbrock"): 35.0,  # measured 17.26
+    ("BayesianOpt", "rosenbrock"): 24.0,  # measured 11.97
+    ("PatternSearch", "ackley"): 17.0,  # measured 8.48
+    ("RandomSearch", "sphere"): 15.0,  # measured 7.32
+    ("HillClimbing", "rosenbrock"): 13.0,  # measured 6.47
+    ("Rechenberg", "rosenbrock"): 12.0,  # measured 5.83
+    ("RandomSearch", "ackley"): 6.1,  # measured 3.05
 }
 
 

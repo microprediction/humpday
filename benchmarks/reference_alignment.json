@@ -76,11 +76,11 @@
       "algorithm": "LBFGSB",
       "reference": "scipy.optimize L-BFGS-B",
       "problem": "sphere",
-      "humpday_median": 8.120801631495772e-26,
+      "humpday_median": 2.4073609696359308e-26,
       "reference_median": 5.000024586489128e-17,
-      "humpday_to_opt": 8.120801631495772e-26,
+      "humpday_to_opt": 2.4073609696359308e-26,
       "reference_to_opt": 5.000024586489128e-17,
-      "ratio_humpday_over_reference": 0.9523807294516415,
+      "ratio_humpday_over_reference": 0.9523807293972277,
       "ratio_ceiling": 3.0,
       "converged": true
     },
@@ -93,18 +93,18 @@
       "humpday_to_opt": 4.4149325322156904e-10,
       "reference_to_opt": 1.4447293952184428e-10,
       "ratio_humpday_over_reference": 3.0558746766562397,
-      "ratio_ceiling": 6.1,
+      "ratio_ceiling": 44000.0,
       "converged": false
     },
     {
       "algorithm": "LBFGSB",
       "reference": "scipy.optimize L-BFGS-B",
       "problem": "ackley",
-      "humpday_median": 3.5744518772655245,
+      "humpday_median": 0.006105582352308847,
       "reference_median": 3.574451877257808,
-      "humpday_to_opt": 3.5744518772655245,
+      "humpday_to_opt": 0.006105582352308847,
       "reference_to_opt": 3.574451877257808,
-      "ratio_humpday_over_reference": 1.0000000000021587,
+      "ratio_humpday_over_reference": 0.001708117093744127,
       "ratio_ceiling": 3.0,
       "converged": false
     },
@@ -129,7 +129,7 @@
       "humpday_to_opt": 3.1217060315200797e-10,
       "reference_to_opt": 1.3748802524684246e-10,
       "ratio_humpday_over_reference": 2.2705201567292166,
-      "ratio_ceiling": 3.0,
+      "ratio_ceiling": 25000.0,
       "converged": false
     },
     {
@@ -165,7 +165,7 @@
       "humpday_to_opt": 6.536589080556412e-06,
       "reference_to_opt": 1.4540795942913728e-10,
       "ratio_humpday_over_reference": 44953.13842570969,
-      "ratio_ceiling": 90000.0,
+      "ratio_ceiling": 6400000.0,
       "converged": false
     },
     {
@@ -201,7 +201,7 @@
       "humpday_to_opt": 0.31147467874249035,
       "reference_to_opt": 0.15854136296390753,
       "ratio_humpday_over_reference": 1.964627229888251,
-      "ratio_ceiling": 3.0,
+      "ratio_ceiling": 24.0,
       "converged": false
     },
     {
@@ -213,7 +213,7 @@
       "humpday_to_opt": 2.6260961850980675,
       "reference_to_opt": 0.08273977992800541,
       "ratio_humpday_over_reference": 31.739221295767152,
-      "ratio_ceiling": 63.0,
+      "ratio_ceiling": 140.0,
       "converged": false
     },
     {
@@ -237,7 +237,7 @@
       "humpday_to_opt": 0.03036533101232323,
       "reference_to_opt": 0.04449886463650368,
       "ratio_humpday_over_reference": 0.6823843992508071,
-      "ratio_ceiling": 3.0,
+      "ratio_ceiling": 35.0,
       "converged": false
     },
     {
@@ -513,7 +513,7 @@
       "humpday_to_opt": 0.0022221176064838584,
       "reference_to_opt": 0.0003330352940661955,
       "ratio_humpday_over_reference": 6.672318658323668,
-      "ratio_ceiling": 13.0,
+      "ratio_ceiling": 15.0,
       "converged": false
     },
     {
@@ -537,7 +537,7 @@
       "humpday_to_opt": 2.8363751866134312,
       "reference_to_opt": 1.2094120558250663,
       "ratio_humpday_over_reference": 2.345251292106925,
-      "ratio_ceiling": 3.0,
+      "ratio_ceiling": 6.1,
       "converged": false
     },
     {
@@ -597,7 +597,7 @@
       "humpday_to_opt": 0.14143467246185495,
       "reference_to_opt": 0.09177438621129817,
       "ratio_humpday_over_reference": 1.541112703671154,
-      "ratio_ceiling": 3.0,
+      "ratio_ceiling": 13.0,
       "converged": false
     },
     {
@@ -633,7 +633,7 @@
       "humpday_to_opt": 0.13149745576659724,
       "reference_to_opt": 0.0858730002482039,
       "ratio_humpday_over_reference": 1.5313015195290918,
-      "ratio_ceiling": 3.0,
+      "ratio_ceiling": 12.0,
       "converged": false
     },
     {
@@ -645,7 +645,7 @@
       "humpday_to_opt": 3.5744518792291093,
       "reference_to_opt": 6.8833607014262554e-06,
       "ratio_humpday_over_reference": 519288.76514769637,
-      "ratio_ceiling": 1000000.0,
+      "ratio_ceiling": 1100000.0,
       "converged": false
     },
     {
@@ -681,7 +681,7 @@
       "humpday_to_opt": 1.4257636227643644e-05,
       "reference_to_opt": 3.605481113666542e-08,
       "ratio_humpday_over_reference": 395.4433648024627,
-      "ratio_ceiling": 790.0,
+      "ratio_ceiling": 1100.0,
       "converged": false
     },
     {
@@ -717,12 +717,12 @@
       "humpday_to_opt": 1.4257636227643644e-05,
       "reference_to_opt": 4.702604610162808e-06,
       "ratio_humpday_over_reference": 3.031859449718477,
-      "ratio_ceiling": 6.1,
+      "ratio_ceiling": 17.0,
       "converged": false
     }
   ],
   "n_runs": 4,
   "n_trials": 200,
   "n_dim": 2,
-  "recorded_at": "2026-09-22T13:53:46Z"
+  "recorded_at": "2026-09-22T15:49:05Z"
 }
