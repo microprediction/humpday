@@ -24,7 +24,11 @@ CASES = [
     ([0.5, 0.5], [0.2, 0.0], 0.2),  # interior, small gradient: unchanged
     ([0.0, 0.5], [5.0, 0.0], 0.0),  # on the lower bound, pointing out
     ([1.0, 0.5], [-5.0, 0.0], 0.0),  # on the upper bound, pointing out
-    ([0.0, 0.5], [-5.0, 0.0], 1.0),  # on the lower bound, pointing in: capped by the span
+    (
+        [0.0, 0.5],
+        [-5.0, 0.0],
+        1.0,
+    ),  # on the lower bound, pointing in: capped by the span
     ([0.9, 0.5], [-100.0, 0.0], 0.1),  # near the upper bound, pointing up
     ([0.5, 0.5], [0.0, 0.0], 0.0),  # converged
 ]
@@ -32,7 +36,9 @@ CASES = [
 
 @pytest.mark.parametrize("x,grad,expected", CASES, ids=lambda v: str(v))
 def test_the_projected_gradient_is_the_projected_step(x, grad, expected):
-    assert _polisher()._proj_grad_sup_norm(x, grad) == pytest.approx(expected, abs=1e-12)
+    assert _polisher()._proj_grad_sup_norm(x, grad) == pytest.approx(
+        expected, abs=1e-12
+    )
 
 
 @pytest.mark.parametrize("x,grad,expected", CASES, ids=lambda v: str(v))
