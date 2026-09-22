@@ -542,12 +542,20 @@ class BaseOptimizer:
     def _lbfgs_polish(self):
         return self._drive_gen(self._lbfgs_polish_gen())
 
-    def _lbfgs_polish_gen(self):
+    def _lbfgs_polish_gen(self, start=None, start_value=None):
+        """Polish from `start`, or from the best point seen when it is None.
+
+        A polish that always begins at the running best cannot restart: once it has converged,
+        every further pass re-derives the same point and the budget buys nothing. `start` lets
+        a caller run an independent descent from somewhere else, which is what a multi-start
+        method needs -- the global best is tracked by _bookkeep either way, so a pass that ends
+        worse than the incumbent costs evaluations but cannot cost the answer.
+        """
         n = self.n_dim
         memory = min(self._LBFGS_MEMORY, max(1, n))
 
-        x = self.best_x.copy()
-        f = self.best_value
+        x = self.best_x.copy() if start is None else _A.asarray(list(start))
+        f = self.best_value if start is None else float(start_value)
         grad = yield from self._fd_gradient_polish_gen(x)
 
         s_list: list = []
