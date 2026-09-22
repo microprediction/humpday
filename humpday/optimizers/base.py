@@ -18,6 +18,7 @@ and `humpday._array_pure._Vec` (a `list` subclass) under the pure
 backend; both are iterable, indexable, and support arithmetic.
 """
 
+import math
 import queue
 import threading
 from typing import Callable
@@ -571,6 +572,9 @@ class BaseOptimizer:
         n = self.n_dim
         memory = min(self._LBFGS_MEMORY, max(1, n))
 
+        lo = [0.0] * n
+        hi = [1.0] * n
+
         x = self.best_x.copy() if start is None else _A.asarray(list(start))
         f = self.best_value if start is None else float(start_value)
         grad = yield from self._fd_gradient_polish_gen(x)
@@ -582,67 +586,59 @@ class BaseOptimizer:
         # (2·n evals) plus one or more candidate evaluations. Stop early
         # enough to leave room for the final gradient computation.
         while self.evaluations < self.n_trials - 2 * n:
-            # (1) Projected-gradient convergence test.
-            pg_inf = self._proj_grad_sup_norm(x, grad)
-            if pg_inf < self._LBFGS_PGTOL:
+            # (1) Convergence on the projected gradient, scipy's `projgr`.
+            if self._proj_grad_sup_norm(x, grad) < self._LBFGS_PGTOL:
                 break
 
-            # (2) Two-loop recursion for the unconstrained L-BFGS direction.
-            direction = self._lbfgs_two_loop(grad, s_list, y_list)
+            # (2) The limited-memory model, in compact form.
+            theta, W, Minv = self._lbfgsb_compact(s_list, y_list)
 
-            # (3) Project direction at active bounds: zero out components
-            # that would push x past the bound it already sits on. This
-            # is the simple-bounds reduction of the Cauchy-point step.
-            for k in range(n):
-                xk = float(x[k])
-                if xk <= 0.0 and direction[k] < 0.0:
-                    direction[k] = 0.0
-                elif xk >= 1.0 and direction[k] > 0.0:
-                    direction[k] = 0.0
+            # (3) The generalised Cauchy point chooses the active set by minimising that model
+            # along the piecewise projected-gradient path.
+            xcp, free, c = self._lbfgsb_cauchy(x, grad, theta, W, Minv, lo, hi)
+
+            # (4) Subspace minimisation over whatever is still free, truncated to the box.
+            xbar = self._lbfgsb_subspace(x, xcp, grad, theta, W, Minv, c, free, lo, hi)
+
+            direction = [xbar[k] - float(x[k]) for k in range(n)]
+            if all(abs(v) <= 1e-300 for v in direction):
+                break
 
             gd = _A.fold_sum(float(grad[k]) * direction[k] for k in range(n))
-            if gd > -1e-30:
-                # Direction isn't a descent (zero curvature, memory drift,
-                # or every component clipped). Reset memory and fall back
-                # to the projected-gradient steepest-descent direction.
-                s_list.clear()
-                y_list.clear()
-                direction = [-float(g) for g in grad]
+            if gd >= 0.0:
+                # The model's step is not a descent direction -- stale curvature, or a
+                # subspace solve that failed. Fall back to the projected gradient, which
+                # always is one unless the point is stationary.
+                direction = [-float(grad[k]) for k in range(n)]
                 for k in range(n):
                     xk = float(x[k])
-                    if xk <= 0.0 and direction[k] < 0.0:
-                        direction[k] = 0.0
-                    elif xk >= 1.0 and direction[k] > 0.0:
+                    if (xk <= lo[k] and direction[k] < 0.0) or (
+                        xk >= hi[k] and direction[k] > 0.0
+                    ):
                         direction[k] = 0.0
                 gd = _A.fold_sum(float(grad[k]) * direction[k] for k in range(n))
-                if gd > -1e-30:
-                    break  # truly stuck — projected gradient is zero
+                if gd >= 0.0:
+                    break
+                s_list.clear()
+                y_list.clear()
 
-            # (4) Cap step length so x + step*direction stays in [0,1]^n.
-            step_max = float("inf")
-            for k in range(n):
-                dk = direction[k]
-                if dk > 0.0:
-                    step_max = min(step_max, (1.0 - float(x[k])) / dk)
-                elif dk < 0.0:
-                    step_max = min(step_max, (0.0 - float(x[k])) / dk)
-            step = min(1.0, step_max) if step_max > 0.0 else 1.0
-
-            # (5) Armijo backtracking with feasibility-clipped candidates.
-            c1 = 1e-4
-            new_x = x.copy()
+            # (5) Backtracking line search. Every trial point is feasible by construction, so
+            # the step needs no separate projection.
+            step = 1.0
+            new_x = x
             new_f = f
             accepted = False
-            while step > 1e-12:
+            while step > 1e-14:
                 if self.evaluations >= self.n_trials:
                     break
-                candidate = _A.clip(
-                    _A.asarray([float(x[k]) + step * direction[k] for k in range(n)]),
-                    0,
-                    1,
+                candidate = _A.asarray(
+                    [
+                        min(hi[k], max(lo[k], float(x[k]) + step * direction[k]))
+                        for k in range(n)
+                    ]
                 )
                 cand_f = yield candidate
-                if cand_f <= f + c1 * step * gd:
+                if cand_f <= f + 1e-4 * step * gd:
                     new_x = candidate
                     new_f = cand_f
                     accepted = True
@@ -650,10 +646,9 @@ class BaseOptimizer:
                 step *= 0.5
 
             if not accepted:
-                break  # line search failed — no further descent
+                break
 
-            # (6) f-tolerance termination: stop when the relative decrease
-            # falls below scipy's `factr * eps_mach` criterion.
+            # (6) scipy's factr * eps_mach test on the relative decrease.
             f_scale = max(abs(f), abs(new_f), 1.0)
             if (f - new_f) < self._LBFGS_FACTR * self._LBFGS_EPS_MACH * f_scale:
                 x, f = new_x, new_f
@@ -661,16 +656,230 @@ class BaseOptimizer:
 
             new_grad = yield from self._fd_gradient_polish_gen(new_x)
 
-            # (7) L-BFGS memory update.
+            # (7) Curvature pair, kept only when it is one.
             s = _A.asarray([float(new_x[k]) - float(x[k]) for k in range(n)])
             y = _A.asarray([float(new_grad[k]) - float(grad[k]) for k in range(n)])
-            if float(_A.dot(s, y)) > 1e-12:
-                s_list.append(s)
-                y_list.append(y)
+            sy = self._lbfgsb_dot(s, y)
+            ss = self._lbfgsb_dot(s, s)
+            yy = self._lbfgsb_dot(y, y)
+            if sy > 1e-12 * math.sqrt(ss * yy + 1e-300):
+                s_list.append([float(v) for v in s])
+                y_list.append([float(v) for v in y])
                 if len(s_list) > memory:
                     s_list.pop(0)
                     y_list.pop(0)
             x, f, grad = new_x, new_f, new_grad
+
+    # ---- Byrd-Lu-Nocedal-Zhu machinery -------------------------------------------------
+    #
+    # The three pieces that make L-BFGS-B what it is: the compact limited-memory
+    # representation, the generalised Cauchy point that chooses the active set by minimising
+    # the model along the piecewise projected-gradient path, and subspace minimisation over
+    # whatever is still free. The polish previously had none of them -- it clipped an
+    # unconstrained direction at active bounds and backtracked, which is projected L-BFGS and a
+    # different algorithm (#407).
+    #
+    # Byrd, Lu, Nocedal & Zhu (1995), "A Limited Memory Algorithm for Bound Constrained
+    # Optimization", SIAM J. Sci. Comput. 16(5), sections 4-5; scipy's lbfgsb_src (`cauchy`,
+    # `subsm`, `projgr`). Validated against scipy on bound-active quadratics in
+    # tests/test_lbfgsb_algorithm.py.
+
+    @staticmethod
+    def _lbfgsb_dot(a, b):
+        return _A.fold_sum(float(a[i]) * float(b[i]) for i in range(len(a)))
+
+    @classmethod
+    def _lbfgsb_solve(cls, A, b):
+        """Gaussian elimination with partial pivoting; None if singular."""
+        k = len(b)
+        M = [list(A[i]) + [float(b[i])] for i in range(k)]
+        for col in range(k):
+            pivot = max(range(col, k), key=lambda r: abs(M[r][col]))
+            if abs(M[pivot][col]) < 1e-300:
+                return None
+            M[col], M[pivot] = M[pivot], M[col]
+            inv = 1.0 / M[col][col]
+            for r in range(col + 1, k):
+                factor = M[r][col] * inv
+                if factor:
+                    for c in range(col, k + 1):
+                        M[r][c] -= factor * M[col][c]
+        out = [0.0] * k
+        for r in range(k - 1, -1, -1):
+            total = M[r][k]
+            for c in range(r + 1, k):
+                total -= M[r][c] * out[c]
+            out[r] = total / M[r][r]
+        return out
+
+    @classmethod
+    def _lbfgsb_compact(cls, s_list, y_list):
+        """theta, W (as columns) and M^-1 for B = theta I - W M W^T."""
+        m = len(s_list)
+        if m == 0:
+            return 1.0, [], []
+        sy_last = cls._lbfgsb_dot(s_list[-1], y_list[-1])
+        yy_last = cls._lbfgsb_dot(y_list[-1], y_list[-1])
+        theta = yy_last / sy_last if sy_last > 1e-300 else 1.0
+
+        W = [[float(v) for v in y] for y in y_list]
+        W += [[theta * float(v) for v in s] for s in s_list]
+
+        D = [cls._lbfgsb_dot(s_list[i], y_list[i]) for i in range(m)]
+        L = [
+            [cls._lbfgsb_dot(s_list[i], y_list[j]) if i > j else 0.0 for j in range(m)]
+            for i in range(m)
+        ]
+        SS = [
+            [theta * cls._lbfgsb_dot(s_list[i], s_list[j]) for j in range(m)]
+            for i in range(m)
+        ]
+
+        size = 2 * m
+        Minv = [[0.0] * size for _ in range(size)]
+        for i in range(m):
+            Minv[i][i] = -D[i]
+            for j in range(m):
+                Minv[i][m + j] = L[j][i]
+                Minv[m + i][j] = L[i][j]
+                Minv[m + i][m + j] = SS[i][j]
+        return theta, W, Minv
+
+    @classmethod
+    def _lbfgsb_cauchy(cls, x, g, theta, W, Minv, lo, hi):
+        """Generalised Cauchy point: the first minimiser of the model along the piecewise
+        projected steepest-descent path. Returns (xcp, free, c)."""
+        n = len(x)
+        m2 = len(W)
+
+        t = [0.0] * n
+        d = [0.0] * n
+        for i in range(n):
+            gi = float(g[i])
+            if gi < 0.0:
+                t[i] = (float(x[i]) - hi[i]) / gi
+            elif gi > 0.0:
+                t[i] = (float(x[i]) - lo[i]) / gi
+            else:
+                t[i] = float("inf")
+            d[i] = 0.0 if t[i] == 0.0 else -gi
+
+        xcp = [float(v) for v in x]
+        free = [i for i in range(n) if t[i] > 0.0]
+        if not free:
+            return xcp, [], [0.0] * m2
+
+        p = [cls._lbfgsb_dot(col, d) for col in W] if m2 else []
+        c = [0.0] * m2
+        fp = -cls._lbfgsb_dot(d, d)
+        if m2:
+            Mp = cls._lbfgsb_solve(Minv, p)
+            fpp = -theta * fp - (cls._lbfgsb_dot(p, Mp) if Mp is not None else 0.0)
+        else:
+            fpp = -theta * fp
+        dt_min = -fp / fpp if fpp > 1e-300 else float("inf")
+
+        # Only variables that can move are breakpoints. One whose breakpoint is zero sits on the
+        # bound the gradient pushes it against: it joins the active set at the start, and
+        # walking it here adds its gradient to fp as though the path had travelled along it.
+        order = sorted((i for i in free if t[i] < float("inf")), key=lambda i: t[i])
+        t_old = 0.0
+        for b in order:
+            dt = t[b] - t_old
+            if dt_min < dt:
+                break
+            for i in range(n):
+                if d[i] != 0.0:
+                    xcp[i] += dt * d[i]
+            xcp[b] = hi[b] if d[b] > 0.0 else lo[b]
+            zb = xcp[b] - float(x[b])
+            gb = float(g[b])
+            if m2:
+                wb = [W[j][b] for j in range(m2)]
+                for j in range(m2):
+                    c[j] += dt * p[j]
+                Mc = cls._lbfgsb_solve(Minv, c)
+                Mw = cls._lbfgsb_solve(Minv, wb)
+                Mp = cls._lbfgsb_solve(Minv, p)
+                fp += dt * fpp + gb * gb + theta * gb * zb
+                if Mc is not None:
+                    fp -= gb * cls._lbfgsb_dot(wb, Mc)
+                fpp -= theta * gb * gb
+                if Mp is not None:
+                    fpp -= 2.0 * gb * cls._lbfgsb_dot(wb, Mp)
+                if Mw is not None:
+                    fpp -= gb * gb * cls._lbfgsb_dot(wb, Mw)
+                for j in range(m2):
+                    p[j] += gb * wb[j]
+            else:
+                fp += dt * fpp + gb * gb + theta * gb * zb
+                fpp -= theta * gb * gb
+            d[b] = 0.0
+            t_old = t[b]
+            dt_min = -fp / fpp if fpp > 1e-300 else float("inf")
+            if fp >= 0.0:
+                dt_min = 0.0
+                break
+
+        dt_min = max(dt_min, 0.0)
+        for i in range(n):
+            if d[i] != 0.0:
+                xcp[i] += dt_min * d[i]
+        for i in range(n):
+            xcp[i] = min(hi[i], max(lo[i], xcp[i]))
+        if m2:
+            for j in range(m2):
+                c[j] += dt_min * p[j]
+
+        free = [i for i in range(n) if lo[i] < xcp[i] < hi[i]]
+        return xcp, free, c
+
+    @classmethod
+    def _lbfgsb_subspace(cls, x, xcp, g, theta, W, Minv, c, free, lo, hi):
+        """Minimise the model over the variables still free at the Cauchy point, truncated to
+        the box. Variables the Cauchy point fixed stay fixed: that active set is what it is for."""
+        if not free:
+            return list(xcp)
+        m2 = len(W)
+
+        Mc = cls._lbfgsb_solve(Minv, c) if m2 else None
+        r = []
+        for i in free:
+            ri = float(g[i]) + theta * (xcp[i] - float(x[i]))
+            if Mc is not None:
+                ri -= _A.fold_sum(W[j][i] * Mc[j] for j in range(m2))
+            r.append(ri)
+
+        k = len(free)
+        B = [[0.0] * k for _ in range(k)]
+        for a in range(k):
+            B[a][a] = theta
+        if m2:
+            MW = []
+            for i in free:
+                wi = [W[j][i] for j in range(m2)]
+                MW.append(cls._lbfgsb_solve(Minv, wi) or [0.0] * m2)
+            for a in range(k):
+                wa = [W[j][free[a]] for j in range(m2)]
+                for b in range(k):
+                    B[a][b] -= cls._lbfgsb_dot(wa, MW[b])
+
+        step = cls._lbfgsb_solve(B, [-ri for ri in r])
+        if step is None:
+            return list(xcp)
+
+        alpha = 1.0
+        for a, i in enumerate(free):
+            if step[a] > 1e-300:
+                alpha = min(alpha, (hi[i] - xcp[i]) / step[a])
+            elif step[a] < -1e-300:
+                alpha = min(alpha, (lo[i] - xcp[i]) / step[a])
+        alpha = max(0.0, min(1.0, alpha))
+
+        out = list(xcp)
+        for a, i in enumerate(free):
+            out[i] = min(hi[i], max(lo[i], xcp[i] + alpha * step[a]))
+        return out
 
     def _lbfgs_two_loop(self, grad, s_list, y_list):
         """Two-loop recursion for the L-BFGS search direction (Nocedal 1980).
