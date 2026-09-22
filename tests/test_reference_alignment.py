@@ -22,9 +22,12 @@ and an explicit `x0` for any local-search reference that takes one.
 Global-search references (DE, dual annealing, gp_minimize, cmaes) get
 the same integer seed via their own RNG parameter.
 
-The test always *passes* (it's a characterisation harness, not a gate).
-The point is the printed table and the persisted snapshot at
-`benchmarks/reference_alignment.json`. Run with stdout visible:
+The test is a gate as well as a table. Each (algorithm, problem) pair has a
+ceiling on the `hd/ref` ratio, and exceeding it fails the run. The printed
+table and the snapshot at `benchmarks/reference_alignment.json` are still
+the point: the ceilings come from that snapshot rather than from taste, so
+they say what the ports do today and stop it getting worse. Run with stdout
+visible:
 
     pytest tests/test_reference_alignment.py -m reference -s
 
@@ -751,6 +754,43 @@ def _all_installed(modules):
     return True
 
 
+# ---------- how far a port may lag its reference ----------
+
+# The ratio printed as `hd/ref`: humpday's median gap to the optimum over the reference's, so
+# 1.0 is parity and 2.0 is twice the remaining error. The default is what a port is expected to
+# stay inside, and the exceptions below record the pairs that do not, so that a run tells the
+# difference between a known deficiency and a new one.
+#
+# Ceilings are measured, not chosen: each is about twice the value recorded in
+# benchmarks/reference_alignment.json, which gives a row room to move with a library version or
+# a seed without letting it double. They are not targets. Seven of sixty pairs need one, and
+# each is a port that has genuinely not solved its problem, not a converged run a few ulps
+# behind another -- the floor below takes care of those. #78 tracks the divergences.
+DEFAULT_RATIO_CEILING = 3.0
+
+# Below this, a port has solved the problem and the ratio stops meaning anything. The gaps
+# being divided are then a few ulps apart and the +1e-15 guard in the denominator dominates:
+# PRIMA_BOBYQA on Rosenbrock measures 1.26 on macOS and 27.10 on Linux, from gaps of 2.7e-16
+# and 2.7e-14 against a reference that reached zero. Neither number describes a deficiency in
+# the port -- both runs converged -- and a gate that fails on the difference between two
+# converged runs reports the platform, not the code.
+CONVERGED_GAP = 1e-10
+
+RATIO_CEILING = {
+    ("Rechenberg", "ackley"): 1e6,  # measured 519288.77
+    ("SimulatedAnnealing", "rosenbrock"): 90000.0,  # measured 44953.14
+    ("CoordinateDescent", "ackley"): 790.0,  # measured 395.44
+    ("BayesianOpt", "ackley"): 63.0,  # measured 31.74
+    ("RandomSearch", "sphere"): 13.0,  # measured 6.67
+    ("LBFGSB", "rosenbrock"): 6.1,  # measured 3.06
+    ("PatternSearch", "ackley"): 6.1,  # measured 3.03
+}
+
+
+def ratio_ceiling(algorithm: str, problem: str) -> float:
+    return RATIO_CEILING.get((algorithm, problem), DEFAULT_RATIO_CEILING)
+
+
 # ---------- the characterisation test ----------
 
 
@@ -761,6 +801,7 @@ def test_reference_alignment():
     n_trials_default = 200
     n_dim = 2
     rows = []
+    failures: dict = {}
 
     for algorithm, (ref_label, ref_fn, mods) in REFERENCES.items():
         if not _all_installed(mods):
@@ -781,6 +822,7 @@ def test_reference_alignment():
                 )
 
             ref_vals = []
+            ref_errors = []
             for trial in range(N_RUNS):
                 try:
                     ref_vals.append(
@@ -788,7 +830,16 @@ def test_reference_alignment():
                     )
                 except Exception as e:
                     print(f"    reference error on {problem_id}: {e}")
+                    ref_errors.append(f"{type(e).__name__}: {e}")
                     ref_vals.append(float("inf"))
+            # A reference that raised used to be recorded as inf, which made its gap infinite and
+            # the ratio zero: the comparison humpday most conclusively "won" was the one where
+            # the thing it is measured against never ran. There is nothing to compare, so say so.
+            failures.setdefault("reference did not run", [])
+            if ref_errors:
+                failures["reference did not run"].append(
+                    f"{algorithm}/{problem_id}: {ref_errors[0]}"
+                )
 
             hd_med = sorted(hd_vals)[N_RUNS // 2]
             ref_med = sorted(ref_vals)[N_RUNS // 2]
@@ -802,6 +853,12 @@ def test_reference_alignment():
                 f"  hd/ref={relative:>9.2f}"
             )
 
+            ceiling = ratio_ceiling(algorithm, problem_id)
+            if relative > ceiling and hd_gap > CONVERGED_GAP:
+                failures.setdefault("lagging the reference", []).append(
+                    f"{algorithm}/{problem_id}: hd/ref {relative:.2f} over its ceiling {ceiling:g}"
+                )
+
             rows.append(
                 {
                     "algorithm": algorithm,
@@ -812,6 +869,8 @@ def test_reference_alignment():
                     "humpday_to_opt": hd_gap,
                     "reference_to_opt": ref_gap,
                     "ratio_humpday_over_reference": relative,
+                    "ratio_ceiling": ceiling,
+                    "converged": hd_gap <= CONVERGED_GAP,
                 }
             )
 
@@ -830,3 +889,13 @@ def test_reference_alignment():
             indent=2,
         )
     print(f"\nWrote {out.relative_to(REPO_ROOT)}")
+
+    # The snapshot is written first, so a failing run still leaves the table it was judged on.
+    assert rows, (
+        "no reference adapter could run: install the comparisons with "
+        "`pip install humpday[reference]`, or this test is watching nothing"
+    )
+    reported = {k: v for k, v in failures.items() if v}
+    assert not reported, "\n".join(
+        f"{heading}:\n  " + "\n  ".join(items) for heading, items in reported.items()
+    )
