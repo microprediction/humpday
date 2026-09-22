@@ -1774,6 +1774,16 @@ class FrozenPowell(BaseOptimizer):
     """
 
     def optimize(self):
+        # Multi-start, mirroring Powell._run: one pass converges and returns, leaving most of
+        # the budget unrequested (thirty-two evaluations of five thousand on the sphere). The
+        # first pass is unconditional so that a budget too small for a restart still buys the
+        # one point it can afford.
+        self._powell_pass()
+        while self.evaluations + 2 + 2 * self.n_dim <= self.n_trials:
+            self._powell_pass()
+        return self.best_value, self.best_x
+
+    def _powell_pass(self):
         n = self.n_dim
         x = 0.3 + 0.4 * _A.random_uniform(n)  # Interior start
 
@@ -1841,8 +1851,6 @@ class FrozenPowell(BaseOptimizer):
                     if any(v != 0 for v in direc1):
                         direc[bigind] = list(direc[-1])
                         direc[-1] = list(direc1)
-
-        return self.best_value, self.best_x
 
     def _linesearch_powell(self, p, xi, fval):
         """Bounded Brent-method line search along direction `xi` from
