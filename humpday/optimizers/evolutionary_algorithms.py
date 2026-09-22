@@ -253,104 +253,169 @@ class ParticleSwarm(BaseOptimizer):
         yield from self._lbfgs_polish_gen()
 
 
+# Generalized Simulated Annealing constants (Tsallis & Stariolo 1996; Xiang, Sun, Fan & Gong
+# 1997), matching scipy.optimize.dual_annealing's defaults.
+#
+# The two factors below depend only on the visiting parameter, and one of them needs a log-gamma
+# and a sine. Both are computed once here as literals rather than at run time, so the JavaScript
+# twin can hold the same numbers without needing lgamma -- SimulatedAnnealing is in JS_EXACT and
+# has to agree bit for bit.
+_GSA_QV = 2.62  # visiting parameter; heavier tail as it rises, range (1, 3]
+_GSA_QA = -5.0  # acceptance parameter
+_GSA_T0 = 5230.0  # initial temperature
+_GSA_RESTART_T = 0.1  # re-anneal below this
+_GSA_TAIL_LIMIT = 1.0e8
+_GSA_MIN_VISIT_BOUND = 1.0e-10
+_GSA_FACTOR4P = 11.833986526687411  # sqrt(pi) * f2 / (f3 * (3 - qv))
+_GSA_FACTOR6 = 8.054035404548971  # pi (1-f5) / sin(pi (1-f5)) / exp(lgamma(2-f5))
+_GSA_T1 = 2.0737503625760247  # exp((qv-1) log 2) - 1
+
+
 class SimulatedAnnealing(BaseOptimizer):
-    """Simulated Annealing with multi-restart + coordinate-descent polish.
+    """Generalized Simulated Annealing with an L-BFGS-B local search.
 
-    Two-stage algorithm matching the spirit of scipy.optimize.dual_annealing:
+    The algorithm scipy.optimize.dual_annealing runs, not the spirit of it: a heavy-tailed
+    Tsallis visiting distribution whose scale follows the temperature, generalised Metropolis
+    acceptance, the T(i) = T0 (2^(qv-1) - 1) / ((i+2)^(qv-1) - 1) schedule, re-annealing when the
+    temperature falls below the restart threshold, and a local search from the chain's best point.
 
-      1. Multi-restart Metropolis SA explores the parameter space
-         globally with a geometric cooling schedule.
-      2. A coordinate-descent polish from the best SA point refines
-         to high precision.
+    What was here before was classic Metropolis with uniform proposals and geometric cooling,
+    which is a different algorithm: its proposals cannot make the long jumps a heavy tail gives,
+    so it explores a neighbourhood rather than a space. Measured against scipy's dual_annealing
+    on Rosenbrock it was 3,195,457 times behind (#407's reference gate).
 
-    scipy's dual_annealing uses L-BFGS-B for stage 2; the closest
-    derivative-free equivalent is a coordinate descent with shrinking
-    step. Without the polish stage HumpDay's SA was 1e9-1e11× off scipy
-    on sphere and Rosenbrock; the global SA can't reach machine
-    precision because its proposals are noisy.
+    The local search is the real L-BFGS-B, which is what scipy uses for the same purpose.
     """
 
     def _run(self):
-        # Reserve ~30% of the budget for the polish phase.
-        # Allocate half the budget to the L-BFGS-B polish, matching the
-        # DE rationale (#197 + this PR). 50% sweet spot: SA rosenbrock
-        # 2.8e-5 → 2.8e-8 (1000× better), sphere stays at machine prec.
-        polish_budget = max(20, self.n_trials // 2)
-        sa_budget = self.n_trials - polish_budget
+        n = self.n_dim
+        lo = [0.0] * n
+        hi = [1.0] * n
+        span = [hi[i] - lo[i] for i in range(n)]
 
-        # Same forfeit DifferentialEvolution had: the reserve is sized for the worst case, the
-        # L-BFGS polish converges in about eighteen evaluations, and the rest used to be thrown
-        # away -- measured, SA spent 2,518 of a 5,000 budget and returned. The stages alternate
-        # now, re-splitting what remains each round. The first round is unchanged, and
-        # BaseOptimizer keeps the best point seen, so a later round cannot worsen the answer.
-        while True:
-            outer_before = self.evaluations
+        # The stages alternate, re-splitting what is left each round (#338): a local search that
+        # converges early must not forfeit the remainder.
+        while self.evaluations < self.n_trials:
+            before = self.evaluations
+            chain_budget = self.n_trials - max(
+                20, (self.n_trials - self.evaluations) // 2
+            )
 
-            # --- Stage 1: multi-restart SA ---------------------------------
-            num_restarts = max(3, sa_budget // 30)
-            trials_per_restart = max(1, sa_budget // num_restarts)
+            x = _A.random_uniform(n)
+            e = yield x
+            iteration = 0
 
-            for restart in range(num_restarts):
-                if self.evaluations >= sa_budget:
-                    break
+            while self.evaluations < chain_budget:
+                s_step = float(iteration) + 2.0
+                t2 = portable_exp((_GSA_QV - 1.0) * portable_log(s_step)) - 1.0
+                temperature = _GSA_T0 * _GSA_T1 / t2
+                iteration += 1
 
-                if restart == 0:
-                    x = 0.5 + (_A.random_uniform(self.n_dim) - 0.5) * 0.4
-                else:
-                    x = _A.random_uniform(self.n_dim)
+                if temperature < _GSA_RESTART_T:
+                    # Re-anneal: the schedule has run its course, so start again rather than
+                    # keep proposing steps the acceptance rule will almost always refuse.
+                    x = _A.random_uniform(n)
+                    e = yield x
+                    iteration = 0
+                    continue
 
-                fx = yield x
+                temperature_step = temperature / float(iteration)
+                best_before_chain = self.best_value
 
-                # Fixed initial temperature, geometric cooling. Reaches
-                # final_temp by the end of the restart's iteration count.
-                initial_temp = 1.0
-                final_temp = 1e-6
-                # portable_exp/log, not ** : libm pow differs across platforms
-                # in the last ulp (same fix as HillClimbing's decay constant).
-                cooling = portable_exp(
-                    (1.0 / max(1, trials_per_restart))
-                    * portable_log(final_temp / initial_temp)
-                )
-                temp = initial_temp
-
-                for _iteration in range(trials_per_restart):
-                    if self.evaluations >= sa_budget:
+                # The strategy chain: 2n steps, the first n moving every coordinate and the rest
+                # one coordinate each, as in scipy.
+                for j in range(2 * n):
+                    if self.evaluations >= chain_budget:
                         break
-
-                    # Neighbour proposal: step scales with current temp.
-                    step_size = 0.4 * temp
-                    new_x = _A.clip(
-                        x + (_A.random_uniform(self.n_dim) - 0.5) * 2 * step_size,
-                        0,
-                        1,
+                    x_visit = yield from self._gsa_visit(
+                        x, j, temperature, lo, hi, span
                     )
-                    new_fx = yield new_x
+                    e_new = yield x_visit
+                    if e_new < e:
+                        x, e = x_visit, e_new
+                    else:
+                        r = _A.rng_random()
+                        pqv_temp = 1.0 - (
+                            (1.0 - _GSA_QA) * (e_new - e) / temperature_step
+                        )
+                        if pqv_temp <= 0.0:
+                            pqv = 0.0
+                        else:
+                            pqv = portable_exp(portable_log(pqv_temp) / (1.0 - _GSA_QA))
+                        if r <= pqv:
+                            x, e = x_visit, e_new
 
-                    # Metropolis criterion.
-                    delta = new_fx - fx
-                    if delta < 0 or _A.random_scalar() < portable_exp(
-                        -delta / max(temp, 1e-12)
-                    ):
-                        x, fx = new_x, new_fx
+                # The local search runs after a chain that improved on the best point, which is
+                # the "dual" in dual_annealing: the annealing proposes a basin and the local
+                # method descends it, every chain rather than once at the end. Running it only
+                # once per block is what left this six orders behind scipy on Rosenbrock even
+                # with the right visiting distribution -- the annealing was finding the valley
+                # and nothing was walking down it.
+                if (
+                    self.best_value < best_before_chain
+                    and self.evaluations < chain_budget
+                ):
+                    yield from self._lbfgs_polish_gen()
 
-                    temp *= cooling
-
-            # --- Stage 2: L-BFGS polish from best SA point -----------------
-            # Matches scipy.dual_annealing exactly — scipy uses L-BFGS-B for
-            # its local-search refinement. Two-loop recursion with FD
-            # gradient (2·n_dim evals per iter) and Armijo line search; same
-            # algorithm the `LBFGSB` optimizer uses. Replaces the previous
-            # coordinate-descent polish, which couldn't handle curved
-            # valleys like Rosenbrock and stalled around 1e-9 on the sphere
-            # at small budgets. With LBFGS the polish reaches machine
-            # precision on smooth basins in ~10 iterations.
+            # And once more from the best point seen, with whatever is left.
             yield from self._lbfgs_polish_gen()
 
-            if self.evaluations >= self.n_trials or self.evaluations == outer_before:
+            if self.evaluations == before:
                 break
-            sa_budget = self.n_trials - max(20, (self.n_trials - self.evaluations) // 2)
-            if self.evaluations >= sa_budget:
-                break
+
+    def _gsa_visit(self, x, step, temperature, lo, hi, span):
+        """One draw from the Tsallis visiting distribution (Visita, reference [2] p. 405).
+
+        A generator because it consumes no objective evaluations but has to sit inside one:
+        `yield from` keeps the RNG draws in the same order as the JavaScript twin.
+        """
+        n = len(x)
+        if False:  # pragma: no cover - makes this a generator without yielding a point
+            yield None
+
+        factor1 = portable_exp(portable_log(temperature) / (_GSA_QV - 1.0))
+        factor4 = _GSA_FACTOR4P * factor1
+        sigmax = portable_exp(
+            -(_GSA_QV - 1.0) * portable_log(_GSA_FACTOR6 / factor4) / (3.0 - _GSA_QV)
+        )
+
+        def one_visit():
+            a = _A.rng_gauss()
+            b = _A.rng_gauss()
+            den = portable_exp((_GSA_QV - 1.0) * portable_log(abs(b)) / (3.0 - _GSA_QV))
+            return sigmax * a / den
+
+        def wrap(value, i):
+            a = value - lo[i]
+            b = math.fmod(a, span[i]) + span[i]
+            out = math.fmod(b, span[i]) + lo[i]
+            if abs(out - lo[i]) < _GSA_MIN_VISIT_BOUND:
+                out += _GSA_MIN_VISIT_BOUND
+            return out
+
+        if step < n:
+            visits = [one_visit() for _ in range(n)]
+            upper_sample = _A.rng_random()
+            lower_sample = _A.rng_random()
+            capped = []
+            for v in visits:
+                if v > _GSA_TAIL_LIMIT:
+                    capped.append(_GSA_TAIL_LIMIT * upper_sample)
+                elif v < -_GSA_TAIL_LIMIT:
+                    capped.append(-_GSA_TAIL_LIMIT * lower_sample)
+                else:
+                    capped.append(v)
+            return _A.asarray([wrap(capped[i] + float(x[i]), i) for i in range(n)])
+
+        out = [float(v) for v in x]
+        visit = one_visit()
+        if visit > _GSA_TAIL_LIMIT:
+            visit = _GSA_TAIL_LIMIT * _A.rng_random()
+        elif visit < -_GSA_TAIL_LIMIT:
+            visit = -_GSA_TAIL_LIMIT * _A.rng_random()
+        index = step - n
+        out[index] = wrap(visit + out[index], index)
+        return _A.asarray(out)
 
 
 class GeneticAlgorithm(BaseOptimizer):

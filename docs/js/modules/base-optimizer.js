@@ -587,7 +587,13 @@ class Optimizer {
         const r = [];
         for (const i of free) {
             let ri = g[i] + theta * (xcp[i] - x[i]);
-            if (Mc) for (let j = 0; j < m2; j++) ri -= W[j][i] * Mc[j];
+            if (Mc) {
+                // Sum first, subtract once. Subtracting term by term rounds differently, and
+                // SimulatedAnnealing is in JS_EXACT: one ulp here is a failed replay.
+                let acc = 0.0;
+                for (let j = 0; j < m2; j++) acc += W[j][i] * Mc[j];
+                ri -= acc;
+            }
             r.push(ri);
         }
 
