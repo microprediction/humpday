@@ -34,6 +34,22 @@ const PROBLEMS = {
     },
 };
 
+// `--probe <problem> <x0,x1,...>` evaluates the objective at a point and prints the value,
+// without running anything. The Python side uses it to assert that both languages are
+// optimizing the same function before it compares how well they do it: this file hardcoded the
+// objectives while the Python definitions lived in another module, and the two drifted apart
+// without any test noticing (#406).
+if (process.argv[2] === "--probe") {
+    const f = PROBLEMS[process.argv[3]];
+    if (!f) {
+        console.error(JSON.stringify({ error: `unknown problem ${process.argv[3]}` }));
+        process.exit(2);
+    }
+    const point = process.argv[4].split(",").map(Number);
+    process.stdout.write(JSON.stringify({ value: f(point) }) + "\n");
+    process.exit(0);
+}
+
 const algorithm = process.argv[2];
 const problem = process.argv[3];
 const nTrials = parseInt(process.argv[4], 10);
