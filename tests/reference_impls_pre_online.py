@@ -562,29 +562,78 @@ class FrozenGridSearch(BaseOptimizer):
     """
 
     def optimize(self):
+        # Multi-resolution, mirroring GridSearch._run: a single sweep either overruns the
+        # budget and is cut off partway (leaving a slab rather than a grid) or finishes early
+        # and forfeits the rest (#330).
         n = self.n_dim
-        n_per_axis = max(2, int(round(self.n_trials ** (1.0 / n))))
+        lo = [0.0] * n
+        hi = [1.0] * n
 
-        # Lexicographic enumeration of indices across n axes, each in
-        # [0, n_per_axis). Bin-centred coordinates lie at (idx + 0.5) /
-        # n_per_axis, so they are evenly spread inside [0, 1] without
-        # ever sitting exactly on the bounds.
+        first = True
+        while True:
+            remaining = self.n_trials - self.evaluations
+            bins = self._odd_bins_that_fit(remaining // 2, n)
+            if bins < 2:
+                bins = self._odd_bins_that_fit(remaining, n)
+            if bins < 2:
+                if first and remaining > 0:
+                    self._sweep(lo, hi, 2)
+                break
+            best_cell = self._sweep(lo, hi, bins)
+            first = False
+            if best_cell is None:
+                break
+            lo, hi = best_cell
+
+        return self.best_value, self.best_x
+
+    @classmethod
+    def _odd_bins_that_fit(cls, budget, n):
+        bins = cls._bins_that_fit(budget, n)
+        if bins > 2 and bins % 2 == 0:
+            return bins - 1
+        return bins
+
+    @staticmethod
+    def _bins_that_fit(budget, n):
+        if budget < 2**n:
+            return 0
+        b = 2
+        while (b + 1) ** n <= budget:
+            b += 1
+        return b
+
+    def _sweep(self, lo, hi, bins):
+        n = self.n_dim
+        widths = [(hi[d] - lo[d]) / bins for d in range(n)]
         indices = [0] * n
-        while self.evaluations < self.n_trials:
-            x = _A.asarray([(idx + 0.5) / n_per_axis for idx in indices])
-            self.evaluate(x)
-            # Increment indices like an odometer; stop once all wrap.
+        best_value = float("inf")
+        best_indices = None
+
+        while True:
+            if self.evaluations >= self.n_trials:
+                break
+            x = _A.asarray([lo[d] + (indices[d] + 0.5) * widths[d] for d in range(n)])
+            value = self.evaluate(x)
+            if value < best_value:
+                best_value = value
+                best_indices = list(indices)
             d = n - 1
             while d >= 0:
                 indices[d] += 1
-                if indices[d] < n_per_axis:
+                if indices[d] < bins:
                     break
                 indices[d] = 0
                 d -= 1
             if d < 0:
-                break  # full grid exhausted
+                break
 
-        return self.best_value, self.best_x
+        if best_indices is None:
+            return None
+        return (
+            [lo[d] + best_indices[d] * widths[d] for d in range(n)],
+            [lo[d] + (best_indices[d] + 1) * widths[d] for d in range(n)],
+        )
 
 
 class FrozenRandomSearch(BaseOptimizer):
