@@ -508,9 +508,13 @@ class LBFGSB(BaseOptimizer):
     a black-box objective. The L-BFGS update itself is the standard
     two-loop recursion of Nocedal (1980) with a 5-pair memory.
 
-    Pure-Python via the `humpday._array` shim — no direct numpy use.
-    Ports the existing JavaScript L-BFGS-B implementation in
-    `docs/js/modules/scipy-algorithms.js::LBFGSB` line-for-line.
+    Pure-Python via the `humpday._array` shim — no direct numpy use, and the same code as the
+    JavaScript twin in `docs/js/modules/scipy-algorithms.js::LBFGSB`.
+
+    Projected L-BFGS on a box rather than the Byrd-Lu-Nocedal-Zhu algorithm: there is no
+    generalised Cauchy point and no free-variable subspace minimisation, and the line search is
+    Armijo rather than strong Wolfe. See the note above `_lbfgs_polish_gen` in base.py for what
+    that means and why the name stays (#407).
 
     Before this rewrite, humpday's `LBFGSB` was a finite-difference
     gradient + Polyak-momentum baseline — not L-BFGS at all. The
