@@ -80,22 +80,39 @@ REFERENCE_BUDGET_OVERRIDE = {
 # ---------- objectives (defined on [0, 1]^n with known optima) ----------
 
 
+# Where the optima sit, and why not where they used to.
+#
+# These three had their minima at [0.5, 0.5] and [0.75, 0.75]. Both are places an optimizer can
+# arrive at without searching: the PRIMA family starts at the centre of the cube, and 0.75 is a
+# bin centre of any 14-bin grid, so a plain sweep of the old Rosenbrock returned exactly zero.
+# The gate then read a refined multi-resolution GridSearch as 1e14 times worse than "a regular
+# grid baseline", when what it had measured was that the baseline's spacing landed on the answer
+# (#387, the same defect in the recorder's own suite).
+#
+# The offsets below are not round numbers in any base the algorithms use: not the centre, not a
+# bin centre of a small grid, not a bisection point. An optimizer has to search for these.
+_OPT = (0.4127, 0.6831)
+
+
 def _sphere(x):
-    """Convex quadratic, minimum 0 at [0.5, ..., 0.5]."""
-    return sum((v - 0.5) ** 2 for v in x)
+    """Convex quadratic, minimum 0 at _OPT."""
+    return sum((v - _OPT[i % 2]) ** 2 for i, v in enumerate(x))
 
 
 def _rosenbrock_unit(x):
-    """2-D Rosenbrock mapped to [0,1]^2 via 4xi - 2. Minimum at (0.75, 0.75)."""
-    a = 4 * x[0] - 2
-    b = 4 * x[1] - 2
+    """2-D Rosenbrock on the cube, minimum 0 at _OPT.
+
+    The map sends _OPT to Rosenbrock's own (1, 1) rather than sending the cube's centre there.
+    """
+    a = 4 * (x[0] - _OPT[0] + 0.5) - 2 + 1.0
+    b = 4 * (x[1] - _OPT[1] + 0.5) - 2 + 1.0
     return (1 - a) ** 2 + 100 * (b - a * a) ** 2
 
 
 def _ackley(x):
-    """Ackley centred at [0.5, 0.5]. Minimum 0 at [0.5, 0.5]."""
+    """Ackley with its minimum 0 at _OPT."""
     n = len(x)
-    s = [10 * (v - 0.5) for v in x]
+    s = [10 * (v - _OPT[i % 2]) for i, v in enumerate(x)]
     return (
         -20 * math.exp(-0.2 * math.sqrt(sum(v * v for v in s) / n))
         - math.exp(sum(math.cos(2 * math.pi * v) for v in s) / n)
@@ -105,9 +122,9 @@ def _ackley(x):
 
 
 PROBLEMS = {
-    "sphere": {"func": _sphere, "opt": 0.0, "x_opt": [0.5, 0.5]},
-    "rosenbrock": {"func": _rosenbrock_unit, "opt": 0.0, "x_opt": [0.75, 0.75]},
-    "ackley": {"func": _ackley, "opt": 0.0, "x_opt": [0.5, 0.5]},
+    "sphere": {"func": _sphere, "opt": 0.0, "x_opt": list(_OPT)},
+    "rosenbrock": {"func": _rosenbrock_unit, "opt": 0.0, "x_opt": list(_OPT)},
+    "ackley": {"func": _ackley, "opt": 0.0, "x_opt": list(_OPT)},
 }
 
 

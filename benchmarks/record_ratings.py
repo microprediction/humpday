@@ -297,10 +297,16 @@ def _provenance(seed: int, overhead: float, cell_seconds: float) -> dict:
     """
     import humpday
     from humpday import _array as _A
+    from humpday.objectives import classic
 
     return {
         "seed": int(seed),
         "backend": _A.BACKEND,
+        # The domain warp the classic surfaces were built with. It used to be the calendar day,
+        # so a table recorded on the 3rd measured different objectives than one recorded on the
+        # 17th and neither said so (#373). Fixed now, and recorded, because a cell is only
+        # comparable with another that was warped the same way.
+        "morph_day": int(classic.DAY),
         "humpday": getattr(humpday, "__version__", "unknown"),
         "git": _git_revision(),
         "python": ".".join(str(v) for v in sys.version_info[:3]),
@@ -309,7 +315,7 @@ def _provenance(seed: int, overhead: float, cell_seconds: float) -> dict:
     }
 
 
-_PROVENANCE_MUST_MATCH = ("seed", "backend", "humpday")
+_PROVENANCE_MUST_MATCH = ("seed", "backend", "humpday", "morph_day")
 
 
 def _seed_run(
