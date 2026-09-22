@@ -763,18 +763,24 @@ def _all_installed(modules):
 #
 # Ceilings are measured, not chosen: each is about twice the value recorded in
 # benchmarks/reference_alignment.json, which gives a row room to move with a library version or
-# a seed without letting it double. They are not targets. Ten of sixty pairs need one, and the
-# largest of them are real gaps in the ports rather than noise -- #78 tracks the divergences.
+# a seed without letting it double. They are not targets. Seven of sixty pairs need one, and
+# each is a port that has genuinely not solved its problem, not a converged run a few ulps
+# behind another -- the floor below takes care of those. #78 tracks the divergences.
 DEFAULT_RATIO_CEILING = 3.0
+
+# Below this, a port has solved the problem and the ratio stops meaning anything. The gaps
+# being divided are then a few ulps apart and the +1e-15 guard in the denominator dominates:
+# PRIMA_BOBYQA on Rosenbrock measures 1.26 on macOS and 27.10 on Linux, from gaps of 2.7e-16
+# and 2.7e-14 against a reference that reached zero. Neither number describes a deficiency in
+# the port -- both runs converged -- and a gate that fails on the difference between two
+# converged runs reports the platform, not the code.
+CONVERGED_GAP = 1e-10
 
 RATIO_CEILING = {
     ("Rechenberg", "ackley"): 1e6,  # measured 519288.77
     ("SimulatedAnnealing", "rosenbrock"): 90000.0,  # measured 44953.14
     ("CoordinateDescent", "ackley"): 790.0,  # measured 395.44
-    ("CoordinateDescent", "sphere"): 510.0,  # measured 254.66
-    ("Rechenberg", "sphere"): 150.0,  # measured 72.57
     ("BayesianOpt", "ackley"): 63.0,  # measured 31.74
-    ("PatternSearch", "sphere"): 18.0,  # measured 8.91
     ("RandomSearch", "sphere"): 13.0,  # measured 6.67
     ("LBFGSB", "rosenbrock"): 6.1,  # measured 3.06
     ("PatternSearch", "ackley"): 6.1,  # measured 3.03
@@ -848,7 +854,7 @@ def test_reference_alignment():
             )
 
             ceiling = ratio_ceiling(algorithm, problem_id)
-            if relative > ceiling:
+            if relative > ceiling and hd_gap > CONVERGED_GAP:
                 failures.setdefault("lagging the reference", []).append(
                     f"{algorithm}/{problem_id}: hd/ref {relative:.2f} over its ceiling {ceiling:g}"
                 )
@@ -864,6 +870,7 @@ def test_reference_alignment():
                     "reference_to_opt": ref_gap,
                     "ratio_humpday_over_reference": relative,
                     "ratio_ceiling": ceiling,
+                    "converged": hd_gap <= CONVERGED_GAP,
                 }
             )
 
