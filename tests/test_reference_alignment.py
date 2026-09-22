@@ -798,6 +798,10 @@ RATIO_CEILING = {
     # pairs now, against seven before, and several of the numbers are far larger: an optimum an
     # optimizer could arrive at without searching was flattering most of the roster, not just the
     # three that start there. These are what the ports do on problems they have to find.
+    # SimulatedAnnealing needs no entry any more: it is Generalized Simulated Annealing now,
+    # the algorithm scipy's dual_annealing runs, and sits at 0.97 / 0.99 / 1.00 across the three
+    # problems where it was 3,195,457 times behind on Rosenbrock.
+    #
     # Firefly and CMA-ES polish through the same L-BFGS-B, so their Rosenbrock numbers moved
     # when it became the real algorithm (#407): CMA-ES 17.26 -> 38.04, Firefly under 3 -> 4.26.
     # Both are better overall for the change -- 49 of 90 cells and 54 of 90 respectively -- and
@@ -805,7 +809,6 @@ RATIO_CEILING = {
     # LBFGSB itself no longer needs an entry at all: 22,005 -> 0.01, a hundred times better than
     # scipy rather than four orders worse.
     ("FireflyAlgorithm", "rosenbrock"): 9.0,  # measured 4.26
-    ("SimulatedAnnealing", "rosenbrock"): 6.4e6,  # measured 3195457.21
     ("Rechenberg", "ackley"): 1.1e6,  # measured 519288.77
     ("DifferentialEvolution", "rosenbrock"): 25000.0,  # measured 12387.21
     ("CoordinateDescent", "ackley"): 1100.0,  # measured 530.43

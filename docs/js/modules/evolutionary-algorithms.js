@@ -248,91 +248,158 @@ class ParticleSwarm extends Optimizer {
 }
 
 // Simulated Annealing implementation
+// Generalized Simulated Annealing constants, matching scipy.optimize.dual_annealing and the
+// Python twin in humpday/optimizers/evolutionary_algorithms.py. The two factors are computed
+// once as literals there and here: one of them needs a log-gamma, which JavaScript has no
+// standard implementation of, and SimulatedAnnealing is in JS_EXACT so both sides must hold the
+// identical number.
+const GSA_QV = 2.62;
+const GSA_QA = -5.0;
+const GSA_T0 = 5230.0;
+const GSA_RESTART_T = 0.1;
+const GSA_TAIL_LIMIT = 1.0e8;
+const GSA_MIN_VISIT_BOUND = 1.0e-10;
+const GSA_FACTOR4P = 11.833986526687411;
+const GSA_FACTOR6 = 8.054035404548971;
+const GSA_T1 = 2.0737503625760247;
+
+
 class SimulatedAnnealing extends Optimizer {
     constructor(objective, nTrials, nDim) {
         super(objective, nTrials, nDim);
         this.name = 'SimulatedAnnealing';
     }
 
-    // Two-stage algorithm matching scipy.optimize.dual_annealing in
-    // spirit:
+    // Generalized Simulated Annealing with an L-BFGS-B local search: the algorithm
+    // scipy.optimize.dual_annealing runs, not the spirit of it. A heavy-tailed Tsallis visiting
+    // distribution scaled by the temperature, generalised Metropolis acceptance, the
+    // T(i) = T0 (2^(qv-1) - 1) / ((i+2)^(qv-1) - 1) schedule, and re-annealing at the floor.
     //
-    //   Stage 1 — multi-restart Metropolis SA explores globally with a
-    //             geometric cooling schedule from T = 1.0 to T = 1e-6.
-    //   Stage 2 — L-BFGS-B polish from the best SA point (scipy's
-    //             dual_annealing uses L-BFGS-B for its local search).
+    // What was here before was classic Metropolis with uniform proposals and geometric cooling.
+    // Its proposals cannot make the long jumps a heavy tail gives, so it explored a
+    // neighbourhood rather than a space: 3,195,457 times behind scipy on Rosenbrock.
+    //
+    // Twin of SimulatedAnnealing._run in evolutionary_algorithms.py.
     *_run() {
-        // Twin of SimulatedAnnealing._run in
-        // humpday/optimizers/evolutionary_algorithms.py.
         const n = this.nDim;
-        const polishBudget = Math.max(20, Math.floor(this.nTrials / 2));
-        let saBudget = this.nTrials - polishBudget;
+        const lo = new Array(n).fill(0.0);
+        const hi = new Array(n).fill(1.0);
+        const span = [];
+        for (let i = 0; i < n; i++) span.push(hi[i] - lo[i]);
 
-        while (true) {
-            const outerBefore = this.evaluations;
-
-        // --- Stage 1: multi-restart Metropolis SA ----------------------
-        const numRestarts = Math.max(3, Math.floor(saBudget / 30));
-        const trialsPerRestart = Math.max(1, Math.floor(saBudget / numRestarts));
-
-        for (let restart = 0; restart < numRestarts; restart++) {
-            if (this.evaluations >= saBudget) break;
-
-            let x;
-            if (restart === 0) {
-                // Center-biased first restart.
-                const u = MathUtils.randomUniform(n);
-                x = u.map(v => 0.5 + (v - 0.5) * 0.4);
-            } else {
-                x = MathUtils.randomUniform(n);
-            }
-            let fx = yield x;
-
-            const initialTemp = 1.0;
-            const finalTemp = 1e-6;
-            // portableExp/portableLog on BOTH sides, not pow: libm pow
-            // differs across platforms in the last ulp.
-            const cooling = MathUtils.portableExp(
-                (1.0 / Math.max(1, trialsPerRestart))
-                * MathUtils.portableLog(finalTemp / initialTemp)
+        while (this.evaluations < this.nTrials) {
+            const before = this.evaluations;
+            const chainBudget = this.nTrials - Math.max(
+                20, Math.floor((this.nTrials - this.evaluations) / 2)
             );
-            let temp = initialTemp;
 
-            for (let iter = 0; iter < trialsPerRestart; iter++) {
-                if (this.evaluations >= saBudget) break;
+            let x = MathUtils.randomUniform(n);
+            let e = yield x;
+            let iteration = 0;
 
-                // Neighbour proposal: step scales with current temp.
-                const stepSize = 0.4 * temp;
-                const u = MathUtils.randomUniform(n);
-                const newX = new Array(n);
-                for (let i = 0; i < n; i++) {
-                    newX[i] = MathUtils.clip(x[i] + ((u[i] - 0.5) * 2) * stepSize, 0, 1);
-                }
-                const newFx = yield newX;
+            while (this.evaluations < chainBudget) {
+                const sStep = iteration + 2.0;
+                const t2 = MathUtils.portableExp((GSA_QV - 1.0) * MathUtils.portableLog(sStep)) - 1.0;
+                const temperature = GSA_T0 * GSA_T1 / t2;
+                iteration += 1;
 
-                // Metropolis criterion. The acceptance draw happens only
-                // when delta >= 0 (short-circuit) — stream position
-                // depends on it.
-                const delta = newFx - fx;
-                if (delta < 0 || MathUtils.randomScalar() < MathUtils.portableExp(-delta / Math.max(temp, 1e-12))) {
-                    x = newX;
-                    fx = newFx;
+                if (temperature < GSA_RESTART_T) {
+                    x = MathUtils.randomUniform(n);
+                    e = yield x;
+                    iteration = 0;
+                    continue;
                 }
 
-                temp *= cooling;
+                const temperatureStep = temperature / iteration;
+                const bestBeforeChain = this.bestValue;
+
+                for (let j = 0; j < 2 * n; j++) {
+                    if (this.evaluations >= chainBudget) break;
+                    const xVisit = this._gsaVisit(x, j, temperature, lo, hi, span);
+                    const eNew = yield xVisit;
+                    if (eNew < e) {
+                        x = xVisit;
+                        e = eNew;
+                    } else {
+                        const r = MathUtils.randomScalar();
+                        const pqvTemp = 1.0 - ((1.0 - GSA_QA) * (eNew - e) / temperatureStep);
+                        let pqv = 0.0;
+                        if (pqvTemp > 0.0) {
+                            pqv = MathUtils.portableExp(
+                                MathUtils.portableLog(pqvTemp) / (1.0 - GSA_QA)
+                            );
+                        }
+                        if (r <= pqv) {
+                            x = xVisit;
+                            e = eNew;
+                        }
+                    }
+                }
+
+                // The local search runs after a chain that improved on the best point: the
+                // "dual" in dual_annealing. Annealing proposes a basin, the local method walks
+                // down it, every chain rather than once at the end.
+                if (this.bestValue < bestBeforeChain && this.evaluations < chainBudget) {
+                    yield* this._lbfgsPolishGen();
+                }
             }
+
+            yield* this._lbfgsPolishGen();
+
+            if (this.evaluations === before) break;
+        }
+    }
+
+    // One draw from the Tsallis visiting distribution (Visita, reference [2] p. 405).
+    _gsaVisit(x, step, temperature, lo, hi, span) {
+        const n = x.length;
+        const factor1 = MathUtils.portableExp(
+            MathUtils.portableLog(temperature) / (GSA_QV - 1.0)
+        );
+        const factor4 = GSA_FACTOR4P * factor1;
+        const sigmax = MathUtils.portableExp(
+            -(GSA_QV - 1.0) * MathUtils.portableLog(GSA_FACTOR6 / factor4) / (3.0 - GSA_QV)
+        );
+
+        const oneVisit = () => {
+            const a = MathUtils.gaussScalar();
+            const b = MathUtils.gaussScalar();
+            const den = MathUtils.portableExp(
+                (GSA_QV - 1.0) * MathUtils.portableLog(Math.abs(b)) / (3.0 - GSA_QV)
+            );
+            return sigmax * a / den;
+        };
+
+        const wrap = (value, i) => {
+            const a = value - lo[i];
+            const b = (a % span[i]) + span[i];
+            let out = (b % span[i]) + lo[i];
+            if (Math.abs(out - lo[i]) < GSA_MIN_VISIT_BOUND) out += GSA_MIN_VISIT_BOUND;
+            return out;
+        };
+
+        if (step < n) {
+            const visits = [];
+            for (let i = 0; i < n; i++) visits.push(oneVisit());
+            const upperSample = MathUtils.randomScalar();
+            const lowerSample = MathUtils.randomScalar();
+            const out = [];
+            for (let i = 0; i < n; i++) {
+                let v = visits[i];
+                if (v > GSA_TAIL_LIMIT) v = GSA_TAIL_LIMIT * upperSample;
+                else if (v < -GSA_TAIL_LIMIT) v = -GSA_TAIL_LIMIT * lowerSample;
+                out.push(wrap(v + x[i], i));
+            }
+            return out;
         }
 
-        // --- Stage 2: L-BFGS polish from best SA point -----------------
-        yield* this._lbfgsPolishGen();
-
-            // Twin of the Python change: re-split whatever the polish did not spend. The reserve
-            // is sized for the worst case, the polish converges in about eighteen evaluations, and
-            // the rest used to be forfeited -- roughly half the budget, at every budget.
-            if (this.evaluations >= this.nTrials || this.evaluations === outerBefore) break;
-            saBudget = this.nTrials - Math.max(20, Math.floor((this.nTrials - this.evaluations) / 2));
-            if (this.evaluations >= saBudget) break;
-        }
+        const out = x.slice();
+        let visit = oneVisit();
+        if (visit > GSA_TAIL_LIMIT) visit = GSA_TAIL_LIMIT * MathUtils.randomScalar();
+        else if (visit < -GSA_TAIL_LIMIT) visit = -GSA_TAIL_LIMIT * MathUtils.randomScalar();
+        const index = step - n;
+        out[index] = wrap(visit + out[index], index);
+        return out;
     }
 }
 
