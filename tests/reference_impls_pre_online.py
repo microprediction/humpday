@@ -2095,6 +2095,17 @@ class FrozenLBFGSB(BaseOptimizer):
         self.best_x = _A.random_uniform(self.n_dim)
         self.best_value = self.evaluate(self.best_x)
         self._lbfgs_polish()
+
+        # Multi-start, mirroring LBFGSB._run: a descent converges and stops, leaving most of
+        # the budget unspent (eleven evaluations of five thousand on the sphere), so keep
+        # descending from fresh points while the budget covers a gradient and a step.
+        while self.evaluations + 2 * self.n_dim + 2 <= self.n_trials:
+            start = _A.random_uniform(self.n_dim)
+            start_value = self.evaluate(start)
+            self._drive_gen(
+                self._lbfgs_polish_gen(start=start, start_value=start_value)
+            )
+
         return self.best_value, self.best_x
 
 
