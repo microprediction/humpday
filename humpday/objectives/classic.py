@@ -11,7 +11,6 @@ import math
 import random as _random
 
 from humpday import _array as _A
-
 from humpday.objectives.deapobjectives import (
     bohachevsky,
     griewank,
