@@ -566,10 +566,15 @@ class BayesianOpt(BaseOptimizer):
             self.X_observed.append(x)
             self.y_observed.append(float(y))
 
-        # Reserve budget for the L-BFGS-B polish stage. Reference:
-        # scikit-optimize's `gp_minimize` finishes with a
-        # `minimize(method='L-BFGS-B')` polish on the best observation;
-        # this is the same pattern.
+        # Reserve budget for a final L-BFGS-B descent on the objective from the best point
+        # found. This is a hybrid design choice, not a port of scikit-optimize, and the comment
+        # here used to say otherwise: it claimed `gp_minimize` finishes by polishing its best
+        # observation the same way. It does not. skopt's L-BFGS-B minimises the *acquisition
+        # function* -- on the surrogate, costing no objective evaluations -- and there is no
+        # stage in it that spends real evaluations refining the incumbent (#408).
+        #
+        # Ours does spend them, and earns them: the GP alone plateaus at its RBF smoothing
+        # floor, around 1e-4, and the descent goes through it to machine precision.
         #
         # The polish takes 2·n_dim evals per gradient + a few per line
         # search; 5-10 L-BFGS iterations on a smooth basin are enough to

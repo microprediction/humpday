@@ -502,60 +502,58 @@ class RandomSearch extends Optimizer {
 
 // Simplified Bayesian Optimization
 class BayesianOpt extends Optimizer {
+    // A Gaussian process, which is what this is supposed to be and was not (#408).
+    //
+    // What stood here took the five nearest observations, predicted with inverse-distance
+    // weights, and called `exp(-2 * nearestDistance)` the uncertainty. That quantity is
+    // largest at the points already sampled, so both it and the "exploration bonus" built
+    // from it rewarded proximity to what was already known. With one observation at
+    // (0.5, 0.5) the acquisition scored the observed point 0.136 and everywhere else 0.033 --
+    // it preferred to resample the point it had. The Python port's GP scores that point
+    // 7.7e-26 and the far corners 0.394.
+    //
+    // This is now the same RBF Gaussian process the Python port conditions: kernel matrix,
+    // Cholesky factorisation, and expected improvement from the posterior mean and standard
+    // deviation. Not bit-exact with Python -- BayesianOpt is not in JS_EXACT -- but the same
+    // algorithm rather than a different one.
+
     constructor(objective, nTrials, nDim) {
         super(objective, nTrials, nDim);
         this.name = 'BayesianOpt';
         this.observations = [];
+        this.lengthScale = 0.2;
+        this.signalVariance = 1.0;
+        this.noiseVariance = 1e-6;
+        this._posteriorStamp = null;
+        this._posterior = null;
     }
 
     optimize() {
-        // Strategic initial sampling with some center-biased points
-        const nInitial = Math.min(10, Math.floor(this.nTrials * 0.2));
+        const nInitial = Math.min(5, Math.max(2, this.nDim));
 
-        // Sample some points near center for sphere-like functions
-        for (let i = 0; i < Math.min(3, nInitial) && this.evaluations < this.nTrials; i++) {
-            const x = Array(this.nDim).fill(0).map(() => 0.5 + (Math.random() - 0.5) * 0.3);
-            const y = this.evaluate(x);
-            this.observations.push({ x: [...x], y });
+        // Uniform over the cube. The initial design used to put its first three draws in
+        // `0.5 + (random - 0.5) * 0.3`, a box around the centre -- which is the defect #387
+        // found in the benchmark objectives, here in an optimizer: a start that encodes where
+        // the answer tends to be.
+        for (let i = 0; i < nInitial && this.evaluations < this.nTrials; i++) {
+            const x = MathUtils.randomUniform(this.nDim);
+            this.observations.push({ x: [...x], y: this.evaluate(x) });
         }
 
-        // Fill remaining initial samples with random points
-        for (let i = this.observations.length; i < nInitial && this.evaluations < this.nTrials; i++) {
-            const x = Array(this.nDim).fill(0).map(() => Math.random());
-            const y = this.evaluate(x);
-            this.observations.push({ x: [...x], y });
-        }
-
-        // Reserve budget for the L-BFGS-B polish stage. Reference:
-        // scikit-optimize's `gp_minimize` finishes with a
-        // `minimize(method='L-BFGS-B')` polish on the best observation.
-        // The polish takes 2·nDim evals per gradient + a few per line
-        // search; reserving 20·nDim evals (≈ 10 polish iterations)
-        // closes the residual ~5 orders of magnitude on smooth
-        // problems by escaping the GP's RBF smoothing floor.
+        // Reserve budget for a final L-BFGS-B descent on the objective from the best point
+        // found. This is a hybrid design choice, not a port of scikit-optimize: the comment
+        // here used to claim `gp_minimize` finishes by polishing its best observation, and it
+        // does not -- its L-BFGS-B minimises the acquisition function, on the surrogate, for
+        // free. Ours spends real evaluations, and is worth them because it escapes the RBF
+        // smoothing floor the GP alone plateaus at (#408).
         const polishReserve = Math.min(20 * this.nDim, Math.floor(this.nTrials / 2));
         const loopBudget = Math.max(this.evaluations, this.nTrials - polishReserve);
 
-        // Bayesian optimization loop with intensification
         while (this.evaluations < loopBudget) {
             const nextX = this.acquireNext();
-            const y = this.evaluate(nextX);
-            this.observations.push({ x: [...nextX], y });
-
-            // Intensify search around best point if very good solution found
-            if (y < 1e-4 && this.evaluations < loopBudget - 5) {
-                for (let i = 0; i < Math.min(3, loopBudget - this.evaluations); i++) {
-                    const localX = nextX.map(xi => {
-                        const noise = (Math.random() - 0.5) * 0.02;
-                        return MathUtils.clip(xi + noise, 0, 1);
-                    });
-                    const localY = this.evaluate(localX);
-                    this.observations.push({ x: [...localX], y: localY });
-                }
-            }
+            this.observations.push({ x: [...nextX], y: this.evaluate(nextX) });
         }
 
-        // Polish: L-BFGS-B from the GP-EI best. Mirrors the Python port.
         this._lbfgsPolish();
 
         return {
@@ -567,97 +565,186 @@ class BayesianOpt extends Optimizer {
         };
     }
 
-    acquireNext() {
-        let bestAcq = -Infinity;
-        let nextX = Array(this.nDim).fill(0).map(() => Math.random());
+    // ---- the Gaussian process ----
 
-        // Sample candidate points
-        for (let j = 0; j < 100; j++) {
-            const candidate = Array(this.nDim).fill(0).map(() => Math.random());
-            const acq = this.acquisitionFunction(candidate);
+    _kernel(a, b) {
+        let sq = 0.0;
+        for (let i = 0; i < a.length; i++) {
+            const d = a[i] - b[i];
+            sq += d * d;
+        }
+        return this.signalVariance * Math.exp(-0.5 * sq / (this.lengthScale * this.lengthScale));
+    }
 
-            if (acq > bestAcq) {
-                bestAcq = acq;
-                nextX = candidate;
+    // The kernel solve is cubic in the observation count and happens once per iteration, so
+    // an uncapped set makes a run quartic in the budget (#330). Keep the best half and the
+    // newest half: where the optimum is, and what the acquisition was last told.
+    _conditioningSet() {
+        const n = this.observations.length;
+        if (n <= 128) return this.observations;
+        const half = 64;
+        const byValue = this.observations
+            .map((o, i) => i)
+            .sort((i, j) => this.observations[i].y - this.observations[j].y)
+            .slice(0, half);
+        const keep = new Set(byValue);
+        for (let i = n - half; i < n; i++) keep.add(i);
+        return [...keep].sort((a, b) => a - b).map(i => this.observations[i]);
+    }
+
+    // Cholesky of a symmetric positive-definite matrix, or null if it is not one.
+    _cholesky(A) {
+        const n = A.length;
+        const L = Array.from({ length: n }, () => new Array(n).fill(0));
+        for (let i = 0; i < n; i++) {
+            for (let j = 0; j <= i; j++) {
+                let s = A[i][j];
+                for (let k = 0; k < j; k++) s -= L[i][k] * L[j][k];
+                if (i === j) {
+                    if (!(s > 0) || !isFinite(s)) return null;
+                    L[i][j] = Math.sqrt(s);
+                } else {
+                    L[i][j] = s / L[j][j];
+                }
             }
         }
-
-        return nextX;
+        return L;
     }
 
+    _forwardSolve(L, b) {
+        const n = L.length;
+        const y = new Array(n);
+        for (let i = 0; i < n; i++) {
+            let s = b[i];
+            for (let k = 0; k < i; k++) s -= L[i][k] * y[k];
+            y[i] = s / L[i][i];
+        }
+        return y;
+    }
+
+    _backSolve(L, y) {
+        const n = L.length;
+        const x = new Array(n);
+        for (let i = n - 1; i >= 0; i--) {
+            let s = y[i];
+            for (let k = i + 1; k < n; k++) s -= L[k][i] * x[k];
+            x[i] = s / L[i][i];
+        }
+        return x;
+    }
+
+    // Factorise once per observation set, not once per query: the factor depends only on the
+    // observations, and rebuilding it per candidate is an O(n^3) solve answering an O(n^2)
+    // question. Twin of BayesianOpt._gp_posterior in evolutionary_algorithms.py.
+    _gpPosterior() {
+        const obs = this._conditioningSet();
+        const stamp = `${obs.length}:${this.observations.length}`;
+        if (this._posteriorStamp === stamp) return this._posterior;
+
+        const n = obs.length;
+        const K = Array.from({ length: n }, (_, i) =>
+            Array.from({ length: n }, (_, j) => this._kernel(obs[i].x, obs[j].x)));
+        for (let i = 0; i < n; i++) K[i][i] += this.noiseVariance;
+
+        let L = this._cholesky(K);
+        let jitter = 1e-8;
+        for (let attempt = 0; attempt < 3 && L === null; attempt++) {
+            for (let i = 0; i < n; i++) K[i][i] += jitter;
+            jitter *= 10;
+            L = this._cholesky(K);
+        }
+
+        let posterior = null;
+        if (L !== null) {
+            const y = obs.map(o => o.y);
+            posterior = { obs, L, alpha: this._backSolve(L, this._forwardSolve(L, y)) };
+        }
+        this._posteriorStamp = stamp;
+        this._posterior = posterior;
+        return posterior;
+    }
+
+    _gpPredict(x) {
+        const posterior = this._gpPosterior();
+        if (posterior === null) {
+            const ys = this.observations.map(o => o.y);
+            const mu = ys.reduce((a, b) => a + b, 0) / Math.max(1, ys.length);
+            const varr = ys.reduce((a, b) => a + (b - mu) * (b - mu), 0) / Math.max(1, ys.length);
+            return [mu, Math.sqrt(Math.max(varr, 1e-8))];
+        }
+        const { obs, L, alpha } = posterior;
+        const ks = obs.map(o => this._kernel(o.x, x));
+        let mu = 0.0;
+        for (let i = 0; i < ks.length; i++) mu += ks[i] * alpha[i];
+        const v = this._forwardSolve(L, ks);
+        let vv = 0.0;
+        for (let i = 0; i < v.length; i++) vv += v[i] * v[i];
+        return [mu, Math.sqrt(Math.max(this.signalVariance - vv, 1e-8))];
+    }
+
+    // ---- acquisition ----
+
+    expectedImprovement(x) {
+        const [mu, sigma] = this._gpPredict(x);
+        if (sigma <= 0) return 0.0;
+        let bestY = Infinity;
+        for (const o of this.observations) if (o.y < bestY) bestY = o.y;
+        const improvement = bestY - mu - 0.01;   // xi = 0.01, scikit-optimize's default
+        const z = improvement / sigma;
+        const cdf = 0.5 * (1 + this.erf(z / Math.SQRT2));
+        const pdf = Math.exp(-0.5 * z * z) / Math.sqrt(2 * Math.PI);
+        return improvement * cdf + sigma * pdf;
+    }
+
+    // Kept under the old name so callers and tests that reach for it still work; it now
+    // returns expected improvement from the posterior rather than a distance heuristic.
     acquisitionFunction(x) {
-        if (this.observations.length === 0) return Math.random();
-
-        // Distance-weighted Expected Improvement approximation
-        const distances = this.observations.map(obs => ({
-            dist: MathUtils.norm(MathUtils.subtract(x, obs.x)),
-            y: obs.y
-        }));
-
-        distances.sort((a, b) => a.dist - b.dist);
-        const kNearest = distances.slice(0, Math.min(5, distances.length));
-
-        if (kNearest.length === 0) return Math.random();
-
-        // Distance-weighted prediction
-        const epsilon = 1e-8; // Avoid division by zero
-        let weightSum = 0;
-        let weightedMean = 0;
-
-        for (const item of kNearest) {
-            const weight = 1.0 / (item.dist + epsilon);
-            weightSum += weight;
-            weightedMean += weight * item.y;
-        }
-
-        const predictedMean = weightedMean / weightSum;
-
-        // Estimate uncertainty based on distance to nearest point and local variance
-        const uncertainty = Math.exp(-2.0 * kNearest[0].dist);
-        const localVariance = kNearest.length > 1 ?
-            kNearest.reduce((sum, item) => sum + Math.pow(item.y - predictedMean, 2), 0) / kNearest.length :
-            0.1;
-        const predictedStd = Math.max(Math.sqrt(localVariance), 0.01) * uncertainty;
-
-        // Expected Improvement: EI = (f_min - mu) * Φ(Z) + σ * φ(Z)
-        const bestY = Math.min(...this.observations.map(obs => obs.y));
-        const improvement = bestY - predictedMean;
-
-        if (predictedStd <= epsilon) {
-            return improvement > 0 ? improvement : 0;
-        }
-
-        const z = improvement / predictedStd;
-
-        // Approximate normal CDF and PDF
-        const phi = 0.5 * (1 + this.erf(z / Math.sqrt(2))); // CDF
-        const pdf = Math.exp(-0.5 * z * z) / Math.sqrt(2 * Math.PI); // PDF
-
-        const expectedImprovement = improvement * phi + predictedStd * pdf;
-
-        // Add small exploration bonus
-        return Math.max(0, expectedImprovement) + 0.01 * uncertainty;
+        return this.expectedImprovement(x);
     }
 
-    // Error function approximation for normal CDF
-    erf(x) {
-        // Abramowitz and Stegun approximation
-        const a1 =  0.254829592;
-        const a2 = -0.284496736;
-        const a3 =  1.421413741;
-        const a4 = -1.453152027;
-        const a5 =  1.061405429;
-        const p  =  0.3275911;
+    // A broad sample then a local search of it, the shape scikit-optimize uses (10,000
+    // candidates, then L-BFGS-B from the best five). 64 and 6 are the knee measured for the
+    // Python port; every evaluation here is of the surrogate, so none is charged to the budget.
+    acquireNext() {
+        let bestX = null;
+        let bestAcq = -Infinity;
+        for (let j = 0; j < 64; j++) {
+            const candidate = MathUtils.randomUniform(this.nDim);
+            const acq = this.expectedImprovement(candidate);
+            if (acq > bestAcq) { bestAcq = acq; bestX = candidate; }
+        }
+        if (bestX === null) return MathUtils.randomUniform(this.nDim);
 
+        let step = 0.25;
+        for (let r = 0; r < 6; r++) {
+            let improved = false;
+            for (let i = 0; i < this.nDim; i++) {
+                for (const sign of [1.0, -1.0]) {
+                    const trial = [...bestX];
+                    trial[i] = MathUtils.clip(trial[i] + sign * step, 0, 1);
+                    const acq = this.expectedImprovement(trial);
+                    if (acq > bestAcq) { bestAcq = acq; bestX = trial; improved = true; }
+                }
+            }
+            if (!improved) step *= 0.5;
+        }
+        return MathUtils.clipArray(bestX, 0, 1);
+    }
+
+    // Abramowitz and Stegun 7.1.26, worst error 1.5e-7. JavaScript has no Math.erf; Python's
+    // side calls math.erf, which is exact, so the two posteriors differ in the seventh digit
+    // of the CDF. That is well inside what separates two runs of a stochastic optimizer.
+    erf(x) {
+        const a1 = 0.254829592, a2 = -0.284496736, a3 = 1.421413741;
+        const a4 = -1.453152027, a5 = 1.061405429, p = 0.3275911;
         const sign = x >= 0 ? 1 : -1;
         x = Math.abs(x);
-
         const t = 1.0 / (1.0 + p * x);
         const y = 1.0 - (((((a5 * t + a4) * t) + a3) * t + a2) * t + a1) * t * Math.exp(-x * x);
-
         return sign * y;
     }
 }
+
 
 class CMAEvolutionStrategy extends Optimizer {
     constructor(objective, nTrials, nDim) {
