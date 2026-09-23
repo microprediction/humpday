@@ -115,9 +115,40 @@ class CoordinateDescent(BaseOptimizer):
     # Shrink per failed sweep. Halving from 0.1 down to 1e-12 is thirty-seven failed sweeps at
     # 2n evaluations each, which on a budget of 200 is the entire budget spent shrinking: the
     # reason the threshold had been raised to 1e-6 was to avoid paying it. A quarter gets there
-    # in nineteen sweeps, which leaves room to reach the floor and still restart. A tenth is
-    # faster again and measures the same on the sphere and Ackley, but steps past the scale
-    # Rosenbrock's valley wants and loses 0.68 of pairings there against 0.63.
+    # in nineteen sweeps, which is what makes the deep floor reachable at all at that budget.
+    #
+    # Quartering skips scales, and that is not free. Halving from 0.1 probes 0.05 and 0.025;
+    # quartering jumps straight to 0.025, so a problem whose productive step sits near 0.04
+    # never gets probed there. `groundwater_remediation` in example_applications is such a
+    # problem and it is the one real casualty of this change: at a budget of 1000 it loses 0.98
+    # of its head-to-head pairings against the old setting. That is the shrink rate alone, not
+    # the threshold -- it measures 0.99 at a threshold of 1e-6 too, and 0.50 under halving at
+    # either threshold.
+    #
+    # Kept anyway, because the unbiased measurement says so. Over all 70 objectives in
+    # example_applications at 20 seeds, against the old 1e-6 / halving (mean fraction of
+    # head-to-head pairings lost, so below 0.5 is better; "better"/"worse" count problems
+    # past 0.35 and 0.65):
+    #
+    #     budget  optimizer           setting        better  worse   mean lost
+    #        200  CoordinateDescent   1e-12, halve     4/70      1       0.489
+    #        200  CoordinateDescent   1e-12, quarter  21/70      1       0.392
+    #        200  PatternSearch       1e-12, halve     2/70      2       0.500
+    #        200  PatternSearch       1e-12, quarter  20/70      0       0.376
+    #       1000  CoordinateDescent   1e-12, halve    22/70      6       0.401
+    #       1000  CoordinateDescent   1e-12, quarter  25/70      6       0.385
+    #       1000  PatternSearch       1e-12, halve    17/70      7       0.430
+    #       1000  PatternSearch       1e-12, quarter  22/70      7       0.392
+    #
+    # Halving is not the safe option it looks like from `groundwater_remediation` alone; it has
+    # its own casualties (`gear_ratios` 0.71, `bowling` 0.70, `ebola_response` 0.71,
+    # `algo_trading` 0.73) and is worse on average at every budget. A tenth is faster again and
+    # measures the same on the sphere and Ackley, but steps past the scale Rosenbrock's valley
+    # wants and loses 0.68 of pairings there against 0.63.
+    #
+    # What would remove the tradeoff rather than settle it is a schedule that visits every
+    # octave and accelerates only after several sweeps in a row have failed. Not added on
+    # speculation.
     _shrink = 0.25
 
     def _run(self):
