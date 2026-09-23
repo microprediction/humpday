@@ -253,104 +253,169 @@ class ParticleSwarm(BaseOptimizer):
         yield from self._lbfgs_polish_gen()
 
 
+# Generalized Simulated Annealing constants (Tsallis & Stariolo 1996; Xiang, Sun, Fan & Gong
+# 1997), matching scipy.optimize.dual_annealing's defaults.
+#
+# The two factors below depend only on the visiting parameter, and one of them needs a log-gamma
+# and a sine. Both are computed once here as literals rather than at run time, so the JavaScript
+# twin can hold the same numbers without needing lgamma -- SimulatedAnnealing is in JS_EXACT and
+# has to agree bit for bit.
+_GSA_QV = 2.62  # visiting parameter; heavier tail as it rises, range (1, 3]
+_GSA_QA = -5.0  # acceptance parameter
+_GSA_T0 = 5230.0  # initial temperature
+_GSA_RESTART_T = 0.1  # re-anneal below this
+_GSA_TAIL_LIMIT = 1.0e8
+_GSA_MIN_VISIT_BOUND = 1.0e-10
+_GSA_FACTOR4P = 11.833986526687411  # sqrt(pi) * f2 / (f3 * (3 - qv))
+_GSA_FACTOR6 = 8.054035404548971  # pi (1-f5) / sin(pi (1-f5)) / exp(lgamma(2-f5))
+_GSA_T1 = 2.0737503625760247  # exp((qv-1) log 2) - 1
+
+
 class SimulatedAnnealing(BaseOptimizer):
-    """Simulated Annealing with multi-restart + coordinate-descent polish.
+    """Generalized Simulated Annealing with an L-BFGS-B local search.
 
-    Two-stage algorithm matching the spirit of scipy.optimize.dual_annealing:
+    The algorithm scipy.optimize.dual_annealing runs, not the spirit of it: a heavy-tailed
+    Tsallis visiting distribution whose scale follows the temperature, generalised Metropolis
+    acceptance, the T(i) = T0 (2^(qv-1) - 1) / ((i+2)^(qv-1) - 1) schedule, re-annealing when the
+    temperature falls below the restart threshold, and a local search from the chain's best point.
 
-      1. Multi-restart Metropolis SA explores the parameter space
-         globally with a geometric cooling schedule.
-      2. A coordinate-descent polish from the best SA point refines
-         to high precision.
+    What was here before was classic Metropolis with uniform proposals and geometric cooling,
+    which is a different algorithm: its proposals cannot make the long jumps a heavy tail gives,
+    so it explores a neighbourhood rather than a space. Measured against scipy's dual_annealing
+    on Rosenbrock it was 3,195,457 times behind (#407's reference gate).
 
-    scipy's dual_annealing uses L-BFGS-B for stage 2; the closest
-    derivative-free equivalent is a coordinate descent with shrinking
-    step. Without the polish stage HumpDay's SA was 1e9-1e11× off scipy
-    on sphere and Rosenbrock; the global SA can't reach machine
-    precision because its proposals are noisy.
+    The local search is the real L-BFGS-B, which is what scipy uses for the same purpose.
     """
 
     def _run(self):
-        # Reserve ~30% of the budget for the polish phase.
-        # Allocate half the budget to the L-BFGS-B polish, matching the
-        # DE rationale (#197 + this PR). 50% sweet spot: SA rosenbrock
-        # 2.8e-5 → 2.8e-8 (1000× better), sphere stays at machine prec.
-        polish_budget = max(20, self.n_trials // 2)
-        sa_budget = self.n_trials - polish_budget
+        n = self.n_dim
+        lo = [0.0] * n
+        hi = [1.0] * n
+        span = [hi[i] - lo[i] for i in range(n)]
 
-        # Same forfeit DifferentialEvolution had: the reserve is sized for the worst case, the
-        # L-BFGS polish converges in about eighteen evaluations, and the rest used to be thrown
-        # away -- measured, SA spent 2,518 of a 5,000 budget and returned. The stages alternate
-        # now, re-splitting what remains each round. The first round is unchanged, and
-        # BaseOptimizer keeps the best point seen, so a later round cannot worsen the answer.
-        while True:
-            outer_before = self.evaluations
+        # The stages alternate, re-splitting what is left each round (#338): a local search that
+        # converges early must not forfeit the remainder.
+        while self.evaluations < self.n_trials:
+            before = self.evaluations
+            chain_budget = self.n_trials - max(
+                20, (self.n_trials - self.evaluations) // 2
+            )
 
-            # --- Stage 1: multi-restart SA ---------------------------------
-            num_restarts = max(3, sa_budget // 30)
-            trials_per_restart = max(1, sa_budget // num_restarts)
+            x = _A.random_uniform(n)
+            e = yield x
+            iteration = 0
 
-            for restart in range(num_restarts):
-                if self.evaluations >= sa_budget:
-                    break
+            while self.evaluations < chain_budget:
+                s_step = float(iteration) + 2.0
+                t2 = portable_exp((_GSA_QV - 1.0) * portable_log(s_step)) - 1.0
+                temperature = _GSA_T0 * _GSA_T1 / t2
+                iteration += 1
 
-                if restart == 0:
-                    x = 0.5 + (_A.random_uniform(self.n_dim) - 0.5) * 0.4
-                else:
-                    x = _A.random_uniform(self.n_dim)
+                if temperature < _GSA_RESTART_T:
+                    # Re-anneal: the schedule has run its course, so start again rather than
+                    # keep proposing steps the acceptance rule will almost always refuse.
+                    x = _A.random_uniform(n)
+                    e = yield x
+                    iteration = 0
+                    continue
 
-                fx = yield x
+                temperature_step = temperature / float(iteration)
+                best_before_chain = self.best_value
 
-                # Fixed initial temperature, geometric cooling. Reaches
-                # final_temp by the end of the restart's iteration count.
-                initial_temp = 1.0
-                final_temp = 1e-6
-                # portable_exp/log, not ** : libm pow differs across platforms
-                # in the last ulp (same fix as HillClimbing's decay constant).
-                cooling = portable_exp(
-                    (1.0 / max(1, trials_per_restart))
-                    * portable_log(final_temp / initial_temp)
-                )
-                temp = initial_temp
-
-                for _iteration in range(trials_per_restart):
-                    if self.evaluations >= sa_budget:
+                # The strategy chain: 2n steps, the first n moving every coordinate and the rest
+                # one coordinate each, as in scipy.
+                for j in range(2 * n):
+                    if self.evaluations >= chain_budget:
                         break
-
-                    # Neighbour proposal: step scales with current temp.
-                    step_size = 0.4 * temp
-                    new_x = _A.clip(
-                        x + (_A.random_uniform(self.n_dim) - 0.5) * 2 * step_size,
-                        0,
-                        1,
+                    x_visit = yield from self._gsa_visit(
+                        x, j, temperature, lo, hi, span
                     )
-                    new_fx = yield new_x
+                    e_new = yield x_visit
+                    if e_new < e:
+                        x, e = x_visit, e_new
+                    else:
+                        r = _A.rng_random()
+                        pqv_temp = 1.0 - (
+                            (1.0 - _GSA_QA) * (e_new - e) / temperature_step
+                        )
+                        if pqv_temp <= 0.0:
+                            pqv = 0.0
+                        else:
+                            pqv = portable_exp(portable_log(pqv_temp) / (1.0 - _GSA_QA))
+                        if r <= pqv:
+                            x, e = x_visit, e_new
 
-                    # Metropolis criterion.
-                    delta = new_fx - fx
-                    if delta < 0 or _A.random_scalar() < portable_exp(
-                        -delta / max(temp, 1e-12)
-                    ):
-                        x, fx = new_x, new_fx
+                # The local search runs after a chain that improved on the best point, which is
+                # the "dual" in dual_annealing: the annealing proposes a basin and the local
+                # method descends it, every chain rather than once at the end. Running it only
+                # once per block is what left this six orders behind scipy on Rosenbrock even
+                # with the right visiting distribution -- the annealing was finding the valley
+                # and nothing was walking down it.
+                if (
+                    self.best_value < best_before_chain
+                    and self.evaluations < chain_budget
+                ):
+                    yield from self._lbfgs_polish_gen()
 
-                    temp *= cooling
-
-            # --- Stage 2: L-BFGS polish from best SA point -----------------
-            # Matches scipy.dual_annealing exactly — scipy uses L-BFGS-B for
-            # its local-search refinement. Two-loop recursion with FD
-            # gradient (2·n_dim evals per iter) and Armijo line search; same
-            # algorithm the `LBFGSB` optimizer uses. Replaces the previous
-            # coordinate-descent polish, which couldn't handle curved
-            # valleys like Rosenbrock and stalled around 1e-9 on the sphere
-            # at small budgets. With LBFGS the polish reaches machine
-            # precision on smooth basins in ~10 iterations.
+            # And once more from the best point seen, with whatever is left.
             yield from self._lbfgs_polish_gen()
 
-            if self.evaluations >= self.n_trials or self.evaluations == outer_before:
+            if self.evaluations == before:
                 break
-            sa_budget = self.n_trials - max(20, (self.n_trials - self.evaluations) // 2)
-            if self.evaluations >= sa_budget:
-                break
+
+    def _gsa_visit(self, x, step, temperature, lo, hi, span):
+        """One draw from the Tsallis visiting distribution (Visita, reference [2] p. 405).
+
+        A generator because it consumes no objective evaluations but has to sit inside one:
+        `yield from` keeps the RNG draws in the same order as the JavaScript twin.
+        """
+        n = len(x)
+        if False:  # pragma: no cover - makes this a generator without yielding a point
+            yield None
+
+        factor1 = portable_exp(portable_log(temperature) / (_GSA_QV - 1.0))
+        factor4 = _GSA_FACTOR4P * factor1
+        sigmax = portable_exp(
+            -(_GSA_QV - 1.0) * portable_log(_GSA_FACTOR6 / factor4) / (3.0 - _GSA_QV)
+        )
+
+        def one_visit():
+            a = _A.rng_gauss()
+            b = _A.rng_gauss()
+            den = portable_exp((_GSA_QV - 1.0) * portable_log(abs(b)) / (3.0 - _GSA_QV))
+            return sigmax * a / den
+
+        def wrap(value, i):
+            a = value - lo[i]
+            b = math.fmod(a, span[i]) + span[i]
+            out = math.fmod(b, span[i]) + lo[i]
+            if abs(out - lo[i]) < _GSA_MIN_VISIT_BOUND:
+                out += _GSA_MIN_VISIT_BOUND
+            return out
+
+        if step < n:
+            visits = [one_visit() for _ in range(n)]
+            upper_sample = _A.rng_random()
+            lower_sample = _A.rng_random()
+            capped = []
+            for v in visits:
+                if v > _GSA_TAIL_LIMIT:
+                    capped.append(_GSA_TAIL_LIMIT * upper_sample)
+                elif v < -_GSA_TAIL_LIMIT:
+                    capped.append(-_GSA_TAIL_LIMIT * lower_sample)
+                else:
+                    capped.append(v)
+            return _A.asarray([wrap(capped[i] + float(x[i]), i) for i in range(n)])
+
+        out = [float(v) for v in x]
+        visit = one_visit()
+        if visit > _GSA_TAIL_LIMIT:
+            visit = _GSA_TAIL_LIMIT * _A.rng_random()
+        elif visit < -_GSA_TAIL_LIMIT:
+            visit = -_GSA_TAIL_LIMIT * _A.rng_random()
+        index = step - n
+        out[index] = wrap(visit + out[index], index)
+        return _A.asarray(out)
 
 
 class GeneticAlgorithm(BaseOptimizer):
@@ -458,6 +523,8 @@ class BayesianOpt(BaseOptimizer):
         self.length_scale = 0.2
         self.signal_variance = 1.0
         self.noise_variance = 1e-6
+        self._posterior_stamp = None
+        self._posterior = None
 
     # How many observations the Gaussian process is allowed to condition on.
     #
@@ -499,10 +566,15 @@ class BayesianOpt(BaseOptimizer):
             self.X_observed.append(x)
             self.y_observed.append(float(y))
 
-        # Reserve budget for the L-BFGS-B polish stage. Reference:
-        # scikit-optimize's `gp_minimize` finishes with a
-        # `minimize(method='L-BFGS-B')` polish on the best observation;
-        # this is the same pattern.
+        # Reserve budget for a final L-BFGS-B descent on the objective from the best point
+        # found. This is a hybrid design choice, not a port of scikit-optimize, and the comment
+        # here used to say otherwise: it claimed `gp_minimize` finishes by polishing its best
+        # observation the same way. It does not. skopt's L-BFGS-B minimises the *acquisition
+        # function* -- on the surrogate, costing no objective evaluations -- and there is no
+        # stage in it that spends real evaluations refining the incumbent (#408).
+        #
+        # Ours does spend them, and earns them: the GP alone plateaus at its RBF smoothing
+        # floor, around 1e-4, and the descent goes through it to machine precision.
         #
         # The polish takes 2·n_dim evals per gradient + a few per line
         # search; 5-10 L-BFGS iterations on a smooth basin are enough to
@@ -585,26 +657,34 @@ class BayesianOpt(BaseOptimizer):
             out.append(row)
         return out
 
-    def _gp_predict(self, x_query):
-        """Posterior mean and std for a single query point `x_query`."""
+    def _gp_posterior(self):
+        """Factorise the kernel once for the current observation set, and cache it.
+
+        The Cholesky factor of `k(X, X) + noise I` depends on the observations and nothing
+        else, so it is the same for every point the acquisition asks about. It used to be
+        rebuilt and refactorised inside `_gp_predict`, once per query -- an O(n^3) solve to
+        answer an O(n^2) question, repeated for every candidate.
+
+        That is why `_optimize_acquisition` could only afford ten candidates, and ten uniform
+        samples do not find the narrow ridges of an expected-improvement surface. The cost of
+        the cap was the algorithm: BayesianOpt sat at 2.58 on Ackley, which is where a run
+        trapped on the ring sits, against gp_minimize's 0.032 (#81).
+
+        Returns `(X_obs, L, alpha)`, or None when the kernel will not factorise.
+        """
         X_obs, y_obs = self._conditioning_set()
         n_obs = len(X_obs)
+        stamp = (n_obs, len(self.X_observed), self.length_scale)
+        if self._posterior_stamp == stamp:
+            return self._posterior
 
-        # K = k(X, X) + noise * I
         K = self._kernel_matrix(X_obs, X_obs)
         for i in range(n_obs):
             K[i][i] += self.noise_variance
 
-        # K_s = k(X, x_query) as a column vector of length n_obs.
-        K_s_col = [self._kernel_matrix([x_obs], [x_query])[0][0] for x_obs in X_obs]
-
-        # K_ss = k(x_query, x_query) — a single scalar.
-        K_ss = self._kernel_matrix([x_query], [x_query])[0][0]
-
-        # Solve K alpha = y via cholesky, with a jitter retry if SPD fails.
         jitter = 0.0
         L = None
-        for attempt in range(4):
+        for _ in range(4):
             try:
                 L = _A.linalg.cholesky(K)
                 break
@@ -612,30 +692,44 @@ class BayesianOpt(BaseOptimizer):
                 jitter = max(1e-8, jitter * 10) if jitter > 0 else 1e-8
                 for i in range(n_obs):
                     K[i][i] += jitter
+
         if L is None:
-            # Pathological kernel — fall back to a flat prior.
-            mu = _A.fold_sum(y_obs) / max(1, n_obs)
-            var = 0.0
-            for y in y_obs:
-                var += (y - mu) ** 2
-            var /= max(1, n_obs)
+            posterior = None
+        else:
+            # alpha = K^-1 y as L^-T (L^-1 y). The shim exposes only a general `solve`;
+            # still correct, just not as fast as a triangular one.
+            alpha = _A.linalg.solve(L, y_obs)
+            alpha = _A.linalg.solve(_A.linalg.transpose(L), alpha)
+            posterior = (X_obs, L, alpha)
+
+        self._posterior_stamp = stamp
+        self._posterior = posterior
+        return posterior
+
+    def _gp_predict(self, x_query):
+        """Posterior mean and std for one query point, against the cached factor."""
+        posterior = self._gp_posterior()
+        if posterior is None:
+            # Pathological kernel -- fall back to a flat prior over what has been seen.
+            _, y_obs = self._conditioning_set()
+            n_obs = max(1, len(y_obs))
+            mu = _A.fold_sum(y_obs) / n_obs
+            var = _A.fold_sum((y - mu) ** 2 for y in y_obs) / n_obs
             return mu, math.sqrt(max(var, 1e-8))
 
-        # alpha = K^-1 y, computed as L^-T (L^-1 y) via two triangular solves.
-        # Our shim only exposes a general `solve`; that's still correct, just
-        # not as fast.
-        alpha = _A.linalg.solve(L, y_obs)
-        Lt = _A.linalg.transpose(L)
-        alpha = _A.linalg.solve(Lt, alpha)
+        X_obs, L, alpha = posterior
+        n_obs = len(X_obs)
 
-        # Mean: mu = K_s . alpha.
+        # k(X, x_query) as a column of length n_obs; k(x_query, x_query) is the signal
+        # variance, since the RBF kernel of a point with itself is exp(0).
+        K_s_col = [row[0] for row in self._kernel_matrix(X_obs, [x_query])]
+        K_ss = self.signal_variance
+
         mu = _A.fold_sum(float(K_s_col[i]) * float(alpha[i]) for i in range(n_obs))
 
-        # Variance: var = K_ss - K_s^T K^-1 K_s.
-        # With L L^T = K, K^-1 K_s = L^-T (L^-1 K_s).
+        # var = K_ss - K_s^T K^-1 K_s, and with L L^T = K that is K_ss - |L^-1 K_s|^2.
         v = _A.linalg.solve(L, K_s_col)
-        v_dot_v = _A.fold_sum(float(vi) * float(vi) for vi in v)
-        var = max(K_ss - v_dot_v, 1e-8)
+        var = max(K_ss - _A.fold_sum(float(vi) * float(vi) for vi in v), 1e-8)
 
         return mu, math.sqrt(var)
 
@@ -650,19 +744,70 @@ class BayesianOpt(BaseOptimizer):
         Z = improvement / sigma
         return improvement * _normal_cdf(Z) + sigma * _normal_pdf(Z)
 
+    # How hard the acquisition function is searched before a point is proposed.
+    #
+    # This was ten uniform samples, which is a random search of the acquisition surface rather
+    # than an optimisation of it. Expected improvement concentrates on narrow ridges between
+    # the observations, and ten draws in the cube miss them; on Ackley that left the port at
+    # 2.58 against gp_minimize's 0.032, losing 0.90 of head-to-head pairings.
+    #
+    # scikit-optimize samples 10,000 candidates and then runs L-BFGS-B from the best five: a
+    # broad look followed by a local one. The same shape is affordable here now that the kernel
+    # is factorised once per iteration rather than once per candidate, and these two numbers are
+    # the knee of it, measured over 41 seeds on Rosenbrock and Ackley as the summed fraction of
+    # head-to-head pairings lost to gp_minimize (lower is better):
+    #
+    #     candidates  refinements   rosenbrock  ackley   sum   secs
+    #             10            0         0.76    0.78  1.54    0.6   <- what this used to be
+    #             16            3         0.64    0.53  1.16    1.5
+    #             64            3         0.58    0.62  1.20    3.9
+    #            128            3         0.57    0.49  1.06    7.0
+    #            256            3         0.52    0.63  1.15   13.5
+    #            256            6         0.56    0.46  1.02   14.2
+    #             64            6         0.52    0.47  0.98    4.4
+    #
+    # Everything from 64 upward is the same within the noise of a rate on 41 samples; what the
+    # table really shows is that escaping ten mattered and that refining is worth more than
+    # sampling wider, which is the same lesson as scikit-optimize's L-BFGS-B step. So take the
+    # cheapest of the indistinguishable ones rather than the widest: 64 candidates costs a
+    # third of 256 and measures no worse.
+    _ACQ_CANDIDATES = 64
+    _ACQ_REFINEMENTS = 6
+
     def _optimize_acquisition(self):
-        """Optimize the acquisition function with random starts."""
-        best_x = None
-        best_ei = -float("inf")
-        for _ in range(min(10, max(5, 2 * self.n_dim))):
+        """Maximise expected improvement: a broad sample, then refine the best of it.
+
+        Every evaluation here is of the surrogate, not the objective, so none of it is charged
+        to the budget. The only cost is time, and the factorisation cache is what makes it
+        cheap: a candidate is now O(n_obs^2) against the O(n_obs^3) it used to be.
+        """
+        best_x, best_ei = None, -float("inf")
+        for _ in range(self._ACQ_CANDIDATES):
             x = _A.random_uniform(self.n_dim)
             ei = self._expected_improvement(x)
             if ei > best_ei:
-                best_ei = ei
-                best_x = x
+                best_ei, best_x = ei, x
+
         if best_x is None:
             return _A.random_uniform(self.n_dim)
-        return _A.clip(best_x, 0, 1)
+
+        # Local refinement: a coordinate pattern search on the surrogate, halving the step.
+        # L-BFGS-B on the acquisition would need its gradient, and the acquisition's gradient
+        # through a Cholesky solve is not something the array shim exposes.
+        step = 0.25
+        for _ in range(self._ACQ_REFINEMENTS):
+            improved = False
+            for i in range(self.n_dim):
+                for sign in (1.0, -1.0):
+                    trial = [float(v) for v in best_x]
+                    trial[i] = min(1.0, max(0.0, trial[i] + sign * step))
+                    ei = self._expected_improvement(trial)
+                    if ei > best_ei:
+                        best_ei, best_x, improved = ei, trial, True
+            if not improved:
+                step *= 0.5
+
+        return _A.clip(_A.asarray(best_x), 0, 1)
 
 
 # ---- Standard-normal CDF / PDF used by BayesianOpt's EI -----------------
@@ -672,10 +817,14 @@ class BayesianOpt(BaseOptimizer):
 
 
 def _normal_cdf(x):
-    """Standard-normal CDF, scalar input. Uses the same Abramowitz-style
-    approximation as the original numpy implementation."""
-    sign = 1.0 if x >= 0 else -1.0
-    return 0.5 * (1.0 + sign * math.sqrt(1.0 - math.exp(-2.0 * x * x / math.pi)))
+    """Standard-normal CDF, scalar input.
+
+    `math.erf` rather than the Abramowitz-style approximation this used to carry, whose worst
+    error is about 1.4e-2 -- three digits of a quantity expected improvement then multiplies
+    by. The reference, scikit-optimize, calls `scipy.stats.norm.cdf`. There was never a reason
+    to approximate: `erf` is in the standard library and is exact to the last ulp.
+    """
+    return 0.5 * (1.0 + math.erf(x / math.sqrt(2.0)))
 
 
 def _normal_pdf(x):

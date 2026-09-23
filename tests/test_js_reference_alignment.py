@@ -23,11 +23,13 @@ import pytest
 
 from tests.test_reference_alignment import (  # noqa: E402
     CONVERGED_GAP,
+    DEFAULT_WIN_CEILING,
     N_RUNS,
     PROBLEMS,
     REFERENCES,
     _all_installed,
     _run_humpday,
+    head_to_head,
 )
 
 NODE = shutil.which("node")
@@ -37,10 +39,20 @@ REPO_ROOT = Path(__file__).parent.parent
 # The ports where alignment matters most and where a reference exists on both sides. PRIMA_BOBYQA
 # is in the issue's list but its reference (Py-BOBYQA) is an optional install, so it joins the
 # others only when that is present -- `_all_installed` decides, as it does for the Python gate.
-JS_ALGORITHMS = ["NelderMead", "Powell", "LBFGSB", "PRIMA_BOBYQA"]
+JS_ALGORITHMS = ["NelderMead", "Powell", "LBFGSB", "PRIMA_BOBYQA", "BayesianOpt"]
 
 N_DIM = 2
 N_TRIALS = 200
+
+# BayesianOpt joins the list because it is finally the same algorithm on both sides. The
+# JavaScript port used to take the five nearest observations, weight them by inverse distance,
+# and call `exp(-2 * nearestDistance)` the uncertainty -- a quantity largest where the samples
+# already are, so the acquisition preferred points it had already measured (#408). Gating a
+# nearest-neighbour heuristic against scikit-optimize would have measured the wrong thing.
+#
+# Its budget matches the Python gate's for the same reason: skopt's GP fit is cubic in the
+# number of calls, and 200 of them takes the harness into the minutes.
+BUDGET_OVERRIDE = {"BayesianOpt": 50}
 
 # How far a JavaScript port may sit behind the reference its Python twin was written from.
 # Measured, like the Python table, and for the same reason: these are what the ports do, not
@@ -87,8 +99,18 @@ KNOWN_PORT_DIVERGENCE = {
 }
 
 
+# Pairs that lose more head to head than the Python gate's default allows. Same statistic and
+# same reason as there: a ratio of two medians is not a measurement when the outcome is
+# bimodal, and the JavaScript ports face the same multimodal problems.
+WIN_CEILING: dict[tuple[str, str], float] = {}
+
+
 def _ratio_ceiling(algorithm: str, problem: str) -> float:
     return RATIO_CEILING.get((algorithm, problem), DEFAULT_RATIO_CEILING)
+
+
+def _win_ceiling(algorithm: str, problem: str) -> float:
+    return WIN_CEILING.get((algorithm, problem), DEFAULT_WIN_CEILING)
 
 
 # Points the two implementations must agree on before any optimizer runs: the optimum, the
@@ -153,9 +175,9 @@ def test_the_optimum_is_where_both_languages_say_it_is(problem_id):
         )
 
 
-def _run_js(algorithm: str, problem: str, seed: int) -> float:
+def _run_js(algorithm: str, problem: str, seed: int, n_trials: int = N_TRIALS) -> float:
     result = subprocess.run(
-        [NODE, str(RUNNER), algorithm, problem, str(N_TRIALS), str(N_DIM), str(seed)],
+        [NODE, str(RUNNER), algorithm, problem, str(n_trials), str(N_DIM), str(seed)],
         capture_output=True,
         text=True,
         cwd=REPO_ROOT,
@@ -176,24 +198,34 @@ def test_the_javascript_port_tracks_its_reference(algorithm, problem_id):
     problem = PROBLEMS[problem_id]
     func, opt_value = problem["func"], problem["opt"]
 
-    js_vals = [_run_js(algorithm, problem_id, seed) for seed in range(N_RUNS)]
+    n_trials = BUDGET_OVERRIDE.get(algorithm, N_TRIALS)
+    js_vals = [_run_js(algorithm, problem_id, seed, n_trials) for seed in range(N_RUNS)]
     ref_vals = []
     for seed in range(N_RUNS):
-        ref_vals.append(ref_fn(func, N_TRIALS, N_DIM, seed=seed)["best_value"])
+        ref_vals.append(ref_fn(func, n_trials, N_DIM, seed=seed)["best_value"])
 
     js_med = sorted(js_vals)[N_RUNS // 2]
     ref_med = sorted(ref_vals)[N_RUNS // 2]
     js_gap = js_med - opt_value
     ref_gap = ref_med - opt_value
     ratio = (js_gap + 1e-15) / (ref_gap + 1e-15)
+    lost = head_to_head(js_vals, ref_vals)
 
     print(
         f"  {algorithm:<14} {problem_id:<11} js={js_med:>11.4g}  {ref_label}={ref_med:>11.4g}"
-        f"  js/ref={ratio:>9.2f}"
+        f"  js/ref={ratio:>9.2f}  lost={lost:>5.2f}"
+    )
+
+    win_cap = _win_ceiling(algorithm, problem_id)
+    assert lost <= win_cap, (
+        f"{algorithm} in JavaScript loses {lost:.2f} of head-to-head pairings against "
+        f"{ref_label} on {problem_id}, over its ceiling of {win_cap:g}"
     )
 
     if js_gap <= CONVERGED_GAP:
         return  # solved it; the ratio is then the epsilon guard dividing itself
+    if lost <= 0.5:
+        return  # ahead head to head, so the ratio is comparing two different modes
     ceiling = _ratio_ceiling(algorithm, problem_id)
     assert ratio <= ceiling, (
         f"{algorithm} in JavaScript is {ratio:.2f}x the {ref_label} gap on {problem_id}, "

@@ -93,8 +93,9 @@ class CoordinateDescent(BaseOptimizer):
     For each coordinate `i`, take a step `± step_size`; if it improves,
     keep stepping in the same direction until it stops improving
     (greedy expansion — the same shape Powell uses). After a full
-    sweep over all coordinates, halve `step_size` until it drops below
-    1e-12.
+    sweep over all coordinates that improved nothing, shrink
+    `step_size`; once it falls below `_restart_threshold` the basin is
+    finished, so restart from a fresh point.
 
     The previous implementation shrank `step_size *= 0.8` per failed
     sweep (so even after 30 sweeps it was only at ~0.001) and reset
@@ -103,20 +104,61 @@ class CoordinateDescent(BaseOptimizer):
     a ~5.6e+07× gap vs scipy Powell with `direc=I` on the sphere.
     """
 
+    # When `step` collapses below this the sweep has taken this basin as far as it goes, and
+    # the thing to do is go and look at another one. Refine first, though: the threshold was
+    # 1e-6, which stopped the line search at a precision of about 1e-12 on a quadratic and cost
+    # every single head-to-head pairing against the textbook reference on the sphere. It was
+    # chosen to buy Ackley restarts, and measured against the previous humpday rather than
+    # against the reference -- head to head it was losing 0.86 of pairings on Ackley too, so it
+    # was not buying them.
+    _restart_threshold = 1e-12
+    # Shrink per failed sweep. Halving from 0.1 down to 1e-12 is thirty-seven failed sweeps at
+    # 2n evaluations each, which on a budget of 200 is the entire budget spent shrinking: the
+    # reason the threshold had been raised to 1e-6 was to avoid paying it. A quarter gets there
+    # in nineteen sweeps, which is what makes the deep floor reachable at all at that budget.
+    #
+    # Quartering skips scales, and that is not free. Halving from 0.1 probes 0.05 and 0.025;
+    # quartering jumps straight to 0.025, so a problem whose productive step sits near 0.04
+    # never gets probed there. `groundwater_remediation` in example_applications is such a
+    # problem and it is the one real casualty of this change: at a budget of 1000 it loses 0.98
+    # of its head-to-head pairings against the old setting. That is the shrink rate alone, not
+    # the threshold -- it measures 0.99 at a threshold of 1e-6 too, and 0.50 under halving at
+    # either threshold.
+    #
+    # Kept anyway, because the unbiased measurement says so. Over all 70 objectives in
+    # example_applications at 20 seeds, against the old 1e-6 / halving (mean fraction of
+    # head-to-head pairings lost, so below 0.5 is better; "better"/"worse" count problems
+    # past 0.35 and 0.65):
+    #
+    #     budget  optimizer           setting        better  worse   mean lost
+    #        200  CoordinateDescent   1e-12, halve     4/70      1       0.489
+    #        200  CoordinateDescent   1e-12, quarter  21/70      1       0.392
+    #        200  PatternSearch       1e-12, halve     2/70      2       0.500
+    #        200  PatternSearch       1e-12, quarter  20/70      0       0.376
+    #       1000  CoordinateDescent   1e-12, halve    22/70      6       0.401
+    #       1000  CoordinateDescent   1e-12, quarter  25/70      6       0.385
+    #       1000  PatternSearch       1e-12, halve    17/70      7       0.430
+    #       1000  PatternSearch       1e-12, quarter  22/70      7       0.392
+    #
+    # Halving is not the safe option it looks like from `groundwater_remediation` alone; it has
+    # its own casualties (`gear_ratios` 0.71, `bowling` 0.70, `ebola_response` 0.71,
+    # `algo_trading` 0.73) and is worse on average at every budget. A tenth is faster again and
+    # measures the same on the sphere and Ackley, but steps past the scale Rosenbrock's valley
+    # wants and loses 0.68 of pairings there against 0.63.
+    #
+    # What would remove the tradeoff rather than settle it is a schedule that visits every
+    # octave and accelerates only after several sweeps in a row have failed. Not added on
+    # speculation.
+    _shrink = 0.25
+
     def _run(self):
         n = self.n_dim
         x = _A.random_uniform(n)
         f = yield x
 
         step = 0.1
-        # Restart trigger: when `step` collapses below this threshold the sweep has taken
-        # this basin as far as it goes. Reinitialise from a random point with step = 0.1.
-        # Closes Ackley trapping (was median 1.29, 8/16 seeds stuck;
-        # now 4.4e-16, 3/16 seeds stuck) at the cost of a small sphere
-        # regression (1.8e-18 → 4.2e-13, both still tie reference 0).
-        # Triggering earlier than 1e-12 means we can fit more restart
-        # attempts in the budget.
-        restart_step_threshold = 1e-6
+        restart_step_threshold = self._restart_threshold
+        shrink = self._shrink
 
         while self.evaluations < self.n_trials:
             if step <= restart_step_threshold:
@@ -173,7 +215,7 @@ class CoordinateDescent(BaseOptimizer):
                     break  # don't try the other sign on this coordinate
 
             if not improved_anywhere:
-                step *= 0.5
+                step *= shrink
 
 
 class PatternSearch(BaseOptimizer):
@@ -191,8 +233,9 @@ class PatternSearch(BaseOptimizer):
          pure coordinate descent zigzags through.
       3. Do another exploratory move from `new_base`; accept it
          (and the pattern move) if it beats the bare exploratory.
-      4. If no exploratory improvement after a full sweep, halve
-         `step` until it shrinks below 1e-12.
+      4. If no exploratory improvement after a full sweep, shrink
+         `step` until it drops below `_restart_threshold`, then
+         restart from a fresh base.
 
     The previous implementation was "first-improvement among the 2n
     axis directions" with a `step *= 0.5` shrink and a random restart
@@ -201,13 +244,18 @@ class PatternSearch(BaseOptimizer):
     a ~1.2e+10× gap on Ackley vs scipy DIRECT.
     """
 
+    # Same two numbers as CoordinateDescent, and for the same reason: exhaust the basin before
+    # abandoning it. At 1e-6 this lost 0.98 of head-to-head pairings against Hooke-Jeeves on the
+    # sphere and 0.84 on Ackley.
+    _restart_threshold = 1e-12
+    _shrink = 0.25
+
     def _run(self):
         base = _A.random_uniform(self.n_dim)
         f_base = yield base
         step = 0.1
-        # Restart trigger (see CoordinateDescent for the rationale): when `step` collapses
-        # below this threshold, reinitialise from a random base.
-        restart_step_threshold = 1e-6
+        restart_step_threshold = self._restart_threshold
+        shrink = self._shrink
 
         while self.evaluations < self.n_trials:
             if step <= restart_step_threshold:
@@ -237,8 +285,8 @@ class PatternSearch(BaseOptimizer):
                 else:
                     base, f_base = x, f
             else:
-                # 4. No exploratory progress at this step: halve.
-                step *= 0.5
+                # 4. No exploratory progress at this step: shrink.
+                step *= shrink
 
     def _explore_gen(self, x, f, step):
         """Single exploratory sweep — try ±step on each axis in order,

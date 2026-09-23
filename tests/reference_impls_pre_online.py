@@ -400,7 +400,7 @@ class FrozenCoordinateDescent(BaseOptimizer):
         # regression (1.8e-18 → 4.2e-13, both still tie reference 0).
         # Triggering earlier than 1e-12 means we can fit more restart
         # attempts in the budget.
-        restart_step_threshold = 1e-6
+        restart_step_threshold = 1e-12
 
         while self.evaluations < self.n_trials:
             if step <= restart_step_threshold:
@@ -452,7 +452,7 @@ class FrozenCoordinateDescent(BaseOptimizer):
                     break  # don't try the other sign on this coordinate
 
             if not improved_anywhere:
-                step *= 0.5
+                step *= 0.25
 
         return self.best_value, self.best_x
 
@@ -489,7 +489,7 @@ class FrozenPatternSearch(BaseOptimizer):
         # Restart trigger (see CoordinateDescent for the rationale): when
         # `step` collapses below this threshold and f hasn't reached the
         # converged threshold, reinitialise from a random base.
-        restart_step_threshold = 1e-6
+        restart_step_threshold = 1e-12
 
         while self.evaluations < self.n_trials:
             if step <= restart_step_threshold:
@@ -517,7 +517,7 @@ class FrozenPatternSearch(BaseOptimizer):
                     base, f_base = x, f
             else:
                 # 4. No exploratory progress at this step: halve.
-                step *= 0.5
+                step *= 0.25
 
         return self.best_value, self.best_x
 
@@ -897,98 +897,134 @@ class FrozenParticleSwarm(BaseOptimizer):
 
 
 class FrozenSimulatedAnnealing(BaseOptimizer):
-    """Simulated Annealing with multi-restart + coordinate-descent polish.
+    """Generalized Simulated Annealing with an L-BFGS-B local search.
 
-    Two-stage algorithm matching the spirit of scipy.optimize.dual_annealing:
-
-      1. Multi-restart Metropolis SA explores the parameter space
-         globally with a geometric cooling schedule.
-      2. A coordinate-descent polish from the best SA point refines
-         to high precision.
-
-    scipy's dual_annealing uses L-BFGS-B for stage 2; the closest
-    derivative-free equivalent is a coordinate descent with shrinking
-    step. Without the polish stage HumpDay's SA was 1e9-1e11× off scipy
-    on sphere and Rosenbrock; the global SA can't reach machine
-    precision because its proposals are noisy.
+    Mirrors SimulatedAnnealing in humpday/optimizers/evolutionary_algorithms.py, in the
+    loop-owning style this file preserves. The equivalence test drives both and requires the
+    same trajectory, so this has to carry the same algorithm -- as FrozenDifferentialEvolution
+    did when DE changed in #335.
     """
 
     def optimize(self):
-        # Reserve ~30% of the budget for the polish phase.
-        # Allocate half the budget to the L-BFGS-B polish, matching the
-        # DE rationale (#197 + this PR). 50% sweet spot: SA rosenbrock
-        # 2.8e-5 → 2.8e-8 (1000× better), sphere stays at machine prec.
-        polish_budget = max(20, self.n_trials // 2)
-        sa_budget = self.n_trials - polish_budget
+        from humpday.optimizers.evolutionary_algorithms import (
+            _GSA_FACTOR4P,
+            _GSA_FACTOR6,
+            _GSA_MIN_VISIT_BOUND,
+            _GSA_QA,
+            _GSA_QV,
+            _GSA_RESTART_T,
+            _GSA_T0,
+            _GSA_T1,
+            _GSA_TAIL_LIMIT,
+        )
 
-        # Twin of the live SimulatedAnnealing, which gained this in the budget-forfeit fix.
-        while True:
-            outer_before = self.evaluations
+        n = self.n_dim
+        lo = [0.0] * n
+        hi = [1.0] * n
+        span = [hi[i] - lo[i] for i in range(n)]
 
-            # --- Stage 1: multi-restart SA ---------------------------------
-            num_restarts = max(3, sa_budget // 30)
-            trials_per_restart = max(1, sa_budget // num_restarts)
+        def gsa_visit(x, step, temperature):
+            factor1 = portable_exp(portable_log(temperature) / (_GSA_QV - 1.0))
+            factor4 = _GSA_FACTOR4P * factor1
+            sigmax = portable_exp(
+                -(_GSA_QV - 1.0)
+                * portable_log(_GSA_FACTOR6 / factor4)
+                / (3.0 - _GSA_QV)
+            )
 
-            for restart in range(num_restarts):
-                if self.evaluations >= sa_budget:
-                    break
-
-                if restart == 0:
-                    x = 0.5 + (_A.random_uniform(self.n_dim) - 0.5) * 0.4
-                else:
-                    x = _A.random_uniform(self.n_dim)
-
-                fx = self.evaluate(x)
-
-                # Fixed initial temperature, geometric cooling. Reaches
-                # final_temp by the end of the restart's iteration count.
-                initial_temp = 1.0
-                final_temp = 1e-6
-                # portable_exp/log, not ** : libm pow differs across platforms
-                # in the last ulp (same fix as HillClimbing's decay constant).
-                cooling = portable_exp(
-                    (1.0 / max(1, trials_per_restart))
-                    * portable_log(final_temp / initial_temp)
+            def one_visit():
+                a = _A.rng_gauss()
+                b = _A.rng_gauss()
+                den = portable_exp(
+                    (_GSA_QV - 1.0) * portable_log(abs(b)) / (3.0 - _GSA_QV)
                 )
-                temp = initial_temp
+                return sigmax * a / den
 
-                for _iteration in range(trials_per_restart):
-                    if self.evaluations >= sa_budget:
+            def wrap(value, i):
+                a = value - lo[i]
+                b = math.fmod(a, span[i]) + span[i]
+                out = math.fmod(b, span[i]) + lo[i]
+                if abs(out - lo[i]) < _GSA_MIN_VISIT_BOUND:
+                    out += _GSA_MIN_VISIT_BOUND
+                return out
+
+            if step < n:
+                visits = [one_visit() for _ in range(n)]
+                upper_sample = _A.rng_random()
+                lower_sample = _A.rng_random()
+                capped = []
+                for v in visits:
+                    if v > _GSA_TAIL_LIMIT:
+                        capped.append(_GSA_TAIL_LIMIT * upper_sample)
+                    elif v < -_GSA_TAIL_LIMIT:
+                        capped.append(-_GSA_TAIL_LIMIT * lower_sample)
+                    else:
+                        capped.append(v)
+                return _A.asarray([wrap(capped[i] + float(x[i]), i) for i in range(n)])
+
+            out = [float(v) for v in x]
+            visit = one_visit()
+            if visit > _GSA_TAIL_LIMIT:
+                visit = _GSA_TAIL_LIMIT * _A.rng_random()
+            elif visit < -_GSA_TAIL_LIMIT:
+                visit = -_GSA_TAIL_LIMIT * _A.rng_random()
+            index = step - n
+            out[index] = wrap(visit + out[index], index)
+            return _A.asarray(out)
+
+        while self.evaluations < self.n_trials:
+            before = self.evaluations
+            chain_budget = self.n_trials - max(
+                20, (self.n_trials - self.evaluations) // 2
+            )
+
+            x = _A.random_uniform(n)
+            e = self.evaluate(x)
+            iteration = 0
+
+            while self.evaluations < chain_budget:
+                s_step = float(iteration) + 2.0
+                t2 = portable_exp((_GSA_QV - 1.0) * portable_log(s_step)) - 1.0
+                temperature = _GSA_T0 * _GSA_T1 / t2
+                iteration += 1
+
+                if temperature < _GSA_RESTART_T:
+                    x = _A.random_uniform(n)
+                    e = self.evaluate(x)
+                    iteration = 0
+                    continue
+
+                temperature_step = temperature / float(iteration)
+                best_before_chain = self.best_value
+
+                for j in range(2 * n):
+                    if self.evaluations >= chain_budget:
                         break
+                    x_visit = gsa_visit(x, j, temperature)
+                    e_new = self.evaluate(x_visit)
+                    if e_new < e:
+                        x, e = x_visit, e_new
+                    else:
+                        r = _A.rng_random()
+                        pqv_temp = 1.0 - (
+                            (1.0 - _GSA_QA) * (e_new - e) / temperature_step
+                        )
+                        if pqv_temp <= 0.0:
+                            pqv = 0.0
+                        else:
+                            pqv = portable_exp(portable_log(pqv_temp) / (1.0 - _GSA_QA))
+                        if r <= pqv:
+                            x, e = x_visit, e_new
 
-                    # Neighbour proposal: step scales with current temp.
-                    step_size = 0.4 * temp
-                    new_x = _A.clip(
-                        x + (_A.random_uniform(self.n_dim) - 0.5) * 2 * step_size,
-                        0,
-                        1,
-                    )
-                    new_fx = self.evaluate(new_x)
+                if (
+                    self.best_value < best_before_chain
+                    and self.evaluations < chain_budget
+                ):
+                    self._lbfgs_polish()
 
-                    # Metropolis criterion.
-                    delta = new_fx - fx
-                    if delta < 0 or _A.random_scalar() < portable_exp(
-                        -delta / max(temp, 1e-12)
-                    ):
-                        x, fx = new_x, new_fx
-
-                    temp *= cooling
-
-            # --- Stage 2: L-BFGS polish from best SA point -----------------
-            # Matches scipy.dual_annealing exactly — scipy uses L-BFGS-B for
-            # its local-search refinement. Two-loop recursion with FD
-            # gradient (2·n_dim evals per iter) and Armijo line search; same
-            # algorithm the `LBFGSB` optimizer uses. Replaces the previous
-            # coordinate-descent polish, which couldn't handle curved
-            # valleys like Rosenbrock and stalled around 1e-9 on the sphere
-            # at small budgets. With LBFGS the polish reaches machine
-            # precision on smooth basins in ~10 iterations.
             self._lbfgs_polish()
 
-            if self.evaluations >= self.n_trials or self.evaluations == outer_before:
-                break
-            sa_budget = self.n_trials - max(20, (self.n_trials - self.evaluations) // 2)
-            if self.evaluations >= sa_budget:
+            if self.evaluations == before:
                 break
 
         return self.best_value, self.best_x
@@ -1255,8 +1291,7 @@ class FrozenAntColonyOpt(BaseOptimizer):
 
 
 def _bo_normal_cdf(x):
-    sign = 1.0 if x >= 0 else -1.0
-    return 0.5 * (1.0 + sign * math.sqrt(1.0 - math.exp(-2.0 * x * x / math.pi)))
+    return 0.5 * (1.0 + math.erf(x / math.sqrt(2.0)))
 
 
 def _bo_normal_pdf(x):
@@ -1286,6 +1321,8 @@ class FrozenBayesianOpt(BaseOptimizer):
         self.length_scale = 0.2
         self.signal_variance = 1.0
         self.noise_variance = 1e-6
+        self._posterior_stamp = None
+        self._posterior = None
 
     def optimize(self):
         n_initial = min(5, max(2, self.n_dim))
@@ -1405,26 +1442,21 @@ class FrozenBayesianOpt(BaseOptimizer):
             [self.y_observed[i] for i in order],
         )
 
-    def _gp_predict(self, x_query):
-        """Posterior mean and std for a single query point `x_query`."""
+    def _gp_posterior(self):
+        """Factorise the kernel once per observation set. Twin of BayesianOpt._gp_posterior."""
         X_obs, y_obs = self._conditioning_set()
         n_obs = len(X_obs)
+        stamp = (n_obs, len(self.X_observed), self.length_scale)
+        if self._posterior_stamp == stamp:
+            return self._posterior
 
-        # K = k(X, X) + noise * I
         K = self._kernel_matrix(X_obs, X_obs)
         for i in range(n_obs):
             K[i][i] += self.noise_variance
 
-        # K_s = k(X, x_query) as a column vector of length n_obs.
-        K_s_col = [self._kernel_matrix([x_obs], [x_query])[0][0] for x_obs in X_obs]
-
-        # K_ss = k(x_query, x_query) — a single scalar.
-        K_ss = self._kernel_matrix([x_query], [x_query])[0][0]
-
-        # Solve K alpha = y via cholesky, with a jitter retry if SPD fails.
         jitter = 0.0
         L = None
-        for attempt in range(4):
+        for _ in range(4):
             try:
                 L = _A.linalg.cholesky(K)
                 break
@@ -1432,30 +1464,36 @@ class FrozenBayesianOpt(BaseOptimizer):
                 jitter = max(1e-8, jitter * 10) if jitter > 0 else 1e-8
                 for i in range(n_obs):
                     K[i][i] += jitter
+
         if L is None:
-            # Pathological kernel — fall back to a flat prior.
-            mu = _A.fold_sum(y_obs) / max(1, n_obs)
-            var = 0.0
-            for y in y_obs:
-                var += (y - mu) ** 2
-            var /= max(1, n_obs)
+            posterior = None
+        else:
+            alpha = _A.linalg.solve(L, y_obs)
+            alpha = _A.linalg.solve(_A.linalg.transpose(L), alpha)
+            posterior = (X_obs, L, alpha)
+
+        self._posterior_stamp = stamp
+        self._posterior = posterior
+        return posterior
+
+    def _gp_predict(self, x_query):
+        """Posterior mean and std for one query point, against the cached factor."""
+        posterior = self._gp_posterior()
+        if posterior is None:
+            _, y_obs = self._conditioning_set()
+            n_obs = max(1, len(y_obs))
+            mu = _A.fold_sum(y_obs) / n_obs
+            var = _A.fold_sum((y - mu) ** 2 for y in y_obs) / n_obs
             return mu, math.sqrt(max(var, 1e-8))
 
-        # alpha = K^-1 y, computed as L^-T (L^-1 y) via two triangular solves.
-        # Our shim only exposes a general `solve`; that's still correct, just
-        # not as fast.
-        alpha = _A.linalg.solve(L, y_obs)
-        Lt = _A.linalg.transpose(L)
-        alpha = _A.linalg.solve(Lt, alpha)
+        X_obs, L, alpha = posterior
+        n_obs = len(X_obs)
+        K_s_col = [row[0] for row in self._kernel_matrix(X_obs, [x_query])]
+        K_ss = self.signal_variance
 
-        # Mean: mu = K_s . alpha.
         mu = _A.fold_sum(float(K_s_col[i]) * float(alpha[i]) for i in range(n_obs))
-
-        # Variance: var = K_ss - K_s^T K^-1 K_s.
-        # With L L^T = K, K^-1 K_s = L^-T (L^-1 K_s).
         v = _A.linalg.solve(L, K_s_col)
-        v_dot_v = _A.fold_sum(float(vi) * float(vi) for vi in v)
-        var = max(K_ss - v_dot_v, 1e-8)
+        var = max(K_ss - _A.fold_sum(float(vi) * float(vi) for vi in v), 1e-8)
 
         return mu, math.sqrt(var)
 
@@ -1470,19 +1508,35 @@ class FrozenBayesianOpt(BaseOptimizer):
         Z = improvement / sigma
         return improvement * _bo_normal_cdf(Z) + sigma * _bo_normal_pdf(Z)
 
+    _ACQ_CANDIDATES = 64
+    _ACQ_REFINEMENTS = 6
+
     def _optimize_acquisition(self):
-        """Optimize the acquisition function with random starts."""
-        best_x = None
-        best_ei = -float("inf")
-        for _ in range(min(10, max(5, 2 * self.n_dim))):
+        """Twin of BayesianOpt._optimize_acquisition: broad sample, then refine the best."""
+        best_x, best_ei = None, -float("inf")
+        for _ in range(self._ACQ_CANDIDATES):
             x = _A.random_uniform(self.n_dim)
             ei = self._expected_improvement(x)
             if ei > best_ei:
-                best_ei = ei
-                best_x = x
+                best_ei, best_x = ei, x
+
         if best_x is None:
             return _A.random_uniform(self.n_dim)
-        return _A.clip(best_x, 0, 1)
+
+        step = 0.25
+        for _ in range(self._ACQ_REFINEMENTS):
+            improved = False
+            for i in range(self.n_dim):
+                for sign in (1.0, -1.0):
+                    trial = [float(v) for v in best_x]
+                    trial[i] = min(1.0, max(0.0, trial[i] + sign * step))
+                    ei = self._expected_improvement(trial)
+                    if ei > best_ei:
+                        best_ei, best_x, improved = ei, trial, True
+            if not improved:
+                step *= 0.5
+
+        return _A.clip(_A.asarray(best_x), 0, 1)
 
 
 class FrozenCMAEvolutionStrategy(BaseOptimizer):
