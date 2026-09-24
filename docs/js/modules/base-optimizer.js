@@ -153,6 +153,10 @@ class Optimizer {
         this.nDim = nDim;
         this.evaluations = 0;
         this.bestValue = Infinity;
+        // Whether any objective call returned a finite number. Until one
+        // does, bestX is the random placeholder drawn below, not a point
+        // anything was measured at.
+        this.observedFinite = false;
         // Same stream position as Python: BaseOptimizer.__init__ draws
         // best_x from the RNG (n draws) before the run starts.
         this.bestX = MathUtils.randomUniform(nDim);
@@ -167,7 +171,7 @@ class Optimizer {
             this.optimize = () => {
                 if (this.nTrials <= 0) return this._result();
                 try {
-                    return legacy();
+                    return this._settle(legacy());
                 } catch (e) {
                     if (e instanceof BudgetExhausted) return this._result();
                     throw e;
@@ -177,6 +181,7 @@ class Optimizer {
     }
 
     _bookkeep(clippedX, value) {
+        if (Number.isFinite(value)) this.observedFinite = true;
         // Track path for visualization (sample every few evaluations to avoid clutter)
         if (this.trackPath && (this.evaluations % Math.max(1, Math.floor(this.nTrials / 20)) === 0 || this.evaluations === 1)) {
             this.path.push([...clippedX]);
@@ -203,13 +208,27 @@ class Optimizer {
     }
 
     _result() {
-        return {
+        return this._settle({
             bestValue: this.bestValue,
             bestX: this.bestX,
             evaluations: this.evaluations,
-            success: true,
             path: this.trackPath ? this.path : null
-        };
+        });
+    }
+
+    // success is the Python contract (humpday.minimize): true when a finite
+    // objective value was observed. It is a budget-limited best effort, not a
+    // convergence claim, and it is false when nothing was evaluated or every
+    // value was NaN or infinite. Applied to every result, including the ones
+    // legacy optimize() overrides build for themselves.
+    _settle(result) {
+        result.success = this.observedFinite;
+        result.message = this.observedFinite
+            ? `best of ${this.evaluations} evaluations (budget ${this.nTrials})`
+            : (this.evaluations
+                ? 'no finite objective value was observed'
+                : 'no evaluations were made');
+        return result;
     }
 
     // ------------------------------------------------------------------ //
