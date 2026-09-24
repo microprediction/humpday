@@ -8,6 +8,7 @@ for which algorithms to use based on their performance.
 
 import json
 import math
+import numbers
 import os
 import warnings
 from collections.abc import Generator
@@ -129,6 +130,21 @@ class EloRatingSystem:
         return True
 
 
+def _finite_score(value: Any) -> Optional[float]:
+    """The value as a float when it is a finite real scalar, else None.
+
+    numpy.float32, numpy.int64 and 0-d arrays are real scalars that are not
+    Python ints or floats, and an optimizer hands back whatever type the
+    objective returned. Strings, sequences and complex numbers are not scores.
+    """
+    if getattr(value, "ndim", None) == 0 and hasattr(value, "item"):
+        value = value.item()
+    if not isinstance(value, numbers.Real):
+        return None
+    value = float(value)
+    return value if math.isfinite(value) else None
+
+
 def pairwise_outcome(value_a: float, value_b: float) -> Optional[float]:
     """Elo outcome for A against B from two objective values (lower is better).
 
@@ -142,8 +158,10 @@ def pairwise_outcome(value_a: float, value_b: float) -> Optional[float]:
     NaN, and NaN compares false both ways, so every pair fell through to the
     equal branch or handed the win to whichever algorithm was listed later.
     """
-    a_ok = isinstance(value_a, (int, float)) and math.isfinite(value_a)
-    b_ok = isinstance(value_b, (int, float)) and math.isfinite(value_b)
+    value_a = _finite_score(value_a)
+    value_b = _finite_score(value_b)
+    a_ok = value_a is not None
+    b_ok = value_b is not None
     if a_ok and b_ok:
         if value_a < value_b:
             return 1.0
