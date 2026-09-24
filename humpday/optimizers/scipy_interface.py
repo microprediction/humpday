@@ -6,6 +6,7 @@ to work with arbitrary rectangular bounds, following SciPy conventions.
 """
 
 import math
+import numbers
 from typing import Any, Callable, List, Optional, Tuple, Union
 
 from humpday import _array as _A
@@ -39,20 +40,59 @@ class _Ledger:
         return value
 
 
+def _as_scale(scale, n_dim: Optional[int] = None):
+    """Validate an unbounded `scale` and put it in the form the transforms use.
+
+    A scalar becomes a float. A sequence, one entry per coordinate, becomes a
+    backend vector, so that it multiplies elementwise on both backends: with
+    the pure backend a plain list on the left of `*` means repetition, not
+    multiplication. Every entry must be finite and positive, and a sequence
+    must have `n_dim` entries when `n_dim` is given.
+    """
+    if getattr(scale, "ndim", None) == 0 and hasattr(scale, "item"):
+        scale = scale.item()
+    if isinstance(scale, numbers.Real):
+        values = [float(scale)]
+    else:
+        try:
+            values = [float(v) for v in scale]
+        except TypeError:
+            raise ValueError(
+                f"scale must be a positive number or a sequence of them, got {scale!r}"
+            ) from None
+        if n_dim is not None and len(values) != n_dim:
+            raise ValueError(
+                f"scale has {len(values)} entries but the problem has {n_dim} dimensions"
+            )
+    if not all(math.isfinite(v) and v > 0 for v in values):
+        raise ValueError(f"scale must be finite and positive, got {scale!r}")
+    if isinstance(scale, numbers.Real):
+        return values[0]
+    return _A.asarray(values)
+
+
 def unbounded_to_unit_cube(x_real, scale: Union[float, Any] = 1.0):
     """Map ℝⁿ → (0, 1)ⁿ via `x_unit = atan(x_real / scale) / π + 0.5`.
     Symmetric around 0.5; `scale` controls how much of the cube is
-    spent on which range of values."""
-    # Elementwise division when x_real is a vector and scale is a scalar
-    # works on both _Vec (via __truediv__) and numpy ndarray.
-    return (_A.atan(x_real / scale) / _A.pi) + 0.5
+    spent on which range of values. It is a positive number, or one per
+    coordinate."""
+    if isinstance(x_real, numbers.Real):
+        return math.atan(x_real / _as_scale(scale)) / math.pi + 0.5
+    x_real = _A.asarray(x_real)
+    # The coordinate vector stays on the left, so a per-axis scale divides
+    # elementwise on both backends.
+    return (_A.atan(x_real / _as_scale(scale, len(x_real))) / _A.pi) + 0.5
 
 
 def unit_cube_to_unbounded(x_unit, scale: Union[float, Any] = 1.0):
     """Map (0, 1)ⁿ → ℝⁿ via `x_real = scale * tan(π (x_unit - 0.5))`.
     Inverse of `unbounded_to_unit_cube`."""
+    if isinstance(x_unit, numbers.Real):
+        x_safe = min(max(x_unit, 1e-15), 1 - 1e-15)
+        return math.tan(math.pi * (x_safe - 0.5)) * _as_scale(scale)
+    x_unit = _A.asarray(x_unit)
     x_safe = _A.clip(x_unit, 1e-15, 1 - 1e-15)
-    return scale * _A.tan(_A.pi * (x_safe - 0.5))
+    return _A.tan(_A.pi * (x_safe - 0.5)) * _as_scale(scale, len(x_unit))
 
 
 def create_unbounded_objective(
@@ -60,6 +100,8 @@ def create_unbounded_objective(
 ) -> Callable:
     """Wrap an objective defined on ℝⁿ so it can be called on a unit-cube
     point — the wrapper applies `unit_cube_to_unbounded` internally."""
+
+    scale = _as_scale(scale)
 
     def unbounded_objective(x_unit):
         x_unit = _A.asarray(x_unit)
@@ -220,8 +262,8 @@ def cube_minimize(
     # to time this same wrapped function so the measurement reflects what the
     # optimizer will actually call.
     if bounds is None:
-        if scale is None:
-            scale = 1.0
+        # Checked here, before any timing probe calls the objective.
+        scale = _as_scale(1.0 if scale is None else scale, n_dim)
         cube_obj = create_unbounded_objective(fun, scale)
         lower = upper = None  # set below if bounded
     else:
