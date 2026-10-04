@@ -94,7 +94,11 @@ class CoordinateDescent extends Optimizer {
         let f = yield x;
 
         let step = 0.1;
-        const restartStepThreshold = 1e-6;
+        // 1e-12, not the 1e-6 this used to stop refining at: exhaust the basin before
+        // abandoning it. At 1e-6 the port lost every head-to-head pairing against its
+        // reference on the sphere. Twin of the class attributes in search_algorithms.py.
+        const restartStepThreshold = 1e-12;
+        const shrink = 0.25;
 
         while (this.evaluations < this.nTrials) {
             if (step <= restartStepThreshold) {
@@ -142,7 +146,7 @@ class CoordinateDescent extends Optimizer {
                 }
             }
 
-            if (!improvedAnywhere) step *= 0.5;
+            if (!improvedAnywhere) step *= shrink;
         }
     }
 }
@@ -164,7 +168,11 @@ class PatternSearch extends Optimizer {
         let base = MathUtils.randomUniform(this.nDim);
         let fBase = yield base;
         let step = 0.1;
-        const restartStepThreshold = 1e-6;
+        // 1e-12, not the 1e-6 this used to stop refining at: exhaust the basin before
+        // abandoning it. At 1e-6 the port lost every head-to-head pairing against its
+        // reference on the sphere. Twin of the class attributes in search_algorithms.py.
+        const restartStepThreshold = 1e-12;
+        const shrink = 0.25;
 
         while (this.evaluations < this.nTrials) {
             if (step <= restartStepThreshold) {
@@ -194,7 +202,7 @@ class PatternSearch extends Optimizer {
                     base = x; fBase = f;
                 }
             } else {
-                step *= 0.5;
+                step *= shrink;
             }
         }
     }

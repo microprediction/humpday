@@ -502,23 +502,25 @@ class Powell(BaseOptimizer):
 class LBFGSB(BaseOptimizer):
     """L-BFGS-B with a finite-difference gradient (Byrd–Lu–Nocedal–Zhu).
 
-    Limited-memory BFGS with simple bound constraints — the
-    derivative-free workflow uses central-difference gradients (cost:
-    2·n_dim evals per iteration) since HumpDay's contract is to take
-    a black-box objective. The L-BFGS update itself is the standard
-    two-loop recursion of Nocedal (1980) with a 5-pair memory.
+    The bound-constrained algorithm, not a projected variant of it: the compact limited-memory
+    representation, the generalised Cauchy point along the piecewise projected-gradient path,
+    and subspace minimisation over the variables it leaves free. Those three are what make
+    L-BFGS-B different from L-BFGS with clipping, and what decide the active set.
 
-    Pure-Python via the `humpday._array` shim — no direct numpy use.
-    Ports the existing JavaScript L-BFGS-B implementation in
-    `docs/js/modules/scipy-algorithms.js::LBFGSB` line-for-line.
+    Central-difference gradients (2·n_dim evaluations per iteration), since the package's
+    contract is a black-box objective, and Armijo backtracking rather than strong Wolfe. Neither
+    changes which algorithm this is.
 
-    Before this rewrite, humpday's `LBFGSB` was a finite-difference
-    gradient + Polyak-momentum baseline — not L-BFGS at all. The
-    snapshot at `benchmarks/reference_alignment.json` showed it ~6.6e+06×
-    worse than scipy's L-BFGS-B on the sphere; the rewrite closes
-    that gap to within a few orders of magnitude (the residual is
-    HumpDay's FD gradient cost — scipy uses analytical-or-FD with
-    cleaner step control).
+    Pure-Python via the `humpday._array` shim — no direct numpy use, and the same code as the
+    JavaScript twin in `docs/js/modules/scipy-algorithms.js::LBFGSB`.
+
+    Two rewrites have brought it here. It began as a finite-difference gradient with Polyak
+    momentum, not L-BFGS at all, ~6.6e+06× behind scipy on the sphere. The first rewrite gave it
+    the two-loop recursion and direction clipping, which left it 22,005× behind scipy on
+    Rosenbrock. With the bound-constrained machinery it is 0.01× — a hundred times ahead, having
+    the multi-start layer from #383 as well. Validated against
+    scipy.optimize.minimize(method="L-BFGS-B") on bound-active quadratics in
+    tests/test_lbfgsb_algorithm.py (#407).
     """
 
     def _run(self):
