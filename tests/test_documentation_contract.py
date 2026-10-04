@@ -146,3 +146,29 @@ def test_site_links_point_at_files_that_exist(page):
         target for target, resolved in _relative_targets(page) if not resolved.exists()
     ]
     assert not missing, f"{page.relative_to(DOCS)} links to {missing}"
+
+
+def _homepage_roster():
+    text = (DOCS / "index.html").read_text(encoding="utf-8")
+    methods = re.search(r'<div class="methods">(.*?)</div>', text, re.S).group(1)
+    table = re.search(
+        r'<table class="algorithm-table">(.*?)</table>', text, re.S
+    ).group(1)
+    rows = re.findall(r"<tr>\s*<td><code>(\w+)</code></td>(.*?)</tr>", table, re.S)
+    return text, re.findall(r"<code>'(\w+)'</code>", methods), rows
+
+
+def test_homepage_roster_is_the_registry():
+    """The headline count, the method list and the table all say the same 23 things.
+
+    Alloy was added to the registry and the headline count but to neither list, GridSearch was
+    missing from the table, and Tabu Search outlived its removal by several releases (#421).
+    """
+    from humpday.optimizers.alloptimizers import PURE_OPTIMIZERS
+
+    text, methods, rows = _homepage_roster()
+    registry = set(PURE_OPTIMIZERS)
+    assert f"implementation of {len(registry)} derivative-free" in text
+    assert sorted(methods) == sorted(registry)
+    assert sorted(name for name, _ in rows) == sorted(registry)
+    assert "Tabu" not in text
