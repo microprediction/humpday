@@ -30,7 +30,7 @@ function useLegacyRng() {
 
 // Mathematical utility functions
 const MathUtils = {
-    random: () => Math.random(),
+    random: () => MathUtils.randomScalar(),
 
     randomScalar() {
         return _portableRng !== null ? _portableRng.random() : Math.random();

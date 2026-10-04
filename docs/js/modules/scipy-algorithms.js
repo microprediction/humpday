@@ -54,7 +54,7 @@ class NelderMead extends Optimizer {
         // from a fresh uniform draw (diversification).
         const nonzdeltSchedule = [0.05, 0.15, 0.30, 0.10, 0.50, 0.20];
 
-        let seedPoint = Array(n).fill(0).map(() => 0.3 + 0.4 * Math.random());
+        let seedPoint = Array(n).fill(0).map(() => 0.3 + 0.4 * MathUtils.randomScalar());
         let restartCount = 0;
 
         while (this.evaluations < this.nTrials) {
@@ -185,7 +185,7 @@ class NelderMead extends Optimizer {
             if (restartCount % 2 === 1) {
                 seedPoint = [...simplex[sortedFinal[0]]];  // intensification
             } else {
-                seedPoint = Array(n).fill(0).map(() => Math.random());  // diversification
+                seedPoint = Array(n).fill(0).map(() => MathUtils.randomScalar());  // diversification
             }
         }
 

@@ -936,7 +936,7 @@ class CMAEvolutionStrategy extends Optimizer {
 
             // Fresh state per restart.
             let mean = new Array(n);
-            for (let i = 0; i < n; i++) mean[i] = 0.3 + 0.4 * Math.random();
+            for (let i = 0; i < n; i++) mean[i] = 0.3 + 0.4 * MathUtils.randomScalar();
             let sigma = 0.2;
             let C = Linalg.eye(n);
             let pc = new Array(n).fill(0);
@@ -1124,8 +1124,8 @@ class CMAEvolutionStrategy extends Optimizer {
             this._spareGaussian = undefined;
             return s;
         }
-        const u = Math.random();
-        const v = Math.random();
+        const u = MathUtils.randomScalar();
+        const v = MathUtils.randomScalar();
         const r = Math.sqrt(-2 * Math.log(Math.max(u, 1e-300)));
         const theta = 2 * Math.PI * v;
         this._spareGaussian = r * Math.sin(theta);
@@ -1242,7 +1242,7 @@ class AntColonyOpt extends Optimizer {
         const archive = [];
         for (let i = 0; i < k && this.evaluations < this.nTrials; i++) {
             const x = new Array(n);
-            for (let d = 0; d < n; d++) x[d] = Math.random();
+            for (let d = 0; d < n; d++) x[d] = MathUtils.randomScalar();
             archive.push({ x, f: this.evaluate(x) });
         }
         if (!archive.length) {
@@ -1277,7 +1277,7 @@ class AntColonyOpt extends Optimizer {
                 if (this.evaluations >= this.nTrials) break;
 
                 // Roulette-pick a kernel by weights.
-                const r = Math.random();
+                const r = MathUtils.randomScalar();
                 let cum = 0;
                 let kernelIdx = archive.length - 1;
                 for (let i = 0; i < archive.length; i++) {
@@ -1316,8 +1316,8 @@ class AntColonyOpt extends Optimizer {
             this._spare = undefined;
             return s;
         }
-        const u = Math.random();
-        const v = Math.random();
+        const u = MathUtils.randomScalar();
+        const v = MathUtils.randomScalar();
         const r = Math.sqrt(-2 * Math.log(Math.max(u, 1e-300)));
         const theta = 2 * Math.PI * v;
         this._spare = r * Math.sin(theta);
