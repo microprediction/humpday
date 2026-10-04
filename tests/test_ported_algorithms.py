@@ -4,7 +4,7 @@ instead of direct numpy.
 
 Each ported algorithm must:
 
-1. Produce a sensible result (close to the known minimum) under whichever
+1. Get below a measured bar on a shifted sphere (see TOLERANCE) under whichever
    shim backend is active.
 2. Stay within its declared evaluation budget.
 3. Return `best_x` whose elements all lie in [0, 1].
@@ -21,6 +21,7 @@ tests in a subprocess for isolation.
 
 from __future__ import annotations
 
+import json
 import os
 import subprocess
 import sys
@@ -56,37 +57,142 @@ PORTED = [
 ]
 
 
+# Both tests below minimise a shifted sphere in 5-D with 200 evaluations. Its
+# optimum is SHIFT, the same one tests/test_js_parity.py uses: the sphere used to
+# be centred at 0.5, where most of these algorithms take their first point, so an
+# optimizer that evaluated the centre once and stopped scored 0 (#403).
+SHIFT = (0.2473, 0.7718, 0.1859, 0.6934, 0.8146)
+N_DIM = 5
+N_TRIALS = 200
+# Seeds for the portable PCG32 stream. The bars below were measured over seeds
+# 0-49, so any seed is a fair draw; one keeps BayesianOpt's pure-Python run (22s
+# at 200 evaluations, in the pure-backend CI job) from being paid three times.
+SEEDS = (0,)
+
+# Reference points for this objective on [0,1]^5:
+#
+#   maximum (the corner (1, 0, 0, 1, 0))                 2.969
+#   value at the cube centre                             0.373
+#   best of 200 uniform random points, 200k draws:
+#     median 0.054, 99th percentile 0.127, 99.9th percentile 0.159
+#
+# RANDOM_SAMPLING_BAR is that 99.9th percentile. No algorithm's bar is looser,
+# so an optimizer that stops where it started fails, and a single uniform random
+# point gets under it 3.5% of the time.
+RANDOM_SAMPLING_BAR = 0.159
+
+# The bar for an algorithm whose worst result over seeds 0-49 (portable PCG32
+# stream, numpy and pure backends alike) was below 5e-13.
+CONVERGED = 1e-8
+
+# Algorithms that search but do not converge in 200 evaluations. Each bar is ten
+# times the worst result measured over seeds 0-49, rounded up, and never above
+# RANDOM_SAMPLING_BAR. Worst measured values in brackets.
+#
+# The bottom five are at RANDOM_SAMPLING_BAR because ten times their worst result
+# is above it. NelderMead's median is 3.5e-7, but one seed in ten ends above 0.018
+# on this sphere, which for a simplex method is a shortfall rather than noise.
+TOLERANCE = {
+    "CoordinateDescent": 5e-6,  # [2.9e-7]
+    "PatternSearch": 1e-4,  # [6.4e-6]
+    "HillClimbing": 2e-4,  # [1.2e-5]
+    "Rechenberg": 0.05,  # [2.5e-3]
+    "HarmonySearch": 0.1,  # [0.010]
+    "AntColonyOpt": RANDOM_SAMPLING_BAR,  # [0.025]
+    "NelderMead": RANDOM_SAMPLING_BAR,  # [0.061]
+    "EvolutionStrategy": RANDOM_SAMPLING_BAR,  # [0.077]
+    "GeneticAlgorithm": RANDOM_SAMPLING_BAR,  # [0.11]
+    "RandomSearch": RANDOM_SAMPLING_BAR,  # [0.14; it is the baseline]
+}
+
+
+def _tolerance(cls_name: str) -> float:
+    return TOLERANCE.get(cls_name, CONVERGED)
+
+
+def _shifted_sphere(x):
+    return float(sum((xi - SHIFT[i]) ** 2 for i, xi in enumerate(x)))
+
+
+def _run_seeded(cls, n_trials, seed):
+    from humpday import _array as A
+
+    A.use_portable_rng(seed)
+    try:
+        opt = cls(_shifted_sphere, n_trials=n_trials, n_dim=N_DIM)
+        best_value, best_x = opt.optimize()
+    finally:
+        A.use_legacy_rng()
+    return opt, best_value, best_x
+
+
+def _check_quality(label, cls_name, seed, evaluations, n_trials, best_value):
+    """The budget and quality gate shared by the numpy and pure-backend tests."""
+    assert evaluations <= n_trials, (
+        f"{label} {cls_name} seed {seed}: {evaluations} evals, budget {n_trials}"
+    )
+    tol = _tolerance(cls_name)
+    assert best_value < tol, (
+        f"{label} {cls_name} seed {seed}: {best_value:.4g} >= {tol:g}"
+    )
+
+
 @pytest.mark.parametrize("module,cls_name", PORTED)
 def test_numpy_backend(module, cls_name):
     """Default numpy backend — what every existing user runs."""
     mod = __import__(f"humpday.optimizers.{module}", fromlist=[cls_name])
     cls = getattr(mod, cls_name)
 
-    def sphere(x):
-        return float(sum((xi - 0.5) ** 2 for xi in x))
+    for seed in SEEDS:
+        opt, best_value, best_x = _run_seeded(cls, N_TRIALS, seed)
+        assert len(best_x) == N_DIM
+        assert all(0.0 <= float(xi) <= 1.0 for xi in best_x), (
+            f"{cls_name} returned out-of-bound best_x: {list(best_x)}"
+        )
+        _check_quality(
+            "numpy", cls_name, seed, opt.evaluations, opt.n_trials, best_value
+        )
 
-    opt = cls(sphere, n_trials=200, n_dim=5)
-    best_value, best_x = opt.optimize()
 
-    # Budget must be respected.
-    assert opt.evaluations <= opt.n_trials, (
-        f"{cls_name} did {opt.evaluations} evals, budget was {opt.n_trials}"
-    )
-    # best_x is a numpy ndarray under numpy backend.
-    assert len(best_x) == 5
-    assert all(0.0 <= float(xi) <= 1.0 for xi in best_x), (
-        f"{cls_name} returned out-of-bound best_x: {list(best_x)}"
-    )
-    # Sphere at the centre is exactly 0. With 200 trials in 5-D any decent
-    # algorithm should find a value below 1.0 (much weaker than convergence
-    # — this just guards against an algorithm returning the worst point).
-    assert best_value < 1.0, f"{cls_name} barely improved: {best_value}"
+def _no_search(point):
+    """An optimizer that evaluates one point and stops: the failure the old bars,
+    1.0 and 1.5 on a sphere whose maximum was 1.25, could not see (#403)."""
+    from humpday import _array as A
+    from humpday.optimizers.base import BaseOptimizer
+
+    class NoSearch(BaseOptimizer):
+        def optimize(self):
+            if point == "centre":
+                x = A.full(self.n_dim, 0.5)
+            elif point == "corner":
+                x = A.zeros(self.n_dim)
+            else:
+                x = A.random_uniform(self.n_dim)
+            self.evaluate(x)
+            return self.best_value, self.best_x
+
+    return NoSearch
+
+
+@pytest.mark.parametrize("point", ["centre", "corner", "random"])
+@pytest.mark.parametrize("module,cls_name", PORTED)
+def test_gate_fails_an_optimizer_that_does_not_search(
+    module, cls_name, point, monkeypatch
+):
+    """Mutation check: replace the algorithm with one that evaluates a single
+    point, and the quality gate (shared with the pure-backend test) must fail."""
+    mod = __import__(f"humpday.optimizers.{module}", fromlist=[cls_name])
+    monkeypatch.setattr(mod, cls_name, _no_search(point))
+    with pytest.raises(AssertionError, match=">="):
+        test_numpy_backend(module, cls_name)
 
 
 def test_pure_backend_works_for_ported_algorithms(tmp_path):
-    """Run the same four algorithms in a fresh subprocess with the pure
-    backend forced via the env var. Confirms each one can complete an
-    optimization without any direct numpy call."""
+    """Run the same algorithms in a fresh subprocess with the pure backend
+    forced via the env var. Confirms each one completes an optimization without
+    any direct numpy call, within budget, and gets below the same bar as on the
+    numpy backend (the portable PCG32 stream makes the two backends take the
+    same path)."""
 
     script = textwrap.dedent("""
         import json, sys
@@ -108,8 +214,10 @@ def test_pure_backend_works_for_ported_algorithms(tmp_path):
             PRIMA_UOBYQA, PRIMA_NEWUOA, PRIMA_BOBYQA,
         )
 
+        SHIFT, N_DIM, SEEDS, BUDGET = json.loads(sys.argv[1])
+
         def sphere(x):
-            return float(sum((xi - 0.5) ** 2 for xi in x))
+            return float(sum((xi - SHIFT[i]) ** 2 for i, xi in enumerate(x)))
 
         results = {}
         ALGORITHMS = [
@@ -122,24 +230,32 @@ def test_pure_backend_works_for_ported_algorithms(tmp_path):
             NelderMead, Powell, LBFGSB,
             PRIMA_UOBYQA, PRIMA_NEWUOA, PRIMA_BOBYQA,
         ]
-        # Subprocess uses a smaller budget than the numpy-backend tests
-        # because pure-Python CMA-ES (Jacobi eigh per generation) and
-        # BayesianOpt (Cholesky-solve per query) are slow on CI hardware.
-        # 50 trials × 5-D × 19 algorithms still proves every backend path
-        # completes and converges meaningfully on the sphere.
-        N_TRIALS_PURE = 50
         for cls in ALGORITHMS:
-            opt = cls(sphere, n_trials=N_TRIALS_PURE, n_dim=5)
-            best_value, best_x = opt.optimize()
-            results[cls.__name__] = {
-                "best_value": float(best_value),
-                "best_x_len": len(best_x),
-                "best_x_type": type(best_x).__name__,
-                "evaluations": opt.evaluations,
-                "in_bounds": all(0.0 <= float(xi) <= 1.0 for xi in best_x),
-            }
+            n_trials = BUDGET[cls.__name__]
+            runs = []
+            for seed in SEEDS:
+                A.use_portable_rng(seed)
+                opt = cls(sphere, n_trials=n_trials, n_dim=N_DIM)
+                best_value, best_x = opt.optimize()
+                runs.append({
+                    "seed": seed,
+                    "n_trials": n_trials,
+                    "best_value": float(best_value),
+                    "best_x_len": len(best_x),
+                    "best_x_type": type(best_x).__name__,
+                    "evaluations": opt.evaluations,
+                    "in_bounds": all(0.0 <= float(xi) <= 1.0 for xi in best_x),
+                })
+            results[cls.__name__] = runs
         print(json.dumps(results))
     """)
+
+    # Every algorithm gets the numpy test's budget except BayesianOpt. Its
+    # pure-Python Gaussian-process fit costs 22s for 200 evaluations against 1s
+    # for 100, so it runs 100 here. It still converges at 100 (worst 2.1e-13 over
+    # seeds 0-49), so it is held to the same CONVERGED bar.
+    budget = {name: N_TRIALS for _, name in PORTED}
+    budget["BayesianOpt"] = 100
 
     env = dict(os.environ)
     env["HUMPDAY_FORCE_PURE_ARRAY"] = "1"
@@ -152,16 +268,17 @@ def test_pure_backend_works_for_ported_algorithms(tmp_path):
     )
 
     completed = subprocess.run(
-        [sys.executable, "-c", script],
+        [
+            sys.executable,
+            "-c",
+            script,
+            json.dumps([SHIFT, N_DIM, list(SEEDS), budget]),
+        ],
         env=env,
         capture_output=True,
         text=True,
-        # Reduced from 200 to 50 trials per algorithm (see N_TRIALS_PURE
-        # above) keeps the subprocess well under the timeout on CI's
-        # slower runners. Pure-Python CMA-ES eigh and BayesianOpt
-        # Cholesky-solve dominate; lowering n_trials cuts the work ~4x.
-        # 180s leaves comfortable headroom over the measured ~90s wall
-        # time on GitHub-hosted runners.
+        # Measured at about 6s on an M-series laptop, most of it BayesianOpt and
+        # PRIMA_UOBYQA. 180s leaves room for slower CI runners.
         timeout=180,
     )
 
@@ -170,26 +287,24 @@ def test_pure_backend_works_for_ported_algorithms(tmp_path):
         f"stderr: {completed.stderr}"
     )
 
-    import json
-
     results = json.loads(completed.stdout.strip().splitlines()[-1])
     expected = {name for _, name in PORTED}
     assert set(results) == expected, (
         f"missing or extra results: expected {expected}, got {set(results)}"
     )
-    for name, r in results.items():
-        # n_trials in the subprocess is 50; allow modest internal overshoot.
-        assert r["evaluations"] <= 100, f"{name}: {r['evaluations']} > 100"
-        assert r["best_x_len"] == 5, f"{name}: best_x len {r['best_x_len']}"
-        assert r["best_x_type"] == "_Vec", (
-            f"{name}: best_x was {r['best_x_type']!r}, expected pure-backend _Vec"
-        )
-        assert r["in_bounds"], f"{name} returned out-of-bound best_x"
-        # Threshold loosened from 1.0 to 1.5: 50 trials × 5-D sphere is
-        # enough for every algorithm to easily beat the worst-point
-        # baseline (≈1.25 for uniform random sampling), but a few of the
-        # weaker stochastic methods sit close to the previous 1.0 bound
-        # at this reduced budget.
-        assert r["best_value"] < 1.5, (
-            f"{name} barely improved under pure backend: {r['best_value']}"
-        )
+    for name, runs in results.items():
+        assert len(runs) == len(SEEDS)
+        for r in runs:
+            assert r["best_x_len"] == N_DIM, f"{name}: best_x len {r['best_x_len']}"
+            assert r["best_x_type"] == "_Vec", (
+                f"{name}: best_x was {r['best_x_type']!r}, expected pure-backend _Vec"
+            )
+            assert r["in_bounds"], f"{name} returned out-of-bound best_x"
+            _check_quality(
+                "pure",
+                name,
+                r["seed"],
+                r["evaluations"],
+                r["n_trials"],
+                r["best_value"],
+            )
