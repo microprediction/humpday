@@ -474,7 +474,7 @@ class PRIMA_UOBYQA extends Optimizer {
         const npt = this.npt;
 
         // Initialize starting point (away from boundaries for stability)
-        let xbase = Array(n).fill(0).map(() => 0.3 + 0.4 * Math.random());
+        let xbase = Array(n).fill(0).map(() => 0.3 + 0.4 * MathUtils.randomScalar());
         let fbase = this.evaluate(xbase);
 
         // Trust region parameters EXACTLY matching PDFO's aggressive behavior
@@ -621,7 +621,7 @@ class PRIMA_UOBYQA extends Optimizer {
                 if ((kptNum % 2) === 0) {
                     xpt_new[i] = -xbase[i]; // Move toward origin (0,0)
                 } else {
-                    xpt_new[i] = (0.5 - xbase[i]) * (Math.random() - 0.5) * 2;
+                    xpt_new[i] = (0.5 - xbase[i]) * (MathUtils.randomScalar() - 0.5) * 2;
                 }
             }
 
@@ -1044,12 +1044,12 @@ class PRIMA_UOBYQA extends Optimizer {
                     if (FVAL[i] > FVAL[j]) {
                         // Replace point i with a perturbed version
                         for (let k = 0; k < n; k++) {
-                            XPT[i][k] += (Math.random() - 0.5) * minDistance * 2;
+                            XPT[i][k] += (MathUtils.randomScalar() - 0.5) * minDistance * 2;
                         }
                     } else {
                         // Replace point j with a perturbed version
                         for (let k = 0; k < n; k++) {
-                            XPT[j][k] += (Math.random() - 0.5) * minDistance * 2;
+                            XPT[j][k] += (MathUtils.randomScalar() - 0.5) * minDistance * 2;
                         }
                     }
                 }
@@ -1265,7 +1265,7 @@ class PRIMA_NEWUOA extends Optimizer {
         // but doesn't worsen the result.
         if (this.evaluations < this.nTrials) {
             xseed = this.bestX.map(x => {
-                const jitter = (Math.random() - 0.5) * 2 * rhobeg;
+                const jitter = (MathUtils.randomScalar() - 0.5) * 2 * rhobeg;
                 return Math.min(1, Math.max(0, x + jitter));
             });
         }
@@ -1368,7 +1368,7 @@ class PRIMA_NEWUOA extends Optimizer {
     improveGeometry(XPT, FVAL, xopt, rho, xbase) {
         // Geometry-improvement step: probe a direction that least
         // resembles any existing interpolation offset, at distance rho.
-        // Replaces a random direction (was Math.random() - 0.5) with a
+        // Replaces a random direction (was a uniform draw minus 0.5) with a
         // direction chosen to *maximise the minimum cosine distance* to
         // existing XPT offsets — which is a cheap proxy for improving
         // interpolation matrix conditioning.
@@ -1576,7 +1576,7 @@ class PRIMA_BOBYQA extends Optimizer {
         // returns in 50 evals stuck at the first local minimum.
         if (this.evaluations < this.nTrials) {
             xseed = this.bestX.map(x => {
-                const jitter = (Math.random() - 0.5) * 2 * rhobeg;
+                const jitter = (MathUtils.randomScalar() - 0.5) * 2 * rhobeg;
                 return Math.min(0.9, Math.max(0.1, x + jitter));
             });
         }
@@ -1747,7 +1747,7 @@ class PRIMA_BOBYQA extends Optimizer {
         } else {
             // No model gradient — small random kick. Note this is the
             // *algorithm's* tie-breaker, not a derivative of the user's f.
-            d = new Array(n).fill(0).map(() => (rho / 3.0) * (2 * Math.random() - 1));
+            d = new Array(n).fill(0).map(() => (rho / 3.0) * (2 * MathUtils.randomScalar() - 1));
         }
         for (let i = 0; i < n; i++) {
             const xi = xCurrent[i] + d[i];

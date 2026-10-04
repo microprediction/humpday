@@ -264,8 +264,9 @@
     The throw simulator runs a simplified rigid-body model: a ball moves
     down the lane, curves under the influence of its <em>spin</em>, hits
     pins, transfers momentum to them, bounces off walls. Each throw takes
-    a few hundred simulated frames; the optimiser sees only the final
-    score (number of fallen pins).
+    a few hundred simulated frames. There is no randomness in the
+    simulation: the same four parameters always produce the same throw and
+    the same number of fallen pins.
   </p>
   <p>
     The 4 parameters are mapped from the unit cube
@@ -279,10 +280,20 @@
   </ul>
   <p>
     The optimiser <strong>does not know</strong> what those parameters mean. It
-    only sees a 4-D black-box function returning the number of fallen pins
-    (negated, since HumpDay minimises). This is exactly the situation
-    derivative-free methods are designed for: noisy, non-differentiable,
-    no gradient available, evaluation moderately expensive.
+    only sees a 4-D black-box function: the number of fallen pins, negated
+    since HumpDay minimises, minus a small near-miss term,
+    <code>-fallenPins - 0.05 * nearMiss</code>.
+  </p>
+  <p>
+    <code>nearMiss</code> adds, for each pin that nothing hit,
+    <code>1 / (1 + d / 10)</code>, where <code>d</code> is the closest the
+    ball's path came to that pin's starting position. It breaks ties
+    between throws that knock down the same number of pins, and gives the
+    search something to follow in the region where throws hit nothing at
+    all. The objective is deterministic, but it is not smooth: the pin
+    count moves in whole steps and has plateaus, and no gradient is
+    available. That is the situation
+    derivative-free methods are designed for.
   </p>
   <div class="skill-callout">
     <h3>🌱 Save the Planet</h3>
@@ -371,9 +382,9 @@ const PIN_FRICTION = 0.96;          // pins keep more velocity per step → slid
 const BALL_FRICTION_X = 0.991;      // ball decelerates slightly less (was 0.99 then 0.992)
 const BALL_FRICTION_Y = 0.991;
 
-// Extended pin formation — 6-row triangle (1+2+3+4+5+6 = 21 pins) instead
+// Extended pin formation — 14-row triangle (1+2+...+14 = 105 pins) instead
 // of standard 10-pin. More pins means more chain-reaction potential, a
-// noisier integer score (so harder to optimise), and a denser landing
+// more rugged integer score (so harder to optimise), and a denser landing
 // area that the optimiser has to actually aim into.
 //
 // Triangle orientation: row 0 is the single headpin, CLOSEST to the

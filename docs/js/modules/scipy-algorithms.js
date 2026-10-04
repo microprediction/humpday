@@ -54,7 +54,7 @@ class NelderMead extends Optimizer {
         // from a fresh uniform draw (diversification).
         const nonzdeltSchedule = [0.05, 0.15, 0.30, 0.10, 0.50, 0.20];
 
-        let seedPoint = Array(n).fill(0).map(() => 0.3 + 0.4 * Math.random());
+        let seedPoint = Array(n).fill(0).map(() => 0.3 + 0.4 * MathUtils.randomScalar());
         let restartCount = 0;
 
         while (this.evaluations < this.nTrials) {
@@ -185,7 +185,7 @@ class NelderMead extends Optimizer {
             if (restartCount % 2 === 1) {
                 seedPoint = [...simplex[sortedFinal[0]]];  // intensification
             } else {
-                seedPoint = Array(n).fill(0).map(() => Math.random());  // diversification
+                seedPoint = Array(n).fill(0).map(() => MathUtils.randomScalar());  // diversification
             }
         }
 
@@ -251,7 +251,11 @@ class Powell extends Optimizer {
             // below Powell's potential; 1e-12 lets the direction set
             // run to numerical noise on smooth landscapes with no
             // downside on multimodal ones (the budget cap kicks in).
-            if (Math.abs(fx - fx_start) < 1e-12) break;
+            // Written so that NaN stops too: on a non-finite objective
+            // Infinity - Infinity is NaN, NaN < 1e-12 is false, and once the
+            // budget could not cover another line search this loop spun
+            // forever without evaluating anything.
+            if (!(Math.abs(fx - fx_start) >= 1e-12)) break;
 
             // Update direction set
             const newDirection = MathUtils.subtract(x, x_start);
