@@ -83,7 +83,9 @@ DEFAULT_RATIO_CEILING = 10.0
 # All of these are #78's territory: ports that agree with Python on behaviour but not on quality.
 RATIO_CEILING = {
     ("Powell", "sphere"): 1.7e11,  # measured 80609000013.37
-    ("Powell", "rosenbrock"): 17.0,  # measured 7.99
+    # 18.70 once both gates took the best value scipy's Powell observed rather than the final
+    # point it returns, which on most seeds here is not its best (#404).
+    ("Powell", "rosenbrock"): 38.0,  # measured 18.70
     ("LBFGSB", "rosenbrock"): 2700.0,  # measured 1318.23
     ("PRIMA_BOBYQA", "ackley"): 160.0,  # measured 71.51
     # This one varies run to run because the JavaScript PRIMA ports call Math.random() directly

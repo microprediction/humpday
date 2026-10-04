@@ -46,25 +46,30 @@ class TestTheStartingPoint:
 
 class TestTheCubeGuard:
     def test_a_point_outside_the_cube_raises(self):
-        counter = {"n": 0}
-        f = G._in_cube(lambda x: sum(x), 2, counter)
+        f = G.Metered(lambda x: sum(x), 2, 10)
         with pytest.raises(G.OutsideTheCube):
             f([1.4, 0.5])
         with pytest.raises(G.OutsideTheCube):
             f([0.5, -1e-9])
 
     def test_the_boundary_itself_is_allowed(self):
-        counter = {"n": 0}
-        f = G._in_cube(lambda x: sum(x), 2, counter)
+        f = G.Metered(lambda x: sum(x), 2, 10)
         assert f([0.0, 1.0]) == 1.0
 
     def test_every_call_is_counted_including_the_one_that_raised(self):
-        counter = {"n": 0}
-        f = G._in_cube(lambda x: sum(x), 1, counter)
+        f = G.Metered(lambda x: sum(x), 1, 10)
         f([0.5])
         with pytest.raises(G.OutsideTheCube):
             f([2.0])
-        assert counter["n"] == 2
+        assert f.n == 2
+
+    def test_an_unconstrained_reference_sees_what_the_port_sees(self):
+        """`project` evaluates at the nearest point of the cube, as `Optimizer.evaluate`
+        does for every point a port proposes, and counts that it had to."""
+        f = G.Metered(lambda x: sum(x), 2, 10, outside="project")
+        assert f([1.4, -0.5]) == 1.0
+        assert f.projected == 1
+        assert f.best_x == [1.0, 0.0]
 
     def test_the_scipy_adapters_that_used_to_run_unbounded_now_pass_bounds(self):
         """Nelder-Mead and Powell reached (-0.98, 0.60) on Rosenbrock without them."""
@@ -146,3 +151,72 @@ class TestTheConvergedFloorGovernsBothTests:
         )
         assert win_test in src
         assert ratio_test in src
+
+
+class TestTheBudget:
+    """Both sides get the same number of objective calls, enforced rather than requested (#404).
+
+    At a budget of 200 the references used to spend what their library's own units came to:
+    differential_evolution up to 433 calls on Ackley, dual_annealing up to 318, L-BFGS-B 225,
+    mealpy's Firefly 4,020. The harness counted every call and then threw the counts away.
+    """
+
+    def test_call_n_plus_one_is_refused_before_the_objective_sees_it(self):
+        seen = []
+        f = G.Metered(lambda x: seen.append(x) or 1.0, 1, 3)
+        for _ in range(3):
+            f([0.5])
+        with pytest.raises(G.BudgetExhausted):
+            f([0.5])
+        assert len(seen) == 3 and f.n == 3 and f.stopped_at_budget
+
+    def test_an_interrupted_reference_reports_the_best_it_actually_observed(self):
+        @G._reference()
+        def never_stops(f, n_trials, n_dim, seed):
+            x = 0.0
+            while True:
+                f([x])
+                x = min(1.0, x + 0.01)
+
+        out = never_stops(lambda x: (x[0] - 0.05) ** 2, 10, 1, seed=0)
+        assert out["evals"] == 10
+        assert out["stopped_at_budget"]
+        assert out["best_value"] == pytest.approx(
+            0.0, abs=1e-20
+        )  # x = 0.05 was call six
+        assert out["reported_value"] is None  # the library never got to report
+
+    def test_a_reference_reporting_below_what_it_observed_is_caught(self):
+        @G._reference()
+        def boasts(f, n_trials, n_dim, seed):
+            f([0.9])
+            return -5.0
+
+        out = boasts(G.PROBLEMS["sphere"]["func"], 10, 2, seed=0)
+        assert G.validate_run(out, G.PROBLEMS["sphere"], 10)
+
+    @pytest.mark.parametrize(
+        "algorithm", ["DifferentialEvolution", "SimulatedAnnealing", "LBFGSB"]
+    )
+    def test_the_scipy_adapters_that_overspent_now_stay_within_it(self, algorithm):
+        """#404's reproduction, asserted rather than printed."""
+        pytest.importorskip("scipy.optimize")
+        _, adapter, _ = G.REFERENCES[algorithm]
+        for problem in G.PROBLEMS.values():
+            for seed in range(4):
+                out = adapter(problem["func"], 200, 2, seed=seed)
+                assert 1 <= out["evals"] <= 200
+                assert G.validate_run(out, problem, 200) == []
+
+    def test_firefly_gets_the_budget_and_not_twenty_times_it(self):
+        pytest.importorskip("mealpy")
+        _, adapter, _ = G.REFERENCES["FireflyAlgorithm"]
+        out = adapter(G.PROBLEMS["sphere"]["func"], 200, 2, seed=0)
+        assert out["evals"] == 200 and out["stopped_at_budget"]
+
+    def test_the_humpday_side_is_counted_the_same_way(self):
+        out = G._run_humpday(
+            "DifferentialEvolution", G.PROBLEMS["ackley"]["func"], 200, 2, 0
+        )
+        assert out["evals"] <= 200
+        assert G.validate_run(out, G.PROBLEMS["ackley"], 200) == []
