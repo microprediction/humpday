@@ -206,16 +206,123 @@ def _can_load_pdfo():
         return False
 
 
+class _Observed:
+    """The objective as an optimizer sees it, with a record of what it actually returned.
+
+    A run's claimed best value is only evidence if the objective returned it. This keeps the
+    call count and the lowest value handed back, so `validate_run` can hold the claim against
+    the observation rather than taking it on trust (#405).
+    """
+
+    def __init__(self, func):
+        self.func = func
+        self.n = 0
+        self.best = math.inf
+
+    def __call__(self, x):
+        self.n += 1
+        value = self.func(x)
+        v = float(value)
+        if v < self.best:
+            self.best = v
+        return value
+
+
 def _run_humpday(algorithm: str, func, n_trials: int, n_dim: int, seed: int):
     _seed_humpday(seed)
+    seen = _Observed(func)
     cls = PURE_OPTIMIZERS[algorithm]
-    opt = cls(func, n_trials=n_trials, n_dim=n_dim)
+    opt = cls(seen, n_trials=n_trials, n_dim=n_dim)
     res = opt.optimize()
     if isinstance(res, tuple) and len(res) == 2:
         best_value = float(res[0])
     else:
         best_value = float(opt.best_value)
-    return {"best_value": best_value, "evals": int(opt.evaluations)}
+    return {
+        "best_value": best_value,
+        "evals": seen.n,
+        "reported_evals": int(opt.evaluations),
+        "observed_best": seen.best,
+    }
+
+
+# ---------- what counts as a result ----------
+
+# How far below the known minimum a value may sit and still be a rounding of it. Every objective
+# here is exactly zero at its optimum; Ackley evaluates there to a few ulps either side of zero.
+BELOW_OPTIMUM_TOLERANCE = 1e-12
+
+
+def _same_value(a: float, b: float) -> bool:
+    return abs(a - b) <= 1e-12 * max(1.0, abs(a), abs(b))
+
+
+def validate_run(run: dict, problem: dict, budget: int) -> list[str]:
+    """Everything wrong with one run's result, or an empty list if it is a result at all.
+
+    The gate used to sort and take medians of whatever came back. A reference that returned
+    `inf` made its gap infinite and the ratio zero; `NaN` made every comparison false, and false
+    is a pass; a HumpDay value of -1 on a problem whose minimum is 0 was simply accepted. None
+    of those is a measurement, so none of them may take part in one (#405).
+
+    A run is a result when its value is finite, at least one objective call stands behind it,
+    it spent no more than its budget, it is not below the known minimum, and -- where the run
+    says what the objective returned -- it is a value the objective actually returned.
+    """
+    issues = []
+    value = run.get("best_value")
+    finite = isinstance(value, (int, float)) and math.isfinite(value)
+    if not finite:
+        issues.append(f"best value {value!r} is not a finite number")
+
+    evals = run.get("evals")
+    if not isinstance(evals, int) or evals < 1:
+        issues.append(
+            f"made {evals!r} objective calls, so no observation stands behind its value"
+        )
+    elif evals > budget:
+        issues.append(f"made {evals} objective calls on a budget of {budget}")
+    reported_evals = run.get("reported_evals")
+    if reported_evals is not None and reported_evals != evals:
+        issues.append(
+            f"reports {reported_evals} evaluations but made {evals} objective calls"
+        )
+
+    if finite and value < problem["opt"] - BELOW_OPTIMUM_TOLERANCE:
+        issues.append(
+            f"best value {value!r} is below the known minimum {problem['opt']!r}"
+        )
+
+    observed = run.get("observed_best")
+    if finite and observed is not None and not _same_value(value, observed):
+        issues.append(
+            f"claims {value!r} but the lowest value the objective returned was {observed!r}"
+        )
+
+    # A library's own report of its minimum, kept beside the value the harness observed. It may
+    # be higher (some return their last point rather than their best); it may not be lower than
+    # anything it was ever given.
+    reported = run.get("reported_value")
+    if reported is not None and finite:
+        if not math.isfinite(reported):
+            issues.append(f"the library reports {reported!r} as its minimum")
+        elif reported < value - 1e-12 * max(1.0, abs(value)):
+            issues.append(
+                f"the library reports {reported!r}, below anything it evaluated ({value!r})"
+            )
+
+    if run.get("outside"):
+        issues.append(f"evaluated {run['outside']} points outside the unit cube")
+    return issues
+
+
+def _json_number(v):
+    """A float the snapshot can hold. Strict JSON has no NaN or Infinity, and the snapshot is
+    written with `allow_nan=False` so that one cannot slip in as a bare token again."""
+    if v is None:
+        return None
+    v = float(v)
+    return v if math.isfinite(v) else repr(v)
 
 
 # ---------- reference adapters ----------
@@ -927,7 +1034,14 @@ def head_to_head(hd_vals, ref_vals) -> float:
 
     Two ports that both converge to exactly the optimum score 0.5 here, which is what the
     `CONVERGED_GAP` floor exists to say about the ratio. This statistic needs no such floor.
+
+    It refuses a value that is not finite. `NaN > b` and `NaN == b` are both false, so a NaN
+    run used to count as a win for whichever side produced it, and `inf` on the reference side
+    was a win for humpday. `validate_run` keeps such runs out; this is the second lock (#405).
     """
+    for v in (*hd_vals, *ref_vals):
+        if not math.isfinite(v):
+            raise ValueError(f"head_to_head given a value that is not finite: {v!r}")
     worse = 0.0
     for a in hd_vals:
         for b in ref_vals:
@@ -947,6 +1061,9 @@ def test_reference_alignment():
     rows = []
     failures: dict = {}
 
+    def fail(heading, item):
+        failures.setdefault(heading, []).append(item)
+
     for algorithm, (ref_label, ref_fn, mods) in REFERENCES.items():
         if not _all_installed(mods):
             print(f"\n--- {algorithm}: SKIP ({', '.join(mods)} not installed) ---")
@@ -956,37 +1073,65 @@ def test_reference_alignment():
         for problem_id, problem in PROBLEMS.items():
             func = problem["func"]
             opt_value = problem["opt"]
+            pair = f"{algorithm}/{problem_id}"
 
+            # Every run is checked before it can take part in a median or a pairing. One that
+            # is not a result -- not finite, no call behind it, over budget, below the known
+            # minimum, a value the objective never returned -- fails the pair, and is left out
+            # of the statistics rather than counted as a win for the other side (#405).
             hd_vals = []
             for trial in range(N_RUNS):
-                hd_vals.append(
-                    _run_humpday(algorithm, func, n_trials, n_dim, seed=trial)[
-                        "best_value"
-                    ]
-                )
+                run = _run_humpday(algorithm, func, n_trials, n_dim, seed=trial)
+                issues = validate_run(run, problem, n_trials)
+                if issues:
+                    fail(
+                        "humpday result invalid",
+                        f"{pair} seed {trial}: {'; '.join(issues)}",
+                    )
+                else:
+                    hd_vals.append(run["best_value"])
 
+            # A reference that raised used to be recorded as inf, which made its gap infinite
+            # and the ratio zero: the comparison humpday most conclusively "won" was the one
+            # where the thing it is measured against never ran. A reference that *returned* inf
+            # or NaN did the same thing by another route. Neither is a comparison.
             ref_vals = []
-            ref_errors = []
             for trial in range(N_RUNS):
                 try:
-                    ref_vals.append(
-                        ref_fn(func, n_trials, n_dim, seed=trial)["best_value"]
-                    )
+                    run = ref_fn(func, n_trials, n_dim, seed=trial)
                 except Exception as e:
                     print(f"    reference error on {problem_id}: {e}")
-                    ref_errors.append(f"{type(e).__name__}: {e}")
-                    ref_vals.append(float("inf"))
-            # A reference that raised used to be recorded as inf, which made its gap infinite and
-            # the ratio zero: the comparison humpday most conclusively "won" was the one where
-            # the thing it is measured against never ran. There is nothing to compare, so say so.
-            failures.setdefault("reference did not run", [])
-            if ref_errors:
-                failures["reference did not run"].append(
-                    f"{algorithm}/{problem_id}: {ref_errors[0]}"
-                )
+                    fail(
+                        "reference did not run",
+                        f"{pair} seed {trial}: {type(e).__name__}: {e}",
+                    )
+                    continue
+                issues = validate_run(run, problem, n_trials)
+                if issues:
+                    fail(
+                        "reference result invalid",
+                        f"{pair} seed {trial}: {'; '.join(issues)}",
+                    )
+                else:
+                    ref_vals.append(run["best_value"])
 
-            hd_med = sorted(hd_vals)[N_RUNS // 2]
-            ref_med = sorted(ref_vals)[N_RUNS // 2]
+            if not hd_vals or not ref_vals:
+                print(
+                    f"  {problem_id:<12}  no valid runs on one side; nothing to compare"
+                )
+                rows.append(
+                    {
+                        "algorithm": algorithm,
+                        "reference": ref_label,
+                        "problem": problem_id,
+                        "humpday_valid_runs": len(hd_vals),
+                        "reference_valid_runs": len(ref_vals),
+                    }
+                )
+                continue
+
+            hd_med = sorted(hd_vals)[len(hd_vals) // 2]
+            ref_med = sorted(ref_vals)[len(ref_vals) // 2]
             hd_gap = hd_med - opt_value
             ref_gap = ref_med - opt_value
             relative = (hd_gap + 1e-15) / (ref_gap + 1e-15)
@@ -1014,14 +1159,16 @@ def test_reference_alignment():
             # loses about half its pairings, which is to say it matches its reference.
             win_cap = win_ceiling(algorithm, problem_id)
             if lost > win_cap and hd_gap > CONVERGED_GAP:
-                failures.setdefault("lagging the reference", []).append(
-                    f"{algorithm}/{problem_id}: loses {lost:.2f} of head-to-head pairings, "
-                    f"over its ceiling {win_cap:g}"
+                fail(
+                    "lagging the reference",
+                    f"{pair}: loses {lost:.2f} of head-to-head pairings, "
+                    f"over its ceiling {win_cap:g}",
                 )
             ceiling = ratio_ceiling(algorithm, problem_id)
             if lost > 0.5 and relative > ceiling and hd_gap > CONVERGED_GAP:
-                failures.setdefault("lagging the reference", []).append(
-                    f"{algorithm}/{problem_id}: hd/ref {relative:.2f} over its ceiling {ceiling:g}"
+                fail(
+                    "lagging the reference",
+                    f"{pair}: hd/ref {relative:.2f} over its ceiling {ceiling:g}",
                 )
 
             rows.append(
@@ -1038,23 +1185,29 @@ def test_reference_alignment():
                     "head_to_head_lost": lost,
                     "win_ceiling": win_cap,
                     "converged": hd_gap <= CONVERGED_GAP,
+                    "humpday_valid_runs": len(hd_vals),
+                    "reference_valid_runs": len(ref_vals),
                 }
             )
 
     out = REPO_ROOT / "benchmarks" / "reference_alignment.json"
     out.parent.mkdir(exist_ok=True)
-    with open(out, "w") as f:
-        json.dump(
+    snapshot = {
+        "rows": [
             {
-                "rows": rows,
-                "n_runs": N_RUNS,
-                "n_trials": n_trials,
-                "n_dim": n_dim,
-                "recorded_at": time.strftime("%Y-%m-%dT%H:%M:%SZ", time.gmtime()),
-            },
-            f,
-            indent=2,
-        )
+                k: (_json_number(v) if isinstance(v, float) else v)
+                for k, v in row.items()
+            }
+            for row in rows
+        ],
+        "n_runs": N_RUNS,
+        "n_trials": n_trials_default,
+        "n_trials_overrides": REFERENCE_BUDGET_OVERRIDE,
+        "n_dim": n_dim,
+        "recorded_at": time.strftime("%Y-%m-%dT%H:%M:%SZ", time.gmtime()),
+    }
+    with open(out, "w") as f:
+        json.dump(snapshot, f, indent=2, allow_nan=False)
     print(f"\nWrote {out.relative_to(REPO_ROOT)}")
 
     # The snapshot is written first, so a failing run still leaves the table it was judged on.
@@ -1062,7 +1215,6 @@ def test_reference_alignment():
         "no reference adapter could run: install the comparisons with "
         "`pip install humpday[reference]`, or this test is watching nothing"
     )
-    reported = {k: v for k, v in failures.items() if v}
-    assert not reported, "\n".join(
-        f"{heading}:\n  " + "\n  ".join(items) for heading, items in reported.items()
+    assert not failures, "\n".join(
+        f"{heading}:\n  " + "\n  ".join(items) for heading, items in failures.items()
     )

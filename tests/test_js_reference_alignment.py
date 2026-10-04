@@ -30,6 +30,7 @@ from tests.test_reference_alignment import (  # noqa: E402
     _all_installed,
     _run_humpday,
     head_to_head,
+    validate_run,
 )
 
 NODE = shutil.which("node")
@@ -175,7 +176,14 @@ def test_the_optimum_is_where_both_languages_say_it_is(problem_id):
         )
 
 
-def _run_js(algorithm: str, problem: str, seed: int, n_trials: int = N_TRIALS) -> float:
+def _number(v):
+    # JSON.stringify writes null for NaN and the infinities.
+    return math.nan if v is None else float(v)
+
+
+def _run_js(algorithm: str, problem: str, seed: int, n_trials: int = N_TRIALS) -> dict:
+    """One JavaScript run, as a result `validate_run` can check: the value the port reports,
+    beside the calls the runner counted and the lowest value the objective actually returned."""
     result = subprocess.run(
         [NODE, str(RUNNER), algorithm, problem, str(n_trials), str(N_DIM), str(seed)],
         capture_output=True,
@@ -183,7 +191,14 @@ def _run_js(algorithm: str, problem: str, seed: int, n_trials: int = N_TRIALS) -
         cwd=REPO_ROOT,
     )
     assert result.returncode == 0, result.stderr
-    return float(json.loads(result.stdout)["best_value"])
+    out = json.loads(result.stdout)
+    return {
+        "best_value": _number(out["best_value"]),
+        "evals": int(out["calls"]),
+        "reported_evals": int(out["evaluations"]),
+        "observed_best": _number(out["observed_best"]),
+        "outside": int(out["outside"]),
+    }
 
 
 @pytest.mark.reference
@@ -199,10 +214,22 @@ def test_the_javascript_port_tracks_its_reference(algorithm, problem_id):
     func, opt_value = problem["func"], problem["opt"]
 
     n_trials = BUDGET_OVERRIDE.get(algorithm, N_TRIALS)
-    js_vals = [_run_js(algorithm, problem_id, seed, n_trials) for seed in range(N_RUNS)]
-    ref_vals = []
-    for seed in range(N_RUNS):
-        ref_vals.append(ref_fn(func, n_trials, N_DIM, seed=seed)["best_value"])
+    js_runs = [_run_js(algorithm, problem_id, seed, n_trials) for seed in range(N_RUNS)]
+    ref_runs = [ref_fn(func, n_trials, N_DIM, seed=seed) for seed in range(N_RUNS)]
+
+    # The same contract as the Python gate: every run is a result before it is a statistic. A
+    # reference returning +inf used to make the ratio zero here too (#405).
+    invalid = [
+        f"{side} seed {seed}: {'; '.join(issues)}"
+        for side, runs in (("JavaScript", js_runs), (ref_label, ref_runs))
+        for seed, run in enumerate(runs)
+        if (issues := validate_run(run, problem, n_trials))
+    ]
+    assert not invalid, f"{algorithm}/{problem_id}: runs that are not results:\n  " + (
+        "\n  ".join(invalid)
+    )
+    js_vals = [run["best_value"] for run in js_runs]
+    ref_vals = [run["best_value"] for run in ref_runs]
 
     js_med = sorted(js_vals)[N_RUNS // 2]
     ref_med = sorted(ref_vals)[N_RUNS // 2]
@@ -244,7 +271,7 @@ def test_the_two_ports_agree_about_the_same_problem(algorithm):
     """
     if not _all_installed(REFERENCES[algorithm][2]):
         pytest.skip("reference not installed")
-    js = _run_js(algorithm, "sphere", 0)
+    js = _run_js(algorithm, "sphere", 0)["best_value"]
     py = _run_humpday(algorithm, PROBLEMS["sphere"]["func"], N_TRIALS, N_DIM, seed=0)[
         "best_value"
     ]
