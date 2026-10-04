@@ -447,14 +447,14 @@ class BayesianOpt extends Optimizer {
 
         // Sample some points near center for sphere-like functions
         for (let i = 0; i < Math.min(3, nInitial) && this.evaluations < this.nTrials; i++) {
-            const x = Array(this.nDim).fill(0).map(() => 0.5 + (Math.random() - 0.5) * 0.3);
+            const x = Array(this.nDim).fill(0).map(() => 0.5 + (MathUtils.randomScalar() - 0.5) * 0.3);
             const y = this.evaluate(x);
             this.observations.push({ x: [...x], y });
         }
 
         // Fill remaining initial samples with random points
         for (let i = this.observations.length; i < nInitial && this.evaluations < this.nTrials; i++) {
-            const x = Array(this.nDim).fill(0).map(() => Math.random());
+            const x = Array(this.nDim).fill(0).map(() => MathUtils.randomScalar());
             const y = this.evaluate(x);
             this.observations.push({ x: [...x], y });
         }
@@ -479,7 +479,7 @@ class BayesianOpt extends Optimizer {
             if (y < 1e-4 && this.evaluations < loopBudget - 5) {
                 for (let i = 0; i < Math.min(3, loopBudget - this.evaluations); i++) {
                     const localX = nextX.map(xi => {
-                        const noise = (Math.random() - 0.5) * 0.02;
+                        const noise = (MathUtils.randomScalar() - 0.5) * 0.02;
                         return MathUtils.clip(xi + noise, 0, 1);
                     });
                     const localY = this.evaluate(localX);
@@ -502,11 +502,11 @@ class BayesianOpt extends Optimizer {
 
     acquireNext() {
         let bestAcq = -Infinity;
-        let nextX = Array(this.nDim).fill(0).map(() => Math.random());
+        let nextX = Array(this.nDim).fill(0).map(() => MathUtils.randomScalar());
 
         // Sample candidate points
         for (let j = 0; j < 100; j++) {
-            const candidate = Array(this.nDim).fill(0).map(() => Math.random());
+            const candidate = Array(this.nDim).fill(0).map(() => MathUtils.randomScalar());
             const acq = this.acquisitionFunction(candidate);
 
             if (acq > bestAcq) {
@@ -519,7 +519,7 @@ class BayesianOpt extends Optimizer {
     }
 
     acquisitionFunction(x) {
-        if (this.observations.length === 0) return Math.random();
+        if (this.observations.length === 0) return MathUtils.randomScalar();
 
         // Distance-weighted Expected Improvement approximation
         const distances = this.observations.map(obs => ({
@@ -530,7 +530,7 @@ class BayesianOpt extends Optimizer {
         distances.sort((a, b) => a.dist - b.dist);
         const kNearest = distances.slice(0, Math.min(5, distances.length));
 
-        if (kNearest.length === 0) return Math.random();
+        if (kNearest.length === 0) return MathUtils.randomScalar();
 
         // Distance-weighted prediction
         const epsilon = 1e-8; // Avoid division by zero
@@ -656,7 +656,7 @@ class CMAEvolutionStrategy extends Optimizer {
 
             // Fresh state per restart.
             let mean = new Array(n);
-            for (let i = 0; i < n; i++) mean[i] = 0.3 + 0.4 * Math.random();
+            for (let i = 0; i < n; i++) mean[i] = 0.3 + 0.4 * MathUtils.randomScalar();
             let sigma = 0.2;
             let C = Linalg.eye(n);
             let pc = new Array(n).fill(0);
@@ -844,8 +844,8 @@ class CMAEvolutionStrategy extends Optimizer {
             this._spareGaussian = undefined;
             return s;
         }
-        const u = Math.random();
-        const v = Math.random();
+        const u = MathUtils.randomScalar();
+        const v = MathUtils.randomScalar();
         const r = Math.sqrt(-2 * Math.log(Math.max(u, 1e-300)));
         const theta = 2 * Math.PI * v;
         this._spareGaussian = r * Math.sin(theta);
@@ -962,7 +962,7 @@ class AntColonyOpt extends Optimizer {
         const archive = [];
         for (let i = 0; i < k && this.evaluations < this.nTrials; i++) {
             const x = new Array(n);
-            for (let d = 0; d < n; d++) x[d] = Math.random();
+            for (let d = 0; d < n; d++) x[d] = MathUtils.randomScalar();
             archive.push({ x, f: this.evaluate(x) });
         }
         if (!archive.length) {
@@ -997,7 +997,7 @@ class AntColonyOpt extends Optimizer {
                 if (this.evaluations >= this.nTrials) break;
 
                 // Roulette-pick a kernel by weights.
-                const r = Math.random();
+                const r = MathUtils.randomScalar();
                 let cum = 0;
                 let kernelIdx = archive.length - 1;
                 for (let i = 0; i < archive.length; i++) {
@@ -1036,8 +1036,8 @@ class AntColonyOpt extends Optimizer {
             this._spare = undefined;
             return s;
         }
-        const u = Math.random();
-        const v = Math.random();
+        const u = MathUtils.randomScalar();
+        const v = MathUtils.randomScalar();
         const r = Math.sqrt(-2 * Math.log(Math.max(u, 1e-300)));
         const theta = 2 * Math.PI * v;
         this._spare = r * Math.sin(theta);
