@@ -66,7 +66,7 @@ Legend: ✅ done · 🟡 partial / in-progress · ❌ not done · ❓ unknown / 
 
    | Python feature | JS status | Where it lives in Python | Effort |
    |--|--|--|--|
-   | NelderMead Kelley-1999 simplex-collapse restart | ❌ missing — JS NM exits on `worst-best < 1e-8`, no reseed | `humpday/optimizers/scipy_algorithms.py` (NM with `nonzdelt_schedule`) | ~20 LOC |
+   | NelderMead simplex-collapse restart | ❌ missing — JS NM exits on `worst-best < 1e-8`, no reseed | `humpday/optimizers/scipy_algorithms.py` (NM with `nonzdelt_schedule`) | ~20 LOC |
    | ParticleSwarm SPSO-2011-style global-best stagnation reseed | ❌ JS uses per-particle stagnation count instead of the global-best K-iteration window | `humpday/optimizers/evolutionary_algorithms.py::ParticleSwarm` | ~15 LOC |
    | CMA-ES IPOP restart layer (Auger & Hansen 2005) | ❌ JS is vanilla Hansen, single while loop, no TolFun/TolX/ConditionCov + λ-doubling | `humpday/optimizers/evolutionary_algorithms.py::CMAEvolutionStrategy` | ~40 LOC |
    | NelderMead 1e-12 convergence tolerances | ❌ JS still on 1e-8 (vs Python's 1e-12 since the restart fix) | same NM port | trivial |
