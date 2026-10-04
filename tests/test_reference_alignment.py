@@ -81,8 +81,10 @@ import functools
 import importlib
 import json
 import math
+import os
 import random
 import time
+import warnings
 from pathlib import Path
 
 import pytest
@@ -185,34 +187,6 @@ PROBLEMS = {
 
 
 # ---------- helpers ----------
-
-
-def _try_import(name):
-    try:
-        return importlib.import_module(name)
-    except (ImportError, RuntimeError):
-        # RuntimeError covers e.g. PDFO compiled against numpy 1.x raising
-        # when imported under numpy 2.x.
-        return None
-
-
-def _can_load_pdfo():
-    """Defensive PDFO probe — its top-level import doesn't trigger the
-    numpy-2.x crash, but `from .gethuge import gethuge` inside the
-    solver call does. Run a tiny call here so the failure surfaces at
-    skip-time, not test-time."""
-    try:
-        import numpy as np
-        from pdfo import newuoa
-
-        newuoa(
-            lambda x: float(sum(x)),
-            np.array([0.0, 0.0]),
-            options={"maxfev": 5, "rhobeg": 0.1, "rhoend": 1e-2},
-        )
-        return True
-    except Exception:
-        return False
 
 
 class _Observed:
@@ -1038,20 +1012,92 @@ REFERENCES = {
 }
 
 
-_PDFO_OK = None  # cached so we don't probe twice
+# ---------- which comparisons can run, and whether they had to ----------
+
+# Set in the CI job. Locally a missing reference library is a skip, reported; in CI it is a
+# failure, because that job is the one place the whole matrix is supposed to run. It used to be
+# a skip there too, and the job's install did not include PDFO, so two PRIMA comparisons never
+# ran in the environment configured to run them (#410).
+STRICT_ENV = "HUMPDAY_REFERENCE_STRICT"
+
+OK, ABSENT, PROBE_FAILED = "ok", "absent", "probe failed"
+
+
+def strict() -> bool:
+    return os.environ.get(STRICT_ENV, "").strip().lower() not in (
+        "",
+        "0",
+        "false",
+        "no",
+    )
+
+
+def _probe_pdfo():
+    """PDFO imports fine under NumPy 2 and fails at its first solver call, where `from
+    .gethuge import gethuge` meets an extension compiled for NumPy 1.x. So call it."""
+    import numpy as np
+    from pdfo import newuoa
+
+    with warnings.catch_warnings():
+        warnings.simplefilter("ignore")
+        newuoa(
+            lambda x: float(sum(x)),
+            np.array([0.0, 0.0]),
+            options={"maxfev": 5, "rhobeg": 0.1, "rhoend": 1e-2},
+        )
+
+
+# A module whose import can succeed while the library is unusable gets a probe that uses it.
+_PROBES = {"pdfo": _probe_pdfo}
+_STATUS: dict = {}
+
+
+def module_status(name: str) -> tuple:
+    """`(OK, "")`, `(ABSENT, why)` or `(PROBE_FAILED, why)` for one module, cached.
+
+    The two failures are told apart because they mean different things. Absent is a choice
+    about what to install. Probe failed is an installation that is there and broken -- a
+    compiled extension built for another NumPy, a dependency of the dependency missing --
+    and used to be folded silently into the same skip (#410).
+    """
+    if name not in _STATUS:
+        try:
+            importlib.import_module(name)
+            probe = _PROBES.get(name)
+            if probe is not None:
+                probe()
+            _STATUS[name] = (OK, "")
+        except ModuleNotFoundError as e:
+            if e.name == name or name.startswith(f"{e.name}."):
+                _STATUS[name] = (ABSENT, f"{name} is not installed")
+            else:
+                _STATUS[name] = (PROBE_FAILED, f"{name}: {type(e).__name__}: {e}")
+        except Exception as e:
+            _STATUS[name] = (PROBE_FAILED, f"{name}: {type(e).__name__}: {e}")
+    return _STATUS[name]
+
+
+def dependency_status(modules) -> tuple:
+    """The first module that is not usable, or `(OK, "")`."""
+    for m in modules:
+        status = module_status(m)
+        if status[0] != OK:
+            return status
+    return (OK, "")
 
 
 def _all_installed(modules):
-    global _PDFO_OK
-    for m in modules:
-        if _try_import(m) is None:
-            return False
-        if m == "pdfo":
-            if _PDFO_OK is None:
-                _PDFO_OK = _can_load_pdfo()
-            if not _PDFO_OK:
-                return False
-    return True
+    return dependency_status(modules)[0] == OK
+
+
+def require(modules):
+    """Skip a test whose reference is unavailable -- or fail it, in the CI job (#410)."""
+    status, why = dependency_status(modules)
+    if status != OK:
+        message = f"{status}: {why}"
+        if strict():
+            pytest.fail(f"reference expected in CI is unavailable -- {message}")
+        pytest.skip(message)
 
 
 # ---------- how far a port may lag its reference ----------
@@ -1214,10 +1260,19 @@ def test_reference_alignment():
     def fail(heading, item):
         failures.setdefault(heading, []).append(item)
 
+    # What ran and what did not, kept in the snapshot. A nonempty table used to be enough for
+    # green, and six of the references are inline baselines with no dependencies at all, so
+    # with every third-party library missing or broken the gate passed on those six (#410).
+    coverage = {"strict": strict(), "compared": [], "absent": {}, "probe_failed": {}}
     for algorithm, (ref_label, ref_fn, mods) in REFERENCES.items():
-        if not _all_installed(mods):
-            print(f"\n--- {algorithm}: SKIP ({', '.join(mods)} not installed) ---")
+        status, why = dependency_status(mods)
+        if status != OK:
+            key = "absent" if status == ABSENT else "probe_failed"
+            coverage[key][algorithm] = why
+            loud = "" if status == ABSENT else "  <-- installed but broken"
+            print(f"\n--- {algorithm}: SKIP, {status}: {why}{loud} ---")
             continue
+        coverage["compared"].append(algorithm)
         n_trials = REFERENCE_BUDGET_OVERRIDE.get(algorithm, n_trials_default)
         print(f"\n=== {algorithm}  vs  {ref_label}  (n_trials={n_trials}) ===")
         for problem_id, problem in PROBLEMS.items():
@@ -1371,6 +1426,7 @@ def test_reference_alignment():
         "n_trials": n_trials_default,
         "n_trials_overrides": REFERENCE_BUDGET_OVERRIDE,
         "n_dim": n_dim,
+        "coverage": coverage,
         "recorded_at": time.strftime("%Y-%m-%dT%H:%M:%SZ", time.gmtime()),
     }
     with open(out, "w") as f:
@@ -1378,10 +1434,20 @@ def test_reference_alignment():
     print(f"\nWrote {out.relative_to(REPO_ROOT)}")
 
     # The snapshot is written first, so a failing run still leaves the table it was judged on.
-    assert rows, (
-        "no reference adapter could run: install the comparisons with "
-        "`pip install humpday[reference]`, or this test is watching nothing"
-    )
+    third_party = [a for a in coverage["compared"] if REFERENCES[a][2]]
+    if not third_party:
+        fail(
+            "no third-party comparison ran",
+            "only the inline baselines did, which compares the ports with nothing they were "
+            "written from: install `pip install humpday[reference]`",
+        )
+    if coverage["strict"]:
+        for key, label in (("absent", ABSENT), ("probe_failed", PROBE_FAILED)):
+            for algorithm, why in coverage[key].items():
+                fail(
+                    "comparison expected in CI did not run",
+                    f"{algorithm}: {label}: {why}",
+                )
     assert not failures, "\n".join(
         f"{heading}:\n  " + "\n  ".join(items) for heading, items in failures.items()
     )

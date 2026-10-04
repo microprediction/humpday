@@ -40,11 +40,15 @@ def _patched(module, **attrs):
 
 
 def _run_gate(tmp_path: Path, hd, ref):
-    """The real gate on one pair, with only the two sides replaced."""
+    """The real gate on one pair, with only the two sides replaced.
+
+    The stub declares a dependency (`json`, always importable) so that it counts as a
+    third-party comparison: the gate fails when none of those ran (#410), which is not what
+    these tests are about."""
     with _patched(
         G,
         REPO_ROOT=tmp_path,
-        REFERENCES={"NelderMead": ("stub reference", ref, [])},
+        REFERENCES={"NelderMead": ("stub reference", ref, ["json"])},
         PROBLEMS={"sphere": G.PROBLEMS["sphere"]},
         _run_humpday=hd,
     ):
@@ -177,7 +181,8 @@ class TestTheJavaScriptGateHasTheSameContract:
         with _patched(
             J,
             REFERENCES={"NelderMead": ("stub reference", ref_run, [])},
-            _all_installed=lambda mods: True,
+            require=lambda mods: None,
+            NODE="node",
             _run_js=js_run,
         ):
             J.test_the_javascript_port_tracks_its_reference("NelderMead", "sphere")

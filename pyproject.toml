@@ -95,8 +95,14 @@ reference = [
     # / HarmonySearch / EvolutionStrategy / AntColonyOpt under one
     # install (see _ref_mealpy_* in tests/test_reference_alignment.py).
     "mealpy>=3.0.0",
-    # PDFO requires a compiler; install separately if needed:
-    #     pip install pdfo
+    # PDFO is the reference for PRIMA_NEWUOA and PRIMA_UOBYQA. It used to be left out with a
+    # note to install it separately, so the CI job that installs this extra never ran those two
+    # comparisons (#410). PDFO 2.2.0, the latest, ships wheels but is compiled against NumPy
+    # 1.x: under NumPy 2 it imports and then fails at its first solver call. Hence the pin,
+    # which applies to this test-only extra and nothing else. There are no NumPy 1.x wheels
+    # for Python 3.13, so there PDFO is left out and the gate reports it absent.
+    "pdfo>=2.2.0; python_version < '3.13'",
+    "numpy<2; python_version < '3.13'",
 ]
 
 # Paper writing (JSS submission)

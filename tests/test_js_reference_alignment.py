@@ -27,9 +27,10 @@ from tests.test_reference_alignment import (  # noqa: E402
     N_RUNS,
     PROBLEMS,
     REFERENCES,
-    _all_installed,
     _run_humpday,
     head_to_head,
+    require,
+    strict,
     validate_run,
 )
 
@@ -37,9 +38,21 @@ NODE = shutil.which("node")
 RUNNER = Path(__file__).parent / "js_reference_runner.js"
 REPO_ROOT = Path(__file__).parent.parent
 
+
+def _require_node():
+    """Skip without Node -- or fail, in the CI job, where a missing Node used to turn every
+    test in this file into a skip and the job green (#410)."""
+    if NODE:
+        return
+    if strict():
+        pytest.fail("node is not on PATH, and the reference CI job needs it")
+    pytest.skip("node not on PATH")
+
+
 # The ports where alignment matters most and where a reference exists on both sides. PRIMA_BOBYQA
 # is in the issue's list but its reference (Py-BOBYQA) is an optional install, so it joins the
-# others only when that is present -- `_all_installed` decides, as it does for the Python gate.
+# others only when that is present -- `require` decides, as it does for the Python gate, and in
+# the CI job a missing one fails rather than skips (#410).
 JS_ALGORITHMS = ["NelderMead", "Powell", "LBFGSB", "PRIMA_BOBYQA", "BayesianOpt"]
 
 N_DIM = 2
@@ -141,7 +154,6 @@ def _probe_js(problem: str, point: list) -> float:
     return float(json.loads(result.stdout)["value"])
 
 
-@pytest.mark.skipif(not NODE, reason="node not on PATH")
 @pytest.mark.parametrize("problem_id", sorted(PROBLEMS))
 def test_both_languages_optimize_the_same_function(problem_id):
     """The check that was missing, and without which the rest of this file means nothing.
@@ -154,6 +166,7 @@ def test_both_languages_optimize_the_same_function(problem_id):
 
     Comparing final values cannot catch that. Comparing the functions can.
     """
+    _require_node()
     python_f = PROBLEMS[problem_id]["func"]
     for point in IDENTITY_POINTS:
         py = float(python_f(point))
@@ -164,10 +177,10 @@ def test_both_languages_optimize_the_same_function(problem_id):
         )
 
 
-@pytest.mark.skipif(not NODE, reason="node not on PATH")
 @pytest.mark.parametrize("problem_id", sorted(PROBLEMS))
 def test_the_optimum_is_where_both_languages_say_it_is(problem_id):
     """And it is a minimum on both sides, not merely the same number."""
+    _require_node()
     problem = PROBLEMS[problem_id]
     x_opt = problem["x_opt"]
     assert _probe_js(problem_id, x_opt) == pytest.approx(problem["opt"], abs=1e-12)
@@ -204,13 +217,12 @@ def _run_js(algorithm: str, problem: str, seed: int, n_trials: int = N_TRIALS) -
 
 
 @pytest.mark.reference
-@pytest.mark.skipif(not NODE, reason="node not on PATH")
 @pytest.mark.parametrize("algorithm", JS_ALGORITHMS)
 @pytest.mark.parametrize("problem_id", sorted(PROBLEMS))
 def test_the_javascript_port_tracks_its_reference(algorithm, problem_id):
+    _require_node()
     ref_label, ref_fn, mods = REFERENCES[algorithm]
-    if not _all_installed(mods):
-        pytest.skip(f"{', '.join(mods)} not installed")
+    require(mods)
 
     problem = PROBLEMS[problem_id]
     func, opt_value = problem["func"], problem["opt"]
@@ -263,7 +275,6 @@ def test_the_javascript_port_tracks_its_reference(algorithm, problem_id):
 
 
 @pytest.mark.reference
-@pytest.mark.skipif(not NODE, reason="node not on PATH")
 @pytest.mark.parametrize("algorithm", JS_ALGORITHMS)
 def test_the_two_ports_agree_about_the_same_problem(algorithm):
     """The JS port and its Python twin, on one objective, sanity-checked against each other.
@@ -271,8 +282,8 @@ def test_the_two_ports_agree_about_the_same_problem(algorithm):
     Not a parity test -- test_js_parity.py does that properly -- but a guard that this file is
     driving the same algorithm on both sides rather than comparing two different things.
     """
-    if not _all_installed(REFERENCES[algorithm][2]):
-        pytest.skip("reference not installed")
+    _require_node()
+    require(REFERENCES[algorithm][2])
     js = _run_js(algorithm, "sphere", 0)["best_value"]
     py = _run_humpday(algorithm, PROBLEMS["sphere"]["func"], N_TRIALS, N_DIM, seed=0)[
         "best_value"

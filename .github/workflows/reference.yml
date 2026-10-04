@@ -18,12 +18,23 @@ on:
       - "humpday/optimizers/**"
       - "humpday/_array*.py"
       - "tests/test_reference_alignment.py"
+      - "tests/test_js_reference_alignment.py"
+      - "tests/js_reference_runner.js"
+      - "docs/js/modules/**"
+      - "pyproject.toml"
       - ".github/workflows/reference.yml"
 
 jobs:
   reference:
     runs-on: ubuntu-latest
     name: Ports against their references
+    env:
+      # A missing or broken reference fails here instead of skipping. Locally a skip is fine;
+      # this job is the one place the whole matrix is meant to run, and it used to pass with
+      # PDFO never installed and could pass with no third-party library at all (#410).
+      HUMPDAY_REFERENCE_STRICT: "1"
+      OPENBLAS_NUM_THREADS: "1"
+      OMP_NUM_THREADS: "1"
     steps:
     - uses: actions/checkout@v4
 
@@ -32,12 +43,20 @@ jobs:
       with:
         python-version: "3.12"
 
+    - name: Set up Node
+      # The JavaScript gate drives the ports through node; without it every test there skips.
+      uses: actions/setup-node@v4
+      with:
+        node-version: "20"
+
     - name: Install with the reference comparisons
       run: |
         python -m pip install --upgrade pip
         # `dev` as well as `reference`: the latter brings the implementations to compare
-        # against, not pytest to run the comparison with.
+        # against, not pytest to run the comparison with. It includes PDFO, and pins NumPy
+        # below 2 because PDFO's compiled extension requires it.
         pip install -e ".[dev,reference]"
+        python -c "import numpy, pdfo; print('numpy', numpy.__version__, 'pdfo', pdfo.__version__)"
 
     - name: Compare
       # -s so the table is in the log whether or not the run passes: the numbers are the point,
