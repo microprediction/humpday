@@ -39,6 +39,8 @@ def _gate(tmp_path, references, statuses, strict=False):
         "PROBLEMS": {"sphere": G.PROBLEMS["sphere"]},
         "_run_humpday": _ok,
         "module_status": lambda m: statuses.get(m, (G.OK, "")),
+        # A stubbed experiment is not the calibrated one, and that is not what these test.
+        "experiment_digest": lambda spec=None: G.CALIBRATED_FOR,
     }.items():
         stack.enter_context(patch.object(G, name, value))
     stack.enter_context(_env(strict))

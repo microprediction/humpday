@@ -13,6 +13,7 @@ test which cannot fail was cited as evidence it could not provide.
 
 from __future__ import annotations
 
+import hashlib
 import json
 import math
 import shutil
@@ -25,9 +26,12 @@ from tests.test_reference_alignment import (  # noqa: E402
     CONVERGED_GAP,
     DEFAULT_WIN_CEILING,
     N_RUNS,
+    OBJECTIVE_PROBE_POINTS,
     PROBLEMS,
     REFERENCES,
     _run_humpday,
+    experiment_digest,
+    experiment_spec,
     head_to_head,
     require,
     strict,
@@ -121,6 +125,36 @@ KNOWN_PORT_DIVERGENCE = {
 WIN_CEILING: dict[tuple[str, str], float] = {}
 
 
+def js_experiment_spec() -> dict:
+    """What the JavaScript ceilings were measured on: the Python spec for these algorithms'
+    references and objectives, this file's budgets, and the runner's code (comment lines and
+    blank lines aside). See `experiment_spec` for why ceilings are bound to it (#406)."""
+    runner = [line.strip() for line in RUNNER.read_text().splitlines()]
+    runner = [line for line in runner if line and not line.startswith("//")]
+    return {
+        "python": experiment_spec(JS_ALGORITHMS),
+        "algorithms": JS_ALGORITHMS,
+        "n_dim": N_DIM,
+        "n_trials": N_TRIALS,
+        "budget_override": BUDGET_OVERRIDE,
+        "runner": hashlib.sha256("\n".join(runner).encode()).hexdigest()[:16],
+    }
+
+
+# The digest of `js_experiment_spec()` when the ceilings above were measured. Change the
+# objectives, budgets, adapters or runner and this fails until the ceilings are re-measured.
+JS_CALIBRATED_FOR = "bb6c51b448e08c5a"
+
+
+def test_the_javascript_ceilings_describe_the_experiment_that_runs():
+    digest = experiment_digest(js_experiment_spec())
+    assert digest == JS_CALIBRATED_FOR, (
+        f"the JavaScript gate's experiment is now {digest}; its ceilings were measured on "
+        f"{JS_CALIBRATED_FOR}. Re-measure them with `pytest {Path(__file__).name} -m "
+        "reference -s`, update the table, then JS_CALIBRATED_FOR."
+    )
+
+
 def _ratio_ceiling(algorithm: str, problem: str) -> float:
     return RATIO_CEILING.get((algorithm, problem), DEFAULT_RATIO_CEILING)
 
@@ -132,15 +166,8 @@ def _win_ceiling(algorithm: str, problem: str) -> float:
 # Points the two implementations must agree on before any optimizer runs: the optimum, the
 # centre of the cube, two interior points and both bounds. Chosen to catch a shift (the optimum
 # and the centre disagree), a scale (the interior points disagree) and a domain mapping (the
-# bounds disagree).
-IDENTITY_POINTS = [
-    [0.4127, 0.6831],
-    [0.5, 0.5],
-    [0.13, 0.87],
-    [0.62, 0.31],
-    [0.0, 0.0],
-    [1.0, 1.0],
-]
+# bounds disagree). They are the points the Python harness pins its experiment spec to.
+IDENTITY_POINTS = OBJECTIVE_PROBE_POINTS
 
 
 def _probe_js(problem: str, point: list) -> float:
@@ -152,6 +179,55 @@ def _probe_js(problem: str, point: list) -> float:
     )
     assert result.returncode == 0, result.stderr
     return float(json.loads(result.stdout)["value"])
+
+
+def identity_mismatches(problem_id, python_f=None, js_f=None) -> list:
+    """Every way the two languages' versions of one objective disagree, or an empty list.
+
+    Pointwise agreement at `IDENTITY_POINTS`; the declared minimum attained at the declared
+    location on both sides; and that location a minimum in JavaScript, not merely the same
+    number. `python_f` and `js_f` default to the real ones and exist so that a deliberate
+    shift on either side can be shown to fail.
+    """
+    problem = PROBLEMS[problem_id]
+    python_f = problem["func"] if python_f is None else python_f
+    js_f = (lambda x: _probe_js(problem_id, x)) if js_f is None else js_f
+    out = []
+    for point in IDENTITY_POINTS:
+        py, js = float(python_f(point)), float(js_f(point))
+        if js != pytest.approx(py, rel=1e-12, abs=1e-12):
+            out.append(f"at {point}: Python {py!r}, JavaScript {js!r}")
+    x_opt, opt = problem["x_opt"], problem["opt"]
+    for side, f in (("Python", python_f), ("JavaScript", js_f)):
+        at_opt = float(f(x_opt))
+        if at_opt != pytest.approx(opt, abs=1e-12):
+            out.append(
+                f"{side} gives {at_opt!r} at the declared optimum {x_opt}, not {opt!r}"
+            )
+    for offset in (0.05, -0.05):
+        moved = [min(1.0, max(0.0, v + offset)) for v in x_opt]
+        if not float(js_f(moved)) > opt:
+            out.append(f"JavaScript is not minimised at {x_opt}: {moved} is as low")
+    return out
+
+
+_IDENTITY_CHECKED: dict = {}
+
+
+def _assert_same_function(problem_id):
+    """The precondition of every comparison in this file, checked once per objective.
+
+    It used to live only in its own tests, so a run selected with `-k` -- or a reordering --
+    could compare the ports on two different functions with nothing checking first (#406).
+    The gate now calls it before any optimizer runs.
+    """
+    if problem_id not in _IDENTITY_CHECKED:
+        _IDENTITY_CHECKED[problem_id] = identity_mismatches(problem_id)
+    mismatches = _IDENTITY_CHECKED[problem_id]
+    assert not mismatches, (
+        f"{problem_id} is not the same function in both languages:\n  "
+        + "\n  ".join(mismatches)
+    )
 
 
 @pytest.mark.parametrize("problem_id", sorted(PROBLEMS))
@@ -167,28 +243,29 @@ def test_both_languages_optimize_the_same_function(problem_id):
     Comparing final values cannot catch that. Comparing the functions can.
     """
     _require_node()
-    python_f = PROBLEMS[problem_id]["func"]
-    for point in IDENTITY_POINTS:
-        py = float(python_f(point))
-        js = _probe_js(problem_id, point)
-        assert js == pytest.approx(py, rel=1e-12, abs=1e-12), (
-            f"{problem_id} differs between the languages at {point}: "
-            f"Python {py!r}, JavaScript {js!r}"
-        )
+    assert identity_mismatches(problem_id) == []
+
+
+def _shifted(f, by=0.01):
+    return lambda x: f([x[0] + by, *x[1:]])
 
 
 @pytest.mark.parametrize("problem_id", sorted(PROBLEMS))
-def test_the_optimum_is_where_both_languages_say_it_is(problem_id):
-    """And it is a minimum on both sides, not merely the same number."""
+def test_a_shift_on_either_side_alone_is_caught(problem_id):
+    """The guard guarded: moving one language's optimum by 0.01 must fail the check, from
+    either side. This is the drift #406 found, made on purpose."""
     _require_node()
-    problem = PROBLEMS[problem_id]
-    x_opt = problem["x_opt"]
-    assert _probe_js(problem_id, x_opt) == pytest.approx(problem["opt"], abs=1e-12)
-    for offset in (0.05, -0.05):
-        moved = [min(1.0, max(0.0, v + offset)) for v in x_opt]
-        assert _probe_js(problem_id, moved) > problem["opt"], (
-            f"{problem_id} is not minimised at {x_opt} in JavaScript"
-        )
+
+    def real_js(x):
+        return _probe_js(problem_id, x)
+
+    python_shifted = identity_mismatches(
+        problem_id, python_f=_shifted(PROBLEMS[problem_id]["func"])
+    )
+    js_shifted = identity_mismatches(problem_id, js_f=_shifted(real_js))
+    # At least as many disagreements as there are probe points, counting the optimum's.
+    assert len(python_shifted) >= len(IDENTITY_POINTS)
+    assert len(js_shifted) >= len(IDENTITY_POINTS)
 
 
 def _number(v):
@@ -223,6 +300,8 @@ def test_the_javascript_port_tracks_its_reference(algorithm, problem_id):
     _require_node()
     ref_label, ref_fn, mods = REFERENCES[algorithm]
     require(mods)
+    _assert_same_function(problem_id)
+    test_the_javascript_ceilings_describe_the_experiment_that_runs()
 
     problem = PROBLEMS[problem_id]
     func, opt_value = problem["func"], problem["opt"]

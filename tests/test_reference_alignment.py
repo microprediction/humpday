@@ -77,13 +77,20 @@ with `pip install humpday[reference]` (defined in pyproject.toml).
 
 from __future__ import annotations
 
+import ast
 import functools
+import hashlib
 import importlib
+import inspect
+import io
 import json
 import math
 import os
+import platform
 import random
+import textwrap
 import time
+import tokenize
 import warnings
 from pathlib import Path
 
@@ -1171,7 +1178,7 @@ RATIO_CEILING = {
     # annealing, L-BFGS-B, the mealpy six -- now stop at the budget, which moved their rows
     # but put no new pair over the default: humpday was already ahead of each of them, and
     # the extra calls had been flattering the references. Measured with NumPy 1.26.4, SciPy
-    # 1.17.1, scikit-optimize 0.10.2, cmaes 0.13.1, mealpy 3.0.3, Py-BOBYQA 1.5.0, PDFO 2.2.0.
+    # 1.17.1, scikit-optimize 0.10.2, cmaes 0.13.1, mealpy 3.0.2, Py-BOBYQA 1.5.0, PDFO 2.2.0.
     #
     # `Powell/rosenbrock` measures 7.32 where it was recorded at 4.11, and the port has not
     # moved. The reference is never stopped by the meter; what changed is which of its values
@@ -1245,6 +1252,149 @@ def head_to_head(hd_vals, ref_vals) -> float:
     return worse / (len(hd_vals) * len(ref_vals))
 
 
+# ---------- the experiment the ceilings were measured on ----------
+
+N_DIM = 2
+N_TRIALS = 200
+
+# Where the objectives are pinned. Chosen to catch a shift (the optimum and the centre would
+# disagree), a scale (the interior points) and a domain mapping (the bounds). The JavaScript
+# gate checks its runner against Python at these same points before any optimizer runs.
+OBJECTIVE_PROBE_POINTS = [
+    [0.4127, 0.6831],
+    [0.5, 0.5],
+    [0.13, 0.87],
+    [0.62, 0.31],
+    [0.0, 0.0],
+    [1.0, 1.0],
+]
+
+
+def _code_digest(*objects) -> str:
+    """A digest of code that ignores comments, blank lines, layout, docstrings and the names
+    of the functions themselves, so that rewording an explanation does not demand a
+    recalibration and changing a setting does."""
+    parts = []
+    for obj in objects:
+        src = textwrap.dedent(inspect.getsource(obj))
+        docstrings = set()
+        for node in ast.walk(ast.parse(src)):
+            body = getattr(node, "body", None)
+            if (
+                isinstance(body, list)
+                and body
+                and isinstance(body[0], ast.Expr)
+                and isinstance(getattr(body[0], "value", None), ast.Constant)
+                and isinstance(body[0].value.value, str)
+            ):
+                docstrings.update(range(body[0].lineno, body[0].end_lineno + 1))
+        skip = {
+            tokenize.COMMENT,
+            tokenize.NL,
+            tokenize.NEWLINE,
+            tokenize.INDENT,
+            tokenize.DEDENT,
+        }
+        previous = None
+        for tok in tokenize.generate_tokens(io.StringIO(src).readline):
+            if tok.type in skip:
+                continue
+            if tok.type == tokenize.STRING and tok.start[0] in docstrings:
+                continue
+            # A function's own name is not its behaviour; its body and its decorator are.
+            if previous == "def" and tok.type == tokenize.NAME:
+                previous = tok.string
+                continue
+            previous = tok.string
+            parts.append(tok.string)
+    return hashlib.sha256(" ".join(parts).encode()).hexdigest()[:16]
+
+
+def experiment_spec(algorithms=None) -> dict:
+    """What a ceiling was measured on, as data.
+
+    Ceilings and problem definitions used to be changeable independently: #389 and #406 both
+    moved the objectives without anything noticing that every ceiling had been measured on the
+    old ones, and the ratios happened to stay under them. This is everything that defines the
+    measurement -- the objectives' values at fixed points and their known minima, dimension,
+    seeds, budgets, the starting-point distribution, and the code of every adapter and of the
+    harness that drives both sides -- and `CALIBRATED_FOR` is its digest at the time the
+    ceilings were measured. Change any of it and the gate fails until they are re-measured.
+
+    Library versions are recorded in the snapshot but not bound here: the weekly job exists
+    to see what a new release of a reference does, and binding them would turn every release
+    into a recalibration rather than a measurement.
+    """
+    algorithms = sorted(REFERENCES) if algorithms is None else sorted(algorithms)
+    return {
+        "objectives": {
+            name: {
+                "opt": p["opt"],
+                "x_opt": p["x_opt"],
+                # Twelve significant figures: enough to see any change to an objective, and
+                # not so many that the last ulp of one platform's `exp` moves the digest.
+                "values": [
+                    format(float(p["func"](x)), ".12g") for x in OBJECTIVE_PROBE_POINTS
+                ],
+            }
+            for name, p in sorted(PROBLEMS.items())
+        },
+        "n_dim": N_DIM,
+        "seeds": list(range(N_RUNS)),
+        "budget": N_TRIALS,
+        "budget_overrides": {
+            a: REFERENCE_BUDGET_OVERRIDE[a]
+            for a in algorithms
+            if a in REFERENCE_BUDGET_OVERRIDE
+        },
+        "x0": [X0_LO, X0_HI],
+        "references": {
+            a: {
+                "label": REFERENCES[a][0],
+                "modules": REFERENCES[a][2],
+                "code": _code_digest(REFERENCES[a][1]),
+            }
+            for a in algorithms
+        },
+        "harness": _code_digest(
+            Metered, _reference, _ref_mealpy, _draw_x0, _seed_humpday, _run_humpday
+        ),
+    }
+
+
+def experiment_digest(spec=None) -> str:
+    spec = experiment_spec() if spec is None else spec
+    return hashlib.sha256(json.dumps(spec, sort_keys=True).encode()).hexdigest()[:16]
+
+
+# The digest of `experiment_spec()` when the ceilings above were last measured. If a change to
+# the objectives, seeds, budgets or adapters fails this, the ceilings describe an experiment
+# that no longer runs: re-measure them with
+#     HUMPDAY_REFERENCE_STRICT=1 pytest tests/test_reference_alignment.py -m reference -s
+# update the table from the snapshot, and only then set this to the new digest.
+CALIBRATED_FOR = "e5fb95b3b193e204"
+
+
+def _library_versions() -> dict:
+    from importlib import metadata
+
+    out = {}
+    for dist in (
+        "numpy",
+        "scipy",
+        "scikit-optimize",
+        "cmaes",
+        "mealpy",
+        "Py-BOBYQA",
+        "pdfo",
+    ):
+        try:
+            out[dist] = metadata.version(dist)
+        except metadata.PackageNotFoundError:
+            out[dist] = None
+    return out
+
+
 # ---------- the characterisation test ----------
 
 
@@ -1252,8 +1402,8 @@ def head_to_head(hd_vals, ref_vals) -> float:
 def test_reference_alignment():
     """Print + persist a table of HumpDay-vs-reference final values for every
     algorithm where we have a reference adapter."""
-    n_trials_default = 200
-    n_dim = 2
+    n_trials_default = N_TRIALS
+    n_dim = N_DIM
     rows = []
     failures: dict = {}
 
@@ -1427,6 +1577,12 @@ def test_reference_alignment():
         "n_trials_overrides": REFERENCE_BUDGET_OVERRIDE,
         "n_dim": n_dim,
         "coverage": coverage,
+        "experiment": experiment_spec(),
+        "experiment_digest": experiment_digest(),
+        "calibrated_for": CALIBRATED_FOR,
+        "library_versions": _library_versions(),
+        "python": platform.python_version(),
+        "platform": platform.platform(),
         "recorded_at": time.strftime("%Y-%m-%dT%H:%M:%SZ", time.gmtime()),
     }
     with open(out, "w") as f:
@@ -1440,6 +1596,13 @@ def test_reference_alignment():
             "no third-party comparison ran",
             "only the inline baselines did, which compares the ports with nothing they were "
             "written from: install `pip install humpday[reference]`",
+        )
+    digest = experiment_digest()
+    if digest != CALIBRATED_FOR:
+        fail(
+            "the ceilings were measured on a different experiment",
+            f"experiment digest is {digest}, ceilings were calibrated for {CALIBRATED_FOR}: "
+            "re-measure them from this snapshot, then update CALIBRATED_FOR",
         )
     if coverage["strict"]:
         for key, label in (("absent", ABSENT), ("probe_failed", PROBE_FAILED)):

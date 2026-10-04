@@ -1598,5 +1598,163 @@
     "BayesianOpt": 50
   },
   "n_dim": 2,
-  "recorded_at": "2026-10-04T01:52:37Z"
+  "coverage": {
+    "strict": true,
+    "compared": ["NelderMead", "Powell", "LBFGSB", "DifferentialEvolution", "SimulatedAnnealing", "BayesianOpt", "CMAEvolutionStrategy", "PRIMA_BOBYQA", "PRIMA_NEWUOA", "PRIMA_UOBYQA", "ParticleSwarm", "GeneticAlgorithm", "FireflyAlgorithm", "HarmonySearch", "EvolutionStrategy", "AntColonyOpt", "RandomSearch", "GridSearch", "HillClimbing", "Rechenberg", "CoordinateDescent", "PatternSearch"],
+    "absent": {},
+    "probe_failed": {}
+  },
+  "experiment": {
+    "objectives": {
+      "ackley": {
+        "opt": 0.0,
+        "x_opt": [0.4127, 0.6831],
+        "values": ["4.4408920985e-16", "5.89720035138", "8.5608173273", "10.3065132184", "14.4401322581", "13.1262101446"]
+      },
+      "rosenbrock": {
+        "opt": 0.0,
+        "x_opt": [0.4127, 0.6831],
+        "values": ["0", "241.222290151", "300.738743343", "1473.99802499", "467.53314496", "8014.94650734"]
+      },
+      "sphere": {
+        "opt": 0.0,
+        "x_opt": [0.4127, 0.6831],
+        "values": ["0", "0.0411469", "0.1148509", "0.1821769", "0.6369469", "0.4453469"]
+      }
+    },
+    "n_dim": 2,
+    "seeds": [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20],
+    "budget": 200,
+    "budget_overrides": {
+      "BayesianOpt": 50
+    },
+    "x0": [0.0, 1.0],
+    "references": {
+      "AntColonyOpt": {
+        "label": "mealpy ACOR",
+        "modules": ["mealpy", "numpy"],
+        "code": "d58b29268cf02bcb"
+      },
+      "BayesianOpt": {
+        "label": "scikit-optimize gp_minimize",
+        "modules": ["skopt"],
+        "code": "a2e23095c0738300"
+      },
+      "CMAEvolutionStrategy": {
+        "label": "cmaes (CyberAgent)",
+        "modules": ["cmaes", "numpy"],
+        "code": "ec9d414fea3dfe08"
+      },
+      "CoordinateDescent": {
+        "label": "coord descent + greedy expansion (textbook)",
+        "modules": [],
+        "code": "3d41f6fc2c866393"
+      },
+      "DifferentialEvolution": {
+        "label": "scipy differential_evolution",
+        "modules": ["scipy"],
+        "code": "6ce47ab0b4347a31"
+      },
+      "EvolutionStrategy": {
+        "label": "mealpy ES",
+        "modules": ["mealpy", "numpy"],
+        "code": "f818b6984089df46"
+      },
+      "FireflyAlgorithm": {
+        "label": "mealpy FFA",
+        "modules": ["mealpy", "numpy"],
+        "code": "c300e2d807dba31f"
+      },
+      "GeneticAlgorithm": {
+        "label": "mealpy GA",
+        "modules": ["mealpy", "numpy"],
+        "code": "42f029e76db03234"
+      },
+      "GridSearch": {
+        "label": "regular grid baseline",
+        "modules": [],
+        "code": "2f124a85d650d0ce"
+      },
+      "HarmonySearch": {
+        "label": "mealpy HS",
+        "modules": ["mealpy", "numpy"],
+        "code": "7e1687caaff08171"
+      },
+      "HillClimbing": {
+        "label": "(1+1)-ES sigma-decay schedule",
+        "modules": [],
+        "code": "96de994d46b4ef16"
+      },
+      "LBFGSB": {
+        "label": "scipy.optimize L-BFGS-B",
+        "modules": ["scipy"],
+        "code": "d4abec4defc9a098"
+      },
+      "NelderMead": {
+        "label": "scipy.optimize Nelder-Mead",
+        "modules": ["scipy"],
+        "code": "d18f7c83b4306030"
+      },
+      "PRIMA_BOBYQA": {
+        "label": "Py-BOBYQA",
+        "modules": ["pybobyqa", "numpy"],
+        "code": "93ea6808f9641fcf"
+      },
+      "PRIMA_NEWUOA": {
+        "label": "PDFO newuoa",
+        "modules": ["pdfo", "numpy"],
+        "code": "5245395ef0f415e7"
+      },
+      "PRIMA_UOBYQA": {
+        "label": "PDFO uobyqa",
+        "modules": ["pdfo", "numpy"],
+        "code": "bcdf75ee8c274066"
+      },
+      "ParticleSwarm": {
+        "label": "mealpy PSO",
+        "modules": ["mealpy", "numpy"],
+        "code": "f77c99bdea12c2c0"
+      },
+      "PatternSearch": {
+        "label": "Hooke-Jeeves (1961)",
+        "modules": [],
+        "code": "5c0a9b46b4a0214f"
+      },
+      "Powell": {
+        "label": "scipy.optimize Powell",
+        "modules": ["scipy"],
+        "code": "12ecc7e4d5f2ae35"
+      },
+      "RandomSearch": {
+        "label": "uniform-sample baseline",
+        "modules": [],
+        "code": "69967f0246f768bd"
+      },
+      "Rechenberg": {
+        "label": "(1+1)-ES 1/5-success-rule (Rechenberg)",
+        "modules": [],
+        "code": "17bbdee0e7b0b35a"
+      },
+      "SimulatedAnnealing": {
+        "label": "scipy dual_annealing",
+        "modules": ["scipy"],
+        "code": "863ea5f14196f1b9"
+      }
+    },
+    "harness": "5ce010e612bdf2ab"
+  },
+  "experiment_digest": "e5fb95b3b193e204",
+  "calibrated_for": "e5fb95b3b193e204",
+  "library_versions": {
+    "numpy": "1.26.4",
+    "scipy": "1.17.1",
+    "scikit-optimize": "0.10.2",
+    "cmaes": "0.13.1",
+    "mealpy": "3.0.2",
+    "Py-BOBYQA": "1.5.0",
+    "pdfo": "2.2.0"
+  },
+  "python": "3.12.9",
+  "platform": "macOS-15.4.1-arm64-arm-64bit",
+  "recorded_at": "2026-10-04T02:21:36Z"
 }

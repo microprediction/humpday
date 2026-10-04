@@ -51,6 +51,8 @@ def _run_gate(tmp_path: Path, hd, ref):
         REFERENCES={"NelderMead": ("stub reference", ref, ["json"])},
         PROBLEMS={"sphere": G.PROBLEMS["sphere"]},
         _run_humpday=hd,
+        # A stubbed experiment is not the calibrated one, and that is not what these test.
+        experiment_digest=lambda spec=None: G.CALIBRATED_FOR,
     ):
         G.test_reference_alignment()
 
@@ -182,6 +184,7 @@ class TestTheJavaScriptGateHasTheSameContract:
             J,
             REFERENCES={"NelderMead": ("stub reference", ref_run, [])},
             require=lambda mods: None,
+            _assert_same_function=lambda problem_id: None,
             NODE="node",
             _run_js=js_run,
         ):

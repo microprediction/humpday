@@ -18,6 +18,7 @@ These tests hold the instrument still. They do not run the gate.
 """
 
 import math
+from unittest.mock import patch
 
 import pytest
 
@@ -220,3 +221,60 @@ class TestTheBudget:
         )
         assert out["evals"] <= 200
         assert G.validate_run(out, G.PROBLEMS["ackley"], 200) == []
+
+
+class TestTheCeilingsAreBoundToTheirExperiment:
+    """#406: ceilings and problem definitions could change independently, and twice did."""
+
+    def test_the_ceilings_describe_the_experiment_that_runs(self):
+        digest = G.experiment_digest()
+        assert digest == G.CALIBRATED_FOR, (
+            f"the reference gate's experiment is now {digest}; its ceilings were measured on "
+            f"{G.CALIBRATED_FOR}. Re-measure them, update the table, then CALIBRATED_FOR."
+        )
+
+    def test_moving_an_objective_changes_the_digest(self):
+        before = G.experiment_digest()
+        moved = dict(G.PROBLEMS)
+        moved["sphere"] = {
+            **moved["sphere"],
+            "func": lambda x: G._sphere([x[0] + 0.01, *x[1:]]),
+        }
+        with patch.object(G, "PROBLEMS", moved):
+            assert G.experiment_digest() != before
+
+    def test_changing_a_budget_or_the_seeds_changes_the_digest(self):
+        before = G.experiment_digest()
+        with patch.object(G, "N_TRIALS", 300):
+            assert G.experiment_digest() != before
+        with patch.object(G, "N_RUNS", 23):
+            assert G.experiment_digest() != before
+        with patch.dict(G.REFERENCE_BUDGET_OVERRIDE, {"BayesianOpt": 60}):
+            assert G.experiment_digest() != before
+
+    def test_changing_an_adapter_changes_the_digest(self):
+        before = G.experiment_digest()
+        label, _, mods = G.REFERENCES["NelderMead"]
+        with patch.dict(G.REFERENCES, {"NelderMead": (label, _adapter_b, mods)}):
+            assert G.experiment_digest() != before
+
+    def test_rewording_a_comment_or_docstring_does_not(self):
+        assert G._code_digest(_adapter_a) == G._code_digest(_adapter_a_reworded)
+        assert G._code_digest(_adapter_a) != G._code_digest(_adapter_b)
+
+
+def _adapter_a(f, n_trials, n_dim, seed):
+    """One docstring."""
+    return f([0.5] * n_dim)  # one comment
+
+
+def _adapter_a_reworded(f, n_trials, n_dim, seed):
+    """A different docstring,
+    over two lines."""
+    # A different comment.
+    return f([0.5] * n_dim)
+
+
+def _adapter_b(f, n_trials, n_dim, seed):
+    """One docstring."""
+    return f([0.25] * n_dim)  # one comment
