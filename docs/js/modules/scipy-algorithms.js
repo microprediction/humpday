@@ -251,7 +251,11 @@ class Powell extends Optimizer {
             // below Powell's potential; 1e-12 lets the direction set
             // run to numerical noise on smooth landscapes with no
             // downside on multimodal ones (the budget cap kicks in).
-            if (Math.abs(fx - fx_start) < 1e-12) break;
+            // Written so that NaN stops too: on a non-finite objective
+            // Infinity - Infinity is NaN, NaN < 1e-12 is false, and once the
+            // budget could not cover another line search this loop spun
+            // forever without evaluating anything.
+            if (!(Math.abs(fx - fx_start) >= 1e-12)) break;
 
             // Update direction set
             const newDirection = MathUtils.subtract(x, x_start);
