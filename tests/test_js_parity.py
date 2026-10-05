@@ -2,13 +2,14 @@
 Python ↔ JavaScript parity tests.
 
 For each algorithm, runs both the Python implementation and the JS port
-on the same simple objective with the same n_trials, and asserts that
-both reach within tolerance of the known minimum.
+on a shifted sphere with the same n_trials and the same PCG32 seeds, and
+asserts that both get below a per-algorithm bar and stay within budget.
+The bars are measured, not guessed: see RANDOM_SAMPLING_BAR and TOLERANCE.
 
-This is a *soundness* test, not a strict equivalence test: Python and
-JS use independent RNGs so they explore the search space differently.
-We don't try to match step-for-step; we check that both converge to
-roughly the same answer on convex test problems.
+This is a *soundness* test, not a strict equivalence test: the bit-exact
+twins are checked point for point by test_transition_vectors.py, and the
+other ports draw some of their randomness from Math.random, so the two
+sides need not take the same path. They must both actually search.
 
 The JS side runs in a Node subprocess via `tests/js_parity_runner.js`.
 Tests are skipped if `node` isn't on PATH (so the parity tests are
@@ -20,6 +21,7 @@ from __future__ import annotations
 import json
 import shutil
 import subprocess
+import sys
 from pathlib import Path
 
 import pytest
@@ -42,88 +44,125 @@ def _rosenbrock_unit(x):
     return (1 - a) ** 2 + 100 * (b - a * a) ** 2
 
 
+# Optimum of `sphere_shifted`; identical to SHIFT in js_parity_runner.js. The
+# sphere used to be centred at 0.5, the cube centre, which is where most of the
+# ports take their first point: an optimizer that evaluated the centre once and
+# stopped scored exactly 0 there (#403). Every coordinate here sits 0.19 to 0.31
+# from the centre and off any grid node. The test uses the first two.
+SHIFT = (0.2473, 0.7718, 0.1859, 0.6934, 0.8146)
+
 OBJECTIVES = {
-    "sphere_at_half": lambda x: sum((v - 0.5) ** 2 for v in x),
+    "sphere_shifted": lambda x: sum((v - SHIFT[i]) ** 2 for i, v in enumerate(x)),
     "quad_at_0_7": lambda x: sum((v - 0.7) ** 2 for v in x),
     "rosenbrock_unit": _rosenbrock_unit,
 }
 
-# Convergence threshold: algorithms expected to converge cleanly on a
-# 300-eval budget should land below this.
-CONVERGE_TOL = 0.05
+# Quality bars for `test_python_js_parity_sphere`: sphere_shifted, n_dim=2,
+# n_trials=300. Reference points for the objective on [0,1]^2:
+#
+#   maximum (the corner (1, 0))                         1.162
+#   value at the cube centre, where most ports start    0.138
+#   best of 300 uniform random points, 200k draws:
+#     median 7.4e-4, 99th percentile 4.9e-3, 99.9th percentile 7.35e-3
+#
+# RANDOM_SAMPLING_BAR is that 99.9th percentile. Every algorithm must beat it,
+# so an optimizer that starts at the centre and stops there (0.138) fails, and
+# a single uniform random point gets under it 2.3% of the time.
+RANDOM_SAMPLING_BAR = 7.35e-3
 
-# Looser threshold for algorithms that genuinely need a bigger budget;
-# the test still catches complete divergence (e.g. NaN, or sitting at
-# the initial point).
-WEAK_TOL = 1.0
+# The bar for an algorithm whose worst result over seeds 0-49, on both ports,
+# was below 3e-11. Seven orders of magnitude under the centre value.
+CONVERGED = 1e-8
 
-# Algorithms that genuinely can't hit CONVERGE_TOL in a small budget,
-# even on a sphere. The parity test still runs and just checks both
-# Python and JS land in the same ballpark for these.
-WEAK_ON_SMALL_BUDGET = {
-    "RandomSearch",
-    "GridSearch",
-    "HillClimbing",
-    "AntColonyOpt",
-    "FireflyAlgorithm",
-    "HarmonySearch",
-    "Rechenberg",
-    "GeneticAlgorithm",
-    "EvolutionStrategy",
-    "PatternSearch",
-    "CoordinateDescent",
+# Algorithms that do search but do not converge in 300 evaluations. Each bar is
+# ten times the worst result measured over seeds 0-49 on either port, rounded
+# up, and never above RANDOM_SAMPLING_BAR. Worst measured values in brackets.
+#
+# The last four are at RANDOM_SAMPLING_BAR because ten times their worst result
+# is above it: at this budget the tests can only say they are no worse than
+# random sampling, which on a 2-D sphere is what they measure as.
+TOLERANCE = {
+    "HillClimbing": 5e-6,  # [4.5e-7]
+    "AntColonyOpt": 1e-3,  # [8.4e-5]
+    "HarmonySearch": 2e-3,  # [1.3e-4]
+    "EvolutionStrategy": RANDOM_SAMPLING_BAR,  # [6.7e-4]
+    "GridSearch": RANDOM_SAMPLING_BAR,  # [8.0e-4, deterministic: nearest node of a 17x17 grid]
+    "GeneticAlgorithm": RANDOM_SAMPLING_BAR,  # [1.2e-3]
+    "RandomSearch": RANDOM_SAMPLING_BAR,  # [5.8e-3; it is the baseline]
 }
+
+# JS ports measured below the bar their Python twin meets. The Python side is
+# still held to the bar; the JS side xfails while it falls short and fails the
+# test once it stops falling short, so the entry gets removed.
+JS_BELOW_BAR = {
+    # Worst 2.5e-3, median 6.1e-4, best 2.4e-5 over seeds 0-49, against 7.7e-34
+    # for Python: the JS port does not have Powell's line search (#78, #402).
+    "Powell": "JS Powell lacks Brent's line search and does not converge (#78)",
+}
+
+# Seeds for the portable PCG32 stream, the same stream on both sides. The bars
+# above were measured over seeds 0-49, so any seed is a fair draw. One, because
+# pure-Python BayesianOpt takes about 40s for 300 evaluations, and the pure-backend
+# CI job runs this file.
+PARITY_SEEDS = (0,)
+
+
+def _tolerance(algorithm: str) -> float:
+    return TOLERANCE.get(algorithm, CONVERGED)
+
 
 # All 22 algorithms (the keys of PURE_OPTIMIZERS). Each algorithm
 # spawns one Node subprocess, so the sweep runs in seconds, not minutes.
 PARITY_ALGORITHMS = list(PURE_OPTIMIZERS.keys())
 
 
-def _run_js(algorithm: str, n_trials: int, n_dim: int, func_id: str) -> dict:
-    """Run the JS port via Node and return {best_value, best_x}."""
-    result = subprocess.run(
-        [NODE, str(RUNNER_JS), algorithm, str(n_trials), str(n_dim), func_id],
-        capture_output=True,
-        text=True,
-        timeout=30,
-        cwd=REPO_ROOT,
-    )
-    if result.returncode != 0:
-        raise RuntimeError(
-            f"JS runner failed (exit {result.returncode}): {result.stderr.strip()}"
-        )
-    return json.loads(result.stdout.strip())
+def _run_python(
+    algorithm: str, n_trials: int, n_dim: int, func_id: str, seed: int | None = None
+) -> dict:
+    """Run the Python port directly and return {best_value, best_x, evaluations}.
 
+    With a seed, the run draws from the portable PCG32 stream, the same stream
+    `js_parity_runner.js` gives the JS port for that seed."""
+    from humpday import _array as A
 
-def _run_python(algorithm: str, n_trials: int, n_dim: int, func_id: str) -> dict:
-    """Run the Python port directly and return {best_value, best_x}."""
     func = OBJECTIVES[func_id]
     cls = PURE_OPTIMIZERS[algorithm]
-    opt = cls(func, n_trials=n_trials, n_dim=n_dim)
-    result = opt.optimize()
+    if seed is not None:
+        A.use_portable_rng(seed)
+    try:
+        opt = cls(func, n_trials=n_trials, n_dim=n_dim)
+        result = opt.optimize()
+    finally:
+        A.use_legacy_rng()
     if isinstance(result, tuple) and len(result) == 2:
         best_value, best_x = result
     else:
         best_value = opt.best_value
         best_x = opt.best_x
-    return {"best_value": float(best_value), "best_x": list(best_x)}
+    return {
+        "best_value": float(best_value),
+        "best_x": list(best_x),
+        "evaluations": opt.evaluations,
+    }
 
 
 def _run_js_batch(
-    algorithm: str, n_trials: int, n_dim: int, func_id: str, n_runs: int
+    algorithm: str,
+    n_trials: int,
+    n_dim: int,
+    func_id: str,
+    n_runs: int,
+    seed: int | None = None,
 ) -> list[dict]:
     """Run `n_runs` independent JS instances of the algorithm in one Node
-    subprocess and return the list of {best_value, best_x} dicts."""
+    subprocess and return the list of {best_value, best_x, evaluations} dicts.
+    With a seed, run i uses the portable stream seeded with seed + i."""
+    args = [NODE, str(RUNNER_JS), algorithm, str(n_trials), str(n_dim), func_id]
+    args.append(str(n_runs))
+    if seed is not None:
+        args.append(str(seed))
     result = subprocess.run(
-        [
-            NODE,
-            str(RUNNER_JS),
-            algorithm,
-            str(n_trials),
-            str(n_dim),
-            func_id,
-            str(n_runs),
-        ],
+        args,
         capture_output=True,
         text=True,
         timeout=120,
@@ -133,7 +172,11 @@ def _run_js_batch(
         raise RuntimeError(
             f"JS runner failed (exit {result.returncode}): {result.stderr.strip()}"
         )
-    return [json.loads(line) for line in result.stdout.strip().splitlines() if line]
+    runs = [json.loads(line) for line in result.stdout.strip().splitlines() if line]
+    errors = [r["error"] for r in runs if "error" in r]
+    if errors:
+        raise RuntimeError(f"JS {algorithm} raised: {errors[0]}")
+    return runs
 
 
 def _run_python_batch(
@@ -145,46 +188,108 @@ def _run_python_batch(
 
 @pytest.fixture(scope="module")
 def parity_cfg():
-    return {"n_trials": 300, "n_dim": 2, "func_id": "sphere_at_half"}
+    return {"n_trials": 300, "n_dim": 2, "func_id": "sphere_shifted"}
+
+
+def _check_runs(label: str, algorithm: str, runs: list[dict], n_trials: int) -> None:
+    """Assert every run stayed within budget and got below the algorithm's bar."""
+    tol = _tolerance(algorithm)
+    for seed, r in zip(PARITY_SEEDS, runs):
+        assert r["evaluations"] <= n_trials, (
+            f"{label} {algorithm} seed {seed}: {r['evaluations']} evaluations, "
+            f"budget {n_trials}"
+        )
+        assert r["best_value"] < tol, (
+            f"{label} {algorithm} seed {seed}: {r['best_value']:.4g} >= {tol:g}"
+        )
 
 
 @pytest.mark.skipif(not NODE_AVAILABLE, reason="node not on PATH")
 @pytest.mark.parametrize("algorithm", PARITY_ALGORITHMS)
 def test_python_js_parity_sphere(parity_cfg, algorithm):
-    """Both Python and JS should find x = [0.5, 0.5] on the sphere.
+    """Both ports must find the minimum of a 2-D shifted sphere in 300 evaluations.
 
-    This is a *soundness* test, not a strict equivalence test. Python
-    and JavaScript use independent RNGs, so the two implementations
-    explore the search space differently and will converge to
-    different floor values. We assert only that both implementations
-    actually work on the simplest possible objective (a 2-D sphere
-    centred at the cube centre, n_trials=300):
+    For each seed in PARITY_SEEDS, the Python port and the JS port must each
+    use no more than n_trials evaluations and get below the algorithm's bar
+    (`_tolerance`): CONVERGED for an algorithm that converges, the measured
+    entry in TOLERANCE for one that does not, and never looser than
+    RANDOM_SAMPLING_BAR, which an optimizer that does not search fails.
 
-      - Algorithms that should converge cleanly: both py and js must
-        land within `CONVERGE_TOL` of the optimum.
-      - Algorithms that genuinely need bigger budgets (the
-        WEAK_ON_SMALL_BUDGET set): both must at least land within
-        `WEAK_TOL` so we'd catch a complete divergence.
-
-    Either direction (Python regresses but JS still works, or vice
-    versa) trips the test, which is the catch we actually want.
+    Either direction (Python regresses but JS still works, or vice versa)
+    trips the test. A JS port in JS_BELOW_BAR xfails on its own shortfall
+    and fails the test once it no longer falls short.
     """
-    py = _run_python(algorithm, **parity_cfg)
-    js = _run_js(algorithm, **parity_cfg)
-
-    if algorithm in WEAK_ON_SMALL_BUDGET:
-        tol = WEAK_TOL
-    else:
-        tol = CONVERGE_TOL
-
-    assert py["best_value"] < tol, (
-        f"Python {algorithm} regressed: {py['best_value']:.4g} ≥ {tol} "
-        f"(JS got {js['best_value']:.4g})"
+    n_trials = parity_cfg["n_trials"]
+    py = [_run_python(algorithm, **parity_cfg, seed=s) for s in PARITY_SEEDS]
+    js = _run_js_batch(
+        algorithm, **parity_cfg, n_runs=len(PARITY_SEEDS), seed=PARITY_SEEDS[0]
     )
-    assert js["best_value"] < tol, (
-        f"JS {algorithm} regressed: {js['best_value']:.4g} ≥ {tol} "
-        f"(Python got {py['best_value']:.4g})"
+    assert len(js) == len(PARITY_SEEDS)
+
+    _check_runs("Python", algorithm, py, n_trials)
+
+    if algorithm not in JS_BELOW_BAR:
+        _check_runs("JS", algorithm, js, n_trials)
+        return
+    try:
+        _check_runs("JS", algorithm, js, n_trials)
+    except AssertionError as shortfall:
+        pytest.xfail(f"{JS_BELOW_BAR[algorithm]}: {shortfall}")
+    pytest.fail(
+        f"JS {algorithm} now meets its bar on every seed; remove it from JS_BELOW_BAR"
     )
+
+
+class _NoSearch:
+    """An optimizer that evaluates one point and stops: the failure #403 found
+    the old bars could not see. `point` is "centre", "corner" or "random"."""
+
+    def __init__(self, point: str):
+        self.point = point
+
+    def __call__(self, objective, n_trials, n_dim):
+        from humpday import _array as A
+        from humpday.optimizers.base import BaseOptimizer
+
+        point = self.point
+
+        class NoSearch(BaseOptimizer):
+            def optimize(self):
+                if point == "centre":
+                    x = A.full(self.n_dim, 0.5)
+                elif point == "corner":
+                    x = A.zeros(self.n_dim)
+                else:
+                    x = A.random_uniform(self.n_dim)
+                self.evaluate(x)
+                return self.best_value, self.best_x
+
+        return NoSearch(objective, n_trials, n_dim)
+
+
+@pytest.mark.parametrize("point", ["centre", "corner", "random"])
+@pytest.mark.parametrize("algorithm", PARITY_ALGORITHMS)
+def test_parity_gate_fails_an_optimizer_that_does_not_search(
+    parity_cfg, algorithm, point, monkeypatch
+):
+    """Mutation check: replace an algorithm with one that evaluates a single
+    point, on both sides, and the parity test must fail rather than pass or
+    xfail. This is the check the old 1.0 bar on a sphere whose maximum is 0.5
+    passed for 11 algorithms (#403)."""
+    from humpday.optimizers import alloptimizers
+
+    monkeypatch.setitem(alloptimizers.PURE_OPTIMIZERS, algorithm, _NoSearch(point))
+    # Stand in for Node with the same stub, so this runs without it.
+    monkeypatch.setattr(
+        sys.modules[__name__],
+        "_run_js_batch",
+        lambda alg, n_trials, n_dim, func_id, n_runs, seed: [
+            _run_python(alg, n_trials, n_dim, func_id, seed=seed + i)
+            for i in range(n_runs)
+        ],
+    )
+    with pytest.raises(AssertionError, match=">="):
+        test_python_js_parity_sphere(parity_cfg, algorithm)
 
 
 # How many independent (python, js) match-ups to run per algorithm in
