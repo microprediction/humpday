@@ -273,7 +273,7 @@ class TestSciPyAlgorithms:
         assert abs(best_x[1]) < 0.3  # Should get close to y=0 (more important)
 
     def test_nelder_mead_uses_full_budget_via_restart(self):
-        """Kelley (1999): vanilla NM terminates on simplex collapse and
+        """Vanilla NM terminates on simplex collapse and
         leaves budget on the table. The restart fix should consume all
         the evals offered to it on a smooth landscape — otherwise we know
         the simplex collapsed and no restart triggered."""

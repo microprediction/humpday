@@ -43,15 +43,16 @@ class NelderMead extends Optimizer {
         const fatol = 1e-12;
         const zdelt = 0.00025;
 
-        // Kelley (1999) "Detection and Remediation of Stagnation in the
-        // Nelder-Mead Algorithm" showed vanilla NM can converge to a
-        // non-stationary point on a collapsed simplex. We wrap the
-        // classical loop in a restart layer: when the convergence test
-        // fires, we reseed the simplex and continue until the budget is
-        // exhausted. Different `nonzdelt` per restart so the new simplex
-        // isn't a scaled copy of the collapsed one; even restarts reseed
-        // around the current best (intensification), odd restarts reseed
-        // from a fresh uniform draw (diversification).
+        // McKinnon (1998, SIAM J. Optim. 9(1)) showed vanilla NM can
+        // converge to a non-stationary point on a collapsed simplex.
+        // Kelley's (1999, SIAM J. Optim. 10(1)) remedy is a
+        // sufficient-decrease test plus an oriented restart; this is not
+        // that, but HumpDay's own restart layer: when the ordinary
+        // convergence test fires, we reseed the simplex and continue until
+        // the budget is exhausted. Different `nonzdelt` per restart so the
+        // new simplex isn't a scaled copy of the collapsed one; odd-numbered
+        // restarts reseed around the current best (intensification), even-
+        // numbered ones from a fresh uniform draw (diversification).
         const nonzdeltSchedule = [0.05, 0.15, 0.30, 0.10, 0.50, 0.20];
 
         let seedPoint = Array(n).fill(0).map(() => 0.3 + 0.4 * MathUtils.randomScalar());

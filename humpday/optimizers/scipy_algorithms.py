@@ -50,16 +50,22 @@ class NelderMead(BaseOptimizer):
         xatol = 1e-12
         fatol = 1e-12
 
-        # Kelley (1999, "Detection and Remediation of Stagnation in the
-        # Nelder-Mead Algorithm", SIAM J. Optim. 10(1)) showed that
-        # vanilla NM can converge to a non-stationary point when the
-        # simplex collapses into a degenerate shape. The fix in practice
-        # is to reseed the simplex around the current best each time
-        # convergence is reached and continue until the budget is gone.
-        # Without this, NM hands back unused budget on smooth landscapes
-        # while leaving plenty of room for improvement on multimodal
-        # ones. The per-restart perturbation magnitude is alternated so
-        # the new simplex isn't a scaled copy of the collapsed one.
+        # McKinnon (1998, "Convergence of the Nelder-Mead Simplex Method
+        # to a Nonstationary Point", SIAM J. Optim. 9(1), 148-158) showed
+        # that vanilla NM can converge to a non-stationary point when the
+        # simplex collapses into a degenerate shape. Kelley (1999,
+        # "Detection and Remediation of Stagnation in the Nelder-Mead
+        # Algorithm Using a Sufficient Decrease Condition", SIAM J. Optim.
+        # 10(1), 43-55) detects that with a sufficient-decrease test and
+        # remedies it with an oriented restart. What follows is neither:
+        # it is HumpDay's own restart heuristic. Each time the ordinary
+        # convergence test fires, the simplex is reseeded -- alternately
+        # around the current best and at a fresh uniform point -- and the
+        # search continues until the budget is gone. Without this, NM
+        # hands back unused budget on smooth landscapes while leaving
+        # plenty of room for improvement on multimodal ones. The
+        # per-restart perturbation magnitude is alternated so the new
+        # simplex isn't a scaled copy of the collapsed one.
         nonzdelt_schedule = [0.05, 0.15, 0.30, 0.10, 0.50, 0.20]
 
         # Initial seed point (used for restart 0; later restarts re-seed
@@ -168,11 +174,10 @@ class NelderMead(BaseOptimizer):
                 fsim = [fsim[i] for i in order]
 
             # Inner loop ended — either budget exhausted or simplex
-            # collapsed. If budget remains, alternate restart seeds: even
-            # restarts reseed around the current best (intensification);
-            # odd restarts reseed from a fresh uniform draw
-            # (diversification). This mirrors the "two-phase" restart
-            # heuristic widely used in NM++ implementations.
+            # collapsed. If budget remains, alternate restart seeds: the
+            # first restart, and every second one after it, reseeds
+            # around the current best (intensification); the others
+            # reseed from a fresh uniform draw (diversification).
             restart_count += 1
             if self.evaluations >= self.n_trials:
                 break
