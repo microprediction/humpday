@@ -7,7 +7,7 @@ the optimizer contest, the per-algorithm pages, and the application demonstratio
 
 The optimizers run as native JavaScript, in `js/modules/`. There is no Python in the browser: the
 page loads `prng.js`, `base-optimizer.js` and the algorithm modules as ordinary script tags, and
-every algorithm is a port of the Python one rather than a call into it. Thirteen of the
+every algorithm is a port of the Python one rather than a call into it. Fourteen of the
 twenty-three are bit-exact twins, replaying `parity/transition_vectors.json` point for point; the
 rest agree on behaviour but not on every last bit, and #78 tracks the difference.
 

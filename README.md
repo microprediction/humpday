@@ -45,7 +45,7 @@ centre circle becomes an oval, the corners smear toward the boundary:
 
 ```bash
 pip install humpday        # Python
-npm install humpday        # JavaScript (the same roster; 13 of 23 bit-exact, rest ported)
+npm install humpday        # JavaScript (the same roster; 14 of 23 bit-exact, rest ported)
 ```
 
 Zero runtime dependencies. Every algorithm has a pure-Python implementation

@@ -34,6 +34,9 @@ JS_EXACT = [
     "GeneticAlgorithm",
     "ParticleSwarm",
     "FireflyAlgorithm",
+    # The first model-based one: its quadratic fit runs through JavaScript twins of the
+    # pure-Python SVD, QR and solve, so the vectors pin the linear algebra as well.
+    "PRIMA_BOBYQA",
 ]
 
 

@@ -65,6 +65,19 @@ def _build_min_frobenius_quadratic(XPT, FVAL, H_prev, n):
     the quadratic part. We solve that system, recover ΔH, then back-
     solve A_l x_l = b − A_q vech(ΔH) for (c, g).
 
+    Scaling. The fit runs on z = x / s, with s the largest distance of a
+    point from the origin, and maps back (g = g_z / s, H_prev's part of b
+    is unchanged, ΔH = ΔH_z / s²). In exact arithmetic that is the same
+    model, because the Frobenius objective only scales. In raw coordinates
+    A_l's columns are O(1) and O(s) and A_q's are O(s²): the pure-Python SVD,
+    which works on A_lᵀA_l, then loses the null space of A_lᵀ as s shrinks.
+    Fitting an exact quadratic in 3-D, the recovered Hessian was off by 1e-5
+    at s = 1e-4, 0.6 at 1e-5 and 4e5 at 1e-6; scaled, it is within 2e-8 down
+    to s = 1e-8 on either backend. BOBYQA's passes do reach that range: on
+    the reference gate's Ackley, 68 of 177 fits had s below 1e-5. The same
+    defect as UOBYQA's unscaled fit (#434), reached through a different
+    routine.
+
     Returns (c, g, H) on success; raises _PRIMALinAlgError if the
     linear-only design matrix A_l is rank-deficient — the caller then
     falls back to the diagonal-only model that was the previous
@@ -89,23 +102,29 @@ def _build_min_frobenius_quadratic(XPT, FVAL, H_prev, n):
     # Build design columns. A_l is (npt × p_lin), A_q is (npt × p_quad).
     # vech(H) ordering: first the n diagonals, then the n(n−1)/2 strict
     # upper-triangle entries in row-major order.
+    # The columns are built from z = x / s_len (see the docstring); b is
+    # built from the raw points and needs no scaling.
+    spread = max(float(_A.norm(XPT[k])) for k in range(npt))
+    s_len = spread if spread > 0 else 1.0
+
     A_l = _A.linalg.matrix_zeros(npt, p_lin)
     A_q = _A.linalg.matrix_zeros(npt, p_quad)
     b = [0.0] * npt
 
     for k in range(npt):
         x = XPT[k]
+        z = [float(x[i]) / s_len for i in range(n)]
         A_l[k][0] = 1.0
         for i in range(n):
-            A_l[k][i + 1] = float(x[i])
+            A_l[k][i + 1] = z[i]
 
         col = 0
         for i in range(n):
-            A_q[k][col] = 0.5 * float(x[i]) * float(x[i])
+            A_q[k][col] = 0.5 * z[i] * z[i]
             col += 1
         for i in range(n):
             for j in range(i + 1, n):
-                A_q[k][col] = float(x[i]) * float(x[j])
+                A_q[k][col] = z[i] * z[j]
                 col += 1
 
         # b[k] = FVAL[k] − ½ x_k^T H_prev x_k.
@@ -186,18 +205,20 @@ def _build_min_frobenius_quadratic(XPT, FVAL, H_prev, n):
     QlT_rhs = _A.linalg.matvec(_A.linalg.transpose(Q_l), rhs)
     x_l = list(_A.linalg.solve(R_l, QlT_rhs))
 
+    # Back to raw coordinates: g = g_z / s, ΔH = ΔH_z / s².
     c = x_l[0]
-    g_arr = _A.asarray(x_l[1:])
+    g_arr = _A.asarray([v / s_len for v in x_l[1:]])
+    s_sq = s_len * s_len
 
     # Reconstruct symmetric H = H_prev + ΔH from vech(ΔH).
     H = _A.linalg.matrix_zeros(n, n)
     col = 0
     for i in range(n):
-        H[i][i] = float(H_prev[i][i]) + x_q[col]
+        H[i][i] = float(H_prev[i][i]) + x_q[col] / s_sq
         col += 1
     for i in range(n):
         for j in range(i + 1, n):
-            val = float(H_prev[i][j]) + x_q[col]
+            val = float(H_prev[i][j]) + x_q[col] / s_sq
             H[i][j] = val
             H[j][i] = val
             col += 1

@@ -56,8 +56,8 @@ BUDGET_OVERRIDE = {"BayesianOpt": 50}
 
 # How far a JavaScript port may sit behind the reference its Python twin was written from.
 # Measured, like the Python table, and for the same reason: these are what the ports do, not
-# what they should do. A JS port is a behavioural twin rather than a bit-exact one for every
-# algorithm here, so the bar is looser than the Python gate's 3.0.
+# what they should do. Every port here but PRIMA_BOBYQA is a behavioural twin rather than a
+# bit-exact one, so the bar is looser than the Python gate's 3.0.
 DEFAULT_RATIO_CEILING = 10.0
 
 # What the ports do today, measured with both languages on the same objectives -- which they
@@ -77,18 +77,18 @@ DEFAULT_RATIO_CEILING = 10.0
 #   LBFGSB falls behind on Rosenbrock, where the curvature is what the memory is for, by the
 #   same 1,318 as before -- that pair was unaffected.
 #
-#   PRIMA_BOBYQA falls behind on Rosenbrock and Ackley.
-#
 # All of these are #78's territory: ports that agree with Python on behaviour but not on quality.
+#
+# PRIMA_BOBYQA was here at 160 on Ackley and 2.0e10 on Rosenbrock and needs no entry now. Its
+# model fit solved the KKT system through a Householder QR with an absolute 1e-15 floor; that
+# system's entries scale as the fourth power of the interpolation spread, so from a spread of
+# about 5e-3 every fit was rejected and the rest of the pass ran on a finite-difference gradient
+# with an identity Hessian. It now fits through twins of the pure-Python linear algebra and
+# replays the Python transition vectors bit for bit: 0.06 on Ackley, and converged on Rosenbrock.
 RATIO_CEILING = {
     ("Powell", "sphere"): 1.7e11,  # measured 80609000013.37
     ("Powell", "rosenbrock"): 17.0,  # measured 7.99
     ("LBFGSB", "rosenbrock"): 2700.0,  # measured 1318.23
-    ("PRIMA_BOBYQA", "ackley"): 160.0,  # measured 71.51
-    # This one varies run to run because the JavaScript PRIMA ports call Math.random() directly
-    # rather than the portable stream, so the seed the runner sets does not reach them (#401).
-    # The ceiling has room for that spread until the ports are seeded properly.
-    ("PRIMA_BOBYQA", "rosenbrock"): 2.0e10,  # measured 7.1e+08 to 4.9e+09
 }
 
 # Ports whose result differs from their Python twin by more than six orders of magnitude on the
@@ -216,14 +216,20 @@ def test_the_javascript_port_tracks_its_reference(algorithm, problem_id):
         f"  js/ref={ratio:>9.2f}  lost={lost:>5.2f}"
     )
 
+    # The floor comes first and governs both tests, as it does in the Python gate. The win rate
+    # has no scale: a port that has solved the problem to fifteen decimal places and sits a few
+    # ulps behind its reference loses every pairing, and that is an ordering, not a lag.
+    # PRIMA_BOBYQA reaches 8.1e-15 on Rosenbrock against Py-BOBYQA's 2.1e-19 and loses every
+    # pairing; so does the pure-Python port it replays bit for bit, and the Python gate passes
+    # that under this floor.
+    if js_gap <= CONVERGED_GAP:
+        return  # solved it; the ratio is then the epsilon guard dividing itself
+
     win_cap = _win_ceiling(algorithm, problem_id)
     assert lost <= win_cap, (
         f"{algorithm} in JavaScript loses {lost:.2f} of head-to-head pairings against "
         f"{ref_label} on {problem_id}, over its ceiling of {win_cap:g}"
     )
-
-    if js_gap <= CONVERGED_GAP:
-        return  # solved it; the ratio is then the epsilon guard dividing itself
     if lost <= 0.5:
         return  # ahead head to head, so the ratio is comparing two different modes
     ceiling = _ratio_ceiling(algorithm, problem_id)
