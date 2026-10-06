@@ -26,9 +26,15 @@ MODULES = Path(__file__).parent.parent / "docs" / "js" / "modules"
 N_TRIALS = 200
 N_DIM = 2
 
-# Algorithms that make no random draws, so a different seed is expected to change nothing.
-# Listed so that one quietly becoming deterministic, or this one starting to draw, is noticed.
-DETERMINISTIC = {"GridSearch"}
+# Algorithms whose run here a different seed is expected not to change. Listed so that one
+# quietly becoming deterministic, or one of these starting to draw, is noticed.
+#
+# GridSearch makes no random draws. PRIMA_BOBYQA draws only for the restart seed after a
+# trust-region pass ends, and on this objective its first pass spends the whole budget -- as the
+# Python port's does, which the JavaScript one replays bit for bit. It used to vary with the seed
+# because its model fit failed once the interpolation set shrank, and the passes it then cut
+# short ended in restarts.
+DETERMINISTIC = {"GridSearch", "PRIMA_BOBYQA"}
 
 # The only file allowed to call Math.random: MathUtils' fallback for when no portable stream is
 # active, which is what keeps unseeded demos working.
