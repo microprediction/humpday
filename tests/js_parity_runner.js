@@ -1,7 +1,12 @@
 // Node runner for JavaScript optimization algorithms.
 //
 // Usage:
-//   node js_parity_runner.js <algorithm> <n_trials> <n_dim> <function_id> [<n_runs>]
+//   node js_parity_runner.js <algorithm> <n_trials> <n_dim> <function_id> [<n_runs>] [<seed>]
+//
+// With a seed, run i draws from the portable PCG32 stream seeded with seed + i (the same stream
+// `humpday._array.use_portable_rng` gives the Python side). Without one the ports fall back to
+// Math.random, as they do in the browser. Ports that still call Math.random directly are only
+// partly reproducible either way.
 //
 // With n_runs > 1, the algorithm is run `n_runs` times back-to-back in
 // the same Node process and one JSON line is emitted per run:
@@ -12,15 +17,26 @@
 
 const path = require("path");
 const modules = require(path.resolve(__dirname, "../docs/js/modules/index.js"));
+const { usePortableRng, useLegacyRng } = require(
+    path.resolve(__dirname, "../docs/js/modules/base-optimizer.js"),
+);
 
 const algorithm = process.argv[2];
 const nTrials = parseInt(process.argv[3], 10);
 const nDim = parseInt(process.argv[4], 10);
 const funcId = process.argv[5];
 const nRuns = process.argv[6] ? parseInt(process.argv[6], 10) : 1;
+const seed = process.argv[7] !== undefined ? parseInt(process.argv[7], 10) : null;
+
+// Optimum of `sphere_shifted`, identical to SHIFT in test_js_parity.py. Each coordinate sits
+// 0.19 to 0.31 away from the cube centre and off any grid node, so an optimizer that starts at
+// the centre and never moves scores 0.138 in 2-D rather than 0 (#387, #403).
+const SHIFT = [0.2473, 0.7718, 0.1859, 0.6934, 0.8146];
 
 // Match the Python test's `OBJECTIVES`. Keep these in sync.
 const OBJECTIVES = {
+    // Sphere with its minimum 0 at SHIFT (first n_dim coordinates; at most 5 dimensions).
+    sphere_shifted: (x) => x.reduce((a, v, i) => a + (v - SHIFT[i]) * (v - SHIFT[i]), 0),
     // Sphere centred at 0.5 — minimum 0 at x = [0.5, 0.5, ...]
     sphere_at_half: (x) => x.reduce((a, v) => a + (v - 0.5) * (v - 0.5), 0),
     // Quadratic centred at 0.7 — minimum 0 at x = [0.7, 0.7, ...]
@@ -49,6 +65,8 @@ if (!Cls) {
 
 for (let i = 0; i < nRuns; i++) {
     try {
+        if (seed !== null) usePortableRng(seed + i, 0);
+        else useLegacyRng();
         const opt = new Cls(f, nTrials, nDim);
         opt.optimize();
         process.stdout.write(

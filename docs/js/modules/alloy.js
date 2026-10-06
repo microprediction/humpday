@@ -31,8 +31,8 @@ class Alloy extends Optimizer {
         const clip = (x) => x.map((v) => (v < 0 ? 0 : v > 1 ? 1 : v));
         const gauss = () => {
             let u = 0, v = 0;
-            while (u === 0) u = Math.random();
-            while (v === 0) v = Math.random();
+            while (u === 0) u = MathUtils.randomScalar();
+            while (v === 0) v = MathUtils.randomScalar();
             return Math.sqrt(-2.0 * Math.log(u)) * Math.cos(2.0 * Math.PI * v);
         };
         const left = () => this.evaluations < this.nTrials;
@@ -42,7 +42,7 @@ class Alloy extends Optimizer {
         const popSize = Math.max(n + 1, Math.min(8 + 2 * n, Math.max(5, Math.floor(this.nTrials / 6))));
         const pop = [], popF = [];
         for (let i = 0; i < popSize && left(); i++) {
-            const x = Array(n).fill(0).map(() => Math.random());
+            const x = Array(n).fill(0).map(() => MathUtils.randomScalar());
             pop.push(x);
             popF.push(feval(x));
         }
@@ -88,7 +88,7 @@ class Alloy extends Optimizer {
         const accept = (fNew, fOld) => {
             if (fNew <= fOld) return true;
             if (T <= 1e-12) return false;
-            return Math.random() < Math.exp(-(fNew - fOld) / T);
+            return MathUtils.randomScalar() < Math.exp(-(fNew - fOld) / T);
         };
 
         let stagnation = 0;
@@ -100,7 +100,7 @@ class Alloy extends Optimizer {
             const worstF = simplexF[worstI];
             const cen = centroidOf(worstI);
 
-            const r = Math.random();
+            const r = MathUtils.randomScalar();
             let improved = false;
 
             if (r < 0.25) {
@@ -139,20 +139,20 @@ class Alloy extends Optimizer {
                 // Differential Evolution: rand/1 or current-to-best/1
                 const idxs = simplex.map((_, i) => i);
                 for (let i = idxs.length - 1; i > 0; i--) {
-                    const j = Math.floor(Math.random() * (i + 1));
+                    const j = Math.floor(MathUtils.randomScalar() * (i + 1));
                     [idxs[i], idxs[j]] = [idxs[j], idxs[i]];
                 }
                 const a = idxs[0], b = idxs[1 % idxs.length], c = idxs[2 % idxs.length];
                 let mutant;
-                if (Math.random() < 0.5) {
+                if (MathUtils.randomScalar() < 0.5) {
                     mutant = simplex[a].map((v, d) => v + F * (simplex[b][d] - simplex[c][d]));
                 } else {
                     mutant = worstX.map((v, d) =>
                         v + F * (bestX[d] - v) + F * (simplex[b][d] - simplex[c][d]));
                 }
-                const jr = Math.floor(Math.random() * n);
+                const jr = Math.floor(MathUtils.randomScalar() * n);
                 const trial = mutant.map((v, d) =>
-                    (Math.random() < CR || d === jr) ? v : worstX[d]);
+                    (MathUtils.randomScalar() < CR || d === jr) ? v : worstX[d]);
                 if (!left()) break;
                 const ft = feval(trial);
                 if (accept(ft, worstF)) {
@@ -229,12 +229,12 @@ class Alloy extends Optimizer {
                 simplex = [keep.slice()];
                 simplexF = [this.bestValue];
                 for (let i = 0; i < n && left(); i++) {
-                    const p = keep.map((v) => Math.min(1.0, Math.max(0.0, v + (Math.random() * 0.6 - 0.3))));
+                    const p = keep.map((v) => Math.min(1.0, Math.max(0.0, v + (MathUtils.randomScalar() * 0.6 - 0.3))));
                     simplex.push(p);
                     simplexF.push(feval(p));
                 }
                 while (simplex.length < n + 1 && left()) {
-                    const p = Array(n).fill(0).map(() => Math.random());
+                    const p = Array(n).fill(0).map(() => MathUtils.randomScalar());
                     simplex.push(p);
                     simplexF.push(feval(p));
                 }

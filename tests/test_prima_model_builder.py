@@ -110,6 +110,40 @@ def test_a_shrunk_interpolation_set_builds_the_same_model():
         _close_matrix(H_hat, H, tol=1e-5)
 
 
+def test_the_underdetermined_fit_does_not_depend_on_the_scale_of_the_set():
+    """2n+1 points in general position with a prior Hessian, as BOBYQA and NEWUOA build them.
+
+    Shrinking the set by h leaves the minimum-Frobenius Hessian unchanged in exact arithmetic.
+    Fitted in raw coordinates, the pure backend's SVD lost the null space of A_l once h reached
+    about 1e-5 and returned a Hessian off by 4e5 at h = 1e-6; the fit now runs on z = x / s
+    (#434's defect, through the min-Frobenius builder rather than UOBYQA's).
+    """
+    n = 3
+    H = [[2.0, 0.5, 0.1], [0.5, 4.0, -0.3], [0.1, -0.3, 1.0]]
+    g = [0.3, -0.2, 0.1]
+    f = _quadratic(0.0, g, H)
+    H_prev = [[1.5, 0.4, 0.0], [0.4, 3.0, 0.0], [0.0, 0.0, 1.0]]
+    unit = [
+        [0.0, 0.0, 0.0],
+        [0.7, -0.2, 0.1],
+        [-0.4, 0.9, 0.3],
+        [0.2, 0.5, -0.8],
+        [-0.6, -0.3, 0.4],
+        [0.1, -0.7, -0.5],
+        [0.8, 0.6, 0.2],
+    ]
+
+    def fit(h):
+        pts = [[h * v for v in p] for p in unit]
+        XPT = [_A.asarray(p) for p in pts]
+        FVAL = [f(p) for p in pts]
+        return _build_min_frobenius_quadratic(XPT, FVAL, H_prev, n)[2]
+
+    at_unit = [[float(v) for v in row] for row in fit(1.0)]
+    for h in [1e-3, 1e-5, 1e-6]:
+        _close_matrix(fit(h), at_unit, tol=1e-6)
+
+
 @pytest.mark.parametrize("cls", [PRIMA_NEWUOA, PRIMA_BOBYQA])
 def test_the_optimizers_use_the_model_they_advertise(cls):
     """Not the identity-Hessian fallback: the built model carries curvature."""

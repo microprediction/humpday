@@ -1,8 +1,7 @@
 # The horse racing problem
 import math
 
-import numpy as np
-
+from humpday import _array as _A
 from humpday.transforms.thurstone_transform import (
     simple_ability_implied_dividends as std_ability_implied_dividends,
 )
@@ -19,9 +18,19 @@ def make_abilities():
     if ABILITIES is None:
         from datetime import datetime
 
+        # Still date-seeded, which is #373's complaint, not this change's. What changes here is
+        # only where the draws come from: the backend shim rather than numpy, so this module
+        # imports on a dependency-free install (#377). The optimizers' stream is saved and
+        # restored around it.
+        import humpday._array as _shim
+
         day_of_year = datetime.now().timetuple().tm_yday
-        np.random.seed(day_of_year)
-        ABILITIES = sorted(np.random.randn(HORSE_DIM))
+        saved = _shim._portable
+        try:
+            _A.use_portable_rng(day_of_year)
+            ABILITIES = sorted(_A.rng_gauss() for _ in range(HORSE_DIM))
+        finally:
+            _shim._portable = saved
     return ABILITIES
 
 
@@ -37,7 +46,7 @@ def make_dividends(n_dim):
 
 
 def cube_to_ability(u: [float]) -> [float]:
-    offsets = [0] + list(np.arctanh(np.array(np.minimum(u, 1 - 1e-5))))
+    offsets = [0] + [math.atanh(min(float(ui), 1 - 1e-5)) for ui in u]
     ability = [min(5, o / 100) for o in offsets]
     return ability
 
@@ -51,12 +60,11 @@ def horse_dividends_on_cube(u: [float]) -> float:
     dividends = make_dividends(n_dim)
     ability = cube_to_ability(u=u)
     implied_dividends = std_ability_implied_dividends(ability=ability)
-    discrepancy = np.mean(
-        [
-            abs(math.sqrt(d1) - math.sqrt(d2))
-            for d1, d2 in zip(dividends, implied_dividends)
-        ]
-    )
+    gaps = [
+        abs(math.sqrt(d1) - math.sqrt(d2))
+        for d1, d2 in zip(dividends, implied_dividends)
+    ]
+    discrepancy = _A.sum(gaps) / max(1, len(gaps))
     return discrepancy
 
 

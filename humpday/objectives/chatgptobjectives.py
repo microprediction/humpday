@@ -1,7 +1,35 @@
-import numpy as np
+"""Objectives contributed by a language model, kept for continuity.
+
+numpy at module scope, deliberately and with a guard. These eighteen are the legacy aggregate
+that `objectives.allobjectives` exposes and that `papers/planar_search` reports over; the
+recorder uses the curated `SURFACES` list instead. They are written in numpy throughout -- outer
+products, roll, diff, elementwise transcendentals over arrays -- and converting them would change
+eighteen published landscapes for no gain to anything that runs today.
+
+So they keep numpy and say so when it is absent, rather than failing at import and taking
+allobjectives down with them on a dependency-free install (#377).
+"""
+
+try:
+    import numpy as np
+
+    NUMPY_AVAILABLE = True
+except ImportError:  # pragma: no cover - exercised only on an install without the extra
+    np = None
+    NUMPY_AVAILABLE = False
+
+
+def _require_numpy():
+    if not NUMPY_AVAILABLE:
+        raise ImportError(
+            "humpday.objectives.chatgptobjectives needs numpy, which is the `fast` extra "
+            "rather than a dependency: pip install 'humpday[fast]'. The optimizers do not need "
+            "it, and humpday.objectives.classic and .horse no longer do either (#377)."
+        )
 
 
 def chat_0(u):
+    _require_numpy()
     n_dim = len(u)
     u = np.array(u)
     s = np.sin(np.pi * u)
@@ -11,6 +39,7 @@ def chat_0(u):
 
 # Chat Function 1
 def chat_1(u):
+    _require_numpy()
     """
     A difficult optimization problem that involves finding the minimum of a
     function with a narrow valley and many local minima. The function is
@@ -25,6 +54,7 @@ def chat_1(u):
 
 # Chat Function 2
 def chat_2(u):
+    _require_numpy()
     """
     An optimization problem that involves minimizing the sum of the squared
     differences between each coordinate of the input vector and a scaled
@@ -40,6 +70,7 @@ def chat_2(u):
 
 # Chat Function 3
 def chat_3(u):
+    _require_numpy()
     """
     An optimization problem that involves finding the minimum of a function
     with a narrow valley and many local minima. The function is defined in
@@ -55,6 +86,7 @@ def chat_3(u):
 
 # Chat Function 4
 def chat_4(u):
+    _require_numpy()
     """
     An optimization problem that involves finding the minimum of a function
     with a narrow valley and many local minima. The function is defined in
@@ -69,6 +101,7 @@ def chat_4(u):
 
 # Chat Function 5
 def chat_5(u):
+    _require_numpy()
     """
     An optimization problem that involves minimizing a modified version of
     the Rosenbrock function. The modification involves adding a scaled
@@ -88,6 +121,7 @@ def chat_5(u):
 
 # Chat Function 6
 def chat_6(u):
+    _require_numpy()
     """
     An optimization problem that involves minimizing a modified version of
     the Griewank function. The modification involves adding a scaled version
@@ -107,6 +141,7 @@ def chat_6(u):
 
 # Chat Function 7
 def chat_7(u):
+    _require_numpy()
     """
     An optimization problem that involves finding the minimum of a function
     with a narrow valley and many local minima. The function is defined in
@@ -121,6 +156,7 @@ def chat_7(u):
 
 
 def chat_8(u):
+    _require_numpy()
     """
     A modified version of the original chat_0 function that includes a
     non-linear transformation of the input vector. This transformation is
@@ -136,12 +172,14 @@ def chat_8(u):
 
 # Sum of Squares Function
 def chat_9(u):
+    _require_numpy()
     u = np.array(u)
     return np.sum(u**2) + 0.1 * np.sum((u - 0.1) ** 4)
 
 
 # Egg Holder Function
 def chat_10(u):
+    _require_numpy()
     """
     An optimization problem that involves finding the minimum of a function
     that has a complex egg-carton shape. This function has many local minima
@@ -155,6 +193,7 @@ def chat_10(u):
 
 # Six-Hump Camel Function
 def chat_11(u):
+    _require_numpy()
     """
     An optimization problem that involves finding the minimum of a function
     with six local minima, two of which are global. The function has a
@@ -169,6 +208,7 @@ def chat_11(u):
 
 # Branin Function
 def chat_12(u):
+    _require_numpy()
     """
     An optimization problem that involves finding the global minimum of a
     function with three local minima. The function has a combination of
@@ -188,6 +228,7 @@ def chat_12(u):
 
 # Modified Sphere Function
 def chat_13(u):
+    _require_numpy()
     """
     An optimization problem that involves minimizing a modified version of
     the classic Sphere function. The modification involves multiplying each
@@ -202,6 +243,7 @@ def chat_13(u):
 
 # Griewank Function with Sinusoidal Perturbation
 def chat_14(u):
+    _require_numpy()
     """
     An optimization problem that involves minimizing the Griewank function
     with a sinusoidal perturbation added to one coordinate of the input
@@ -218,6 +260,7 @@ def chat_14(u):
 
 # Modified Rastrigin Function
 def chat_15(u):
+    _require_numpy()
     """
     A modified version of the Rastrigin function that introduces a
     non-linear transformation of the input vector. This transformation
@@ -233,6 +276,7 @@ def chat_15(u):
 
 # Zakharov Function with Sine Perturbation
 def chat_16(u):
+    _require_numpy()
     """
     An optimization problem that involves minimizing the Zakharov function
     with a sine perturbation added to one coordinate of the input vector.
@@ -252,6 +296,7 @@ def chat_16(u):
 
 # Modified Ackley Function
 def chat_17(u):
+    _require_numpy()
     """
     A modified version of the Ackley function that introduces a non-linear
     transformation of the input vector. This transformation involves taking

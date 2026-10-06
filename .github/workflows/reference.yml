@@ -45,6 +45,12 @@ jobs:
       run: |
         pytest tests/test_reference_alignment.py -m reference -s
 
+    - name: Compare the JavaScript ports too
+      # Python-against-reference and JS-against-Python both passing still leaves the case where
+      # the two ports drift together (#164). This closes the triangle.
+      run: |
+        pytest tests/test_js_reference_alignment.py -m reference -s
+
     - name: Keep the measured table
       if: always()
       uses: actions/upload-artifact@v4

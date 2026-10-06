@@ -7,6 +7,9 @@
  *   - Upper-triangular back-substitution.
  *   - QR-based linear solve for square or overdetermined systems.
  *   - Matrix / matrix-vector products and transpose.
+ *   - Twins of the pure-Python backend's solve, QR, SVD and pinv
+ *     (humpday/_array_pure_linalg.py), which the PRIMA model builders use
+ *     so that a fit here takes the same arithmetic path as in Python.
  *
  * Matrices are arrays-of-rows (Array<Array<number>>). Vectors are Array<number>.
  * Everything is double-precision JS Number, no typed arrays — small dense
@@ -319,6 +322,281 @@ const Linalg = {
             x[i] = s / L[i][i];
         }
         return x;
+    },
+
+    // ------------------------------------------------------------------ //
+    // Twins of humpday/_array_pure_linalg.py, statement for statement.    //
+    // The PRIMA model builders call these rather than the Householder     //
+    // routines above, so that a fit in JavaScript takes the same          //
+    // arithmetic path as the pure-Python fit that records the transition  //
+    // vectors. Every tolerance is relative to the matrix it came from, as //
+    // there: an absolute pivot threshold rejects a perfectly conditioned  //
+    // system whose entries are merely small, and a shrinking trust region //
+    // produces exactly those systems.                                     //
+    // ------------------------------------------------------------------ //
+
+    /** Left-to-right float sum (twin of `_fold_sum`). */
+    _foldSum(values) {
+        let total = 0.0;
+        for (const v of values) total += v;
+        return total;
+    },
+
+    /** Largest absolute entry (twin of `_scale`). */
+    _scale(A) {
+        let best = 0.0;
+        for (const row of A) {
+            for (const v of row) {
+                const a = Math.abs(v);
+                if (a > best) best = a;
+            }
+        }
+        return best;
+    },
+
+    /** Extend orthonormal columns to a basis of R^m (twin of `_complete_orthonormal`). */
+    _completeOrthonormal(cols, m) {
+        const out = cols.map(c => c.slice());
+        for (let i = 0; i < m; i++) {
+            if (out.length >= m) break;
+            const cand = new Array(m).fill(0.0);
+            cand[i] = 1.0;
+            for (let pass = 0; pass < 2; pass++) {
+                for (const q of out) {
+                    let p = 0.0;
+                    for (let k = 0; k < m; k++) p += q[k] * cand[k];
+                    for (let k = 0; k < m; k++) cand[k] -= p * q[k];
+                }
+            }
+            const nrm = Math.sqrt(Linalg._foldSum(cand.map(v => v * v)));
+            if (nrm > 1e-8) out.push(cand.map(v => v / nrm));
+        }
+        return out;
+    },
+
+    /** Gaussian elimination with partial pivoting (twin of `solve`). */
+    solve(A, b) {
+        const n = A.length;
+        const M = A.map(row => row.slice());
+        const rhs = b.slice();
+        const pivotFloor = 1e-14 * Linalg._scale(M);
+        for (let k = 0; k < n; k++) {
+            let pivotRow = k;
+            let pivotVal = Math.abs(M[k][k]);
+            for (let i = k + 1; i < n; i++) {
+                const v = Math.abs(M[i][k]);
+                if (v > pivotVal) {
+                    pivotVal = v;
+                    pivotRow = i;
+                }
+            }
+            if (pivotVal <= pivotFloor) {
+                throw new Error('solve: singular matrix (pivot below tolerance)');
+            }
+            if (pivotRow !== k) {
+                const tmp = M[k]; M[k] = M[pivotRow]; M[pivotRow] = tmp;
+                const t2 = rhs[k]; rhs[k] = rhs[pivotRow]; rhs[pivotRow] = t2;
+            }
+            const pivot = M[k][k];
+            for (let i = k + 1; i < n; i++) {
+                const factor = M[i][k] / pivot;
+                if (factor === 0.0) continue;
+                const Mi = M[i];
+                const Mk = M[k];
+                Mi[k] = 0.0;
+                for (let j = k + 1; j < n; j++) Mi[j] -= factor * Mk[j];
+                rhs[i] -= factor * rhs[k];
+            }
+        }
+        const x = new Array(n).fill(0.0);
+        for (let i = n - 1; i >= 0; i--) {
+            let s = rhs[i];
+            const Mi = M[i];
+            for (let j = i + 1; j < n; j++) s -= Mi[j] * x[j];
+            x[i] = s / Mi[i];
+        }
+        return x;
+    },
+
+    /** In-place Jacobi rotation zeroing A[p][q] (twin of `_jacobi_rotate`). */
+    _jacobiRotate(A, V, p, q) {
+        const app = A[p][p];
+        const aqq = A[q][q];
+        const apq = A[p][q];
+        if (apq === 0.0) return;
+        const theta = (aqq - app) / (2.0 * apq);
+        let t;
+        if (theta >= 0) t = 1.0 / (theta + Math.sqrt(1.0 + theta * theta));
+        else t = 1.0 / (theta - Math.sqrt(1.0 + theta * theta));
+        const c = 1.0 / Math.sqrt(1.0 + t * t);
+        const s = t * c;
+        A[p][p] = app - t * apq;
+        A[q][q] = aqq + t * apq;
+        A[p][q] = 0.0;
+        A[q][p] = 0.0;
+        const n = A.length;
+        for (let i = 0; i < n; i++) {
+            if (i === p || i === q) continue;
+            const aip = A[i][p];
+            const aiq = A[i][q];
+            A[i][p] = c * aip - s * aiq;
+            A[p][i] = A[i][p];
+            A[i][q] = s * aip + c * aiq;
+            A[q][i] = A[i][q];
+        }
+        for (let i = 0; i < n; i++) {
+            const vip = V[i][p];
+            const viq = V[i][q];
+            V[i][p] = c * vip - s * viq;
+            V[i][q] = s * vip + c * viq;
+        }
+    },
+
+    /**
+     * Cyclic-Jacobi symmetric eigendecomposition, eigenvalues ascending
+     * (twin of `eigh` in the pure backend; the CMA-ES `eigh` above is a
+     * different routine and is left alone). Returns { eigvals, eigvecs }.
+     */
+    eighJacobi(A, tol = 1e-12, maxSweeps = 100) {
+        const n = A.length;
+        for (let i = 0; i < n; i++) {
+            for (let j = i + 1; j < n; j++) {
+                if (Math.abs(A[i][j] - A[j][i]) > tol * (1.0 + Math.abs(A[i][j]) + Math.abs(A[j][i]))) {
+                    throw new Error('eigh: A is not symmetric');
+                }
+            }
+        }
+        const M = A.map(row => row.slice());
+        const V = Linalg.eye(n);
+        const tolAbs = tol * Linalg._scale(M);
+        for (let sweep = 0; sweep < maxSweeps; sweep++) {
+            let off = 0.0;
+            for (let p = 0; p < n; p++) {
+                const Mp = M[p];
+                for (let q = p + 1; q < n; q++) off += Mp[q] * Mp[q];
+            }
+            if (off <= tolAbs * tolAbs) break;
+            for (let p = 0; p < n; p++) {
+                for (let q = p + 1; q < n; q++) {
+                    if (Math.abs(M[p][q]) > tolAbs) Linalg._jacobiRotate(M, V, p, q);
+                }
+            }
+        }
+        const eig = new Array(n);
+        for (let i = 0; i < n; i++) eig[i] = M[i][i];
+        // Python's sorted() is stable; so is Array.prototype.sort.
+        const order = [...Array(n).keys()].sort((a, b) => (eig[a] < eig[b] ? -1 : (eig[b] < eig[a] ? 1 : 0)));
+        const eigvals = order.map(i => eig[i]);
+        const eigvecs = new Array(n);
+        for (let i = 0; i < n; i++) {
+            eigvecs[i] = new Array(n);
+            for (let j = 0; j < n; j++) eigvecs[i][j] = V[i][order[j]];
+        }
+        return { eigvals, eigvecs };
+    },
+
+    /** Reduced QR by modified Gram-Schmidt (twin of `qr`). Returns { Q, R }. */
+    qr(A) {
+        const m = A.length;
+        const n = A[0].length;
+        if (m < n) throw new Error(`qr requires m >= n, got ${m}x${n}`);
+        const cols = new Array(n);
+        for (let j = 0; j < n; j++) {
+            cols[j] = new Array(m);
+            for (let i = 0; i < m; i++) cols[j][i] = A[i][j];
+        }
+        const R = Linalg.zeros(n, n);
+        let colMax = 0.0;
+        for (let j = 0; j < n; j++) {
+            const nr = Math.sqrt(Linalg._foldSum(cols[j].map(v => v * v)));
+            if (j === 0 || nr > colMax) colMax = nr;
+        }
+        const rankFloor = 1e-14 * colMax;
+        for (let j = 0; j < n; j++) {
+            for (let i = 0; i < j; i++) {
+                const qi = cols[i];
+                let rij = 0.0;
+                for (let k = 0; k < m; k++) rij += qi[k] * cols[j][k];
+                R[i][j] = rij;
+                for (let k = 0; k < m; k++) cols[j][k] -= rij * qi[k];
+            }
+            const rjj = Math.sqrt(Linalg._foldSum(cols[j].map(v => v * v)));
+            R[j][j] = rjj;
+            if (rjj <= rankFloor) {
+                cols[j] = Linalg._completeOrthonormal(cols.slice(0, j), m)[j];
+            } else {
+                cols[j] = cols[j].map(v => v / rjj);
+            }
+        }
+        const Q = new Array(m);
+        for (let i = 0; i < m; i++) {
+            Q[i] = new Array(n);
+            for (let j = 0; j < n; j++) Q[i][j] = cols[j][i];
+        }
+        return { Q, R };
+    },
+
+    /**
+     * SVD via the eigendecomposition of AᵀA (twin of `svd`), numpy's
+     * conventions: returns { U, s, Vt }, with U m × m when fullMatrices.
+     */
+    svd(A, fullMatrices = false) {
+        const m = A.length;
+        const n = A[0].length;
+        const k = Math.min(m, n);
+        const A2 = A.map(row => row.slice());
+        const B = Linalg.matmul(Linalg.transpose(A2), A2);
+        const { eigvals, eigvecs: V } = Linalg.eighJacobi(B);
+        const order = [...Array(n).keys()].reverse();
+        const sigmaSq = order.map(i => eigvals[i]);
+        const Vs = new Array(n);
+        for (let r = 0; r < n; r++) {
+            Vs[r] = new Array(n);
+            for (let c = 0; c < n; c++) Vs[r][c] = V[r][order[c]];
+        }
+        // Python's max(s, 0.0) keeps s unless 0.0 > s.
+        const s = sigmaSq.slice(0, k).map(v => Math.sqrt(0.0 > v ? 0.0 : v));
+        const sigmaFloor = 1e-14 * (s.length ? s[0] : 0.0);
+        let Ucols = [];
+        for (let j = 0; j < k; j++) {
+            const sigma = s[j];
+            if (sigma > sigmaFloor) {
+                const vj = new Array(n);
+                for (let r = 0; r < n; r++) vj[r] = Vs[r][j];
+                const Av = Linalg.matvec(A2, vj);
+                Ucols.push(Av.map(c => c / sigma));
+            } else {
+                Ucols.push(Linalg._completeOrthonormal(Ucols, m)[j]);
+            }
+        }
+        const uWidth = fullMatrices ? m : k;
+        if (fullMatrices && m > k) Ucols = Linalg._completeOrthonormal(Ucols, m);
+        const U = new Array(m);
+        for (let i = 0; i < m; i++) {
+            U[i] = new Array(uWidth);
+            for (let j = 0; j < uWidth; j++) U[i][j] = Ucols[j][i];
+        }
+        const vRows = fullMatrices ? n : k;
+        const Vt = new Array(vRows);
+        for (let c = 0; c < vRows; c++) {
+            Vt[c] = new Array(n);
+            for (let r = 0; r < n; r++) Vt[c][r] = Vs[r][c];
+        }
+        return { U, s, Vt };
+    },
+
+    /** Moore-Penrose pseudo-inverse through `svd` (twin of `pinv`). */
+    pinv(A, rcond = 1e-15) {
+        const { U, s, Vt } = Linalg.svd(A, false);
+        if (s.length === 0) return Linalg.zeros(A[0].length, A.length);
+        let sMax = s[0];
+        for (const v of s) if (v > sMax) sMax = v;
+        const threshold = sMax > 0 ? rcond * sMax : 0.0;
+        const sInv = s.map(v => (v > threshold ? 1.0 / v : 0.0));
+        const V = Linalg.transpose(Vt);
+        const UT = Linalg.transpose(U);
+        const M = sInv.map((si, i) => UT[i].map(v => si * v));
+        return Linalg.matmul(V, M);
     },
 };
 

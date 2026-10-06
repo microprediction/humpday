@@ -1,7 +1,31 @@
 import math
 import time
 
-import numpy as np
+# numpy at module scope, deliberately and with a guard.
+#
+# These objectives are built on a multivariate normal sample, a covariance estimate and a
+# multi-dot, none of which the `humpday._array` shim provides and none of which is a few lines
+# to write correctly. classic.py and horse.py were converted for #377; this module was not, so
+# rather than fail at import on a dependency-free install -- taking objectives.allobjectives and
+# anything importing it down with it -- it reports what is missing and why, at the point of use.
+try:
+    import numpy as np
+
+    NUMPY_AVAILABLE = True
+except ImportError:  # pragma: no cover - exercised only on an install without the extra
+    np = None
+    NUMPY_AVAILABLE = False
+
+
+def _require_numpy():
+    if not NUMPY_AVAILABLE:
+        raise ImportError(
+            "humpday.objectives.portfolio needs numpy, which is the `fast` extra rather than a "
+            "dependency: pip install 'humpday[fast]'. The optimizers themselves do not need it "
+            "(see humpday._array); these objectives use a multivariate normal and a covariance "
+            "estimate that the pure backend does not implement. Tracked in #377."
+        )
+
 
 # Conditional imports for optional dependencies
 try:
@@ -50,6 +74,7 @@ YEARLY = 3.0
 
 
 def make_sigma_matrix():
+    _require_numpy()
     from datetime import datetime
 
     day_of_year = datetime.now().timetuple().tm_yday
@@ -60,6 +85,7 @@ def make_sigma_scenarios():
     """
     :return:  N_SCENARIOS X FIVE_HUNDRED
     """
+    _require_numpy()
     global sigma_scenarios
     if sigma_scenarios is None:
         global sigma_matrix

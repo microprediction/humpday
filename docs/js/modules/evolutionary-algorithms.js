@@ -248,91 +248,158 @@ class ParticleSwarm extends Optimizer {
 }
 
 // Simulated Annealing implementation
+// Generalized Simulated Annealing constants, matching scipy.optimize.dual_annealing and the
+// Python twin in humpday/optimizers/evolutionary_algorithms.py. The two factors are computed
+// once as literals there and here: one of them needs a log-gamma, which JavaScript has no
+// standard implementation of, and SimulatedAnnealing is in JS_EXACT so both sides must hold the
+// identical number.
+const GSA_QV = 2.62;
+const GSA_QA = -5.0;
+const GSA_T0 = 5230.0;
+const GSA_RESTART_T = 0.1;
+const GSA_TAIL_LIMIT = 1.0e8;
+const GSA_MIN_VISIT_BOUND = 1.0e-10;
+const GSA_FACTOR4P = 11.833986526687411;
+const GSA_FACTOR6 = 8.054035404548971;
+const GSA_T1 = 2.0737503625760247;
+
+
 class SimulatedAnnealing extends Optimizer {
     constructor(objective, nTrials, nDim) {
         super(objective, nTrials, nDim);
         this.name = 'SimulatedAnnealing';
     }
 
-    // Two-stage algorithm matching scipy.optimize.dual_annealing in
-    // spirit:
+    // Generalized Simulated Annealing with an L-BFGS-B local search: the algorithm
+    // scipy.optimize.dual_annealing runs, not the spirit of it. A heavy-tailed Tsallis visiting
+    // distribution scaled by the temperature, generalised Metropolis acceptance, the
+    // T(i) = T0 (2^(qv-1) - 1) / ((i+2)^(qv-1) - 1) schedule, and re-annealing at the floor.
     //
-    //   Stage 1 — multi-restart Metropolis SA explores globally with a
-    //             geometric cooling schedule from T = 1.0 to T = 1e-6.
-    //   Stage 2 — L-BFGS-B polish from the best SA point (scipy's
-    //             dual_annealing uses L-BFGS-B for its local search).
+    // What was here before was classic Metropolis with uniform proposals and geometric cooling.
+    // Its proposals cannot make the long jumps a heavy tail gives, so it explored a
+    // neighbourhood rather than a space: 3,195,457 times behind scipy on Rosenbrock.
+    //
+    // Twin of SimulatedAnnealing._run in evolutionary_algorithms.py.
     *_run() {
-        // Twin of SimulatedAnnealing._run in
-        // humpday/optimizers/evolutionary_algorithms.py.
         const n = this.nDim;
-        const polishBudget = Math.max(20, Math.floor(this.nTrials / 2));
-        let saBudget = this.nTrials - polishBudget;
+        const lo = new Array(n).fill(0.0);
+        const hi = new Array(n).fill(1.0);
+        const span = [];
+        for (let i = 0; i < n; i++) span.push(hi[i] - lo[i]);
 
-        while (true) {
-            const outerBefore = this.evaluations;
-
-        // --- Stage 1: multi-restart Metropolis SA ----------------------
-        const numRestarts = Math.max(3, Math.floor(saBudget / 30));
-        const trialsPerRestart = Math.max(1, Math.floor(saBudget / numRestarts));
-
-        for (let restart = 0; restart < numRestarts; restart++) {
-            if (this.evaluations >= saBudget) break;
-
-            let x;
-            if (restart === 0) {
-                // Center-biased first restart.
-                const u = MathUtils.randomUniform(n);
-                x = u.map(v => 0.5 + (v - 0.5) * 0.4);
-            } else {
-                x = MathUtils.randomUniform(n);
-            }
-            let fx = yield x;
-
-            const initialTemp = 1.0;
-            const finalTemp = 1e-6;
-            // portableExp/portableLog on BOTH sides, not pow: libm pow
-            // differs across platforms in the last ulp.
-            const cooling = MathUtils.portableExp(
-                (1.0 / Math.max(1, trialsPerRestart))
-                * MathUtils.portableLog(finalTemp / initialTemp)
+        while (this.evaluations < this.nTrials) {
+            const before = this.evaluations;
+            const chainBudget = this.nTrials - Math.max(
+                20, Math.floor((this.nTrials - this.evaluations) / 2)
             );
-            let temp = initialTemp;
 
-            for (let iter = 0; iter < trialsPerRestart; iter++) {
-                if (this.evaluations >= saBudget) break;
+            let x = MathUtils.randomUniform(n);
+            let e = yield x;
+            let iteration = 0;
 
-                // Neighbour proposal: step scales with current temp.
-                const stepSize = 0.4 * temp;
-                const u = MathUtils.randomUniform(n);
-                const newX = new Array(n);
-                for (let i = 0; i < n; i++) {
-                    newX[i] = MathUtils.clip(x[i] + ((u[i] - 0.5) * 2) * stepSize, 0, 1);
-                }
-                const newFx = yield newX;
+            while (this.evaluations < chainBudget) {
+                const sStep = iteration + 2.0;
+                const t2 = MathUtils.portableExp((GSA_QV - 1.0) * MathUtils.portableLog(sStep)) - 1.0;
+                const temperature = GSA_T0 * GSA_T1 / t2;
+                iteration += 1;
 
-                // Metropolis criterion. The acceptance draw happens only
-                // when delta >= 0 (short-circuit) — stream position
-                // depends on it.
-                const delta = newFx - fx;
-                if (delta < 0 || MathUtils.randomScalar() < MathUtils.portableExp(-delta / Math.max(temp, 1e-12))) {
-                    x = newX;
-                    fx = newFx;
+                if (temperature < GSA_RESTART_T) {
+                    x = MathUtils.randomUniform(n);
+                    e = yield x;
+                    iteration = 0;
+                    continue;
                 }
 
-                temp *= cooling;
+                const temperatureStep = temperature / iteration;
+                const bestBeforeChain = this.bestValue;
+
+                for (let j = 0; j < 2 * n; j++) {
+                    if (this.evaluations >= chainBudget) break;
+                    const xVisit = this._gsaVisit(x, j, temperature, lo, hi, span);
+                    const eNew = yield xVisit;
+                    if (eNew < e) {
+                        x = xVisit;
+                        e = eNew;
+                    } else {
+                        const r = MathUtils.randomScalar();
+                        const pqvTemp = 1.0 - ((1.0 - GSA_QA) * (eNew - e) / temperatureStep);
+                        let pqv = 0.0;
+                        if (pqvTemp > 0.0) {
+                            pqv = MathUtils.portableExp(
+                                MathUtils.portableLog(pqvTemp) / (1.0 - GSA_QA)
+                            );
+                        }
+                        if (r <= pqv) {
+                            x = xVisit;
+                            e = eNew;
+                        }
+                    }
+                }
+
+                // The local search runs after a chain that improved on the best point: the
+                // "dual" in dual_annealing. Annealing proposes a basin, the local method walks
+                // down it, every chain rather than once at the end.
+                if (this.bestValue < bestBeforeChain && this.evaluations < chainBudget) {
+                    yield* this._lbfgsPolishGen();
+                }
             }
+
+            yield* this._lbfgsPolishGen();
+
+            if (this.evaluations === before) break;
+        }
+    }
+
+    // One draw from the Tsallis visiting distribution (Visita, reference [2] p. 405).
+    _gsaVisit(x, step, temperature, lo, hi, span) {
+        const n = x.length;
+        const factor1 = MathUtils.portableExp(
+            MathUtils.portableLog(temperature) / (GSA_QV - 1.0)
+        );
+        const factor4 = GSA_FACTOR4P * factor1;
+        const sigmax = MathUtils.portableExp(
+            -(GSA_QV - 1.0) * MathUtils.portableLog(GSA_FACTOR6 / factor4) / (3.0 - GSA_QV)
+        );
+
+        const oneVisit = () => {
+            const a = MathUtils.gaussScalar();
+            const b = MathUtils.gaussScalar();
+            const den = MathUtils.portableExp(
+                (GSA_QV - 1.0) * MathUtils.portableLog(Math.abs(b)) / (3.0 - GSA_QV)
+            );
+            return sigmax * a / den;
+        };
+
+        const wrap = (value, i) => {
+            const a = value - lo[i];
+            const b = (a % span[i]) + span[i];
+            let out = (b % span[i]) + lo[i];
+            if (Math.abs(out - lo[i]) < GSA_MIN_VISIT_BOUND) out += GSA_MIN_VISIT_BOUND;
+            return out;
+        };
+
+        if (step < n) {
+            const visits = [];
+            for (let i = 0; i < n; i++) visits.push(oneVisit());
+            const upperSample = MathUtils.randomScalar();
+            const lowerSample = MathUtils.randomScalar();
+            const out = [];
+            for (let i = 0; i < n; i++) {
+                let v = visits[i];
+                if (v > GSA_TAIL_LIMIT) v = GSA_TAIL_LIMIT * upperSample;
+                else if (v < -GSA_TAIL_LIMIT) v = -GSA_TAIL_LIMIT * lowerSample;
+                out.push(wrap(v + x[i], i));
+            }
+            return out;
         }
 
-        // --- Stage 2: L-BFGS polish from best SA point -----------------
-        yield* this._lbfgsPolishGen();
-
-            // Twin of the Python change: re-split whatever the polish did not spend. The reserve
-            // is sized for the worst case, the polish converges in about eighteen evaluations, and
-            // the rest used to be forfeited -- roughly half the budget, at every budget.
-            if (this.evaluations >= this.nTrials || this.evaluations === outerBefore) break;
-            saBudget = this.nTrials - Math.max(20, Math.floor((this.nTrials - this.evaluations) / 2));
-            if (this.evaluations >= saBudget) break;
-        }
+        const out = x.slice();
+        let visit = oneVisit();
+        if (visit > GSA_TAIL_LIMIT) visit = GSA_TAIL_LIMIT * MathUtils.randomScalar();
+        else if (visit < -GSA_TAIL_LIMIT) visit = -GSA_TAIL_LIMIT * MathUtils.randomScalar();
+        const index = step - n;
+        out[index] = wrap(visit + out[index], index);
+        return out;
     }
 }
 
@@ -433,162 +500,375 @@ class RandomSearch extends Optimizer {
     }
 }
 
-// Simplified Bayesian Optimization
+// Bayesian optimization: a Gaussian-process surrogate with the expected-improvement acquisition.
+//
+// Twin of BayesianOpt in humpday/optimizers/evolutionary_algorithms.py, statement for statement
+// (#408): the same RBF kernel (length scale 0.2, signal variance 1, noise 1e-6) written the way
+// the pure backend writes it, the same 128-point conditioning set, the same Cholesky with the
+// same jitter retries, the factor cached once per observation set, the same linear solve, EI
+// with xi = 0.01 over the exact normal CDF, and the same acquisition search -- 64 uniform
+// candidates, then six rounds of coordinate refinement on the surrogate. It is a *_run()
+// generator like its siblings, drawing through MathUtils.randomUniform, so usePortableRng()
+// reaches it and ask/tell works. tests/test_js_bayesopt_gp.py holds the posterior and the
+// acquisition to Python's at 1e-10.
+//
+// Not in JS_EXACT: the kernel calls Math.exp and the CDF erf, and Python's math.exp / math.erf
+// are the platform libm, which is not promised to round the same way in the last bit.
+//
+// What stood here before #408 took the five nearest observations, predicted with
+// inverse-distance weights, and called exp(-2 * nearestDistance) the uncertainty -- largest at
+// the points already sampled, so the acquisition preferred to resample what it knew.
 class BayesianOpt extends Optimizer {
     constructor(objective, nTrials, nDim) {
         super(objective, nTrials, nDim);
         this.name = 'BayesianOpt';
-        this.observations = [];
+        this.XObserved = [];   // list of points
+        this.yObserved = [];   // list of values
+        this.lengthScale = 0.2;
+        this.signalVariance = 1.0;
+        this.noiseVariance = 1e-6;
+        this._posteriorStamp = null;
+        this._posterior = null;
     }
 
-    optimize() {
-        // Strategic initial sampling with some center-biased points
-        const nInitial = Math.min(10, Math.floor(this.nTrials * 0.2));
+    // How many observations the GP conditions on: the best half, where the optimum is, and the
+    // newest half, what the acquisition was just told. Uncapped, the cubic solve makes a run
+    // quartic in the budget (#330). Twin of _GP_MAX_OBSERVATIONS.
+    static GP_MAX_OBSERVATIONS = 128;
 
-        // Sample some points near center for sphere-like functions
-        for (let i = 0; i < Math.min(3, nInitial) && this.evaluations < this.nTrials; i++) {
-            const x = Array(this.nDim).fill(0).map(() => 0.5 + (Math.random() - 0.5) * 0.3);
-            const y = this.evaluate(x);
-            this.observations.push({ x: [...x], y });
+    // How hard the acquisition is searched: the measured knee recorded beside
+    // _ACQ_CANDIDATES / _ACQ_REFINEMENTS in the Python port.
+    static ACQ_CANDIDATES = 64;
+    static ACQ_REFINEMENTS = 6;
+
+    _conditioningSet() {
+        const n = this.XObserved.length;
+        const cap = BayesianOpt.GP_MAX_OBSERVATIONS;
+        if (n <= cap) return [this.XObserved, this.yObserved];
+        const half = Math.floor(cap / 2);
+        // Python's sorted() is stable; so is Array.prototype.sort (ES2019).
+        const byValue = [...Array(n).keys()]
+            .sort((i, j) => this.yObserved[i] - this.yObserved[j])
+            .slice(0, half);
+        const keep = new Set(byValue);
+        for (let i = n - half; i < n; i++) keep.add(i);
+        const order = [...keep].sort((a, b) => a - b);
+        return [order.map(i => this.XObserved[i]), order.map(i => this.yObserved[i])];
+    }
+
+    *_run() {
+        const nInitial = Math.min(5, Math.max(2, this.nDim));
+
+        for (let i = 0; i < nInitial; i++) {
+            if (this.evaluations >= this.nTrials) break;
+            const x = MathUtils.randomUniform(this.nDim);
+            const y = yield x;
+            this.XObserved.push(x);
+            this.yObserved.push(y);
         }
 
-        // Fill remaining initial samples with random points
-        for (let i = this.observations.length; i < nInitial && this.evaluations < this.nTrials; i++) {
-            const x = Array(this.nDim).fill(0).map(() => Math.random());
-            const y = this.evaluate(x);
-            this.observations.push({ x: [...x], y });
-        }
-
-        // Reserve budget for the L-BFGS-B polish stage. Reference:
-        // scikit-optimize's `gp_minimize` finishes with a
-        // `minimize(method='L-BFGS-B')` polish on the best observation.
-        // The polish takes 2·nDim evals per gradient + a few per line
-        // search; reserving 20·nDim evals (≈ 10 polish iterations)
-        // closes the residual ~5 orders of magnitude on smooth
-        // problems by escaping the GP's RBF smoothing floor.
+        // Reserve budget for a final L-BFGS-B descent on the objective from the best point
+        // found. A hybrid design choice, not a port of scikit-optimize: gp_minimize's L-BFGS-B
+        // minimises the acquisition function, on the surrogate, and spends no objective
+        // evaluations (#408). Ours spends them because the GP alone plateaus at its RBF
+        // smoothing floor. 20·nDim evaluations, capped at half the budget, as in Python.
         const polishReserve = Math.min(20 * this.nDim, Math.floor(this.nTrials / 2));
         const loopBudget = Math.max(this.evaluations, this.nTrials - polishReserve);
 
-        // Bayesian optimization loop with intensification
         while (this.evaluations < loopBudget) {
-            const nextX = this.acquireNext();
-            const y = this.evaluate(nextX);
-            this.observations.push({ x: [...nextX], y });
+            let xNext;
+            try {
+                xNext = this._optimizeAcquisition();
+            } catch (e) {
+                // Any failure in the GP machinery falls back to a random sample, as in Python.
+                xNext = MathUtils.randomUniform(this.nDim);
+            }
+            const yNext = yield xNext;
+            this.XObserved.push(xNext);
+            this.yObserved.push(yNext);
+        }
 
-            // Intensify search around best point if very good solution found
-            if (y < 1e-4 && this.evaluations < loopBudget - 5) {
-                for (let i = 0; i < Math.min(3, loopBudget - this.evaluations); i++) {
-                    const localX = nextX.map(xi => {
-                        const noise = (Math.random() - 0.5) * 0.02;
-                        return MathUtils.clip(xi + noise, 0, 1);
-                    });
-                    const localY = this.evaluate(localX);
-                    this.observations.push({ x: [...localX], y: localY });
+        yield* this._lbfgsPolishGen();
+    }
+
+    // ---- GP machinery ----
+
+    // RBF kernel for every pair (X1[i], X2[j]). The squared distance is |a|^2 + |b|^2 - 2 a.b
+    // with every sum a left fold from 0.0, which is how the pure backend computes it.
+    _kernelMatrix(X1, X2) {
+        const scaleSq = this.lengthScale * this.lengthScale;
+        const sig = this.signalVariance;
+        const sqNorm = (row) => {
+            let s = 0.0;
+            for (let k = 0; k < row.length; k++) s = s + row[k] * row[k];
+            return s;
+        };
+        const norms2 = X2.map(sqNorm);
+        const out = new Array(X1.length);
+        for (let i = 0; i < X1.length; i++) {
+            const a = X1[i];
+            const n1 = sqNorm(a);
+            const row = new Array(X2.length);
+            for (let j = 0; j < X2.length; j++) {
+                const b = X2[j];
+                let cross = 0.0;
+                for (let k = 0; k < a.length; k++) cross += a[k] * b[k];
+                const sq = n1 + norms2[j] - 2.0 * cross;
+                row[j] = sig * Math.exp(-0.5 * sq / scaleSq);
+            }
+            out[i] = row;
+        }
+        return out;
+    }
+
+    // Cholesky-Banachiewicz in the loop order of humpday._array_pure_linalg.cholesky.
+    // Throws if A is not positive definite.
+    static _cholesky(A) {
+        const n = A.length;
+        const L = Array.from({ length: n }, () => new Array(n).fill(0.0));
+        for (let i = 0; i < n; i++) {
+            const Li = L[i];
+            for (let j = 0; j <= i; j++) {
+                const Lj = L[j];
+                let s = 0.0;
+                for (let k = 0; k < j; k++) s += Li[k] * Lj[k];
+                if (i === j) {
+                    const d = A[i][i] - s;
+                    if (d <= 0.0) throw new Error('cholesky: matrix is not positive definite');
+                    Li[j] = Math.sqrt(d);
+                } else {
+                    Li[j] = (A[i][j] - s) / Lj[j];
                 }
             }
         }
-
-        // Polish: L-BFGS-B from the GP-EI best. Mirrors the Python port.
-        this._lbfgsPolish();
-
-        return {
-            bestValue: this.bestValue,
-            bestX: this.bestX,
-            evaluations: this.evaluations,
-            success: true,
-            path: this.trackPath ? this.path : null
-        };
+        return L;
     }
 
-    acquireNext() {
-        let bestAcq = -Infinity;
-        let nextX = Array(this.nDim).fill(0).map(() => Math.random());
+    // Solve A x = b by Gaussian elimination with partial pivoting: the twin of
+    // humpday._array_pure_linalg.solve, which is what the Python port calls on L and L^T.
+    static _solve(A, b) {
+        const n = A.length;
+        const M = A.map(row => [...row]);
+        const rhs = [...b];
+        let scale = 0.0;
+        for (const row of M) for (const v of row) if (Math.abs(v) > scale) scale = Math.abs(v);
+        const pivotFloor = 1e-14 * scale;
 
-        // Sample candidate points
-        for (let j = 0; j < 100; j++) {
-            const candidate = Array(this.nDim).fill(0).map(() => Math.random());
-            const acq = this.acquisitionFunction(candidate);
-
-            if (acq > bestAcq) {
-                bestAcq = acq;
-                nextX = candidate;
+        for (let k = 0; k < n; k++) {
+            let pivotRow = k;
+            let pivotVal = Math.abs(M[k][k]);
+            for (let i = k + 1; i < n; i++) {
+                const v = Math.abs(M[i][k]);
+                if (v > pivotVal) {
+                    pivotVal = v;
+                    pivotRow = i;
+                }
+            }
+            if (pivotVal <= pivotFloor) throw new Error('solve: singular matrix (pivot below tolerance)');
+            if (pivotRow !== k) {
+                [M[k], M[pivotRow]] = [M[pivotRow], M[k]];
+                [rhs[k], rhs[pivotRow]] = [rhs[pivotRow], rhs[k]];
+            }
+            const pivot = M[k][k];
+            for (let i = k + 1; i < n; i++) {
+                const factor = M[i][k] / pivot;
+                if (factor === 0.0) continue;
+                const Mi = M[i];
+                const Mk = M[k];
+                Mi[k] = 0.0;
+                for (let j = k + 1; j < n; j++) Mi[j] -= factor * Mk[j];
+                rhs[i] -= factor * rhs[k];
             }
         }
 
-        return nextX;
+        const x = new Array(n).fill(0.0);
+        for (let i = n - 1; i >= 0; i--) {
+            let s = rhs[i];
+            const Mi = M[i];
+            for (let j = i + 1; j < n; j++) s -= Mi[j] * x[j];
+            x[i] = s / Mi[i];
+        }
+        return x;
     }
 
+    static _transpose(A) {
+        return A[0].map((_, j) => A.map(row => row[j]));
+    }
+
+    // Factorise the kernel once for the current observation set, and cache it. Returns
+    // [XObs, L, alpha], or null when the kernel will not factorise. Twin of _gp_posterior.
+    _gpPosterior() {
+        const [XObs, yObs] = this._conditioningSet();
+        const nObs = XObs.length;
+        const stamp = `${nObs}:${this.XObserved.length}:${this.lengthScale}`;
+        if (this._posteriorStamp === stamp) return this._posterior;
+
+        const K = this._kernelMatrix(XObs, XObs);
+        for (let i = 0; i < nObs; i++) K[i][i] += this.noiseVariance;
+
+        // Four attempts, adding 1e-8, then 1e-7, then 1e-6 to the diagonal between them.
+        let jitter = 0.0;
+        let L = null;
+        for (let attempt = 0; attempt < 4; attempt++) {
+            try {
+                L = BayesianOpt._cholesky(K);
+                break;
+            } catch (e) {
+                jitter = jitter > 0 ? Math.max(1e-8, jitter * 10) : 1e-8;
+                for (let i = 0; i < nObs; i++) K[i][i] += jitter;
+            }
+        }
+
+        let posterior = null;
+        if (L !== null) {
+            // alpha = K^-1 y as L^-T (L^-1 y).
+            let alpha = BayesianOpt._solve(L, yObs);
+            alpha = BayesianOpt._solve(BayesianOpt._transpose(L), alpha);
+            posterior = [XObs, L, alpha];
+        }
+
+        this._posteriorStamp = stamp;
+        this._posterior = posterior;
+        return posterior;
+    }
+
+    // Posterior mean and standard deviation at one query point. Twin of _gp_predict.
+    _gpPredict(xQuery) {
+        const posterior = this._gpPosterior();
+        if (posterior === null) {
+            // Pathological kernel: a flat prior over the conditioning set.
+            const [, yObs] = this._conditioningSet();
+            const nObs = Math.max(1, yObs.length);
+            let mu = 0.0;
+            for (const y of yObs) mu = mu + y;
+            mu = mu / nObs;
+            let v = 0.0;
+            for (const y of yObs) v = v + (y - mu) ** 2;
+            v = v / nObs;
+            return [mu, Math.sqrt(Math.max(v, 1e-8))];
+        }
+
+        const [XObs, L, alpha] = posterior;
+        const nObs = XObs.length;
+
+        // k(X, xQuery); k(xQuery, xQuery) is the signal variance, since exp(0) = 1.
+        const KsCol = this._kernelMatrix(XObs, [xQuery]).map(row => row[0]);
+        const Kss = this.signalVariance;
+
+        let mu = 0.0;
+        for (let i = 0; i < nObs; i++) mu = mu + KsCol[i] * alpha[i];
+
+        // var = K_ss - |L^-1 K_s|^2
+        const v = BayesianOpt._solve(L, KsCol);
+        let vDotV = 0.0;
+        for (let i = 0; i < nObs; i++) vDotV = vDotV + v[i] * v[i];
+        const variance = Math.max(Kss - vDotV, 1e-8);
+
+        return [mu, Math.sqrt(variance)];
+    }
+
+    // ---- Acquisition ----
+
+    _expectedImprovement(x) {
+        const [mu, sigma] = this._gpPredict(x);
+        let fBest = Infinity;
+        for (const y of this.yObserved) if (y < fBest) fBest = y;
+        const improvement = fBest - mu - 0.01;
+        if (sigma <= 0) return 0.0;
+        const Z = improvement / sigma;
+        return improvement * BayesianOpt._normalCdf(Z) + sigma * BayesianOpt._normalPdf(Z);
+    }
+
+    // The acquisition, under the name callers of the earlier ports used.
     acquisitionFunction(x) {
-        if (this.observations.length === 0) return Math.random();
-
-        // Distance-weighted Expected Improvement approximation
-        const distances = this.observations.map(obs => ({
-            dist: MathUtils.norm(MathUtils.subtract(x, obs.x)),
-            y: obs.y
-        }));
-
-        distances.sort((a, b) => a.dist - b.dist);
-        const kNearest = distances.slice(0, Math.min(5, distances.length));
-
-        if (kNearest.length === 0) return Math.random();
-
-        // Distance-weighted prediction
-        const epsilon = 1e-8; // Avoid division by zero
-        let weightSum = 0;
-        let weightedMean = 0;
-
-        for (const item of kNearest) {
-            const weight = 1.0 / (item.dist + epsilon);
-            weightSum += weight;
-            weightedMean += weight * item.y;
-        }
-
-        const predictedMean = weightedMean / weightSum;
-
-        // Estimate uncertainty based on distance to nearest point and local variance
-        const uncertainty = Math.exp(-2.0 * kNearest[0].dist);
-        const localVariance = kNearest.length > 1 ?
-            kNearest.reduce((sum, item) => sum + Math.pow(item.y - predictedMean, 2), 0) / kNearest.length :
-            0.1;
-        const predictedStd = Math.max(Math.sqrt(localVariance), 0.01) * uncertainty;
-
-        // Expected Improvement: EI = (f_min - mu) * Φ(Z) + σ * φ(Z)
-        const bestY = Math.min(...this.observations.map(obs => obs.y));
-        const improvement = bestY - predictedMean;
-
-        if (predictedStd <= epsilon) {
-            return improvement > 0 ? improvement : 0;
-        }
-
-        const z = improvement / predictedStd;
-
-        // Approximate normal CDF and PDF
-        const phi = 0.5 * (1 + this.erf(z / Math.sqrt(2))); // CDF
-        const pdf = Math.exp(-0.5 * z * z) / Math.sqrt(2 * Math.PI); // PDF
-
-        const expectedImprovement = improvement * phi + predictedStd * pdf;
-
-        // Add small exploration bonus
-        return Math.max(0, expectedImprovement) + 0.01 * uncertainty;
+        return this._expectedImprovement(x);
     }
 
-    // Error function approximation for normal CDF
-    erf(x) {
-        // Abramowitz and Stegun approximation
-        const a1 =  0.254829592;
-        const a2 = -0.284496736;
-        const a3 =  1.421413741;
-        const a4 = -1.453152027;
-        const a5 =  1.061405429;
-        const p  =  0.3275911;
+    // Maximise EI: a broad sample, then a coordinate pattern search on the surrogate, halving
+    // the step when a round finds nothing. Twin of _optimize_acquisition; none of it is charged
+    // to the budget.
+    _optimizeAcquisition() {
+        let bestX = null;
+        let bestEi = -Infinity;
+        for (let c = 0; c < BayesianOpt.ACQ_CANDIDATES; c++) {
+            const x = MathUtils.randomUniform(this.nDim);
+            const ei = this._expectedImprovement(x);
+            if (ei > bestEi) {
+                bestEi = ei;
+                bestX = x;
+            }
+        }
 
-        const sign = x >= 0 ? 1 : -1;
-        x = Math.abs(x);
+        if (bestX === null) return MathUtils.randomUniform(this.nDim);
 
-        const t = 1.0 / (1.0 + p * x);
-        const y = 1.0 - (((((a5 * t + a4) * t) + a3) * t + a2) * t + a1) * t * Math.exp(-x * x);
+        let step = 0.25;
+        for (let r = 0; r < BayesianOpt.ACQ_REFINEMENTS; r++) {
+            let improved = false;
+            for (let i = 0; i < this.nDim; i++) {
+                for (const sign of [1.0, -1.0]) {
+                    const trial = [...bestX];
+                    trial[i] = Math.min(1.0, Math.max(0.0, trial[i] + sign * step));
+                    const ei = this._expectedImprovement(trial);
+                    if (ei > bestEi) {
+                        bestEi = ei;
+                        bestX = trial;
+                        improved = true;
+                    }
+                }
+            }
+            if (!improved) step *= 0.5;
+        }
 
-        return sign * y;
+        return MathUtils.clipArray(bestX, 0, 1);
+    }
+
+    // Standard-normal CDF through erf, as Python's _normal_cdf does with math.erf.
+    static _normalCdf(x) {
+        return 0.5 * (1.0 + BayesianOpt._erf(x / Math.sqrt(2.0)));
+    }
+
+    static _normalPdf(x) {
+        return Math.exp(-0.5 * x * x) / Math.sqrt(2.0 * Math.PI);
+    }
+
+    // erf, ported from fdlibm's s_erf.c (the rational approximations behind most C libraries'
+    // erf, error under one ulp). JavaScript has no Math.erf. The Abramowitz-Stegun 7.1.26 used
+    // before carries 1.5e-7 of error into the CDF, which put JS expected improvement 3e-8 away
+    // from Python's on a seven-point design; against math.erf this agrees to 2.8e-16.
+    static _erf(x) {
+        if (Number.isNaN(x)) return x;
+        const sign = x < 0 ? -1.0 : 1.0;
+        const ax = Math.abs(x);
+        if (ax < 0.84375) {
+            if (ax < 3.725290298461914e-9) return x + 1.28379167095512586316e-01 * x;
+            const z = x * x;
+            const r = 1.28379167095512558561e-01 + z * (-3.25042107247001499370e-01 + z * (-2.84817495755985104766e-02 + z * (-5.77027029648944159157e-03 + z * -2.37630166566501626084e-05)));
+            const s = 1.0 + z * (3.97917223959155352819e-01 + z * (6.50222499887672944485e-02 + z * (5.08130628187576562776e-03 + z * (1.32494738004321644526e-04 + z * -3.96022827877536812320e-06))));
+            return x + x * (r / s);
+        }
+        if (ax < 1.25) {
+            const s = ax - 1.0;
+            const P = -2.36211856075265944077e-03 + s * (4.14856118683748331666e-01 + s * (-3.72207876035701323847e-01 + s * (3.18346619901161753674e-01 + s * (-1.10894694282396677476e-01 + s * (3.54783043256182359371e-02 + s * -2.16637559486879084300e-03)))));
+            const Q = 1.0 + s * (1.06420880400844228286e-01 + s * (5.40397917702171048937e-01 + s * (7.18286544141962662868e-02 + s * (1.26171219808761642112e-01 + s * (1.36370839120290507362e-02 + s * 1.19844998467991074170e-02)))));
+            return sign * (8.45062911510467529297e-01 + P / Q);
+        }
+        if (ax >= 6.0) return sign * 1.0;
+        const s = 1.0 / (ax * ax);
+        let R, S;
+        if (ax < 1.0 / 0.35) {
+            R = -9.86494403484714822705e-03 + s * (-6.93858572707181764372e-01 + s * (-1.05586262253232909814e+01 + s * (-6.23753324503260060396e+01 + s * (-1.62396669462573470355e+02 + s * (-1.84605092906711035994e+02 + s * (-8.12874355063065934246e+01 + s * -9.81432934416914548592e+00))))));
+            S = 1.0 + s * (1.96512716674392571292e+01 + s * (1.37657754143519042600e+02 + s * (4.34565877475229228821e+02 + s * (6.45387271733267880336e+02 + s * (4.29008140027567833386e+02 + s * (1.08635005541779435134e+02 + s * (6.57024977031928170135e+00 + s * -6.04244152148580987438e-02)))))));
+        } else {
+            R = -9.86494292470009928597e-03 + s * (-7.99283237680523006574e-01 + s * (-1.77579549177547519889e+01 + s * (-1.60636384855821916062e+02 + s * (-6.37566443368389627722e+02 + s * (-1.02509513161107724954e+03 + s * -4.83519191608651397019e+02)))));
+            S = 1.0 + s * (3.03380607434824582924e+01 + s * (3.25792512996573918826e+02 + s * (1.53672958608443695994e+03 + s * (3.19985821950859553908e+03 + s * (2.55305040643316442583e+03 + s * (4.74528541206955367215e+02 + s * -2.24409524465858183362e+01))))));
+        }
+        // z is |x| with the low 32 bits of its mantissa cleared, so z*z is exact.
+        const buf = new DataView(new ArrayBuffer(8));
+        buf.setFloat64(0, ax);
+        buf.setUint32(4, 0);
+        const z = buf.getFloat64(0);
+        const r = Math.exp(-z * z - 0.5625) * Math.exp((z - ax) * (z + ax) + R / S);
+        return sign * (1.0 - r / ax);
     }
 }
 
@@ -656,7 +936,7 @@ class CMAEvolutionStrategy extends Optimizer {
 
             // Fresh state per restart.
             let mean = new Array(n);
-            for (let i = 0; i < n; i++) mean[i] = 0.3 + 0.4 * Math.random();
+            for (let i = 0; i < n; i++) mean[i] = 0.3 + 0.4 * MathUtils.randomScalar();
             let sigma = 0.2;
             let C = Linalg.eye(n);
             let pc = new Array(n).fill(0);
@@ -844,8 +1124,8 @@ class CMAEvolutionStrategy extends Optimizer {
             this._spareGaussian = undefined;
             return s;
         }
-        const u = Math.random();
-        const v = Math.random();
+        const u = MathUtils.randomScalar();
+        const v = MathUtils.randomScalar();
         const r = Math.sqrt(-2 * Math.log(Math.max(u, 1e-300)));
         const theta = 2 * Math.PI * v;
         this._spareGaussian = r * Math.sin(theta);
@@ -962,7 +1242,7 @@ class AntColonyOpt extends Optimizer {
         const archive = [];
         for (let i = 0; i < k && this.evaluations < this.nTrials; i++) {
             const x = new Array(n);
-            for (let d = 0; d < n; d++) x[d] = Math.random();
+            for (let d = 0; d < n; d++) x[d] = MathUtils.randomScalar();
             archive.push({ x, f: this.evaluate(x) });
         }
         if (!archive.length) {
@@ -997,7 +1277,7 @@ class AntColonyOpt extends Optimizer {
                 if (this.evaluations >= this.nTrials) break;
 
                 // Roulette-pick a kernel by weights.
-                const r = Math.random();
+                const r = MathUtils.randomScalar();
                 let cum = 0;
                 let kernelIdx = archive.length - 1;
                 for (let i = 0; i < archive.length; i++) {
@@ -1036,8 +1316,8 @@ class AntColonyOpt extends Optimizer {
             this._spare = undefined;
             return s;
         }
-        const u = Math.random();
-        const v = Math.random();
+        const u = MathUtils.randomScalar();
+        const v = MathUtils.randomScalar();
         const r = Math.sqrt(-2 * Math.log(Math.max(u, 1e-300)));
         const theta = 2 * Math.PI * v;
         this._spare = r * Math.sin(theta);

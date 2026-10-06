@@ -224,7 +224,7 @@
         <div class="summary" style="background:#f1f8ff; border-left-color:#1976d2;">
             <strong>What's new in v0.20.0.</strong> Three of the algorithm
             ports below got restart layers from the literature: IPOP-CMA-ES
-            (Auger &amp; Hansen, 2005) for CMA-ES, Kelley-1999 simplex-collapse
+            (Auger &amp; Hansen, 2005) for CMA-ES, a simplex-collapse
             restart for NelderMead, SPSO-2011 stagnation reseed for
             ParticleSwarm. NelderMead's Ackley ratio dropped from 0.72 to
             6e-03 (124&times; better than scipy NM at the same budget).
@@ -412,7 +412,7 @@
                 <td class="cell wins">6e-03</td>
                 <td class="verdict v-solid">SOLID</td>
             </tr>
-            <tr><td colspan="6" class="notes">&nbsp;&nbsp;&nbsp;&nbsp;HumpDay's NM wraps the scipy simplex method in a restart layer (Kelley, 1999): on simplex collapse it reseeds and continues until the budget is consumed, alternating intensification (around the current best) and diversification (fresh uniform draw). Smooth-landscape ratios match scipy; on the Ackley multimodal benchmark the restart-driven reseeding makes HumpDay 100&times;+ better than scipy NM, which terminates on tolerance and leaves its budget unused.</td></tr>
+            <tr><td colspan="6" class="notes">&nbsp;&nbsp;&nbsp;&nbsp;HumpDay's NM wraps the scipy simplex method in a restart layer of its own: on simplex collapse it reseeds and continues until the budget is consumed, alternating intensification (around the current best) and diversification (fresh uniform draw). Smooth-landscape ratios match scipy; on the Ackley multimodal benchmark the restart-driven reseeding makes HumpDay 100&times;+ better than scipy NM, which terminates on tolerance and leaves its budget unused.</td></tr>
 
             <tr>
                 <td class="algo">ParticleSwarm</td>
