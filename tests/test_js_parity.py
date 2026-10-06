@@ -94,11 +94,13 @@ TOLERANCE = {
 # JS ports measured below the bar their Python twin meets. The Python side is
 # still held to the bar; the JS side xfails while it falls short and fails the
 # test once it stops falling short, so the entry gets removed.
-JS_BELOW_BAR = {
-    # Worst 2.5e-3, median 6.1e-4, best 2.4e-5 over seeds 0-49, against 7.7e-34
-    # for Python: the JS port does not have Powell's line search (#78, #402).
-    "Powell": "JS Powell lacks Brent's line search and does not converge (#78)",
-}
+#
+# Powell was the one entry: worst 2.5e-3 over seeds 0-49, against 7.7e-34 for
+# Python, because the JS port tried four fixed step sizes where Python runs a
+# bracketing Brent search. With the line search ported (#78, #402) the JS worst
+# over the same seeds is 7.7e-34 as well, and the port replays Python's
+# transitions bit for bit (tests/test_js_vector_replay.py).
+JS_BELOW_BAR: dict[str, str] = {}
 
 # Seeds for the portable PCG32 stream, the same stream on both sides. The bars
 # above were measured over seeds 0-49, so any seed is a fair draw. One, because
@@ -327,16 +329,18 @@ WINRATE_MIN_WINS_PER_SIDE = 4
 # win-rate test still trips because both implementations are
 # deterministic — every paired matchup has the same winner.
 #
-# The remaining divergent set (PRIMA trio + Powell) is the trust-region family, where the two
-# ports disagree numerically rather than structurally. It was identified against a two-dimensional
-# Elo sweep that has since been deleted; `humpday/data/ratings.json` is the current record, and it
-# rates those four only on the Python side, so this set is a standing claim about the JS ports
+# The remaining divergent set (the PRIMA trio) is the trust-region family, where the two ports
+# disagree numerically rather than structurally. It was identified against a two-dimensional Elo
+# sweep that has since been deleted; `humpday/data/ratings.json` is the current record, and it
+# rates those three only on the Python side, so this set is a standing claim about the JS ports
 # rather than something the table now measures.
+#
+# Powell left the set when its JS line search became a twin of Python's Brent search (#78, #402):
+# 8 Python wins to 12 JS wins, medians 0.109 and 0.034.
 KNOWN_DIVERGENT_PORTS = {
     "PRIMA_UOBYQA",
     "PRIMA_NEWUOA",
     "PRIMA_BOBYQA",
-    "Powell",
 }
 
 

@@ -34,6 +34,8 @@ JS_EXACT = [
     "GeneticAlgorithm",
     "ParticleSwarm",
     "FireflyAlgorithm",
+    # Batch 4
+    "Powell",
 ]
 
 
