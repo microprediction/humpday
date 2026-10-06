@@ -22,11 +22,19 @@ asserts it:
   use. It used to be `U[0.3, 0.7]^n` under a comment claiming the two
   were the same, so the reference started in the middle of the cube,
   near the optimum, and the port started anywhere in it.
-* Every reference objective goes through `_in_cube`, which refuses a
+* Every reference objective goes through `Metered`, which refuses a
   point outside `[0, 1]^n`. The scipy Nelder-Mead and Powell adapters
   passed no `bounds` and so were solving the unconstrained problem --
   sixty-three out-of-cube evaluations on Rosenbrock at seed 0, invisible
-  because these objectives are defined out there too (#409).
+  because these objectives are defined out there too (#409). PDFO's
+  NEWUOA and UOBYQA, unconstrained by design, see `objective(clip(x))`,
+  which is what the port computes for every point it proposes.
+* Both sides get the same budget in objective calls, enforced rather than
+  requested. `Metered` stops a reference at call N+1 and its result is the
+  best value it actually observed. Translating the budget into each
+  library's units -- generations, iterations, epochs -- let differential
+  evolution spend up to 433 calls where the port had 200 and mealpy's
+  Firefly 4,020 (#404). Every run's call count is kept in the snapshot.
 * HumpDay gets `_array.seed(seed)` plus the stdlib `random.seed`, which
   the evolutionary algorithms use. Global-search references (DE, dual
   annealing, gp_minimize, cmaes) get the same integer seed via their own
@@ -69,11 +77,21 @@ with `pip install humpday[reference]` (defined in pyproject.toml).
 
 from __future__ import annotations
 
+import ast
+import functools
+import hashlib
 import importlib
+import inspect
+import io
 import json
 import math
+import os
+import platform
 import random
+import textwrap
 import time
+import tokenize
+import warnings
 from pathlib import Path
 
 import pytest
@@ -178,202 +196,412 @@ PROBLEMS = {
 # ---------- helpers ----------
 
 
-def _try_import(name):
-    try:
-        return importlib.import_module(name)
-    except (ImportError, RuntimeError):
-        # RuntimeError covers e.g. PDFO compiled against numpy 1.x raising
-        # when imported under numpy 2.x.
-        return None
+class _Observed:
+    """The objective as an optimizer sees it, with a record of what it actually returned.
 
+    A run's claimed best value is only evidence if the objective returned it. This keeps the
+    call count and the lowest value handed back, so `validate_run` can hold the claim against
+    the observation rather than taking it on trust (#405).
+    """
 
-def _can_load_pdfo():
-    """Defensive PDFO probe — its top-level import doesn't trigger the
-    numpy-2.x crash, but `from .gethuge import gethuge` inside the
-    solver call does. Run a tiny call here so the failure surfaces at
-    skip-time, not test-time."""
-    try:
-        import numpy as np
-        from pdfo import newuoa
+    def __init__(self, func):
+        self.func = func
+        self.n = 0
+        self.best = math.inf
 
-        newuoa(
-            lambda x: float(sum(x)),
-            np.array([0.0, 0.0]),
-            options={"maxfev": 5, "rhobeg": 0.1, "rhoend": 1e-2},
-        )
-        return True
-    except Exception:
-        return False
+    def __call__(self, x):
+        self.n += 1
+        value = self.func(x)
+        v = float(value)
+        if v < self.best:
+            self.best = v
+        return value
 
 
 def _run_humpday(algorithm: str, func, n_trials: int, n_dim: int, seed: int):
     _seed_humpday(seed)
+    seen = _Observed(func)
     cls = PURE_OPTIMIZERS[algorithm]
-    opt = cls(func, n_trials=n_trials, n_dim=n_dim)
+    opt = cls(seen, n_trials=n_trials, n_dim=n_dim)
     res = opt.optimize()
     if isinstance(res, tuple) and len(res) == 2:
         best_value = float(res[0])
     else:
         best_value = float(opt.best_value)
-    return {"best_value": best_value, "evals": int(opt.evaluations)}
+    return {
+        "best_value": best_value,
+        "evals": seen.n,
+        "reported_evals": int(opt.evaluations),
+        "observed_best": seen.best,
+    }
+
+
+# ---------- what counts as a result ----------
+
+# How far below the known minimum a value may sit and still be a rounding of it. Every objective
+# here is exactly zero at its optimum; Ackley evaluates there to a few ulps either side of zero.
+BELOW_OPTIMUM_TOLERANCE = 1e-12
+
+
+def _same_value(a: float, b: float) -> bool:
+    return abs(a - b) <= 1e-12 * max(1.0, abs(a), abs(b))
+
+
+def validate_run(run: dict, problem: dict, budget: int) -> list[str]:
+    """Everything wrong with one run's result, or an empty list if it is a result at all.
+
+    The gate used to sort and take medians of whatever came back. A reference that returned
+    `inf` made its gap infinite and the ratio zero; `NaN` made every comparison false, and false
+    is a pass; a HumpDay value of -1 on a problem whose minimum is 0 was simply accepted. None
+    of those is a measurement, so none of them may take part in one (#405).
+
+    A run is a result when its value is finite, at least one objective call stands behind it,
+    it spent no more than its budget, it is not below the known minimum, and -- where the run
+    says what the objective returned -- it is a value the objective actually returned.
+    """
+    issues = []
+    value = run.get("best_value")
+    finite = isinstance(value, (int, float)) and math.isfinite(value)
+    if not finite:
+        issues.append(f"best value {value!r} is not a finite number")
+
+    evals = run.get("evals")
+    if not isinstance(evals, int) or evals < 1:
+        issues.append(
+            f"made {evals!r} objective calls, so no observation stands behind its value"
+        )
+    elif evals > budget:
+        issues.append(f"made {evals} objective calls on a budget of {budget}")
+    reported_evals = run.get("reported_evals")
+    if reported_evals is not None and reported_evals != evals:
+        issues.append(
+            f"reports {reported_evals} evaluations but made {evals} objective calls"
+        )
+
+    if finite and value < problem["opt"] - BELOW_OPTIMUM_TOLERANCE:
+        issues.append(
+            f"best value {value!r} is below the known minimum {problem['opt']!r}"
+        )
+
+    observed = run.get("observed_best")
+    if finite and observed is not None and not _same_value(value, observed):
+        issues.append(
+            f"claims {value!r} but the lowest value the objective returned was {observed!r}"
+        )
+
+    # A library's own report of its minimum, kept beside the value the harness observed. It may
+    # be higher (some return their last point rather than their best); it may not be lower than
+    # anything it was ever given.
+    reported = run.get("reported_value")
+    if reported is not None and finite:
+        if not math.isfinite(reported):
+            issues.append(f"the library reports {reported!r} as its minimum")
+        elif reported < value - 1e-12 * max(1.0, abs(value)):
+            issues.append(
+                f"the library reports {reported!r}, below anything it evaluated ({value!r})"
+            )
+
+    if run.get("outside"):
+        issues.append(f"evaluated {run['outside']} points outside the unit cube")
+    return issues
+
+
+def _json_number(v):
+    """A float the snapshot can hold. Strict JSON has no NaN or Infinity, and the snapshot is
+    written with `allow_nan=False` so that one cannot slip in as a bare token again."""
+    if v is None:
+        return None
+    v = float(v)
+    return v if math.isfinite(v) else repr(v)
+
+
+def _evidence(seed, run, issues):
+    """One run as the snapshot keeps it: what it found, what it spent, and what was wrong."""
+    return {
+        "seed": seed,
+        "value": run.get("best_value"),
+        "evals": run.get("evals"),
+        "stopped_at_budget": bool(run.get("stopped_at_budget")),
+        "projected": run.get("projected", 0),
+        "issues": issues,
+    }
+
+
+def _columns(side, runs):
+    """A side's runs as seed-ordered columns, so the snapshot keeps every run without a line
+    per field per run. The counts used to be thrown away (#404); a reader can now see what each
+    side actually spent, and where the meter stopped a reference."""
+    ran = [r for r in runs if "error" not in r]
+    evals = sorted(r["evals"] for r in ran if isinstance(r["evals"], int))
+    out = {
+        f"{side}_values": [_json_number(r["value"]) for r in ran],
+        f"{side}_evals": [r["evals"] for r in ran],
+        f"{side}_evals_median": evals[len(evals) // 2] if evals else None,
+    }
+    if side == "reference":
+        out["reference_stopped_at_budget"] = sum(r["stopped_at_budget"] for r in ran)
+        if any(r["projected"] for r in ran):
+            out["reference_projected"] = [r["projected"] for r in ran]
+    errors = [
+        {"seed": r["seed"], "error": r.get("error") or "; ".join(r["issues"])}
+        for r in runs
+        if "error" in r or r["issues"]
+    ]
+    if errors:
+        out[f"{side}_invalid"] = errors
+    return out
+
+
+def _dump(obj, indent=0):
+    """JSON with objects indented and lists of numbers kept on one line: the per-run columns
+    would otherwise take a line per number. Strict: no NaN or Infinity (`allow_nan=False`)."""
+    pad = "  " * indent
+    if isinstance(obj, dict):
+        if not obj:
+            return "{}"
+        items = [
+            f"{pad}  {json.dumps(str(k))}: {_dump(v, indent + 1)}"
+            for k, v in obj.items()
+        ]
+        return "{\n" + ",\n".join(items) + f"\n{pad}}}"
+    if isinstance(obj, list) and any(isinstance(v, (dict, list)) for v in obj):
+        items = [f"{pad}  {_dump(v, indent + 1)}" for v in obj]
+        return "[\n" + ",\n".join(items) + f"\n{pad}]"
+    return json.dumps(obj, allow_nan=False)
 
 
 # ---------- reference adapters ----------
-# Each adapter returns {best_value, evals} on the same problem the HumpDay
-# port saw, started from a seed-determined x0 drawn from the same
-# distribution HumpDay uses. References themselves can use different
-# conventions (some count evals differently); we report what the
-# reference reports.
+# Each adapter runs its library on the same problem the HumpDay port saw, started from a
+# seed-determined x0 drawn from the same distribution HumpDay uses, through a `Metered`
+# objective that holds it to the same budget. It returns what the harness observed -- the
+# lowest value the objective actually returned and the number of calls actually made -- with
+# the library's own report of its minimum kept beside it for `validate_run` to check.
 
 
 class OutsideTheCube(AssertionError):
     """A reference asked for a point HumpDay's port is not allowed to visit."""
 
 
-def _in_cube(func, n_dim, counter):
-    """Wrap an objective so it counts calls and refuses points outside [0, 1]^n.
+class BudgetExhausted(Exception):
+    """A reference asked for call N+1 of an N-call budget."""
 
-    Every HumpDay port clips to the unit cube. Some references were not told about it:
-    scipy's Nelder-Mead and Powell adapters passed no `bounds`, so the reference was solving
-    the unconstrained problem -- an easier one -- while the port solved the constrained one.
-    It went unnoticed because these objectives are defined outside the cube too and simply
-    return a value, so nothing complained; #409 counted 63 out-of-cube evaluations on
-    Rosenbrock at seed 0, and points as far out as (-0.98, 0.60).
 
-    A comparison across two different feasible sets is not a comparison, so this raises rather
-    than clipping. Clipping would hide the next one.
+class Metered:
+    """The objective as a reference sees it: counted, capped at the budget, and recorded.
+
+    The budget is the comparison. HumpDay's ports are hard-capped at `n_trials` objective calls
+    by `Optimizer.optimize`; the references were told a budget in each library's own units and
+    nothing held them to it, so at a budget of 200 scipy's differential_evolution spent up to 433
+    calls on Ackley, dual_annealing up to 318 and mealpy's Firefly 4,020 -- twenty times the
+    port's allowance -- and the harness, which counted every one of them, threw the counts away
+    and compared final values (#404). A ratio across unequal budgets measures the budget.
+
+    So the cap is enforced here, in the one place every call passes through, rather than in each
+    library's vocabulary: call N+1 raises `BudgetExhausted` before the objective is evaluated,
+    the adapter stops, and the result is the best value the reference actually observed in its
+    N calls, including a local search interrupted part way. No library is trusted to stop
+    itself. A reference that stops early of its own accord -- converged, or out of iterations --
+    is recorded as having spent what it spent.
+
+    `outside` says what to do with a point outside the unit cube:
+
+    * "raise" (the default) refuses it. Every HumpDay port clips to the cube; scipy's Nelder-Mead
+      and Powell adapters once passed no `bounds` and solved the unconstrained problem, which
+      went unnoticed because these objectives are defined outside the cube too (#409). Clipping
+      would hide the next one.
+    * "project" evaluates the objective at the nearest point of the cube, which is what the port
+      does to every point it proposes: `Optimizer.evaluate` computes `objective(clip(x))`. It is
+      for the references that are unconstrained by design and so have no bounds to be given --
+      PDFO's NEWUOA and UOBYQA -- and the count of projected proposals is kept with the result.
+
+    `hard_cap=False` is for references whose objective is called from compiled code through
+    f2py. An exception raised inside an f2py callback does not propagate: it kills the
+    interpreter ("Fatal Python error: F2PySwapThreadLocalCallbackPtr"), which took the whole
+    gate down the first time PDFO was actually installed alongside it. Those references are
+    given their budget in their own units, and an overspend is then recorded and failed by
+    `validate_run` instead of interrupted.
     """
 
-    def wrapped(x):
+    def __init__(self, func, n_dim, budget, *, outside="raise", hard_cap=True):
+        self.func = func
+        self.n_dim = n_dim
+        self.budget = budget
+        self.outside = outside
+        self.hard_cap = hard_cap
+        self.n = 0
+        self.best_value = math.inf
+        self.best_x = None
+        self.projected = 0
+        self.stopped_at_budget = False
+
+    def __call__(self, x):
         xs = [float(v) for v in x]
-        counter["n"] += 1
-        for v in xs:
-            if not (0.0 <= v <= 1.0):
+        if self.hard_cap and self.n >= self.budget:
+            self.stopped_at_budget = True
+            raise BudgetExhausted(f"call {self.n + 1} on a budget of {self.budget}")
+        self.n += 1
+        if any(not (0.0 <= v <= 1.0) for v in xs):
+            if self.outside == "project":
+                self.projected += 1
+                xs = [min(1.0, max(0.0, v)) for v in xs]
+            else:
                 raise OutsideTheCube(
-                    f"reference evaluated {xs}, outside [0, 1]^{n_dim}"
+                    f"reference evaluated {xs}, outside [0, 1]^{self.n_dim}"
                 )
-        return func(xs)
+        value = float(self.func(xs))
+        if value < self.best_value:
+            self.best_value, self.best_x = value, xs
+        return value
 
-    return wrapped
+    def result(self, reported=None):
+        return {
+            "best_value": self.best_value,
+            "evals": self.n,
+            "budget": self.budget,
+            "stopped_at_budget": self.stopped_at_budget,
+            "reported_value": None if reported is None else float(reported),
+            "projected": self.projected,
+            "best_x": self.best_x,
+        }
 
 
-def _ref_scipy_neldermead(func, n_trials, n_dim, seed):
+def _reference(outside="raise", hard_cap=True):
+    """Turn `body(f, n_trials, n_dim, seed) -> reported minimum` into an adapter.
+
+    The adapter keeps the signature every caller uses, `(func, n_trials, n_dim, seed)`, and
+    returns `Metered.result`: what was observed, not what the library says it found.
+    """
+
+    def wrap(body):
+        @functools.wraps(body)
+        def adapter(func, n_trials, n_dim, seed):
+            f = Metered(func, n_dim, n_trials, outside=outside, hard_cap=hard_cap)
+            reported = None
+            try:
+                reported = body(f, n_trials, n_dim, seed)
+            except BudgetExhausted:
+                pass
+            return f.result(reported)
+
+        return adapter
+
+    return wrap
+
+
+@_reference()
+def _ref_scipy_neldermead(f, n_trials, n_dim, seed):
     from scipy.optimize import minimize
-
-    counter = {"n": 0}
-    wrapped = _in_cube(func, n_dim, counter)
 
     # Tolerances match HumpDay's NelderMead (xatol=fatol=1e-12). With
     # scipy's default 1e-4 the reference stops far below its potential;
     # at 1e-12 both implementations run until budget exhaustion or
     # genuine numerical convergence.
     r = minimize(
-        wrapped,
+        f,
         _draw_x0(seed, n_dim),
         method="Nelder-Mead",
         bounds=[(0.0, 1.0)] * n_dim,
         options={"maxfev": n_trials, "xatol": 1e-12, "fatol": 1e-12},
     )
-    return {"best_value": float(r.fun), "evals": counter["n"]}
+    return r.fun
 
 
-def _ref_scipy_powell(func, n_trials, n_dim, seed):
+@_reference()
+def _ref_scipy_powell(f, n_trials, n_dim, seed):
     from scipy.optimize import minimize
-
-    counter = {"n": 0}
-    wrapped = _in_cube(func, n_dim, counter)
 
     # Tolerances match HumpDay's Powell (ftol=1e-12) — see the
     # NelderMead adapter above for rationale.
     r = minimize(
-        wrapped,
+        f,
         _draw_x0(seed, n_dim),
         method="Powell",
         bounds=[(0.0, 1.0)] * n_dim,
         options={"maxfev": n_trials, "xtol": 1e-12, "ftol": 1e-12},
     )
-    return {"best_value": float(r.fun), "evals": counter["n"]}
+    return r.fun
 
 
-def _ref_scipy_lbfgsb(func, n_trials, n_dim, seed):
+@_reference()
+def _ref_scipy_lbfgsb(f, n_trials, n_dim, seed):
     from scipy.optimize import minimize
 
-    counter = {"n": 0}
-    wrapped = _in_cube(func, n_dim, counter)
-
-    bounds = [(0.0, 1.0)] * n_dim
-    # `maxfun` (not `maxiter`) caps function evaluations — L-BFGS-B
-    # uses finite-difference gradient internally so one "iteration"
-    # already eats ~n_dim evals. ftol=1e-12, gtol=1e-12 push the
-    # solver to the same precision floor we use for NelderMead /
-    # Powell (scipy's defaults stop ~1e-7 below the optimum).
+    # `maxfun` is scipy's own cap, but not a hard one: with finite-difference gradients a
+    # line search can run past it (#404 measured 225 calls on a budget of 200). The meter
+    # stops it at the budget. ftol=1e-12, gtol=1e-12 push the solver to the same precision
+    # floor we use for NelderMead / Powell (scipy's defaults stop ~1e-7 below the optimum).
     r = minimize(
-        wrapped,
+        f,
         _draw_x0(seed, n_dim),
         method="L-BFGS-B",
-        bounds=bounds,
+        bounds=[(0.0, 1.0)] * n_dim,
         options={"maxfun": n_trials, "ftol": 1e-12, "gtol": 1e-12},
     )
-    return {"best_value": float(r.fun), "evals": counter["n"]}
+    return r.fun
 
 
-def _ref_scipy_de(func, n_trials, n_dim, seed):
+@_reference()
+def _ref_scipy_de(f, n_trials, n_dim, seed):
     from scipy.optimize import differential_evolution
 
-    counter = {"n": 0}
-    wrapped = _in_cube(func, n_dim, counter)
-
-    bounds = [(0, 1)] * n_dim
+    # The generations used to be `n_trials // (10 * n_dim)`, which forgot the initial
+    # population and left `polish=True` to spend whatever it liked afterwards: 229 to 433
+    # calls on a budget of 200 (#404). Now the generations, initial population included, take
+    # half the budget and the L-BFGS-B polish has the rest, which is the split HumpDay's DE
+    # makes between the same two stages; the meter stops the polish where the budget ends.
+    popsize = 10
+    population = popsize * n_dim
+    generations = max(1, (n_trials // 2) // population - 1)
     r = differential_evolution(
-        wrapped,
-        bounds,
-        maxiter=max(1, n_trials // (10 * n_dim)),
-        popsize=10,
+        f,
+        [(0, 1)] * n_dim,
+        maxiter=generations,
+        popsize=popsize,
         tol=1e-8,
         seed=seed,
+        polish=True,
     )
-    return {"best_value": float(r.fun), "evals": counter["n"]}
+    return r.fun
 
 
-def _ref_scipy_dual_annealing(func, n_trials, n_dim, seed):
+@_reference()
+def _ref_scipy_dual_annealing(f, n_trials, n_dim, seed):
     from scipy.optimize import dual_annealing
 
-    counter = {"n": 0}
-    wrapped = _in_cube(func, n_dim, counter)
+    # `maxfun` is dual_annealing's own budget in calls; it used to get none, and `maxiter` set
+    # from `n_trials // 10`, so its local searches spent from 108 to 318 calls on a budget of
+    # 200 (#404). scipy checks `maxfun` between local searches, not inside them, so the meter
+    # is what stops it.
+    r = dual_annealing(f, [(0, 1)] * n_dim, maxfun=n_trials, seed=seed)
+    return r.fun
 
-    bounds = [(0, 1)] * n_dim
-    r = dual_annealing(wrapped, bounds, maxiter=max(1, n_trials // 10), seed=seed)
-    return {"best_value": float(r.fun), "evals": counter["n"]}
 
-
-def _ref_skopt_gp(func, n_trials, n_dim, seed):
+@_reference()
+def _ref_skopt_gp(f, n_trials, n_dim, seed):
     from skopt import gp_minimize
 
-    counter = {"n": 0}
-    wrapped = _in_cube(func, n_dim, counter)
-
-    bounds = [(0.0, 1.0)] * n_dim
     r = gp_minimize(
-        wrapped,
-        bounds,
+        f,
+        [(0.0, 1.0)] * n_dim,
         n_calls=n_trials,
         random_state=seed,
         n_initial_points=min(10, n_trials // 2),
     )
-    return {"best_value": float(r.fun), "evals": counter["n"]}
+    return r.fun
 
 
-def _ref_cmaes(func, n_trials, n_dim, seed):
-    """CyberAgent `cmaes` reference. The library's `ask/tell` API expects
-    exactly `population_size` solutions per `tell` call — partial
-    generations (e.g. due to budget exhaustion) cause it to raise. We
-    therefore complete whole generations only, and stop once the budget
-    can't fit another full one."""
+@_reference()
+def _ref_cmaes(f, n_trials, n_dim, seed):
+    """CyberAgent `cmaes` reference.
+
+    The library's `tell` wants exactly `population_size` solutions, so the last generation
+    used to be dropped whenever it did not fit, leaving the reference 198 calls where the port
+    had 200. Now it asks for the whole generation and evaluates as much of it as the budget
+    allows; the meter stops it, and the best point observed counts whether or not that last
+    generation was ever told.
+    """
     import numpy as np
     from cmaes import CMA
-
-    counter = {"n": 0}
-    wrapped = _in_cube(func, n_dim, counter)
 
     es = CMA(
         mean=np.asarray(_draw_x0(seed, n_dim)),
@@ -381,19 +609,15 @@ def _ref_cmaes(func, n_trials, n_dim, seed):
         bounds=np.array([[0, 1]] * n_dim),
         seed=seed,
     )
-    best = float("inf")
-    while counter["n"] + es.population_size <= n_trials:
+    while True:
         sols = []
         for _ in range(es.population_size):
             x = es.ask()
-            v = wrapped(x.tolist())
-            sols.append((x, v))
-            if v < best:
-                best = v
+            sols.append((x, f(x.tolist())))
         es.tell(sols)
-    return {"best_value": float(best), "evals": counter["n"]}
 
 
+@_reference()
 def _ref_random_search(func, n_trials, n_dim, seed):
     """Uniform-sample baseline — draw n_trials i.i.d. samples from
     `U[0, 1]^n_dim` and return the best. Cheapest possible
@@ -401,16 +625,15 @@ def _ref_random_search(func, n_trials, n_dim, seed):
     """
     rng = random.Random(seed)
     best = float("inf")
-    n_evals = 0
     for _ in range(n_trials):
         x = [rng.random() for _ in range(n_dim)]
         v = func(x)
-        n_evals += 1
         if v < best:
             best = v
-    return {"best_value": float(best), "evals": n_evals}
+    return best
 
 
+@_reference()
 def _ref_grid_search(func, n_trials, n_dim, seed):
     """Regular-grid baseline — `n_per_axis^n_dim` evaluations on a
     uniform Cartesian grid with bin-centred coordinates. Like
@@ -436,9 +659,10 @@ def _ref_grid_search(func, n_trials, n_dim, seed):
         if d < 0:
             break
     _ = seed
-    return {"best_value": float(best), "evals": n_evals}
+    return best
 
 
+@_reference()
 def _ref_oneplusone_es_decay(func, n_trials, n_dim, seed):
     """(1+1)-ES with a geometric sigma decay schedule — the natural
     reference for HillClimbing. Starts at sigma=0.1 and decays so the
@@ -447,7 +671,6 @@ def _ref_oneplusone_es_decay(func, n_trials, n_dim, seed):
     rng = random.Random(seed)
     x = [_draw_x0(seed, n_dim)[i] for i in range(n_dim)]
     fx = func(x)
-    n_evals = 1
     sigma_init = 0.1
     sigma_final = 1e-3
     decay = (sigma_final / sigma_init) ** (1.0 / max(1, n_trials - 1))
@@ -457,13 +680,13 @@ def _ref_oneplusone_es_decay(func, n_trials, n_dim, seed):
         z = [rng.gauss(0, 1) for _ in range(n_dim)]
         x_new = [min(1.0, max(0.0, x[i] + sigma * z[i])) for i in range(n_dim)]
         fx_new = func(x_new)
-        n_evals += 1
         if fx_new < fx:
             x, fx = x_new, fx_new
         sigma *= decay
-    return {"best_value": float(fx), "evals": n_evals}
+    return fx
 
 
+@_reference()
 def _ref_oneplusone_es_oneFifth(func, n_trials, n_dim, seed):
     """(1+1)-ES with Rechenberg's 1/5-success-rule — the natural
     reference for Rechenberg. Sigma grows by 1.5× when the
@@ -472,7 +695,6 @@ def _ref_oneplusone_es_oneFifth(func, n_trials, n_dim, seed):
     rng = random.Random(seed)
     x = [_draw_x0(seed, n_dim)[i] for i in range(n_dim)]
     fx = func(x)
-    n_evals = 1
     sigma = 0.1
     window = []
     window_size = 10
@@ -481,7 +703,6 @@ def _ref_oneplusone_es_oneFifth(func, n_trials, n_dim, seed):
         z = [rng.gauss(0, 1) for _ in range(n_dim)]
         x_new = [min(1.0, max(0.0, x[i] + sigma * z[i])) for i in range(n_dim)]
         fx_new = func(x_new)
-        n_evals += 1
         accepted = fx_new < fx
         if accepted:
             x, fx = x_new, fx_new
@@ -494,9 +715,10 @@ def _ref_oneplusone_es_oneFifth(func, n_trials, n_dim, seed):
                 sigma *= 1.5
             elif rate < 1 / 5:
                 sigma /= 1.5
-    return {"best_value": float(fx), "evals": n_evals}
+    return fx
 
 
+@_reference()
 def _ref_coord_descent_greedy(func, n_trials, n_dim, seed):
     """Textbook coordinate descent with greedy expansion per axis —
     fair reference for HumpDay's CoordinateDescent.
@@ -554,9 +776,10 @@ def _ref_coord_descent_greedy(func, n_trials, n_dim, seed):
             step *= 0.5
     # rng is unused but kept for signature uniformity.
     _ = rng
-    return {"best_value": float(f), "evals": n_evals}
+    return f
 
 
+@_reference()
 def _ref_hooke_jeeves(func, n_trials, n_dim, seed):
     """Textbook Hooke-Jeeves pattern search (1961) — fair reference for
     HumpDay's PatternSearch.
@@ -619,143 +842,137 @@ def _ref_hooke_jeeves(func, n_trials, n_dim, seed):
         else:
             step *= 0.5
     _ = rng
-    return {"best_value": float(f_base), "evals": explore.n}
+    return f_base
 
 
-def _ref_mealpy(cls_path, func, n_trials, n_dim, seed, pop_size=20, kwargs=None):
-    """Run a mealpy algorithm and return {best_value, evals}.
+def _ref_mealpy(cls_path, f, n_trials, n_dim, seed, pop_size=20, kwargs=None):
+    """Run a mealpy algorithm on a metered objective and return its reported minimum.
 
     `cls_path` is a string like "mealpy.swarm_based.PSO.OriginalPSO";
     we import lazily so a missing mealpy install just makes the
     corresponding `REFERENCES` entry skip cleanly.
 
-    mealpy budgets total evaluations as `epoch * pop_size`, so we set
-    `epoch = max(1, n_trials // pop_size)`. We also silence its
-    INFO-level logging (~one line per epoch — drowns out the
-    pytest -s view) and wrap the objective to count evaluations
-    ourselves rather than relying on mealpy's `nfe_*` attributes
-    (which differ between algorithm classes).
+    This used to set `epoch = n_trials // pop_size` on the theory that mealpy spends
+    `epoch * pop_size` calls. It does not: at a budget of 200 the six adapters spent 170 to
+    270, and Firefly, whose every epoch compares the swarm pairwise, spent 4,020 (#404). The
+    epoch count is now only an upper bound -- one call per epoch at the least, so `n_trials`
+    epochs cannot run out first -- and the meter stops the run at the budget. None of the six
+    classes used here reads `self.epoch` inside `evolve`, so the bound does not change how they
+    search, only when they are stopped.
+
+    We silence mealpy's INFO-level logging (~one line per epoch, which
+    drowns out the pytest -s view).
     """
     import importlib
     import logging
 
-    import numpy as np
     from mealpy import FloatVar
 
     mod_path, _, cls_name = cls_path.rpartition(".")
     mod = importlib.import_module(mod_path)
     cls = getattr(mod, cls_name)
 
-    counter = {"n": 0}
-    wrapped = _in_cube(func, n_dim, counter)
-
-    epoch = max(1, n_trials // pop_size)
     problem = {
-        "obj_func": wrapped,
+        "obj_func": f,
         "bounds": FloatVar(lb=[0.0] * n_dim, ub=[1.0] * n_dim),
         "minmax": "min",
+        "log_to": None,
     }
     # Quiet mealpy's per-epoch log lines for the whole sweep.
     logging.getLogger("mealpy").setLevel(logging.WARNING)
 
-    opt = cls(epoch=epoch, pop_size=pop_size, **(kwargs or {}))
+    opt = cls(epoch=max(1, n_trials), pop_size=pop_size, **(kwargs or {}))
     g_best = opt.solve(problem, seed=seed)
-    return {"best_value": float(g_best.target.fitness), "evals": counter["n"]}
+    return g_best.target.fitness
 
 
-def _ref_mealpy_pso(func, n_trials, n_dim, seed):
-    return _ref_mealpy(
-        "mealpy.swarm_based.PSO.OriginalPSO", func, n_trials, n_dim, seed
-    )
+@_reference()
+def _ref_mealpy_pso(f, n_trials, n_dim, seed):
+    return _ref_mealpy("mealpy.swarm_based.PSO.OriginalPSO", f, n_trials, n_dim, seed)
 
 
-def _ref_mealpy_ga(func, n_trials, n_dim, seed):
-    return _ref_mealpy(
-        "mealpy.evolutionary_based.GA.BaseGA", func, n_trials, n_dim, seed
-    )
+@_reference()
+def _ref_mealpy_ga(f, n_trials, n_dim, seed):
+    return _ref_mealpy("mealpy.evolutionary_based.GA.BaseGA", f, n_trials, n_dim, seed)
 
 
-def _ref_mealpy_firefly(func, n_trials, n_dim, seed):
+@_reference()
+def _ref_mealpy_firefly(f, n_trials, n_dim, seed):
     # Use FFA (Firefly Algorithm) — `mealpy.swarm_based.FA` is the
     # Fireworks Algorithm (different family). #176 picked the wrong
     # one; the snapshot's previous "Firefly" comparison was actually
     # humpday's Firefly vs mealpy's Fireworks.
+    return _ref_mealpy("mealpy.swarm_based.FFA.OriginalFFA", f, n_trials, n_dim, seed)
+
+
+@_reference()
+def _ref_mealpy_harmony(f, n_trials, n_dim, seed):
+    return _ref_mealpy("mealpy.music_based.HS.OriginalHS", f, n_trials, n_dim, seed)
+
+
+@_reference()
+def _ref_mealpy_es(f, n_trials, n_dim, seed):
     return _ref_mealpy(
-        "mealpy.swarm_based.FFA.OriginalFFA", func, n_trials, n_dim, seed
+        "mealpy.evolutionary_based.ES.OriginalES", f, n_trials, n_dim, seed
     )
 
 
-def _ref_mealpy_harmony(func, n_trials, n_dim, seed):
-    return _ref_mealpy("mealpy.music_based.HS.OriginalHS", func, n_trials, n_dim, seed)
+@_reference()
+def _ref_mealpy_acor(f, n_trials, n_dim, seed):
+    # ACOR uses sample_count instead of pop_size for the colony; the meter stops it at the
+    # budget whatever its per-epoch cost.
+    return _ref_mealpy("mealpy.swarm_based.ACOR.OriginalACOR", f, n_trials, n_dim, seed)
 
 
-def _ref_mealpy_es(func, n_trials, n_dim, seed):
-    return _ref_mealpy(
-        "mealpy.evolutionary_based.ES.OriginalES", func, n_trials, n_dim, seed
-    )
-
-
-def _ref_mealpy_acor(func, n_trials, n_dim, seed):
-    # ACOR uses sample_count instead of pop_size for the colony, but the
-    # solve loop still does epoch × sample_count. Defaults are similar
-    # enough that the standard pattern works.
-    return _ref_mealpy(
-        "mealpy.swarm_based.ACOR.OriginalACOR", func, n_trials, n_dim, seed
-    )
-
-
-def _ref_pybobyqa(func, n_trials, n_dim, seed):
+@_reference()
+def _ref_pybobyqa(f, n_trials, n_dim, seed):
     import numpy as np
     import pybobyqa
 
-    counter = {"n": 0}
-    wrapped = _in_cube(func, n_dim, counter)
-
-    bounds = (np.zeros(n_dim), np.ones(n_dim))
     r = pybobyqa.solve(
-        wrapped,
+        f,
         np.asarray(_draw_x0(seed, n_dim)),
-        bounds=bounds,
+        bounds=(np.zeros(n_dim), np.ones(n_dim)),
         maxfun=n_trials,
         seek_global_minimum=False,
         rhobeg=0.2,
         rhoend=1e-8,
         print_progress=False,
     )
-    return {"best_value": float(r.f), "evals": counter["n"]}
+    return r.f
 
 
-def _ref_pdfo_newuoa(func, n_trials, n_dim, seed):
+# NEWUOA and UOBYQA are unconstrained methods with no bounds to be given, and PDFO calls the
+# objective from Fortran through f2py, where a Python exception is fatal to the interpreter.
+# Hence "project" -- the reference sees `objective(clip(x))`, exactly as the port does -- and no
+# hard cap: PDFO's `maxfev` is a hard limit of its own, and `validate_run` fails the run if it
+# ever is not.
+@_reference(outside="project", hard_cap=False)
+def _ref_pdfo_newuoa(f, n_trials, n_dim, seed):
     import numpy as np
     from pdfo import newuoa
 
-    counter = {"n": 0}
-    wrapped = _in_cube(func, n_dim, counter)
-
     r = newuoa(
-        wrapped,
+        f,
         np.asarray(_draw_x0(seed, n_dim)),
         options={"maxfev": n_trials, "rhobeg": 0.2, "rhoend": 1e-8},
     )
-    return {"best_value": float(r.fun), "evals": counter["n"]}
+    return r.fun
 
 
-def _ref_pdfo_uobyqa(func, n_trials, n_dim, seed):
+@_reference(outside="project", hard_cap=False)
+def _ref_pdfo_uobyqa(f, n_trials, n_dim, seed):
     import numpy as np
     from pdfo import uobyqa
 
-    counter = {"n": 0}
-    wrapped = _in_cube(func, n_dim, counter)
-
     r = uobyqa(
-        wrapped,
+        f,
         np.asarray(_draw_x0(seed, n_dim)),
         options={"maxfev": n_trials, "rhobeg": 0.2, "rhoend": 1e-8},
     )
-    return {"best_value": float(r.fun), "evals": counter["n"]}
+    return r.fun
 
 
-# Algorithm -> (reference_label, reference_adapter, required_modules).
 REFERENCES = {
     "NelderMead": ("scipy.optimize Nelder-Mead", _ref_scipy_neldermead, ["scipy"]),
     "Powell": ("scipy.optimize Powell", _ref_scipy_powell, ["scipy"]),
@@ -802,20 +1019,92 @@ REFERENCES = {
 }
 
 
-_PDFO_OK = None  # cached so we don't probe twice
+# ---------- which comparisons can run, and whether they had to ----------
+
+# Set in the CI job. Locally a missing reference library is a skip, reported; in CI it is a
+# failure, because that job is the one place the whole matrix is supposed to run. It used to be
+# a skip there too, and the job's install did not include PDFO, so two PRIMA comparisons never
+# ran in the environment configured to run them (#410).
+STRICT_ENV = "HUMPDAY_REFERENCE_STRICT"
+
+OK, ABSENT, PROBE_FAILED = "ok", "absent", "probe failed"
+
+
+def strict() -> bool:
+    return os.environ.get(STRICT_ENV, "").strip().lower() not in (
+        "",
+        "0",
+        "false",
+        "no",
+    )
+
+
+def _probe_pdfo():
+    """PDFO imports fine under NumPy 2 and fails at its first solver call, where `from
+    .gethuge import gethuge` meets an extension compiled for NumPy 1.x. So call it."""
+    import numpy as np
+    from pdfo import newuoa
+
+    with warnings.catch_warnings():
+        warnings.simplefilter("ignore")
+        newuoa(
+            lambda x: float(sum(x)),
+            np.array([0.0, 0.0]),
+            options={"maxfev": 5, "rhobeg": 0.1, "rhoend": 1e-2},
+        )
+
+
+# A module whose import can succeed while the library is unusable gets a probe that uses it.
+_PROBES = {"pdfo": _probe_pdfo}
+_STATUS: dict = {}
+
+
+def module_status(name: str) -> tuple:
+    """`(OK, "")`, `(ABSENT, why)` or `(PROBE_FAILED, why)` for one module, cached.
+
+    The two failures are told apart because they mean different things. Absent is a choice
+    about what to install. Probe failed is an installation that is there and broken -- a
+    compiled extension built for another NumPy, a dependency of the dependency missing --
+    and used to be folded silently into the same skip (#410).
+    """
+    if name not in _STATUS:
+        try:
+            importlib.import_module(name)
+            probe = _PROBES.get(name)
+            if probe is not None:
+                probe()
+            _STATUS[name] = (OK, "")
+        except ModuleNotFoundError as e:
+            if e.name == name or name.startswith(f"{e.name}."):
+                _STATUS[name] = (ABSENT, f"{name} is not installed")
+            else:
+                _STATUS[name] = (PROBE_FAILED, f"{name}: {type(e).__name__}: {e}")
+        except Exception as e:
+            _STATUS[name] = (PROBE_FAILED, f"{name}: {type(e).__name__}: {e}")
+    return _STATUS[name]
+
+
+def dependency_status(modules) -> tuple:
+    """The first module that is not usable, or `(OK, "")`."""
+    for m in modules:
+        status = module_status(m)
+        if status[0] != OK:
+            return status
+    return (OK, "")
 
 
 def _all_installed(modules):
-    global _PDFO_OK
-    for m in modules:
-        if _try_import(m) is None:
-            return False
-        if m == "pdfo":
-            if _PDFO_OK is None:
-                _PDFO_OK = _can_load_pdfo()
-            if not _PDFO_OK:
-                return False
-    return True
+    return dependency_status(modules)[0] == OK
+
+
+def require(modules):
+    """Skip a test whose reference is unavailable -- or fail it, in the CI job (#410)."""
+    status, why = dependency_status(modules)
+    if status != OK:
+        message = f"{status}: {why}"
+        if strict():
+            pytest.fail(f"reference expected in CI is unavailable -- {message}")
+        pytest.skip(message)
 
 
 # ---------- how far a port may lag its reference ----------
@@ -827,7 +1116,7 @@ def _all_installed(modules):
 #
 # Ceilings are measured, not chosen: each is about twice the value recorded in
 # benchmarks/reference_alignment.json, which gives a row room to move with a library version or
-# a seed without letting it double. They are not targets. Five of sixty-three pairs need one,
+# a seed without letting it double. They are not targets. Four of sixty-six pairs need one,
 # and each is a port that has genuinely not solved its problem, not a converged run a few ulps
 # behind another -- the floor below takes care of those. #78 tracks the divergences.
 DEFAULT_RATIO_CEILING = 3.0
@@ -882,15 +1171,32 @@ RATIO_CEILING = {
     #
     # BayesianOpt was here at 162 on Ackley and 9.9 on Rosenbrock and is here no longer: its
     # acquisition function is now optimised rather than sampled ten times, and it matches or
-    # beats gp_minimize on all three (0.68 / 1.46 / 0.00).
-    (
-        "BayesianOpt",
-        "ackley",
-    ): 162.0,  # measured 80.89, loses 0.90 -- a real one, see below
+    # beats gp_minimize on all three (0.68 / 1.71 / 0.00 at equal budgets).
+    #
+    # Re-measured again once both sides were held to the same number of objective calls
+    # (#404). The references that used to overspend -- differential evolution, dual
+    # annealing, L-BFGS-B, the mealpy six -- now stop at the budget, which moved their rows
+    # but put no new pair over the default: humpday was already ahead of each of them, and
+    # the extra calls had been flattering the references. Measured with NumPy 1.26.4, SciPy
+    # 1.17.1, scikit-optimize 0.10.2, cmaes 0.13.1, mealpy 3.0.2, Py-BOBYQA 1.5.0, PDFO 2.2.0.
+    #
+    # `Powell/rosenbrock` measures 7.32 where it was recorded at 4.11, and the port has not
+    # moved. The reference is never stopped by the meter; what changed is which of its values
+    # counts. scipy's bounded Powell returns its final point, and on sixteen of twenty-one
+    # seeds here it had evaluated a better one on the way (0.0081 against a returned 0.0226 at
+    # seed 1). The harness now takes the best value each side actually observed, which is what
+    # HumpDay's `best_value` has always been, so the reference's median gap fell from 0.034 to
+    # 0.019. The ceiling follows the measurement at the usual factor of two.
+    #
+    # `PRIMA_UOBYQA/ackley` is new because PDFO is new to the run (#410): the CI job had never
+    # installed it, so this pair had never been measured by the gate meant to measure it. It
+    # is a real gap, not the instrument -- 6.2e-06 against PDFO's 5.1e-08, losing 0.81 of
+    # pairings, as #410 found at 101x on another platform -- and is recorded here so that the
+    # gate tells it apart from a new one, not because it is acceptable. #154 tracks it.
     ("Rechenberg", "ackley"): 53.0,  # measured 26.59, loses 0.63
-    ("BayesianOpt", "rosenbrock"): 9.9,  # measured 4.94, loses 0.75
-    ("Powell", "rosenbrock"): 8.2,  # measured 4.11, loses 0.59
-    ("DifferentialEvolution", "rosenbrock"): 7.6,  # measured 3.80, loses 0.60
+    ("Powell", "rosenbrock"): 15.0,  # measured 7.32, loses 0.63
+    ("DifferentialEvolution", "rosenbrock"): 7.6,  # measured 3.57, loses 0.58
+    ("PRIMA_UOBYQA", "ackley"): 250.0,  # measured 122.93, loses 0.81 (#154)
 }
 
 
@@ -898,16 +1204,20 @@ RATIO_CEILING = {
 # benchmarks/reference_alignment.json and rounded up a little, same as the ratio ceilings: a
 # record of what the ports do, not a target.
 #
-# Empty, and it was not. The first run of this statistic put BayesianOpt at 0.90 on Ackley --
-# it sat at 2.58, which is where a run trapped on the ring sits, against gp_minimize's 0.032.
-# A rate that lopsided is not the sampling noise this statistic makes, and it was not: the
-# acquisition function was being sampled ten times rather than optimised. Fixed, it loses 0.46
-# there and no pair on the roster needs an entry.
+# The first run of this statistic put BayesianOpt at 0.90 on Ackley -- it sat at 2.58, which is
+# where a run trapped on the ring sits, against gp_minimize's 0.032. A rate that lopsided is not
+# the sampling noise this statistic makes, and it was not: the acquisition function was being
+# sampled ten times rather than optimised. Fixed, it loses 0.46 there.
+#
+# The one entry is PRIMA_UOBYQA on Ackley, measured the first time PDFO was installed (#410),
+# and explained above: a real gap, tracked by #154.
 #
 # #408 still has the JavaScript twin replacing the GP with a nearest-neighbour heuristic
 # outright, and #81 tracks the hyperparameters, which are still fixed where scikit-optimize
 # fits them.
-WIN_CEILING: dict[tuple[str, str], float] = {}
+WIN_CEILING: dict[tuple[str, str], float] = {
+    ("PRIMA_UOBYQA", "ackley"): 0.95,  # measured 0.81 (#154)
+}
 
 
 def ratio_ceiling(algorithm: str, problem: str) -> float:
@@ -927,12 +1237,162 @@ def head_to_head(hd_vals, ref_vals) -> float:
 
     Two ports that both converge to exactly the optimum score 0.5 here, which is what the
     `CONVERGED_GAP` floor exists to say about the ratio. This statistic needs no such floor.
+
+    It refuses a value that is not finite. `NaN > b` and `NaN == b` are both false, so a NaN
+    run used to count as a win for whichever side produced it, and `inf` on the reference side
+    was a win for humpday. `validate_run` keeps such runs out; this is the second lock (#405).
     """
+    for v in (*hd_vals, *ref_vals):
+        if not math.isfinite(v):
+            raise ValueError(f"head_to_head given a value that is not finite: {v!r}")
     worse = 0.0
     for a in hd_vals:
         for b in ref_vals:
             worse += 1.0 if a > b else (0.5 if a == b else 0.0)
     return worse / (len(hd_vals) * len(ref_vals))
+
+
+# ---------- the experiment the ceilings were measured on ----------
+
+N_DIM = 2
+N_TRIALS = 200
+
+# Where the objectives are pinned. Chosen to catch a shift (the optimum and the centre would
+# disagree), a scale (the interior points) and a domain mapping (the bounds). The JavaScript
+# gate checks its runner against Python at these same points before any optimizer runs.
+OBJECTIVE_PROBE_POINTS = [
+    [0.4127, 0.6831],
+    [0.5, 0.5],
+    [0.13, 0.87],
+    [0.62, 0.31],
+    [0.0, 0.0],
+    [1.0, 1.0],
+]
+
+
+def _code_digest(*objects) -> str:
+    """A digest of code that ignores comments, blank lines, layout, docstrings and the names
+    of the functions themselves, so that rewording an explanation does not demand a
+    recalibration and changing a setting does."""
+    parts = []
+    for obj in objects:
+        src = textwrap.dedent(inspect.getsource(obj))
+        docstrings = set()
+        for node in ast.walk(ast.parse(src)):
+            body = getattr(node, "body", None)
+            if (
+                isinstance(body, list)
+                and body
+                and isinstance(body[0], ast.Expr)
+                and isinstance(getattr(body[0], "value", None), ast.Constant)
+                and isinstance(body[0].value.value, str)
+            ):
+                docstrings.update(range(body[0].lineno, body[0].end_lineno + 1))
+        skip = {
+            tokenize.COMMENT,
+            tokenize.NL,
+            tokenize.NEWLINE,
+            tokenize.INDENT,
+            tokenize.DEDENT,
+        }
+        previous = None
+        for tok in tokenize.generate_tokens(io.StringIO(src).readline):
+            if tok.type in skip:
+                continue
+            if tok.type == tokenize.STRING and tok.start[0] in docstrings:
+                continue
+            # A function's own name is not its behaviour; its body and its decorator are.
+            if previous == "def" and tok.type == tokenize.NAME:
+                previous = tok.string
+                continue
+            previous = tok.string
+            parts.append(tok.string)
+    return hashlib.sha256(" ".join(parts).encode()).hexdigest()[:16]
+
+
+def experiment_spec(algorithms=None) -> dict:
+    """What a ceiling was measured on, as data.
+
+    Ceilings and problem definitions used to be changeable independently: #389 and #406 both
+    moved the objectives without anything noticing that every ceiling had been measured on the
+    old ones, and the ratios happened to stay under them. This is everything that defines the
+    measurement -- the objectives' values at fixed points and their known minima, dimension,
+    seeds, budgets, the starting-point distribution, and the code of every adapter and of the
+    harness that drives both sides -- and `CALIBRATED_FOR` is its digest at the time the
+    ceilings were measured. Change any of it and the gate fails until they are re-measured.
+
+    Library versions are recorded in the snapshot but not bound here: the weekly job exists
+    to see what a new release of a reference does, and binding them would turn every release
+    into a recalibration rather than a measurement.
+    """
+    algorithms = sorted(REFERENCES) if algorithms is None else sorted(algorithms)
+    return {
+        "objectives": {
+            name: {
+                "opt": p["opt"],
+                "x_opt": p["x_opt"],
+                # Twelve significant figures: enough to see any change to an objective, and
+                # not so many that the last ulp of one platform's `exp` moves the digest.
+                "values": [
+                    format(float(p["func"](x)), ".12g") for x in OBJECTIVE_PROBE_POINTS
+                ],
+            }
+            for name, p in sorted(PROBLEMS.items())
+        },
+        "n_dim": N_DIM,
+        "seeds": list(range(N_RUNS)),
+        "budget": N_TRIALS,
+        "budget_overrides": {
+            a: REFERENCE_BUDGET_OVERRIDE[a]
+            for a in algorithms
+            if a in REFERENCE_BUDGET_OVERRIDE
+        },
+        "x0": [X0_LO, X0_HI],
+        "references": {
+            a: {
+                "label": REFERENCES[a][0],
+                "modules": REFERENCES[a][2],
+                "code": _code_digest(REFERENCES[a][1]),
+            }
+            for a in algorithms
+        },
+        "harness": _code_digest(
+            Metered, _reference, _ref_mealpy, _draw_x0, _seed_humpday, _run_humpday
+        ),
+    }
+
+
+def experiment_digest(spec=None) -> str:
+    spec = experiment_spec() if spec is None else spec
+    return hashlib.sha256(json.dumps(spec, sort_keys=True).encode()).hexdigest()[:16]
+
+
+# The digest of `experiment_spec()` when the ceilings above were last measured. If a change to
+# the objectives, seeds, budgets or adapters fails this, the ceilings describe an experiment
+# that no longer runs: re-measure them with
+#     HUMPDAY_REFERENCE_STRICT=1 pytest tests/test_reference_alignment.py -m reference -s
+# update the table from the snapshot, and only then set this to the new digest.
+CALIBRATED_FOR = "e5fb95b3b193e204"
+
+
+def _library_versions() -> dict:
+    from importlib import metadata
+
+    out = {}
+    for dist in (
+        "numpy",
+        "scipy",
+        "scikit-optimize",
+        "cmaes",
+        "mealpy",
+        "Py-BOBYQA",
+        "pdfo",
+    ):
+        try:
+            out[dist] = metadata.version(dist)
+        except metadata.PackageNotFoundError:
+            out[dist] = None
+    return out
 
 
 # ---------- the characterisation test ----------
@@ -942,60 +1402,113 @@ def head_to_head(hd_vals, ref_vals) -> float:
 def test_reference_alignment():
     """Print + persist a table of HumpDay-vs-reference final values for every
     algorithm where we have a reference adapter."""
-    n_trials_default = 200
-    n_dim = 2
+    n_trials_default = N_TRIALS
+    n_dim = N_DIM
     rows = []
     failures: dict = {}
 
+    def fail(heading, item):
+        failures.setdefault(heading, []).append(item)
+
+    # What ran and what did not, kept in the snapshot. A nonempty table used to be enough for
+    # green, and six of the references are inline baselines with no dependencies at all, so
+    # with every third-party library missing or broken the gate passed on those six (#410).
+    coverage = {"strict": strict(), "compared": [], "absent": {}, "probe_failed": {}}
     for algorithm, (ref_label, ref_fn, mods) in REFERENCES.items():
-        if not _all_installed(mods):
-            print(f"\n--- {algorithm}: SKIP ({', '.join(mods)} not installed) ---")
+        status, why = dependency_status(mods)
+        if status != OK:
+            key = "absent" if status == ABSENT else "probe_failed"
+            coverage[key][algorithm] = why
+            loud = "" if status == ABSENT else "  <-- installed but broken"
+            print(f"\n--- {algorithm}: SKIP, {status}: {why}{loud} ---")
             continue
+        coverage["compared"].append(algorithm)
         n_trials = REFERENCE_BUDGET_OVERRIDE.get(algorithm, n_trials_default)
         print(f"\n=== {algorithm}  vs  {ref_label}  (n_trials={n_trials}) ===")
         for problem_id, problem in PROBLEMS.items():
             func = problem["func"]
             opt_value = problem["opt"]
+            pair = f"{algorithm}/{problem_id}"
 
-            hd_vals = []
+            # Every run is checked before it can take part in a median or a pairing. One that
+            # is not a result -- not finite, no call behind it, over budget, below the known
+            # minimum, a value the objective never returned -- fails the pair, and is left out
+            # of the statistics rather than counted as a win for the other side (#405).
+            hd_vals, hd_runs = [], []
             for trial in range(N_RUNS):
-                hd_vals.append(
-                    _run_humpday(algorithm, func, n_trials, n_dim, seed=trial)[
-                        "best_value"
-                    ]
-                )
+                run = _run_humpday(algorithm, func, n_trials, n_dim, seed=trial)
+                issues = validate_run(run, problem, n_trials)
+                hd_runs.append(_evidence(trial, run, issues))
+                if issues:
+                    fail(
+                        "humpday result invalid",
+                        f"{pair} seed {trial}: {'; '.join(issues)}",
+                    )
+                else:
+                    hd_vals.append(run["best_value"])
 
-            ref_vals = []
-            ref_errors = []
+            # A reference that raised used to be recorded as inf, which made its gap infinite
+            # and the ratio zero: the comparison humpday most conclusively "won" was the one
+            # where the thing it is measured against never ran. A reference that *returned* inf
+            # or NaN did the same thing by another route. Neither is a comparison.
+            ref_vals, ref_runs = [], []
             for trial in range(N_RUNS):
                 try:
-                    ref_vals.append(
-                        ref_fn(func, n_trials, n_dim, seed=trial)["best_value"]
-                    )
+                    run = ref_fn(func, n_trials, n_dim, seed=trial)
                 except Exception as e:
                     print(f"    reference error on {problem_id}: {e}")
-                    ref_errors.append(f"{type(e).__name__}: {e}")
-                    ref_vals.append(float("inf"))
-            # A reference that raised used to be recorded as inf, which made its gap infinite and
-            # the ratio zero: the comparison humpday most conclusively "won" was the one where
-            # the thing it is measured against never ran. There is nothing to compare, so say so.
-            failures.setdefault("reference did not run", [])
-            if ref_errors:
-                failures["reference did not run"].append(
-                    f"{algorithm}/{problem_id}: {ref_errors[0]}"
-                )
+                    fail(
+                        "reference did not run",
+                        f"{pair} seed {trial}: {type(e).__name__}: {e}",
+                    )
+                    ref_runs.append(
+                        {"seed": trial, "error": f"{type(e).__name__}: {e}"}
+                    )
+                    continue
+                issues = validate_run(run, problem, n_trials)
+                ref_runs.append(_evidence(trial, run, issues))
+                if issues:
+                    fail(
+                        "reference result invalid",
+                        f"{pair} seed {trial}: {'; '.join(issues)}",
+                    )
+                else:
+                    ref_vals.append(run["best_value"])
 
-            hd_med = sorted(hd_vals)[N_RUNS // 2]
-            ref_med = sorted(ref_vals)[N_RUNS // 2]
+            if not hd_vals or not ref_vals:
+                print(
+                    f"  {problem_id:<12}  no valid runs on one side; nothing to compare"
+                )
+                rows.append(
+                    {
+                        "algorithm": algorithm,
+                        "reference": ref_label,
+                        "problem": problem_id,
+                        "budget": n_trials,
+                        "humpday_valid_runs": len(hd_vals),
+                        "reference_valid_runs": len(ref_vals),
+                        **_columns("humpday", hd_runs),
+                        **_columns("reference", ref_runs),
+                    }
+                )
+                continue
+
+            hd_med = sorted(hd_vals)[len(hd_vals) // 2]
+            ref_med = sorted(ref_vals)[len(ref_vals) // 2]
             hd_gap = hd_med - opt_value
             ref_gap = ref_med - opt_value
             relative = (hd_gap + 1e-15) / (ref_gap + 1e-15)
             lost = head_to_head(hd_vals, ref_vals)
 
+            hd_cols = _columns("humpday", hd_runs)
+            ref_cols = _columns("reference", ref_runs)
             print(
                 f"  {problem_id:<12}  hd={hd_med:>10.4g}  ref={ref_med:>10.4g}"
                 f"  hd-to-opt={hd_gap:>10.4g}  ref-to-opt={ref_gap:>10.4g}"
                 f"  hd/ref={relative:>9.2f}  lost={lost:>5.2f}"
+                f"  evals hd={hd_cols['humpday_evals_median']}"
+                f" ref={ref_cols['reference_evals_median']}"
+                f" (stopped {ref_cols['reference_stopped_at_budget']}/{N_RUNS})"
             )
 
             # A pair fails when the port has not solved the problem and either loses more
@@ -1014,14 +1527,16 @@ def test_reference_alignment():
             # loses about half its pairings, which is to say it matches its reference.
             win_cap = win_ceiling(algorithm, problem_id)
             if lost > win_cap and hd_gap > CONVERGED_GAP:
-                failures.setdefault("lagging the reference", []).append(
-                    f"{algorithm}/{problem_id}: loses {lost:.2f} of head-to-head pairings, "
-                    f"over its ceiling {win_cap:g}"
+                fail(
+                    "lagging the reference",
+                    f"{pair}: loses {lost:.2f} of head-to-head pairings, "
+                    f"over its ceiling {win_cap:g}",
                 )
             ceiling = ratio_ceiling(algorithm, problem_id)
             if lost > 0.5 and relative > ceiling and hd_gap > CONVERGED_GAP:
-                failures.setdefault("lagging the reference", []).append(
-                    f"{algorithm}/{problem_id}: hd/ref {relative:.2f} over its ceiling {ceiling:g}"
+                fail(
+                    "lagging the reference",
+                    f"{pair}: hd/ref {relative:.2f} over its ceiling {ceiling:g}",
                 )
 
             rows.append(
@@ -1038,31 +1553,64 @@ def test_reference_alignment():
                     "head_to_head_lost": lost,
                     "win_ceiling": win_cap,
                     "converged": hd_gap <= CONVERGED_GAP,
+                    "budget": n_trials,
+                    "humpday_valid_runs": len(hd_vals),
+                    "reference_valid_runs": len(ref_vals),
+                    **hd_cols,
+                    **ref_cols,
                 }
             )
 
     out = REPO_ROOT / "benchmarks" / "reference_alignment.json"
     out.parent.mkdir(exist_ok=True)
-    with open(out, "w") as f:
-        json.dump(
+    snapshot = {
+        "rows": [
             {
-                "rows": rows,
-                "n_runs": N_RUNS,
-                "n_trials": n_trials,
-                "n_dim": n_dim,
-                "recorded_at": time.strftime("%Y-%m-%dT%H:%M:%SZ", time.gmtime()),
-            },
-            f,
-            indent=2,
-        )
+                k: (_json_number(v) if isinstance(v, float) else v)
+                for k, v in row.items()
+            }
+            for row in rows
+        ],
+        "n_runs": N_RUNS,
+        "seeds": list(range(N_RUNS)),
+        "n_trials": n_trials_default,
+        "n_trials_overrides": REFERENCE_BUDGET_OVERRIDE,
+        "n_dim": n_dim,
+        "coverage": coverage,
+        "experiment": experiment_spec(),
+        "experiment_digest": experiment_digest(),
+        "calibrated_for": CALIBRATED_FOR,
+        "library_versions": _library_versions(),
+        "python": platform.python_version(),
+        "platform": platform.platform(),
+        "recorded_at": time.strftime("%Y-%m-%dT%H:%M:%SZ", time.gmtime()),
+    }
+    with open(out, "w") as f:
+        f.write(_dump(snapshot) + "\n")
     print(f"\nWrote {out.relative_to(REPO_ROOT)}")
 
     # The snapshot is written first, so a failing run still leaves the table it was judged on.
-    assert rows, (
-        "no reference adapter could run: install the comparisons with "
-        "`pip install humpday[reference]`, or this test is watching nothing"
-    )
-    reported = {k: v for k, v in failures.items() if v}
-    assert not reported, "\n".join(
-        f"{heading}:\n  " + "\n  ".join(items) for heading, items in reported.items()
+    third_party = [a for a in coverage["compared"] if REFERENCES[a][2]]
+    if not third_party:
+        fail(
+            "no third-party comparison ran",
+            "only the inline baselines did, which compares the ports with nothing they were "
+            "written from: install `pip install humpday[reference]`",
+        )
+    digest = experiment_digest()
+    if digest != CALIBRATED_FOR:
+        fail(
+            "the ceilings were measured on a different experiment",
+            f"experiment digest is {digest}, ceilings were calibrated for {CALIBRATED_FOR}: "
+            "re-measure them from this snapshot, then update CALIBRATED_FOR",
+        )
+    if coverage["strict"]:
+        for key, label in (("absent", ABSENT), ("probe_failed", PROBE_FAILED)):
+            for algorithm, why in coverage[key].items():
+                fail(
+                    "comparison expected in CI did not run",
+                    f"{algorithm}: {label}: {why}",
+                )
+    assert not failures, "\n".join(
+        f"{heading}:\n  " + "\n  ".join(items) for heading, items in failures.items()
     )

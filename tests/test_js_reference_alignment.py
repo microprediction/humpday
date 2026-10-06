@@ -13,6 +13,7 @@ test which cannot fail was cited as evidence it could not provide.
 
 from __future__ import annotations
 
+import hashlib
 import json
 import math
 import shutil
@@ -25,20 +26,37 @@ from tests.test_reference_alignment import (  # noqa: E402
     CONVERGED_GAP,
     DEFAULT_WIN_CEILING,
     N_RUNS,
+    OBJECTIVE_PROBE_POINTS,
     PROBLEMS,
     REFERENCES,
-    _all_installed,
     _run_humpday,
+    experiment_digest,
+    experiment_spec,
     head_to_head,
+    require,
+    strict,
+    validate_run,
 )
 
 NODE = shutil.which("node")
 RUNNER = Path(__file__).parent / "js_reference_runner.js"
 REPO_ROOT = Path(__file__).parent.parent
 
+
+def _require_node():
+    """Skip without Node -- or fail, in the CI job, where a missing Node used to turn every
+    test in this file into a skip and the job green (#410)."""
+    if NODE:
+        return
+    if strict():
+        pytest.fail("node is not on PATH, and the reference CI job needs it")
+    pytest.skip("node not on PATH")
+
+
 # The ports where alignment matters most and where a reference exists on both sides. PRIMA_BOBYQA
 # is in the issue's list but its reference (Py-BOBYQA) is an optional install, so it joins the
-# others only when that is present -- `_all_installed` decides, as it does for the Python gate.
+# others only when that is present -- `require` decides, as it does for the Python gate, and in
+# the CI job a missing one fails rather than skips (#410).
 JS_ALGORITHMS = ["NelderMead", "Powell", "LBFGSB", "PRIMA_BOBYQA", "BayesianOpt"]
 
 N_DIM = 2
@@ -82,7 +100,9 @@ DEFAULT_RATIO_CEILING = 10.0
 # All of these are #78's territory: ports that agree with Python on behaviour but not on quality.
 RATIO_CEILING = {
     ("Powell", "sphere"): 1.7e11,  # measured 80609000013.37
-    ("Powell", "rosenbrock"): 17.0,  # measured 7.99
+    # 18.70 once both gates took the best value scipy's Powell observed rather than the final
+    # point it returns, which on most seeds here is not its best (#404).
+    ("Powell", "rosenbrock"): 38.0,  # measured 18.70
     ("LBFGSB", "rosenbrock"): 2700.0,  # measured 1318.23
     ("PRIMA_BOBYQA", "ackley"): 160.0,  # measured 71.51
     # This one varies run to run because the JavaScript PRIMA ports call Math.random() directly
@@ -105,6 +125,36 @@ KNOWN_PORT_DIVERGENCE = {
 WIN_CEILING: dict[tuple[str, str], float] = {}
 
 
+def js_experiment_spec() -> dict:
+    """What the JavaScript ceilings were measured on: the Python spec for these algorithms'
+    references and objectives, this file's budgets, and the runner's code (comment lines and
+    blank lines aside). See `experiment_spec` for why ceilings are bound to it (#406)."""
+    runner = [line.strip() for line in RUNNER.read_text().splitlines()]
+    runner = [line for line in runner if line and not line.startswith("//")]
+    return {
+        "python": experiment_spec(JS_ALGORITHMS),
+        "algorithms": JS_ALGORITHMS,
+        "n_dim": N_DIM,
+        "n_trials": N_TRIALS,
+        "budget_override": BUDGET_OVERRIDE,
+        "runner": hashlib.sha256("\n".join(runner).encode()).hexdigest()[:16],
+    }
+
+
+# The digest of `js_experiment_spec()` when the ceilings above were measured. Change the
+# objectives, budgets, adapters or runner and this fails until the ceilings are re-measured.
+JS_CALIBRATED_FOR = "bb6c51b448e08c5a"
+
+
+def test_the_javascript_ceilings_describe_the_experiment_that_runs():
+    digest = experiment_digest(js_experiment_spec())
+    assert digest == JS_CALIBRATED_FOR, (
+        f"the JavaScript gate's experiment is now {digest}; its ceilings were measured on "
+        f"{JS_CALIBRATED_FOR}. Re-measure them with `pytest {Path(__file__).name} -m "
+        "reference -s`, update the table, then JS_CALIBRATED_FOR."
+    )
+
+
 def _ratio_ceiling(algorithm: str, problem: str) -> float:
     return RATIO_CEILING.get((algorithm, problem), DEFAULT_RATIO_CEILING)
 
@@ -116,15 +166,8 @@ def _win_ceiling(algorithm: str, problem: str) -> float:
 # Points the two implementations must agree on before any optimizer runs: the optimum, the
 # centre of the cube, two interior points and both bounds. Chosen to catch a shift (the optimum
 # and the centre disagree), a scale (the interior points disagree) and a domain mapping (the
-# bounds disagree).
-IDENTITY_POINTS = [
-    [0.4127, 0.6831],
-    [0.5, 0.5],
-    [0.13, 0.87],
-    [0.62, 0.31],
-    [0.0, 0.0],
-    [1.0, 1.0],
-]
+# bounds disagree). They are the points the Python harness pins its experiment spec to.
+IDENTITY_POINTS = OBJECTIVE_PROBE_POINTS
 
 
 def _probe_js(problem: str, point: list) -> float:
@@ -138,7 +181,55 @@ def _probe_js(problem: str, point: list) -> float:
     return float(json.loads(result.stdout)["value"])
 
 
-@pytest.mark.skipif(not NODE, reason="node not on PATH")
+def identity_mismatches(problem_id, python_f=None, js_f=None) -> list:
+    """Every way the two languages' versions of one objective disagree, or an empty list.
+
+    Pointwise agreement at `IDENTITY_POINTS`; the declared minimum attained at the declared
+    location on both sides; and that location a minimum in JavaScript, not merely the same
+    number. `python_f` and `js_f` default to the real ones and exist so that a deliberate
+    shift on either side can be shown to fail.
+    """
+    problem = PROBLEMS[problem_id]
+    python_f = problem["func"] if python_f is None else python_f
+    js_f = (lambda x: _probe_js(problem_id, x)) if js_f is None else js_f
+    out = []
+    for point in IDENTITY_POINTS:
+        py, js = float(python_f(point)), float(js_f(point))
+        if js != pytest.approx(py, rel=1e-12, abs=1e-12):
+            out.append(f"at {point}: Python {py!r}, JavaScript {js!r}")
+    x_opt, opt = problem["x_opt"], problem["opt"]
+    for side, f in (("Python", python_f), ("JavaScript", js_f)):
+        at_opt = float(f(x_opt))
+        if at_opt != pytest.approx(opt, abs=1e-12):
+            out.append(
+                f"{side} gives {at_opt!r} at the declared optimum {x_opt}, not {opt!r}"
+            )
+    for offset in (0.05, -0.05):
+        moved = [min(1.0, max(0.0, v + offset)) for v in x_opt]
+        if not float(js_f(moved)) > opt:
+            out.append(f"JavaScript is not minimised at {x_opt}: {moved} is as low")
+    return out
+
+
+_IDENTITY_CHECKED: dict = {}
+
+
+def _assert_same_function(problem_id):
+    """The precondition of every comparison in this file, checked once per objective.
+
+    It used to live only in its own tests, so a run selected with `-k` -- or a reordering --
+    could compare the ports on two different functions with nothing checking first (#406).
+    The gate now calls it before any optimizer runs.
+    """
+    if problem_id not in _IDENTITY_CHECKED:
+        _IDENTITY_CHECKED[problem_id] = identity_mismatches(problem_id)
+    mismatches = _IDENTITY_CHECKED[problem_id]
+    assert not mismatches, (
+        f"{problem_id} is not the same function in both languages:\n  "
+        + "\n  ".join(mismatches)
+    )
+
+
 @pytest.mark.parametrize("problem_id", sorted(PROBLEMS))
 def test_both_languages_optimize_the_same_function(problem_id):
     """The check that was missing, and without which the rest of this file means nothing.
@@ -151,31 +242,40 @@ def test_both_languages_optimize_the_same_function(problem_id):
 
     Comparing final values cannot catch that. Comparing the functions can.
     """
-    python_f = PROBLEMS[problem_id]["func"]
-    for point in IDENTITY_POINTS:
-        py = float(python_f(point))
-        js = _probe_js(problem_id, point)
-        assert js == pytest.approx(py, rel=1e-12, abs=1e-12), (
-            f"{problem_id} differs between the languages at {point}: "
-            f"Python {py!r}, JavaScript {js!r}"
-        )
+    _require_node()
+    assert identity_mismatches(problem_id) == []
 
 
-@pytest.mark.skipif(not NODE, reason="node not on PATH")
+def _shifted(f, by=0.01):
+    return lambda x: f([x[0] + by, *x[1:]])
+
+
 @pytest.mark.parametrize("problem_id", sorted(PROBLEMS))
-def test_the_optimum_is_where_both_languages_say_it_is(problem_id):
-    """And it is a minimum on both sides, not merely the same number."""
-    problem = PROBLEMS[problem_id]
-    x_opt = problem["x_opt"]
-    assert _probe_js(problem_id, x_opt) == pytest.approx(problem["opt"], abs=1e-12)
-    for offset in (0.05, -0.05):
-        moved = [min(1.0, max(0.0, v + offset)) for v in x_opt]
-        assert _probe_js(problem_id, moved) > problem["opt"], (
-            f"{problem_id} is not minimised at {x_opt} in JavaScript"
-        )
+def test_a_shift_on_either_side_alone_is_caught(problem_id):
+    """The guard guarded: moving one language's optimum by 0.01 must fail the check, from
+    either side. This is the drift #406 found, made on purpose."""
+    _require_node()
+
+    def real_js(x):
+        return _probe_js(problem_id, x)
+
+    python_shifted = identity_mismatches(
+        problem_id, python_f=_shifted(PROBLEMS[problem_id]["func"])
+    )
+    js_shifted = identity_mismatches(problem_id, js_f=_shifted(real_js))
+    # At least as many disagreements as there are probe points, counting the optimum's.
+    assert len(python_shifted) >= len(IDENTITY_POINTS)
+    assert len(js_shifted) >= len(IDENTITY_POINTS)
 
 
-def _run_js(algorithm: str, problem: str, seed: int, n_trials: int = N_TRIALS) -> float:
+def _number(v):
+    # JSON.stringify writes null for NaN and the infinities.
+    return math.nan if v is None else float(v)
+
+
+def _run_js(algorithm: str, problem: str, seed: int, n_trials: int = N_TRIALS) -> dict:
+    """One JavaScript run, as a result `validate_run` can check: the value the port reports,
+    beside the calls the runner counted and the lowest value the objective actually returned."""
     result = subprocess.run(
         [NODE, str(RUNNER), algorithm, problem, str(n_trials), str(N_DIM), str(seed)],
         capture_output=True,
@@ -183,26 +283,46 @@ def _run_js(algorithm: str, problem: str, seed: int, n_trials: int = N_TRIALS) -
         cwd=REPO_ROOT,
     )
     assert result.returncode == 0, result.stderr
-    return float(json.loads(result.stdout)["best_value"])
+    out = json.loads(result.stdout)
+    return {
+        "best_value": _number(out["best_value"]),
+        "evals": int(out["calls"]),
+        "reported_evals": int(out["evaluations"]),
+        "observed_best": _number(out["observed_best"]),
+        "outside": int(out["outside"]),
+    }
 
 
 @pytest.mark.reference
-@pytest.mark.skipif(not NODE, reason="node not on PATH")
 @pytest.mark.parametrize("algorithm", JS_ALGORITHMS)
 @pytest.mark.parametrize("problem_id", sorted(PROBLEMS))
 def test_the_javascript_port_tracks_its_reference(algorithm, problem_id):
+    _require_node()
     ref_label, ref_fn, mods = REFERENCES[algorithm]
-    if not _all_installed(mods):
-        pytest.skip(f"{', '.join(mods)} not installed")
+    require(mods)
+    _assert_same_function(problem_id)
+    test_the_javascript_ceilings_describe_the_experiment_that_runs()
 
     problem = PROBLEMS[problem_id]
     func, opt_value = problem["func"], problem["opt"]
 
     n_trials = BUDGET_OVERRIDE.get(algorithm, N_TRIALS)
-    js_vals = [_run_js(algorithm, problem_id, seed, n_trials) for seed in range(N_RUNS)]
-    ref_vals = []
-    for seed in range(N_RUNS):
-        ref_vals.append(ref_fn(func, n_trials, N_DIM, seed=seed)["best_value"])
+    js_runs = [_run_js(algorithm, problem_id, seed, n_trials) for seed in range(N_RUNS)]
+    ref_runs = [ref_fn(func, n_trials, N_DIM, seed=seed) for seed in range(N_RUNS)]
+
+    # The same contract as the Python gate: every run is a result before it is a statistic. A
+    # reference returning +inf used to make the ratio zero here too (#405).
+    invalid = [
+        f"{side} seed {seed}: {'; '.join(issues)}"
+        for side, runs in (("JavaScript", js_runs), (ref_label, ref_runs))
+        for seed, run in enumerate(runs)
+        if (issues := validate_run(run, problem, n_trials))
+    ]
+    assert not invalid, f"{algorithm}/{problem_id}: runs that are not results:\n  " + (
+        "\n  ".join(invalid)
+    )
+    js_vals = [run["best_value"] for run in js_runs]
+    ref_vals = [run["best_value"] for run in ref_runs]
 
     js_med = sorted(js_vals)[N_RUNS // 2]
     ref_med = sorted(ref_vals)[N_RUNS // 2]
@@ -234,7 +354,6 @@ def test_the_javascript_port_tracks_its_reference(algorithm, problem_id):
 
 
 @pytest.mark.reference
-@pytest.mark.skipif(not NODE, reason="node not on PATH")
 @pytest.mark.parametrize("algorithm", JS_ALGORITHMS)
 def test_the_two_ports_agree_about_the_same_problem(algorithm):
     """The JS port and its Python twin, on one objective, sanity-checked against each other.
@@ -242,9 +361,9 @@ def test_the_two_ports_agree_about_the_same_problem(algorithm):
     Not a parity test -- test_js_parity.py does that properly -- but a guard that this file is
     driving the same algorithm on both sides rather than comparing two different things.
     """
-    if not _all_installed(REFERENCES[algorithm][2]):
-        pytest.skip("reference not installed")
-    js = _run_js(algorithm, "sphere", 0)
+    _require_node()
+    require(REFERENCES[algorithm][2])
+    js = _run_js(algorithm, "sphere", 0)["best_value"]
     py = _run_humpday(algorithm, PROBLEMS["sphere"]["func"], N_TRIALS, N_DIM, seed=0)[
         "best_value"
     ]

@@ -3,7 +3,7 @@
 // port (#164).
 //
 // Usage: node js_reference_runner.js <algorithm> <problem> <n_trials> <n_dim> <seed>
-// Prints: {"best_value": <float>, "evaluations": <int>}
+// Prints: {"best_value", "evaluations", "calls", "observed_best", "outside"}
 //
 // The objectives here must stay identical to PROBLEMS in tests/test_reference_alignment.py.
 // Their optima sit at (0.4127, 0.6831) rather than at the centre of the cube or on a grid node,
@@ -67,11 +67,34 @@ if (!Cls) {
     process.exit(2);
 }
 
+// What the objective was actually asked and actually returned, kept apart from what the port
+// reports about itself. The Python gate checks one against the other before it believes a value
+// (#405): a port that claims a minimum its objective never returned, or calls it more often
+// than its budget allows, or outside the cube, has not produced a result.
+let calls = 0;
+let observedBest = Infinity;
+let outside = 0;
+const observed = (x) => {
+    calls += 1;
+    if (x.some((v) => !(v >= 0 && v <= 1))) outside += 1;
+    const v = f(x);
+    if (v < observedBest) observedBest = v;
+    return v;
+};
+
 // The portable stream, so a run is reproducible and so the seed means the same thing it means
 // on the Python side.
 usePortableRng(seed, 0);
-const opt = new Cls(f, nTrials, nDim);
+const opt = new Cls(observed, nTrials, nDim);
 opt.optimize();
+// JSON has no NaN or Infinity; JSON.stringify writes null for them, which the Python side reads
+// as a value that is not a number and rejects.
 process.stdout.write(
-    JSON.stringify({ best_value: opt.bestValue, evaluations: opt.evaluations }) + "\n",
+    JSON.stringify({
+        best_value: opt.bestValue,
+        evaluations: opt.evaluations,
+        calls,
+        observed_best: observedBest,
+        outside,
+    }) + "\n",
 );
