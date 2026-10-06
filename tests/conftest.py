@@ -3,6 +3,12 @@ import os
 
 import pytest
 
+# Tests draw plots only to exercise the code (test_documentation_contract runs every example as a
+# script, and scipy_interface_example.py calls plt.show()). Without this, matplotlib picks an
+# interactive backend and a window opens on the screen of whoever runs the suite. Set before
+# anything imports matplotlib; an explicit MPLBACKEND in the environment still wins.
+os.environ.setdefault("MPLBACKEND", "Agg")
+
 
 def _expected_backend():
     if os.environ.get("HUMPDAY_FORCE_PURE_ARRAY") == "1":
