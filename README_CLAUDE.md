@@ -122,9 +122,9 @@ result = sphere([0.1, 0.2])[0]  # Extract the value
 - No complex build requirements
 
 ### 2. JavaScript Compatibility
-- All 23 algorithms have a JavaScript counterpart, and 14 of them are bit-exact twins that
+- All 23 algorithms have a JavaScript counterpart, and 15 of them are bit-exact twins that
   replay `parity/transition_vectors.json` point for point on the shared PCG32 stream
-- The other 9 agree on behaviour, not on every last bit; #78 tracks the differences and #325
+- The other 8 agree on behaviour, not on every last bit; #78 tracks the differences and #325
   tracks the JavaScript recommender lagging the recorded table
 - Claims beyond that are not tested and should not be made
 
