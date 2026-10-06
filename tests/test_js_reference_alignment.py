@@ -68,11 +68,10 @@ DEFAULT_RATIO_CEILING = 10.0
 #
 # Re-measured, the picture changes in one place and holds in the others:
 #
-#   Powell on the sphere is genuinely 8e+10 behind scipy -- 8.06e-05 against 3.08e-33 -- because
-#   its JavaScript line search tries four fixed step sizes where Python uses Brent (#78).
-#
-#   Powell on Ackley was recorded as 3.09e+09 and is actually 0.18: the JavaScript port is
-#   better than scipy's Powell there. That number was an artifact of the mismatch.
+#   Powell needs no entry any more. Its JavaScript line search was four fixed step sizes against
+#   scipy's bracketing Brent search, worth 8e+10 on the sphere; porting Brent took every pair
+#   inside the default. (Its Ackley gap, once recorded as 3.09e+09, was an artifact of the
+#   objective mismatch and was 0.18 all along.)
 #
 #   LBFGSB falls behind on Rosenbrock, where the curvature is what the memory is for, by the
 #   same 1,318 as before -- that pair was unaffected.
@@ -86,17 +85,14 @@ DEFAULT_RATIO_CEILING = 10.0
 # with an identity Hessian. It now fits through twins of the pure-Python linear algebra and
 # replays the Python transition vectors bit for bit: 0.06 on Ackley, and converged on Rosenbrock.
 RATIO_CEILING = {
-    ("Powell", "sphere"): 1.7e11,  # measured 80609000013.37
-    ("Powell", "rosenbrock"): 17.0,  # measured 7.99
     ("LBFGSB", "rosenbrock"): 2700.0,  # measured 1318.23
 }
 
 # Ports whose result differs from their Python twin by more than six orders of magnitude on the
 # sphere. Listed rather than tolerated: the test below asserts the divergence is still there, so
-# repairing one fails this file and asks for the entry to be removed.
-KNOWN_PORT_DIVERGENCE = {
-    "Powell": "the JS line search is four fixed steps where Python uses Brent (#78)",
-}
+# repairing one fails this file and asks for the entry to be removed. Powell was the only entry
+# and it has been removed, which is how the mechanism is supposed to end.
+KNOWN_PORT_DIVERGENCE: dict = {}
 
 
 # Pairs that lose more head to head than the Python gate's default allows. Same statistic and
