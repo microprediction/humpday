@@ -2,10 +2,10 @@
 
 23 derivative-free optimizers in zero-dependency JavaScript. This is the
 browser/Node twin of the [Python humpday
-package](https://github.com/microprediction/humpday). Thirteen of the
+package](https://github.com/microprediction/humpday). Fifteen of the
 twenty-three are bit-exact twins: driven from the same seed they replay the
 recorded transition vectors point for point, so the trajectory here is the
-Python trajectory. The other ten are ports held to the same behaviour but not
+Python trajectory. The other nine are ports held to the same behaviour but not
 to the last bit, and the differences are tracked in the repository's issues.
 
 Every optimizer minimises a black-box function on the unit cube `[0,1]^n`
@@ -26,8 +26,13 @@ const { Alloy, NelderMead, DifferentialEvolution } = require('humpday');
 const objective = (x) => (x[0] - 0.3) ** 2 + Math.abs(x[1] - 0.6);
 
 const opt = new Alloy(objective, 200, 2);   // objective, nTrials, nDim
-const { bestValue, bestX } = opt.optimize();
+const { bestValue, bestX, evaluations, success, message } = opt.optimize();
 ```
+
+`success` is true when the objective returned at least one finite value, and
+`bestX` is then the point where it returned `bestValue`. It is a best effort
+within the budget, not a claim of convergence. When nothing was evaluated, or
+every value was NaN or infinite, `success` is false and `message` says which.
 
 Or create by name:
 

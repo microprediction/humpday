@@ -23,11 +23,13 @@ import pytest
 
 from tests.test_reference_alignment import (  # noqa: E402
     CONVERGED_GAP,
+    DEFAULT_WIN_CEILING,
     N_RUNS,
     PROBLEMS,
     REFERENCES,
     _all_installed,
     _run_humpday,
+    head_to_head,
 )
 
 NODE = shutil.which("node")
@@ -37,15 +39,25 @@ REPO_ROOT = Path(__file__).parent.parent
 # The ports where alignment matters most and where a reference exists on both sides. PRIMA_BOBYQA
 # is in the issue's list but its reference (Py-BOBYQA) is an optional install, so it joins the
 # others only when that is present -- `_all_installed` decides, as it does for the Python gate.
-JS_ALGORITHMS = ["NelderMead", "Powell", "LBFGSB", "PRIMA_BOBYQA"]
+JS_ALGORITHMS = ["NelderMead", "Powell", "LBFGSB", "PRIMA_BOBYQA", "BayesianOpt"]
 
 N_DIM = 2
 N_TRIALS = 200
 
+# BayesianOpt joins the list because it is finally the same algorithm on both sides. The
+# JavaScript port used to take the five nearest observations, weight them by inverse distance,
+# and call `exp(-2 * nearestDistance)` the uncertainty -- a quantity largest where the samples
+# already are, so the acquisition preferred points it had already measured (#408). Gating a
+# nearest-neighbour heuristic against scikit-optimize would have measured the wrong thing.
+#
+# Its budget matches the Python gate's for the same reason: skopt's GP fit is cubic in the
+# number of calls, and 200 of them takes the harness into the minutes.
+BUDGET_OVERRIDE = {"BayesianOpt": 50}
+
 # How far a JavaScript port may sit behind the reference its Python twin was written from.
 # Measured, like the Python table, and for the same reason: these are what the ports do, not
-# what they should do. A JS port is a behavioural twin rather than a bit-exact one for every
-# algorithm here, so the bar is looser than the Python gate's 3.0.
+# what they should do. Every port here but PRIMA_BOBYQA is a behavioural twin rather than a
+# bit-exact one, so the bar is looser than the Python gate's 3.0.
 DEFAULT_RATIO_CEILING = 10.0
 
 # What the ports do today, measured with both languages on the same objectives -- which they
@@ -56,39 +68,45 @@ DEFAULT_RATIO_CEILING = 10.0
 #
 # Re-measured, the picture changes in one place and holds in the others:
 #
-#   Powell on the sphere is genuinely 8e+10 behind scipy -- 8.06e-05 against 3.08e-33 -- because
-#   its JavaScript line search tries four fixed step sizes where Python uses Brent (#78).
-#
-#   Powell on Ackley was recorded as 3.09e+09 and is actually 0.18: the JavaScript port is
-#   better than scipy's Powell there. That number was an artifact of the mismatch.
+#   Powell needs no entry any more. Its JavaScript line search was four fixed step sizes against
+#   scipy's bracketing Brent search, worth 8e+10 on the sphere; porting Brent took every pair
+#   inside the default. (Its Ackley gap, once recorded as 3.09e+09, was an artifact of the
+#   objective mismatch and was 0.18 all along.)
 #
 #   LBFGSB falls behind on Rosenbrock, where the curvature is what the memory is for, by the
 #   same 1,318 as before -- that pair was unaffected.
 #
-#   PRIMA_BOBYQA falls behind on Rosenbrock and Ackley.
-#
 # All of these are #78's territory: ports that agree with Python on behaviour but not on quality.
+#
+# PRIMA_BOBYQA was here at 160 on Ackley and 2.0e10 on Rosenbrock and needs no entry now. Its
+# model fit solved the KKT system through a Householder QR with an absolute 1e-15 floor; that
+# system's entries scale as the fourth power of the interpolation spread, so from a spread of
+# about 5e-3 every fit was rejected and the rest of the pass ran on a finite-difference gradient
+# with an identity Hessian. It now fits through twins of the pure-Python linear algebra and
+# replays the Python transition vectors bit for bit: 0.06 on Ackley, and converged on Rosenbrock.
 RATIO_CEILING = {
-    ("Powell", "sphere"): 1.7e11,  # measured 80609000013.37
-    ("Powell", "rosenbrock"): 17.0,  # measured 7.99
     ("LBFGSB", "rosenbrock"): 2700.0,  # measured 1318.23
-    ("PRIMA_BOBYQA", "ackley"): 160.0,  # measured 71.51
-    # This one varies run to run because the JavaScript PRIMA ports call Math.random() directly
-    # rather than the portable stream, so the seed the runner sets does not reach them (#401).
-    # The ceiling has room for that spread until the ports are seeded properly.
-    ("PRIMA_BOBYQA", "rosenbrock"): 2.0e10,  # measured 7.1e+08 to 4.9e+09
 }
 
 # Ports whose result differs from their Python twin by more than six orders of magnitude on the
 # sphere. Listed rather than tolerated: the test below asserts the divergence is still there, so
-# repairing one fails this file and asks for the entry to be removed.
-KNOWN_PORT_DIVERGENCE = {
-    "Powell": "the JS line search is four fixed steps where Python uses Brent (#78)",
-}
+# repairing one fails this file and asks for the entry to be removed. Powell was the only entry
+# and it has been removed, which is how the mechanism is supposed to end.
+KNOWN_PORT_DIVERGENCE: dict = {}
+
+
+# Pairs that lose more head to head than the Python gate's default allows. Same statistic and
+# same reason as there: a ratio of two medians is not a measurement when the outcome is
+# bimodal, and the JavaScript ports face the same multimodal problems.
+WIN_CEILING: dict[tuple[str, str], float] = {}
 
 
 def _ratio_ceiling(algorithm: str, problem: str) -> float:
     return RATIO_CEILING.get((algorithm, problem), DEFAULT_RATIO_CEILING)
+
+
+def _win_ceiling(algorithm: str, problem: str) -> float:
+    return WIN_CEILING.get((algorithm, problem), DEFAULT_WIN_CEILING)
 
 
 # Points the two implementations must agree on before any optimizer runs: the optimum, the
@@ -153,9 +171,9 @@ def test_the_optimum_is_where_both_languages_say_it_is(problem_id):
         )
 
 
-def _run_js(algorithm: str, problem: str, seed: int) -> float:
+def _run_js(algorithm: str, problem: str, seed: int, n_trials: int = N_TRIALS) -> float:
     result = subprocess.run(
-        [NODE, str(RUNNER), algorithm, problem, str(N_TRIALS), str(N_DIM), str(seed)],
+        [NODE, str(RUNNER), algorithm, problem, str(n_trials), str(N_DIM), str(seed)],
         capture_output=True,
         text=True,
         cwd=REPO_ROOT,
@@ -176,24 +194,40 @@ def test_the_javascript_port_tracks_its_reference(algorithm, problem_id):
     problem = PROBLEMS[problem_id]
     func, opt_value = problem["func"], problem["opt"]
 
-    js_vals = [_run_js(algorithm, problem_id, seed) for seed in range(N_RUNS)]
+    n_trials = BUDGET_OVERRIDE.get(algorithm, N_TRIALS)
+    js_vals = [_run_js(algorithm, problem_id, seed, n_trials) for seed in range(N_RUNS)]
     ref_vals = []
     for seed in range(N_RUNS):
-        ref_vals.append(ref_fn(func, N_TRIALS, N_DIM, seed=seed)["best_value"])
+        ref_vals.append(ref_fn(func, n_trials, N_DIM, seed=seed)["best_value"])
 
     js_med = sorted(js_vals)[N_RUNS // 2]
     ref_med = sorted(ref_vals)[N_RUNS // 2]
     js_gap = js_med - opt_value
     ref_gap = ref_med - opt_value
     ratio = (js_gap + 1e-15) / (ref_gap + 1e-15)
+    lost = head_to_head(js_vals, ref_vals)
 
     print(
         f"  {algorithm:<14} {problem_id:<11} js={js_med:>11.4g}  {ref_label}={ref_med:>11.4g}"
-        f"  js/ref={ratio:>9.2f}"
+        f"  js/ref={ratio:>9.2f}  lost={lost:>5.2f}"
     )
 
+    # The floor comes first and governs both tests, as it does in the Python gate. The win rate
+    # has no scale: a port that has solved the problem to fifteen decimal places and sits a few
+    # ulps behind its reference loses every pairing, and that is an ordering, not a lag.
+    # PRIMA_BOBYQA reaches 8.1e-15 on Rosenbrock against Py-BOBYQA's 2.1e-19 and loses every
+    # pairing; so does the pure-Python port it replays bit for bit, and the Python gate passes
+    # that under this floor.
     if js_gap <= CONVERGED_GAP:
         return  # solved it; the ratio is then the epsilon guard dividing itself
+
+    win_cap = _win_ceiling(algorithm, problem_id)
+    assert lost <= win_cap, (
+        f"{algorithm} in JavaScript loses {lost:.2f} of head-to-head pairings against "
+        f"{ref_label} on {problem_id}, over its ceiling of {win_cap:g}"
+    )
+    if lost <= 0.5:
+        return  # ahead head to head, so the ratio is comparing two different modes
     ceiling = _ratio_ceiling(algorithm, problem_id)
     assert ratio <= ceiling, (
         f"{algorithm} in JavaScript is {ratio:.2f}x the {ref_label} gap on {problem_id}, "

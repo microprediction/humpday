@@ -50,16 +50,22 @@ class NelderMead(BaseOptimizer):
         xatol = 1e-12
         fatol = 1e-12
 
-        # Kelley (1999, "Detection and Remediation of Stagnation in the
-        # Nelder-Mead Algorithm", SIAM J. Optim. 10(1)) showed that
-        # vanilla NM can converge to a non-stationary point when the
-        # simplex collapses into a degenerate shape. The fix in practice
-        # is to reseed the simplex around the current best each time
-        # convergence is reached and continue until the budget is gone.
-        # Without this, NM hands back unused budget on smooth landscapes
-        # while leaving plenty of room for improvement on multimodal
-        # ones. The per-restart perturbation magnitude is alternated so
-        # the new simplex isn't a scaled copy of the collapsed one.
+        # McKinnon (1998, "Convergence of the Nelder-Mead Simplex Method
+        # to a Nonstationary Point", SIAM J. Optim. 9(1), 148-158) showed
+        # that vanilla NM can converge to a non-stationary point when the
+        # simplex collapses into a degenerate shape. Kelley (1999,
+        # "Detection and Remediation of Stagnation in the Nelder-Mead
+        # Algorithm Using a Sufficient Decrease Condition", SIAM J. Optim.
+        # 10(1), 43-55) detects that with a sufficient-decrease test and
+        # remedies it with an oriented restart. What follows is neither:
+        # it is HumpDay's own restart heuristic. Each time the ordinary
+        # convergence test fires, the simplex is reseeded -- alternately
+        # around the current best and at a fresh uniform point -- and the
+        # search continues until the budget is gone. Without this, NM
+        # hands back unused budget on smooth landscapes while leaving
+        # plenty of room for improvement on multimodal ones. The
+        # per-restart perturbation magnitude is alternated so the new
+        # simplex isn't a scaled copy of the collapsed one.
         nonzdelt_schedule = [0.05, 0.15, 0.30, 0.10, 0.50, 0.20]
 
         # Initial seed point (used for restart 0; later restarts re-seed
@@ -168,11 +174,10 @@ class NelderMead(BaseOptimizer):
                 fsim = [fsim[i] for i in order]
 
             # Inner loop ended — either budget exhausted or simplex
-            # collapsed. If budget remains, alternate restart seeds: even
-            # restarts reseed around the current best (intensification);
-            # odd restarts reseed from a fresh uniform draw
-            # (diversification). This mirrors the "two-phase" restart
-            # heuristic widely used in NM++ implementations.
+            # collapsed. If budget remains, alternate restart seeds: the
+            # first restart, and every second one after it, reseeds
+            # around the current best (intensification); the others
+            # reseed from a fresh uniform draw (diversification).
             restart_count += 1
             if self.evaluations >= self.n_trials:
                 break
@@ -502,23 +507,25 @@ class Powell(BaseOptimizer):
 class LBFGSB(BaseOptimizer):
     """L-BFGS-B with a finite-difference gradient (Byrd–Lu–Nocedal–Zhu).
 
-    Limited-memory BFGS with simple bound constraints — the
-    derivative-free workflow uses central-difference gradients (cost:
-    2·n_dim evals per iteration) since HumpDay's contract is to take
-    a black-box objective. The L-BFGS update itself is the standard
-    two-loop recursion of Nocedal (1980) with a 5-pair memory.
+    The bound-constrained algorithm, not a projected variant of it: the compact limited-memory
+    representation, the generalised Cauchy point along the piecewise projected-gradient path,
+    and subspace minimisation over the variables it leaves free. Those three are what make
+    L-BFGS-B different from L-BFGS with clipping, and what decide the active set.
 
-    Pure-Python via the `humpday._array` shim — no direct numpy use.
-    Ports the existing JavaScript L-BFGS-B implementation in
-    `docs/js/modules/scipy-algorithms.js::LBFGSB` line-for-line.
+    Central-difference gradients (2·n_dim evaluations per iteration), since the package's
+    contract is a black-box objective, and Armijo backtracking rather than strong Wolfe. Neither
+    changes which algorithm this is.
 
-    Before this rewrite, humpday's `LBFGSB` was a finite-difference
-    gradient + Polyak-momentum baseline — not L-BFGS at all. The
-    snapshot at `benchmarks/reference_alignment.json` showed it ~6.6e+06×
-    worse than scipy's L-BFGS-B on the sphere; the rewrite closes
-    that gap to within a few orders of magnitude (the residual is
-    HumpDay's FD gradient cost — scipy uses analytical-or-FD with
-    cleaner step control).
+    Pure-Python via the `humpday._array` shim — no direct numpy use, and the same code as the
+    JavaScript twin in `docs/js/modules/scipy-algorithms.js::LBFGSB`.
+
+    Two rewrites have brought it here. It began as a finite-difference gradient with Polyak
+    momentum, not L-BFGS at all, ~6.6e+06× behind scipy on the sphere. The first rewrite gave it
+    the two-loop recursion and direction clipping, which left it 22,005× behind scipy on
+    Rosenbrock. With the bound-constrained machinery it is 0.01× — a hundred times ahead, having
+    the multi-start layer from #383 as well. Validated against
+    scipy.optimize.minimize(method="L-BFGS-B") on bound-active quadratics in
+    tests/test_lbfgsb_algorithm.py (#407).
     """
 
     def _run(self):

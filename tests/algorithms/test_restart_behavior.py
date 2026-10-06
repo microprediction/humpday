@@ -1,7 +1,7 @@
 """
 Focused tests for the global-behavior restart fixes added to
-ParticleSwarm (SPSO-2011-style stagnation reseed), NelderMead (Kelley 1999
-simplex-collapse restart, also covered in test_scipy_algorithms.py), and
+ParticleSwarm (SPSO-2011-style stagnation reseed), NelderMead (simplex-collapse
+restart, also covered in test_scipy_algorithms.py), and
 CMAEvolutionStrategy (IPOP/BIPOP — added in a follow-up commit).
 
 These verify the *restart* itself, not the optimizer's general convergence

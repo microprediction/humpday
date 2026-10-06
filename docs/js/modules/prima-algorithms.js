@@ -49,22 +49,39 @@ function buildMinFrobeniusQuadratic(XPT, FVAL, Hprev, n) {
     // Build A_l (npt × pLin), A_q (npt × pQuad), and b.
     // vech(H) ordering: n diagonals first, then n(n-1)/2 strict-upper
     // off-diagonals in row-major order.
+    //
+    // The columns are built from z = x / sLen, sLen the largest distance of
+    // a point from the origin, and the fit is mapped back at the end
+    // (g = g_z / sLen, ΔH = ΔH_z / sLen²); b is built from the raw points.
+    // Unscaled, A_l's columns are O(1) and O(sLen) and the SVD below, which
+    // works on A_lᵀA_l, loses the null space once sLen is near 1e-5 (#434).
+    let spread = 0;
+    for (let k = 0; k < npt; k++) {
+        let ss = 0.0;
+        for (const v of XPT[k]) ss += v * v;
+        const nk = Math.sqrt(ss);
+        if (k === 0 || nk > spread) spread = nk;
+    }
+    const sLen = spread > 0 ? spread : 1.0;
+
     const Al = Linalg.zeros(npt, pLin);
     const Aq = Linalg.zeros(npt, pQuad);
     const b = new Array(npt);
 
     for (let k = 0; k < npt; k++) {
         const x = XPT[k];
+        const z = new Array(n);
+        for (let i = 0; i < n; i++) z[i] = x[i] / sLen;
         Al[k][0] = 1.0;
-        for (let i = 0; i < n; i++) Al[k][i + 1] = x[i];
+        for (let i = 0; i < n; i++) Al[k][i + 1] = z[i];
 
         let col = 0;
         for (let i = 0; i < n; i++) {
-            Aq[k][col++] = 0.5 * x[i] * x[i];
+            Aq[k][col++] = 0.5 * z[i] * z[i];
         }
         for (let i = 0; i < n; i++) {
             for (let j = i + 1; j < n; j++) {
-                Aq[k][col++] = x[i] * x[j];
+                Aq[k][col++] = z[i] * z[j];
             }
         }
 
@@ -80,29 +97,25 @@ function buildMinFrobeniusQuadratic(XPT, FVAL, Hprev, n) {
     for (let i = 0; i < n; i++) wQ[i] = 1.0;
     for (let i = n; i < pQuad; i++) wQ[i] = 2.0;
 
-    // Householder QR of A_l; Qfull is the m × m orthogonal matrix so
-    // Qfull[:, pLin:] spans null(A_l^T) — the basis we need below.
-    const { Q: Ql, R: Rl, Qfull: QlFull } = Linalg.householderQR(Al);
-
-    // Rank check on R's diagonal (= singular-value proxy for the SVD-
-    // based check the Python helper uses).
-    let maxR = 0, minR = Infinity;
-    for (let i = 0; i < pLin; i++) {
-        const v = Math.abs(Rl[i][i]);
-        if (v > maxR) maxR = v;
-        if (v < minR) minR = v;
-    }
-    if (maxR === 0 || minR <= 1e-12 * maxR) {
+    // Full SVD of A_l, so its null space U[:, pLin:] is available, and the
+    // rank test on its singular values, through the twin of the pure-Python
+    // SVD so the fit takes Python's arithmetic path. This used a Householder
+    // QR with absolute 1e-15 floors instead; with the unscaled columns M had
+    // entries of order spread^4, so from a spread of about 5e-3 every fit was
+    // rejected and BOBYQA ran on a finite-difference gradient and an identity
+    // Hessian for the rest of the pass.
+    const { U: UFull, s: sL } = Linalg.svd(Al, true);
+    if (sL.length < pLin || sL[pLin - 1] <= 1e-12 * sL[0]) {
         throw new Error('PRIMA: A_l rank-deficient');
     }
 
     // KKT-reduced solve for x_q (vech(ΔH)).
     let xQ;
     if (nNull > 0) {
-        // Z = QlFull[:, pLin:] : npt × nNull.
+        // Z = U[:, pLin:] : npt × nNull, an orthonormal basis for null(A_lᵀ).
         const Z = Linalg.zeros(npt, nNull);
         for (let i = 0; i < npt; i++) {
-            for (let j = 0; j < nNull; j++) Z[i][j] = QlFull[i][pLin + j];
+            for (let j = 0; j < nNull; j++) Z[i][j] = UFull[i][pLin + j];
         }
 
         // Z^T b : length nNull.
@@ -137,7 +150,13 @@ function buildMinFrobeniusQuadratic(XPT, FVAL, Hprev, n) {
         // M = (Z^T A_q)(A_q/W_q)^T Z : nNull × nNull, symmetric PSD.
         const M = Linalg.matmul(ZTAq, AqScaledTZ);
         const negZTb = ZTb.map(v => -v);
-        const mu = Linalg.solveLinearSystem(M, negZTb);
+        let mu;
+        try {
+            mu = Linalg.solve(M, negZTb);
+        } catch (e) {
+            // Singular M: the pseudo-inverse, as in Python.
+            mu = Linalg.matvec(Linalg.pinv(M), negZTb);
+        }
 
         xQ = new Array(pQuad);
         for (let c = 0; c < pQuad; c++) {
@@ -159,25 +178,28 @@ function buildMinFrobeniusQuadratic(XPT, FVAL, Hprev, n) {
     const rhs = new Array(npt);
     for (let k = 0; k < npt; k++) rhs[k] = b[k] - AqXq[k];
 
+    const { Q: Ql, R: Rl } = Linalg.qr(Al);
     const QlTrhs = Linalg.matvec(Linalg.transpose(Ql), rhs);
-    const xL = Linalg.solveUpperTriangular(Rl, QlTrhs);
+    const xL = Linalg.solve(Rl, QlTrhs);
 
+    // Back to raw coordinates: g = g_z / sLen, ΔH = ΔH_z / sLen².
     const c = xL[0];
-    const g = xL.slice(1, n + 1);
+    const g = xL.slice(1, n + 1).map(v => v / sLen);
+    const sSq = sLen * sLen;
 
     // Reconstruct symmetric H = H_prev + ΔH.
     const H = Linalg.zeros(n, n);
     let col = 0;
-    for (let i = 0; i < n; i++) H[i][i] = Hprev[i][i] + xQ[col++];
+    for (let i = 0; i < n; i++) H[i][i] = Hprev[i][i] + xQ[col++] / sSq;
     for (let i = 0; i < n; i++) {
         for (let j = i + 1; j < n; j++) {
-            const val = Hprev[i][j] + xQ[col++];
+            const val = Hprev[i][j] + xQ[col++] / sSq;
             H[i][j] = val;
             H[j][i] = val;
         }
     }
 
-    // Belt-and-braces finite check — a barely-singular QR can produce
+    // Belt-and-braces finite check — a barely-singular SVD can produce
     // non-finite coefficients that poison Hprev for subsequent calls.
     if (!Number.isFinite(c)) throw new Error('PRIMA: non-finite c');
     for (let i = 0; i < n; i++) {
@@ -474,7 +496,7 @@ class PRIMA_UOBYQA extends Optimizer {
         const npt = this.npt;
 
         // Initialize starting point (away from boundaries for stability)
-        let xbase = Array(n).fill(0).map(() => 0.3 + 0.4 * Math.random());
+        let xbase = Array(n).fill(0).map(() => 0.3 + 0.4 * MathUtils.randomScalar());
         let fbase = this.evaluate(xbase);
 
         // Trust region parameters EXACTLY matching PDFO's aggressive behavior
@@ -621,7 +643,7 @@ class PRIMA_UOBYQA extends Optimizer {
                 if ((kptNum % 2) === 0) {
                     xpt_new[i] = -xbase[i]; // Move toward origin (0,0)
                 } else {
-                    xpt_new[i] = (0.5 - xbase[i]) * (Math.random() - 0.5) * 2;
+                    xpt_new[i] = (0.5 - xbase[i]) * (MathUtils.randomScalar() - 0.5) * 2;
                 }
             }
 
@@ -1044,12 +1066,12 @@ class PRIMA_UOBYQA extends Optimizer {
                     if (FVAL[i] > FVAL[j]) {
                         // Replace point i with a perturbed version
                         for (let k = 0; k < n; k++) {
-                            XPT[i][k] += (Math.random() - 0.5) * minDistance * 2;
+                            XPT[i][k] += (MathUtils.randomScalar() - 0.5) * minDistance * 2;
                         }
                     } else {
                         // Replace point j with a perturbed version
                         for (let k = 0; k < n; k++) {
-                            XPT[j][k] += (Math.random() - 0.5) * minDistance * 2;
+                            XPT[j][k] += (MathUtils.randomScalar() - 0.5) * minDistance * 2;
                         }
                     }
                 }
@@ -1265,7 +1287,7 @@ class PRIMA_NEWUOA extends Optimizer {
         // but doesn't worsen the result.
         if (this.evaluations < this.nTrials) {
             xseed = this.bestX.map(x => {
-                const jitter = (Math.random() - 0.5) * 2 * rhobeg;
+                const jitter = (MathUtils.randomScalar() - 0.5) * 2 * rhobeg;
                 return Math.min(1, Math.max(0, x + jitter));
             });
         }
@@ -1368,7 +1390,7 @@ class PRIMA_NEWUOA extends Optimizer {
     improveGeometry(XPT, FVAL, xopt, rho, xbase) {
         // Geometry-improvement step: probe a direction that least
         // resembles any existing interpolation offset, at distance rho.
-        // Replaces a random direction (was Math.random() - 0.5) with a
+        // Replaces a random direction (was a uniform draw minus 0.5) with a
         // direction chosen to *maximise the minimum cosine distance* to
         // existing XPT offsets — which is a cheap proxy for improving
         // interpolation matrix conditioning.
@@ -1474,126 +1496,113 @@ class PRIMA_BOBYQA extends Optimizer {
         this.name = 'PRIMA_BOBYQA';
     }
 
-    optimize() {
+    *_run() {
+        // Statement-for-statement twin of PRIMA_BOBYQA._run in
+        // humpday/optimizers/prima_algorithms.py: same restart seeds, same
+        // draw order on the portable stream, the same model fit through the
+        // pure-backend linear-algebra twins, so it replays the Python
+        // transition vectors bit for bit.
         const n = this.nDim;
         const npt = 2 * n + 1;
-        const xl = new Array(n).fill(0);
-        const xu = new Array(n).fill(1);
+        const xl = new Array(n).fill(0.0);
+        const xu = new Array(n).fill(1.0);
 
         const rhobeg = 0.5;
         const rhoend = 1e-8;
 
-        // First-pass seed: cube centre, clipped a hair away from the
-        // bounds so the coordinate-axis init points have headroom.
-        // Subsequent restart passes perturb this.bestX, so the user's
-        // budget actually gets spent on non-smooth surfaces where a
-        // single TR pass converges in ~50 evals.
-        let xseed = new Array(n).fill(0.5).map(v => Math.min(0.9, Math.max(0.1, v)));
+        // First-pass seed: cube centre, clipped a hair off the bounds so the
+        // coordinate-axis init points have headroom. Restart passes (below)
+        // perturb this.bestX by ~rhobeg so the budget gets spent on
+        // non-smooth surfaces where a single pass ends in ~50 evaluations.
+        let xseed = this._clip(new Array(n).fill(0.5), 0.1, 0.9);
 
         while (this.evaluations < this.nTrials) {
-        // ---------- one trust-region pass ----------
-        let rho = rhobeg;
-        let xbase = xseed.slice();
-        this.evaluate(xbase);
-        if (this.evaluations >= this.nTrials) break;
-
-        let { XPT, FVAL } = this._initBOBYQAPoints(xbase, rho, npt, n, xl, xu);
-        let kopt = this._argmin(FVAL);
-
-        // Reset min-Frobenius prior Hessian for this TR pass.
-        this._Hprev = Linalg.zeros(n, n);
-
-        // Shift xbase so XPT[kopt] = 0 BEFORE the first TR iteration
-        // — see #178.
-        if (this._norm(XPT[kopt]) > 1e-12) {
-            xbase = this._shiftBasePointBounded(XPT, xbase, kopt, npt, xl, xu);
-        }
-
-        let iteration = 0;
-        // Cap iteration count by budget directly rather than by
-        // floor(budget / npt) — the previous formula gave only
-        // floor(80/7) = 11 iterations on a 3-D problem with budget 80,
-        // so the trust-region loop terminated long before it should have.
-        // Each iteration uses ~1 evaluation, so the while-loop's own
-        // `this.evaluations < this.nTrials` check is sufficient; this
-        // cap just guards against pathological infinite loops.
-        const maxIter = this.nTrials;
-
-        while (this.evaluations < this.nTrials && rho > rhoend && iteration < maxIter) {
-            iteration += 1;
-
-            let g, H;
-            try {
-                ({ g, H } = this._buildBOBYQAModel(XPT, FVAL, kopt, n));
-            } catch (e) {
-                rho *= 0.5;
-                continue;
-            }
-
-            const xCurr = this._addVec(xbase, XPT[kopt]);
-            // Plain g — since XPT[kopt] ≈ 0 after each shift, g IS the
-            // gradient at xCurr (the previous gEff inline was needed
-            // when shifts were conditional; #178 makes it redundant).
-            let d;
-            try {
-                d = solveTrsbox(g, H, rho, xCurr, xl, xu, n);
-            } catch (e) {
-                d = this._fallbackBoundStep(g, rho, n, xCurr, xl, xu);
-            }
-
-            const xnew = this._clip01(this._addVec(xCurr, d));
-
+            // ---------- one trust-region pass ----------
+            let rho = rhobeg;
+            let xbase = this._clip(xseed, 0.1, 0.9);
+            yield xbase;
             if (this.evaluations >= this.nTrials) break;
-            const fnew = this.evaluate(xnew);
 
-            // Predicted reduction: −(g · d + ½ dᵀ H d).
-            const Hd = Linalg.matvec(H, d);
-            let predRed = -MathUtils.dot(g, d);
-            for (let i = 0; i < n; i++) predRed -= 0.5 * d[i] * Hd[i];
-            const actualRed = FVAL[kopt] - fnew;
+            const { XPT, FVAL } = yield* this._initBOBYQAPoints(xbase, rho, npt, n, xl, xu);
+            if (!FVAL.length) break;
+            let kopt = this._argmin(FVAL);
 
-            const updated = this._updateBOBYQAInterpolation(
-                XPT, FVAL, this._subVec(xnew, xbase), fnew, kopt, npt
-            );
-            if (updated) {
-                const koptNew = this._argmin(FVAL);
-                if (FVAL[koptNew] < FVAL[kopt]) kopt = koptNew;
-            }
+            // Reset the min-Frobenius update's prior Hessian for this pass.
+            this._Hprev = Linalg.zeros(n, n);
 
-            rho = this._updateTrustRegionRadius(predRed, actualRed, rho, rhobeg, rhoend);
-
-            // Unconditional base-point shift — see #178.
+            // Shift xbase so the best init point sits at the origin before
+            // the first TR iteration (#172/#178).
             if (this._norm(XPT[kopt]) > 1e-12) {
                 xbase = this._shiftBasePointBounded(XPT, xbase, kopt, npt, xl, xu);
             }
-        }
-        // ---------- end one trust-region pass ----------
 
-        // Restart seed: jitter the global best by ~rhobeg in a random
-        // direction (clipped to [0.1, 0.9] for the same headroom reason
-        // as the first-pass init). One TR pass on a non-smooth surface
-        // costs ~50 evals; without this, the user's 5000-budget request
-        // returns in 50 evals stuck at the first local minimum.
-        if (this.evaluations < this.nTrials) {
-            xseed = this.bestX.map(x => {
-                const jitter = (Math.random() - 0.5) * 2 * rhobeg;
-                return Math.min(0.9, Math.max(0.1, x + jitter));
-            });
-        }
-        }   // end restart loop
+            const maxIterations = this.nTrials;
+            let iteration = 0;
 
-        return {
-            bestValue: this.bestValue,
-            bestX: this.bestX,
-            evaluations: this.evaluations,
-            success: true,
-            path: this.trackPath ? this.path : null,
-        };
+            while (this.evaluations < this.nTrials && rho > rhoend && iteration < maxIterations) {
+                iteration += 1;
+
+                let g, H;
+                try {
+                    ({ g, H } = this._buildBOBYQAModel(XPT, FVAL, kopt, n));
+                } catch (e) {
+                    rho *= 0.5;
+                    continue;
+                }
+
+                let d;
+                try {
+                    d = this._solveBoundConstrainedTR(g, H, rho, n, this._addVec(xbase, XPT[kopt]), xl, xu);
+                } catch (e) {
+                    d = this._fallbackBoundStep(g, rho, n, this._addVec(xbase, XPT[kopt]), xl, xu);
+                }
+
+                const xnew = this._clip(this._addVec(this._addVec(xbase, XPT[kopt]), d), 0, 1);
+
+                if (this.evaluations >= this.nTrials) break;
+
+                const fnew = yield xnew;
+
+                const predictedReduction = this._predictReduction(g, H, d);
+                const actualReduction = FVAL[kopt] - fnew;
+
+                const pointUpdated = this._updateBOBYQAInterpolation(
+                    XPT, FVAL, this._subVec(xnew, xbase), fnew, kopt, npt
+                );
+
+                if (pointUpdated) {
+                    const koptNew = this._argmin(FVAL);
+                    if (FVAL[koptNew] < FVAL[kopt]) kopt = koptNew;
+                }
+
+                rho = this._updateTrustRegionRadius(
+                    predictedReduction, actualReduction, rho, rhobeg, rhoend
+                );
+
+                // Unconditional base-point shift (#172/#178): g is the
+                // gradient at xbase and the step is taken from
+                // xbase + XPT[kopt], so XPT[kopt] must be ~0 every iteration.
+                if (this._norm(XPT[kopt]) > 1e-12) {
+                    xbase = this._shiftBasePointBounded(XPT, xbase, kopt, npt, xl, xu);
+                }
+            }
+            // ---------- end one trust-region pass ----------
+
+            // Jitter this.bestX for the next pass, clipped to [0.1, 0.9].
+            if (this.evaluations < this.nTrials) {
+                xseed = this._clip(
+                    this.bestX.map(x => x + (MathUtils.randomScalar() - 0.5) * 2.0 * rhobeg),
+                    0.1,
+                    0.9
+                );
+            }
+        }
     }
 
     // ----- helpers (named to mirror the Python implementation) -----
 
     _argmin(arr) {
+        // min(range(len(arr)), key=arr.__getitem__): the first minimum.
         let k = 0;
         for (let i = 1; i < arr.length; i++) if (arr[i] < arr[k]) k = i;
         return k;
@@ -1601,41 +1610,51 @@ class PRIMA_BOBYQA extends Optimizer {
 
     _addVec(a, b) { return a.map((v, i) => v + b[i]); }
     _subVec(a, b) { return a.map((v, i) => v - b[i]); }
-    _clip01(a)    { return a.map(v => Math.max(0, Math.min(1, v))); }
-    _norm(a)      { return Math.sqrt(a.reduce((s, v) => s + v * v, 0)); }
+    // Twin of the pure backend's clip: lo if v < lo else (hi if v > hi else v).
+    _clip(a, lo, hi) { return a.map(v => (v < lo ? lo : (v > hi ? hi : v))); }
+    _norm(a) {
+        let total = 0.0;
+        for (const v of a) total += v * v;
+        return Math.sqrt(total);
+    }
+    _dot(a, b) {
+        let total = 0.0;
+        for (let i = 0; i < a.length; i++) total += a[i] * b[i];
+        return total;
+    }
 
-    _initBOBYQAPoints(xbase, rho, npt, n, xl, xu) {
-        // Initial interpolation set, 2n+1 coordinate-axis points respecting bounds.
-        // Each evaluate() is budget-guarded so a restart triggered close to
-        // nTrials can't overshoot via the init-set (mirrors Python fix #141).
+    *_initBOBYQAPoints(xbase, rho, npt, n, xl, xu) {
+        // Initial interpolation set, 2n+1 coordinate-axis points respecting
+        // the bounds. Each evaluation is budget-guarded so a restart close to
+        // nTrials cannot overshoot (#141).
         const XPT = [];
         const FVAL = [];
 
-        XPT.push(new Array(n).fill(0));
+        XPT.push(new Array(n).fill(0.0));
         if (this.evaluations >= this.nTrials) return { XPT, FVAL };
-        FVAL.push(this.evaluate(xbase));
+        FVAL.push(yield xbase);
 
         for (let i = 0; i < n; i++) {
             if (FVAL.length >= npt || this.evaluations >= this.nTrials) return { XPT, FVAL };
-            const step_pos = Math.min(rho, xu[i] - xbase[i]);
-            if (step_pos > 1e-10) {
-                const offset = new Array(n).fill(0);
-                offset[i] = step_pos;
+            const stepPos = Math.min(rho, xu[i] - xbase[i]);
+            if (stepPos > 1e-10) {
+                const offset = new Array(n).fill(0.0);
+                offset[i] = stepPos;
                 XPT.push(offset);
-                FVAL.push(this.evaluate(this._clip01(this._addVec(xbase, offset))));
+                FVAL.push(yield this._clip(this._addVec(xbase, offset), 0, 1));
             }
 
             if (FVAL.length >= npt || this.evaluations >= this.nTrials) return { XPT, FVAL };
-            const step_neg = Math.max(-rho, xl[i] - xbase[i]);
-            if (step_neg < -1e-10) {
-                const offset = new Array(n).fill(0);
-                offset[i] = step_neg;
+            const stepNeg = Math.max(-rho, xl[i] - xbase[i]);
+            if (stepNeg < -1e-10) {
+                const offset = new Array(n).fill(0.0);
+                offset[i] = stepNeg;
                 XPT.push(offset);
-                FVAL.push(this.evaluate(this._clip01(this._addVec(xbase, offset))));
+                FVAL.push(yield this._clip(this._addVec(xbase, offset), 0, 1));
             }
         }
 
-        // Optional diagonal-direction point.
+        // Optional diagonal-direction point, clipped to the bounds.
         if (FVAL.length < npt && this.evaluations < this.nTrials) {
             const diag = new Array(n).fill(rho / Math.sqrt(n));
             for (let i = 0; i < n; i++) {
@@ -1644,22 +1663,17 @@ class PRIMA_BOBYQA extends Optimizer {
                 else if (xi < xl[i]) diag[i] = xl[i] - xbase[i];
             }
             XPT.push(diag);
-            FVAL.push(this.evaluate(this._clip01(this._addVec(xbase, diag))));
+            FVAL.push(yield this._clip(this._addVec(xbase, diag), 0, 1));
         }
 
         return { XPT, FVAL };
     }
 
     _buildBOBYQAModel(XPT, FVAL, kopt, n) {
-        // Powell's full-Hessian min-Frobenius-norm update (matches the
-        // Python port from #167). The previous diagonal-Hessian
-        // least-squares fit could not capture cross-term curvature
-        // like Rosenbrock's 100·(−2xy); this can. Carries
-        // `this._Hprev` across iterations within a TR pass; the outer
-        // optimize() resets it per restart pass.
-        //
-        // Falls back to a finite-difference gradient + identity Hessian
-        // on rank-deficient interpolation sets or non-finite FVAL.
+        // Powell's full-Hessian min-Frobenius-norm update, carrying
+        // this._Hprev across iterations within a pass. Falls back to a
+        // finite-difference gradient and identity Hessian on a
+        // rank-deficient interpolation set or non-finite FVAL.
         const Hprev = this._Hprev || Linalg.zeros(n, n);
         try {
             const { g, H } = buildMinFrobeniusQuadratic(XPT, FVAL, Hprev, n);
@@ -1673,25 +1687,24 @@ class PRIMA_BOBYQA extends Optimizer {
     }
 
     _finiteDifferenceGradientBounded(XPT, FVAL, kopt, n) {
-        // Coordinate-wise FD using whichever positive/negative axis
-        // points are present. Mirrors Python's
-        // `_finite_difference_gradient_bounded` line-for-line.
-        const g = new Array(n).fill(0);
+        // Coordinate-wise FD using whichever positive/negative axis points
+        // are present. Twin of `_finite_difference_gradient_bounded`.
+        const g = new Array(n).fill(0.0);
         for (let i = 0; i < n; i++) {
             let posVal = FVAL[kopt];
             let negVal = FVAL[kopt];
-            let posStep = 0;
-            let negStep = 0;
+            let posStep = 0.0;
+            let negStep = 0.0;
             for (let k = 0; k < FVAL.length; k++) {
                 if (k === kopt) continue;
                 const diff = this._subVec(XPT[k], XPT[kopt]);
                 const absI = Math.abs(diff[i]);
                 if (absI > 1e-6) {
-                    let sumAbs = 0;
+                    let sumAbs = 0.0;
                     for (let j = 0; j < n; j++) sumAbs += Math.abs(diff[j]);
                     if (sumAbs < 2 * absI) {
                         if (diff[i] > 0) { posVal = FVAL[k]; posStep = diff[i]; }
-                        else              { negVal = FVAL[k]; negStep = -diff[i]; }
+                        else              { negVal = FVAL[k]; negStep = Math.abs(diff[i]); }
                     }
                 }
             }
@@ -1702,18 +1715,56 @@ class PRIMA_BOBYQA extends Optimizer {
         return g;
     }
 
-    _updateBOBYQAInterpolation(XPT, FVAL, dFromBase, fnew, kopt, npt) {
-        // Mirror Python's `new_pos = XPT[kopt] + d` where the caller passes
-        // d = xnew - xbase. The result is XPT[kopt] + (xnew - xbase), which
-        // is what gets stored. (Whether this is a Python bug or a feature
-        // we don't know — Powell's reference would store xnew - xbase
-        // directly — but matching it keeps the ports equivalent.)
+    _solveBoundConstrainedTR(g, H, rho, n, xCurrent, xl, xu) {
+        // TRSBOX, falling back to the projected Cauchy point if it throws.
+        try {
+            return solveTrsbox(g, H, rho, xCurrent, xl, xu, n);
+        } catch (e) {
+            return this._projectedCauchyPoint(g, H, rho, n, xCurrent, xl, xu);
+        }
+    }
+
+    _projectedCauchyPoint(g, H, rho, n, xCurrent, xl, xu) {
+        // Steepest descent with active-bound components zeroed, projected
+        // onto the trust region and the box. Twin of `_projected_cauchy_point`.
+        if (this._norm(g) < 1e-12) return new Array(n).fill(0.0);
+
+        const p = g.map(v => -v);
+        for (let i = 0; i < n; i++) {
+            if (xCurrent[i] <= xl[i] + 1e-10 && p[i] < 0) p[i] = 0.0;
+            else if (xCurrent[i] >= xu[i] - 1e-10 && p[i] > 0) p[i] = 0.0;
+        }
+
+        if (this._norm(p) < 1e-12) return new Array(n).fill(0.0);
+
+        const Hg = Linalg.matvec(H, g);
+        const gHg = this._dot(g, Hg);
+        const alpha = gHg > 1e-12 ? this._dot(g, g) / gHg : 1.0;
+
+        let d = p.map(v => alpha * v);
+
+        const dNorm = this._norm(d);
+        if (dNorm > rho) d = d.map(v => (rho * v) / dNorm);
+
+        for (let i = 0; i < n; i++) {
+            const xiNew = xCurrent[i] + d[i];
+            if (xiNew < xl[i]) d[i] = xl[i] - xCurrent[i];
+            else if (xiNew > xu[i]) d[i] = xu[i] - xCurrent[i];
+        }
+        return d;
+    }
+
+    _updateBOBYQAInterpolation(XPT, FVAL, d, fnew, kopt, npt) {
+        // Replace the point furthest from the new position with (new, fnew).
+        // The caller passes d = xnew - xbase and the stored point is
+        // XPT[kopt] + d, as in Python; XPT[kopt] is ~0 after every shift.
         const candidates = [];
         for (let i = 0; i < npt; i++) if (i !== kopt) candidates.push(i);
         if (!candidates.length) return false;
 
-        const newPos = XPT[kopt].map((v, i) => v + dFromBase[i]);
+        const newPos = this._addVec(XPT[kopt], d);
 
+        // max(candidates, key=...): the first maximum.
         let furthest = candidates[0];
         let furthestDist = this._norm(this._subVec(XPT[furthest], newPos));
         for (const i of candidates) {
@@ -1726,12 +1777,11 @@ class PRIMA_BOBYQA extends Optimizer {
     }
 
     _shiftBasePointBounded(XPT, xbase, kopt, npt, xl, xu) {
-        // Recentre XPT so the best point sits at the origin (Python
-        // verbatim). Iterates over `XPT.length` rather than `npt` so
-        // partial init-sets (init bailed out on budget) don't go out
-        // of range.
+        // Recentre XPT on the best point, with the new base clipped to the
+        // box and XPT moved by the realised (post-clip) shift. Iterates over
+        // XPT.length so a partial init set does not go out of range.
         const shift = XPT[kopt].slice();
-        const newBase = this._clip01(this._addVec(xbase, shift));
+        const newBase = this._clip(this._addVec(xbase, shift), 0, 1);
         const actualShift = this._subVec(newBase, xbase);
         for (let i = 0; i < XPT.length; i++) {
             XPT[i] = this._subVec(XPT[i], actualShift);
@@ -1740,14 +1790,15 @@ class PRIMA_BOBYQA extends Optimizer {
     }
 
     _fallbackBoundStep(g, rho, n, xCurrent, xl, xu) {
+        // Scaled steepest descent, or a normal kick when the model has no
+        // gradient, projected onto the box. The kick draws n normals from
+        // the shared stream, as `_A.random_normal(n)` does in Python.
         let d;
         const gn = this._norm(g);
         if (gn > 1e-12) {
-            d = g.map(v => -rho * v / gn);
+            d = g.map(v => (-rho * v) / gn);
         } else {
-            // No model gradient — small random kick. Note this is the
-            // *algorithm's* tie-breaker, not a derivative of the user's f.
-            d = new Array(n).fill(0).map(() => (rho / 3.0) * (2 * Math.random() - 1));
+            d = MathUtils.randomNormal(n).map(v => (rho / 3.0) * v);
         }
         for (let i = 0; i < n; i++) {
             const xi = xCurrent[i] + d[i];
@@ -1755,6 +1806,12 @@ class PRIMA_BOBYQA extends Optimizer {
             else if (xi > xu[i]) d[i] = xu[i] - xCurrent[i];
         }
         return d;
+    }
+
+    _predictReduction(g, H, d) {
+        // −(g·d + ½ dᵀ H d), summed as Python sums it.
+        const Hd = Linalg.matvec(H, d);
+        return -(this._dot(g, d) + 0.5 * this._dot(d, Hd));
     }
 
     _updateTrustRegionRadius(predRed, actualRed, rho, rhobeg, rhoend) {
