@@ -90,7 +90,8 @@ jobs:
         pytest tests -q
 
   test-minimal:
-    runs-on: ubuntu-latest
+    # Python 3.9 has setup-python builds for 24.04, not ubuntu-latest (26.04).
+    runs-on: ubuntu-24.04
     name: Test minimal dependencies
     steps:
     - uses: actions/checkout@v4
