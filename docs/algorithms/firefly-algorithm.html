@@ -429,8 +429,8 @@ function fireflyAlgorithm(problem, n_fireflies, max_generations):
                     attractiveness = β₀ * exp(-γ * r²)
                     move firefly i towards j with attractiveness
                     add random component α * (rand - 0.5)
-
-            evaluate new position and update objective value
+                    evaluate new position and update objective_value(i)
+                    // Each attractive move consumes one objective evaluation
 
     return best firefly
                     </pre>
