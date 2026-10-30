@@ -400,7 +400,7 @@
 
                     <h3>Mathematical Foundation</h3>
                     <ul>
-                        <li><strong>Objective Function:</strong> f(x) directly relates to light intensity I ∝ f(x)</li>
+                        <li><strong>Objective Function (minimization):</strong> Lower objective values are brighter. Brightness is a strictly decreasing function of f(x); HumpDay compares objective values directly, so firefly j is brighter than i exactly when f(x_j) &lt; f(x_i).</li>
                         <li><strong>Distance Metric:</strong> Typically Euclidean: r_ij = ||x_i - x_j||</li>
                         <li><strong>Movement Equation:</strong> x_i^(t+1) = x_i^t + β₀e^(-γr²)(x_j^t - x_i^t) + αε_i^t</li>
                         <li><strong>Parameter Ranges:</strong> α ∈ [0,1], β₀ ∈ [0,1], γ ∈ [0,∞)</li>
@@ -424,13 +424,13 @@ function fireflyAlgorithm(problem, n_fireflies, max_generations):
     for generation in 1 to max_generations:
         for each firefly i:
             for each firefly j:
-                if light_intensity(j) > light_intensity(i):
+                if objective_value(j) &lt; objective_value(i):  // j is brighter
                     r = distance(i, j)
                     attractiveness = β₀ * exp(-γ * r²)
                     move firefly i towards j with attractiveness
                     add random component α * (rand - 0.5)
-
-            evaluate new position and update light intensity
+                    evaluate new position and update objective_value(i)
+                    // Each attractive move consumes one objective evaluation
 
     return best firefly
                     </pre>
