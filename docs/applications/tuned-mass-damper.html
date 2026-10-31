@@ -237,7 +237,8 @@
     displacement. Most random dampers manage only a small cut — the four
     choices all have to line up — while a well-matched design (decent
     mass, tuning near the building's own frequency, modest damping, an
-    upper floor) can take 50–60% off the sway.
+    upper floor) can substantially reduce the sway. With the seeded record used
+    here, the default manual design cuts peak roof sway by about 26.7%.
   </p>
   <p>
     The fourth variable is an integer: the damper sits on a whole floor,
@@ -372,8 +373,9 @@ const CSTRUCT = structuralC();
 // deterministic. Predominant frequency sits near the building's first
 // mode so the bare structure resonates.
 const GM = (() => {
+  // Exact low 32-bit multiplication matches the Python mirror's integer LCG.
   let seed = 20260604;
-  const rng = () => { seed = (seed * 1103515245 + 12345) & 0x7fffffff; return seed / 0x7fffffff * 2 - 1; };
+  const rng = () => { seed = (Math.imul(seed, 1103515245) + 12345) & 0x7fffffff; return seed / 0x7fffffff * 2 - 1; };
   const DT = 0.02, L = 1600;
   const wg = omega1, zg = 0.40;                           // narrowband, centred
   let xf = 0, vf = 0;                                     // on the first mode
