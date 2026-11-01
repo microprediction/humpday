@@ -154,7 +154,8 @@ class CoordinateDescent extends Optimizer {
 // Classic Hooke-Jeeves pattern search (1961): exploratory sweep
 // from a base point, then a *pattern move* (extrapolation through
 // the new point) followed by another exploratory from the
-// extrapolated point. Step halves on failed sweep; floor 1e-12.
+// extrapolated point. Step quarters on failed sweep; restart at step <= 1e-12
+// regardless of the objective value, while evaluation budget remains.
 // Mirrors the Python port and the textbook reference.
 class PatternSearch extends Optimizer {
     constructor(objective, nTrials, nDim) {

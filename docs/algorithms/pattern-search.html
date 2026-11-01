@@ -241,7 +241,7 @@
     <div class="container">
         <div class="header">
             <h1>Pattern Search (Hooke-Jeeves)</h1>
-            <p>Exploratory move + pattern move, with restart on multimodal landscapes</p>
+            <p>Exploratory move + pattern move, with budget-limited restarts</p>
         </div>
 
         <div class="content">
@@ -250,7 +250,7 @@
             </div>
 
             <div class="algorithm-description">
-                <strong>Pattern Search</strong> in HumpDay is the classical <strong>Hooke-Jeeves</strong> algorithm (1961). Each cycle does an <em>exploratory move</em> &mdash; try &plusmn;<code>step</code> on each axis, keep first improvement per coordinate &mdash; followed by a <em>pattern move</em> that extrapolates from the previous base point through the new exploratory point. A second exploratory move from the pattern point either confirms the pattern (accept it) or falls back to the bare exploratory move. The step is halved after sweeps with no improvement.
+                <strong>Pattern Search</strong> in HumpDay is the classical <strong>Hooke-Jeeves</strong> algorithm (1961). Each cycle does an <em>exploratory move</em> &mdash; try &plusmn;<code>step</code> on each axis, keep first improvement per coordinate &mdash; followed by a <em>pattern move</em> that extrapolates from the previous base point through the new exploratory point. A second exploratory move from the pattern point either confirms the pattern (accept it) or falls back to the bare exploratory move. After a sweep with no improvement, HumpDay quarters the step. Once the step reaches <code>1e-12</code> or below, it restarts from a random base if evaluation budget remains.
             </div>
 
             <div class="coordinate-note">
@@ -258,9 +258,9 @@
                 <ul>
                     <li><strong>Exploratory move:</strong> try &plusmn;<code>step</code> on each coordinate, keep first improvement per axis.</li>
                     <li><strong>Pattern move:</strong> if the exploratory improved, extrapolate <code>new_base = clip(x + (x - base))</code> and re-explore.</li>
-                    <li><strong>Step halving:</strong> failed sweep &rArr; halve the step.</li>
-                    <li><strong>Restart on multimodal trapping:</strong> when <code>step &le; 1e-6</code> with <code>f &gt; 1e-8</code>, reinitialise from a random base. On smooth basins the run exits naturally before the restart fires.</li>
-                    <li><strong>Initial step <code>0.1</code></strong>, floor <code>1e-12</code>, on the unit cube <code>[0, 1]<sup>n</sup></code>.</li>
+                    <li><strong>Step reduction:</strong> failed sweep &rArr; multiply the step by <code>0.25</code>.</li>
+                    <li><strong>Budget-limited restart:</strong> when <code>step &le; 1e-12</code>, reinitialise from a random base and reset the step to <code>0.1</code>, regardless of the objective value, if budget remains. A smooth basin does not cause an early exit: the run continues until its evaluation budget is exhausted.</li>
+                    <li><strong>Initial step <code>0.1</code></strong>, restart threshold <code>1e-12</code>, on the unit cube <code>[0, 1]<sup>n</sup></code>.</li>
                 </ul>
             </div>
             <div class="visualization-section">
@@ -305,7 +305,7 @@
                         <td class="category">Algorithm</td>
                         <td>
                             <strong>Hooke-Jeeves direct search (1961)</strong><br>
-                            Exploratory move + pattern move; step halved on failed sweeps.<br>
+                            Exploratory move + pattern move; HumpDay quarters the step on failed sweeps.<br>
                             One of the earliest published derivative-free methods.<br>
                             <em>Reference: Hooke &amp; Jeeves (1961), "'Direct search' solution of numerical and statistical problems", J. ACM 8(2)</em>
                         </td>
@@ -330,7 +330,7 @@
                         <td class="category">HumpDay Python</td>
                         <td>
                             <strong>HumpDay <code>PatternSearch</code></strong><br>
-                            Faithful Hooke-Jeeves: exploratory + pattern move, step halved on failed sweep, restart on multimodal trapping.<br>
+                            Hooke-Jeeves exploratory + pattern moves, with HumpDay's step factor <code>0.25</code> and unconditional restart at <code>step &le; 1e-12</code> while budget remains.<br>
                             Pure Python; no required dependencies.<br>
                             <em>File: <code>humpday/optimizers/search_algorithms.py</code></em>
                         </td>
