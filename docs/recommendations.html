@@ -210,7 +210,12 @@
                 by worst position across the two, so the pick is the algorithm
                 that is never terrible rather than one that wins a suite and
                 collapses on the other. Dimension is never interpolated;
-                budget is interpolated downward only.
+                the largest recorded budget not exceeding the request is used.
+                Below the recorded floor, the smallest recorded budget is used
+                instead (currently 50 evaluations). Thus a 10-evaluation request
+                uses rankings measured at 50 evaluations, not evidence measured
+                at 10; rankings need not transfer to the smaller budget. The
+                eligibility filter still uses the actual requested budget.
             </li>
             <li>
                 <strong>The Borda grid</strong> below, which is denser but

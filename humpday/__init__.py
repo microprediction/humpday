@@ -106,8 +106,9 @@ def suggest(
     Args:
         n_dim: Problem dimension. Ratings are used only where a tournament was recorded at exactly
             this dimension; performance is not smooth in dimension and is never interpolated.
-        n_trials: Evaluation budget. Selects the recorded budget, taking the largest not exceeding
-            this one.
+        n_trials: Evaluation budget. Selects the largest recorded budget not exceeding this one,
+            or the smallest recorded budget if the request is below the recorded floor. In that
+            case the ranking is evidence from a larger budget, not a measurement at this budget.
         n_seconds: Ignored (for compatibility).
         smooth: What kind of objective you have, if you know.
 
@@ -124,6 +125,9 @@ def suggest(
         List of (score, time, name) tuples. ``score`` is the measured rating when one suite is
         selected, and ``nan`` under the default, where the ordering is by worst rank and no single
         rating describes it. ``time`` is always ``nan``: humpday records no timing evidence.
+        This is a ranking, not an eligibility-filtered selection: a returned optimizer may need
+        more evaluations than requested. The automatic recommender used by ``minimize`` filters
+        candidates using the actual requested budget.
     """
     from humpday import ratings
 

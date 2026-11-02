@@ -17,8 +17,9 @@ One table now, indexed by the three things that change the answer.
     Evaluations allowed, in absolute terms, because that is what a caller knows. NEWUOA and BOBYQA
     need roughly ``2n+1`` points before proposing anything and UOBYQA needs ``(n+1)(n+2)/2``, which
     is 5,151 at a hundred variables, so a budget that is generous at ten is nothing at a hundred.
-    Interpolated **downward only**: a cell recorded at a smaller budget says what an optimizer does
-    with less room, which is the safe direction to be wrong in.
+    Select the largest recorded budget not exceeding the request. Below the recorded floor,
+    use the smallest recorded budget instead. This is ranking evidence from a more generous
+    budget, not a measurement at the requested budget or a guarantee that rankings transfer.
 
 ``suite``
     ``surfaces`` are classic analytic functions, randomly shifted, rotated, rescaled and noised per
