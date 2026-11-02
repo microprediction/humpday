@@ -377,20 +377,30 @@
                     <h3>Core Components</h3>
                     <ul>
                         <li><strong>Surrogate Model:</strong> Gaussian Process regression with uncertainty</li>
-                        <li><strong>Acquisition Function:</strong> Expected Improvement, Upper Confidence Bound, Entropy Search</li>
+                        <li><strong>Acquisition Function:</strong> Expected Improvement, Lower Confidence Bound, Entropy Search</li>
                         <li><strong>Kernel Functions:</strong> RBF, Matérn, polynomial kernels</li>
                         <li><strong>Hyperparameter Learning:</strong> Maximum likelihood estimation</li>
                         <li><strong>Multi-Point Selection:</strong> Batch acquisition for parallel evaluation</li>
                     </ul>
 
                     <h3>Acquisition Functions</h3>
+                    <p>For minimization, let <code>f_best</code> be the smallest observed objective value,
+                        μ(x) and σ(x) the posterior mean and standard deviation, and ξ, β &ge; 0.
+                        Maximize EI or PI, but minimize the lower confidence bound:</p>
                     <ul>
-                        <li><strong>Expected Improvement (EI):</strong> E[max(f(x) - f_best, 0)]</li>
-                        <li><strong>Upper Confidence Bound (UCB):</strong> μ(x) + β*σ(x)</li>
-                        <li><strong>Probability of Improvement (PI):</strong> P[f(x) > f_best + ξ]</li>
+                        <li><strong>Expected Improvement (EI):</strong> E[max(f_best - f(x) - ξ, 0)]</li>
+                        <li><strong>Lower Confidence Bound (LCB):</strong> μ(x) - β*σ(x)</li>
+                        <li><strong>Probability of Improvement (PI):</strong> P[f(x) &lt; f_best - ξ]</li>
                         <li><strong>Entropy Search:</strong> Information gain about global optimum</li>
                         <li><strong>Knowledge Gradient:</strong> Expected value of perfect information</li>
                     </ul>
+
+                    <p>The Python and JavaScript <code>BayesianOpt</code> ports use EI with ξ = 0.01;
+                        the other acquisitions above are background alternatives, not selectable modes here.
+                        As a sign check, with <code>f_best = 0</code>, ξ = 0 and a deterministic prediction,
+                        a candidate value of &minus;1 has improvement 1, while +1 has improvement 0.
+                        See the <a href="https://scikit-optimize.readthedocs.io/en/stable/modules/generated/skopt.acquisition.gaussian_ei.html" target="_blank">scikit-optimize EI documentation</a>
+                        for the same minimization convention.</p>
 
                     <h3>Applications</h3>
                     <ul>
