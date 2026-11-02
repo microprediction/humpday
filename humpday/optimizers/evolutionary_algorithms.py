@@ -833,14 +833,14 @@ def _normal_pdf(x):
 
 
 class CMAEvolutionStrategy(BaseOptimizer):
-    """CMA-ES with evolution paths and step-size adaptation.
+    """Bounded CMA-ES variant with evolution paths and step-size adaptation.
 
-    Pure-Python via the `humpday._array` shim — no direct numpy use.
-    Implementation follows Hansen's standard CMA-ES; the only deviation
-    is that `np.random.multivariate_normal(0, C)` is replaced by the
-    Cholesky-based sampling `z = cholesky(C) @ random_normal(n)`, which
-    is well-known to be equivalent (and is how numpy implements it
-    internally).
+    Pure-Python via the `humpday._array` shim. Gaussian proposals are
+    generated using a Cholesky factor, then clipped to the unit cube.
+    Those clipped points enter evaluation, recombination and adaptation,
+    so the evaluated population is not Gaussian and fixed-box clipping
+    does not preserve general affine invariance. IPOP restarts and the
+    final projected L-BFGS polish are additional implementation choices.
     """
 
     def _run(self):
@@ -955,7 +955,7 @@ class CMAEvolutionStrategy(BaseOptimizer):
             ):
                 generation += 1
 
-                # Sample λ offspring from N(mean, sigma^2 * C). Use a
+                # Draw Gaussian proposals, then clip below. Use a
                 # Cholesky factor L of C so x = mean + sigma * (L @ N(0, I)),
                 # equivalent to numpy's `multivariate_normal(0, C)`.
                 try:

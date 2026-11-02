@@ -880,7 +880,7 @@ class CMAEvolutionStrategy extends Optimizer {
 
     // IPOP-CMA-ES (Auger & Hansen 2005, "A Restart CMA Evolution
     // Strategy with Increasing Population Size", CEC 2005). The
-    // Hansen-standard inner CMA loop is wrapped in a restart layer:
+    // coordinatewise-clipped inner CMA loop is wrapped in a restart layer:
     // when any of TolFun / TolX / ConditionCov fires, all state is
     // reset and λ is doubled. Mirrors humpday/optimizers/
     // evolutionary_algorithms.py::CMAEvolutionStrategy step-for-step.

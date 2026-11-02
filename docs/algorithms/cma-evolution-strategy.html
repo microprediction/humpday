@@ -250,7 +250,7 @@
             </div>
 
             <div class="algorithm-description">
-                <strong>CMA-ES</strong> (Covariance Matrix Adaptation Evolution Strategy; Hansen &amp; Ostermeier, 1996) samples offspring from <em>N(mean, &sigma;<sup>2</sup>&middot;C)</em> and updates <em>C</em>, <em>&sigma;</em>, and <em>mean</em> from the &mu; best offspring each generation. HumpDay's <code>CMAEvolutionStrategy</code> implements <strong>Hansen-standard CMA-ES</strong> wrapped in an <strong>IPOP restart layer</strong> (Auger &amp; Hansen, 2005) so the optimizer can escape local optima on multimodal landscapes instead of converging once and stopping, then finishes with an <strong>L-BFGS-B polish</strong> from the best-found point across all restarts.
+                <strong>CMA-ES</strong> (Covariance Matrix Adaptation Evolution Strategy; Hansen &amp; Ostermeier, 1996) draws Gaussian proposals from <em>N(mean, &sigma;<sup>2</sup>&middot;C)</em> and updates <em>C</em>, <em>&sigma;</em>, and <em>mean</em> from the &mu; best offspring each generation. HumpDay's <code>CMAEvolutionStrategy</code> implements <strong>coordinatewise-clipped, bounded CMA-ES variant</strong> wrapped in an <strong>IPOP restart layer</strong> (Auger &amp; Hansen, 2005) so the optimizer can escape local optima on multimodal landscapes instead of converging once and stopping, then finishes with an <strong>L-BFGS-B polish</strong> from the best-found point across all restarts.
             </div>
 
             <div class="coordinate-note" style="background:#e8f4fd; border:1px solid #bee5eb; border-radius:8px; padding:15px; margin:20px 0;">
@@ -320,7 +320,7 @@
                         <td>
                             <strong>Hansen & Ostermeier</strong><br>
                             Self-adaptive evolution strategy with covariance matrix learning<br>
-                            Invariant to affine transformations of the search space<br>
+                            Unconstrained invariance results require correspondingly transformed initialization; fixed-box clipping adds coordinate dependence.<br>
                             <em>Published: 1996-2001</em>
                         </td>
                         <td>
@@ -344,7 +344,7 @@
                         <td class="category">HumpDay Python</td>
                         <td>
                             <strong>HumpDay <code>CMAEvolutionStrategy</code></strong><br>
-                            Hansen-standard CMA-ES with rank-1 + rank-&mu; C-update, evolution paths, CSA, then L-BFGS-B polish from the best CMA-ES point.<br>
+                            Bounded CMA-ES variant: clip Gaussian proposals to the unit cube before evaluation and adaptation; rank-1 + rank-&mu; C-update, evolution paths, CSA, then L-BFGS-B polish from the best CMA-ES point.<br>
                             Pure Python; no required dependencies.<br>
                             <em>File: <code>humpday/optimizers/evolutionary_algorithms.py</code></em>
                         </td>
@@ -389,9 +389,13 @@
                         <li><a href="https://link.springer.com/article/10.1007/s001000050217" target="_blank">Original CMA-ES Paper (2001)</a></li>
                     </ul>
 
+                    <h3>Boundary handling in HumpDay</h3>
+                    <p>Python and JavaScript use <code>x = clip(mean + sigma * z, 0, 1)</code>, where <code>z</code> is a Gaussian step. The evaluated and selected population is therefore not Gaussian: clipping puts probability mass on the faces of the cube. For example, in one dimension with mean 0.3, sigma 0.2 and C = 1, the probability of evaluating exactly zero is P(Z &le; -1.5), about 6.68%.</p>
+                    <p>The repaired points also enter adaptation, so clipping can change covariance and step-size learning near a boundary. It does not commute with general rotations or affine coordinate changes. Hansen's <a href="https://arxiv.org/html/1604.00772v2#S10.SS5" target="_blank">tutorial, Boundaries and Constraints</a>, discusses this limitation of repairing points before the update equations. This page documents the current behavior; it does not claim that clipping is an appropriate boundary treatment for every problem.</p>
+
                     <h3>Core Algorithm Components</h3>
                     <ul>
-                        <li><strong>Population:</strong> λ offspring generated from multivariate normal distribution</li>
+                        <li><strong>Population:</strong> Gaussian proposals are clipped coordinatewise to [0,1] before evaluation. The clipped offspring are also used in mean, evolution-path and covariance updates.</li>
                         <li><strong>Selection:</strong> μ best individuals become parents for next generation</li>
                         <li><strong>Recombination:</strong> Weighted average of selected individuals</li>
                         <li><strong>Covariance Update:</strong> C(g+1) = (1-c_cov)C(g) + c_cov * update</li>
@@ -405,7 +409,7 @@
                         <li><strong>Rank-μ Update:</strong> C_μ = Σᵢ wᵢ yᵢyᵢᵀ (rank-μ covariance update)</li>
                         <li><strong>Rank-1 Update:</strong> C₁ = p_c p_cᵀ (evolution path outer product)</li>
                         <li><strong>CSA:</strong> Cumulative Step-size Adaptation using conjugate evolution path</li>
-                        <li><strong>Invariance:</strong> Transformation-invariant under affine coordinate changes</li>
+                        <li><strong>Invariance:</strong> Classical unconstrained results do not give this fixed-box, clipped implementation general affine invariance.</li>
                     </ul>
 
                     <h3>️ Key Parameters</h3>
@@ -439,7 +443,7 @@
 
                     <h3>Why CMA-ES is Special</h3>
                     <ul>
-                        <li><strong>Invariance Properties:</strong> Rotation and scaling invariant</li>
+                        <li><strong>Invariance Properties:</strong> Clipping to the fixed unit cube is coordinate-dependent; no general rotation or affine invariance is claimed for this implementation.</li>
                         <li><strong>Self-Adaptation:</strong> Learns problem structure automatically</li>
                         <li><strong>Principled Design:</strong> Theoretically motivated updates</li>
                         <li><strong>Empirical Success:</strong> Top performer on many benchmark suites</li>
